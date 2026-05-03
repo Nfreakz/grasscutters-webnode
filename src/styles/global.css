@@ -1,0 +1,237 @@
+:root {
+  color-scheme: dark;
+  --gc-bg: #06110d;
+  --gc-surface: rgba(12, 28, 22, 0.78);
+  --gc-border: rgba(148, 255, 188, 0.18);
+  --gc-text: #eefdf5;
+  --gc-muted: rgba(238, 253, 245, 0.72);
+  --gc-green: #83ff9f;
+  --gc-green-strong: #39e374;
+  --gc-yellow: #d8ff6b;
+  --gc-shadow: rgba(0, 0, 0, 0.42);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(57, 227, 116, 0.20), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(216, 255, 107, 0.14), transparent 32%),
+    linear-gradient(135deg, #030806 0%, var(--gc-bg) 58%, #091b12 100%);
+  color: var(--gc-text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.gc-shell,
+.gc-page {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 42px 0;
+}
+
+.gc-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 520px;
+  display: grid;
+  align-items: center;
+  border: 1px solid var(--gc-border);
+  border-radius: 32px;
+  background:
+    linear-gradient(135deg, rgba(131, 255, 159, 0.10), rgba(6, 17, 13, 0.92)),
+    var(--gc-surface);
+  box-shadow: 0 28px 80px var(--gc-shadow);
+  padding: clamp(28px, 7vw, 82px);
+}
+
+.gc-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
+
+.gc-hero__content {
+  position: relative;
+  z-index: 2;
+  max-width: 760px;
+}
+
+.gc-kicker {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(131, 255, 159, 0.28);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--gc-green);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(131, 255, 159, 0.08);
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 20px;
+  max-width: 880px;
+  font-size: clamp(2.4rem, 7vw, 5.9rem);
+  line-height: 0.92;
+  letter-spacing: -0.075em;
+}
+
+h2 {
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+p {
+  color: var(--gc-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.gc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.gc-button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gc-border);
+  border-radius: 999px;
+  padding: 0 18px;
+  color: var(--gc-text);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 800;
+}
+
+.gc-button--primary {
+  color: #05100a;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--gc-green), var(--gc-yellow));
+}
+
+.gc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.gc-card,
+.gc-panel {
+  border: 1px solid var(--gc-border);
+  border-radius: 26px;
+  background: rgba(9, 24, 18, 0.72);
+  box-shadow: 0 18px 60px var(--gc-shadow);
+}
+
+.gc-card {
+  padding: 22px;
+}
+
+.gc-card span {
+  display: inline-flex;
+  margin-bottom: 28px;
+  color: var(--gc-green);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.gc-card p {
+  margin-bottom: 0;
+  font-size: 0.92rem;
+}
+
+.gc-page {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+}
+
+.gc-panel {
+  padding: clamp(28px, 6vw, 70px);
+}
+
+.gc-back {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 16px;
+  color: var(--gc-green);
+  font-weight: 800;
+}
+
+.gc-hero__glow {
+  position: absolute;
+  width: 280px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  filter: blur(50px);
+  opacity: 0.5;
+}
+
+.gc-hero__glow--a {
+  top: -90px;
+  right: 10%;
+  background: var(--gc-green-strong);
+}
+
+.gc-hero__glow--b {
+  bottom: -120px;
+  left: 8%;
+  background: var(--gc-yellow);
+}
+
+@media (max-width: 900px) {
+  .gc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .gc-shell,
+  .gc-page {
+    width: min(100% - 20px, 1180px);
+    padding: 20px 0;
+  }
+
+  .gc-hero {
+    min-height: auto;
+    padding: 30px 22px;
+    border-radius: 24px;
+  }
+
+  .gc-grid {
+    grid-template-columns: 1fr;
+  }
+}
