@@ -1,5 +1,3 @@
-import { defineConfig } from 'astro/config';
-
-export default defineConfig({
+export default {
   output: 'static'
-});
+};

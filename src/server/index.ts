@@ -15,9 +15,40 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 const startedAt = new Date().toISOString();
 const discordEnabled = process.env.DISCORD_ENABLED === 'true';
 
+let syncInProgress = false;
+let lastSyncResult: null | {
+  ok: boolean;
+  startedAt: string;
+  finishedAt: string;
+  sizeBytes?: number;
+  savedPath?: string;
+  backupPath?: string | null;
+  error?: string;
+} = null;
+
 function resolveProjectPath(value: string | undefined | null) {
   if (!value) return null;
   return path.isAbsolute(value) ? value : path.join(rootDir, value);
+}
+
+function ensureDirForFile(filePath: string) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function fileExists(filePath: string | null) {
+  return Boolean(filePath && fs.existsSync(filePath));
+}
+
+function isSQLiteFile(filePath: string) {
+  if (!fs.existsSync(filePath)) return false;
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const header = Buffer.alloc(16);
+    const bytesRead = fs.readSync(fd, header, 0, 16, 0);
+    return bytesRead === 16 && header.toString('utf8') === 'SQLite format 3\u0000';
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 function getStrackerConfig() {
@@ -33,13 +64,35 @@ function getStrackerConfig() {
     relativePath: configuredPath,
     resolvedPath,
     exists,
+    validSQLite: resolvedPath && exists ? isSQLiteFile(resolvedPath) : false,
     sizeBytes: stats?.size ?? 0,
     modifiedAt: stats?.mtime?.toISOString?.() ?? null
   };
 }
 
+function getRemoteStrackerConfig() {
+  const host = process.env.GTX_SFTP_HOST ?? '';
+  const port = Number(process.env.GTX_SFTP_PORT ?? 22);
+  const username = process.env.GTX_SFTP_USER ?? '';
+  const password = process.env.GTX_SFTP_PASS ?? '';
+  const remotePath = process.env.GTX_STRACKER_REMOTE_PATH ?? '';
+  const secret = process.env.STRACKER_SYNC_SECRET ?? '';
+
+  return {
+    configured: Boolean(host && username && password && remotePath && secret),
+    host: host ? host : null,
+    port,
+    usernameConfigured: Boolean(username),
+    passwordConfigured: Boolean(password),
+    remotePath: remotePath ? remotePath : null,
+    secretConfigured: Boolean(secret),
+    target: getStrackerConfig()
+  };
+}
+
 function getModules() {
   const stracker = getStrackerConfig();
+  const remote = getRemoteStrackerConfig();
 
   return {
     web: {
@@ -63,11 +116,12 @@ function getModules() {
     },
     stracker: {
       enabled: stracker.exists,
-      status: stracker.exists ? 'file_detected' : 'waiting_file',
+      status: stracker.exists ? 'file_detected' : 'waiting_sync',
       message: stracker.exists
         ? 'stracker.db3 detectado. Ya puedes consultar /api/stracker/tables.'
-        : 'stracker preparado, pero todavía no existe data/stracker/stracker.db3 en Hostinger.',
-      db: stracker
+        : 'stracker preparado. Sincroniza desde GTX con /api/stracker/sync.',
+      db: stracker,
+      remote
     },
     users: {
       enabled: false,
@@ -186,6 +240,153 @@ async function previewStrackerTable(dbPath: string, tableName: string, limit = 5
   }
 }
 
+function readRequestSecret(req: express.Request) {
+  const headerSecret = req.headers['x-gc-secret'];
+  const bearer = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice('Bearer '.length)
+    : null;
+  const querySecret = typeof req.query.secret === 'string' ? req.query.secret : null;
+  const bodySecret = typeof req.body?.secret === 'string' ? req.body.secret : null;
+
+  if (typeof headerSecret === 'string' && headerSecret.trim()) return headerSecret;
+  if (bearer && bearer.trim()) return bearer;
+  if (bodySecret && bodySecret.trim()) return bodySecret;
+  if (querySecret && querySecret.trim()) return querySecret;
+  return '';
+}
+
+function assertSyncSecret(req: express.Request) {
+  const expected = process.env.STRACKER_SYNC_SECRET ?? '';
+  const provided = readRequestSecret(req);
+
+  return Boolean(expected && provided && expected === provided);
+}
+
+async function syncStrackerFromGTX() {
+  if (syncInProgress) {
+    return {
+      ok: false,
+      statusCode: 409,
+      message: 'Ya hay una sincronización en curso.'
+    };
+  }
+
+  const started = new Date().toISOString();
+  const remote = getRemoteStrackerConfig();
+  const target = getStrackerConfig();
+
+  if (!remote.configured) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: 'Faltan variables GTX_SFTP_HOST, GTX_SFTP_PORT, GTX_SFTP_USER, GTX_SFTP_PASS, GTX_STRACKER_REMOTE_PATH o STRACKER_SYNC_SECRET.',
+      remote
+    };
+  }
+
+  if (!target.resolvedPath) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: 'No se pudo resolver la ruta local de stracker.db3.'
+    };
+  }
+
+  syncInProgress = true;
+  ensureDirForFile(target.resolvedPath);
+
+  const tempPath = `${target.resolvedPath}.download`;
+  const backupPath = fileExists(target.resolvedPath)
+    ? `${target.resolvedPath}.backup-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}`
+    : null;
+
+  let sftp: any = null;
+
+  try {
+    const sftpModule = await import('ssh2-sftp-client');
+    const SftpClient = sftpModule.default;
+    sftp = new SftpClient('grasscutters-stracker-sync');
+
+    await sftp.connect({
+      host: process.env.GTX_SFTP_HOST,
+      port: Number(process.env.GTX_SFTP_PORT ?? 22),
+      username: process.env.GTX_SFTP_USER,
+      password: process.env.GTX_SFTP_PASS,
+      readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
+    });
+
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+
+    await sftp.fastGet(process.env.GTX_STRACKER_REMOTE_PATH, tempPath);
+
+    const stats = fs.statSync(tempPath);
+
+    if (stats.size < 100) {
+      throw new Error(`Archivo descargado demasiado pequeño: ${stats.size} bytes.`);
+    }
+
+    if (!isSQLiteFile(tempPath)) {
+      throw new Error('El archivo descargado no parece SQLite válido. Cabecera incorrecta.');
+    }
+
+    if (backupPath && fs.existsSync(target.resolvedPath)) {
+      fs.copyFileSync(target.resolvedPath, backupPath);
+    }
+
+    fs.renameSync(tempPath, target.resolvedPath);
+
+    const finished = new Date().toISOString();
+    lastSyncResult = {
+      ok: true,
+      startedAt: started,
+      finishedAt: finished,
+      sizeBytes: stats.size,
+      savedPath: target.relativePath,
+      backupPath: backupPath ? path.relative(rootDir, backupPath) : null
+    };
+
+    return {
+      ok: true,
+      statusCode: 200,
+      message: 'stracker.db3 sincronizado correctamente desde GTX.',
+      sync: lastSyncResult,
+      stracker: getStrackerConfig()
+    };
+  } catch (error) {
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (_) {
+        // no-op
+      }
+    }
+
+    const finished = new Date().toISOString();
+    lastSyncResult = {
+      ok: false,
+      startedAt: started,
+      finishedAt: finished,
+      error: error instanceof Error ? error.message : String(error)
+    };
+
+    return {
+      ok: false,
+      statusCode: 500,
+      message: 'No se pudo sincronizar stracker.db3 desde GTX.',
+      sync: lastSyncResult
+    };
+  } finally {
+    syncInProgress = false;
+    if (sftp) {
+      try {
+        await sftp.end();
+      } catch (_) {
+        // no-op
+      }
+    }
+  }
+}
+
 const mockPilots = [
   {
     id: 'gc-demo-001',
@@ -203,7 +404,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'grasscutters-node',
-    mode: 'hostinger-singlefile-stracker-detector',
+    mode: 'hostinger-singlefile-stracker-sftp-pull',
     startedAt
   });
 });
@@ -214,7 +415,7 @@ app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     message: 'GC API funcionando en Hostinger',
-    mode: 'hostinger-singlefile-stracker-detector',
+    mode: 'hostinger-singlefile-stracker-sftp-pull',
     modules: {
       web: modules.web.enabled,
       api: modules.api.enabled,
@@ -223,7 +424,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: 'Paquete 06: detector seguro de stracker.db3. No lee la DB al arrancar, solo cuando se consulta la ruta.'
+    note: 'Paquete 07A: sincronización SFTP pull desde GTX preparada. No conecta al arrancar, solo bajo petición protegida.'
   });
 });
 
@@ -244,7 +445,49 @@ app.get('/api/discord/status', (_req, res) => {
 app.get('/api/stracker/status', (_req, res) => {
   res.json({
     ok: true,
-    stracker: getModules().stracker
+    stracker: getModules().stracker,
+    lastSync: lastSyncResult,
+    syncInProgress
+  });
+});
+
+app.get('/api/stracker/remote-config', (_req, res) => {
+  res.json({
+    ok: true,
+    remote: getRemoteStrackerConfig(),
+    lastSync: lastSyncResult,
+    syncInProgress,
+    message: 'No se muestran usuario, contraseña ni secret. Solo si están configurados.'
+  });
+});
+
+async function handleStrackerSync(req: express.Request, res: express.Response) {
+  if (!assertSyncSecret(req)) {
+    res.status(401).json({
+      ok: false,
+      message: 'Secret inválido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
+    });
+    return;
+  }
+
+  const result = await syncStrackerFromGTX();
+  res.status(result.statusCode).json(result);
+}
+
+app.get('/api/stracker/sync', handleStrackerSync);
+app.post('/api/stracker/sync', handleStrackerSync);
+app.get('/gc-data/sync-stracker', handleStrackerSync);
+app.post('/gc-data/sync-stracker', handleStrackerSync);
+app.get('/gc-data/sync-stracker.php', handleStrackerSync);
+app.post('/gc-data/sync-stracker.php', handleStrackerSync);
+
+app.get('/gc-data/health', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'gc-data-node',
+    stracker: getStrackerConfig(),
+    remote: getRemoteStrackerConfig(),
+    lastSync: lastSyncResult
   });
 });
 
@@ -256,7 +499,7 @@ app.get('/api/stracker/tables', async (_req, res) => {
       ok: false,
       tables: [],
       stracker,
-      message: 'No se ha encontrado stracker.db3. Sube el archivo a data/stracker/stracker.db3 o define STRACKER_DB_PATH.'
+      message: 'No se ha encontrado stracker.db3. Sincroniza desde GTX con /api/stracker/sync.'
     });
     return;
   }
@@ -332,11 +575,13 @@ app.get('/api/hotlaps', (_req, res) => {
     items: [],
     stracker: {
       exists: stracker.exists,
-      path: stracker.relativePath
+      path: stracker.relativePath,
+      modifiedAt: stracker.modifiedAt,
+      sizeBytes: stracker.sizeBytes
     },
     message: stracker.exists
       ? 'stracker.db3 detectado. Falta mapear las tablas reales para construir hotlaps.'
-      : 'Hotlaps pendiente de subir stracker.db3.'
+      : 'Hotlaps pendiente de sincronizar stracker.db3 desde GTX.'
   });
 });
 
@@ -363,7 +608,7 @@ app.get('/api/debug/runtime', (_req, res) => {
   res.json({
     ok: true,
     runtime: {
-      mode: 'hostinger-singlefile-stracker-detector',
+      mode: 'hostinger-singlefile-stracker-sftp-pull',
       nodeEnv: process.env.NODE_ENV ?? 'development',
       startedAt,
       port: PORT,
@@ -371,7 +616,10 @@ app.get('/api/debug/runtime', (_req, res) => {
       rootDir,
       distDir,
       distExists: fs.existsSync(distDir),
-      stracker
+      stracker,
+      remote: getRemoteStrackerConfig(),
+      lastSync: lastSyncResult,
+      syncInProgress
     }
   });
 });
@@ -421,5 +669,5 @@ process.on('unhandledRejection', (error) => {
 
 app.listen(PORT, HOST, () => {
   console.log(`[GC] Servidor activo en ${HOST}:${PORT}`);
-  console.log('[GC] Modo: hostinger-singlefile-stracker-detector');
+  console.log('[GC] Modo: hostinger-singlefile-stracker-sftp-pull');
 });
