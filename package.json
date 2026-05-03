@@ -4,25 +4,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
+    "dev:web": "astro dev --host 0.0.0.0 --port 4321",
     "dev:server": "tsx watch src/server/index.ts",
     "build": "astro build",
     "start": "tsx src/server/index.ts",
+    "preview": "npm run build && npm start",
     "check": "astro check",
     "format": "prettier . --write"
   },
   "dependencies": {
+    "@astrojs/check": "latest",
     "astro": "latest",
+    "concurrently": "latest",
     "dotenv": "latest",
     "express": "latest",
-    "tsx": "latest",
     "sql.js": "latest",
-    "ssh2-sftp-client": "latest"
+    "ssh2-sftp-client": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
   },
   "devDependencies": {
     "@types/express": "latest",
     "@types/node": "latest",
-    "prettier": "latest",
-    "typescript": "latest"
+    "prettier": "latest"
   }
 }
