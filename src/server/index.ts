@@ -5,7 +5,6 @@ import express from 'express';
 import { env } from '../config/env';
 import { registerApiRoutes } from '../api/registerApiRoutes';
 import { startDiscordBot } from '../bot/createDiscordBot';
-import { getAppDb } from '../db/appDb';
 import { logger } from '../shared/logger';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,14 +15,14 @@ const distServerEntry = path.join(rootDir, 'dist/server/entry.mjs');
 
 async function loadAstroHandler() {
   if (!fs.existsSync(distServerEntry)) {
-    logger.warn('server', 'No existe dist/server/entry.mjs. Ejecuta build antes de usar Astro en el servidor único.');
+    logger.warn('server', 'No existe dist/server/entry.mjs. Ejecuta npm run build antes de arrancar en producción.');
     return null;
   }
 
   const mod = await import(pathToFileURL(distServerEntry).href);
 
   if (typeof mod.handler !== 'function') {
-    throw new Error('dist/server/entry.mjs no exporta handler. Revisa el modo middleware de @astrojs/node.');
+    throw new Error('dist/server/entry.mjs no exporta handler. Revisa @astrojs/node en modo middleware.');
   }
 
   return mod.handler as express.RequestHandler;
@@ -32,7 +31,11 @@ async function loadAstroHandler() {
 async function main() {
   const app = express();
 
-  getAppDb();
+  app.disable('x-powered-by');
+
+  // IMPORTANTE HOSTINGER:
+  // No inicializamos SQLite/stracker al arrancar. En hosting compartido, los módulos nativos
+  // pueden fallar y tirar todo el proceso. Las rutas lo cargarán bajo demanda y con fallback.
   registerApiRoutes(app);
 
   if (fs.existsSync(distClientDir)) {
@@ -51,7 +54,7 @@ async function main() {
           <head><meta charset="utf-8"><title>GrassCutters Node</title></head>
           <body style="font-family: system-ui; background:#06110d; color:#eefdf5; padding:40px;">
             <h1>GrassCutters Node activo</h1>
-            <p>API lista. Para servir Astro desde este mismo Node primero hay que generar dist.</p>
+            <p>API lista. Falta generar dist con npm run build.</p>
             <p><a style="color:#83ff9f" href="/api/status">Ver /api/status</a></p>
           </body>
         </html>
@@ -59,9 +62,13 @@ async function main() {
     });
   }
 
-  await startDiscordBot();
+  try {
+    await startDiscordBot();
+  } catch (error) {
+    logger.error('discord', 'El bot no ha arrancado, pero la web seguirá activa.', error);
+  }
 
-  app.listen(env.PORT, () => {
+  app.listen(env.PORT, '0.0.0.0', () => {
     logger.info('server', `Servidor único activo en puerto ${env.PORT}`);
   });
 }

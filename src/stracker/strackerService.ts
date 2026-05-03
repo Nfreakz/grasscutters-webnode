@@ -1,7 +1,28 @@
 import fs from 'node:fs';
-import Database from 'better-sqlite3';
+import { createRequire } from 'node:module';
 import { env } from '../config/env';
 import { logger } from '../shared/logger';
+
+const require = createRequire(import.meta.url);
+
+type BetterSqlite3Module = typeof import('better-sqlite3');
+
+let DatabaseCtor: BetterSqlite3Module | null = null;
+let lastSqliteError: string | null = null;
+
+function loadBetterSqlite() {
+  if (DatabaseCtor) return DatabaseCtor;
+
+  try {
+    DatabaseCtor = require('better-sqlite3') as BetterSqlite3Module;
+    lastSqliteError = null;
+    return DatabaseCtor;
+  } catch (error) {
+    lastSqliteError = error instanceof Error ? error.message : String(error);
+    logger.error('stracker', 'No se pudo cargar better-sqlite3 para stracker.', error);
+    return null;
+  }
+}
 
 export function hasStrackerDb() {
   return fs.existsSync(env.STRACKER_DB_PATH);
@@ -12,7 +33,13 @@ export function openStrackerDb() {
     throw new Error(`No existe stracker.db3 en: ${env.STRACKER_DB_PATH}`);
   }
 
-  return new Database(env.STRACKER_DB_PATH, {
+  const BetterSqlite = loadBetterSqlite();
+
+  if (!BetterSqlite) {
+    throw new Error(`SQLite no disponible en Node: ${lastSqliteError ?? 'error desconocido'}`);
+  }
+
+  return new BetterSqlite(env.STRACKER_DB_PATH, {
     readonly: env.STRACKER_READONLY,
     fileMustExist: true
   });
@@ -28,20 +55,29 @@ export function listStrackerTables() {
     };
   }
 
-  const db = openStrackerDb();
-
   try {
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-      .all();
+    const db = openStrackerDb();
 
+    try {
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all();
+
+      return {
+        ok: true,
+        path: env.STRACKER_DB_PATH,
+        tables
+      };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
     return {
-      ok: true,
+      ok: false,
       path: env.STRACKER_DB_PATH,
-      tables
+      tables: [],
+      message: error instanceof Error ? error.message : String(error)
     };
-  } finally {
-    db.close();
   }
 }
 
