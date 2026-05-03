@@ -1,8 +1,8 @@
 import { defineConfig } from 'astro/config';
 
-// Deploy inicial Hostinger:
-// Generamos la web como estática y la servimos desde un único Node/Express.
-// Más adelante volveremos a SSR/middleware cuando la base esté estable en hosting.
+// Deploy Hostinger estable:
+// Astro genera web estática y Express la sirve desde dist.
+// El servidor Node queda preparado para API, Discord, stracker y usuarios por módulos.
 export default defineConfig({
   output: 'static'
 });
