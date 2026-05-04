@@ -196,6 +196,27 @@ async function ensureMysqlSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_admin_audit_log (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      actor_user_id VARCHAR(64) NULL,
+      actor_email VARCHAR(191) NULL,
+      actor_name VARCHAR(191) NULL,
+      action VARCHAR(80) NOT NULL,
+      entity_type VARCHAR(40) NOT NULL,
+      entity_id VARCHAR(191) NULL,
+      before_value LONGTEXT NULL,
+      after_value LONGTEXT NULL,
+      ip_address VARCHAR(80) NULL,
+      user_agent VARCHAR(255) NULL,
+      created_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_admin_audit_created_at (created_at),
+      INDEX idx_gc_admin_audit_action (action),
+      INDEX idx_gc_admin_audit_entity (entity_type, entity_id),
+      INDEX idx_gc_admin_audit_actor (actor_user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   mysqlSchemaReady = true;
 }
 
@@ -317,6 +338,27 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       updated_at TEXT NOT NULL
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_admin_audit_log (
+      id TEXT NOT NULL PRIMARY KEY,
+      actor_user_id TEXT NULL,
+      actor_email TEXT NULL,
+      actor_name TEXT NULL,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NULL,
+      before_value TEXT NULL,
+      after_value TEXT NULL,
+      ip_address TEXT NULL,
+      user_agent TEXT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_admin_audit_created_at ON gc_admin_audit_log(created_at)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_admin_audit_action ON gc_admin_audit_log(action)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_admin_audit_entity ON gc_admin_audit_log(entity_type, entity_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_admin_audit_actor ON gc_admin_audit_log(actor_user_id)`);
 
   return true;
 }
@@ -477,10 +519,10 @@ function getUsersPath() {
 
 function getUsersDbInfo() {
   if (useMysqlStorage()) {
-    return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
+    return { configured: true, source: 'mysql', persistent: true, table: 'gc_users / gc_sessions', mysql: getMysqlStorageSafeConfig() };
   }
   if (useSqliteStorage()) {
-    return { configured: true, source: 'sqlite', persistent: true, sqlite: getSqliteStorageSafeConfig() };
+    return { configured: true, source: 'sqlite', persistent: true, table: 'gc_users / gc_sessions', sqlite: getSqliteStorageSafeConfig() };
   }
 
   const configured = process.env.APP_USERS_PATH?.trim();
@@ -496,10 +538,10 @@ function getDisplayNamesPath() {
 
 function getDisplayNamesDbInfo() {
   if (useMysqlStorage()) {
-    return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
+    return { configured: true, source: 'mysql', persistent: true, table: 'gc_display_names', mysql: getMysqlStorageSafeConfig() };
   }
   if (useSqliteStorage()) {
-    return { configured: true, source: 'sqlite', persistent: true, sqlite: getSqliteStorageSafeConfig() };
+    return { configured: true, source: 'sqlite', persistent: true, table: 'gc_display_names', sqlite: getSqliteStorageSafeConfig() };
   }
 
   const configured = process.env.APP_DISPLAY_NAMES_PATH?.trim();
@@ -541,30 +583,13 @@ function normalizeDisplayNameKey(value: unknown) {
   return String(value ?? '').trim().toLowerCase();
 }
 
-function readDisplayNameStore(force = false): DisplayNameStore {
-  if (useSqliteStorage()) {
-    const cacheKey = `sqlite:${getAppSqlitePath()}`;
-    if (!force && displayNameCache?.path === cacheKey) return displayNameCache.store;
-    return createEmptyDisplayNameStore();
-  }
-
-  const filePath = getDisplayNamesPath();
+function parseDisplayNameStoreFromJsonFile(filePath: string): DisplayNameStore | null {
   const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
-  const mtimeMs = stats?.mtimeMs ?? null;
-
-  if (!force && displayNameCache && displayNameCache.path === filePath && displayNameCache.mtimeMs === mtimeMs) {
-    return displayNameCache.store;
-  }
-
-  if (!stats) {
-    const empty = createEmptyDisplayNameStore();
-    displayNameCache = { path: filePath, mtimeMs: null, store: empty };
-    return empty;
-  }
+  if (!stats) return null;
 
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Partial<DisplayNameStore>;
-    const store: DisplayNameStore = {
+    return {
       version: 1,
       updatedAt: String(parsed.updatedAt || stats.mtime.toISOString()),
       entries: Array.isArray(parsed.entries)
@@ -582,14 +607,33 @@ function readDisplayNameStore(force = false): DisplayNameStore {
           })).filter((entry) => entry.displayName.length > 0)
         : []
     };
-    displayNameCache = { path: filePath, mtimeMs, store };
-    return store;
   } catch (error) {
     console.error('[GC] Error leyendo display-names.json:', error);
-    const empty = createEmptyDisplayNameStore();
-    displayNameCache = { path: filePath, mtimeMs, store: empty };
-    return empty;
+    return null;
   }
+}
+
+function readDisplayNameStore(force = false): DisplayNameStore {
+  // En MySQL/SQLite los alias son 100% DB-backed. Las rutas síncronas solo deben
+  // leer la caché preparada por readDisplayNameStoreAsync(), nunca volver a JSON.
+  // Esto evita que /hotlaps, /perfil y demás ignoren la tabla gc_display_names.
+  if (useMysqlStorage() || useSqliteStorage()) {
+    const cacheKey = useMysqlStorage() ? 'mysql:gc_display_names' : `sqlite:${getAppSqlitePath()}`;
+    if (!force && displayNameCache?.path === cacheKey) return displayNameCache.store;
+    return createEmptyDisplayNameStore();
+  }
+
+  const filePath = getDisplayNamesPath();
+  const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
+  const mtimeMs = stats?.mtimeMs ?? null;
+
+  if (!force && displayNameCache && displayNameCache.path === filePath && displayNameCache.mtimeMs === mtimeMs) {
+    return displayNameCache.store;
+  }
+
+  const store = parseDisplayNameStoreFromJsonFile(filePath) || createEmptyDisplayNameStore();
+  displayNameCache = { path: filePath, mtimeMs, store };
+  return store;
 }
 
 function writeDisplayNameStore(store: DisplayNameStore) {
@@ -609,6 +653,27 @@ function writeDisplayNameStore(store: DisplayNameStore) {
   fs.writeFileSync(tempPath, `${JSON.stringify(nextStore, null, 2)}\n`, 'utf8');
   fs.renameSync(tempPath, filePath);
   displayNameCache = null;
+}
+
+
+async function maybeImportLegacyDisplayNamesJson(store: DisplayNameStore): Promise<DisplayNameStore> {
+  if (!useMysqlStorage() && !useSqliteStorage()) return store;
+  if (store.entries.length > 0) return store;
+
+  const legacyPath = getDisplayNamesPath();
+  const legacyStore = parseDisplayNameStoreFromJsonFile(legacyPath);
+  const validEntries = legacyStore?.entries?.filter((entry) => entry.displayName && entry.kind) ?? [];
+  if (!validEntries.length) return store;
+
+  const migratedStore: DisplayNameStore = {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    entries: validEntries
+  };
+
+  await writeDisplayNameStoreAsync(migratedStore);
+  console.log(`[GC] ${validEntries.length} alias migrados desde display-names.json a ${getAppStorageDriverLabel()}.`);
+  return migratedStore;
 }
 
 async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStore> {
@@ -636,8 +701,9 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
       })).filter((entry: DisplayNameEntry) => entry.displayName.length > 0)
     };
 
-    displayNameCache = { path: cacheKey, mtimeMs: null, store };
-    return store;
+    const finalStore = await maybeImportLegacyDisplayNamesJson(store);
+    displayNameCache = { path: cacheKey, mtimeMs: null, store: finalStore };
+    return finalStore;
   }
 
   await ensureMysqlSchema();
@@ -659,8 +725,9 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
     })).filter((entry: DisplayNameEntry) => entry.displayName.length > 0)
   };
 
-  displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store };
-  return store;
+  const finalStore = await maybeImportLegacyDisplayNamesJson(store);
+  displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store: finalStore };
+  return finalStore;
 }
 
 async function writeDisplayNameStoreAsync(store: DisplayNameStore) {
@@ -749,9 +816,20 @@ function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, so
 
   return store.entries.find((entry) => {
     if (!entry.enabled || entry.kind !== kind) return false;
-    if (hasId && entry.sourceId !== null && Number(entry.sourceId) === numericId) return true;
-    if (code && entry.sourceCode && normalizeDisplayNameKey(entry.sourceCode) === code) return true;
-    if (name && normalizeDisplayNameKey(entry.sourceName) === name) return true;
+
+    const entryHasId = entry.sourceId !== null && entry.sourceId !== undefined && Number.isFinite(Number(entry.sourceId));
+    const entryCode = normalizeDisplayNameKey(entry.sourceCode);
+    const entryName = normalizeDisplayNameKey(entry.sourceName);
+
+    if (hasId && entryHasId && Number(entry.sourceId) === numericId) return true;
+    if (code && entryCode && entryCode === code) return true;
+
+    // Los pilotos pueden compartir nombre visible en stracker. Si la vuelta trae PlayerId
+    // o SteamGuid, NO hacemos fallback por nombre para evitar que dos "Neo" reciban el
+    // mismo override. Solo usamos sourceName cuando no hay identidad técnica disponible.
+    if (kind === 'driver' && (hasId || code)) return false;
+
+    if (name && entryName && entryName === name) return true;
     return false;
   }) ?? null;
 }
@@ -2549,6 +2627,142 @@ function getPilotLeaderboardRank(allLaps: PilotProfileLap[], playerId: number) {
   };
 }
 
+
+function uniqueCount(values: unknown[]) {
+  return new Set(values.filter((value) => value !== null && value !== undefined && value !== '')).size;
+}
+
+function lapTimeDeltaText(value: number | null) {
+  if (!Number.isFinite(Number(value))) return '--';
+  const n = Math.round(Number(value));
+  return `${n >= 0 ? '+' : '-'}${lapTimeToText(Math.abs(n))}`;
+}
+
+function getPilotComboRank(allLaps: PilotProfileLap[], lap: PilotProfileLap) {
+  const carKey = String(lap.car.id ?? lap.car.name);
+  const trackKey = String(lap.track.id ?? lap.track.name);
+  const bestByDriver = new Map<string, PilotProfileLap>();
+
+  for (const item of allLaps) {
+    if (!item.valid) continue;
+    if (String(item.car.id ?? item.car.name) !== carKey) continue;
+    if (String(item.track.id ?? item.track.name) !== trackKey) continue;
+    const driverKey = String(item.driver.id ?? item.driver.name);
+    const current = bestByDriver.get(driverKey);
+    if (!current || Number(item.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
+      bestByDriver.set(driverKey, item);
+    }
+  }
+
+  const ranked = Array.from(bestByDriver.values()).sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity));
+  const index = ranked.findIndex((item) => Number(item.driver.id) === Number(lap.driver.id));
+  return index >= 0 ? { position: index + 1, total: ranked.length } : null;
+}
+
+function enrichPilotCombosWithRanks(allLaps: PilotProfileLap[], pilotLaps: PilotProfileLap[]) {
+  return getBestByCombo(pilotLaps).map((combo) => {
+    const original = pilotLaps.find((lap) => lap.lapId === combo.lapId) ?? null;
+    const rank = original ? getPilotComboRank(allLaps, original) : null;
+    const comboLaps = pilotLaps.filter((lap) =>
+      String(lap.car.id ?? lap.car.name) === String(combo.carId ?? combo.carName) &&
+      String(lap.track.id ?? lap.track.name) === String(combo.trackId ?? combo.trackName)
+    );
+    return {
+      ...combo,
+      rank,
+      totalLaps: comboLaps.length,
+      validLaps: comboLaps.filter((lap) => lap.valid).length,
+      cleanRate: percent(comboLaps.filter((lap) => lap.valid).length, comboLaps.length)
+    };
+  });
+}
+
+function buildPilotGarageStats(laps: PilotProfileLap[]) {
+  const map = new Map<string, any>();
+  for (const lap of laps) {
+    const key = String(lap.car.id ?? lap.car.name);
+    if (!map.has(key)) {
+      map.set(key, {
+        car: lap.car,
+        totalLaps: 0,
+        validLaps: 0,
+        invalidLaps: 0,
+        tracks: new Map(),
+        bestLapMs: null,
+        bestLap: null,
+        bestLapDetails: null,
+        maxSpeedKmh: null,
+        lastSeenTimestamp: null,
+        lastSeenAt: null
+      });
+    }
+    const entry = map.get(key);
+    entry.totalLaps += 1;
+    lap.valid ? entry.validLaps += 1 : entry.invalidLaps += 1;
+    if (lap.track.id !== null || lap.track.name) entry.tracks.set(String(lap.track.id ?? lap.track.name), lap.track);
+    if (lap.valid && (entry.bestLapMs === null || Number(lap.lapTimeMs ?? Infinity) < Number(entry.bestLapMs))) {
+      entry.bestLapMs = lap.lapTimeMs;
+      entry.bestLap = lap.lapTime;
+      entry.bestLapDetails = compactLapForProfile(lap);
+    }
+    if (Number.isFinite(Number(lap.maxSpeedKmh)) && Number(lap.maxSpeedKmh) > Number(entry.maxSpeedKmh ?? 0)) entry.maxSpeedKmh = lap.maxSpeedKmh;
+    if (lap.timestamp && (!entry.lastSeenTimestamp || lap.timestamp > entry.lastSeenTimestamp)) {
+      entry.lastSeenTimestamp = lap.timestamp;
+      entry.lastSeenAt = lap.timestampIso;
+    }
+  }
+
+  return Array.from(map.values()).map((entry) => ({
+    ...entry,
+    tracksCount: entry.tracks.size,
+    tracks: Array.from(entry.tracks.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    cleanRate: percent(entry.validLaps, entry.totalLaps)
+  })).sort((a, b) => b.totalLaps - a.totalLaps || Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+}
+
+function buildPilotTrackStats(laps: PilotProfileLap[]) {
+  const map = new Map<string, any>();
+  for (const lap of laps) {
+    const key = String(lap.track.id ?? lap.track.name);
+    if (!map.has(key)) {
+      map.set(key, {
+        track: lap.track,
+        totalLaps: 0,
+        validLaps: 0,
+        invalidLaps: 0,
+        cars: new Map(),
+        bestLapMs: null,
+        bestLap: null,
+        bestLapDetails: null,
+        maxSpeedKmh: null,
+        lastSeenTimestamp: null,
+        lastSeenAt: null
+      });
+    }
+    const entry = map.get(key);
+    entry.totalLaps += 1;
+    lap.valid ? entry.validLaps += 1 : entry.invalidLaps += 1;
+    if (lap.car.id !== null || lap.car.name) entry.cars.set(String(lap.car.id ?? lap.car.name), lap.car);
+    if (lap.valid && (entry.bestLapMs === null || Number(lap.lapTimeMs ?? Infinity) < Number(entry.bestLapMs))) {
+      entry.bestLapMs = lap.lapTimeMs;
+      entry.bestLap = lap.lapTime;
+      entry.bestLapDetails = compactLapForProfile(lap);
+    }
+    if (Number.isFinite(Number(lap.maxSpeedKmh)) && Number(lap.maxSpeedKmh) > Number(entry.maxSpeedKmh ?? 0)) entry.maxSpeedKmh = lap.maxSpeedKmh;
+    if (lap.timestamp && (!entry.lastSeenTimestamp || lap.timestamp > entry.lastSeenTimestamp)) {
+      entry.lastSeenTimestamp = lap.timestamp;
+      entry.lastSeenAt = lap.timestampIso;
+    }
+  }
+
+  return Array.from(map.values()).map((entry) => ({
+    ...entry,
+    carsCount: entry.cars.size,
+    cars: Array.from(entry.cars.values()).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    cleanRate: percent(entry.validLaps, entry.totalLaps)
+  })).sort((a, b) => b.totalLaps - a.totalLaps || Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+}
+
 function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: PilotProfileLap[]) {
   const playerId = user.pilotLink?.playerId;
   const pilotLaps = playerId
@@ -2588,11 +2802,18 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
     (lap) => ({ track: (lap as PilotProfileLap).track })
   ).sort((a, b) => b.validLaps - a.validLaps || Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
 
-  const comboStats = getBestByCombo(pilotLaps);
+  const comboStats = enrichPilotCombosWithRanks(allLaps, pilotLaps);
+  const garageStats = buildPilotGarageStats(pilotLaps);
+  const circuitStats = buildPilotTrackStats(pilotLaps);
   const avgLapMs = average(lapTimes);
   const consistencyMs = standardDeviation(lapTimes);
   const maxSpeedKmh = speedValues.length ? Math.max(...speedValues) : null;
   const avgSpeedKmh = average(speedValues);
+  const best10LapTimes = sortedFastest.slice(0, 10).map((lap) => Number(lap.lapTimeMs)).filter((value) => Number.isFinite(value));
+  const best10AverageMs = average(best10LapTimes);
+  const best10DeltaMs = best10AverageMs !== null && bestLap?.lapTimeMs ? best10AverageMs - Number(bestLap.lapTimeMs) : null;
+  const totalCuts = pilotLaps.reduce((sum, lap) => sum + Math.max(0, Number(lap.cuts) || 0), 0);
+  const avgCuts = pilotLaps.length ? Math.round((totalCuts / pilotLaps.length) * 100) / 100 : null;
 
   return {
     ok: true,
@@ -2630,14 +2851,23 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
       consistency: consistencyMs ? lapTimeToText(consistencyMs) : '--',
       maxSpeedKmh,
       avgSpeedKmh,
+      best10AverageMs,
+      best10Average: best10AverageMs ? lapTimeToText(best10AverageMs) : '--',
+      best10DeltaMs,
+      best10Delta: lapTimeDeltaText(best10DeltaMs),
+      totalCuts,
+      avgCuts,
+      cleanRate: percent(validLaps.length, pilotLaps.length),
       lastSeenAt: latestLap?.timestampIso ?? null,
-      favoriteCar: carStats[0] ?? null,
-      favoriteTrack: trackStats[0] ?? null
+      favoriteCar: garageStats[0] ?? carStats[0] ?? null,
+      favoriteTrack: circuitStats[0] ?? trackStats[0] ?? null
     },
-    recentLaps: sortedRecent.slice(0, 15).map(compactLapForProfile),
-    bestCombos: comboStats.slice(0, 15),
-    cars: carStats.slice(0, 20),
-    tracks: trackStats.slice(0, 20),
+    recentLaps: sortedRecent.slice(0, 25).map(compactLapForProfile),
+    bestCombos: comboStats.slice(0, 25),
+    cars: garageStats.slice(0, 25),
+    tracks: circuitStats.slice(0, 25),
+    legacyCars: carStats.slice(0, 20),
+    legacyTracks: trackStats.slice(0, 20),
     sectors: bestSectors,
     message: user.pilotLink
       ? 'Perfil Pro generado desde la cuenta web y stracker.db3.'
@@ -3095,7 +3325,7 @@ app.get('/api/mysql/status', async (req, res) => {
       SELECT table_name AS tableName
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-        AND table_name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings')
+        AND table_name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings', 'gc_admin_audit_log')
       ORDER BY table_name ASC
     `);
     const pingRows = await mysqlQuery('SELECT 1 AS ok');
@@ -3136,7 +3366,7 @@ app.get('/api/sqlite/status', async (req, res) => {
   try {
     const rows = await withAppSqliteDb((db) => sqliteQuery(
       db,
-      `SELECT name AS tableName FROM sqlite_master WHERE type='table' AND name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings') ORDER BY name ASC`
+      `SELECT name AS tableName FROM sqlite_master WHERE type='table' AND name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings', 'gc_admin_audit_log') ORDER BY name ASC`
     ));
 
     res.json({
@@ -3333,9 +3563,11 @@ app.post('/api/admin/users/:userId/role', async (req, res) => {
     return;
   }
 
+  const beforeRole = target.role;
   target.role = nextRole;
   target.updatedAt = new Date().toISOString();
   await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.role_update', 'user', target.id, { role: beforeRole }, { role: nextRole });
 
   res.json({
     ok: true,
@@ -3357,9 +3589,11 @@ app.post('/api/admin/users/:userId/unlink-pilot', async (req, res) => {
     return;
   }
 
+  const beforePilotLink = target.pilotLink ? { ...target.pilotLink } : null;
   target.pilotLink = null;
   target.updatedAt = new Date().toISOString();
   await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.unlink_pilot', 'user', target.id, beforePilotLink, null);
 
   res.json({
     ok: true,
@@ -3421,6 +3655,126 @@ app.get('/api/admin/storage/status', async (req, res) => {
 });
 
 
+type AdminAuditContext = {
+  context?: { user: AppUser } | null;
+  via?: string;
+};
+
+function auditJson(value: unknown) {
+  if (value === undefined) return null;
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return JSON.stringify(String(value));
+  }
+}
+
+function requestIp(req: express.Request) {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0]?.trim();
+  return forwarded || req.socket.remoteAddress || null;
+}
+
+async function writeAdminAuditLog(
+  req: express.Request,
+  access: AdminAuditContext,
+  action: string,
+  entityType: string,
+  entityId: string | null,
+  beforeValue: unknown,
+  afterValue: unknown
+) {
+  const now = new Date().toISOString();
+  const actor = access.context?.user ?? null;
+  const row = {
+    id: crypto.randomUUID(),
+    actorUserId: actor?.id ?? null,
+    actorEmail: actor?.email ?? null,
+    actorName: actor?.displayName ?? (access.via === 'setup-secret' ? 'setup-secret' : null),
+    action,
+    entityType,
+    entityId,
+    beforeValue: auditJson(beforeValue),
+    afterValue: auditJson(afterValue),
+    ipAddress: requestIp(req),
+    userAgent: compactNullableText(req.headers['user-agent'])?.slice(0, 255) ?? null,
+    createdAt: now
+  };
+
+  try {
+    if (useMysqlStorage()) {
+      await ensureMysqlSchema();
+      await mysqlExecute(
+        `INSERT INTO gc_admin_audit_log
+          (id, actor_user_id, actor_email, actor_name, action, entity_type, entity_id, before_value, after_value, ip_address, user_agent, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [row.id, row.actorUserId, row.actorEmail, row.actorName, row.action, row.entityType, row.entityId, row.beforeValue, row.afterValue, row.ipAddress, row.userAgent, row.createdAt]
+      );
+      return;
+    }
+
+    if (useSqliteStorage()) {
+      await withAppSqliteDb((db) => {
+        db.run(
+          `INSERT INTO gc_admin_audit_log
+            (id, actor_user_id, actor_email, actor_name, action, entity_type, entity_id, before_value, after_value, ip_address, user_agent, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [row.id, row.actorUserId, row.actorEmail, row.actorName, row.action, row.entityType, row.entityId, row.beforeValue, row.afterValue, row.ipAddress, row.userAgent, row.createdAt]
+        );
+      }, true);
+    }
+  } catch (error) {
+    console.error('[GC] Error escribiendo audit log admin:', error);
+  }
+}
+
+function parseAuditValue(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  try { return JSON.parse(value); } catch { return value; }
+}
+
+async function readAdminAuditLog(limitRaw: unknown) {
+  const limit = Math.max(1, Math.min(200, Number(limitRaw) || 80));
+  const mapRow = (row: any) => ({
+    id: String(row.id),
+    actorUserId: compactNullableText(row.actor_user_id),
+    actorEmail: compactNullableText(row.actor_email),
+    actorName: compactNullableText(row.actor_name),
+    action: String(row.action),
+    entityType: String(row.entity_type),
+    entityId: compactNullableText(row.entity_id),
+    beforeValue: parseAuditValue(row.before_value),
+    afterValue: parseAuditValue(row.after_value),
+    ipAddress: compactNullableText(row.ip_address),
+    userAgent: compactNullableText(row.user_agent),
+    createdAt: String(row.created_at)
+  });
+
+  try {
+    if (useMysqlStorage()) {
+      await ensureMysqlSchema();
+      const rows = await mysqlQuery(
+        `SELECT * FROM gc_admin_audit_log ORDER BY created_at DESC LIMIT ?`,
+        [limit]
+      );
+      return rows.map(mapRow);
+    }
+
+    if (useSqliteStorage()) {
+      const rows = await withAppSqliteDb((db) => sqliteQuery(
+        db,
+        `SELECT * FROM gc_admin_audit_log ORDER BY created_at DESC LIMIT ?`,
+        [limit]
+      ));
+      return rows.map(mapRow);
+    }
+  } catch (error) {
+    console.error('[GC] Error leyendo audit log admin:', error);
+  }
+
+  return [];
+}
+
+
 async function buildDisplayNameCatalog() {
   const stracker = getStrackerConfig();
   const store = await readDisplayNameStoreAsync();
@@ -3453,7 +3807,7 @@ async function buildDisplayNameCatalog() {
       drivers: catalog.drivers.length,
       cars: catalog.cars.length,
       tracks: catalog.tracks.length,
-      overrides: store.entries.filter((entry) => entry.enabled !== false).length
+      overrides: [...catalog.drivers, ...catalog.cars, ...catalog.tracks].filter((item) => item.hasOverride).length
     }
   };
 }
@@ -3475,6 +3829,129 @@ app.get('/api/admin/display-names', async (req, res) => {
   if (!context) return;
   const data = await buildDisplayNameCatalog();
   res.json({ ok: true, ...data, message: 'Nombres visibles cargados correctamente.' });
+});
+
+app.get('/api/admin/audit-log', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+  const items = await readAdminAuditLog(req.query.limit);
+  res.json({
+    ok: true,
+    count: items.length,
+    items,
+    storage: getAppStorageDriverLabel(),
+    message: 'Historial admin cargado correctamente.'
+  });
+});
+
+app.get('/api/admin/unlinked-pilots', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const store = await readUserStoreAsync();
+  const linkedIds = new Set(store.users.map((user) => user.pilotLink?.playerId).filter((value) => value !== null && value !== undefined).map(String));
+  const stracker = getStrackerConfig();
+
+  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+    res.json({ ok: true, count: 0, pilots: [], message: 'stracker.db3 no está disponible para detectar pilotos sin cuenta.' });
+    return;
+  }
+
+  try {
+    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const pilots = reduceDriverStats(laps)
+      .filter((pilot) => pilot.id !== null && !linkedIds.has(String(pilot.id)))
+      .sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0))
+      .map((pilot) => ({
+        id: pilot.id,
+        name: pilot.name,
+        steamGuid: pilot.steamGuid,
+        totalLaps: pilot.totalLaps,
+        validLaps: pilot.validLaps,
+        carsCount: pilot.carsCount,
+        tracksCount: pilot.tracksCount,
+        bestLapMs: pilot.bestLapMs,
+        bestLap: pilot.bestLap,
+        lastSeenAt: pilot.lastSeenAt
+      }));
+
+    res.json({ ok: true, count: pilots.length, pilots, message: 'Pilotos sin usuario vinculado cargados.' });
+  } catch (error) {
+    res.status(200).json({ ok: false, pilots: [], message: 'No se pudieron cargar pilotos sin cuenta.', error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/admin/name-filters/bulk', async (req, res) => {
+  const adminAccess = await getCurrentAdminOrSecret(req);
+  if (!adminAccess.ok) {
+    res.status(adminAccess.context ? 403 : 401).json({
+      ok: false,
+      authenticated: Boolean(adminAccess.context),
+      authorized: false,
+      message: adminAccess.message
+    });
+    return;
+  }
+
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (!items.length) {
+    res.status(400).json({ ok: false, message: 'No hay cambios para guardar.' });
+    return;
+  }
+
+  const store = await readDisplayNameStoreAsync(true);
+  const now = new Date().toISOString();
+  const changes: PlainObject[] = [];
+
+  for (const item of items.slice(0, 200)) {
+    const kind = sanitizeDisplayNameKind(item?.kind);
+    const displayName = cleanDisplayNameInput(item?.displayName);
+    const sourceName = cleanDisplayNameInput(item?.sourceName);
+    const sourceCode = compactNullableText(item?.sourceCode);
+    const sourceId = numberOrNull(item?.sourceId);
+    const notes = compactNullableText(item?.notes);
+
+    if (!kind || !displayName) continue;
+
+    const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+    const before = existing ? { ...existing } : null;
+
+    if (existing) {
+      existing.sourceId = sourceId;
+      existing.sourceCode = sourceCode;
+      existing.sourceName = sourceName || existing.sourceName;
+      existing.displayName = displayName;
+      existing.notes = notes;
+      existing.enabled = item?.enabled !== false;
+      existing.updatedAt = now;
+      changes.push({ before, after: { ...existing } });
+    } else {
+      const created = {
+        id: makeEntryId(kind, sourceId, sourceCode, sourceName),
+        kind,
+        sourceId,
+        sourceCode,
+        sourceName: sourceName || sourceCode || displayName,
+        displayName,
+        notes,
+        enabled: item?.enabled !== false,
+        createdAt: now,
+        updatedAt: now
+      };
+      store.entries.push(created);
+      changes.push({ before: null, after: created });
+    }
+  }
+
+  await writeDisplayNameStoreAsync(store);
+  await writeAdminAuditLog(req, adminAccess, 'display_names.bulk_save', 'display_name', null, null, { count: changes.length, changes });
+
+  res.json({
+    ok: true,
+    saved: changes.length,
+    storage: getDisplayNamesDbInfo(),
+    message: `${changes.length} alias guardados correctamente.`
+  });
 });
 
 app.post('/api/admin/name-filters', async (req, res) => {
@@ -3510,6 +3987,9 @@ app.post('/api/admin/name-filters', async (req, res) => {
   const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
   const now = new Date().toISOString();
 
+  const beforeEntry = existing ? { ...existing } : null;
+  let afterEntry: DisplayNameEntry;
+
   if (existing) {
     existing.sourceId = sourceId;
     existing.sourceCode = sourceCode;
@@ -3518,8 +3998,9 @@ app.post('/api/admin/name-filters', async (req, res) => {
     existing.notes = notes;
     existing.enabled = req.body?.enabled !== false;
     existing.updatedAt = now;
+    afterEntry = { ...existing };
   } else {
-    store.entries.push({
+    afterEntry = {
       id: makeEntryId(kind, sourceId, sourceCode, sourceName),
       kind,
       sourceId,
@@ -3530,10 +4011,12 @@ app.post('/api/admin/name-filters', async (req, res) => {
       enabled: req.body?.enabled !== false,
       createdAt: now,
       updatedAt: now
-    });
+    };
+    store.entries.push(afterEntry);
   }
 
   await writeDisplayNameStoreAsync(store);
+  await writeAdminAuditLog(req, adminAccess, beforeEntry ? 'display_name.update' : 'display_name.create', 'display_name', afterEntry.id, beforeEntry, afterEntry);
   res.json({
     ok: true,
     entry: findDisplayNameEntry(await readDisplayNameStoreAsync(true), kind, sourceId, sourceCode, sourceName),
@@ -3569,6 +4052,7 @@ app.post('/api/admin/name-filters/delete', async (req, res) => {
   });
 
   await writeDisplayNameStoreAsync(store);
+  await writeAdminAuditLog(req, adminAccess, 'display_name.delete', 'display_name', entryId || null, { kind, entryId, sourceId, sourceCode, sourceName }, { removed: before - store.entries.length });
   res.json({
     ok: true,
     removed: before - store.entries.length,
