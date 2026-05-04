@@ -1,141 +1,98 @@
 ---
-import AppLayout from '../layouts/AppLayout.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
-<AppLayout title="GrassCutters Platform">
-  <div class="gc-page">
-    <section class="gc-hero">
-      <div>
-        <span class="gc-kicker">GC Platform</span>
-        <h1 class="gc-title">Competición, datos y pilotos en una sola base.</h1>
-        <p class="gc-subtitle">La web deja de ser una vitrina y empieza a funcionar como centro de mando: Astro en frontend, Node en Hostinger, sincronización automática con GTX y lectura real de stracker.db3.</p>
-        <div class="gc-actions">
-          <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver leaderboard</a>
-          <a class="gc-btn" href="/tracker">Centro tracker</a>
-          <a class="gc-btn gc-btn--ghost" href="/login">Login pilotos</a>
-        </div>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent"><span class="gc-live-dot"></span> Live data</span>
-          <span class="gc-chip">Astro + Node</span>
-          <span class="gc-chip">stracker.db3</span>
-        </div>
+<MarketingLayout title="GrassCutters Racing | Comunidad sim racing" description="GrassCutters Racing: comunidad de Assetto Corsa con Discord, hotlaps reales, tracker y área privada para pilotos.">
+  <section class="mk-hero">
+    <div>
+      <span class="mk-kicker">GrassCutters Racing</span>
+      <h1 class="mk-title">Comunidad, carreras y datos reales.</h1>
+      <p class="mk-lead">Una landing limpia para presentar GrassCutters al mundo y una plataforma aparte para pilotos, hotlaps, tracker, Discord y herramientas internas. La web pública respira. La app trabaja.</p>
+      <div class="mk-hero-actions">
+        <a class="mk-btn mk-btn--primary" href="/app">Entrar a la plataforma</a>
+        <a class="mk-btn mk-btn--ghost" href="/hotlaps">Ver leaderboard</a>
+        <a class="mk-btn mk-btn--ghost" href="/discord">Unirse a Discord</a>
       </div>
+    </div>
 
-      <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Estado plataforma</span><strong id="homeHealth">ONLINE</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Web</span><strong>Astro</strong></div>
-          <div class="gc-status-row"><span>API</span><strong id="apiStatus">Comprobando</strong></div>
-          <div class="gc-status-row"><span>Tracker</span><strong id="trackerStatus">Lectura real</strong></div>
-          <div class="gc-status-row"><span>Sync GTX</span><strong id="syncStatus">Automática</strong></div>
-        </div>
-      </aside>
-    </section>
+    <aside class="mk-hero-panel" aria-label="Estado rápido de plataforma">
+      <div class="mk-panel-title"><span>Plataforma GC</span><strong class="mk-live"><span class="mk-dot"></span>Live</strong></div>
+      <div class="mk-panel-row"><span>Frontend</span><strong>Astro</strong></div>
+      <div class="mk-panel-row"><span>Backend</span><strong>Node.js</strong></div>
+      <div class="mk-panel-row"><span>Datos carrera</span><strong>stracker.db3</strong></div>
+      <div class="mk-panel-row"><span>Sync</span><strong>GTX automático</strong></div>
+    </aside>
+  </section>
 
-    <section class="gc-metrics" id="overviewMetrics" aria-label="Métricas generales">
-      <div class="gc-metric"><span>Pilotos</span><strong>...</strong><small>Detectados</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong>...</strong><small>Registradas</small></div>
-      <div class="gc-metric"><span>Coches</span><strong>...</strong><small>Usados</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong class="is-accent">...</strong><small>Visitados</small></div>
-    </section>
+  <section class="mk-metrics" aria-label="Métricas públicas">
+    <div class="mk-metric"><span>Servidor</span><strong>Live</strong><small>Sincronización cada 5 minutos</small></div>
+    <div class="mk-metric"><span>Hotlaps</span><strong id="mkLaps">...</strong><small>Vueltas registradas</small></div>
+    <div class="mk-metric"><span>Pilotos</span><strong id="mkDrivers">...</strong><small>Perfiles detectados</small></div>
+    <div class="mk-metric"><span>Formato</span><strong>App</strong><small>Área privada separada</small></div>
+  </section>
 
-    <section class="gc-command-strip" aria-label="Arquitectura rápida">
-      <div class="gc-command-item"><span>Frontend</span><strong>Astro Shell</strong><p>Layout limpio, rápido y preparado para secciones privadas.</p></div>
-      <div class="gc-command-item"><span>Backend</span><strong>Node API</strong><p>Endpoints para hotlaps, perfil, pilotos, estado y futuras herramientas.</p></div>
-      <div class="gc-command-item"><span>Datos</span><strong>GTX Sync</strong><p>Copias controladas de stracker.db3 para no tocar el servidor de carreras.</p></div>
-    </section>
+  <section class="mk-section" id="comunidad">
+    <div class="mk-section-head">
+      <h2>Un punto de entrada claro.</h2>
+      <p>La landing explica la comunidad. La plataforma gestiona datos y usuarios. Así no mezclamos presentación pública con panel interno.</p>
+    </div>
+    <div class="mk-grid-3">
+      <article class="mk-feature">
+        <code>01</code>
+        <h3>Comunidad</h3>
+        <p>Discord, eventos, calendario, anuncios y acceso rápido para nuevos pilotos que llegan por primera vez.</p>
+      </article>
+      <article class="mk-feature" id="datos">
+        <code>02</code>
+        <h3>Datos reales</h3>
+        <p>Lectura de stracker, leaderboard, pilotos, coches, circuitos, actividad reciente y futuras herramientas de análisis.</p>
+      </article>
+      <article class="mk-feature" id="pilotos">
+        <code>03</code>
+        <h3>Área piloto</h3>
+        <p>Login, perfil privado, vinculación con piloto real, métricas personales y base para futuras licencias o campeonatos.</p>
+      </article>
+    </div>
+  </section>
 
-    <section class="gc-grid-2">
-      <div class="gc-section">
-        <div class="gc-section-head"><h2>Centro de plataforma</h2><p>Bloques principales</p></div>
-        <div class="gc-row-list">
-          <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Leaderboard</strong><br><span class="gc-row-link__desc">Tiempos reales con filtros rápidos y lectura directa de stracker.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/tracker"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Tracker</strong><br><span class="gc-row-link__desc">Estado de base de datos, sync GTX, tamaño y diagnóstico.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/herramientas"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Herramientas</strong><br><span class="gc-row-link__desc">Comparativas, consistencia, filtros y módulos futuros.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/perfil"><span class="gc-row-link__num">04</span><span><strong class="gc-row-link__title">Área piloto</strong><br><span class="gc-row-link__desc">Perfil privado, datos vinculados y métricas personales.</span></span><span class="gc-row-link__cta">Entrar</span></a>
-        </div>
+  <section class="mk-section">
+    <div class="mk-split">
+      <div class="mk-copy">
+        <span class="mk-kicker">De web a plataforma</span>
+        <h2 class="mk-title" style="font-size:clamp(2.3rem,4.5vw,5rem);">Dos capas, una misma casa.</h2>
+        <p>La home pública queda como puerta de entrada tradicional: presentación, comunidad, enlaces y llamada a la acción. El formato actual tipo app queda dentro de <strong>/app</strong> y se usa para trabajar: hotlaps, tracker, perfil, administración y herramientas.</p>
       </div>
+      <div class="mk-rows">
+        <a class="mk-row" href="/app"><span class="mk-row-num">00</span><span><strong class="mk-row-title">App shell</strong><br><span class="mk-row-desc">Panel interno con menú lateral, datos y módulos.</span></span><span class="mk-row-cta">Abrir</span></a>
+        <a class="mk-row" href="/hotlaps"><span class="mk-row-num">01</span><span><strong class="mk-row-title">Leaderboard</strong><br><span class="mk-row-desc">Tiempos reales desde stracker con filtros.</span></span><span class="mk-row-cta">Ver</span></a>
+        <a class="mk-row" href="/perfil"><span class="mk-row-num">02</span><span><strong class="mk-row-title">Perfil piloto</strong><br><span class="mk-row-desc">Sesión privada y datos vinculados al piloto real.</span></span><span class="mk-row-cta">Entrar</span></a>
+        <a class="mk-row" href="/discord"><span class="mk-row-num">03</span><span><strong class="mk-row-title">Discord</strong><br><span class="mk-row-desc">El puente social de la comunidad.</span></span><span class="mk-row-cta">Unirse</span></a>
+      </div>
+    </div>
+  </section>
 
-      <aside class="gc-section">
-        <div class="gc-section-head"><h2>Últimas referencias</h2><p>Top hotlaps</p></div>
-        <div class="gc-table-meta"><span id="homeHotlapsCount">Cargando datos</span><span id="homeHotlapsUpdated">...</span></div>
-        <div class="gc-table-wrap">
-          <table class="gc-table gc-table--compact">
-            <thead><tr><th>Piloto</th><th>Coche</th><th>Tiempo</th></tr></thead>
-            <tbody id="homeHotlaps"><tr><td colspan="3">Cargando...</td></tr></tbody>
-          </table>
-        </div>
-      </aside>
-    </section>
-  </div>
+  <section class="mk-cta">
+    <div>
+      <h2>Entra al box.</h2>
+      <p>La parte pública ya tiene forma de landing. La zona de trabajo sigue en formato plataforma para no perder la potencia del dashboard.</p>
+    </div>
+    <a class="mk-btn mk-btn--primary" href="/app">Abrir plataforma</a>
+  </section>
 
   <script>
-    const $ = (selector) => document.querySelector(selector);
-    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-    const fmtMs = (ms) => {
-      const n = Number(ms);
-      if (!Number.isFinite(n) || n <= 0) return '--';
-      const m = Math.floor(n / 60000);
-      const s = Math.floor((n % 60000) / 1000);
-      const x = String(Math.floor(n % 1000)).padStart(3, '0');
-      return `${m}:${String(s).padStart(2, '0')}.${x}`;
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(value ?? '0');
     };
-    const valueAt = (source, path) => {
-      if (!source || typeof source !== 'object') return undefined;
-      if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
-      return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
-    };
-    const firstValue = (row, paths) => {
-      for (const path of paths) {
-        const value = valueAt(row, path);
-        if (value !== undefined && value !== null && value !== '') return value;
-      }
-      return '';
-    };
-    const textValue = (value, fallback = '-') => {
-      if (value === undefined || value === null || value === '') return fallback;
-      if (typeof value === 'object') return String(value.name ?? value.uiName ?? value.displayName ?? value.code ?? fallback);
-      return String(value);
-    };
-    const driverName = (row) => textValue(firstValue(row, ['driverName', 'playerName', 'driver.name', 'driver', 'name', 'Name']));
-    const carName = (row) => textValue(firstValue(row, ['carName', 'uiCarName', 'car.name', 'car.uiName', 'car', 'Car']));
-    const lapDisplay = (row) => textValue(firstValue(row, ['lapTimeFormatted', 'lapTimeText', 'lapTime']), '') || fmtMs(firstValue(row, ['lapTimeMs', 'LapTime']));
-    async function json(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(url);
-      return res.json();
-    }
-
-    json('/api/stats/overview').then((data) => {
-      const stats = data.stats || data.overview || data;
-      const vals = [
-        stats.totalDrivers || stats.drivers || stats.players || 0,
-        stats.totalLaps || stats.laps || 0,
-        stats.totalCars || stats.cars || 0,
-        stats.totalTracks || stats.tracks || 0
-      ];
-      document.querySelectorAll('#overviewMetrics strong').forEach((el, index) => {
-        el.textContent = String(vals[index] ?? 0);
+    fetch('/api/stats/overview')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const stats = data?.stats || data?.overview || data || {};
+        setText('mkLaps', stats.totalLaps || stats.laps || 0);
+        setText('mkDrivers', stats.totalDrivers || stats.drivers || stats.players || 0);
+      })
+      .catch(() => {
+        setText('mkLaps', '--');
+        setText('mkDrivers', '--');
       });
-      $('#apiStatus').textContent = 'OK';
-    }).catch(() => {
-      $('#apiStatus').textContent = 'Sin respuesta';
-      $('#apiStatus').style.color = 'var(--warn)';
-    });
-
-    json('/api/hotlaps?limit=6').then((data) => {
-      const rows = data.items || data.hotlaps || data.laps || [];
-      $('#homeHotlapsCount').textContent = `${rows.length} referencias`;
-      $('#homeHotlapsUpdated').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      $('#homeHotlaps').innerHTML = rows.slice(0, 6).map((row) => `
-        <tr>
-          <td><strong>${escapeHtml(driverName(row))}</strong></td>
-          <td>${escapeHtml(carName(row))}</td>
-          <td><strong>${escapeHtml(lapDisplay(row))}</strong></td>
-        </tr>
-      `).join('') || '<tr><td colspan="3">Sin datos todavía</td></tr>';
-    }).catch(() => {
-      $('#homeHotlapsCount').textContent = 'Hotlaps no disponibles';
-      $('#homeHotlaps').innerHTML = '<tr><td colspan="3">No se pudo leer el endpoint.</td></tr>';
-    });
   </script>
-</AppLayout>
+</MarketingLayout>

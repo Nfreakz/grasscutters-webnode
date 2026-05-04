@@ -104,6 +104,18 @@ import AppLayout from '../layouts/AppLayout.astro';
           <p class="gc-message" id="syncMessage"></p>
         </div>
 
+        <div class="gc-slab" id="storagePanel">
+          <h3>Storage persistente</h3>
+          <p id="storageText">Comprobando rutas de datos...</p>
+          <div class="gc-slab-list" id="storageRows">
+            <div><span>APP_DATA_DIR</span><strong>...</strong></div>
+          </div>
+          <div class="gc-actions">
+            <button class="gc-btn" id="reloadStorage" type="button">Revisar storage</button>
+          </div>
+          <p class="gc-message" id="storageMessage"></p>
+        </div>
+
         <div class="gc-slab">
           <h3>Accesos rápidos</h3>
           <div class="gc-row-list gc-row-list--compact">
@@ -191,6 +203,10 @@ import AppLayout from '../layouts/AppLayout.astro';
       strackerAdminText: document.getElementById('strackerAdminText'),
       strackerAdminRows: document.getElementById('strackerAdminRows'),
       syncMessage: document.getElementById('syncMessage'),
+      storageText: document.getElementById('storageText'),
+      storageRows: document.getElementById('storageRows'),
+      storageMessage: document.getElementById('storageMessage'),
+      reloadStorage: document.getElementById('reloadStorage'),
       forceSyncBtn: document.getElementById('forceSyncBtn'),
       bootstrapForm: document.getElementById('bootstrapForm'),
       bootstrapMessage: document.getElementById('bootstrapMessage'),
@@ -354,6 +370,37 @@ import AppLayout from '../layouts/AppLayout.astro';
       renderNameFilters();
     }
 
+    function shortPath(value) {
+      const text = String(value || '-');
+      if (text.length <= 52) return text;
+      return `...${text.slice(-49)}`;
+    }
+
+    function renderStorage(data) {
+      if (!els.storageText || !els.storageRows) return;
+      const storage = data.storage || {};
+      const files = data.files || {};
+      els.storageText.textContent = storage.persistent
+        ? 'OK: los datos viven fuera del directorio de deploy.'
+        : 'Atención: los datos siguen dentro del proyecto y pueden perderse en deploy.';
+      els.storageText.style.color = storage.persistent ? 'var(--accent)' : 'var(--warn)';
+
+      const row = (label, value) => `<div><span>${escapeHtml(label)}</span><strong title="${escapeHtml(value)}">${escapeHtml(shortPath(value))}</strong></div>`;
+      els.storageRows.innerHTML = [
+        row('APP_DATA_DIR', storage.dataRoot),
+        row('Persistente', storage.persistent ? 'Sí' : 'No'),
+        row('users.json', files.users?.resolvedPath),
+        row('display-names.json', files.displayNames?.resolvedPath),
+        row('stracker.db3', files.stracker?.resolvedPath)
+      ].join('');
+    }
+
+    async function loadStorage() {
+      const data = await fetchJson('/api/admin/storage/status');
+      renderStorage(data);
+      if (els.storageMessage) els.storageMessage.textContent = data.message || '';
+    }
+
     async function fetchJson(url, options = {}) {
       const response = await fetch(url, {
         credentials: 'same-origin',
@@ -382,6 +429,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           setPanels({ content: true });
           await loadUsers();
           await loadNameFilters();
+          await loadStorage();
         } else if (data.setupRequired) {
           setPanels({ setup: true });
         } else {
@@ -398,6 +446,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     els.userSearch?.addEventListener('input', renderUsers);
     els.reloadUsers?.addEventListener('click', () => loadUsers().catch((error) => alert(error.message)));
     els.retryAdmin?.addEventListener('click', loadAdmin);
+    els.reloadStorage?.addEventListener('click', () => loadStorage().catch((error) => { if (els.storageMessage) els.storageMessage.textContent = error.message; }));
 
     els.bootstrapForm?.addEventListener('submit', async (event) => {
       event.preventDefault();

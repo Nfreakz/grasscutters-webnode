@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
+const defaultAppDataDirRelativePath = './data';
 const defaultStrackerRelativePath = './data/stracker/stracker.db3';
 const defaultUsersRelativePath = './data/app/users.json';
 const defaultDisplayNamesRelativePath = './data/app/display-names.json';
@@ -86,44 +87,83 @@ type DisplayNameStore = {
 
 let displayNameCache: { path: string; mtimeMs: number | null; store: DisplayNameStore } | null = null;
 
+function getAppDataRoot() {
+  const configured = process.env.APP_DATA_DIR?.trim();
+  return configured ? (resolveProjectPath(configured) ?? path.join(rootDir, configured)) : path.join(rootDir, defaultAppDataDirRelativePath);
+}
+
+function getStorageFilePath(envName: string, fallbackSubPath: string) {
+  const configured = process.env[envName]?.trim();
+  if (configured) return resolveProjectPath(configured) ?? path.join(rootDir, configured);
+  return path.join(getAppDataRoot(), fallbackSubPath);
+}
+
+function isPathInside(childPath: string, parentPath: string) {
+  const relative = path.relative(path.resolve(parentPath), path.resolve(childPath));
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function buildFileStorageInfo(filePath: string, configuredPath: string, source: string, validSQLite = false) {
+  const exists = fs.existsSync(filePath);
+  const stats = exists ? fs.statSync(filePath) : null;
+  return {
+    configured: true,
+    source,
+    relativePath: configuredPath,
+    resolvedPath: filePath,
+    exists,
+    sizeBytes: stats?.size ?? 0,
+    modifiedAt: stats?.mtime?.toISOString?.() ?? null,
+    ...(validSQLite ? { validSQLite: exists ? isSQLiteFile(filePath) : false } : {})
+  };
+}
+
+function getStoragePersistenceInfo() {
+  const dataRoot = getAppDataRoot();
+  const insideProject = isPathInside(dataRoot, rootDir);
+  return {
+    dataRoot,
+    source: process.env.APP_DATA_DIR ? 'env' : 'default-project-data',
+    insideProject,
+    persistent: !insideProject,
+    warning: insideProject
+      ? 'APP_DATA_DIR no está configurado fuera del proyecto. En algunos deploys Hostinger puede borrar data/app/users.json y display-names.json.'
+      : null
+  };
+}
+
 function getUsersPath() {
-  const configuredPath = process.env.APP_USERS_PATH?.trim() || defaultUsersRelativePath;
-  return resolveProjectPath(configuredPath) ?? path.join(rootDir, defaultUsersRelativePath);
+  return getStorageFilePath('APP_USERS_PATH', 'app/users.json');
 }
 
 function getUsersDbInfo() {
-  const resolvedPath = getUsersPath();
-  const exists = fs.existsSync(resolvedPath);
-  const stats = exists ? fs.statSync(resolvedPath) : null;
-  return {
-    configured: true,
-    source: process.env.APP_USERS_PATH ? 'env' : 'default',
-    relativePath: process.env.APP_USERS_PATH?.trim() || defaultUsersRelativePath,
-    resolvedPath,
-    exists,
-    sizeBytes: stats?.size ?? 0,
-    modifiedAt: stats?.mtime?.toISOString?.() ?? null
-  };
+  const configured = process.env.APP_USERS_PATH?.trim();
+  const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
+  const relativePath = configured || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'app/users.json');
+  return buildFileStorageInfo(getUsersPath(), relativePath, source);
 }
 
 
 function getDisplayNamesPath() {
-  const configuredPath = process.env.APP_DISPLAY_NAMES_PATH?.trim() || defaultDisplayNamesRelativePath;
-  return resolveProjectPath(configuredPath) ?? path.join(rootDir, defaultDisplayNamesRelativePath);
+  return getStorageFilePath('APP_DISPLAY_NAMES_PATH', 'app/display-names.json');
 }
 
 function getDisplayNamesDbInfo() {
-  const resolvedPath = getDisplayNamesPath();
-  const exists = fs.existsSync(resolvedPath);
-  const stats = exists ? fs.statSync(resolvedPath) : null;
+  const configured = process.env.APP_DISPLAY_NAMES_PATH?.trim();
+  const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
+  const relativePath = configured || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'app/display-names.json');
+  return buildFileStorageInfo(getDisplayNamesPath(), relativePath, source);
+}
+
+function getAppStorageStatus() {
   return {
-    configured: true,
-    source: process.env.APP_DISPLAY_NAMES_PATH ? 'env' : 'default',
-    relativePath: process.env.APP_DISPLAY_NAMES_PATH?.trim() || defaultDisplayNamesRelativePath,
-    resolvedPath,
-    exists,
-    sizeBytes: stats?.size ?? 0,
-    modifiedAt: stats?.mtime?.toISOString?.() ?? null
+    storage: getStoragePersistenceInfo(),
+    files: {
+      users: getUsersDbInfo(),
+      displayNames: getDisplayNamesDbInfo(),
+      stracker: getStrackerConfig()
+    },
+    recommendation: 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. Así los deploys no pisan usuarios ni alias.'
   };
 }
 
@@ -635,15 +675,16 @@ function isSQLiteFile(filePath: string) {
 }
 
 function getStrackerConfig() {
-  const envPath = process.env.STRACKER_DB_PATH;
-  const configuredPath = envPath && envPath.trim().length > 0 ? envPath : defaultStrackerRelativePath;
-  const resolvedPath = resolveProjectPath(configuredPath);
+  const envPath = process.env.STRACKER_DB_PATH?.trim();
+  const source = envPath ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
+  const configuredPath = envPath || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'stracker/stracker.db3');
+  const resolvedPath = envPath ? resolveProjectPath(envPath) : path.join(getAppDataRoot(), 'stracker/stracker.db3');
   const exists = resolvedPath ? fs.existsSync(resolvedPath) : false;
   const stats = exists && resolvedPath ? fs.statSync(resolvedPath) : null;
 
   return {
     configured: Boolean(configuredPath),
-    source: envPath ? 'env' : 'default',
+    source,
     relativePath: configuredPath,
     resolvedPath,
     exists,
@@ -2111,7 +2152,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: 'Paquete 20: lector real de stracker + auto-sync + auth + consola admin.'
+    note: 'Paquete 23: storage persistente + landing pública + app shell.'
   });
 });
 
@@ -2284,6 +2325,7 @@ app.get('/api/admin/status', async (req, res) => {
           modules: getModules(),
           users: getUserStoreAdminSummary(store),
           displayNames: getDisplayNamesDbInfo(),
+          storage: getAppStorageStatus(),
           stracker: {
             ...stracker,
             overview: strackerOverview,
@@ -2450,6 +2492,19 @@ app.post('/api/admin/stracker/sync', async (req, res) => {
   res.status(result.statusCode).json({
     ...result,
     autoSync: getAutoSyncConfig()
+  });
+});
+
+app.get('/api/admin/storage/status', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  res.json({
+    ok: true,
+    ...getAppStorageStatus(),
+    message: getStoragePersistenceInfo().persistent
+      ? 'Storage persistente configurado fuera del proyecto.'
+      : 'Storage dentro del proyecto. Configura APP_DATA_DIR fuera de nodejs antes de hacer deploys serios.'
   });
 });
 
