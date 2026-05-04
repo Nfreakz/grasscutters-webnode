@@ -20,6 +20,162 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 const startedAt = new Date().toISOString();
 const discordEnabled = process.env.DISCORD_ENABLED === 'true';
 
+
+const appStorageDriver = String(process.env.APP_STORAGE_DRIVER ?? 'json').trim().toLowerCase();
+
+type MysqlPool = any;
+
+function useMysqlStorage() {
+  return appStorageDriver === 'mysql' || appStorageDriver === 'mariadb';
+}
+
+function getMysqlStorageSafeConfig() {
+  return {
+    enabled: useMysqlStorage(),
+    driver: useMysqlStorage() ? 'mysql' : 'json',
+    hostConfigured: Boolean(process.env.MYSQL_HOST?.trim()),
+    port: Number(process.env.MYSQL_PORT || 3306),
+    databaseConfigured: Boolean(process.env.MYSQL_DATABASE?.trim()),
+    userConfigured: Boolean(process.env.MYSQL_USER?.trim()),
+    passwordConfigured: Boolean(process.env.MYSQL_PASSWORD?.trim())
+  };
+}
+
+let mysqlPool: MysqlPool | null = null;
+let mysqlSchemaReady = false;
+
+async function importMysql2() {
+  const mod: any = await import('mysql2/promise');
+  return mod.default ?? mod;
+}
+
+async function getMysqlPool() {
+  if (!useMysqlStorage()) throw new Error('APP_STORAGE_DRIVER no está en mysql.');
+  if (mysqlPool) return mysqlPool;
+
+  const host = process.env.MYSQL_HOST?.trim();
+  const database = process.env.MYSQL_DATABASE?.trim();
+  const user = process.env.MYSQL_USER?.trim();
+  const password = process.env.MYSQL_PASSWORD ?? '';
+  const port = Number(process.env.MYSQL_PORT || 3306);
+
+  if (!host || !database || !user) {
+    throw new Error('Faltan variables MySQL: MYSQL_HOST, MYSQL_DATABASE o MYSQL_USER.');
+  }
+
+  const mysql = await importMysql2();
+  mysqlPool = mysql.createPool({
+    host,
+    port,
+    database,
+    user,
+    password,
+    waitForConnections: true,
+    connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT || 5),
+    queueLimit: 0,
+    charset: 'utf8mb4',
+    namedPlaceholders: false,
+    timezone: 'Z'
+  });
+
+  return mysqlPool;
+}
+
+async function mysqlExecute(sql: string, params: unknown[] = []) {
+  const pool = await getMysqlPool();
+  const [result] = await pool.execute(sql, params);
+  return result as any;
+}
+
+async function mysqlQuery(sql: string, params: unknown[] = []) {
+  const pool = await getMysqlPool();
+  const [rows] = await pool.query(sql, params);
+  return rows as any[];
+}
+
+async function ensureMysqlSchema() {
+  if (!useMysqlStorage() || mysqlSchemaReady) return;
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_users (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      email VARCHAR(191) NOT NULL UNIQUE,
+      display_name VARCHAR(191) NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'pilot',
+      password_algorithm VARCHAR(50) NOT NULL,
+      password_iterations INT NOT NULL,
+      password_salt VARCHAR(128) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      pilot_player_id INT NULL,
+      pilot_steam_guid VARCHAR(191) NULL,
+      pilot_stracker_name VARCHAR(191) NULL,
+      pilot_linked_at DATETIME(3) NULL,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      last_login_at DATETIME(3) NULL,
+      INDEX idx_gc_users_role (role),
+      INDEX idx_gc_users_pilot_player_id (pilot_player_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_sessions (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      token_hash VARCHAR(128) NOT NULL UNIQUE,
+      created_at DATETIME(3) NOT NULL,
+      expires_at DATETIME(3) NOT NULL,
+      last_seen_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_sessions_user_id (user_id),
+      INDEX idx_gc_sessions_token_hash (token_hash),
+      INDEX idx_gc_sessions_expires_at (expires_at),
+      CONSTRAINT fk_gc_sessions_user_id FOREIGN KEY (user_id) REFERENCES gc_users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_display_names (
+      id VARCHAR(120) NOT NULL PRIMARY KEY,
+      kind VARCHAR(20) NOT NULL,
+      source_id INT NULL,
+      source_code VARCHAR(255) NULL,
+      source_name VARCHAR(255) NOT NULL,
+      display_name VARCHAR(255) NOT NULL,
+      notes TEXT NULL,
+      enabled TINYINT(1) NOT NULL DEFAULT 1,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_display_names_kind (kind),
+      INDEX idx_gc_display_names_source_id (source_id),
+      INDEX idx_gc_display_names_source_code (source_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_settings (
+      setting_key VARCHAR(120) NOT NULL PRIMARY KEY,
+      setting_value JSON NULL,
+      updated_at DATETIME(3) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  mysqlSchemaReady = true;
+}
+
+function mysqlDate(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(value);
+}
+
+function isoToMysql(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 23).replace('T', ' ');
+}
+
 type PlainObject = Record<string, unknown>;
 type SqlJsDatabase = any;
 
@@ -119,6 +275,16 @@ function buildFileStorageInfo(filePath: string, configuredPath: string, source: 
 }
 
 function getStoragePersistenceInfo() {
+  if (useMysqlStorage()) {
+    return {
+      dataRoot: null,
+      source: 'mysql',
+      insideProject: false,
+      persistent: true,
+      warning: null
+    };
+  }
+
   const dataRoot = getAppDataRoot();
   const insideProject = isPathInside(dataRoot, rootDir);
   return {
@@ -137,6 +303,10 @@ function getUsersPath() {
 }
 
 function getUsersDbInfo() {
+  if (useMysqlStorage()) {
+    return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
+  }
+
   const configured = process.env.APP_USERS_PATH?.trim();
   const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
   const relativePath = configured || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'app/users.json');
@@ -149,6 +319,10 @@ function getDisplayNamesPath() {
 }
 
 function getDisplayNamesDbInfo() {
+  if (useMysqlStorage()) {
+    return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
+  }
+
   const configured = process.env.APP_DISPLAY_NAMES_PATH?.trim();
   const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
   const relativePath = configured || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'app/display-names.json');
@@ -163,7 +337,7 @@ function getAppStorageStatus() {
       displayNames: getDisplayNamesDbInfo(),
       stracker: getStrackerConfig()
     },
-    recommendation: 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. Así los deploys no pisan usuarios ni alias.'
+    recommendation: useMysqlStorage() ? 'Storage de app en MySQL. Usuarios, sesiones y alias sobreviven a deploys.' : 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. Así los deploys no pisan usuarios ni alias.'
   };
 }
 
@@ -230,15 +404,93 @@ function readDisplayNameStore(force = false): DisplayNameStore {
 }
 
 function writeDisplayNameStore(store: DisplayNameStore) {
+  const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
+
+  if (useMysqlStorage()) {
+    displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store: nextStore };
+    void writeDisplayNameStoreAsync(nextStore).catch((error) => {
+      console.error('[GC] Error guardando display names en MySQL:', error);
+    });
+    return;
+  }
+
   const filePath = getDisplayNamesPath();
   ensureDirForFile(filePath);
-  const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
   const tempPath = `${filePath}.tmp`;
-  fs.writeFileSync(tempPath, `${JSON.stringify(nextStore, null, 2)}
-`, 'utf8');
+  fs.writeFileSync(tempPath, `${JSON.stringify(nextStore, null, 2)}\n`, 'utf8');
   fs.renameSync(tempPath, filePath);
   displayNameCache = null;
 }
+
+async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStore> {
+  if (!useMysqlStorage()) return readDisplayNameStore(force);
+
+  await ensureMysqlSchema();
+  const rows = await mysqlQuery('SELECT * FROM gc_display_names ORDER BY kind ASC, display_name ASC');
+  const store: DisplayNameStore = {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    entries: rows.map((row: any) => ({
+      id: String(row.id),
+      kind: sanitizeDisplayNameKind(row.kind) || 'driver',
+      sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
+      sourceCode: compactNullableText(row.source_code),
+      sourceName: compactNullableText(row.source_name) || '',
+      displayName: compactNullableText(row.display_name) || '',
+      notes: compactNullableText(row.notes),
+      enabled: row.enabled !== 0 && row.enabled !== false,
+      createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+      updatedAt: mysqlDate(row.updated_at) || new Date().toISOString()
+    })).filter((entry: DisplayNameEntry) => entry.displayName.length > 0)
+  };
+
+  displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store };
+  return store;
+}
+
+async function writeDisplayNameStoreAsync(store: DisplayNameStore) {
+  const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
+
+  if (!useMysqlStorage()) {
+    writeDisplayNameStore(nextStore);
+    return;
+  }
+
+  await ensureMysqlSchema();
+  const pool = await getMysqlPool();
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query('DELETE FROM gc_display_names');
+    for (const entry of nextStore.entries) {
+      await connection.query(
+        `INSERT INTO gc_display_names
+          (id, kind, source_id, source_code, source_name, display_name, notes, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          entry.id,
+          entry.kind,
+          entry.sourceId,
+          entry.sourceCode,
+          entry.sourceName,
+          entry.displayName,
+          entry.notes,
+          entry.enabled ? 1 : 0,
+          isoToMysql(entry.createdAt) || isoToMysql(new Date().toISOString()),
+          isoToMysql(entry.updatedAt) || isoToMysql(new Date().toISOString())
+        ]
+      );
+    }
+    await connection.commit();
+    displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store: nextStore };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 
 function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown) {
   const numericId = Number(sourceId);
@@ -361,13 +613,126 @@ function writeUserStore(store: AppUserStore) {
   fs.renameSync(tempPath, filePath);
 }
 
+
+async function readUserStoreAsync(): Promise<AppUserStore> {
+  if (!useMysqlStorage()) return readUserStore();
+
+  await ensureMysqlSchema();
+  const userRows = await mysqlQuery('SELECT * FROM gc_users ORDER BY created_at ASC');
+  const sessionRows = await mysqlQuery('SELECT * FROM gc_sessions ORDER BY created_at ASC');
+
+  const store: AppUserStore = {
+    version: 1,
+    users: userRows.map((row: any) => ({
+      id: String(row.id),
+      email: String(row.email),
+      displayName: String(row.display_name),
+      role: row.role === 'admin' ? 'admin' : 'pilot',
+      password: {
+        algorithm: 'pbkdf2-sha256',
+        iterations: Number(row.password_iterations),
+        salt: String(row.password_salt),
+        hash: String(row.password_hash)
+      },
+      pilotLink: row.pilot_player_id == null ? null : {
+        playerId: Number(row.pilot_player_id),
+        steamGuid: compactNullableText(row.pilot_steam_guid),
+        strackerName: compactNullableText(row.pilot_stracker_name) || 'Piloto vinculado',
+        linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
+      },
+      createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+      updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
+      lastLoginAt: mysqlDate(row.last_login_at)
+    })),
+    sessions: sessionRows.map((row: any) => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      tokenHash: String(row.token_hash),
+      createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+      expiresAt: mysqlDate(row.expires_at) || new Date().toISOString(),
+      lastSeenAt: mysqlDate(row.last_seen_at) || new Date().toISOString()
+    }))
+  };
+
+  return pruneExpiredSessionsInMemory(store);
+}
+
+async function writeUserStoreAsync(store: AppUserStore) {
+  if (!useMysqlStorage()) {
+    writeUserStore(store);
+    return;
+  }
+
+  await ensureMysqlSchema();
+  const pool = await getMysqlPool();
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query('DELETE FROM gc_sessions');
+    await connection.query('DELETE FROM gc_users');
+
+    for (const user of store.users) {
+      await connection.query(
+        `INSERT INTO gc_users
+          (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          user.id,
+          user.email,
+          user.displayName,
+          user.role,
+          user.password.algorithm,
+          user.password.iterations,
+          user.password.salt,
+          user.password.hash,
+          user.pilotLink?.playerId ?? null,
+          user.pilotLink?.steamGuid ?? null,
+          user.pilotLink?.strackerName ?? null,
+          isoToMysql(user.pilotLink?.linkedAt),
+          isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
+          isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
+          isoToMysql(user.lastLoginAt)
+        ]
+      );
+    }
+
+    for (const session of store.sessions) {
+      await connection.query(
+        `INSERT INTO gc_sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          session.id,
+          session.userId,
+          session.tokenHash,
+          isoToMysql(session.createdAt) || isoToMysql(new Date().toISOString()),
+          isoToMysql(session.expiresAt) || isoToMysql(new Date().toISOString()),
+          isoToMysql(session.lastSeenAt) || isoToMysql(new Date().toISOString())
+        ]
+      );
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+function pruneExpiredSessionsInMemory(store: AppUserStore) {
+  const now = Date.now();
+  return { ...store, sessions: store.sessions.filter((session) => Date.parse(session.expiresAt) > now) };
+}
+
 function pruneExpiredSessions(store: AppUserStore) {
   const now = Date.now();
   const sessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > now);
   if (sessions.length !== store.sessions.length) {
     const next = { ...store, sessions };
     try {
-      writeUserStore(next);
+      if (!useMysqlStorage()) writeUserStore(next);
     } catch (_) {
       // no-op: no queremos tumbar la API por limpieza de sesiones
     }
@@ -377,11 +742,23 @@ function pruneExpiredSessions(store: AppUserStore) {
 }
 
 function getUserStoreStats() {
+  if (useMysqlStorage()) {
+    return {
+      enabled: true,
+      status: 'mysql_auth',
+      message: 'Usuarios reales activos en MySQL/MariaDB.',
+      db: getUsersDbInfo(),
+      usersCount: null,
+      sessionsCount: null,
+      registrationEnabled: readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)
+    };
+  }
+
   const store = readUserStore();
   return {
     enabled: true,
-    status: 'file_auth',
-    message: 'Usuarios reales activos con storage local JSON. Migrable a SQLite/PostgreSQL más adelante.',
+    status: useMysqlStorage() ? 'mysql_auth' : 'file_auth',
+    message: useMysqlStorage() ? 'Usuarios reales activos en MySQL/MariaDB.' : 'Usuarios reales activos con storage local JSON. Migrable a MySQL/MariaDB.',
     db: getUsersDbInfo(),
     usersCount: store.users.length,
     sessionsCount: store.sessions.length,
@@ -395,6 +772,21 @@ function normalizeEmail(value: unknown) {
 
 function normalizeDisplayName(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 64);
+}
+
+
+async function getUserStoreStatsAsync() {
+  if (!useMysqlStorage()) return getUserStoreStats();
+  const store = await readUserStoreAsync();
+  return {
+    enabled: true,
+    status: 'mysql_auth',
+    message: 'Usuarios reales activos en MySQL/MariaDB.',
+    db: getUsersDbInfo(),
+    usersCount: store.users.length,
+    sessionsCount: store.sessions.length,
+    registrationEnabled: readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)
+  };
 }
 
 function hashPassword(password: string, salt = crypto.randomBytes(16).toString('hex'), iterations = 120000) {
@@ -521,6 +913,29 @@ function getAuthContext(req: express.Request) {
   return { store, user, session, token };
 }
 
+
+async function getAuthContextAsync(req: express.Request) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  const store = await readUserStoreAsync();
+  const hash = tokenHash(token);
+  const session = store.sessions.find((item) => item.tokenHash === hash && Date.parse(item.expiresAt) > Date.now());
+  if (!session) return null;
+
+  const user = store.users.find((item) => item.id === session.userId);
+  if (!user) return null;
+
+  session.lastSeenAt = new Date().toISOString();
+  try {
+    await writeUserStoreAsync(store);
+  } catch (_) {
+    // no-op
+  }
+
+  return { store, user, session, token };
+}
+
 function publicUser(user: AppUser) {
   return {
     id: user.id,
@@ -549,8 +964,8 @@ function assertAdminSetupSecret(req: express.Request) {
   return Boolean(expected && provided && expected === provided);
 }
 
-function getCurrentAdminOrSecret(req: express.Request) {
-  const context = getAuthContext(req);
+async function getCurrentAdminOrSecret(req: express.Request) {
+  const context = await getAuthContextAsync(req);
   if (context && isAdminUser(context.user)) {
     return { ok: true as const, context, via: 'session' as const };
   }
@@ -599,8 +1014,8 @@ function getUserStoreAdminSummary(store = readUserStore()) {
   };
 }
 
-function requireAdmin(req: express.Request, res: express.Response) {
-  const context = getAuthContext(req);
+async function requireAdmin(req: express.Request, res: express.Response) {
+  const context = await getAuthContextAsync(req);
 
   if (!context) {
     res.status(401).json({
@@ -2152,7 +2567,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'grasscutters-node',
-    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
     startedAt
   });
 });
@@ -2163,7 +2578,7 @@ app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     message: 'GC API funcionando en Hostinger',
-    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
     modules: {
       web: modules.web.enabled,
       api: modules.api.enabled,
@@ -2172,7 +2587,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: 'Paquete 23: storage persistente + landing pública + app shell.'
+    note: useMysqlStorage() ? 'Paquete 25: app storage en MySQL/MariaDB.' : 'Storage JSON activo. Para producción usa APP_STORAGE_DRIVER=mysql.'
   });
 });
 
@@ -2183,16 +2598,16 @@ app.get('/api/modules', (_req, res) => {
   });
 });
 
-app.get('/api/auth/status', (_req, res) => {
+app.get('/api/auth/status', async (_req, res) => {
   res.json({
     ok: true,
-    auth: getUserStoreStats(),
-    message: 'Auth real fase 1 activo. Usuarios en data/app/users.json.'
+    auth: await getUserStoreStatsAsync(),
+    message: useMysqlStorage() ? 'Auth real activo. Usuarios en MySQL/MariaDB.' : 'Auth real activo. Usuarios en JSON local.'
   });
 });
 
 app.get('/api/auth/me', async (req, res) => {
-  const context = getAuthContext(req);
+  const context = await getAuthContextAsync(req);
 
   if (!context) {
     res.status(200).json({
@@ -2233,7 +2648,7 @@ app.get('/api/auth/me', async (req, res) => {
 
 
 app.get('/api/profile', async (req, res) => {
-  const context = getAuthContext(req);
+  const context = await getAuthContextAsync(req);
 
   if (!context) {
     res.status(200).json({
@@ -2292,8 +2707,8 @@ app.get('/api/profile', async (req, res) => {
 
 
 app.get('/api/admin/status', async (req, res) => {
-  const store = readUserStore();
-  const context = getAuthContext(req);
+  const store = await readUserStoreAsync();
+  const context = await getAuthContextAsync(req);
   const authorized = Boolean(context && isAdminUser(context.user));
   const summary = getUserStoreAdminSummary(store);
   const stracker = getStrackerConfig();
@@ -2363,7 +2778,7 @@ app.get('/api/admin/status', async (req, res) => {
   });
 });
 
-app.post('/api/admin/bootstrap', (req, res) => {
+app.post('/api/admin/bootstrap', async (req, res) => {
   if (!assertAdminSetupSecret(req)) {
     res.status(401).json({
       ok: false,
@@ -2372,8 +2787,8 @@ app.post('/api/admin/bootstrap', (req, res) => {
     return;
   }
 
-  const store = readUserStore();
-  const context = getAuthContext(req);
+  const store = await readUserStoreAsync();
+  const context = await getAuthContextAsync(req);
   const targetEmail = normalizeEmail(req.body?.email);
   const targetUserId = String(req.body?.userId ?? '').trim();
   const target = targetUserId
@@ -2405,7 +2820,7 @@ app.post('/api/admin/bootstrap', (req, res) => {
     setSessionCookie(res, created.token);
   }
 
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
 
   const targetIsCurrentSession = Boolean(context && context.user.id === target.id);
   const message = shouldAuthenticateTarget
@@ -2423,11 +2838,11 @@ app.post('/api/admin/bootstrap', (req, res) => {
   });
 });
 
-app.get('/api/admin/users', (req, res) => {
-  const context = requireAdmin(req, res);
+app.get('/api/admin/users', async (req, res) => {
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
   const users = store.users
     .map((user) => publicAdminUser(user, store))
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -2441,8 +2856,8 @@ app.get('/api/admin/users', (req, res) => {
   });
 });
 
-app.post('/api/admin/users/:userId/role', (req, res) => {
-  const context = requireAdmin(req, res);
+app.post('/api/admin/users/:userId/role', async (req, res) => {
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
   const nextRole = String(req.body?.role ?? '').trim() as AppUserRole;
@@ -2451,7 +2866,7 @@ app.post('/api/admin/users/:userId/role', (req, res) => {
     return;
   }
 
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
   const target = findUserById(store, req.params.userId);
 
   if (!target) {
@@ -2466,7 +2881,7 @@ app.post('/api/admin/users/:userId/role', (req, res) => {
 
   target.role = nextRole;
   target.updatedAt = new Date().toISOString();
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
 
   res.json({
     ok: true,
@@ -2476,11 +2891,11 @@ app.post('/api/admin/users/:userId/role', (req, res) => {
   });
 });
 
-app.post('/api/admin/users/:userId/unlink-pilot', (req, res) => {
-  const context = requireAdmin(req, res);
+app.post('/api/admin/users/:userId/unlink-pilot', async (req, res) => {
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
   const target = findUserById(store, req.params.userId);
 
   if (!target) {
@@ -2490,7 +2905,7 @@ app.post('/api/admin/users/:userId/unlink-pilot', (req, res) => {
 
   target.pilotLink = null;
   target.updatedAt = new Date().toISOString();
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
 
   res.json({
     ok: true,
@@ -2499,11 +2914,11 @@ app.post('/api/admin/users/:userId/unlink-pilot', (req, res) => {
   });
 });
 
-app.post('/api/admin/users/:userId/revoke-sessions', (req, res) => {
-  const context = requireAdmin(req, res);
+app.post('/api/admin/users/:userId/revoke-sessions', async (req, res) => {
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
   const target = findUserById(store, req.params.userId);
 
   if (!target) {
@@ -2513,7 +2928,7 @@ app.post('/api/admin/users/:userId/revoke-sessions', (req, res) => {
 
   const before = store.sessions.length;
   store.sessions = store.sessions.filter((session) => session.userId !== target.id);
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
 
   res.json({
     ok: true,
@@ -2524,7 +2939,7 @@ app.post('/api/admin/users/:userId/revoke-sessions', (req, res) => {
 });
 
 app.post('/api/admin/stracker/sync', async (req, res) => {
-  const context = requireAdmin(req, res);
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
   const result = await syncStrackerFromGTX();
@@ -2534,23 +2949,23 @@ app.post('/api/admin/stracker/sync', async (req, res) => {
   });
 });
 
-app.get('/api/admin/storage/status', (req, res) => {
-  const context = requireAdmin(req, res);
+app.get('/api/admin/storage/status', async (req, res) => {
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
   res.json({
     ok: true,
     ...getAppStorageStatus(),
     message: getStoragePersistenceInfo().persistent
-      ? 'Storage persistente configurado fuera del proyecto.'
-      : 'Storage dentro del proyecto. Configura APP_DATA_DIR fuera de nodejs antes de hacer deploys serios.'
+      ? useMysqlStorage() ? 'Storage de app en MySQL/MariaDB.' : 'Storage persistente configurado fuera del proyecto.'
+      : 'Storage dentro del proyecto. Configura APP_DATA_DIR fuera de nodejs o usa APP_STORAGE_DRIVER=mysql.'
   });
 });
 
 
 async function buildDisplayNameCatalog() {
   const stracker = getStrackerConfig();
-  const store = readDisplayNameStore();
+  const store = await readDisplayNameStoreAsync();
   const catalog = {
     drivers: [] as PlainObject[],
     cars: [] as PlainObject[],
@@ -2586,7 +3001,7 @@ async function buildDisplayNameCatalog() {
 }
 
 app.get('/api/admin/name-filters', async (req, res) => {
-  const context = requireAdmin(req, res);
+  const context = await requireAdmin(req, res);
   if (!context) return;
 
   const data = await buildDisplayNameCatalog();
@@ -2598,14 +3013,14 @@ app.get('/api/admin/name-filters', async (req, res) => {
 });
 
 app.get('/api/admin/display-names', async (req, res) => {
-  const context = requireAdmin(req, res);
+  const context = await requireAdmin(req, res);
   if (!context) return;
   const data = await buildDisplayNameCatalog();
   res.json({ ok: true, ...data, message: 'Nombres visibles cargados correctamente.' });
 });
 
-app.post('/api/admin/name-filters', (req, res) => {
-  const adminAccess = getCurrentAdminOrSecret(req);
+app.post('/api/admin/name-filters', async (req, res) => {
+  const adminAccess = await getCurrentAdminOrSecret(req);
   if (!adminAccess.ok) {
     res.status(adminAccess.context ? 403 : 401).json({
       ok: false,
@@ -2633,7 +3048,7 @@ app.post('/api/admin/name-filters', (req, res) => {
     return;
   }
 
-  const store = readDisplayNameStore(true);
+  const store = await readDisplayNameStoreAsync(true);
   const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
   const now = new Date().toISOString();
 
@@ -2660,17 +3075,17 @@ app.post('/api/admin/name-filters', (req, res) => {
     });
   }
 
-  writeDisplayNameStore(store);
+  await writeDisplayNameStoreAsync(store);
   res.json({
     ok: true,
-    entry: findDisplayNameEntry(readDisplayNameStore(true), kind, sourceId, sourceCode, sourceName),
+    entry: findDisplayNameEntry(await readDisplayNameStoreAsync(true), kind, sourceId, sourceCode, sourceName),
     storage: getDisplayNamesDbInfo(),
     message: 'Nombre visible guardado correctamente.'
   });
 });
 
-app.post('/api/admin/name-filters/delete', (req, res) => {
-  const adminAccess = getCurrentAdminOrSecret(req);
+app.post('/api/admin/name-filters/delete', async (req, res) => {
+  const adminAccess = await getCurrentAdminOrSecret(req);
   if (!adminAccess.ok) {
     res.status(adminAccess.context ? 403 : 401).json({
       ok: false,
@@ -2687,7 +3102,7 @@ app.post('/api/admin/name-filters/delete', (req, res) => {
   const sourceCode = compactNullableText(req.body?.sourceCode);
   const sourceName = compactNullableText(req.body?.sourceName);
 
-  const store = readDisplayNameStore(true);
+  const store = await readDisplayNameStoreAsync(true);
   const before = store.entries.length;
   store.entries = store.entries.filter((entry) => {
     if (entryId && entry.id === entryId) return false;
@@ -2695,7 +3110,7 @@ app.post('/api/admin/name-filters/delete', (req, res) => {
     return true;
   });
 
-  writeDisplayNameStore(store);
+  await writeDisplayNameStoreAsync(store);
   res.json({
     ok: true,
     removed: before - store.entries.length,
@@ -2733,7 +3148,7 @@ app.post('/api/auth/register', async (req, res) => {
     return;
   }
 
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
 
   if (findUserByEmail(store, email)) {
     res.status(409).json({ ok: false, message: 'Ya existe una cuenta con ese email.' });
@@ -2774,7 +3189,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   store.users.push(user);
   const { token, session } = createSession(store, user.id);
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
   setSessionCookie(res, token);
 
   res.status(201).json({
@@ -2792,10 +3207,10 @@ app.post('/api/auth/register', async (req, res) => {
   });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password ?? '');
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
   const user = findUserByEmail(store, email);
 
   if (!user || !verifyPassword(password, user.password)) {
@@ -2807,7 +3222,7 @@ app.post('/api/auth/login', (req, res) => {
   user.lastLoginAt = now;
   user.updatedAt = now;
   const { token, session } = createSession(store, user.id);
-  writeUserStore(store);
+  await writeUserStoreAsync(store);
   setSessionCookie(res, token);
 
   res.json({
@@ -2824,14 +3239,14 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   const token = readAuthToken(req);
-  const store = readUserStore();
+  const store = await readUserStoreAsync();
 
   if (token) {
     const hash = tokenHash(token);
     store.sessions = store.sessions.filter((session) => session.tokenHash !== hash);
-    writeUserStore(store);
+    await writeUserStoreAsync(store);
   }
 
   clearSessionCookie(res);
@@ -2839,7 +3254,7 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.post('/api/auth/link-pilot', async (req, res) => {
-  const context = getAuthContext(req);
+  const context = await getAuthContextAsync(req);
   if (!context) {
     res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
     return;
@@ -2858,7 +3273,7 @@ app.post('/api/auth/link-pilot', async (req, res) => {
 
   context.user.pilotLink = resolved.link;
   context.user.updatedAt = new Date().toISOString();
-  writeUserStore(context.store);
+  await writeUserStoreAsync(context.store);
 
   res.json({
     ok: true,
@@ -2868,8 +3283,8 @@ app.post('/api/auth/link-pilot', async (req, res) => {
   });
 });
 
-app.post('/api/auth/unlink-pilot', (req, res) => {
-  const context = getAuthContext(req);
+app.post('/api/auth/unlink-pilot', async (req, res) => {
+  const context = await getAuthContextAsync(req);
   if (!context) {
     res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
     return;
@@ -2877,7 +3292,7 @@ app.post('/api/auth/unlink-pilot', (req, res) => {
 
   context.user.pilotLink = null;
   context.user.updatedAt = new Date().toISOString();
-  writeUserStore(context.store);
+  await writeUserStoreAsync(context.store);
 
   res.json({
     ok: true,
@@ -3442,7 +3857,7 @@ app.get('/api/debug/runtime', (_req, res) => {
   res.json({
     ok: true,
     runtime: {
-      mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
+      mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
       nodeEnv: process.env.NODE_ENV ?? 'development',
       startedAt,
       port: PORT,
@@ -3454,7 +3869,8 @@ app.get('/api/debug/runtime', (_req, res) => {
       remote: getRemoteStrackerConfig(),
       autoSync: getAutoSyncConfig(),
       lastSync: lastSyncResult,
-      syncInProgress
+      syncInProgress,
+      appStorage: getMysqlStorageSafeConfig()
     }
   });
 });
@@ -3502,8 +3918,17 @@ process.on('unhandledRejection', (error) => {
   console.error('[GC] unhandledRejection:', error);
 });
 
-app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, async () => {
   console.log(`[GC] Servidor activo en ${HOST}:${PORT}`);
-  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync-auth-admin');
+  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready');
+  try {
+    if (useMysqlStorage()) {
+      await ensureMysqlSchema();
+      await readDisplayNameStoreAsync(true);
+      console.log('[GC] Storage de app activo en MySQL/MariaDB.');
+    }
+  } catch (error) {
+    console.error('[GC] Error inicializando MySQL app storage:', error);
+  }
   startAutoSyncScheduler();
 });
