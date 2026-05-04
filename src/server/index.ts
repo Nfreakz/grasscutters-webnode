@@ -154,7 +154,7 @@ async function ensureMysqlSchema() {
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_settings (
       setting_key VARCHAR(120) NOT NULL PRIMARY KEY,
-      setting_value JSON NULL,
+      setting_value LONGTEXT NULL,
       updated_at DATETIME(3) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
@@ -2705,6 +2705,63 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
+
+
+function safeRuntimeError(error: unknown) {
+  const err = error as any;
+  return {
+    name: err?.name || 'Error',
+    message: err?.message || String(error),
+    code: err?.code || null,
+    errno: err?.errno || null,
+    sqlState: err?.sqlState || null,
+    sqlMessage: err?.sqlMessage || null
+  };
+}
+
+app.get('/api/mysql/status', async (req, res) => {
+  const config = getMysqlStorageSafeConfig();
+
+  if (!useMysqlStorage()) {
+    res.status(200).json({
+      ok: false,
+      enabled: false,
+      config,
+      message: 'MySQL no está activo. APP_STORAGE_DRIVER debe ser mysql.'
+    });
+    return;
+  }
+
+  try {
+    await ensureMysqlSchema();
+    const rows = await mysqlQuery(`
+      SELECT table_name AS tableName
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+        AND table_name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings')
+      ORDER BY table_name ASC
+    `);
+    const pingRows = await mysqlQuery('SELECT 1 AS ok');
+
+    res.json({
+      ok: true,
+      enabled: true,
+      config,
+      ping: pingRows?.[0]?.ok === 1,
+      tables: rows,
+      message: 'MySQL conectado y tablas de app listas.'
+    });
+  } catch (error) {
+    console.error('[GC] Error en /api/mysql/status:', error);
+    res.status(500).json({
+      ok: false,
+      enabled: true,
+      config,
+      error: safeRuntimeError(error),
+      message: 'No se pudo conectar o preparar MySQL. Revisa variables, password, permisos y que mysql2 esté instalado.'
+    });
+  }
+});
 
 app.get('/api/admin/status', async (req, res) => {
   const store = await readUserStoreAsync();
