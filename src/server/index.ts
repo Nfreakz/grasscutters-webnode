@@ -11,6 +11,7 @@ const rootDir = path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
 const defaultStrackerRelativePath = './data/stracker/stracker.db3';
 const defaultUsersRelativePath = './data/app/users.json';
+const defaultDisplayNamesRelativePath = './data/app/display-names.json';
 const sessionCookieName = 'gc_session';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -61,6 +62,30 @@ type AppUserStore = {
   sessions: AppSession[];
 };
 
+
+type DisplayNameKind = 'driver' | 'car' | 'track';
+
+type DisplayNameEntry = {
+  id: string;
+  kind: DisplayNameKind;
+  sourceId: number | null;
+  sourceCode: string | null;
+  sourceName: string;
+  displayName: string;
+  notes: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type DisplayNameStore = {
+  version: 1;
+  updatedAt: string;
+  entries: DisplayNameEntry[];
+};
+
+let displayNameCache: { path: string; mtimeMs: number | null; store: DisplayNameStore } | null = null;
+
 function getUsersPath() {
   const configuredPath = process.env.APP_USERS_PATH?.trim() || defaultUsersRelativePath;
   return resolveProjectPath(configuredPath) ?? path.join(rootDir, defaultUsersRelativePath);
@@ -78,6 +103,187 @@ function getUsersDbInfo() {
     exists,
     sizeBytes: stats?.size ?? 0,
     modifiedAt: stats?.mtime?.toISOString?.() ?? null
+  };
+}
+
+
+function getDisplayNamesPath() {
+  const configuredPath = process.env.APP_DISPLAY_NAMES_PATH?.trim() || defaultDisplayNamesRelativePath;
+  return resolveProjectPath(configuredPath) ?? path.join(rootDir, defaultDisplayNamesRelativePath);
+}
+
+function getDisplayNamesDbInfo() {
+  const resolvedPath = getDisplayNamesPath();
+  const exists = fs.existsSync(resolvedPath);
+  const stats = exists ? fs.statSync(resolvedPath) : null;
+  return {
+    configured: true,
+    source: process.env.APP_DISPLAY_NAMES_PATH ? 'env' : 'default',
+    relativePath: process.env.APP_DISPLAY_NAMES_PATH?.trim() || defaultDisplayNamesRelativePath,
+    resolvedPath,
+    exists,
+    sizeBytes: stats?.size ?? 0,
+    modifiedAt: stats?.mtime?.toISOString?.() ?? null
+  };
+}
+
+function createEmptyDisplayNameStore(): DisplayNameStore {
+  return { version: 1, updatedAt: new Date().toISOString(), entries: [] };
+}
+
+function sanitizeDisplayNameKind(value: unknown): DisplayNameKind | null {
+  const kind = String(value ?? '').trim().toLowerCase();
+  if (kind === 'drivers' || kind === 'pilots' || kind === 'pilot' || kind === 'player') return 'driver';
+  if (kind === 'cars' || kind === 'coche' || kind === 'coches') return 'car';
+  if (kind === 'tracks' || kind === 'circuit' || kind === 'circuito' || kind === 'circuitos') return 'track';
+  if (kind === 'driver' || kind === 'car' || kind === 'track') return kind as DisplayNameKind;
+  return null;
+}
+
+function normalizeDisplayNameKey(value: unknown) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function readDisplayNameStore(force = false): DisplayNameStore {
+  const filePath = getDisplayNamesPath();
+  const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
+  const mtimeMs = stats?.mtimeMs ?? null;
+
+  if (!force && displayNameCache && displayNameCache.path === filePath && displayNameCache.mtimeMs === mtimeMs) {
+    return displayNameCache.store;
+  }
+
+  if (!stats) {
+    const empty = createEmptyDisplayNameStore();
+    displayNameCache = { path: filePath, mtimeMs: null, store: empty };
+    return empty;
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Partial<DisplayNameStore>;
+    const store: DisplayNameStore = {
+      version: 1,
+      updatedAt: String(parsed.updatedAt || stats.mtime.toISOString()),
+      entries: Array.isArray(parsed.entries)
+        ? parsed.entries.map((entry: any) => ({
+            id: String(entry.id || crypto.randomUUID()),
+            kind: sanitizeDisplayNameKind(entry.kind) || 'driver',
+            sourceId: Number.isFinite(Number(entry.sourceId)) ? Number(entry.sourceId) : null,
+            sourceCode: compactNullableText(entry.sourceCode),
+            sourceName: compactNullableText(entry.sourceName) || '',
+            displayName: compactNullableText(entry.displayName) || '',
+            notes: compactNullableText(entry.notes),
+            enabled: entry.enabled !== false,
+            createdAt: String(entry.createdAt || new Date().toISOString()),
+            updatedAt: String(entry.updatedAt || new Date().toISOString())
+          })).filter((entry) => entry.displayName.length > 0)
+        : []
+    };
+    displayNameCache = { path: filePath, mtimeMs, store };
+    return store;
+  } catch (error) {
+    console.error('[GC] Error leyendo display-names.json:', error);
+    const empty = createEmptyDisplayNameStore();
+    displayNameCache = { path: filePath, mtimeMs, store: empty };
+    return empty;
+  }
+}
+
+function writeDisplayNameStore(store: DisplayNameStore) {
+  const filePath = getDisplayNamesPath();
+  ensureDirForFile(filePath);
+  const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
+  const tempPath = `${filePath}.tmp`;
+  fs.writeFileSync(tempPath, `${JSON.stringify(nextStore, null, 2)}
+`, 'utf8');
+  fs.renameSync(tempPath, filePath);
+  displayNameCache = null;
+}
+
+function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown) {
+  const numericId = Number(sourceId);
+  const hasId = Number.isFinite(numericId);
+  const code = normalizeDisplayNameKey(sourceCode);
+  const name = normalizeDisplayNameKey(sourceName);
+
+  return store.entries.find((entry) => {
+    if (!entry.enabled || entry.kind !== kind) return false;
+    if (hasId && entry.sourceId !== null && Number(entry.sourceId) === numericId) return true;
+    if (code && entry.sourceCode && normalizeDisplayNameKey(entry.sourceCode) === code) return true;
+    if (name && normalizeDisplayNameKey(entry.sourceName) === name) return true;
+    return false;
+  }) ?? null;
+}
+
+function applyDisplayName(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown, fallback: string) {
+  const entry = findDisplayNameEntry(readDisplayNameStore(), kind, sourceId, sourceCode, sourceName);
+  return compactNullableText(entry?.displayName) || fallback;
+}
+
+function makeEntryId(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown) {
+  const id = Number(sourceId);
+  if (Number.isFinite(id)) return `${kind}:${id}`;
+  const code = normalizeDisplayNameKey(sourceCode);
+  if (code) return `${kind}:code:${code}`;
+  return `${kind}:name:${normalizeDisplayNameKey(sourceName) || crypto.randomUUID()}`;
+}
+
+function cleanDisplayNameInput(value: unknown) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 120);
+}
+
+function autoTitleFromCode(value: unknown, fallback = '') {
+  const raw = String(value ?? '').trim();
+  if (!raw) return fallback;
+
+  const cleaned = raw
+    .replace(/\.(kn5|json|ini|txt)$/i, '')
+    .replace(/^ks[_-]/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return fallback || raw;
+
+  const dictionary: Record<string, string> = {
+    ac: 'AC', abs: 'ABS', amg: 'AMG', audi: 'Audi', bmw: 'BMW', csp: 'CSP', cup: 'Cup', evo: 'Evo', f1: 'F1', gt: 'GT', gt1: 'GT1', gt2: 'GT2', gt3: 'GT3', gt4: 'GT4', gte: 'GTE', gr5: 'GR5', gtr: 'GTR', mx5: 'MX-5', nissan: 'Nissan', porsche: 'Porsche', rss: 'RSS', tatuus: 'Tatuus', toyota: 'Toyota', v8: 'V8', wrc: 'WRC'
+  };
+
+  return cleaned.split(' ').map((part) => {
+    const lower = part.toLowerCase();
+    if (dictionary[lower]) return dictionary[lower];
+    if (/^[0-9]+$/.test(part)) return part;
+    if (/^[a-z]+[0-9]+$/i.test(part)) return part.toUpperCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }).join(' ');
+}
+
+function getRawDisplayCar(row: PlainObject) {
+  return compactNullableText(row.UiCarName) ?? autoTitleFromCode(row.Car, 'Coche desconocido');
+}
+
+function getRawDisplayTrack(row: PlainObject) {
+  return compactNullableText(row.UiTrackName) ?? autoTitleFromCode(row.Track, 'Circuito desconocido');
+}
+
+function getRawDriverName(row: PlainObject) {
+  return compactNullableText(row.DriverName) ?? compactNullableText(row.Name) ?? 'Piloto desconocido';
+}
+
+function buildDisplayNameCatalogItem(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown, autoName: string, store = readDisplayNameStore()) {
+  const entry = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+  const displayName = compactNullableText(entry?.displayName) || autoName;
+  return {
+    kind,
+    sourceId: numberOrNull(sourceId),
+    sourceCode: compactNullableText(sourceCode),
+    sourceName: compactNullableText(sourceName) || autoName,
+    autoName,
+    displayName,
+    hasOverride: Boolean(entry),
+    entryId: entry?.id ?? null,
+    notes: entry?.notes ?? null,
+    enabled: entry?.enabled ?? true
   };
 }
 
@@ -711,15 +917,18 @@ function compactNullableText(value: unknown) {
 }
 
 function getDisplayCar(row: PlainObject) {
-  return compactNullableText(row.UiCarName) ?? compactNullableText(row.Car) ?? 'Coche desconocido';
+  const fallback = getRawDisplayCar(row);
+  return applyDisplayName('car', row.CarId, row.Car, fallback, fallback);
 }
 
 function getDisplayTrack(row: PlainObject) {
-  return compactNullableText(row.UiTrackName) ?? compactNullableText(row.Track) ?? 'Circuito desconocido';
+  const fallback = getRawDisplayTrack(row);
+  return applyDisplayName('track', row.TrackId, row.Track, fallback, fallback);
 }
 
 function getDriverName(row: PlainObject) {
-  return compactNullableText(row.DriverName) ?? compactNullableText(row.Name) ?? 'Piloto desconocido';
+  const fallback = getRawDriverName(row);
+  return applyDisplayName('driver', row.PlayerId, row.SteamGuid, fallback, fallback);
 }
 
 function toObjects(result: any) {
@@ -1079,8 +1288,10 @@ const joinedLapsSql = `
   WHERE L.LapTime IS NOT NULL AND L.LapTime > 0
 `;
 
-function mapLapRow(row: PlainObject) {
-  const sectorTimes = [
+function cleanSectorTimes(row: PlainObject) {
+  const lapMs = Number(row.LapTime);
+  const maxReasonableSector = Number.isFinite(lapMs) && lapMs > 0 ? lapMs : 30 * 60 * 1000;
+  const values = [
     row.SectorTime0,
     row.SectorTime1,
     row.SectorTime2,
@@ -1093,13 +1304,35 @@ function mapLapRow(row: PlainObject) {
     row.SectorTime9
   ]
     .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value) && value > 0);
+    .filter((value) => Number.isFinite(value) && value > 0 && value <= maxReasonableSector && value < 30 * 60 * 1000);
+
+  return values;
+}
+
+function mapLapRow(row: PlainObject) {
+  const sectorTimes = cleanSectorTimes(row);
 
   return {
     lapId: numberOrNull(row.LapId),
     playerInSessionId: numberOrNull(row.PlayerInSessionId),
     sessionId: numberOrNull(row.SessionId),
     comboId: numberOrNull(row.ComboId),
+    playerId: numberOrNull(row.PlayerId),
+    driverId: numberOrNull(row.PlayerId),
+    driverName: getDriverName(row),
+    playerName: getDriverName(row),
+    steamGuid: compactNullableText(row.SteamGuid),
+    carId: numberOrNull(row.CarId),
+    carCode: compactNullableText(row.Car),
+    carName: getDisplayCar(row),
+    uiCarName: compactNullableText(row.UiCarName),
+    brand: compactNullableText(row.Brand),
+    trackId: numberOrNull(row.TrackId),
+    trackCode: compactNullableText(row.Track),
+    trackName: getDisplayTrack(row),
+    uiTrackName: compactNullableText(row.UiTrackName),
+    trackLength: numberOrNull(row.TrackLength),
+    sessionType: compactNullableText(row.SessionType),
     driver: {
       id: numberOrNull(row.PlayerId),
       name: getDriverName(row),
@@ -1124,13 +1357,21 @@ function mapLapRow(row: PlainObject) {
     },
     lapTimeMs: numberOrNull(row.LapTime),
     lapTime: lapTimeToText(row.LapTime),
+    lapTimeFormatted: lapTimeToText(row.LapTime),
     valid: Number(row.Valid) === 1,
+    isValid: Number(row.Valid) === 1,
     cuts: numberOrNull(row.Cuts),
     collisionsCar: numberOrNull(row.CollisionsCar),
     collisionsEnv: numberOrNull(row.CollisionsEnv),
     maxSpeedKmh: numberOrNull(row.MaxSpeed_KMH),
     sectorTimesMs: sectorTimes,
     sectorTimes: sectorTimes.map(lapTimeToText),
+    sector1Ms: sectorTimes[0] ?? null,
+    sector2Ms: sectorTimes[1] ?? null,
+    sector3Ms: sectorTimes[2] ?? null,
+    sector1: sectorTimes[0] ? lapTimeToText(sectorTimes[0]) : '--',
+    sector2: sectorTimes[1] ? lapTimeToText(sectorTimes[1]) : '--',
+    sector3: sectorTimes[2] ? lapTimeToText(sectorTimes[2]) : '--',
     fuelRatio: numberOrNull(row.FuelRatio),
     gripLevel: numberOrNull(row.GripLevel),
     ballast: numberOrNull(row.Ballast),
@@ -1364,9 +1605,24 @@ function compactLapForProfile(lap: PilotProfileLap | null) {
   if (!lap) return null;
   return {
     lapId: lap.lapId,
+    playerId: lap.driver?.id ?? null,
+    driverId: lap.driver?.id ?? null,
+    driverName: lap.driver?.name ?? null,
+    playerName: lap.driver?.name ?? null,
+    carId: lap.car?.id ?? null,
+    carName: lap.car?.name ?? null,
+    uiCarName: lap.car?.uiName ?? null,
+    carCode: lap.car?.code ?? null,
+    brand: lap.car?.brand ?? null,
+    trackId: lap.track?.id ?? null,
+    trackName: lap.track?.name ?? null,
+    uiTrackName: lap.track?.uiName ?? null,
+    trackCode: lap.track?.code ?? null,
     lapTimeMs: lap.lapTimeMs,
     lapTime: lap.lapTime,
+    lapTimeFormatted: lap.lapTime,
     valid: lap.valid,
+    isValid: lap.valid,
     car: lap.car,
     track: lap.track,
     maxSpeedKmh: lap.maxSpeedKmh,
@@ -1592,7 +1848,7 @@ function reduceCarStats(laps: ReturnType<typeof mapLapRow>[], carsRows: PlainObj
     map.set(id, {
       id: numberOrNull(row.CarId),
       code: compactNullableText(row.Car),
-      name: compactNullableText(row.UiCarName) ?? compactNullableText(row.Car) ?? 'Coche desconocido',
+      name: getDisplayCar(row),
       uiName: compactNullableText(row.UiCarName),
       brand: compactNullableText(row.Brand),
       totalLaps: 0,
@@ -1648,7 +1904,7 @@ function reduceTrackStats(laps: ReturnType<typeof mapLapRow>[], tracksRows: Plai
     map.set(id, {
       id: numberOrNull(row.TrackId),
       code: compactNullableText(row.Track),
-      name: compactNullableText(row.UiTrackName) ?? compactNullableText(row.Track) ?? 'Circuito desconocido',
+      name: getDisplayTrack(row),
       uiName: compactNullableText(row.UiTrackName),
       length: numberOrNull(row.Length),
       totalLaps: 0,
@@ -1728,7 +1984,7 @@ async function getCombos(dbPath: string) {
         track: {
           id: numberOrNull(row.TrackId),
           code: compactNullableText(row.Track),
-          name: compactNullableText(row.UiTrackName) ?? compactNullableText(row.Track) ?? 'Circuito desconocido',
+          name: getDisplayTrack(row),
           length: numberOrNull(row.TrackLength)
         },
         cars: []
@@ -1739,7 +1995,7 @@ async function getCombos(dbPath: string) {
       combos.get(id).cars.push({
         id: numberOrNull(row.CarId),
         code: compactNullableText(row.Car),
-        name: compactNullableText(row.UiCarName) ?? compactNullableText(row.Car) ?? 'Coche desconocido',
+        name: getDisplayCar(row),
         brand: compactNullableText(row.Brand)
       });
     }
@@ -1807,7 +2063,7 @@ async function getSessions(dbPath: string, limit: number) {
     track: {
       id: numberOrNull(row.TrackId),
       code: compactNullableText(row.Track),
-      name: compactNullableText(row.UiTrackName) ?? compactNullableText(row.Track) ?? 'Circuito desconocido',
+      name: getDisplayTrack(row),
       length: numberOrNull(row.TrackLength)
     },
     stats: {
@@ -2027,6 +2283,7 @@ app.get('/api/admin/status', async (req, res) => {
       ? {
           modules: getModules(),
           users: getUserStoreAdminSummary(store),
+          displayNames: getDisplayNamesDbInfo(),
           stracker: {
             ...stracker,
             overview: strackerOverview,
@@ -2193,6 +2450,147 @@ app.post('/api/admin/stracker/sync', async (req, res) => {
   res.status(result.statusCode).json({
     ...result,
     autoSync: getAutoSyncConfig()
+  });
+});
+
+
+async function buildDisplayNameCatalog() {
+  const stracker = getStrackerConfig();
+  const store = readDisplayNameStore();
+  const catalog = {
+    drivers: [] as PlainObject[],
+    cars: [] as PlainObject[],
+    tracks: [] as PlainObject[]
+  };
+
+  if (stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+    try {
+      const drivers = await runStrackerQuery(stracker.resolvedPath, 'SELECT PlayerId, SteamGuid, Name FROM Players ORDER BY Name ASC');
+      catalog.drivers = drivers.map((row) => buildDisplayNameCatalogItem('driver', row.PlayerId, row.SteamGuid, row.Name, getRawDriverName({ DriverName: row.Name, Name: row.Name }), store));
+
+      const cars = await runStrackerQuery(stracker.resolvedPath, 'SELECT CarId, Car, UiCarName, Brand FROM Cars ORDER BY UiCarName ASC, Car ASC');
+      catalog.cars = cars.map((row) => buildDisplayNameCatalogItem('car', row.CarId, row.Car, row.UiCarName || row.Car, getRawDisplayCar(row), store));
+
+      const tracks = await runStrackerQuery(stracker.resolvedPath, 'SELECT TrackId, Track, UiTrackName, Length FROM Tracks ORDER BY UiTrackName ASC, Track ASC');
+      catalog.tracks = tracks.map((row) => buildDisplayNameCatalogItem('track', row.TrackId, row.Track, row.UiTrackName || row.Track, getRawDisplayTrack(row), store));
+    } catch (error) {
+      console.error('[GC] Error generando catálogo de display names:', error);
+    }
+  }
+
+  return {
+    catalog,
+    entries: store.entries,
+    storage: getDisplayNamesDbInfo(),
+    summary: {
+      drivers: catalog.drivers.length,
+      cars: catalog.cars.length,
+      tracks: catalog.tracks.length,
+      overrides: store.entries.filter((entry) => entry.enabled !== false).length
+    }
+  };
+}
+
+app.get('/api/admin/name-filters', async (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const data = await buildDisplayNameCatalog();
+  res.json({
+    ok: true,
+    ...data,
+    message: 'Filtros de nombres cargados correctamente.'
+  });
+});
+
+app.get('/api/admin/display-names', async (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+  const data = await buildDisplayNameCatalog();
+  res.json({ ok: true, ...data, message: 'Nombres visibles cargados correctamente.' });
+});
+
+app.post('/api/admin/name-filters', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const kind = sanitizeDisplayNameKind(req.body?.kind);
+  const displayName = cleanDisplayNameInput(req.body?.displayName);
+  const sourceName = cleanDisplayNameInput(req.body?.sourceName);
+  const sourceCode = compactNullableText(req.body?.sourceCode);
+  const sourceId = numberOrNull(req.body?.sourceId);
+  const notes = compactNullableText(req.body?.notes);
+
+  if (!kind) {
+    res.status(400).json({ ok: false, message: 'Tipo no válido. Usa driver, car o track.' });
+    return;
+  }
+
+  if (!displayName) {
+    res.status(400).json({ ok: false, message: 'El nombre visible no puede estar vacío.' });
+    return;
+  }
+
+  const store = readDisplayNameStore(true);
+  const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    existing.sourceId = sourceId;
+    existing.sourceCode = sourceCode;
+    existing.sourceName = sourceName || existing.sourceName;
+    existing.displayName = displayName;
+    existing.notes = notes;
+    existing.enabled = req.body?.enabled !== false;
+    existing.updatedAt = now;
+  } else {
+    store.entries.push({
+      id: makeEntryId(kind, sourceId, sourceCode, sourceName),
+      kind,
+      sourceId,
+      sourceCode,
+      sourceName: sourceName || sourceCode || displayName,
+      displayName,
+      notes,
+      enabled: req.body?.enabled !== false,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  writeDisplayNameStore(store);
+  res.json({
+    ok: true,
+    entry: findDisplayNameEntry(readDisplayNameStore(true), kind, sourceId, sourceCode, sourceName),
+    storage: getDisplayNamesDbInfo(),
+    message: 'Nombre visible guardado correctamente.'
+  });
+});
+
+app.post('/api/admin/name-filters/delete', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const kind = sanitizeDisplayNameKind(req.body?.kind);
+  const entryId = compactNullableText(req.body?.entryId);
+  const sourceId = numberOrNull(req.body?.sourceId);
+  const sourceCode = compactNullableText(req.body?.sourceCode);
+  const sourceName = compactNullableText(req.body?.sourceName);
+
+  const store = readDisplayNameStore(true);
+  const before = store.entries.length;
+  store.entries = store.entries.filter((entry) => {
+    if (entryId && entry.id === entryId) return false;
+    if (kind && findDisplayNameEntry({ ...store, entries: [entry] }, kind, sourceId, sourceCode, sourceName)) return false;
+    return true;
+  });
+
+  writeDisplayNameStore(store);
+  res.json({
+    ok: true,
+    removed: before - store.entries.length,
+    storage: getDisplayNamesDbInfo(),
+    message: before === store.entries.length ? 'No había override que eliminar.' : 'Override eliminado. Se usará el nombre automático.'
   });
 });
 

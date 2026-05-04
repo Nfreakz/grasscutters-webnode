@@ -7,11 +7,11 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div>
         <span class="gc-kicker">Leaderboard</span>
         <h1 class="gc-title">Hotlaps reales de stracker.</h1>
-        <p class="gc-subtitle">Tabla densa de referencias con filtros rápidos por piloto, coche y circuito. Ahora con estados, contador de resultados y lectura más segura de los datos.</p>
+        <p class="gc-subtitle">Tabla densa de referencias con filtros rápidos por piloto, coche y circuito. Ahora normaliza bien objetos anidados de la API: piloto, coche, circuito y sectores.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Fuente: stracker.db3</span>
           <span class="gc-chip">Modo tabla</span>
-          <span class="gc-chip">Filtros locales</span>
+          <span class="gc-chip">Datos normalizados</span>
         </div>
       </div>
       <aside class="gc-live-panel">
@@ -61,20 +61,60 @@ import AppLayout from '../layouts/AppLayout.astro';
       hint: document.getElementById('leaderboardHint'),
       source: document.getElementById('hotlapSource')
     };
+
     let cache = [];
+
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-    const pick = (row, ...keys) => keys.map((key) => row?.[key]).find((value) => value !== undefined && value !== null && value !== '') ?? '';
+
+    const valueAt = (source, path) => {
+      if (!source || typeof source !== 'object') return undefined;
+      if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+      return String(path).split('.').reduce((acc, part) => {
+        if (acc === undefined || acc === null) return undefined;
+        return acc[part];
+      }, source);
+    };
+
+    const firstValue = (row, paths) => {
+      for (const path of paths) {
+        const value = valueAt(row, path);
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return '';
+    };
+
+    const textValue = (value, fallback = '-') => {
+      if (value === undefined || value === null || value === '') return fallback;
+      if (Array.isArray(value)) return value.length ? String(value[0]) : fallback;
+      if (typeof value === 'object') {
+        return String(value.name ?? value.uiName ?? value.displayName ?? value.code ?? value.label ?? fallback);
+      }
+      return String(value);
+    };
+
     const fmt = (ms) => {
       const n = Number(ms);
-      if (!Number.isFinite(n)) return '-';
+      if (!Number.isFinite(n) || n <= 0) return '--';
       const m = Math.floor(n / 60000);
       const s = Math.floor((n % 60000) / 1000);
       const x = String(Math.floor(n % 1000)).padStart(3, '0');
       return `${m}:${String(s).padStart(2, '0')}.${x}`;
     };
+
+    const driverName = (row) => textValue(firstValue(row, ['driverName', 'playerName', 'name', 'Name', 'driver.name', 'driver.Name', 'driver']));
+    const carName = (row) => textValue(firstValue(row, ['carName', 'uiCarName', 'car.name', 'car.uiName', 'car.displayName', 'Car', 'car']));
+    const trackName = (row) => textValue(firstValue(row, ['trackName', 'uiTrackName', 'track.name', 'track.uiName', 'track.displayName', 'Track', 'track']));
+    const lapDisplay = (row) => textValue(firstValue(row, ['lapTimeFormatted', 'lapTimeText', 'lapTime']), '') || fmt(firstValue(row, ['lapTimeMs', 'LapTime']));
+    const sectorDisplay = (row, index) => {
+      const text = valueAt(row, `sectorTimes.${index}`);
+      if (text) return textValue(text, '--');
+      const ms = valueAt(row, `sectorTimesMs.${index}`) ?? firstValue(row, [`sector${index + 1}Ms`, `SectorTime${index}`]);
+      return fmt(ms);
+    };
+
     const isInvalid = (row) => {
-      const value = pick(row, 'valid', 'Valid', 'isValid');
-      return value === 0 || value === false || value === '0' || value === 'false';
+      const value = firstValue(row, ['valid', 'Valid', 'isValid']);
+      return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
     };
 
     function draw() {
@@ -83,12 +123,12 @@ import AppLayout from '../layouts/AppLayout.astro';
       const track = els.track.value.trim().toLowerCase();
       const valid = els.valid.value;
       const rows = cache.filter((row) => {
-        const driverName = String(pick(row, 'driverName', 'playerName', 'name', 'Name')).toLowerCase();
-        const carName = String(pick(row, 'carName', 'car', 'uiCarName', 'Car')).toLowerCase();
-        const trackName = String(pick(row, 'trackName', 'track', 'uiTrackName', 'Track')).toLowerCase();
-        if (driver && !driverName.includes(driver)) return false;
-        if (car && !carName.includes(car)) return false;
-        if (track && !trackName.includes(track)) return false;
+        const d = driverName(row).toLowerCase();
+        const c = carName(row).toLowerCase();
+        const t = trackName(row).toLowerCase();
+        if (driver && !d.includes(driver)) return false;
+        if (car && !c.includes(car)) return false;
+        if (track && !t.includes(track)) return false;
         if (valid === 'valid' && isInvalid(row)) return false;
         if (valid === 'invalid' && !isInvalid(row)) return false;
         return true;
@@ -99,13 +139,13 @@ import AppLayout from '../layouts/AppLayout.astro';
       els.rows.innerHTML = rows.map((row, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td><strong>${escapeHtml(pick(row, 'driverName', 'playerName', 'name', 'Name'))}</strong></td>
-          <td>${escapeHtml(pick(row, 'carName', 'car', 'uiCarName', 'Car'))}</td>
-          <td>${escapeHtml(pick(row, 'trackName', 'track', 'uiTrackName', 'Track'))}</td>
-          <td><strong>${escapeHtml(row.lapTimeFormatted || fmt(pick(row, 'lapTimeMs', 'LapTime', 'lapTime')))}</strong></td>
-          <td>${escapeHtml(fmt(pick(row, 'sector1Ms', 'SectorTime0', 'sector0')))}</td>
-          <td>${escapeHtml(fmt(pick(row, 'sector2Ms', 'SectorTime1', 'sector1')))}</td>
-          <td>${escapeHtml(fmt(pick(row, 'sector3Ms', 'SectorTime2', 'sector2')))}</td>
+          <td><strong>${escapeHtml(driverName(row))}</strong></td>
+          <td>${escapeHtml(carName(row))}</td>
+          <td>${escapeHtml(trackName(row))}</td>
+          <td><strong>${escapeHtml(lapDisplay(row))}</strong></td>
+          <td>${escapeHtml(sectorDisplay(row, 0))}</td>
+          <td>${escapeHtml(sectorDisplay(row, 1))}</td>
+          <td>${escapeHtml(sectorDisplay(row, 2))}</td>
           <td>${isInvalid(row) ? '<span class="gc-chip gc-chip--danger">No</span>' : '<span class="gc-chip gc-chip--accent">Sí</span>'}</td>
         </tr>
       `).join('') || '<tr><td colspan="9">Sin resultados</td></tr>';
@@ -122,6 +162,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.loaded.textContent = String(cache.length);
         els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         els.source.textContent = 'OK';
+        els.source.style.color = '';
         draw();
       } catch (error) {
         els.source.textContent = 'Error';

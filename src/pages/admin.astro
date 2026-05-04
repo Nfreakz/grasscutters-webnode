@@ -113,6 +113,49 @@ import AppLayout from '../layouts/AppLayout.astro';
           </div>
         </div>
       </aside>
+
+      <section class="gc-section" id="nameFiltersPanel" style="grid-column: 1 / -1;">
+        <div class="gc-section-head">
+          <h2>Filtro automático de nombres</h2>
+          <p id="nameFiltersMeta">Cargando catálogo...</p>
+        </div>
+        <div class="gc-slab">
+          <h3>Nombres visibles</h3>
+          <p class="gc-admin-note">La web convierte códigos como <strong>porsche_935_mobydick_gr5</strong> o <strong>salzburgring</strong> en nombres limpios automáticamente. Desde aquí puedes forzar alias para pilotos, coches y circuitos sin tocar código.</p>
+          <div class="gc-toolbar">
+            <label class="gc-field">
+              <span>Tipo</span>
+              <select class="gc-select" id="nameKindFilter">
+                <option value="cars">Coches</option>
+                <option value="tracks">Circuitos</option>
+                <option value="drivers">Pilotos</option>
+              </select>
+            </label>
+            <label class="gc-field">
+              <span>Buscar</span>
+              <input class="gc-input" id="nameSearch" type="search" placeholder="código, nombre visible, original..." />
+            </label>
+            <button class="gc-btn" id="reloadNameFilters" type="button">Recargar</button>
+          </div>
+          <div class="gc-table-wrap">
+            <table class="gc-table" id="nameFiltersTable">
+              <thead>
+                <tr>
+                  <th>Original</th>
+                  <th>Automático</th>
+                  <th>Nombre visible</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5">Cargando nombres...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="gc-message" id="nameFiltersMessage"></p>
+        </div>
+      </section>
     </section>
 
     <section class="gc-section" id="noAccessPanel" hidden>
@@ -152,10 +195,18 @@ import AppLayout from '../layouts/AppLayout.astro';
       bootstrapForm: document.getElementById('bootstrapForm'),
       bootstrapMessage: document.getElementById('bootstrapMessage'),
       reloadUsers: document.getElementById('reloadUsers'),
-      retryAdmin: document.getElementById('retryAdmin')
+      retryAdmin: document.getElementById('retryAdmin'),
+      nameFiltersPanel: document.getElementById('nameFiltersPanel'),
+      nameFiltersMeta: document.getElementById('nameFiltersMeta'),
+      nameKindFilter: document.getElementById('nameKindFilter'),
+      nameSearch: document.getElementById('nameSearch'),
+      reloadNameFilters: document.getElementById('reloadNameFilters'),
+      nameFiltersTable: document.querySelector('#nameFiltersTable tbody'),
+      nameFiltersMessage: document.getElementById('nameFiltersMessage')
     };
 
     let users = [];
+    let nameCatalog = { drivers: [], cars: [], tracks: [] };
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
@@ -257,6 +308,52 @@ import AppLayout from '../layouts/AppLayout.astro';
       `).join('');
     }
 
+
+    function selectedNameItems() {
+      const key = els.nameKindFilter?.value || 'cars';
+      return nameCatalog[key] || [];
+    }
+
+    function renderNameFilters() {
+      if (!els.nameFiltersTable) return;
+      const kind = els.nameKindFilter?.value || 'cars';
+      const query = String(els.nameSearch?.value || '').trim().toLowerCase();
+      const items = selectedNameItems().filter((item) => {
+        const haystack = `${item.sourceCode || ''} ${item.sourceName || ''} ${item.autoName || ''} ${item.displayName || ''}`.toLowerCase();
+        return !query || haystack.includes(query);
+      });
+
+      const total = selectedNameItems().length;
+      const overrides = selectedNameItems().filter((item) => item.hasOverride).length;
+      if (els.nameFiltersMeta) els.nameFiltersMeta.textContent = `${items.length} visibles de ${total}. Overrides activos: ${overrides}`;
+
+      if (!items.length) {
+        els.nameFiltersTable.innerHTML = '<tr><td colspan="5">Sin elementos para mostrar.</td></tr>';
+        return;
+      }
+
+      els.nameFiltersTable.innerHTML = items.map((item) => `
+        <tr data-kind="${escapeHtml(item.kind)}" data-source-id="${escapeHtml(item.sourceId ?? '')}" data-source-code="${escapeHtml(item.sourceCode || '')}" data-source-name="${escapeHtml(item.sourceName || '')}" data-entry-id="${escapeHtml(item.entryId || '')}">
+          <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">${escapeHtml(item.sourceCode || `ID ${item.sourceId ?? '-'}`)}</span></td>
+          <td>${escapeHtml(item.autoName || '-')}</td>
+          <td><input class="gc-input gc-input--compact" data-name-input value="${escapeHtml(item.displayName || '')}" placeholder="Nombre visible" /></td>
+          <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}</td>
+          <td>
+            <div class="gc-admin-actions">
+              <button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button>
+              <button class="gc-btn gc-btn--mini" data-name-action="auto" ${item.hasOverride ? '' : 'disabled'}>Usar auto</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadNameFilters() {
+      const data = await fetchJson('/api/admin/name-filters');
+      nameCatalog = data.catalog || { drivers: [], cars: [], tracks: [] };
+      renderNameFilters();
+    }
+
     async function fetchJson(url, options = {}) {
       const response = await fetch(url, {
         credentials: 'same-origin',
@@ -284,6 +381,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         if (data.authorized) {
           setPanels({ content: true });
           await loadUsers();
+          await loadNameFilters();
         } else if (data.setupRequired) {
           setPanels({ setup: true });
         } else {
@@ -347,6 +445,50 @@ import AppLayout from '../layouts/AppLayout.astro';
         await loadAdmin();
       } catch (error) {
         alert(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    els.nameKindFilter?.addEventListener('change', renderNameFilters);
+    els.nameSearch?.addEventListener('input', renderNameFilters);
+    els.reloadNameFilters?.addEventListener('click', () => loadNameFilters().catch((error) => {
+      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
+    }));
+
+    els.nameFiltersTable?.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-name-action]');
+      if (!button || button.disabled) return;
+      const row = button.closest('tr');
+      const input = row?.querySelector('[data-name-input]');
+      if (!row || !input) return;
+
+      button.disabled = true;
+      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Guardando nombre...';
+
+      try {
+        const payload = {
+          kind: row.dataset.kind,
+          sourceId: row.dataset.sourceId ? Number(row.dataset.sourceId) : null,
+          sourceCode: row.dataset.sourceCode || null,
+          sourceName: row.dataset.sourceName || null,
+          displayName: input.value.trim()
+        };
+
+        if (button.dataset.nameAction === 'save') {
+          await fetchJson('/api/admin/name-filters', { method: 'POST', body: JSON.stringify(payload) });
+          if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Nombre visible guardado.';
+        } else {
+          await fetchJson('/api/admin/name-filters/delete', {
+            method: 'POST',
+            body: JSON.stringify({ ...payload, entryId: row.dataset.entryId || null })
+          });
+          if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Override eliminado. Se usará el nombre automático.';
+        }
+
+        await loadNameFilters();
+      } catch (error) {
+        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
       } finally {
         button.disabled = false;
       }

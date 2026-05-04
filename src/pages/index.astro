@@ -73,12 +73,32 @@ import AppLayout from '../layouts/AppLayout.astro';
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const fmtMs = (ms) => {
       const n = Number(ms);
-      if (!Number.isFinite(n)) return '-';
+      if (!Number.isFinite(n) || n <= 0) return '--';
       const m = Math.floor(n / 60000);
       const s = Math.floor((n % 60000) / 1000);
       const x = String(Math.floor(n % 1000)).padStart(3, '0');
       return `${m}:${String(s).padStart(2, '0')}.${x}`;
     };
+    const valueAt = (source, path) => {
+      if (!source || typeof source !== 'object') return undefined;
+      if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+      return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+    };
+    const firstValue = (row, paths) => {
+      for (const path of paths) {
+        const value = valueAt(row, path);
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return '';
+    };
+    const textValue = (value, fallback = '-') => {
+      if (value === undefined || value === null || value === '') return fallback;
+      if (typeof value === 'object') return String(value.name ?? value.uiName ?? value.displayName ?? value.code ?? fallback);
+      return String(value);
+    };
+    const driverName = (row) => textValue(firstValue(row, ['driverName', 'playerName', 'driver.name', 'driver', 'name', 'Name']));
+    const carName = (row) => textValue(firstValue(row, ['carName', 'uiCarName', 'car.name', 'car.uiName', 'car', 'Car']));
+    const lapDisplay = (row) => textValue(firstValue(row, ['lapTimeFormatted', 'lapTimeText', 'lapTime']), '') || fmtMs(firstValue(row, ['lapTimeMs', 'LapTime']));
     async function json(url) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(url);
@@ -108,9 +128,9 @@ import AppLayout from '../layouts/AppLayout.astro';
       $('#homeHotlapsUpdated').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       $('#homeHotlaps').innerHTML = rows.slice(0, 6).map((row) => `
         <tr>
-          <td><strong>${escapeHtml(row.driverName || row.playerName || row.name)}</strong></td>
-          <td>${escapeHtml(row.carName || row.car || row.uiCarName)}</td>
-          <td><strong>${escapeHtml(row.lapTimeFormatted || fmtMs(row.lapTimeMs || row.LapTime || row.lapTime))}</strong></td>
+          <td><strong>${escapeHtml(driverName(row))}</strong></td>
+          <td>${escapeHtml(carName(row))}</td>
+          <td><strong>${escapeHtml(lapDisplay(row))}</strong></td>
         </tr>
       `).join('') || '<tr><td colspan="3">Sin datos todavía</td></tr>';
     }).catch(() => {

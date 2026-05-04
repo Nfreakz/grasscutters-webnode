@@ -48,12 +48,33 @@ import AppLayout from '../layouts/AppLayout.astro';
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const fmt = (ms) => {
       const n = Number(ms);
-      if (!Number.isFinite(n)) return '-';
+      if (!Number.isFinite(n) || n <= 0) return '--';
       const m = Math.floor(n / 60000);
       const s = Math.floor((n % 60000) / 1000);
       const x = String(Math.floor(n % 1000)).padStart(3, '0');
       return `${m}:${String(s).padStart(2, '0')}.${x}`;
     };
+    const valueAt = (source, path) => {
+      if (!source || typeof source !== 'object') return undefined;
+      if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+      return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+    };
+    const firstValue = (row, paths) => {
+      for (const path of paths) {
+        const value = valueAt(row, path);
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return '';
+    };
+    const textValue = (value, fallback = '-') => {
+      if (value === undefined || value === null || value === '') return fallback;
+      if (typeof value === 'object') return String(value.name ?? value.uiName ?? value.displayName ?? value.code ?? fallback);
+      return String(value);
+    };
+    const carName = (lap) => textValue(firstValue(lap, ['carName', 'uiCarName', 'car.name', 'car.uiName', 'car', 'Car']));
+    const trackName = (lap) => textValue(firstValue(lap, ['trackName', 'uiTrackName', 'track.name', 'track.uiName', 'track', 'Track']));
+    const lapDisplay = (lap) => textValue(firstValue(lap, ['lapTimeFormatted', 'lapTimeText', 'lapTime']), '') || fmt(firstValue(lap, ['lapTimeMs', 'LapTime']));
+    const dateDisplay = (lap) => textValue(firstValue(lap, ['date', 'createdAt', 'timestampIso', 'session.startTimeIso']), '-');
     const setMetric = (index, value) => document.querySelectorAll('#profileMetrics strong')[index].textContent = value;
 
     fetch('/api/profile').then((response) => response.json()).then((data) => {
@@ -101,10 +122,10 @@ import AppLayout from '../layouts/AppLayout.astro';
       const laps = data.recentLaps || stats.recentLaps || [];
       recentLaps.innerHTML = laps.map((lap) => `
         <tr>
-          <td>${escapeHtml(lap.carName || lap.car)}</td>
-          <td>${escapeHtml(lap.trackName || lap.track)}</td>
-          <td><strong>${escapeHtml(lap.lapTimeFormatted || fmt(lap.lapTimeMs || lap.LapTime))}</strong></td>
-          <td>${escapeHtml(lap.date || lap.createdAt)}</td>
+          <td>${escapeHtml(carName(lap))}</td>
+          <td>${escapeHtml(trackName(lap))}</td>
+          <td><strong>${escapeHtml(lapDisplay(lap))}</strong></td>
+          <td>${escapeHtml(dateDisplay(lap))}</td>
         </tr>
       `).join('') || '<tr><td colspan="4">Sin vueltas recientes</td></tr>';
     }).catch(() => {
