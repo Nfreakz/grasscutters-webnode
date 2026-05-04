@@ -134,6 +134,36 @@ import AppLayout from '../layouts/AppLayout.astro';
         <div class="gc-slab">
           <h3>Nombres visibles</h3>
           <p class="gc-admin-note">La web convierte códigos como <strong>porsche_935_mobydick_gr5</strong> o <strong>salzburgring</strong> en nombres limpios automáticamente. Desde aquí puedes forzar alias para pilotos, coches y circuitos sin tocar código.</p>
+
+          <form class="gc-form gc-admin-inline-form" id="manualNameForm">
+            <div class="gc-form-grid">
+              <label class="gc-field">
+                <span>Tipo</span>
+                <select class="gc-select" name="kind">
+                  <option value="car">Coche</option>
+                  <option value="track">Circuito</option>
+                  <option value="driver">Piloto</option>
+                </select>
+              </label>
+              <label class="gc-field">
+                <span>Código original</span>
+                <input class="gc-input" name="sourceCode" type="text" placeholder="porsche_935_mobydick_gr5" />
+              </label>
+              <label class="gc-field">
+                <span>Nombre original opcional</span>
+                <input class="gc-input" name="sourceName" type="text" placeholder="UiCarName / UiTrackName" />
+              </label>
+              <label class="gc-field">
+                <span>Nombre visible</span>
+                <input class="gc-input" name="displayName" type="text" placeholder="Porsche 935 Mobydick GR5" />
+              </label>
+            </div>
+            <div class="gc-actions">
+              <button class="gc-btn gc-btn--primary" type="submit">Guardar alias manual</button>
+              <small class="gc-muted-text">Útil cuando un coche o circuito no aparece en el catálogo.</small>
+            </div>
+          </form>
+
           <div class="gc-toolbar">
             <label class="gc-field">
               <span>Tipo</span>
@@ -213,6 +243,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       reloadUsers: document.getElementById('reloadUsers'),
       retryAdmin: document.getElementById('retryAdmin'),
       nameFiltersPanel: document.getElementById('nameFiltersPanel'),
+      manualNameForm: document.getElementById('manualNameForm'),
       nameFiltersMeta: document.getElementById('nameFiltersMeta'),
       nameKindFilter: document.getElementById('nameKindFilter'),
       nameSearch: document.getElementById('nameSearch'),
@@ -461,6 +492,9 @@ import AppLayout from '../layouts/AppLayout.astro';
           })
         });
         els.bootstrapMessage.textContent = data.message || 'Admin creado.';
+        if (data.authenticatedAsTarget) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
         await loadAdmin();
       } catch (error) {
         els.bootstrapMessage.textContent = error.message;
@@ -504,6 +538,38 @@ import AppLayout from '../layouts/AppLayout.astro';
     els.reloadNameFilters?.addEventListener('click', () => loadNameFilters().catch((error) => {
       if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
     }));
+    els.manualNameForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = new FormData(els.manualNameForm);
+      const payload = {
+        kind: String(form.get('kind') || '').trim(),
+        sourceId: null,
+        sourceCode: String(form.get('sourceCode') || '').trim() || null,
+        sourceName: String(form.get('sourceName') || '').trim() || null,
+        displayName: String(form.get('displayName') || '').trim()
+      };
+
+      if (!payload.sourceCode && !payload.sourceName) {
+        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Pon al menos código original o nombre original.';
+        return;
+      }
+
+      if (!payload.displayName) {
+        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'El nombre visible no puede estar vacío.';
+        return;
+      }
+
+      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Guardando alias manual...';
+      try {
+        await fetchJson('/api/admin/name-filters', { method: 'POST', body: JSON.stringify(payload) });
+        els.manualNameForm.reset();
+        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Alias manual guardado.';
+        await loadNameFilters();
+      } catch (error) {
+        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
+      }
+    });
+
 
     els.nameFiltersTable?.addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-name-action]');

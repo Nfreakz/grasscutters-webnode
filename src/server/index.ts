@@ -549,6 +549,26 @@ function assertAdminSetupSecret(req: express.Request) {
   return Boolean(expected && provided && expected === provided);
 }
 
+function getCurrentAdminOrSecret(req: express.Request) {
+  const context = getAuthContext(req);
+  if (context && isAdminUser(context.user)) {
+    return { ok: true as const, context, via: 'session' as const };
+  }
+
+  if (assertAdminSetupSecret(req)) {
+    return { ok: true as const, context, via: 'setup-secret' as const };
+  }
+
+  return {
+    ok: false as const,
+    context,
+    via: 'none' as const,
+    message: context
+      ? 'Tu cuenta no tiene permisos de administrador.'
+      : 'Necesitas iniciar sesión con una cuenta admin.'
+  };
+}
+
 function countSessionsForUser(store: AppUserStore, userId: string) {
   return store.sessions.filter((session) => session.userId === userId && Date.parse(session.expiresAt) > Date.now()).length;
 }
@@ -2374,13 +2394,32 @@ app.post('/api/admin/bootstrap', (req, res) => {
 
   target.role = 'admin';
   target.updatedAt = new Date().toISOString();
+
+  const shouldAuthenticateTarget = !context || context.user.id === target.id || req.body?.loginAsTarget === true;
+  let sessionInfo: null | AppSession = null;
+
+  if (shouldAuthenticateTarget) {
+    const created = createSession(store, target.id);
+    sessionInfo = created.session;
+    target.lastLoginAt = new Date().toISOString();
+    setSessionCookie(res, created.token);
+  }
+
   writeUserStore(store);
+
+  const targetIsCurrentSession = Boolean(context && context.user.id === target.id);
+  const message = shouldAuthenticateTarget
+    ? `Cuenta ${target.displayName} promocionada a administrador. Sesión admin activada.`
+    : `Cuenta ${target.displayName} promocionada a administrador. Para usar ese admin, inicia sesión con esa cuenta.`;
 
   res.json({
     ok: true,
     user: publicUser(target),
+    targetIsCurrentSession,
+    authenticatedAsTarget: shouldAuthenticateTarget,
+    sessionCreated: Boolean(sessionInfo),
     summary: getUserStoreAdminSummary(store),
-    message: `Cuenta ${target.displayName} promocionada a administrador.`
+    message
   });
 });
 
@@ -2566,8 +2605,16 @@ app.get('/api/admin/display-names', async (req, res) => {
 });
 
 app.post('/api/admin/name-filters', (req, res) => {
-  const context = requireAdmin(req, res);
-  if (!context) return;
+  const adminAccess = getCurrentAdminOrSecret(req);
+  if (!adminAccess.ok) {
+    res.status(adminAccess.context ? 403 : 401).json({
+      ok: false,
+      authenticated: Boolean(adminAccess.context),
+      authorized: false,
+      message: adminAccess.message
+    });
+    return;
+  }
 
   const kind = sanitizeDisplayNameKind(req.body?.kind);
   const displayName = cleanDisplayNameInput(req.body?.displayName);
@@ -2623,8 +2670,16 @@ app.post('/api/admin/name-filters', (req, res) => {
 });
 
 app.post('/api/admin/name-filters/delete', (req, res) => {
-  const context = requireAdmin(req, res);
-  if (!context) return;
+  const adminAccess = getCurrentAdminOrSecret(req);
+  if (!adminAccess.ok) {
+    res.status(adminAccess.context ? 403 : 401).json({
+      ok: false,
+      authenticated: Boolean(adminAccess.context),
+      authorized: false,
+      message: adminAccess.message
+    });
+    return;
+  }
 
   const kind = sanitizeDisplayNameKind(req.body?.kind);
   const entryId = compactNullableText(req.body?.entryId);
