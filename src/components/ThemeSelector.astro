@@ -1,0 +1,86 @@
+<div class="gc-theme-select" data-theme-switcher>
+  <button class="gc-theme-current" type="button" aria-haspopup="listbox" aria-expanded="false" data-theme-toggle>
+    <span class="gc-theme-dot" aria-hidden="true"></span>
+    <span data-theme-current-label>Paleta</span>
+  </button>
+
+  <div class="gc-theme-menu" role="listbox" aria-label="Selector de paleta GrassCutters">
+    <button class="gc-theme-option" type="button" data-theme-value="grass" style="--theme-swatch:#6dff9c">
+      <span class="gc-theme-swatch"></span><span>Grass</span>
+    </button>
+    <button class="gc-theme-option" type="button" data-theme-value="ocean" style="--theme-swatch:#5edeff">
+      <span class="gc-theme-swatch"></span><span>Ocean</span>
+    </button>
+    <button class="gc-theme-option" type="button" data-theme-value="violet" style="--theme-swatch:#c77cff">
+      <span class="gc-theme-swatch"></span><span>Violet</span>
+    </button>
+    <button class="gc-theme-option" type="button" data-theme-value="amber" style="--theme-swatch:#ffb84d">
+      <span class="gc-theme-swatch"></span><span>Amber</span>
+    </button>
+    <button class="gc-theme-option" type="button" data-theme-value="crimson" style="--theme-swatch:#ff5e7e">
+      <span class="gc-theme-swatch"></span><span>Crimson</span>
+    </button>
+    <button class="gc-theme-option" type="button" data-theme-value="mono" style="--theme-swatch:#f3f6f8">
+      <span class="gc-theme-swatch"></span><span>Mono</span>
+    </button>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const labels = {
+      grass: 'Grass',
+      ocean: 'Ocean',
+      violet: 'Violet',
+      amber: 'Amber',
+      crimson: 'Crimson',
+      mono: 'Mono'
+    };
+
+    const getTheme = () => document.documentElement.dataset.theme || 'grass';
+
+    function applyTheme(theme) {
+      const nextTheme = labels[theme] ? theme : 'grass';
+      document.documentElement.dataset.theme = nextTheme;
+      try {
+        localStorage.setItem('gc-theme', nextTheme);
+      } catch (error) {}
+
+      document.querySelectorAll('[data-theme-current-label]').forEach((label) => {
+        label.textContent = labels[nextTheme];
+      });
+
+      document.querySelectorAll('[data-theme-value]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.themeValue === nextTheme);
+      });
+    }
+
+    function closeAll() {
+      document.querySelectorAll('[data-theme-switcher]').forEach((switcher) => {
+        switcher.classList.remove('is-open');
+        switcher.querySelector('[data-theme-toggle]')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    document.querySelectorAll('[data-theme-switcher]').forEach((switcher) => {
+      const toggle = switcher.querySelector('[data-theme-toggle]');
+      toggle?.addEventListener('click', () => {
+        const isOpen = switcher.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', String(isOpen));
+      });
+    });
+
+    document.querySelectorAll('[data-theme-value]').forEach((button) => {
+      button.addEventListener('click', () => {
+        applyTheme(button.dataset.themeValue);
+        closeAll();
+      });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('[data-theme-switcher]')) closeAll();
+    });
+
+    applyTheme(getTheme());
+  })();
+</script>

@@ -1,27 +1,5 @@
 ---
-import '../styles/global.css';
-
-interface Props {
-  title?: string;
-  description?: string;
-}
-
-const {
-  title = 'GrassCutters Racing',
-  description = 'Comunidad sim racing, hotlaps, eventos, Discord y área de pilotos.'
-} = Astro.props;
+import AppLayout from './AppLayout.astro';
+const { title, description } = Astro.props;
 ---
-
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="description" content={description} />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title}</title>
-  </head>
-  <body>
-    <slot />
-  </body>
-</html>
+<AppLayout title={title} description={description}><slot /></AppLayout>

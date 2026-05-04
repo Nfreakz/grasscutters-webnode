@@ -1,0 +1,116 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Perfil piloto | GrassCutters">
+  <div class="gc-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Mi perfil</span>
+        <h1 class="gc-title" id="profileTitle">Panel de piloto.</h1>
+        <p class="gc-subtitle" id="profileText">Cargando perfil y estadísticas vinculadas.</p>
+        <div class="gc-hero__meta" id="profileBadges">
+          <span class="gc-chip">Cuenta</span>
+          <span class="gc-chip">Piloto stracker</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Cuenta</span><strong id="accountState">...</strong></div>
+        <div class="gc-status-list" id="profileMeta"><div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div></div>
+      </aside>
+    </section>
+
+    <section class="gc-metrics" id="profileMetrics">
+      <div class="gc-metric"><span>Mejor vuelta</span><strong>...</strong><small>Personal</small></div>
+      <div class="gc-metric"><span>Vueltas válidas</span><strong>...</strong><small>Ritmo</small></div>
+      <div class="gc-metric"><span>Coches</span><strong>...</strong><small>Usados</small></div>
+      <div class="gc-metric"><span>Circuitos</span><strong class="is-accent">...</strong><small>Corridos</small></div>
+    </section>
+
+    <section class="gc-grid-2">
+      <div class="gc-section">
+        <div class="gc-section-head"><h2>Últimas vueltas</h2><p>Actividad reciente</p></div>
+        <div class="gc-table-wrap">
+          <table class="gc-table gc-table--compact">
+            <thead><tr><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead>
+            <tbody id="recentLaps"><tr><td colspan="4">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <aside class="gc-panel-flat">
+        <h3>Piloto vinculado</h3>
+        <div id="linkedPilot" class="gc-note">Cargando...</div>
+        <div class="gc-actions"><a class="gc-btn" href="/login">Cambiar cuenta</a><a class="gc-btn gc-btn--ghost" href="/hotlaps">Ver hotlaps</a></div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const fmt = (ms) => {
+      const n = Number(ms);
+      if (!Number.isFinite(n)) return '-';
+      const m = Math.floor(n / 60000);
+      const s = Math.floor((n % 60000) / 1000);
+      const x = String(Math.floor(n % 1000)).padStart(3, '0');
+      return `${m}:${String(s).padStart(2, '0')}.${x}`;
+    };
+    const setMetric = (index, value) => document.querySelectorAll('#profileMetrics strong')[index].textContent = value;
+
+    fetch('/api/profile').then((response) => response.json()).then((data) => {
+      const accountState = document.getElementById('accountState');
+      const profileText = document.getElementById('profileText');
+      const profileTitle = document.getElementById('profileTitle');
+      const profileMeta = document.getElementById('profileMeta');
+      const linkedPilot = document.getElementById('linkedPilot');
+      const recentLaps = document.getElementById('recentLaps');
+      const profileBadges = document.getElementById('profileBadges');
+
+      if (!data.ok && data.authenticated === false) {
+        accountState.textContent = 'Sin login';
+        accountState.style.color = 'var(--warn)';
+        profileText.textContent = 'Entra con tu cuenta para ver tus datos y vincular tu piloto real.';
+        profileBadges.innerHTML = '<span class="gc-chip gc-chip--warn">Sesión requerida</span>';
+        linkedPilot.innerHTML = '<p>No hay sesión activa.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Entrar ahora</a></div>';
+        recentLaps.innerHTML = '<tr><td colspan="4">Inicia sesión para cargar tu actividad.</td></tr>';
+        ['-', '-', '-', '-'].forEach((value, index) => setMetric(index, value));
+        return;
+      }
+
+      const profile = data.profile || data.user || data;
+      const stats = data.stats || profile.stats || {};
+      profileTitle.textContent = profile.displayName || profile.name || 'Perfil piloto';
+      profileText.textContent = 'Datos personales y rendimiento real desde stracker.';
+      accountState.textContent = 'Activa';
+      profileBadges.innerHTML = `<span class="gc-chip gc-chip--accent">Cuenta activa</span><span class="gc-chip">${escapeHtml(profile.pilotName || profile.driverName || 'Sin vínculo')}</span>`;
+      profileMeta.innerHTML = `
+        <div class="gc-status-row"><span>Email</span><strong>${escapeHtml(profile.email)}</strong></div>
+        <div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(profile.role || 'piloto')}</strong></div>
+      `;
+      const values = [
+        stats.bestLapFormatted || fmt(stats.bestLapMs || stats.bestLap),
+        stats.validLaps || stats.totalValidLaps || 0,
+        stats.carsUsed || stats.cars || 0,
+        stats.tracksUsed || stats.tracks || 0
+      ];
+      values.forEach((value, index) => setMetric(index, String(value)));
+      linkedPilot.innerHTML = `
+        <p><strong>${escapeHtml(profile.pilotName || profile.driverName || 'Sin piloto vinculado')}</strong></p>
+        <p class="gc-small">Steam GUID: ${escapeHtml(profile.steamGuid || '-')}</p>
+        <p class="gc-note">Este bloque queda listo para añadir selector de piloto y validación.</p>
+      `;
+      const laps = data.recentLaps || stats.recentLaps || [];
+      recentLaps.innerHTML = laps.map((lap) => `
+        <tr>
+          <td>${escapeHtml(lap.carName || lap.car)}</td>
+          <td>${escapeHtml(lap.trackName || lap.track)}</td>
+          <td><strong>${escapeHtml(lap.lapTimeFormatted || fmt(lap.lapTimeMs || lap.LapTime))}</strong></td>
+          <td>${escapeHtml(lap.date || lap.createdAt)}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4">Sin vueltas recientes</td></tr>';
+    }).catch(() => {
+      document.getElementById('accountState').textContent = 'Error';
+      document.getElementById('accountState').style.color = 'var(--warn)';
+      document.getElementById('recentLaps').innerHTML = '<tr><td colspan="4">No se pudo cargar /api/profile.</td></tr>';
+    });
+  </script>
+</AppLayout>

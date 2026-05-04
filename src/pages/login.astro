@@ -1,0 +1,107 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Login pilotos | GrassCutters">
+  <div class="gc-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Área piloto</span>
+        <h1 class="gc-title">Acceso de pilotos.</h1>
+        <p class="gc-subtitle">Login y registro con cuenta local. Después podrás vincular tu piloto real de stracker desde el perfil para que las vueltas, coches y circuitos aparezcan agrupados.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Cuenta local</span>
+          <span class="gc-chip">Perfil privado</span>
+          <span class="gc-chip">Vinculación stracker</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Flujo</span><strong>3 pasos</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>1. Crear cuenta</span><strong>Email</strong></div>
+          <div class="gc-status-row"><span>2. Entrar</span><strong>Token</strong></div>
+          <div class="gc-status-row"><span>3. Vincular piloto</span><strong>stracker</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-form-grid">
+      <form class="gc-form" id="loginForm">
+        <h2>Login</h2>
+        <p class="gc-note">Accede al panel privado de piloto.</p>
+        <div class="gc-field"><label for="loginEmail">Email</label><input id="loginEmail" name="email" type="email" autocomplete="email" required /></div>
+        <div class="gc-field"><label for="loginPassword">Contraseña</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required /></div>
+        <button class="gc-btn gc-btn--primary" type="submit">Entrar</button>
+        <p class="gc-message" id="loginMsg"></p>
+      </form>
+
+      <form class="gc-form" id="registerForm">
+        <h2>Registro</h2>
+        <p class="gc-note">Crea una cuenta para poder vincular tu piloto.</p>
+        <div class="gc-field"><label for="regName">Nombre visible</label><input id="regName" name="displayName" autocomplete="name" required /></div>
+        <div class="gc-field"><label for="regEmail">Email</label><input id="regEmail" name="email" type="email" autocomplete="email" required /></div>
+        <div class="gc-field"><label for="regPassword">Contraseña</label><input id="regPassword" name="password" type="password" autocomplete="new-password" required /></div>
+        <button class="gc-btn" type="submit">Crear cuenta</button>
+        <p class="gc-message" id="regMsg"></p>
+      </form>
+    </section>
+
+    <section class="gc-command-strip">
+      <div class="gc-command-item"><span>Seguridad</span><strong>Sin datos sensibles en front</strong><p>El formulario solo envía JSON a la API.</p></div>
+      <div class="gc-command-item"><span>Perfil</span><strong>Redirección limpia</strong><p>Cuando el login responde OK, se envía al piloto a /perfil.</p></div>
+      <div class="gc-command-item"><span>Próximo paso</span><strong>Vincular piloto</strong><p>El panel se prepara para Steam GUID o piloto detectado.</p></div>
+    </section>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const loginMsg = document.getElementById('loginMsg');
+    const regMsg = document.getElementById('regMsg');
+    const post = async (url, data) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return response.json();
+    };
+    const setMessage = (target, text, ok = false) => {
+      target.textContent = text;
+      target.style.color = ok ? 'var(--accent)' : 'var(--soft)';
+    };
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setMessage(loginMsg, 'Comprobando cuenta...');
+      const button = loginForm.querySelector('button');
+      button.disabled = true;
+      try {
+        const payload = Object.fromEntries(new FormData(loginForm));
+        const json = await post('/api/auth/login', payload);
+        setMessage(loginMsg, json.ok ? 'Login correcto. Redirigiendo...' : (json.message || 'No se pudo entrar'), Boolean(json.ok));
+        if (json.ok) window.location.href = '/perfil';
+      } catch (_) {
+        setMessage(loginMsg, 'La API de login no respondió.');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    registerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setMessage(regMsg, 'Creando cuenta...');
+      const button = registerForm.querySelector('button');
+      button.disabled = true;
+      try {
+        const payload = Object.fromEntries(new FormData(registerForm));
+        payload.name = payload.displayName;
+        const json = await post('/api/auth/register', payload);
+        setMessage(regMsg, json.ok ? 'Cuenta creada. Ya puedes entrar.' : (json.message || 'No se pudo registrar'), Boolean(json.ok));
+      } catch (_) {
+        setMessage(regMsg, 'La API de registro no respondió.');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</AppLayout>

@@ -1,16 +1,80 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import AppLayout from '../layouts/AppLayout.astro';
 ---
-
-<BaseLayout title="Área pilotos | GrassCutters">
-  <main class="gc-page">
-    <a class="gc-back" href="/">← Volver</a>
-    <section class="gc-panel">
-      <span class="gc-kicker">Área de pilotos</span>
-      <h1>Perfil, historial, eventos y estadísticas.</h1>
-      <p>
-        Base preparada para login, perfiles, Discord ID, Steam GUID, historial de vueltas y participación en eventos.
-      </p>
+<AppLayout title="Pilotos | GrassCutters">
+  <div class="gc-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Drivers</span>
+        <h1 class="gc-title">Pilotos detectados.</h1>
+        <p class="gc-subtitle">Base real de pilotos registrada por stracker. Vista preparada para búsqueda, perfiles y futura vinculación de cuentas.</p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Listado</span><strong id="pilotCount">...</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Fuente</span><strong>stracker</strong></div>
+          <div class="gc-status-row"><span>Filtro</span><strong id="pilotVisible">...</strong></div>
+        </div>
+      </aside>
     </section>
-  </main>
-</BaseLayout>
+
+    <section class="gc-toolbar">
+      <div class="gc-field"><label for="pilotSearch">Buscar piloto</label><input class="gc-input" id="pilotSearch" placeholder="Nombre o Steam GUID" autocomplete="off" /></div>
+      <button class="gc-btn" id="reloadPilots" type="button">Actualizar</button>
+    </section>
+
+    <section class="gc-table-wrap">
+      <table class="gc-table">
+        <thead><tr><th>#</th><th>Piloto</th><th>Steam GUID</th><th>Online</th></tr></thead>
+        <tbody id="pilotRows"><tr><td colspan="4">Cargando...</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const rowsEl = document.getElementById('pilotRows');
+    const countEl = document.getElementById('pilotCount');
+    const visibleEl = document.getElementById('pilotVisible');
+    const searchEl = document.getElementById('pilotSearch');
+    const reloadEl = document.getElementById('reloadPilots');
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    let pilots = [];
+
+    function draw() {
+      const q = searchEl.value.trim().toLowerCase();
+      const visible = pilots.filter((pilot) => `${pilot.name || pilot.Name || pilot.driverName || ''} ${pilot.steamGuid || pilot.SteamGuid || ''}`.toLowerCase().includes(q));
+      visibleEl.textContent = String(visible.length);
+      rowsEl.innerHTML = visible.map((pilot, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(pilot.name || pilot.Name || pilot.driverName)}</strong></td>
+          <td>${escapeHtml(pilot.steamGuid || pilot.SteamGuid)}</td>
+          <td>${pilot.isOnline || pilot.IsOnline ? '<span class="gc-chip gc-chip--accent">Online</span>' : '<span class="gc-chip">-</span>'}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4">Sin pilotos</td></tr>';
+    }
+
+    async function load() {
+      reloadEl.disabled = true;
+      rowsEl.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
+      try {
+        const response = await fetch('/api/pilots');
+        if (!response.ok) throw new Error('Endpoint no disponible');
+        const data = await response.json();
+        pilots = data.items || data.pilots || data.drivers || [];
+        countEl.textContent = String(pilots.length);
+        draw();
+      } catch (_) {
+        countEl.textContent = 'Error';
+        countEl.style.color = 'var(--warn)';
+        rowsEl.innerHTML = '<tr><td colspan="4">No se pudo cargar /api/pilots.</td></tr>';
+      } finally {
+        reloadEl.disabled = false;
+      }
+    }
+
+    searchEl.addEventListener('input', draw);
+    reloadEl.addEventListener('click', load);
+    load();
+  </script>
+</AppLayout>

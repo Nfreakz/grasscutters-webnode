@@ -3,12 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
 const defaultStrackerRelativePath = './data/stracker/stracker.db3';
+const defaultUsersRelativePath = './data/app/users.json';
+const sessionCookieName = 'gc_session';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -17,6 +20,362 @@ const discordEnabled = process.env.DISCORD_ENABLED === 'true';
 
 type PlainObject = Record<string, unknown>;
 type SqlJsDatabase = any;
+
+
+type AppUserRole = 'pilot' | 'admin';
+
+type AppUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: AppUserRole;
+  password: {
+    algorithm: 'pbkdf2-sha256';
+    iterations: number;
+    salt: string;
+    hash: string;
+  };
+  pilotLink: null | {
+    playerId: number;
+    steamGuid: string | null;
+    strackerName: string;
+    linkedAt: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
+};
+
+type AppSession = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  lastSeenAt: string;
+};
+
+type AppUserStore = {
+  version: 1;
+  users: AppUser[];
+  sessions: AppSession[];
+};
+
+function getUsersPath() {
+  const configuredPath = process.env.APP_USERS_PATH?.trim() || defaultUsersRelativePath;
+  return resolveProjectPath(configuredPath) ?? path.join(rootDir, defaultUsersRelativePath);
+}
+
+function getUsersDbInfo() {
+  const resolvedPath = getUsersPath();
+  const exists = fs.existsSync(resolvedPath);
+  const stats = exists ? fs.statSync(resolvedPath) : null;
+  return {
+    configured: true,
+    source: process.env.APP_USERS_PATH ? 'env' : 'default',
+    relativePath: process.env.APP_USERS_PATH?.trim() || defaultUsersRelativePath,
+    resolvedPath,
+    exists,
+    sizeBytes: stats?.size ?? 0,
+    modifiedAt: stats?.mtime?.toISOString?.() ?? null
+  };
+}
+
+function createEmptyUserStore(): AppUserStore {
+  return {
+    version: 1,
+    users: [],
+    sessions: []
+  };
+}
+
+function readUserStore(): AppUserStore {
+  const filePath = getUsersPath();
+  if (!fs.existsSync(filePath)) return createEmptyUserStore();
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as Partial<AppUserStore>;
+    const store: AppUserStore = {
+      version: 1,
+      users: Array.isArray(parsed.users) ? parsed.users as AppUser[] : [],
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions as AppSession[] : []
+    };
+    return pruneExpiredSessions(store);
+  } catch (error) {
+    console.error('[GC] Error leyendo users.json:', error);
+    return createEmptyUserStore();
+  }
+}
+
+function writeUserStore(store: AppUserStore) {
+  const filePath = getUsersPath();
+  ensureDirForFile(filePath);
+  const tempPath = `${filePath}.tmp`;
+  fs.writeFileSync(tempPath, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
+  fs.renameSync(tempPath, filePath);
+}
+
+function pruneExpiredSessions(store: AppUserStore) {
+  const now = Date.now();
+  const sessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > now);
+  if (sessions.length !== store.sessions.length) {
+    const next = { ...store, sessions };
+    try {
+      writeUserStore(next);
+    } catch (_) {
+      // no-op: no queremos tumbar la API por limpieza de sesiones
+    }
+    return next;
+  }
+  return store;
+}
+
+function getUserStoreStats() {
+  const store = readUserStore();
+  return {
+    enabled: true,
+    status: 'file_auth',
+    message: 'Usuarios reales activos con storage local JSON. Migrable a SQLite/PostgreSQL más adelante.',
+    db: getUsersDbInfo(),
+    usersCount: store.users.length,
+    sessionsCount: store.sessions.length,
+    registrationEnabled: readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)
+  };
+}
+
+function normalizeEmail(value: unknown) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function normalizeDisplayName(value: unknown) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 64);
+}
+
+function hashPassword(password: string, salt = crypto.randomBytes(16).toString('hex'), iterations = 120000) {
+  const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, 'sha256').toString('hex');
+  return {
+    algorithm: 'pbkdf2-sha256' as const,
+    iterations,
+    salt,
+    hash
+  };
+}
+
+function safeTimingCompareHex(a: string, b: string) {
+  const left = Buffer.from(a, 'hex');
+  const right = Buffer.from(b, 'hex');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function verifyPassword(password: string, stored: AppUser['password']) {
+  if (!stored || stored.algorithm !== 'pbkdf2-sha256') return false;
+  const next = hashPassword(password, stored.salt, stored.iterations);
+  return safeTimingCompareHex(next.hash, stored.hash);
+}
+
+function tokenHash(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function getSessionDays() {
+  return readNumberEnv('AUTH_SESSION_DAYS', 14, 1, 365);
+}
+
+function parseCookies(header: string | undefined) {
+  const cookies: Record<string, string> = {};
+  if (!header) return cookies;
+
+  header.split(';').forEach((part) => {
+    const index = part.indexOf('=');
+    if (index === -1) return;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (key) cookies[key] = decodeURIComponent(value);
+  });
+
+  return cookies;
+}
+
+function readAuthToken(req: express.Request) {
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies[sessionCookieName]) return cookies[sessionCookieName];
+
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) return auth.slice('Bearer '.length).trim();
+
+  return '';
+}
+
+function shouldUseSecureCookie() {
+  const raw = String(process.env.AUTH_COOKIE_SECURE ?? 'auto').toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(raw)) return true;
+  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
+  return process.env.NODE_ENV === 'production';
+}
+
+function serializeSessionCookie(token: string, maxAgeSeconds: number) {
+  const parts = [
+    `${sessionCookieName}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${maxAgeSeconds}`
+  ];
+
+  if (shouldUseSecureCookie()) parts.push('Secure');
+  return parts.join('; ');
+}
+
+function setSessionCookie(res: express.Response, token: string) {
+  res.setHeader('Set-Cookie', serializeSessionCookie(token, getSessionDays() * 24 * 60 * 60));
+}
+
+function clearSessionCookie(res: express.Response) {
+  res.setHeader('Set-Cookie', serializeSessionCookie('', 0));
+}
+
+function createSession(store: AppUserStore, userId: string) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + getSessionDays() * 24 * 60 * 60 * 1000).toISOString();
+
+  const session: AppSession = {
+    id: crypto.randomUUID(),
+    userId,
+    tokenHash: tokenHash(token),
+    createdAt: now.toISOString(),
+    expiresAt,
+    lastSeenAt: now.toISOString()
+  };
+
+  store.sessions.push(session);
+  return { token, session };
+}
+
+function getAuthContext(req: express.Request) {
+  const token = readAuthToken(req);
+  if (!token) return null;
+
+  const store = readUserStore();
+  const hash = tokenHash(token);
+  const session = store.sessions.find((item) => item.tokenHash === hash && Date.parse(item.expiresAt) > Date.now());
+  if (!session) return null;
+
+  const user = store.users.find((item) => item.id === session.userId);
+  if (!user) return null;
+
+  session.lastSeenAt = new Date().toISOString();
+  try {
+    writeUserStore(store);
+  } catch (_) {
+    // no-op
+  }
+
+  return { store, user, session, token };
+}
+
+function publicUser(user: AppUser) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: user.role,
+    pilotLink: user.pilotLink,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    lastLoginAt: user.lastLoginAt
+  };
+}
+
+
+function isAdminUser(user: AppUser | null | undefined) {
+  return Boolean(user && user.role === 'admin');
+}
+
+function getAdminSetupSecret() {
+  return process.env.ADMIN_SETUP_SECRET?.trim() || process.env.STRACKER_SYNC_SECRET?.trim() || '';
+}
+
+function assertAdminSetupSecret(req: express.Request) {
+  const expected = getAdminSetupSecret();
+  const provided = readRequestSecret(req);
+  return Boolean(expected && provided && expected === provided);
+}
+
+function countSessionsForUser(store: AppUserStore, userId: string) {
+  return store.sessions.filter((session) => session.userId === userId && Date.parse(session.expiresAt) > Date.now()).length;
+}
+
+function publicAdminUser(user: AppUser, store: AppUserStore) {
+  return {
+    ...publicUser(user),
+    activeSessions: countSessionsForUser(store, user.id),
+    hasPassword: Boolean(user.password?.hash),
+    linkedPilotName: user.pilotLink?.strackerName ?? null,
+    linkedPlayerId: user.pilotLink?.playerId ?? null
+  };
+}
+
+function getUserStoreAdminSummary(store = readUserStore()) {
+  const admins = store.users.filter((user) => user.role === 'admin');
+  const linkedUsers = store.users.filter((user) => Boolean(user.pilotLink));
+  const activeSessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > Date.now());
+
+  return {
+    usersCount: store.users.length,
+    adminsCount: admins.length,
+    linkedUsersCount: linkedUsers.length,
+    unlinkedUsersCount: store.users.length - linkedUsers.length,
+    activeSessionsCount: activeSessions.length,
+    setupRequired: admins.length === 0,
+    storage: getUsersDbInfo()
+  };
+}
+
+function requireAdmin(req: express.Request, res: express.Response) {
+  const context = getAuthContext(req);
+
+  if (!context) {
+    res.status(401).json({
+      ok: false,
+      authenticated: false,
+      authorized: false,
+      message: 'Necesitas iniciar sesión para entrar en administración.'
+    });
+    return null;
+  }
+
+  if (!isAdminUser(context.user)) {
+    res.status(403).json({
+      ok: false,
+      authenticated: true,
+      authorized: false,
+      user: publicUser(context.user),
+      message: 'Tu cuenta no tiene permisos de administrador.'
+    });
+    return null;
+  }
+
+  return context;
+}
+
+function findUserById(store: AppUserStore, userId: string) {
+  return store.users.find((user) => user.id === userId) ?? null;
+}
+
+function isLastAdmin(store: AppUserStore, userId: string) {
+  const admins = store.users.filter((user) => user.role === 'admin');
+  return admins.length <= 1 && admins.some((user) => user.id === userId);
+}
+
+function findUserByEmail(store: AppUserStore, email: string) {
+  return store.users.find((user) => user.email === email) ?? null;
+}
+
+function findUserByPilotId(store: AppUserStore, playerId: number, exceptUserId?: string) {
+  return store.users.find((user) => user.id !== exceptUserId && user.pilotLink?.playerId === playerId) ?? null;
+}
 
 let syncInProgress = false;
 let lastSyncResult: null | {
@@ -273,11 +632,7 @@ function getModules() {
       remote,
       autoSync: getAutoSyncConfig()
     },
-    users: {
-      enabled: false,
-      status: 'mock',
-      message: 'Área de pilotos en modo maqueta. Login y base de datos pendientes.'
-    }
+    users: getUserStoreStats()
   };
 }
 
@@ -975,6 +1330,260 @@ function reduceDriverStats(laps: ReturnType<typeof mapLapRow>[]) {
     .sort((a, b) => b.validLaps - a.validLaps || a.name.localeCompare(b.name));
 }
 
+
+async function getPilotStatsByPlayerId(dbPath: string, playerId: number) {
+  const laps = await readJoinedLaps(dbPath);
+  const drivers = reduceDriverStats(laps);
+  return drivers.find((driver) => Number(driver.id) === Number(playerId)) ?? null;
+}
+
+
+type PilotProfileLap = ReturnType<typeof mapLapRow>;
+
+function average(values: number[]) {
+  const clean = values.filter((value) => Number.isFinite(value));
+  if (!clean.length) return null;
+  return clean.reduce((total, value) => total + value, 0) / clean.length;
+}
+
+function standardDeviation(values: number[]) {
+  const clean = values.filter((value) => Number.isFinite(value));
+  if (clean.length < 2) return null;
+  const avg = average(clean);
+  if (avg === null) return null;
+  const variance = clean.reduce((total, value) => total + Math.pow(value - avg, 2), 0) / clean.length;
+  return Math.sqrt(variance);
+}
+
+function percent(part: number, total: number) {
+  if (!total) return 0;
+  return Math.round((part / total) * 1000) / 10;
+}
+
+function compactLapForProfile(lap: PilotProfileLap | null) {
+  if (!lap) return null;
+  return {
+    lapId: lap.lapId,
+    lapTimeMs: lap.lapTimeMs,
+    lapTime: lap.lapTime,
+    valid: lap.valid,
+    car: lap.car,
+    track: lap.track,
+    maxSpeedKmh: lap.maxSpeedKmh,
+    cuts: lap.cuts,
+    collisionsCar: lap.collisionsCar,
+    collisionsEnv: lap.collisionsEnv,
+    sectorTimesMs: lap.sectorTimesMs,
+    sectorTimes: lap.sectorTimes,
+    timestamp: lap.timestamp,
+    timestampIso: lap.timestampIso,
+    session: lap.session,
+    input: lap.input
+  };
+}
+
+function countByKey<T>(items: T[], getKey: (item: T) => string | null, buildValue: (item: T) => PlainObject) {
+  const map = new Map<string, any>();
+
+  for (const item of items) {
+    const key = getKey(item);
+    if (!key) continue;
+    if (!map.has(key)) {
+      map.set(key, {
+        ...buildValue(item),
+        totalLaps: 0,
+        validLaps: 0,
+        invalidLaps: 0,
+        bestLapMs: null,
+        bestLap: null,
+        bestLapDetails: null,
+        lastSeenTimestamp: null,
+        lastSeenAt: null
+      });
+    }
+
+    const entry = map.get(key);
+    const lap = item as PilotProfileLap;
+    entry.totalLaps += 1;
+    if (lap.valid) entry.validLaps += 1;
+    else entry.invalidLaps += 1;
+
+    if (lap.valid && (entry.bestLapMs === null || Number(lap.lapTimeMs ?? Infinity) < Number(entry.bestLapMs))) {
+      entry.bestLapMs = lap.lapTimeMs;
+      entry.bestLap = lap.lapTime;
+      entry.bestLapDetails = compactLapForProfile(lap);
+    }
+
+    if (lap.timestamp && (!entry.lastSeenTimestamp || lap.timestamp > entry.lastSeenTimestamp)) {
+      entry.lastSeenTimestamp = lap.timestamp;
+      entry.lastSeenAt = lap.timestampIso;
+    }
+  }
+
+  return Array.from(map.values()).map((entry) => ({
+    ...entry,
+    validityRate: percent(entry.validLaps, entry.totalLaps)
+  }));
+}
+
+function getBestByCombo(laps: PilotProfileLap[]) {
+  const map = new Map<string, PilotProfileLap>();
+
+  for (const lap of laps.filter((item) => item.valid)) {
+    const key = `${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`;
+    const current = map.get(key);
+    if (!current || Number(lap.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
+      map.set(key, lap);
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))
+    .map((lap, index) => ({
+      rank: index + 1,
+      ...compactLapForProfile(lap)
+    }));
+}
+
+function getPilotLeaderboardRank(allLaps: PilotProfileLap[], playerId: number) {
+  const drivers = reduceDriverStats(allLaps);
+  const ranked = drivers
+    .filter((driver) => Number.isFinite(Number(driver.bestLapMs)))
+    .sort((a, b) => Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+
+  const index = ranked.findIndex((driver) => Number(driver.id) === Number(playerId));
+  if (index === -1) return null;
+
+  return {
+    position: index + 1,
+    total: ranked.length
+  };
+}
+
+function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: PilotProfileLap[]) {
+  const playerId = user.pilotLink?.playerId;
+  const pilotLaps = playerId
+    ? allLaps.filter((lap) => Number(lap.driver.id) === Number(playerId))
+    : [];
+
+  const validLaps = pilotLaps.filter((lap) => lap.valid);
+  const invalidLaps = pilotLaps.filter((lap) => !lap.valid);
+  const sortedFastest = [...validLaps].sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity));
+  const sortedRecent = [...pilotLaps].sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0));
+  const bestLap = sortedFastest[0] ?? null;
+  const latestLap = sortedRecent[0] ?? null;
+  const lapTimes = validLaps.map((lap) => Number(lap.lapTimeMs)).filter((value) => Number.isFinite(value) && value > 0);
+  const speedValues = validLaps.map((lap) => Number(lap.maxSpeedKmh)).filter((value) => Number.isFinite(value) && value > 0);
+  const sectorCount = Math.max(0, ...validLaps.map((lap) => lap.sectorTimesMs.length));
+  const bestSectors = Array.from({ length: sectorCount }).map((_, index) => {
+    const values = validLaps
+      .map((lap) => lap.sectorTimesMs[index])
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const best = values.length ? Math.min(...values) : null;
+    return {
+      sector: index + 1,
+      timeMs: best,
+      time: best ? lapTimeToText(best) : '--'
+    };
+  });
+
+  const carStats = countByKey(
+    pilotLaps,
+    (lap) => lap.car.id !== null ? String(lap.car.id) : lap.car.name,
+    (lap) => ({ car: (lap as PilotProfileLap).car })
+  ).sort((a, b) => b.validLaps - a.validLaps || Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+
+  const trackStats = countByKey(
+    pilotLaps,
+    (lap) => lap.track.id !== null ? String(lap.track.id) : lap.track.name,
+    (lap) => ({ track: (lap as PilotProfileLap).track })
+  ).sort((a, b) => b.validLaps - a.validLaps || Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+
+  const comboStats = getBestByCombo(pilotLaps);
+  const avgLapMs = average(lapTimes);
+  const consistencyMs = standardDeviation(lapTimes);
+  const maxSpeedKmh = speedValues.length ? Math.max(...speedValues) : null;
+  const avgSpeedKmh = average(speedValues);
+
+  return {
+    ok: true,
+    authenticated: true,
+    generatedAt: new Date().toISOString(),
+    user: publicUser(user),
+    session: {
+      id: session.id,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      lastSeenAt: session.lastSeenAt
+    },
+    linked: Boolean(user.pilotLink),
+    pilotLink: user.pilotLink,
+    pilot: pilotLaps[0]?.driver ?? (user.pilotLink ? {
+      id: user.pilotLink.playerId,
+      name: user.pilotLink.strackerName,
+      steamGuid: user.pilotLink.steamGuid,
+      isOnline: null
+    } : null),
+    summary: {
+      totalLaps: pilotLaps.length,
+      validLaps: validLaps.length,
+      invalidLaps: invalidLaps.length,
+      validityRate: percent(validLaps.length, pilotLaps.length),
+      carsCount: new Set(pilotLaps.map((lap) => lap.car.id ?? lap.car.name)).size,
+      tracksCount: new Set(pilotLaps.map((lap) => lap.track.id ?? lap.track.name)).size,
+      combosCount: comboStats.length,
+      bestLap: compactLapForProfile(bestLap),
+      latestLap: compactLapForProfile(latestLap),
+      bestRank: playerId ? getPilotLeaderboardRank(allLaps, playerId) : null,
+      avgLapMs,
+      avgLap: avgLapMs ? lapTimeToText(avgLapMs) : '--',
+      consistencyMs,
+      consistency: consistencyMs ? lapTimeToText(consistencyMs) : '--',
+      maxSpeedKmh,
+      avgSpeedKmh,
+      lastSeenAt: latestLap?.timestampIso ?? null,
+      favoriteCar: carStats[0] ?? null,
+      favoriteTrack: trackStats[0] ?? null
+    },
+    recentLaps: sortedRecent.slice(0, 15).map(compactLapForProfile),
+    bestCombos: comboStats.slice(0, 15),
+    cars: carStats.slice(0, 20),
+    tracks: trackStats.slice(0, 20),
+    sectors: bestSectors,
+    message: user.pilotLink
+      ? 'Perfil Pro generado desde la cuenta web y stracker.db3.'
+      : 'Cuenta activa sin piloto vinculado todavía.'
+  };
+}
+
+async function resolvePilotLink(playerIdRaw: unknown) {
+  const playerId = Number(playerIdRaw);
+  if (!Number.isFinite(playerId) || playerId <= 0) {
+    return { ok: false as const, message: 'El piloto seleccionado no es válido.' };
+  }
+
+  const stracker = getStrackerConfig();
+  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+    return { ok: false as const, message: 'No hay stracker.db3 válido para vincular piloto.' };
+  }
+
+  const pilot = await getPilotStatsByPlayerId(stracker.resolvedPath, playerId);
+  if (!pilot) {
+    return { ok: false as const, message: 'No se encontró ese piloto en stracker.db3.' };
+  }
+
+  return {
+    ok: true as const,
+    pilot,
+    link: {
+      playerId: Number(pilot.id),
+      steamGuid: pilot.steamGuid ?? null,
+      strackerName: pilot.name,
+      linkedAt: new Date().toISOString()
+    }
+  };
+}
+
 function reduceCarStats(laps: ReturnType<typeof mapLapRow>[], carsRows: PlainObject[]) {
   const map = new Map<string, any>();
 
@@ -1226,7 +1835,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'grasscutters-node',
-    mode: 'hostinger-singlefile-stracker-auto-sync',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
     startedAt
   });
 });
@@ -1237,7 +1846,7 @@ app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     message: 'GC API funcionando en Hostinger',
-    mode: 'hostinger-singlefile-stracker-auto-sync',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
     modules: {
       web: modules.web.enabled,
       api: modules.api.enabled,
@@ -1246,7 +1855,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: 'Paquete 10: lector real de stracker + auto-sync opcional cada 5 minutos.'
+    note: 'Paquete 20: lector real de stracker + auto-sync + auth + consola admin.'
   });
 });
 
@@ -1256,6 +1865,520 @@ app.get('/api/modules', (_req, res) => {
     modules: getModules()
   });
 });
+
+app.get('/api/auth/status', (_req, res) => {
+  res.json({
+    ok: true,
+    auth: getUserStoreStats(),
+    message: 'Auth real fase 1 activo. Usuarios en data/app/users.json.'
+  });
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  const context = getAuthContext(req);
+
+  if (!context) {
+    res.status(200).json({
+      ok: false,
+      authenticated: false,
+      user: null,
+      pilot: null,
+      message: 'No hay sesión activa.'
+    });
+    return;
+  }
+
+  let pilot = null;
+  const playerId = context.user.pilotLink?.playerId;
+  const stracker = getStrackerConfig();
+
+  if (playerId && stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+    try {
+      pilot = await getPilotStatsByPlayerId(stracker.resolvedPath, playerId);
+    } catch (error) {
+      console.error('[GC] Error leyendo piloto vinculado:', error);
+    }
+  }
+
+  res.json({
+    ok: true,
+    authenticated: true,
+    user: publicUser(context.user),
+    pilot,
+    session: {
+      id: context.session.id,
+      createdAt: context.session.createdAt,
+      expiresAt: context.session.expiresAt,
+      lastSeenAt: context.session.lastSeenAt
+    }
+  });
+});
+
+
+app.get('/api/profile', async (req, res) => {
+  const context = getAuthContext(req);
+
+  if (!context) {
+    res.status(200).json({
+      ok: false,
+      authenticated: false,
+      user: null,
+      profile: null,
+      message: 'No hay sesión activa.'
+    });
+    return;
+  }
+
+  const stracker = getStrackerConfig();
+
+  if (!context.user.pilotLink) {
+    res.json(buildPilotProProfile(context.user, context.session, []));
+    return;
+  }
+
+  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+    res.status(200).json({
+      ok: false,
+      authenticated: true,
+      user: publicUser(context.user),
+      linked: true,
+      pilotLink: context.user.pilotLink,
+      profile: null,
+      stracker,
+      message: 'Hay sesión activa, pero stracker.db3 no está disponible para generar el perfil.'
+    });
+    return;
+  }
+
+  try {
+    const allLaps = await readJoinedLaps(stracker.resolvedPath);
+    res.json({
+      ...buildPilotProProfile(context.user, context.session, allLaps),
+      stracker: {
+        exists: stracker.exists,
+        sizeBytes: stracker.sizeBytes,
+        modifiedAt: stracker.modifiedAt
+      }
+    });
+  } catch (error) {
+    console.error('[GC] Error generando perfil pro:', error);
+    res.status(200).json({
+      ok: false,
+      authenticated: true,
+      user: publicUser(context.user),
+      profile: null,
+      message: 'No se pudo generar el Perfil Pro desde stracker.db3.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+
+app.get('/api/admin/status', async (req, res) => {
+  const store = readUserStore();
+  const context = getAuthContext(req);
+  const authorized = Boolean(context && isAdminUser(context.user));
+  const summary = getUserStoreAdminSummary(store);
+  const stracker = getStrackerConfig();
+
+  let strackerOverview: null | {
+    totalTables: number;
+    totalLaps: number | null;
+    validLaps: number | null;
+    players: number | null;
+    cars: number | null;
+    tracks: number | null;
+  } = null;
+
+  if (authorized && stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+    try {
+      const rows = await runStrackerQuery(stracker.resolvedPath, `
+        SELECT
+          (SELECT COUNT(*) FROM Lap) AS TotalLaps,
+          (SELECT COUNT(*) FROM Lap WHERE Valid = 1) AS ValidLaps,
+          (SELECT COUNT(*) FROM Players) AS Players,
+          (SELECT COUNT(*) FROM Cars) AS Cars,
+          (SELECT COUNT(*) FROM Tracks) AS Tracks
+      `);
+      const tables = await readStrackerTables(stracker.resolvedPath);
+      const first = rows[0] ?? {};
+      strackerOverview = {
+        totalTables: tables.length,
+        totalLaps: numberOrNull(first.TotalLaps),
+        validLaps: numberOrNull(first.ValidLaps),
+        players: numberOrNull(first.Players),
+        cars: numberOrNull(first.Cars),
+        tracks: numberOrNull(first.Tracks)
+      };
+    } catch (error) {
+      console.error('[GC] Error generando admin stracker overview:', error);
+    }
+  }
+
+  res.json({
+    ok: true,
+    authenticated: Boolean(context),
+    authorized,
+    currentUser: context ? publicUser(context.user) : null,
+    setupRequired: summary.setupRequired,
+    setupSecretConfigured: Boolean(getAdminSetupSecret()),
+    summary,
+    admin: authorized
+      ? {
+          modules: getModules(),
+          users: getUserStoreAdminSummary(store),
+          stracker: {
+            ...stracker,
+            overview: strackerOverview,
+            autoSync: getAutoSyncConfig(),
+            lastSync: lastSyncResult,
+            syncInProgress
+          }
+        }
+      : null,
+    message: authorized
+      ? 'Consola admin activa.'
+      : summary.setupRequired
+        ? 'No hay administradores todavía. Promociona una cuenta con ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
+        : 'Inicia sesión con una cuenta administradora.'
+  });
+});
+
+app.post('/api/admin/bootstrap', (req, res) => {
+  if (!assertAdminSetupSecret(req)) {
+    res.status(401).json({
+      ok: false,
+      message: 'Secret admin inválido. Usa ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
+    });
+    return;
+  }
+
+  const store = readUserStore();
+  const context = getAuthContext(req);
+  const targetEmail = normalizeEmail(req.body?.email);
+  const targetUserId = String(req.body?.userId ?? '').trim();
+  const target = targetUserId
+    ? findUserById(store, targetUserId)
+    : targetEmail
+      ? findUserByEmail(store, targetEmail)
+      : context
+        ? findUserById(store, context.user.id)
+        : null;
+
+  if (!target) {
+    res.status(404).json({
+      ok: false,
+      message: 'No se encontró la cuenta a promocionar. Inicia sesión o indica email/userId.'
+    });
+    return;
+  }
+
+  target.role = 'admin';
+  target.updatedAt = new Date().toISOString();
+  writeUserStore(store);
+
+  res.json({
+    ok: true,
+    user: publicUser(target),
+    summary: getUserStoreAdminSummary(store),
+    message: `Cuenta ${target.displayName} promocionada a administrador.`
+  });
+});
+
+app.get('/api/admin/users', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const store = readUserStore();
+  const users = store.users
+    .map((user) => publicAdminUser(user, store))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+
+  res.json({
+    ok: true,
+    count: users.length,
+    users,
+    summary: getUserStoreAdminSummary(store),
+    message: 'Usuarios cargados correctamente.'
+  });
+});
+
+app.post('/api/admin/users/:userId/role', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const nextRole = String(req.body?.role ?? '').trim() as AppUserRole;
+  if (!['pilot', 'admin'].includes(nextRole)) {
+    res.status(400).json({ ok: false, message: 'Rol no válido. Usa pilot o admin.' });
+    return;
+  }
+
+  const store = readUserStore();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  if (target.role === 'admin' && nextRole !== 'admin' && isLastAdmin(store, target.id)) {
+    res.status(409).json({ ok: false, message: 'No puedes quitar el último administrador.' });
+    return;
+  }
+
+  target.role = nextRole;
+  target.updatedAt = new Date().toISOString();
+  writeUserStore(store);
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    summary: getUserStoreAdminSummary(store),
+    message: `Rol actualizado a ${nextRole}.`
+  });
+});
+
+app.post('/api/admin/users/:userId/unlink-pilot', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const store = readUserStore();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  target.pilotLink = null;
+  target.updatedAt = new Date().toISOString();
+  writeUserStore(store);
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    message: 'Piloto desvinculado desde administración.'
+  });
+});
+
+app.post('/api/admin/users/:userId/revoke-sessions', (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const store = readUserStore();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  const before = store.sessions.length;
+  store.sessions = store.sessions.filter((session) => session.userId !== target.id);
+  writeUserStore(store);
+
+  res.json({
+    ok: true,
+    revoked: before - store.sessions.length,
+    user: publicAdminUser(target, store),
+    message: 'Sesiones revocadas correctamente.'
+  });
+});
+
+app.post('/api/admin/stracker/sync', async (req, res) => {
+  const context = requireAdmin(req, res);
+  if (!context) return;
+
+  const result = await syncStrackerFromGTX();
+  res.status(result.statusCode).json({
+    ...result,
+    autoSync: getAutoSyncConfig()
+  });
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  if (!readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)) {
+    res.status(403).json({
+      ok: false,
+      message: 'El registro está desactivado temporalmente.'
+    });
+    return;
+  }
+
+  const email = normalizeEmail(req.body?.email);
+  const displayName = normalizeDisplayName(req.body?.displayName);
+  const password = String(req.body?.password ?? '');
+  const playerId = req.body?.playerId;
+
+  if (!email || !email.includes('@') || email.length > 160) {
+    res.status(400).json({ ok: false, message: 'Introduce un email válido.' });
+    return;
+  }
+
+  if (!displayName || displayName.length < 2) {
+    res.status(400).json({ ok: false, message: 'Introduce un nombre de usuario de al menos 2 caracteres.' });
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).json({ ok: false, message: 'La contraseña debe tener al menos 6 caracteres.' });
+    return;
+  }
+
+  const store = readUserStore();
+
+  if (findUserByEmail(store, email)) {
+    res.status(409).json({ ok: false, message: 'Ya existe una cuenta con ese email.' });
+    return;
+  }
+
+  let pilotLink: AppUser['pilotLink'] = null;
+  let pilot: any = null;
+
+  if (playerId !== undefined && playerId !== null && String(playerId).trim() !== '') {
+    const resolved = await resolvePilotLink(playerId);
+    if (!resolved.ok) {
+      res.status(400).json({ ok: false, message: resolved.message });
+      return;
+    }
+
+    if (findUserByPilotId(store, resolved.link.playerId)) {
+      res.status(409).json({ ok: false, message: 'Ese piloto ya está vinculado a otra cuenta.' });
+      return;
+    }
+
+    pilotLink = resolved.link;
+    pilot = resolved.pilot;
+  }
+
+  const now = new Date().toISOString();
+  const user: AppUser = {
+    id: crypto.randomUUID(),
+    email,
+    displayName,
+    role: store.users.length === 0 && readBooleanEnv('FIRST_USER_ADMIN', false) ? 'admin' : 'pilot',
+    password: hashPassword(password),
+    pilotLink,
+    createdAt: now,
+    updatedAt: now,
+    lastLoginAt: now
+  };
+
+  store.users.push(user);
+  const { token, session } = createSession(store, user.id);
+  writeUserStore(store);
+  setSessionCookie(res, token);
+
+  res.status(201).json({
+    ok: true,
+    authenticated: true,
+    user: publicUser(user),
+    pilot,
+    session: {
+      id: session.id,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      lastSeenAt: session.lastSeenAt
+    },
+    message: 'Cuenta creada correctamente.'
+  });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const password = String(req.body?.password ?? '');
+  const store = readUserStore();
+  const user = findUserByEmail(store, email);
+
+  if (!user || !verifyPassword(password, user.password)) {
+    res.status(401).json({ ok: false, message: 'Email o contraseña incorrectos.' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  user.lastLoginAt = now;
+  user.updatedAt = now;
+  const { token, session } = createSession(store, user.id);
+  writeUserStore(store);
+  setSessionCookie(res, token);
+
+  res.json({
+    ok: true,
+    authenticated: true,
+    user: publicUser(user),
+    session: {
+      id: session.id,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      lastSeenAt: session.lastSeenAt
+    },
+    message: 'Login correcto.'
+  });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = readAuthToken(req);
+  const store = readUserStore();
+
+  if (token) {
+    const hash = tokenHash(token);
+    store.sessions = store.sessions.filter((session) => session.tokenHash !== hash);
+    writeUserStore(store);
+  }
+
+  clearSessionCookie(res);
+  res.json({ ok: true, authenticated: false, message: 'Sesión cerrada.' });
+});
+
+app.post('/api/auth/link-pilot', async (req, res) => {
+  const context = getAuthContext(req);
+  if (!context) {
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+    return;
+  }
+
+  const resolved = await resolvePilotLink(req.body?.playerId);
+  if (!resolved.ok) {
+    res.status(400).json({ ok: false, message: resolved.message });
+    return;
+  }
+
+  if (findUserByPilotId(context.store, resolved.link.playerId, context.user.id)) {
+    res.status(409).json({ ok: false, message: 'Ese piloto ya está vinculado a otra cuenta.' });
+    return;
+  }
+
+  context.user.pilotLink = resolved.link;
+  context.user.updatedAt = new Date().toISOString();
+  writeUserStore(context.store);
+
+  res.json({
+    ok: true,
+    user: publicUser(context.user),
+    pilot: resolved.pilot,
+    message: 'Piloto vinculado correctamente.'
+  });
+});
+
+app.post('/api/auth/unlink-pilot', (req, res) => {
+  const context = getAuthContext(req);
+  if (!context) {
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+    return;
+  }
+
+  context.user.pilotLink = null;
+  context.user.updatedAt = new Date().toISOString();
+  writeUserStore(context.store);
+
+  res.json({
+    ok: true,
+    user: publicUser(context.user),
+    pilot: null,
+    message: 'Piloto desvinculado correctamente.'
+  });
+});
+
 
 app.get('/api/discord/status', (_req, res) => {
   res.json({
@@ -1811,7 +2934,7 @@ app.get('/api/debug/runtime', (_req, res) => {
   res.json({
     ok: true,
     runtime: {
-      mode: 'hostinger-singlefile-stracker-auto-sync',
+      mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin',
       nodeEnv: process.env.NODE_ENV ?? 'development',
       startedAt,
       port: PORT,
@@ -1873,6 +2996,6 @@ process.on('unhandledRejection', (error) => {
 
 app.listen(PORT, HOST, () => {
   console.log(`[GC] Servidor activo en ${HOST}:${PORT}`);
-  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync');
+  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync-auth-admin');
   startAutoSyncScheduler();
 });

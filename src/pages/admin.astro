@@ -1,0 +1,371 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Admin | GrassCutters">
+  <div class="gc-page gc-admin-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Admin console</span>
+        <h1 class="gc-title">Control de boxes.</h1>
+        <p class="gc-subtitle">Panel privado para usuarios, permisos, sesiones y sincronización de stracker. La idea es tener un puesto de mando limpio antes de enchufar Discord, eventos y herramientas avanzadas.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Usuarios</span>
+          <span class="gc-chip">Permisos</span>
+          <span class="gc-chip">Sync GTX</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Admin</span><strong id="adminState">...</strong></div>
+        <div class="gc-status-list" id="adminStatusRows">
+          <div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-metrics" id="adminMetrics">
+      <div class="gc-metric"><span>Usuarios</span><strong id="metricUsers">...</strong><small>cuentas web</small></div>
+      <div class="gc-metric"><span>Admins</span><strong id="metricAdmins">...</strong><small>permisos</small></div>
+      <div class="gc-metric"><span>Vinculados</span><strong id="metricLinked">...</strong><small>piloto real</small></div>
+      <div class="gc-metric"><span>Sesiones</span><strong id="metricSessions">...</strong><small>activas</small></div>
+    </section>
+
+    <section class="gc-section" id="setupPanel" hidden>
+      <div class="gc-section-head">
+        <h2>Crear primer administrador</h2>
+        <p>Usa ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET</p>
+      </div>
+      <form class="gc-form" id="bootstrapForm">
+        <p class="gc-admin-note">No hay ninguna cuenta admin todavía. Inicia sesión con la cuenta que quieras promocionar o indica el email de una cuenta registrada.</p>
+        <div class="gc-form-grid">
+          <label class="gc-field">
+            <span>Email de cuenta</span>
+            <input class="gc-input" name="email" type="email" placeholder="opcional si ya has iniciado sesión" />
+          </label>
+          <label class="gc-field">
+            <span>Secret admin</span>
+            <input class="gc-input" name="secret" type="password" autocomplete="off" placeholder="ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET" />
+          </label>
+        </div>
+        <div class="gc-actions">
+          <button class="gc-btn gc-btn--primary" type="submit">Promocionar admin</button>
+          <a class="gc-btn" href="/login">Ir a login</a>
+        </div>
+        <p class="gc-message" id="bootstrapMessage"></p>
+      </form>
+    </section>
+
+    <section class="gc-grid-2" id="adminContent" hidden>
+      <div class="gc-section">
+        <div class="gc-section-head">
+          <h2>Usuarios registrados</h2>
+          <p id="usersMeta">Cargando...</p>
+        </div>
+        <div class="gc-toolbar">
+          <label class="gc-field">
+            <span>Buscar</span>
+            <input class="gc-input" id="userSearch" type="search" placeholder="email, piloto, nombre..." />
+          </label>
+          <button class="gc-btn" id="reloadUsers" type="button">Recargar</button>
+        </div>
+        <div class="gc-table-wrap">
+          <table class="gc-table" id="usersTable">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Piloto</th>
+                <th>Sesiones</th>
+                <th>Alta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="gc-section">
+        <div class="gc-section-head">
+          <h2>Sistema</h2>
+          <p>Estado operativo</p>
+        </div>
+        <div class="gc-slab">
+          <h3>Stracker</h3>
+          <p id="strackerAdminText">Cargando estado de base de datos...</p>
+          <div class="gc-slab-list" id="strackerAdminRows">
+            <div><span>DB</span><strong>...</strong></div>
+          </div>
+          <div class="gc-actions">
+            <button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button>
+            <a class="gc-btn" href="/tracker">Ver tracker</a>
+          </div>
+          <p class="gc-message" id="syncMessage"></p>
+        </div>
+
+        <div class="gc-slab">
+          <h3>Accesos rápidos</h3>
+          <div class="gc-row-list gc-row-list--compact">
+            <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Hotlaps</strong><br><span class="gc-row-link__desc">Leaderboard real.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/pilotos"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Pilotos</strong><br><span class="gc-row-link__desc">Directorio real.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/perfil"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Perfil</strong><br><span class="gc-row-link__desc">Cuenta actual.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-section" id="noAccessPanel" hidden>
+      <div class="gc-section-head">
+        <h2>Acceso restringido</h2>
+        <p>Solo administradores</p>
+      </div>
+      <div class="gc-slab">
+        <h3>No tienes permisos de admin</h3>
+        <p id="noAccessText">Inicia sesión con una cuenta administradora o crea el primer admin si todavía no existe.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+          <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const els = {
+      adminState: document.getElementById('adminState'),
+      adminStatusRows: document.getElementById('adminStatusRows'),
+      setupPanel: document.getElementById('setupPanel'),
+      noAccessPanel: document.getElementById('noAccessPanel'),
+      adminContent: document.getElementById('adminContent'),
+      metricUsers: document.getElementById('metricUsers'),
+      metricAdmins: document.getElementById('metricAdmins'),
+      metricLinked: document.getElementById('metricLinked'),
+      metricSessions: document.getElementById('metricSessions'),
+      usersMeta: document.getElementById('usersMeta'),
+      usersTable: document.querySelector('#usersTable tbody'),
+      userSearch: document.getElementById('userSearch'),
+      strackerAdminText: document.getElementById('strackerAdminText'),
+      strackerAdminRows: document.getElementById('strackerAdminRows'),
+      syncMessage: document.getElementById('syncMessage'),
+      forceSyncBtn: document.getElementById('forceSyncBtn'),
+      bootstrapForm: document.getElementById('bootstrapForm'),
+      bootstrapMessage: document.getElementById('bootstrapMessage'),
+      reloadUsers: document.getElementById('reloadUsers'),
+      retryAdmin: document.getElementById('retryAdmin')
+    };
+
+    let users = [];
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[char]));
+    }
+
+    function dateText(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    function setPanels({ setup = false, content = false, noAccess = false }) {
+      els.setupPanel.hidden = !setup;
+      els.adminContent.hidden = !content;
+      els.noAccessPanel.hidden = !noAccess;
+    }
+
+    function renderStatus(data) {
+      const summary = data.summary || {};
+      els.metricUsers.textContent = summary.usersCount ?? '0';
+      els.metricAdmins.textContent = summary.adminsCount ?? '0';
+      els.metricLinked.textContent = summary.linkedUsersCount ?? '0';
+      els.metricSessions.textContent = summary.activeSessionsCount ?? '0';
+
+      if (data.authorized) {
+        els.adminState.textContent = 'Activo';
+        els.adminState.style.color = 'var(--accent)';
+        els.adminStatusRows.innerHTML = `
+          <div class="gc-status-row"><span>Usuario</span><strong>${escapeHtml(data.currentUser?.displayName || 'Admin')}</strong></div>
+          <div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(data.currentUser?.role || '-')}</strong></div>
+          <div class="gc-status-row"><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>
+        `;
+      } else if (data.setupRequired) {
+        els.adminState.textContent = 'Setup';
+        els.adminState.style.color = 'var(--warn)';
+        els.adminStatusRows.innerHTML = `
+          <div class="gc-status-row"><span>Admin</span><strong>No creado</strong></div>
+          <div class="gc-status-row"><span>Secret</span><strong>${data.setupSecretConfigured ? 'Configurado' : 'Falta'}</strong></div>
+          <div class="gc-status-row"><span>Sesión</span><strong>${data.authenticated ? 'Activa' : 'No'}</strong></div>
+        `;
+      } else {
+        els.adminState.textContent = 'Bloqueado';
+        els.adminState.style.color = 'var(--danger)';
+        els.adminStatusRows.innerHTML = `
+          <div class="gc-status-row"><span>Sesión</span><strong>${data.authenticated ? 'Activa' : 'No'}</strong></div>
+          <div class="gc-status-row"><span>Permiso</span><strong>No admin</strong></div>
+        `;
+      }
+
+      const stracker = data.admin?.stracker;
+      if (stracker) {
+        const overview = stracker.overview || {};
+        els.strackerAdminText.textContent = stracker.exists
+          ? 'Base stracker detectada y lista para administración.'
+          : 'No se ha detectado stracker.db3 todavía.';
+        els.strackerAdminRows.innerHTML = `
+          <div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div>
+          <div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div>
+          <div><span>Tamaño</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>
+          <div><span>Tablas</span><strong>${overview.totalTables ?? '-'}</strong></div>
+          <div><span>Vueltas</span><strong>${overview.totalLaps ?? '-'}</strong></div>
+          <div><span>Auto-sync</span><strong>${stracker.autoSync?.canRun ? 'Activo' : 'Off'}</strong></div>
+        `;
+      }
+    }
+
+    function renderUsers() {
+      const query = String(els.userSearch.value || '').toLowerCase().trim();
+      const filtered = users.filter((user) => {
+        const haystack = `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${user.linkedPilotName || ''}`.toLowerCase();
+        return !query || haystack.includes(query);
+      });
+
+      els.usersMeta.textContent = `${filtered.length} de ${users.length} usuarios`;
+
+      if (!filtered.length) {
+        els.usersTable.innerHTML = '<tr><td colspan="6">Sin usuarios para mostrar.</td></tr>';
+        return;
+      }
+
+      els.usersTable.innerHTML = filtered.map((user) => `
+        <tr data-user-id="${escapeHtml(user.id)}">
+          <td><strong>${escapeHtml(user.displayName)}</strong><br><span class="gc-muted-text">${escapeHtml(user.email)}</span></td>
+          <td><span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${escapeHtml(user.role)}</span></td>
+          <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">ID ${escapeHtml(user.linkedPlayerId)}</span>` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
+          <td>${escapeHtml(user.activeSessions || 0)}</td>
+          <td>${dateText(user.createdAt)}</td>
+          <td>
+            <div class="gc-admin-actions">
+              <button class="gc-btn gc-btn--mini" data-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
+              <button class="gc-btn gc-btn--mini" data-action="unlink" ${user.linkedPilotName ? '' : 'disabled'}>Desvincular</button>
+              <button class="gc-btn gc-btn--mini" data-action="revoke">Cerrar sesiones</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.message || `Error ${response.status}`);
+      }
+      return data;
+    }
+
+    async function loadUsers() {
+      const data = await fetchJson('/api/admin/users');
+      users = data.users || [];
+      renderUsers();
+    }
+
+    async function loadAdmin() {
+      try {
+        const data = await fetchJson('/api/admin/status');
+        renderStatus(data);
+
+        if (data.authorized) {
+          setPanels({ content: true });
+          await loadUsers();
+        } else if (data.setupRequired) {
+          setPanels({ setup: true });
+        } else {
+          setPanels({ noAccess: true });
+        }
+      } catch (error) {
+        els.adminState.textContent = 'Error';
+        els.adminState.style.color = 'var(--danger)';
+        els.adminStatusRows.innerHTML = `<div class="gc-status-row"><span>API</span><strong>${escapeHtml(error.message)}</strong></div>`;
+        setPanels({ noAccess: true });
+      }
+    }
+
+    els.userSearch?.addEventListener('input', renderUsers);
+    els.reloadUsers?.addEventListener('click', () => loadUsers().catch((error) => alert(error.message)));
+    els.retryAdmin?.addEventListener('click', loadAdmin);
+
+    els.bootstrapForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = new FormData(els.bootstrapForm);
+      els.bootstrapMessage.textContent = 'Promocionando...';
+      try {
+        const data = await fetchJson('/api/admin/bootstrap', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: String(form.get('email') || '').trim(),
+            secret: String(form.get('secret') || '').trim()
+          })
+        });
+        els.bootstrapMessage.textContent = data.message || 'Admin creado.';
+        await loadAdmin();
+      } catch (error) {
+        els.bootstrapMessage.textContent = error.message;
+      }
+    });
+
+    els.usersTable?.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button || button.disabled) return;
+      const row = button.closest('tr[data-user-id]');
+      const userId = row?.dataset.userId;
+      if (!userId) return;
+
+      const action = button.dataset.action;
+      button.disabled = true;
+
+      try {
+        if (action === 'role') {
+          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+            method: 'POST',
+            body: JSON.stringify({ role: button.dataset.role })
+          });
+        }
+        if (action === 'unlink') {
+          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/unlink-pilot`, { method: 'POST', body: '{}' });
+        }
+        if (action === 'revoke') {
+          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/revoke-sessions`, { method: 'POST', body: '{}' });
+        }
+        await loadUsers();
+        await loadAdmin();
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    els.forceSyncBtn?.addEventListener('click', async () => {
+      els.forceSyncBtn.disabled = true;
+      els.syncMessage.textContent = 'Sincronizando stracker desde GTX...';
+      try {
+        const data = await fetchJson('/api/admin/stracker/sync', { method: 'POST', body: '{}' });
+        els.syncMessage.textContent = data.message || 'Sync completada.';
+        await loadAdmin();
+      } catch (error) {
+        els.syncMessage.textContent = error.message;
+      } finally {
+        els.forceSyncBtn.disabled = false;
+      }
+    });
+
+    loadAdmin();
+  </script>
+</AppLayout>

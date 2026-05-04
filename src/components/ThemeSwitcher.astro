@@ -1,0 +1,46 @@
+---
+const themes = [
+  ['lfm', 'LFM'],
+  ['grass', 'Grass'],
+  ['ocean', 'Ocean'],
+  ['violet', 'Violet'],
+  ['amber', 'Amber'],
+  ['crimson', 'Crimson'],
+  ['mono', 'Mono']
+];
+---
+<div class="gc-theme" aria-label="Selector de paleta">
+  <span class="gc-theme__label">Paleta</span>
+  <div class="gc-theme__grid">
+    {themes.map(([key, label]) => (
+      <button
+        class={`gc-theme__swatch gc-theme__swatch--${key}`}
+        data-theme-select={key}
+        type="button"
+        title={label}
+        aria-label={`Paleta ${label}`}
+        aria-pressed="false"
+      >
+        <span class="gc-sr">{label}</span>
+      </button>
+    ))}
+  </div>
+</div>
+<script is:inline>
+  (() => {
+    const storageKey = 'gc-theme';
+    const root = document.documentElement;
+    const swatches = [...document.querySelectorAll('[data-theme-select]')];
+    const allowed = new Set(swatches.map((item) => item.dataset.themeSelect));
+    const setTheme = (theme) => {
+      const next = allowed.has(theme) ? theme : 'lfm';
+      root.dataset.theme = next;
+      try { localStorage.setItem(storageKey, next); } catch (_) {}
+      swatches.forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.themeSelect === next)));
+    };
+    let saved = 'lfm';
+    try { saved = localStorage.getItem(storageKey) || 'lfm'; } catch (_) {}
+    setTheme(saved);
+    swatches.forEach((item) => item.addEventListener('click', () => setTheme(item.dataset.themeSelect)));
+  })();
+</script>

@@ -1,51 +1,121 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import AppLayout from '../layouts/AppLayout.astro';
 ---
-
-<BaseLayout title="GrassCutters Platform">
-  <main class="gc-shell">
+<AppLayout title="GrassCutters Platform">
+  <div class="gc-page">
     <section class="gc-hero">
-      <div class="gc-hero__glow gc-hero__glow--a"></div>
-      <div class="gc-hero__glow gc-hero__glow--b"></div>
-
-      <div class="gc-hero__content">
-        <span class="gc-kicker">GrassCutters Platform</span>
-        <h1>Una nueva centralita para la comunidad GC.</h1>
-        <p>
-          Web Astro, servidor Node único, API propia, Discord bot, stracker.db3 y futura área de pilotos.
-        </p>
-
+      <div>
+        <span class="gc-kicker">GC Platform</span>
+        <h1 class="gc-title">Competición, datos y pilotos en una sola base.</h1>
+        <p class="gc-subtitle">La web deja de ser una vitrina y empieza a funcionar como centro de mando: Astro en frontend, Node en Hostinger, sincronización automática con GTX y lectura real de stracker.db3.</p>
         <div class="gc-actions">
-          <a href="/pilotos" class="gc-button gc-button--primary">Área pilotos</a>
-          <a href="/hotlaps" class="gc-button">Hotlaps</a>
+          <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver leaderboard</a>
+          <a class="gc-btn" href="/tracker">Centro tracker</a>
+          <a class="gc-btn gc-btn--ghost" href="/login">Login pilotos</a>
+        </div>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent"><span class="gc-live-dot"></span> Live data</span>
+          <span class="gc-chip">Astro + Node</span>
+          <span class="gc-chip">stracker.db3</span>
         </div>
       </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Estado plataforma</span><strong id="homeHealth">ONLINE</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Web</span><strong>Astro</strong></div>
+          <div class="gc-status-row"><span>API</span><strong id="apiStatus">Comprobando</strong></div>
+          <div class="gc-status-row"><span>Tracker</span><strong id="trackerStatus">Lectura real</strong></div>
+          <div class="gc-status-row"><span>Sync GTX</span><strong id="syncStatus">Automática</strong></div>
+        </div>
+      </aside>
     </section>
 
-    <section class="gc-grid" aria-label="Módulos principales">
-      <article class="gc-card">
-        <span>01</span>
-        <h2>Web Astro</h2>
-        <p>Home, eventos, rankings, calendario, comunidad y páginas públicas.</p>
-      </article>
-
-      <article class="gc-card">
-        <span>02</span>
-        <h2>API Node</h2>
-        <p>Rutas centralizadas para pilotos, estadísticas, Discord, eventos y autenticación.</p>
-      </article>
-
-      <article class="gc-card">
-        <span>03</span>
-        <h2>stracker.db3</h2>
-        <p>Lectura de vueltas, coches, circuitos, sectores, historial y datos de rendimiento.</p>
-      </article>
-
-      <article class="gc-card">
-        <span>04</span>
-        <h2>Discord Bot</h2>
-        <p>Bot integrado en el mismo Node para anuncios, estado, eventos y futuras automatizaciones.</p>
-      </article>
+    <section class="gc-metrics" id="overviewMetrics" aria-label="Métricas generales">
+      <div class="gc-metric"><span>Pilotos</span><strong>...</strong><small>Detectados</small></div>
+      <div class="gc-metric"><span>Vueltas</span><strong>...</strong><small>Registradas</small></div>
+      <div class="gc-metric"><span>Coches</span><strong>...</strong><small>Usados</small></div>
+      <div class="gc-metric"><span>Circuitos</span><strong class="is-accent">...</strong><small>Visitados</small></div>
     </section>
-  </main>
-</BaseLayout>
+
+    <section class="gc-command-strip" aria-label="Arquitectura rápida">
+      <div class="gc-command-item"><span>Frontend</span><strong>Astro Shell</strong><p>Layout limpio, rápido y preparado para secciones privadas.</p></div>
+      <div class="gc-command-item"><span>Backend</span><strong>Node API</strong><p>Endpoints para hotlaps, perfil, pilotos, estado y futuras herramientas.</p></div>
+      <div class="gc-command-item"><span>Datos</span><strong>GTX Sync</strong><p>Copias controladas de stracker.db3 para no tocar el servidor de carreras.</p></div>
+    </section>
+
+    <section class="gc-grid-2">
+      <div class="gc-section">
+        <div class="gc-section-head"><h2>Centro de plataforma</h2><p>Bloques principales</p></div>
+        <div class="gc-row-list">
+          <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Leaderboard</strong><br><span class="gc-row-link__desc">Tiempos reales con filtros rápidos y lectura directa de stracker.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <a class="gc-row-link" href="/tracker"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Tracker</strong><br><span class="gc-row-link__desc">Estado de base de datos, sync GTX, tamaño y diagnóstico.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <a class="gc-row-link" href="/herramientas"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Herramientas</strong><br><span class="gc-row-link__desc">Comparativas, consistencia, filtros y módulos futuros.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <a class="gc-row-link" href="/perfil"><span class="gc-row-link__num">04</span><span><strong class="gc-row-link__title">Área piloto</strong><br><span class="gc-row-link__desc">Perfil privado, datos vinculados y métricas personales.</span></span><span class="gc-row-link__cta">Entrar</span></a>
+        </div>
+      </div>
+
+      <aside class="gc-section">
+        <div class="gc-section-head"><h2>Últimas referencias</h2><p>Top hotlaps</p></div>
+        <div class="gc-table-meta"><span id="homeHotlapsCount">Cargando datos</span><span id="homeHotlapsUpdated">...</span></div>
+        <div class="gc-table-wrap">
+          <table class="gc-table gc-table--compact">
+            <thead><tr><th>Piloto</th><th>Coche</th><th>Tiempo</th></tr></thead>
+            <tbody id="homeHotlaps"><tr><td colspan="3">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const fmtMs = (ms) => {
+      const n = Number(ms);
+      if (!Number.isFinite(n)) return '-';
+      const m = Math.floor(n / 60000);
+      const s = Math.floor((n % 60000) / 1000);
+      const x = String(Math.floor(n % 1000)).padStart(3, '0');
+      return `${m}:${String(s).padStart(2, '0')}.${x}`;
+    };
+    async function json(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(url);
+      return res.json();
+    }
+
+    json('/api/stats/overview').then((data) => {
+      const stats = data.stats || data.overview || data;
+      const vals = [
+        stats.totalDrivers || stats.drivers || stats.players || 0,
+        stats.totalLaps || stats.laps || 0,
+        stats.totalCars || stats.cars || 0,
+        stats.totalTracks || stats.tracks || 0
+      ];
+      document.querySelectorAll('#overviewMetrics strong').forEach((el, index) => {
+        el.textContent = String(vals[index] ?? 0);
+      });
+      $('#apiStatus').textContent = 'OK';
+    }).catch(() => {
+      $('#apiStatus').textContent = 'Sin respuesta';
+      $('#apiStatus').style.color = 'var(--warn)';
+    });
+
+    json('/api/hotlaps?limit=6').then((data) => {
+      const rows = data.items || data.hotlaps || data.laps || [];
+      $('#homeHotlapsCount').textContent = `${rows.length} referencias`;
+      $('#homeHotlapsUpdated').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      $('#homeHotlaps').innerHTML = rows.slice(0, 6).map((row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.driverName || row.playerName || row.name)}</strong></td>
+          <td>${escapeHtml(row.carName || row.car || row.uiCarName)}</td>
+          <td><strong>${escapeHtml(row.lapTimeFormatted || fmtMs(row.lapTimeMs || row.LapTime || row.lapTime))}</strong></td>
+        </tr>
+      `).join('') || '<tr><td colspan="3">Sin datos todavía</td></tr>';
+    }).catch(() => {
+      $('#homeHotlapsCount').textContent = 'Hotlaps no disponibles';
+      $('#homeHotlaps').innerHTML = '<tr><td colspan="3">No se pudo leer el endpoint.</td></tr>';
+    });
+  </script>
+</AppLayout>

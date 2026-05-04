@@ -1,0 +1,79 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Tracker | GrassCutters">
+  <div class="gc-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Tracker center</span>
+        <h1 class="gc-title">Centro stracker.</h1>
+        <p class="gc-subtitle">Estado de la base de datos, sincronización GTX y herramientas de lectura real. Esta vista sirve para saber si la plataforma tiene gasolina o si la manguera de datos se ha quedado mirando al paddock.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">DB monitor</span>
+          <span class="gc-chip">SQLite</span>
+          <span class="gc-chip">Sync GTX</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>DB</span><strong id="dbState">...</strong></div>
+        <div class="gc-status-list" id="trackerRows"><div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div></div>
+      </aside>
+    </section>
+
+    <section class="gc-command-strip">
+      <div class="gc-command-item"><span>Entrada</span><strong>stracker.db3</strong><p>La base generada por el servidor de Assetto.</p></div>
+      <div class="gc-command-item"><span>Proceso</span><strong>Sync controlada</strong><p>Copia remota hacia Hostinger para lectura web.</p></div>
+      <div class="gc-command-item"><span>Salida</span><strong>Endpoints API</strong><p>Hotlaps, pilotos, estado, perfil y futuras comparativas.</p></div>
+    </section>
+
+    <section class="gc-grid-2">
+      <div class="gc-section">
+        <div class="gc-section-head"><h2>Módulos tracker</h2><p>Accesos principales</p></div>
+        <div class="gc-row-list">
+          <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Hotlaps</strong><br><span class="gc-row-link__desc">Leaderboard real desde Lap, PlayerInSession, Cars y Tracks.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <a class="gc-row-link" href="/pilotos"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Pilotos</strong><br><span class="gc-row-link__desc">Listado de pilotos detectados por stracker y futuros perfiles.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <a class="gc-row-link" href="/herramientas"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Herramientas</strong><br><span class="gc-row-link__desc">Consistencia, comparativas, filtros y diagnóstico avanzado.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+        </div>
+      </div>
+
+      <aside class="gc-slab">
+        <h3>Rutas de lectura</h3>
+        <p>Checklist visual para comprobar que cada pieza responde.</p>
+        <div class="gc-slab-list">
+          <div><span>/api/stracker/status</span><strong id="routeStatus">...</strong></div>
+          <div><span>/api/hotlaps</span><strong>Tabla</strong></div>
+          <div><span>/api/pilots</span><strong>Pilotos</strong></div>
+          <div><span>/api/profile</span><strong>Privado</strong></div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const dbState = document.getElementById('dbState');
+    const trackerRows = document.getElementById('trackerRows');
+    const routeStatus = document.getElementById('routeStatus');
+    fetch('/api/stracker/status').then((response) => response.json()).then((data) => {
+      const status = data.stracker || data;
+      const db = status.db || status;
+      const exists = Boolean(db.exists || status.exists);
+      const valid = Boolean(db.validSQLite || status.validSQLite);
+      dbState.textContent = status.status || (exists ? 'Activo' : 'No encontrado');
+      dbState.style.color = exists ? 'var(--accent)' : 'var(--warn)';
+      routeStatus.textContent = 'OK';
+      routeStatus.style.color = 'var(--accent)';
+      trackerRows.innerHTML = `
+        <div class="gc-status-row"><span>Existe</span><strong>${exists ? 'Sí' : 'No'}</strong></div>
+        <div class="gc-status-row"><span>SQLite</span><strong>${valid ? 'Válido' : '-'}</strong></div>
+        <div class="gc-status-row"><span>Tamaño</span><strong>${Math.round(((db.sizeBytes || status.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>
+        <div class="gc-status-row"><span>Actualizado</span><strong>${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</strong></div>
+      `;
+    }).catch(() => {
+      dbState.textContent = 'Error';
+      dbState.style.color = 'var(--warn)';
+      routeStatus.textContent = 'Error';
+      routeStatus.style.color = 'var(--warn)';
+      trackerRows.innerHTML = '<div class="gc-status-row"><span>Endpoint</span><strong>Sin respuesta</strong></div>';
+    });
+  </script>
+</AppLayout>

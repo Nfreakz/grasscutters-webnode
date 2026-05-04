@@ -1,16 +1,147 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import AppLayout from '../layouts/AppLayout.astro';
 ---
-
-<BaseLayout title="Hotlaps | GrassCutters">
-  <main class="gc-page">
-    <a class="gc-back" href="/">← Volver</a>
-    <section class="gc-panel">
-      <span class="gc-kicker">Hotlaps</span>
-      <h1>Datos stracker preparados para conectar.</h1>
-      <p>
-        Esta página queda lista para consumir la API de hotlaps cuando conectemos el lector real de stracker.db3.
-      </p>
+<AppLayout title="Hotlaps | GrassCutters">
+  <div class="gc-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Leaderboard</span>
+        <h1 class="gc-title">Hotlaps reales de stracker.</h1>
+        <p class="gc-subtitle">Tabla densa de referencias con filtros rápidos por piloto, coche y circuito. Ahora con estados, contador de resultados y lectura más segura de los datos.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Fuente: stracker.db3</span>
+          <span class="gc-chip">Modo tabla</span>
+          <span class="gc-chip">Filtros locales</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Fuente</span><strong id="hotlapSource">Live copy</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Registros cargados</span><strong id="hotlapLoaded">...</strong></div>
+          <div class="gc-status-row"><span>Visibles</span><strong id="hotlapVisible">...</strong></div>
+          <div class="gc-status-row"><span>Actualizado</span><strong id="hotlapUpdated">...</strong></div>
+        </div>
+      </aside>
     </section>
-  </main>
-</BaseLayout>
+
+    <section class="gc-toolbar" aria-label="Filtros del leaderboard">
+      <div class="gc-field"><label for="driverFilter">Piloto</label><input class="gc-input" id="driverFilter" placeholder="Filtrar piloto" autocomplete="off" /></div>
+      <div class="gc-field"><label for="carFilter">Coche</label><input class="gc-input" id="carFilter" placeholder="Filtrar coche" autocomplete="off" /></div>
+      <div class="gc-field"><label for="trackFilter">Circuito</label><input class="gc-input" id="trackFilter" placeholder="Filtrar circuito" autocomplete="off" /></div>
+      <div class="gc-field"><label for="validFilter">Estado</label><select class="gc-select" id="validFilter"><option value="all">Todas</option><option value="valid">Válidas</option><option value="invalid">Inválidas</option></select></div>
+      <button class="gc-btn gc-btn--primary" id="reloadHotlaps" type="button">Actualizar</button>
+      <button class="gc-btn" id="clearFilters" type="button">Limpiar</button>
+    </section>
+
+    <div class="gc-table-meta">
+      <span id="leaderboardHint">Cargando leaderboard...</span>
+      <span>Ordenado por mejor tiempo</span>
+    </div>
+
+    <section class="gc-table-wrap">
+      <table class="gc-table">
+        <thead><tr><th>#</th><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>S1</th><th>S2</th><th>S3</th><th>Válida</th></tr></thead>
+        <tbody id="hotlapRows"><tr><td colspan="9">Cargando...</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const els = {
+      driver: document.getElementById('driverFilter'),
+      car: document.getElementById('carFilter'),
+      track: document.getElementById('trackFilter'),
+      valid: document.getElementById('validFilter'),
+      reload: document.getElementById('reloadHotlaps'),
+      clear: document.getElementById('clearFilters'),
+      rows: document.getElementById('hotlapRows'),
+      loaded: document.getElementById('hotlapLoaded'),
+      visible: document.getElementById('hotlapVisible'),
+      updated: document.getElementById('hotlapUpdated'),
+      hint: document.getElementById('leaderboardHint'),
+      source: document.getElementById('hotlapSource')
+    };
+    let cache = [];
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const pick = (row, ...keys) => keys.map((key) => row?.[key]).find((value) => value !== undefined && value !== null && value !== '') ?? '';
+    const fmt = (ms) => {
+      const n = Number(ms);
+      if (!Number.isFinite(n)) return '-';
+      const m = Math.floor(n / 60000);
+      const s = Math.floor((n % 60000) / 1000);
+      const x = String(Math.floor(n % 1000)).padStart(3, '0');
+      return `${m}:${String(s).padStart(2, '0')}.${x}`;
+    };
+    const isInvalid = (row) => {
+      const value = pick(row, 'valid', 'Valid', 'isValid');
+      return value === 0 || value === false || value === '0' || value === 'false';
+    };
+
+    function draw() {
+      const driver = els.driver.value.trim().toLowerCase();
+      const car = els.car.value.trim().toLowerCase();
+      const track = els.track.value.trim().toLowerCase();
+      const valid = els.valid.value;
+      const rows = cache.filter((row) => {
+        const driverName = String(pick(row, 'driverName', 'playerName', 'name', 'Name')).toLowerCase();
+        const carName = String(pick(row, 'carName', 'car', 'uiCarName', 'Car')).toLowerCase();
+        const trackName = String(pick(row, 'trackName', 'track', 'uiTrackName', 'Track')).toLowerCase();
+        if (driver && !driverName.includes(driver)) return false;
+        if (car && !carName.includes(car)) return false;
+        if (track && !trackName.includes(track)) return false;
+        if (valid === 'valid' && isInvalid(row)) return false;
+        if (valid === 'invalid' && !isInvalid(row)) return false;
+        return true;
+      });
+
+      els.visible.textContent = String(rows.length);
+      els.hint.textContent = rows.length ? `${rows.length} vueltas visibles de ${cache.length}` : 'No hay resultados con esos filtros';
+      els.rows.innerHTML = rows.map((row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(pick(row, 'driverName', 'playerName', 'name', 'Name'))}</strong></td>
+          <td>${escapeHtml(pick(row, 'carName', 'car', 'uiCarName', 'Car'))}</td>
+          <td>${escapeHtml(pick(row, 'trackName', 'track', 'uiTrackName', 'Track'))}</td>
+          <td><strong>${escapeHtml(row.lapTimeFormatted || fmt(pick(row, 'lapTimeMs', 'LapTime', 'lapTime')))}</strong></td>
+          <td>${escapeHtml(fmt(pick(row, 'sector1Ms', 'SectorTime0', 'sector0')))}</td>
+          <td>${escapeHtml(fmt(pick(row, 'sector2Ms', 'SectorTime1', 'sector1')))}</td>
+          <td>${escapeHtml(fmt(pick(row, 'sector3Ms', 'SectorTime2', 'sector2')))}</td>
+          <td>${isInvalid(row) ? '<span class="gc-chip gc-chip--danger">No</span>' : '<span class="gc-chip gc-chip--accent">Sí</span>'}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="9">Sin resultados</td></tr>';
+    }
+
+    async function load() {
+      els.rows.innerHTML = '<tr><td colspan="9">Cargando...</td></tr>';
+      els.reload.disabled = true;
+      try {
+        const res = await fetch('/api/hotlaps?limit=250');
+        if (!res.ok) throw new Error('Endpoint no disponible');
+        const json = await res.json();
+        cache = json.items || json.hotlaps || json.laps || [];
+        els.loaded.textContent = String(cache.length);
+        els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        els.source.textContent = 'OK';
+        draw();
+      } catch (error) {
+        els.source.textContent = 'Error';
+        els.source.style.color = 'var(--warn)';
+        els.hint.textContent = 'No se pudo cargar /api/hotlaps';
+        els.rows.innerHTML = '<tr><td colspan="9">Error cargando hotlaps. Revisa que el endpoint esté activo.</td></tr>';
+      } finally {
+        els.reload.disabled = false;
+      }
+    }
+
+    [els.driver, els.car, els.track, els.valid].forEach((input) => input.addEventListener('input', draw));
+    els.reload.addEventListener('click', load);
+    els.clear.addEventListener('click', () => {
+      els.driver.value = '';
+      els.car.value = '';
+      els.track.value = '';
+      els.valid.value = 'all';
+      draw();
+    });
+    load();
+  </script>
+</AppLayout>
