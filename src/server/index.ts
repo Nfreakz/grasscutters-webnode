@@ -13,6 +13,7 @@ const defaultAppDataDirRelativePath = './data';
 const defaultStrackerRelativePath = './data/stracker/stracker.db3';
 const defaultUsersRelativePath = './data/app/users.json';
 const defaultDisplayNamesRelativePath = './data/app/display-names.json';
+const defaultAppSqliteRelativePath = './data/app/gc-local.sqlite';
 const sessionCookieName = 'gc_session';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -24,15 +25,27 @@ const discordEnabled = process.env.DISCORD_ENABLED === 'true';
 const appStorageDriver = String(process.env.APP_STORAGE_DRIVER ?? 'json').trim().toLowerCase();
 
 type MysqlPool = any;
+type SqlJsModule = any;
+type AppSqliteDb = any;
 
 function useMysqlStorage() {
   return appStorageDriver === 'mysql' || appStorageDriver === 'mariadb';
 }
 
+function useSqliteStorage() {
+  return appStorageDriver === 'sqlite' || appStorageDriver === 'sqlite3';
+}
+
+function getAppStorageDriverLabel() {
+  if (useMysqlStorage()) return 'mysql';
+  if (useSqliteStorage()) return 'sqlite';
+  return 'json';
+}
+
 function getMysqlStorageSafeConfig() {
   return {
     enabled: useMysqlStorage(),
-    driver: useMysqlStorage() ? 'mysql' : 'json',
+    driver: getAppStorageDriverLabel(),
     hostConfigured: Boolean(process.env.MYSQL_HOST?.trim()),
     port: Number(process.env.MYSQL_PORT || 3306),
     databaseConfigured: Boolean(process.env.MYSQL_DATABASE?.trim()),
@@ -41,8 +54,32 @@ function getMysqlStorageSafeConfig() {
   };
 }
 
+function getAppSqlitePath() {
+  const configured = process.env.APP_SQLITE_PATH?.trim();
+  return configured
+    ? (resolveProjectPath(configured) ?? path.join(rootDir, configured))
+    : path.join(rootDir, defaultAppSqliteRelativePath);
+}
+
+function getSqliteStorageSafeConfig() {
+  const sqlitePath = getAppSqlitePath();
+  const stats = fs.existsSync(sqlitePath) ? fs.statSync(sqlitePath) : null;
+  return {
+    enabled: useSqliteStorage(),
+    driver: getAppStorageDriverLabel(),
+    pathConfigured: Boolean(process.env.APP_SQLITE_PATH?.trim()),
+    relativePath: process.env.APP_SQLITE_PATH?.trim() || defaultAppSqliteRelativePath,
+    resolvedPath: sqlitePath,
+    exists: Boolean(stats),
+    sizeBytes: stats?.size ?? 0,
+    modifiedAt: stats?.mtime?.toISOString?.() ?? null,
+    validSQLite: stats ? isSQLiteFile(sqlitePath) : false
+  };
+}
+
 let mysqlPool: MysqlPool | null = null;
 let mysqlSchemaReady = false;
+let appSqlJsPromise: Promise<SqlJsModule> | null = null;
 
 async function importMysql2() {
   const mod: any = await import('mysql2/promise');
@@ -160,6 +197,128 @@ async function ensureMysqlSchema() {
   `);
 
   mysqlSchemaReady = true;
+}
+
+async function getAppSqlJs() {
+  if (!appSqlJsPromise) {
+    appSqlJsPromise = (async () => {
+      const initSqlJsModule = await import('sql.js');
+      const initSqlJs = initSqlJsModule.default;
+      return initSqlJs();
+    })();
+  }
+  return appSqlJsPromise;
+}
+
+function sqliteRowsFromExec(result: any) {
+  const first = result?.[0];
+  if (!first) return [];
+  const columns = first.columns ?? [];
+  return (first.values ?? []).map((row: unknown[]) =>
+    Object.fromEntries(columns.map((column: string, index: number) => [column, row[index]]))
+  ) as PlainObject[];
+}
+
+function sqliteQuery(db: AppSqliteDb, sql: string, params: unknown[] = []) {
+  return sqliteRowsFromExec(db.exec(sql, params));
+}
+
+async function openAppSqliteDb() {
+  if (!useSqliteStorage()) throw new Error('APP_STORAGE_DRIVER no está en sqlite.');
+  const sqlitePath = getAppSqlitePath();
+  ensureDirForFile(sqlitePath);
+  const SQL = await getAppSqlJs();
+  const bytes = fs.existsSync(sqlitePath) ? new Uint8Array(fs.readFileSync(sqlitePath)) : undefined;
+  const db = bytes && bytes.length ? new SQL.Database(bytes) : new SQL.Database();
+  return { db, sqlitePath };
+}
+
+function persistAppSqliteDb(db: AppSqliteDb, sqlitePath: string) {
+  ensureDirForFile(sqlitePath);
+  const tempPath = `${sqlitePath}.tmp`;
+  fs.writeFileSync(tempPath, Buffer.from(db.export()));
+  fs.renameSync(tempPath, sqlitePath);
+}
+
+async function withAppSqliteDb<T>(callback: (db: AppSqliteDb) => T | Promise<T>, persist = false) {
+  const { db, sqlitePath } = await openAppSqliteDb();
+  let shouldPersist = persist;
+  try {
+    shouldPersist = (await ensureAppSqliteSchema(db)) || shouldPersist;
+    const result = await callback(db);
+    if (shouldPersist) persistAppSqliteDb(db, sqlitePath);
+    return result;
+  } finally {
+    db.close();
+  }
+}
+
+async function ensureAppSqliteSchema(db: AppSqliteDb) {
+  if (!useSqliteStorage()) return false;
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_users (
+      id TEXT NOT NULL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'pilot',
+      password_algorithm TEXT NOT NULL,
+      password_iterations INTEGER NOT NULL,
+      password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      pilot_player_id INTEGER NULL,
+      pilot_steam_guid TEXT NULL,
+      pilot_stracker_name TEXT NULL,
+      pilot_linked_at TEXT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_login_at TEXT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_sessions (
+      id TEXT NOT NULL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES gc_users(id) ON DELETE CASCADE
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_sessions_user_id ON gc_sessions(user_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_sessions_token_hash ON gc_sessions(token_hash)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_sessions_expires_at ON gc_sessions(expires_at)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_display_names (
+      id TEXT NOT NULL PRIMARY KEY,
+      kind TEXT NOT NULL,
+      source_id INTEGER NULL,
+      source_code TEXT NULL,
+      source_name TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      notes TEXT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_display_names_kind ON gc_display_names(kind)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_display_names_source_id ON gc_display_names(source_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_display_names_source_code ON gc_display_names(source_code)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_settings (
+      setting_key TEXT NOT NULL PRIMARY KEY,
+      setting_value TEXT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  return true;
 }
 
 function mysqlDate(value: unknown) {
@@ -285,6 +444,20 @@ function getStoragePersistenceInfo() {
     };
   }
 
+  if (useSqliteStorage()) {
+    const sqlitePath = getAppSqlitePath();
+    const insideProject = isPathInside(sqlitePath, rootDir);
+    return {
+      dataRoot: path.dirname(sqlitePath),
+      source: process.env.APP_SQLITE_PATH ? 'sqlite-env' : 'sqlite-local-default',
+      insideProject,
+      persistent: true,
+      warning: insideProject
+        ? 'SQLite local activo. Es correcto para desarrollo si data/app/*.sqlite está en .gitignore. En Hostinger usa APP_STORAGE_DRIVER=mysql.'
+        : null
+    };
+  }
+
   const dataRoot = getAppDataRoot();
   const insideProject = isPathInside(dataRoot, rootDir);
   return {
@@ -306,6 +479,9 @@ function getUsersDbInfo() {
   if (useMysqlStorage()) {
     return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
   }
+  if (useSqliteStorage()) {
+    return { configured: true, source: 'sqlite', persistent: true, sqlite: getSqliteStorageSafeConfig() };
+  }
 
   const configured = process.env.APP_USERS_PATH?.trim();
   const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
@@ -322,6 +498,9 @@ function getDisplayNamesDbInfo() {
   if (useMysqlStorage()) {
     return { configured: true, source: 'mysql', persistent: true, mysql: getMysqlStorageSafeConfig() };
   }
+  if (useSqliteStorage()) {
+    return { configured: true, source: 'sqlite', persistent: true, sqlite: getSqliteStorageSafeConfig() };
+  }
 
   const configured = process.env.APP_DISPLAY_NAMES_PATH?.trim();
   const source = configured ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
@@ -337,7 +516,11 @@ function getAppStorageStatus() {
       displayNames: getDisplayNamesDbInfo(),
       stracker: getStrackerConfig()
     },
-    recommendation: useMysqlStorage() ? 'Storage de app en MySQL. Usuarios, sesiones y alias sobreviven a deploys.' : 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. Así los deploys no pisan usuarios ni alias.'
+    recommendation: useMysqlStorage()
+      ? 'Storage de app en MySQL. Usuarios, sesiones y alias sobreviven a deploys.'
+      : useSqliteStorage()
+        ? 'Storage SQLite local activo. Perfecto para pruebas locales; en Hostinger mantén APP_STORAGE_DRIVER=mysql.'
+        : 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. Así los deploys no pisan usuarios ni alias.'
   };
 }
 
@@ -359,6 +542,12 @@ function normalizeDisplayNameKey(value: unknown) {
 }
 
 function readDisplayNameStore(force = false): DisplayNameStore {
+  if (useSqliteStorage()) {
+    const cacheKey = `sqlite:${getAppSqlitePath()}`;
+    if (!force && displayNameCache?.path === cacheKey) return displayNameCache.store;
+    return createEmptyDisplayNameStore();
+  }
+
   const filePath = getDisplayNamesPath();
   const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
   const mtimeMs = stats?.mtimeMs ?? null;
@@ -406,10 +595,10 @@ function readDisplayNameStore(force = false): DisplayNameStore {
 function writeDisplayNameStore(store: DisplayNameStore) {
   const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
 
-  if (useMysqlStorage()) {
-    displayNameCache = { path: 'mysql:gc_display_names', mtimeMs: null, store: nextStore };
+  if (useMysqlStorage() || useSqliteStorage()) {
+    displayNameCache = { path: useMysqlStorage() ? 'mysql:gc_display_names' : `sqlite:${getAppSqlitePath()}`, mtimeMs: null, store: nextStore };
     void writeDisplayNameStoreAsync(nextStore).catch((error) => {
-      console.error('[GC] Error guardando display names en MySQL:', error);
+      console.error(`[GC] Error guardando display names en ${getAppStorageDriverLabel()}:`, error);
     });
     return;
   }
@@ -423,7 +612,33 @@ function writeDisplayNameStore(store: DisplayNameStore) {
 }
 
 async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStore> {
-  if (!useMysqlStorage()) return readDisplayNameStore(force);
+  if (!useMysqlStorage() && !useSqliteStorage()) return readDisplayNameStore(force);
+
+  if (useSqliteStorage()) {
+    const cacheKey = `sqlite:${getAppSqlitePath()}`;
+    if (!force && displayNameCache?.path === cacheKey) return displayNameCache.store;
+
+    const rows = await withAppSqliteDb((db) => sqliteQuery(db, 'SELECT * FROM gc_display_names ORDER BY kind ASC, display_name ASC'));
+    const store: DisplayNameStore = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      entries: rows.map((row: any) => ({
+        id: String(row.id),
+        kind: sanitizeDisplayNameKind(row.kind) || 'driver',
+        sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
+        sourceCode: compactNullableText(row.source_code),
+        sourceName: compactNullableText(row.source_name) || '',
+        displayName: compactNullableText(row.display_name) || '',
+        notes: compactNullableText(row.notes),
+        enabled: row.enabled !== 0 && row.enabled !== false,
+        createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+        updatedAt: mysqlDate(row.updated_at) || new Date().toISOString()
+      })).filter((entry: DisplayNameEntry) => entry.displayName.length > 0)
+    };
+
+    displayNameCache = { path: cacheKey, mtimeMs: null, store };
+    return store;
+  }
 
   await ensureMysqlSchema();
   const rows = await mysqlQuery('SELECT * FROM gc_display_names ORDER BY kind ASC, display_name ASC');
@@ -451,8 +666,42 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
 async function writeDisplayNameStoreAsync(store: DisplayNameStore) {
   const nextStore = { ...store, version: 1 as const, updatedAt: new Date().toISOString() };
 
-  if (!useMysqlStorage()) {
+  if (!useMysqlStorage() && !useSqliteStorage()) {
     writeDisplayNameStore(nextStore);
+    return;
+  }
+
+  if (useSqliteStorage()) {
+    await withAppSqliteDb((db) => {
+      db.run('BEGIN TRANSACTION');
+      try {
+        db.run('DELETE FROM gc_display_names');
+        for (const entry of nextStore.entries) {
+          db.run(
+            `INSERT INTO gc_display_names
+              (id, kind, source_id, source_code, source_name, display_name, notes, enabled, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry.id,
+              entry.kind,
+              entry.sourceId,
+              entry.sourceCode,
+              entry.sourceName,
+              entry.displayName,
+              entry.notes,
+              entry.enabled ? 1 : 0,
+              entry.createdAt || new Date().toISOString(),
+              entry.updatedAt || new Date().toISOString()
+            ]
+          );
+        }
+        db.run('COMMIT');
+      } catch (error) {
+        db.run('ROLLBACK');
+        throw error;
+      }
+    }, true);
+    displayNameCache = { path: `sqlite:${getAppSqlitePath()}`, mtimeMs: null, store: nextStore };
     return;
   }
 
@@ -615,7 +864,45 @@ function writeUserStore(store: AppUserStore) {
 
 
 async function readUserStoreAsync(): Promise<AppUserStore> {
-  if (!useMysqlStorage()) return readUserStore();
+  if (!useMysqlStorage() && !useSqliteStorage()) return readUserStore();
+
+  if (useSqliteStorage()) {
+    const userRows = await withAppSqliteDb((db) => sqliteQuery(db, 'SELECT * FROM gc_users ORDER BY created_at ASC'));
+    const sessionRows = await withAppSqliteDb((db) => sqliteQuery(db, 'SELECT * FROM gc_sessions ORDER BY created_at ASC'));
+    const store: AppUserStore = {
+      version: 1,
+      users: userRows.map((row: any) => ({
+        id: String(row.id),
+        email: String(row.email),
+        displayName: String(row.display_name),
+        role: row.role === 'admin' ? 'admin' : 'pilot',
+        password: {
+          algorithm: 'pbkdf2-sha256',
+          iterations: Number(row.password_iterations),
+          salt: String(row.password_salt),
+          hash: String(row.password_hash)
+        },
+        pilotLink: row.pilot_player_id == null ? null : {
+          playerId: Number(row.pilot_player_id),
+          steamGuid: compactNullableText(row.pilot_steam_guid),
+          strackerName: compactNullableText(row.pilot_stracker_name) || 'Piloto vinculado',
+          linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
+        },
+        createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+        updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
+        lastLoginAt: mysqlDate(row.last_login_at)
+      })),
+      sessions: sessionRows.map((row: any) => ({
+        id: String(row.id),
+        userId: String(row.user_id),
+        tokenHash: String(row.token_hash),
+        createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
+        expiresAt: mysqlDate(row.expires_at) || new Date().toISOString(),
+        lastSeenAt: mysqlDate(row.last_seen_at) || new Date().toISOString()
+      }))
+    };
+    return pruneExpiredSessionsInMemory(store);
+  }
 
   await ensureMysqlSchema();
   const userRows = await mysqlQuery('SELECT * FROM gc_users ORDER BY created_at ASC');
@@ -658,8 +945,65 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
 }
 
 async function writeUserStoreAsync(store: AppUserStore) {
-  if (!useMysqlStorage()) {
+  if (!useMysqlStorage() && !useSqliteStorage()) {
     writeUserStore(store);
+    return;
+  }
+
+  if (useSqliteStorage()) {
+    await withAppSqliteDb((db) => {
+      db.run('BEGIN TRANSACTION');
+      try {
+        db.run('DELETE FROM gc_sessions');
+        db.run('DELETE FROM gc_users');
+
+        for (const user of store.users) {
+          db.run(
+            `INSERT INTO gc_users
+              (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              user.id,
+              user.email,
+              user.displayName,
+              user.role,
+              user.password.algorithm,
+              user.password.iterations,
+              user.password.salt,
+              user.password.hash,
+              user.pilotLink?.playerId ?? null,
+              user.pilotLink?.steamGuid ?? null,
+              user.pilotLink?.strackerName ?? null,
+              user.pilotLink?.linkedAt ?? null,
+              user.createdAt || new Date().toISOString(),
+              user.updatedAt || new Date().toISOString(),
+              user.lastLoginAt ?? null
+            ]
+          );
+        }
+
+        for (const session of store.sessions) {
+          db.run(
+            `INSERT INTO gc_sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              session.id,
+              session.userId,
+              session.tokenHash,
+              session.createdAt || new Date().toISOString(),
+              session.expiresAt || new Date().toISOString(),
+              session.lastSeenAt || new Date().toISOString()
+            ]
+          );
+        }
+
+        db.run('COMMIT');
+      } catch (error) {
+        db.run('ROLLBACK');
+        throw error;
+      }
+    }, true);
     return;
   }
 
@@ -732,7 +1076,7 @@ function pruneExpiredSessions(store: AppUserStore) {
   if (sessions.length !== store.sessions.length) {
     const next = { ...store, sessions };
     try {
-      if (!useMysqlStorage()) writeUserStore(next);
+      if (!useMysqlStorage() && !useSqliteStorage()) writeUserStore(next);
     } catch (_) {
       // no-op: no queremos tumbar la API por limpieza de sesiones
     }
@@ -754,11 +1098,23 @@ function getUserStoreStats() {
     };
   }
 
+  if (useSqliteStorage()) {
+    return {
+      enabled: true,
+      status: 'sqlite_auth',
+      message: 'Usuarios reales activos en SQLite local.',
+      db: getUsersDbInfo(),
+      usersCount: null,
+      sessionsCount: null,
+      registrationEnabled: readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)
+    };
+  }
+
   const store = readUserStore();
   return {
     enabled: true,
-    status: useMysqlStorage() ? 'mysql_auth' : 'file_auth',
-    message: useMysqlStorage() ? 'Usuarios reales activos en MySQL/MariaDB.' : 'Usuarios reales activos con storage local JSON. Migrable a MySQL/MariaDB.',
+    status: 'file_auth',
+    message: 'Usuarios reales activos con storage local JSON. Migrable a MySQL/MariaDB.',
     db: getUsersDbInfo(),
     usersCount: store.users.length,
     sessionsCount: store.sessions.length,
@@ -776,12 +1132,12 @@ function normalizeDisplayName(value: unknown) {
 
 
 async function getUserStoreStatsAsync() {
-  if (!useMysqlStorage()) return getUserStoreStats();
+  if (!useMysqlStorage() && !useSqliteStorage()) return getUserStoreStats();
   const store = await readUserStoreAsync();
   return {
     enabled: true,
-    status: 'mysql_auth',
-    message: 'Usuarios reales activos en MySQL/MariaDB.',
+    status: useMysqlStorage() ? 'mysql_auth' : 'sqlite_auth',
+    message: useMysqlStorage() ? 'Usuarios reales activos en MySQL/MariaDB.' : 'Usuarios reales activos en SQLite local.',
     db: getUsersDbInfo(),
     usersCount: store.users.length,
     sessionsCount: store.sessions.length,
@@ -1884,6 +2240,7 @@ function mapLapRow(row: PlainObject) {
 }
 
 async function readJoinedLaps(dbPath: string) {
+  await readDisplayNameStoreAsync();
   const rows = await runStrackerQuery(dbPath, `${joinedLapsSql} ORDER BY L.LapTime ASC`);
   return rows.map(mapLapRow);
 }
@@ -2567,7 +2924,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'grasscutters-node',
-    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-appstorage-ready',
     startedAt
   });
 });
@@ -2578,7 +2935,7 @@ app.get('/api/status', (_req, res) => {
   res.json({
     ok: true,
     message: 'GC API funcionando en Hostinger',
-    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
+    mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-appstorage-ready',
     modules: {
       web: modules.web.enabled,
       api: modules.api.enabled,
@@ -2587,7 +2944,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: useMysqlStorage() ? 'Paquete 25: app storage en MySQL/MariaDB.' : 'Storage JSON activo. Para producción usa APP_STORAGE_DRIVER=mysql.'
+    note: useMysqlStorage() ? 'App storage activo con driver configurable: MySQL en producción, SQLite/JSON en local.' : 'Storage JSON activo. Para producción usa APP_STORAGE_DRIVER=mysql.'
   });
 });
 
@@ -2759,6 +3116,46 @@ app.get('/api/mysql/status', async (req, res) => {
       config,
       error: safeRuntimeError(error),
       message: 'No se pudo conectar o preparar MySQL. Revisa variables, password, permisos y que mysql2 esté instalado.'
+    });
+  }
+});
+
+app.get('/api/sqlite/status', async (req, res) => {
+  const config = getSqliteStorageSafeConfig();
+
+  if (!useSqliteStorage()) {
+    res.status(200).json({
+      ok: true,
+      enabled: false,
+      config,
+      message: 'SQLite local no está activo. Usa APP_STORAGE_DRIVER=sqlite para desarrollo local.'
+    });
+    return;
+  }
+
+  try {
+    const rows = await withAppSqliteDb((db) => sqliteQuery(
+      db,
+      `SELECT name AS tableName FROM sqlite_master WHERE type='table' AND name IN ('gc_users', 'gc_sessions', 'gc_display_names', 'gc_settings') ORDER BY name ASC`
+    ));
+
+    res.json({
+      ok: true,
+      enabled: true,
+      config: getSqliteStorageSafeConfig(),
+      tables: rows,
+      message: 'SQLite local conectado y tablas de app listas.'
+    });
+  } catch (error) {
+    console.error('[GC] Error en /api/sqlite/status:', error);
+    res.status(200).json({
+      ok: false,
+      enabled: true,
+      config: getSqliteStorageSafeConfig(),
+      error: error instanceof Error
+        ? { name: error.name, message: error.message, stack: process.env.NODE_ENV === 'development' ? error.stack : undefined }
+        : { message: String(error) },
+      message: 'No se pudo abrir o preparar SQLite local. Revisa APP_SQLITE_PATH y permisos de data/app.'
     });
   }
 });
@@ -3014,7 +3411,11 @@ app.get('/api/admin/storage/status', async (req, res) => {
     ok: true,
     ...getAppStorageStatus(),
     message: getStoragePersistenceInfo().persistent
-      ? useMysqlStorage() ? 'Storage de app en MySQL/MariaDB.' : 'Storage persistente configurado fuera del proyecto.'
+      ? useMysqlStorage()
+        ? 'Storage de app en MySQL/MariaDB.'
+        : useSqliteStorage()
+          ? 'Storage SQLite local activo para pruebas.'
+          : 'Storage persistente configurado fuera del proyecto.'
       : 'Storage dentro del proyecto. Configura APP_DATA_DIR fuera de nodejs o usa APP_STORAGE_DRIVER=mysql.'
   });
 });
@@ -3914,7 +4315,7 @@ app.get('/api/debug/runtime', (_req, res) => {
   res.json({
     ok: true,
     runtime: {
-      mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready',
+      mode: 'hostinger-singlefile-stracker-auto-sync-auth-admin-appstorage-ready',
       nodeEnv: process.env.NODE_ENV ?? 'development',
       startedAt,
       port: PORT,
@@ -3977,7 +4378,7 @@ process.on('unhandledRejection', (error) => {
 
 app.listen(PORT, HOST, async () => {
   console.log(`[GC] Servidor activo en ${HOST}:${PORT}`);
-  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync-auth-admin-mysql-ready');
+  console.log('[GC] Modo: hostinger-singlefile-stracker-auto-sync-auth-admin-appstorage-ready');
   try {
     if (useMysqlStorage()) {
       await ensureMysqlSchema();
