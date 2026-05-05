@@ -2,9 +2,7 @@ import { defineConfig } from 'astro/config';
 import node from '@astrojs/node';
 
 export default defineConfig({
-  // La plataforma tiene rutas dinámicas como /pilotos/[id] y /combos/[comboId].
-  // En producción Astro necesita un adapter para poder renderizarlas bajo demanda.
-  output: 'hybrid',
+  output: 'static',
   adapter: node({
     mode: 'middleware'
   }),
