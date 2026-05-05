@@ -1,0 +1,82 @@
+<script is:inline>
+  (() => {
+    const endpoints = ['/api/profile', '/api/auth/status'];
+
+    const headerRoots = () => Array.from(document.querySelectorAll('.gc-public-header, .gc-topbar'));
+    const inHeader = (el) => headerRoots().some((root) => root && root.contains(el));
+    const authLinks = () => Array.from(document.querySelectorAll('[data-auth-link], a[href="/login"], a[href="/login/"]')).filter(inHeader);
+    const authBadges = () => Array.from(document.querySelectorAll('[data-auth-status], [data-auth-state]')).filter(inHeader);
+
+    const pickUser = (data) => {
+      if (!data || typeof data !== 'object') return null;
+      return data.user || data.currentUser || data.account || data.profile?.user || data.session?.user || data.auth?.user || null;
+    };
+
+    const isLogged = (data) => {
+      if (!data || typeof data !== 'object') return false;
+      if (data.authenticated === false) return false;
+      if (data.loggedIn === false || data.isAuthenticated === false) return false;
+      if (data.authenticated === true || data.loggedIn === true || data.isAuthenticated === true) return true;
+      return Boolean(pickUser(data));
+    };
+
+    const userName = (data) => {
+      const user = pickUser(data) || {};
+      const raw = user.displayName || user.display_name || user.name || user.username || user.email || data?.email || '';
+      const text = String(raw || '').trim();
+      if (!text) return 'Mi perfil';
+      return text.includes('@') ? text.split('@')[0] : text;
+    };
+
+    async function fetchAuth() {
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, { credentials: 'include', cache: 'no-store' });
+          if (!response.ok) continue;
+          const data = await response.json().catch(() => null);
+          if (data && (isLogged(data) || data.authenticated === false)) return data;
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    function setLoggedOut() {
+      document.documentElement.dataset.auth = 'false';
+      authBadges().forEach((badge) => {
+        badge.hidden = true;
+        badge.setAttribute('aria-hidden', 'true');
+      });
+      authLinks().forEach((link) => {
+        link.textContent = 'Login';
+        link.setAttribute('href', '/login');
+        link.classList.remove('is-authenticated', 'gc-auth-profile-link');
+        link.removeAttribute('data-auth-profile-link');
+        link.setAttribute('aria-label', 'Login');
+      });
+    }
+
+    function setLoggedIn(data) {
+      const name = userName(data);
+      document.documentElement.dataset.auth = 'true';
+      authBadges().forEach((badge) => {
+        badge.hidden = false;
+        badge.removeAttribute('aria-hidden');
+        badge.textContent = 'Conectado';
+        badge.setAttribute('title', `Conectado como ${name}`);
+      });
+      authLinks().forEach((link) => {
+        link.textContent = name;
+        link.setAttribute('href', '/perfil');
+        link.setAttribute('title', 'Abrir mi perfil');
+        link.setAttribute('aria-label', `Abrir perfil de ${name}`);
+        link.classList.add('is-authenticated', 'gc-auth-profile-link');
+        link.setAttribute('data-auth-profile-link', 'true');
+      });
+    }
+
+    fetchAuth().then((data) => {
+      if (isLogged(data)) setLoggedIn(data);
+      else setLoggedOut();
+    }).catch(setLoggedOut);
+  })();
+</script>

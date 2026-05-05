@@ -3,6 +3,7 @@ import '../styles/marketing.css';
 import '../styles/landing-final.css';
 import '../styles/auth-header-status.css';
 import ThemeSwitcher from '../components/ThemeSwitcher.astro';
+import AuthHeader from '../components/AuthHeader.astro';
 
 const {
   title = 'GrassCutters Racing',
@@ -132,97 +133,22 @@ function isActive(match) {
       (() => {
         const toggle = document.querySelector('[data-public-menu-toggle]');
         const nav = document.querySelector('[data-public-nav]');
-        if (toggle && nav) {
-          const closeMenu = () => {
-            document.body.classList.remove('gc-public-menu-open');
-            toggle.setAttribute('aria-expanded', 'false');
-          };
-          toggle.addEventListener('click', () => {
-            const open = document.body.classList.toggle('gc-public-menu-open');
-            toggle.setAttribute('aria-expanded', String(open));
-          });
-          nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
-          document.querySelectorAll('.gc-public-actions a').forEach((link) => link.addEventListener('click', closeMenu));
-          window.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') closeMenu();
-          });
-        }
-
-
-        const updateAuthHeader = () => {
-          const headerRoots = Array.from(document.querySelectorAll('.gc-public-header, .gc-topbar, header'));
-          const isInHeader = (el) => headerRoots.some((root) => root && root.contains(el));
-          const statusItems = Array.from(document.querySelectorAll('[data-auth-status], [data-auth-state]')).filter(isInHeader);
-          const loginLinks = Array.from(document.querySelectorAll('[data-auth-link], [data-login-link], a[href="/login"], a[href="/login/"]'))
-            .filter((link) => isInHeader(link));
-
-          const readUser = (data) => (
-            data?.user ||
-            data?.currentUser ||
-            data?.account ||
-            data?.session?.user ||
-            data?.auth?.user ||
-            data?.profile ||
-            null
-          );
-
-          const readName = (user, data) => {
-            const raw = user?.displayName || user?.display_name || user?.name || user?.username || user?.email || data?.email || '';
-            return String(raw || '').trim() || 'Mi perfil';
-          };
-
-          fetch('/api/auth/status', { cache: 'no-store', credentials: 'include' })
-            .then((res) => res.ok ? res.json() : null)
-            .then((data) => {
-              const user = readUser(data);
-              const authenticated = data?.authenticated === true || data?.ok === true && Boolean(user) || Boolean(user?.id || user?.email || user?.displayName || user?.display_name || user?.name);
-              if (!authenticated) {
-                document.documentElement.dataset.auth = 'false';
-                return;
-              }
-
-              const name = readName(user, data);
-              document.documentElement.dataset.auth = 'true';
-
-              statusItems.forEach((item) => {
-                item.hidden = false;
-                item.textContent = 'Conectado';
-                item.setAttribute('title', `Conectado como ${name}`);
-              });
-
-              loginLinks.forEach((link) => {
-                link.textContent = name;
-                link.setAttribute('href', '/perfil');
-                link.setAttribute('title', 'Abrir mi perfil');
-                link.setAttribute('aria-label', `Abrir perfil de ${name}`);
-                link.classList.add('is-authenticated');
-                link.removeAttribute('data-login-link');
-                link.setAttribute('data-auth-profile-link', 'true');
-              });
-
-              // Red de seguridad: si algún enlace de Login queda en el header sin selector,
-              // también se convierte. Evita que aparezcan “Conectado” y “Login” a la vez.
-              headerRoots.forEach((root) => {
-                root.querySelectorAll('a').forEach((link) => {
-                  const text = String(link.textContent || '').trim().toLowerCase();
-                  const href = link.getAttribute('href') || '';
-                  if (text === 'login' || href === '/login' || href === '/login/') {
-                    link.textContent = name;
-                    link.setAttribute('href', '/perfil');
-                    link.setAttribute('title', 'Abrir mi perfil');
-                    link.classList.add('is-authenticated');
-                    link.setAttribute('data-auth-profile-link', 'true');
-                  }
-                });
-              });
-            })
-            .catch(() => {
-              document.documentElement.dataset.auth = 'unknown';
-            });
+        if (!toggle || !nav) return;
+        const closeMenu = () => {
+          document.body.classList.remove('gc-public-menu-open');
+          toggle.setAttribute('aria-expanded', 'false');
         };
-
-        updateAuthHeader();
+        toggle.addEventListener('click', () => {
+          const open = document.body.classList.toggle('gc-public-menu-open');
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+        nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+        document.querySelectorAll('.gc-public-actions a').forEach((link) => link.addEventListener('click', closeMenu));
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') closeMenu();
+        });
       })();
     </script>
+    <AuthHeader />
   </body>
 </html>
