@@ -1,0 +1,125 @@
+---
+export const prerender = false;
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout title="Combo | GrassCutters">
+  <div class="gc-page gc-combo-detail-page" data-combo-detail>
+    <section class="gc-hero gc-hero--compact gc-combo-detail-hero">
+      <div>
+        <span class="gc-kicker">Combo detail</span>
+        <h1 class="gc-title" id="comboTitle">Cargando combo...</h1>
+        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, actividad reciente y rendimiento por piloto.</p>
+        <div class="gc-hero__meta">
+          <a class="gc-chip" href="/combos">Volver a combos</a>
+          <a class="gc-chip" href="/hotlaps">Ver hotlaps</a>
+          <span class="gc-chip gc-chip--accent" id="comboKey">Track + Car</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Combo</span><strong id="comboStatus">...</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Vueltas</span><strong id="comboLaps">...</strong></div>
+          <div class="gc-status-row"><span>Pilotos</span><strong id="comboDrivers">...</strong></div>
+          <div class="gc-status-row"><span>Limpieza</span><strong id="comboClean">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-metric-strip gc-combo-metrics">
+      <article><span>Mejor vuelta</span><strong id="metricBest">...</strong><small id="metricBestDriver">Piloto</small></article>
+      <article><span>Vmax</span><strong id="metricSpeed">...</strong><small>Máxima registrada</small></article>
+      <article><span>Media Top 10</span><strong id="metricTop10">...</strong><small>Vueltas válidas</small></article>
+      <article><span>Última actividad</span><strong id="metricRecent">...</strong><small>stracker.db3</small></article>
+    </section>
+
+    <section class="gc-section-block">
+      <div class="gc-section-head"><div><span class="gc-kicker">Leaderboard</span><h2>Mejores pilotos del combo</h2></div></div>
+      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>#</th><th>Piloto</th><th>Tiempo</th><th>Delta</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="leaderboardRows"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div>
+    </section>
+
+    <section class="gc-section-block">
+      <div class="gc-section-head"><div><span class="gc-kicker">Actividad</span><h2>Últimas vueltas</h2></div></div>
+      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>Piloto</th><th>Tiempo</th><th>Estado</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="recentRows"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-combo-detail-page .gc-metric-strip { margin: 1.2rem 0; }
+    .gc-combo-metrics article { min-height: 118px; }
+    .gc-combo-metrics article span { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+    .gc-combo-metrics article strong { display: block; margin-top: .4rem; font-size: clamp(1.4rem, 2.4vw, 2.4rem); line-height: 1; }
+    .gc-combo-metrics article small { color: var(--muted); }
+    .gc-driver-link { font-weight: 900; }
+  </style>
+
+  <script>
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
+    const fmtDate = (value) => {
+      if (!value) return '--';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '--';
+      return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    };
+    const els = {
+      title: document.getElementById('comboTitle'), subtitle: document.getElementById('comboSubtitle'), key: document.getElementById('comboKey'), status: document.getElementById('comboStatus'),
+      laps: document.getElementById('comboLaps'), drivers: document.getElementById('comboDrivers'), clean: document.getElementById('comboClean'),
+      best: document.getElementById('metricBest'), bestDriver: document.getElementById('metricBestDriver'), speed: document.getElementById('metricSpeed'), top10: document.getElementById('metricTop10'), recent: document.getElementById('metricRecent'),
+      leaderboard: document.getElementById('leaderboardRows'), recentRows: document.getElementById('recentRows')
+    };
+
+    function pathIds() {
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      return { trackId: parts[1], carId: parts[2] };
+    }
+
+    function lapStatus(row) {
+      return row.valid === false || row.isValid === false ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>';
+    }
+
+    async function load() {
+      const { trackId, carId } = pathIds();
+      try {
+        const response = await fetch(`/api/combos/${encodeURIComponent(trackId)}/${encodeURIComponent(carId)}`);
+        const data = await response.json();
+        if (!data.ok || !data.item) throw new Error(data.message || 'Combo no encontrado');
+        const item = data.item;
+        const summary = item.summary || {};
+        const track = item.track || summary.track || {};
+        const car = item.car || summary.car || {};
+        els.title.textContent = `${track.name || 'Circuito'} · ${car.name || 'Coche'}`;
+        els.subtitle.textContent = `Ficha del combo Track ${item.trackId} + Car ${item.carId}. Datos generados desde vueltas reales de stracker.`;
+        els.key.textContent = `Track ${item.trackId} · Car ${item.carId}`;
+        els.status.textContent = 'OK';
+        els.laps.textContent = String(summary.totalLaps || 0);
+        els.drivers.textContent = String(summary.driversCount || 0);
+        els.clean.textContent = `${summary.cleanRate ?? 0}%`;
+        els.best.textContent = summary.bestLapTime || summary.bestLap?.lapTime || '--';
+        els.bestDriver.textContent = summary.bestLap?.driverName || summary.bestLap?.playerName || 'Sin piloto';
+        els.speed.textContent = fmtSpeed(summary.maxSpeedKmh);
+        els.top10.textContent = summary.best10Average || '--';
+        els.recent.textContent = fmtDate(summary.lastSeenAt);
+
+        els.leaderboard.innerHTML = (item.leaderboard || []).map((row) => {
+          const id = row.playerId || row.driverId;
+          const driver = escapeHtml(row.driverName || row.playerName || '-');
+          return `<tr><td>${escapeHtml(row.position)}</td><td>${id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${escapeHtml(row.delta || '--')}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
+        }).join('') || '<tr><td colspan="7">Sin leaderboard para este combo.</td></tr>';
+
+        els.recentRows.innerHTML = (item.recentLaps || []).map((row) => {
+          const id = row.playerId || row.driverId;
+          const driver = escapeHtml(row.driverName || row.playerName || '-');
+          return `<tr><td>${id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
+        }).join('') || '<tr><td colspan="6">Sin vueltas recientes.</td></tr>';
+      } catch (error) {
+        els.title.textContent = 'Combo no disponible';
+        els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Revisa TrackId, CarId o stracker.db3.';
+        els.status.textContent = 'Error';
+        els.leaderboard.innerHTML = '<tr><td colspan="7">No se pudo cargar el combo.</td></tr>';
+        els.recentRows.innerHTML = '<tr><td colspan="6">No se pudo cargar actividad reciente.</td></tr>';
+      }
+    }
+
+    load();
+  </script>
+</AppLayout>

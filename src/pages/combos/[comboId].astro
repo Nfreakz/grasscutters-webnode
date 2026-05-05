@@ -1,0 +1,149 @@
+---
+export const prerender = false;
+import AppLayout from '../../layouts/AppLayout.astro';
+---
+<AppLayout title="Combo | GrassCutters">
+  <div class="gc-page gc-combo-detail-page" data-combo-detail>
+    <section class="gc-hero gc-hero--compact gc-combo-detail-hero">
+      <div>
+        <span class="gc-kicker">Combo lógico</span>
+        <h1 class="gc-title" id="comboTitle">Cargando combo...</h1>
+        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente agrupando combos lógicos compatibles.</p>
+        <div class="gc-hero__meta">
+          <a class="gc-chip" href="/combos">Volver a combos</a>
+          <a class="gc-chip" href="/hotlaps">Ver hotlaps</a>
+          <span class="gc-chip gc-chip--accent" id="comboKey">Combo lógico</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Combo</span><strong id="comboStatus">...</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Vueltas</span><strong id="comboLaps">...</strong></div>
+          <div class="gc-status-row"><span>Pilotos</span><strong id="comboDrivers">...</strong></div>
+          <div class="gc-status-row"><span>Coches</span><strong id="comboCars">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-combo-car-panel" aria-label="Coches del combo">
+      <div>
+        <span class="gc-kicker">Paquete de coches</span>
+        <h2 id="comboCarsTitle">...</h2>
+        <p id="comboCarsSub">Coches permitidos por los ComboIds agrupados según la regla del 75%.</p>
+      </div>
+      <div class="gc-combo-car-tags" id="comboCarTags"></div>
+    </section>
+
+    <section class="gc-metric-strip gc-combo-metrics">
+      <article><span>Mejor vuelta</span><strong id="metricBest">...</strong><small id="metricBestDriver">Piloto</small></article>
+      <article><span>Vmax</span><strong id="metricSpeed">...</strong><small>Máxima registrada</small></article>
+      <article><span>Media Top 10</span><strong id="metricTop10">...</strong><small>Vueltas válidas</small></article>
+      <article><span>Última actividad</span><strong id="metricRecent">...</strong><small>stracker.db3</small></article>
+    </section>
+
+    <section class="gc-section-block">
+      <div class="gc-section-head"><div><span class="gc-kicker">Leaderboard</span><h2>Mejores pilotos del combo</h2></div></div>
+      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>#</th><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Delta</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="leaderboardRows"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div>
+    </section>
+
+    <section class="gc-section-block">
+      <div class="gc-section-head"><div><span class="gc-kicker">Actividad</span><h2>Últimas vueltas</h2></div></div>
+      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Estado</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="recentRows"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-combo-detail-page .gc-metric-strip { margin: 1.2rem 0; }
+    .gc-combo-metrics article { min-height: 118px; }
+    .gc-combo-metrics article span { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
+    .gc-combo-metrics article strong { display: block; margin-top: .4rem; font-size: clamp(1.4rem, 2.4vw, 2.4rem); line-height: 1; }
+    .gc-combo-metrics article small { color: var(--muted); }
+    .gc-driver-link { font-weight: 900; }
+    .gc-combo-car-panel { margin: 1.1rem 0; padding: 1.2rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface), transparent 42%); display:grid; grid-template-columns: minmax(260px,.75fr) 1.25fr; gap:1rem; align-items:start; }
+    .gc-combo-car-panel h2 { margin:.25rem 0; font-size: clamp(1.3rem,2.5vw,2.4rem); }
+    .gc-combo-car-panel p { margin:0; color: var(--muted); }
+    .gc-combo-car-tags { display:flex; gap:.45rem; flex-wrap:wrap; justify-content:flex-end; }
+    .gc-combo-car-tag { border:1px solid var(--line); padding:.42rem .62rem; color:var(--text); background: color-mix(in srgb, var(--surface), transparent 22%); font-size:.82rem; font-weight:800; }
+    @media (max-width: 860px) { .gc-combo-car-panel { grid-template-columns: 1fr; } .gc-combo-car-tags { justify-content:flex-start; } }
+  </style>
+
+  <script>
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
+    const fmtDate = (value) => {
+      if (!value) return '--';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '--';
+      return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    };
+    const els = {
+      title: document.getElementById('comboTitle'), subtitle: document.getElementById('comboSubtitle'), key: document.getElementById('comboKey'), status: document.getElementById('comboStatus'),
+      laps: document.getElementById('comboLaps'), drivers: document.getElementById('comboDrivers'), cars: document.getElementById('comboCars'),
+      carsTitle: document.getElementById('comboCarsTitle'), carsSub: document.getElementById('comboCarsSub'), carTags: document.getElementById('comboCarTags'),
+      best: document.getElementById('metricBest'), bestDriver: document.getElementById('metricBestDriver'), speed: document.getElementById('metricSpeed'), top10: document.getElementById('metricTop10'), recent: document.getElementById('metricRecent'),
+      leaderboard: document.getElementById('leaderboardRows'), recentRows: document.getElementById('recentRows')
+    };
+
+    function pathComboId() {
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      return parts[1];
+    }
+
+    function lapStatus(row) {
+      return row.valid === false || row.isValid === false ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>';
+    }
+
+    function renderDriver(row) {
+      const id = row.playerId || row.driverId;
+      const driver = escapeHtml(row.driverName || row.playerName || '-');
+      return id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver;
+    }
+
+    async function load() {
+      const comboId = pathComboId();
+      try {
+        const response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`);
+        const data = await response.json();
+        if (!data.ok || !data.item) throw new Error(data.message || 'Combo no encontrado');
+        const item = data.item;
+        const summary = item.summary || {};
+        const track = item.track || summary.track || {};
+        const cars = Array.isArray(item.cars || summary.cars) ? (item.cars || summary.cars) : [];
+        const carSummary = item.carSummary || summary.carSummary || 'Sin coches detectados';
+        els.title.textContent = track.name || 'Circuito';
+        const memberIds = Array.isArray(item.memberComboIds) ? item.memberComboIds : [];
+        const idText = memberIds.length > 1 ? `Familia ${item.comboId} · IDs ${memberIds.join(', ')}` : `Combo ID ${item.comboId}`;
+        els.subtitle.textContent = `${idText}. ${carSummary}. Datos generados desde stracker.db3.`;
+        els.key.textContent = memberIds.length > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
+        els.status.textContent = memberIds.length > 1 ? 'Agrupado' : 'OK';
+        els.laps.textContent = String(summary.totalLaps || 0);
+        els.drivers.textContent = String(summary.driversCount || 0);
+        els.cars.textContent = String(cars.length || summary.usedCarsCount || 0);
+        els.carsTitle.textContent = carSummary;
+        els.carsSub.textContent = `Circuito ${track.name || '-'} · Track ${item.trackId || '-'} · ${cars.length || 0} coches permitidos · ${memberIds.length || 1} ComboId${(memberIds.length || 1) === 1 ? '' : 's'}.`;
+        els.carTags.innerHTML = cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(car.name || car.code || '-')}</span>`).join('') || '<span class="gc-combo-car-tag">Sin coches</span>';
+        els.best.textContent = summary.bestLapTime || summary.bestLap?.lapTime || '--';
+        els.bestDriver.textContent = summary.bestLap?.driverName || summary.bestLap?.playerName || 'Sin piloto';
+        els.speed.textContent = fmtSpeed(summary.maxSpeedKmh);
+        els.top10.textContent = summary.best10Average || '--';
+        els.recent.textContent = fmtDate(summary.lastSeenAt);
+
+        els.leaderboard.innerHTML = (item.leaderboard || []).map((row) => {
+          return `<tr><td>${escapeHtml(row.position)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${escapeHtml(row.delta || '--')}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
+        }).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
+
+        els.recentRows.innerHTML = (item.recentLaps || []).map((row) => {
+          return `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
+        }).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
+      } catch (error) {
+        els.title.textContent = 'Combo no disponible';
+        els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Revisa ComboId o stracker.db3.';
+        els.status.textContent = 'Error';
+        els.leaderboard.innerHTML = '<tr><td colspan="8">No se pudo cargar el combo.</td></tr>';
+        els.recentRows.innerHTML = '<tr><td colspan="7">No se pudo cargar actividad reciente.</td></tr>';
+      }
+    }
+
+    load();
+  </script>
+</AppLayout>

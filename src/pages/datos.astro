@@ -1,0 +1,40 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+---
+<MarketingLayout title="Sistema de datos | GrassCutters Racing" description="Cómo funciona el sistema de datos de GrassCutters Racing: stracker, Node.js, Astro, MySQL y SQLite local.">
+  <section class="gc-page gc-hero gc-hero-compact">
+    <div>
+      <span class="gc-kicker">Sistema de datos</span>
+      <h1 class="gc-title">No es una página principal. Es la ficha técnica.</h1>
+      <p class="gc-lead">Esta página sirve para explicar la arquitectura de la plataforma: útil para portfolio, transparencia del proyecto y documentación pública. Por eso la dejamos fuera del header principal y la enlazamos desde el footer.</p>
+    </div>
+  </section>
+
+  <section class="gc-page">
+    <div class="gc-grid-3">
+      <article class="gc-card"><code>01</code><h3>stracker.db3</h3><p>Base de datos real de vueltas, pilotos, coches, circuitos, sesiones y actividad del servidor.</p></article>
+      <article class="gc-card"><code>02</code><h3>Node.js API</h3><p>Backend encargado de leer stracker, servir endpoints, sincronizar datos y gestionar auth/admin.</p></article>
+      <article class="gc-card"><code>03</code><h3>Astro</h3><p>Frontend público y plataforma tipo app con páginas rápidas, limpias y preparadas para producción.</p></article>
+      <article class="gc-card"><code>04</code><h3>MySQL Hostinger</h3><p>Usuarios, sesiones, roles, alias de coches/circuitos/pilotos y auditoría admin.</p></article>
+      <article class="gc-card"><code>05</code><h3>SQLite local</h3><p>Entorno de pruebas local con base propia para no tocar producción mientras se desarrolla.</p></article>
+      <article class="gc-card"><code>06</code><h3>GTX Sync</h3><p>Sincronización automática de stracker desde el servidor remoto cada pocos minutos.</p></article>
+    </div>
+  </section>
+
+  <section class="gc-page">
+    <div class="gc-table-wrap">
+      <table class="gc-public-table">
+        <thead>
+          <tr><th>Módulo</th><th>Producción</th><th>Local</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Usuarios</td><td>MySQL / MariaDB</td><td>SQLite local</td></tr>
+          <tr><td>Alias visibles</td><td>gc_display_names</td><td>gc_display_names</td></tr>
+          <tr><td>Vueltas</td><td>stracker.db3 sincronizado</td><td>stracker.db3 local</td></tr>
+          <tr><td>Frontend</td><td>Astro SSR</td><td>Astro dev</td></tr>
+          <tr><td>Backend</td><td>Node.js Hostinger</td><td>Node.js local</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</MarketingLayout>

@@ -7,7 +7,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div>
         <span class="gc-kicker">Drivers</span>
         <h1 class="gc-title">Pilotos detectados.</h1>
-        <p class="gc-subtitle">Base real de pilotos registrada por stracker. Vista preparada para búsqueda, perfiles y futura vinculación de cuentas.</p>
+        <p class="gc-subtitle">Base real de pilotos registrada por stracker. Ahora cada piloto tiene ficha pública con ritmo, combos, garaje y actividad.</p>
       </div>
       <aside class="gc-live-panel">
         <div class="gc-live-panel__title"><span>Listado</span><strong id="pilotCount">...</strong></div>
@@ -19,14 +19,14 @@ import AppLayout from '../layouts/AppLayout.astro';
     </section>
 
     <section class="gc-toolbar">
-      <div class="gc-field"><label for="pilotSearch">Buscar piloto</label><input class="gc-input" id="pilotSearch" placeholder="Nombre o Steam GUID" autocomplete="off" /></div>
+      <div class="gc-field"><label for="pilotSearch">Buscar piloto</label><input class="gc-input" id="pilotSearch" placeholder="Nombre, ID o Steam GUID" autocomplete="off" /></div>
       <button class="gc-btn" id="reloadPilots" type="button">Actualizar</button>
     </section>
 
     <section class="gc-table-wrap">
       <table class="gc-table">
-        <thead><tr><th>#</th><th>Piloto</th><th>Steam GUID</th><th>Online</th></tr></thead>
-        <tbody id="pilotRows"><tr><td colspan="4">Cargando...</td></tr></tbody>
+        <thead><tr><th>#</th><th>Piloto</th><th>Steam GUID</th><th>Online</th><th>Perfil</th></tr></thead>
+        <tbody id="pilotRows"><tr><td colspan="5">Cargando...</td></tr></tbody>
       </table>
     </section>
   </div>
@@ -38,25 +38,32 @@ import AppLayout from '../layouts/AppLayout.astro';
     const searchEl = document.getElementById('pilotSearch');
     const reloadEl = document.getElementById('reloadPilots');
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const pilotId = (pilot) => pilot.id ?? pilot.playerId ?? pilot.PlayerId ?? pilot.driverId ?? null;
+    const pilotName = (pilot) => pilot.name || pilot.Name || pilot.driverName || pilot.displayName || 'Piloto';
+    const pilotGuid = (pilot) => pilot.steamGuid || pilot.SteamGuid || '';
     let pilots = [];
 
     function draw() {
       const q = searchEl.value.trim().toLowerCase();
-      const visible = pilots.filter((pilot) => `${pilot.name || pilot.Name || pilot.driverName || ''} ${pilot.steamGuid || pilot.SteamGuid || ''}`.toLowerCase().includes(q));
+      const visible = pilots.filter((pilot) => `${pilotName(pilot)} ${pilotId(pilot) || ''} ${pilotGuid(pilot)}`.toLowerCase().includes(q));
       visibleEl.textContent = String(visible.length);
-      rowsEl.innerHTML = visible.map((pilot, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td><strong>${escapeHtml(pilot.name || pilot.Name || pilot.driverName)}</strong></td>
-          <td>${escapeHtml(pilot.steamGuid || pilot.SteamGuid)}</td>
-          <td>${pilot.isOnline || pilot.IsOnline ? '<span class="gc-chip gc-chip--accent">Online</span>' : '<span class="gc-chip">-</span>'}</td>
-        </tr>
-      `).join('') || '<tr><td colspan="4">Sin pilotos</td></tr>';
+      rowsEl.innerHTML = visible.map((pilot, index) => {
+        const id = pilotId(pilot);
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${escapeHtml(pilotName(pilot))}</strong><br><span class="gc-muted-text">ID ${escapeHtml(id ?? '-')}</span></td>
+            <td>${escapeHtml(pilotGuid(pilot) || '-')}</td>
+            <td>${pilot.isOnline || pilot.IsOnline ? '<span class="gc-chip gc-chip--accent">Online</span>' : '<span class="gc-chip">-</span>'}</td>
+            <td>${id ? `<a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(id)}">Abrir ficha</a>` : '<span class="gc-muted-text">Sin ID</span>'}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="5">Sin pilotos</td></tr>';
     }
 
     async function load() {
       reloadEl.disabled = true;
-      rowsEl.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
+      rowsEl.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
       try {
         const response = await fetch('/api/pilots');
         if (!response.ok) throw new Error('Endpoint no disponible');
@@ -67,7 +74,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       } catch (_) {
         countEl.textContent = 'Error';
         countEl.style.color = 'var(--warn)';
-        rowsEl.innerHTML = '<tr><td colspan="4">No se pudo cargar /api/pilots.</td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="5">No se pudo cargar /api/pilots.</td></tr>';
       } finally {
         reloadEl.disabled = false;
       }

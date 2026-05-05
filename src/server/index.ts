@@ -2875,6 +2875,59 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
   };
 }
 
+
+function buildPublicPilotProfile(playerIdRaw: unknown, allLaps: PilotProfileLap[]) {
+  const playerId = Number(playerIdRaw);
+  if (!Number.isFinite(playerId) || playerId <= 0) return null;
+
+  const pilotLaps = allLaps.filter((lap) => Number(lap.driver?.id) === playerId);
+  if (!pilotLaps.length) return null;
+
+  const driver = pilotLaps[0].driver;
+  const now = new Date().toISOString();
+  const fakeUser: AppUser = {
+    id: `public-${playerId}`,
+    email: '',
+    displayName: driver.name || `Piloto ${playerId}`,
+    role: 'pilot',
+    password: {
+      algorithm: 'pbkdf2-sha256',
+      iterations: 0,
+      salt: '',
+      hash: ''
+    },
+    pilotLink: {
+      playerId,
+      steamGuid: compactNullableText(driver.steamGuid),
+      strackerName: driver.name || `Piloto ${playerId}`,
+      linkedAt: ''
+    },
+    createdAt: now,
+    updatedAt: now,
+    lastLoginAt: null
+  };
+
+  const fakeSession: AppSession = {
+    id: `public-${playerId}`,
+    userId: fakeUser.id,
+    tokenHash: '',
+    createdAt: now,
+    expiresAt: now,
+    lastSeenAt: now
+  };
+
+  const profile = buildPilotProProfile(fakeUser, fakeSession, allLaps);
+
+  return {
+    ...profile,
+    public: true,
+    authenticated: false,
+    user: null,
+    session: null,
+    message: 'Perfil público generado desde stracker.db3.'
+  };
+}
+
 async function resolvePilotLink(playerIdRaw: unknown) {
   const playerId = Number(playerIdRaw);
   if (!Number.isFinite(playerId) || playerId <= 0) {
@@ -3067,6 +3120,531 @@ async function getCombos(dbPath: string) {
   return Array.from(combos.values());
 }
 
+
+type ComboLap = ReturnType<typeof mapLapRow>;
+
+function getComboKeyFromParts(trackId: unknown, carId: unknown) {
+  const track = Number(trackId);
+  const car = Number(carId);
+  if (!Number.isFinite(track) || !Number.isFinite(car) || track <= 0 || car <= 0) return null;
+  return `${track}-${car}`;
+}
+
+function getComboKeyFromLap(lap: ComboLap) {
+  return getComboKeyFromParts(lap.track?.id, lap.car?.id);
+}
+
+function getComboIdFromLap(lap: ComboLap) {
+  const comboId = Number(lap.comboId);
+  return Number.isFinite(comboId) && comboId > 0 ? comboId : null;
+}
+
+function getComboUrlFromLap(lap: ComboLap) {
+  const comboId = getComboIdFromLap(lap);
+  if (comboId) return `/combos/${comboId}`;
+
+  const legacyKey = getComboKeyFromLap(lap);
+  return legacyKey ? `/combos/${lap.track?.id}/${lap.car?.id}` : null;
+}
+
+function compactLapForCombo(lap: ComboLap | null) {
+  if (!lap) return null;
+  return {
+    lapId: lap.lapId,
+    playerId: lap.driver?.id ?? null,
+    driverId: lap.driver?.id ?? null,
+    driverName: lap.driver?.name ?? null,
+    playerName: lap.driver?.name ?? null,
+    steamGuid: lap.driver?.steamGuid ?? null,
+    comboId: lap.comboId ?? null,
+    carId: lap.car?.id ?? null,
+    carName: lap.car?.name ?? null,
+    carCode: lap.car?.code ?? null,
+    trackId: lap.track?.id ?? null,
+    trackName: lap.track?.name ?? null,
+    trackCode: lap.track?.code ?? null,
+    comboKey: getComboKeyFromLap(lap),
+    comboUrl: getComboUrlFromLap(lap),
+    lapTimeMs: lap.lapTimeMs,
+    lapTime: lap.lapTime,
+    lapTimeFormatted: lap.lapTime,
+    valid: lap.valid,
+    isValid: lap.valid,
+    maxSpeedKmh: lap.maxSpeedKmh,
+    cuts: lap.cuts,
+    collisionsCar: lap.collisionsCar,
+    collisionsEnv: lap.collisionsEnv,
+    gripLevel: lap.gripLevel,
+    temperatureTrack: lap.temperatureTrack,
+    temperatureAmbient: lap.temperatureAmbient,
+    timestamp: lap.timestamp,
+    timestampIso: lap.timestampIso,
+    session: lap.session,
+    input: lap.input,
+    driver: lap.driver,
+    car: lap.car,
+    track: lap.track
+  };
+}
+
+function buildComboLeaderboard(comboLaps: ComboLap[]) {
+  const bestByDriver = new Map<string, ComboLap>();
+
+  for (const lap of comboLaps) {
+    if (!lap.valid) continue;
+    const driverKey = String(lap.driver?.id ?? lap.driver?.name ?? 'unknown');
+    const current = bestByDriver.get(driverKey);
+    if (!current || Number(lap.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
+      bestByDriver.set(driverKey, lap);
+    }
+  }
+
+  const ranked = Array.from(bestByDriver.values())
+    .sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity));
+  const bestMs = Number(ranked[0]?.lapTimeMs ?? NaN);
+
+  return ranked.map((lap, index) => {
+    const lapMs = Number(lap.lapTimeMs ?? NaN);
+    const deltaMs = Number.isFinite(bestMs) && Number.isFinite(lapMs) ? lapMs - bestMs : null;
+    return {
+      position: index + 1,
+      deltaMs,
+      delta: deltaMs === null ? '--' : lapTimeDeltaText(deltaMs),
+      ...compactLapForCombo(lap)
+    };
+  });
+}
+
+function carSummaryFromCars(cars: any[]) {
+  const clean = (cars || []).filter((car) => car && (car.name || car.code));
+  if (!clean.length) return 'Sin coches detectados';
+  if (clean.length === 1) return clean[0].name || clean[0].code;
+  if (clean.length <= 3) return clean.map((car) => car.name || car.code).join(' + ');
+  return `${clean.length} coches · ${clean.slice(0, 2).map((car) => car.name || car.code).join(' + ')} + ${clean.length - 2} más`;
+}
+
+function comboDefinitionMap(comboDefinitions: any[] = []) {
+  const map = new Map<string, any>();
+  for (const combo of comboDefinitions || []) {
+    if (combo?.id === null || combo?.id === undefined) continue;
+    map.set(String(combo.id), combo);
+  }
+  return map;
+}
+
+
+const LOGICAL_COMBO_NEW_CAR_THRESHOLD = 0.75;
+
+function comboTrackKey(combo: any) {
+  return String(combo?.track?.id ?? combo?.trackId ?? combo?.track?.code ?? combo?.track?.name ?? 'unknown-track');
+}
+
+function comboCarIdentity(car: any) {
+  const id = Number(car?.id);
+  if (Number.isFinite(id) && id > 0) return `id:${id}`;
+  return String(car?.code ?? car?.name ?? '').trim().toLowerCase();
+}
+
+function comboCarIdentitySet(cars: any[] = []) {
+  const set = new Set<string>();
+  for (const car of cars || []) {
+    const key = comboCarIdentity(car);
+    if (key) set.add(key);
+  }
+  return set;
+}
+
+function comboNewCarRatio(baseCars: any[] = [], candidateCars: any[] = []) {
+  const baseSet = comboCarIdentitySet(baseCars);
+  const candidateSet = comboCarIdentitySet(candidateCars);
+  if (!candidateSet.size) return 0;
+  let newCars = 0;
+  for (const carKey of candidateSet) {
+    if (!baseSet.has(carKey)) newCars += 1;
+  }
+  return newCars / candidateSet.size;
+}
+
+function comboOverlapCount(baseCars: any[] = [], candidateCars: any[] = []) {
+  const baseSet = comboCarIdentitySet(baseCars);
+  const candidateSet = comboCarIdentitySet(candidateCars);
+  let overlap = 0;
+  for (const carKey of candidateSet) {
+    if (baseSet.has(carKey)) overlap += 1;
+  }
+  return overlap;
+}
+
+function mergeComboCars(baseCars: any[] = [], candidateCars: any[] = []) {
+  const map = new Map<string, any>();
+  for (const car of [...(baseCars || []), ...(candidateCars || [])]) {
+    const key = comboCarIdentity(car);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, car);
+  }
+  return Array.from(map.values()).sort((a, b) => String(a?.name || a?.code || '').localeCompare(String(b?.name || b?.code || '')));
+}
+
+function buildLogicalComboDefinitions(comboDefinitions: any[] = []) {
+  const sorted = [...(comboDefinitions || [])]
+    .filter((combo) => combo && combo.id !== null && combo.id !== undefined)
+    .sort((a, b) => {
+      const trackA = Number(a?.track?.id ?? a?.trackId ?? 0);
+      const trackB = Number(b?.track?.id ?? b?.trackId ?? 0);
+      if (trackA !== trackB) return trackA - trackB;
+      return Number(a?.id ?? 0) - Number(b?.id ?? 0);
+    });
+
+  const familiesByTrack = new Map<string, any[]>();
+
+  for (const combo of sorted) {
+    const trackKey = comboTrackKey(combo);
+    if (!familiesByTrack.has(trackKey)) familiesByTrack.set(trackKey, []);
+    const families = familiesByTrack.get(trackKey)!;
+    const candidateCars = Array.isArray(combo.cars) ? combo.cars : [];
+
+    let bestFamily: any = null;
+    let bestScore = { newRatio: Number.POSITIVE_INFINITY, overlap: -1 };
+
+    for (const family of families) {
+      const newRatio = comboNewCarRatio(family.cars, candidateCars);
+      const overlap = comboOverlapCount(family.cars, candidateCars);
+      if (newRatio < LOGICAL_COMBO_NEW_CAR_THRESHOLD) {
+        if (!bestFamily || newRatio < bestScore.newRatio || (newRatio === bestScore.newRatio && overlap > bestScore.overlap)) {
+          bestFamily = family;
+          bestScore = { newRatio, overlap };
+        }
+      }
+    }
+
+    if (bestFamily) {
+      const comboMemberIds = Array.isArray(combo.memberComboIds) && combo.memberComboIds.length ? combo.memberComboIds : [combo.id];
+      bestFamily.memberComboIds = Array.from(new Set([...(bestFamily.memberComboIds || []), ...comboMemberIds.map((id: any) => Number(id))].filter((id) => Number.isFinite(Number(id))))).sort((a: number, b: number) => a - b);
+      bestFamily.cars = mergeComboCars(bestFamily.cars, candidateCars);
+      bestFamily.carIds = bestFamily.cars.map((car: any) => car.id).filter((id: any) => id !== null && id !== undefined);
+      bestFamily.mergedCombosCount = bestFamily.memberComboIds.length;
+      bestFamily.sourceCombos = [...(bestFamily.sourceCombos || []), combo];
+      continue;
+    }
+
+    const canonicalComboId = Number(combo.canonicalComboId ?? combo.id);
+    const comboMemberIds = Array.isArray(combo.memberComboIds) && combo.memberComboIds.length
+      ? combo.memberComboIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)).sort((a: number, b: number) => a - b)
+      : [canonicalComboId];
+
+    families.push({
+      ...combo,
+      id: canonicalComboId,
+      comboId: canonicalComboId,
+      canonicalComboId,
+      memberComboIds: comboMemberIds,
+      mergedCombosCount: comboMemberIds.length,
+      sourceCombos: [combo],
+      carIds: candidateCars.map((car: any) => car.id).filter((id: any) => id !== null && id !== undefined),
+      mergePolicy: {
+        type: 'similar-car-pack',
+        newCarThreshold: LOGICAL_COMBO_NEW_CAR_THRESHOLD,
+        newCarThresholdPercent: Math.round(LOGICAL_COMBO_NEW_CAR_THRESHOLD * 100),
+        description: 'Mismo circuito: si menos del 75% de los coches son nuevos, se considera el mismo combo lógico.'
+      }
+    });
+  }
+
+  return Array.from(familiesByTrack.values()).flat().map((family) => ({
+    ...family,
+    cars: mergeComboCars(family.cars, []),
+    carSummary: carSummaryFromCars(family.cars),
+    url: `/combos/${family.canonicalComboId ?? family.id}`
+  }));
+}
+
+function logicalComboFamilyMap(comboDefinitions: any[] = []) {
+  const families = buildLogicalComboDefinitions(comboDefinitions);
+  const byMemberId = new Map<string, any>();
+  const byCanonicalId = new Map<string, any>();
+  for (const family of families) {
+    const canonicalId = family.canonicalComboId ?? family.id;
+    byCanonicalId.set(String(canonicalId), family);
+    for (const id of family.memberComboIds || [canonicalId]) byMemberId.set(String(id), family);
+  }
+  return { families, byMemberId, byCanonicalId };
+}
+
+function createComboStatsEntryFromDefinition(combo: any) {
+  const comboId = Number(combo?.canonicalComboId ?? combo?.id);
+  const cars = Array.isArray(combo?.cars) ? combo.cars : [];
+  const memberComboIds = Array.isArray(combo?.memberComboIds) && combo.memberComboIds.length
+    ? combo.memberComboIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)).sort((a: number, b: number) => a - b)
+    : [comboId];
+  return {
+    key: `combo:${comboId}`,
+    comboId,
+    canonicalComboId: comboId,
+    memberComboIds,
+    mergedCombosCount: memberComboIds.length,
+    mergePolicy: combo?.mergePolicy ?? null,
+    url: `/combos/${comboId}`,
+    trackId: combo?.track?.id ?? null,
+    carId: null,
+    track: combo?.track ?? null,
+    car: null,
+    cars,
+    carIds: cars.map((car: any) => car.id).filter((id: any) => id !== null && id !== undefined),
+    carSummary: carSummaryFromCars(cars),
+    totalLaps: 0,
+    validLaps: 0,
+    invalidLaps: 0,
+    drivers: new Map(),
+    sessions: new Set(),
+    usedCars: new Map(),
+    bestLap: null,
+    bestLapMs: null,
+    bestLapTime: '--',
+    latestLap: null,
+    lastSeenTimestamp: null,
+    lastSeenAt: null,
+    maxSpeedKmh: null,
+    totalCuts: 0,
+    laps: []
+  };
+}
+
+function createComboStatsEntryFromLap(lap: ComboLap) {
+  const comboId = getComboIdFromLap(lap);
+  const legacyKey = getComboKeyFromLap(lap);
+  const key = comboId ? `combo:${comboId}` : `legacy:${legacyKey}`;
+  const cars = lap.car?.id ? [lap.car] : [];
+  return {
+    key,
+    comboId,
+    canonicalComboId: comboId,
+    memberComboIds: comboId ? [comboId] : [],
+    mergedCombosCount: comboId ? 1 : 0,
+    mergePolicy: null,
+    url: comboId ? `/combos/${comboId}` : getComboUrlFromLap(lap),
+    trackId: lap.track?.id ?? null,
+    carId: comboId ? null : (lap.car?.id ?? null),
+    track: lap.track,
+    car: comboId ? null : lap.car,
+    cars,
+    carIds: cars.map((car: any) => car.id).filter((id: any) => id !== null && id !== undefined),
+    carSummary: carSummaryFromCars(cars),
+    totalLaps: 0,
+    validLaps: 0,
+    invalidLaps: 0,
+    drivers: new Map(),
+    sessions: new Set(),
+    usedCars: new Map(),
+    bestLap: null,
+    bestLapMs: null,
+    bestLapTime: '--',
+    latestLap: null,
+    lastSeenTimestamp: null,
+    lastSeenAt: null,
+    maxSpeedKmh: null,
+    totalCuts: 0,
+    laps: []
+  };
+}
+
+function normalizeComboEntryForResponse(entry: any) {
+  const leaderboard = buildComboLeaderboard(entry.laps);
+  const validTimes = entry.laps
+    .filter((lap: ComboLap) => lap.valid)
+    .map((lap: ComboLap) => Number(lap.lapTimeMs))
+    .filter((value: number) => Number.isFinite(value) && value > 0);
+  const best10 = validTimes.sort((a: number, b: number) => a - b).slice(0, 10);
+  const best10AverageMs = average(best10);
+  const allowedCars = Array.isArray(entry.cars) ? entry.cars : [];
+  const usedCars = Array.from(entry.usedCars.values());
+  const cars = allowedCars.length ? allowedCars : usedCars;
+
+  return {
+    key: entry.key,
+    url: entry.url,
+    comboId: entry.comboId,
+    canonicalComboId: entry.canonicalComboId ?? entry.comboId,
+    memberComboIds: entry.memberComboIds || (entry.comboId ? [entry.comboId] : []),
+    mergedCombosCount: entry.mergedCombosCount || ((entry.memberComboIds || []).length),
+    mergePolicy: entry.mergePolicy || null,
+    trackId: entry.trackId,
+    carId: entry.carId,
+    track: entry.track,
+    car: entry.car,
+    cars,
+    usedCars,
+    carIds: cars.map((car: any) => car?.id).filter((id: any) => id !== null && id !== undefined),
+    carsCount: cars.length,
+    usedCarsCount: usedCars.length,
+    carSummary: carSummaryFromCars(cars),
+    usedCarSummary: carSummaryFromCars(usedCars),
+    totalLaps: entry.totalLaps,
+    validLaps: entry.validLaps,
+    invalidLaps: entry.invalidLaps,
+    cleanRate: percent(entry.validLaps, entry.totalLaps),
+    driversCount: entry.drivers.size,
+    sessionsCount: entry.sessions.size,
+    bestLap: entry.bestLap,
+    bestLapMs: entry.bestLapMs,
+    bestLapTime: entry.bestLapTime,
+    latestLap: entry.latestLap,
+    lastSeenAt: entry.lastSeenAt,
+    lastSeenTimestamp: entry.lastSeenTimestamp,
+    maxSpeedKmh: entry.maxSpeedKmh,
+    totalCuts: entry.totalCuts,
+    best10AverageMs,
+    best10Average: best10AverageMs ? lapTimeToText(best10AverageMs) : '--',
+    leaderboardTop: leaderboard.slice(0, 5),
+    leaderboardCount: leaderboard.length
+  };
+}
+
+function buildComboStatsFromLaps(allLaps: ComboLap[], comboDefinitions: any[] = []) {
+  const map = new Map<string, any>();
+  const { families: logicalDefinitions, byMemberId } = logicalComboFamilyMap(comboDefinitions);
+
+  for (const definition of logicalDefinitions || []) {
+    if (definition?.id === null || definition?.id === undefined) continue;
+    const entry = createComboStatsEntryFromDefinition(definition);
+    map.set(String(entry.key), entry);
+  }
+
+  for (const lap of allLaps) {
+    const rawComboId = getComboIdFromLap(lap);
+    const legacyKey = getComboKeyFromLap(lap);
+    if (!rawComboId && !legacyKey) continue;
+
+    const family = rawComboId ? byMemberId.get(String(rawComboId)) : null;
+    const canonicalComboId = family ? Number(family.canonicalComboId ?? family.id) : rawComboId;
+    const key = canonicalComboId ? `combo:${canonicalComboId}` : `legacy:${legacyKey}`;
+
+    if (!map.has(key)) {
+      map.set(key, family ? createComboStatsEntryFromDefinition(family) : createComboStatsEntryFromLap(lap));
+    }
+
+    const entry = map.get(key);
+    entry.totalLaps += 1;
+    lap.valid ? entry.validLaps += 1 : entry.invalidLaps += 1;
+    entry.totalCuts += Math.max(0, Number(lap.cuts) || 0);
+    if (lap.driver?.id !== null && lap.driver?.id !== undefined) entry.drivers.set(String(lap.driver.id), lap.driver);
+    if (lap.sessionId !== null && lap.sessionId !== undefined) entry.sessions.add(String(lap.sessionId));
+    if (lap.car?.id !== null && lap.car?.id !== undefined) entry.usedCars.set(String(lap.car.id), lap.car);
+    if (Number.isFinite(Number(lap.maxSpeedKmh)) && Number(lap.maxSpeedKmh) > Number(entry.maxSpeedKmh ?? 0)) {
+      entry.maxSpeedKmh = lap.maxSpeedKmh;
+    }
+    if (lap.valid && (entry.bestLapMs === null || Number(lap.lapTimeMs ?? Infinity) < Number(entry.bestLapMs))) {
+      entry.bestLapMs = lap.lapTimeMs;
+      entry.bestLapTime = lap.lapTime;
+      entry.bestLap = compactLapForCombo({ ...lap, comboId: canonicalComboId ?? lap.comboId });
+    }
+    if (lap.timestamp && (!entry.lastSeenTimestamp || lap.timestamp > entry.lastSeenTimestamp)) {
+      entry.lastSeenTimestamp = lap.timestamp;
+      entry.lastSeenAt = lap.timestampIso;
+      entry.latestLap = compactLapForCombo({ ...lap, comboId: canonicalComboId ?? lap.comboId });
+    }
+    entry.laps.push({ ...lap, comboId: canonicalComboId ?? lap.comboId, rawComboId: rawComboId ?? null });
+  }
+
+  return Array.from(map.values())
+    .map(normalizeComboEntryForResponse)
+    .sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
+}
+
+function buildComboProfile(comboIdRaw: unknown, allLaps: ComboLap[], comboDefinitions: any[] = []) {
+  const requestedComboId = Number(comboIdRaw);
+  if (!Number.isFinite(requestedComboId) || requestedComboId <= 0) return null;
+
+  const { byMemberId } = logicalComboFamilyMap(comboDefinitions);
+  const family = byMemberId.get(String(requestedComboId));
+  const canonicalComboId = Number(family?.canonicalComboId ?? family?.id ?? requestedComboId);
+  const memberComboIds = new Set((family?.memberComboIds || [requestedComboId]).map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)));
+  const comboLaps = allLaps.filter((lap) => {
+    const lapComboId = getComboIdFromLap(lap);
+    return lapComboId !== null && memberComboIds.has(lapComboId);
+  });
+  if (!comboLaps.length && !family) return null;
+
+  const stats = buildComboStatsFromLaps(comboLaps, family ? [family] : []);
+  const summary = stats.find((item) => Number(item.comboId) === canonicalComboId) || stats[0] || null;
+  if (!summary) return null;
+
+  const normalizedLaps = comboLaps.map((lap) => ({ ...lap, comboId: canonicalComboId, rawComboId: getComboIdFromLap(lap) }));
+  const leaderboard = buildComboLeaderboard(normalizedLaps as ComboLap[]);
+  const recentLaps = [...normalizedLaps]
+    .sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
+    .slice(0, 50)
+    .map(compactLapForCombo);
+
+  const drivers = reduceDriverStats(normalizedLaps as ComboLap[]).slice(0, 30);
+  const invalidHotspots = normalizedLaps
+    .filter((lap) => !lap.valid || Number(lap.cuts ?? 0) > 0)
+    .sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
+    .slice(0, 25)
+    .map(compactLapForCombo);
+
+  return {
+    key: summary.key,
+    comboId: canonicalComboId,
+    canonicalComboId,
+    requestedComboId,
+    memberComboIds: summary.memberComboIds || Array.from(memberComboIds),
+    mergedCombosCount: summary.mergedCombosCount || memberComboIds.size,
+    mergePolicy: summary.mergePolicy || family?.mergePolicy || null,
+    trackId: summary.trackId,
+    track: summary.track,
+    cars: summary.cars,
+    usedCars: summary.usedCars,
+    carSummary: summary.carSummary,
+    usedCarSummary: summary.usedCarSummary,
+    summary,
+    leaderboard,
+    recentLaps,
+    drivers,
+    invalidHotspots,
+    message: 'Combo lógico generado desde stracker.db3: mismo circuito y paquete de coches compatible. Si el 75% de los coches son nuevos, se crea otro combo.'
+  };
+}
+
+function buildLegacyComboProfile(trackIdRaw: unknown, carIdRaw: unknown, allLaps: ComboLap[]) {
+  const key = getComboKeyFromParts(trackIdRaw, carIdRaw);
+  if (!key) return null;
+
+  const comboLaps = allLaps.filter((lap) => getComboKeyFromLap(lap) === key);
+  if (!comboLaps.length) return null;
+
+  const summary = buildComboStatsFromLaps(comboLaps)[0];
+  const leaderboard = buildComboLeaderboard(comboLaps);
+  const recentLaps = [...comboLaps]
+    .sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
+    .slice(0, 50)
+    .map(compactLapForCombo);
+
+  const drivers = reduceDriverStats(comboLaps).slice(0, 30);
+  const invalidHotspots = comboLaps
+    .filter((lap) => !lap.valid || Number(lap.cuts ?? 0) > 0)
+    .sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
+    .slice(0, 25)
+    .map(compactLapForCombo);
+
+  return {
+    key,
+    trackId: summary.trackId,
+    carId: summary.carId,
+    comboId: summary.comboId,
+    track: summary.track,
+    car: summary.car,
+    cars: summary.cars,
+    carSummary: summary.carSummary,
+    summary,
+    leaderboard,
+    recentLaps,
+    drivers,
+    invalidHotspots,
+    legacy: true,
+    message: 'Vista legacy TrackId + CarId. Usa /combos/:comboId para el combo real.'
+  };
+}
+
 async function getSessions(dbPath: string, limit: number) {
   const safeLimit = Math.max(1, Math.min(limit, 250));
   const rows = await runStrackerQuery(
@@ -3233,6 +3811,59 @@ app.get('/api/auth/me', async (req, res) => {
   });
 });
 
+
+
+app.get('/api/pilots/:playerId/profile', async (req, res) => {
+  const playerId = Number(req.params.playerId);
+  if (!Number.isFinite(playerId) || playerId <= 0) {
+    res.status(400).json({ ok: false, profile: null, message: 'PlayerId no válido.' });
+    return;
+  }
+
+  const stracker = getStrackerConfig();
+  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+    res.status(200).json({
+      ok: false,
+      profile: null,
+      stracker,
+      message: 'stracker.db3 no está disponible para generar el perfil público.'
+    });
+    return;
+  }
+
+  try {
+    const allLaps = await readJoinedLaps(stracker.resolvedPath);
+    const profile = buildPublicPilotProfile(playerId, allLaps);
+
+    if (!profile) {
+      res.status(404).json({
+        ok: false,
+        profile: null,
+        playerId,
+        message: 'No se encontró actividad para ese piloto en stracker.db3.'
+      });
+      return;
+    }
+
+    res.json({
+      ...profile,
+      stracker: {
+        exists: stracker.exists,
+        sizeBytes: stracker.sizeBytes,
+        modifiedAt: stracker.modifiedAt
+      }
+    });
+  } catch (error) {
+    console.error('[GC] Error generando perfil público de piloto:', error);
+    res.status(200).json({
+      ok: false,
+      profile: null,
+      playerId,
+      message: 'No se pudo generar el perfil público desde stracker.db3.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
 
 app.get('/api/profile', async (req, res) => {
   const context = await getAuthContextAsync(req);
@@ -3577,6 +4208,48 @@ app.post('/api/admin/users/:userId/role', async (req, res) => {
   });
 });
 
+
+app.post('/api/admin/users/:userId/link-pilot', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  const resolved = await resolvePilotLink(req.body?.playerId);
+  if (!resolved.ok) {
+    res.status(400).json({ ok: false, message: resolved.message });
+    return;
+  }
+
+  const alreadyLinked = findUserByPilotId(store, resolved.link.playerId, target.id);
+  if (alreadyLinked) {
+    res.status(409).json({
+      ok: false,
+      message: `Ese piloto ya está vinculado a ${alreadyLinked.displayName || alreadyLinked.email}.`
+    });
+    return;
+  }
+
+  const beforePilotLink = target.pilotLink ? { ...target.pilotLink } : null;
+  target.pilotLink = resolved.link;
+  target.updatedAt = new Date().toISOString();
+  await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.link_pilot', 'user', target.id, beforePilotLink, target.pilotLink);
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    pilot: resolved.pilot,
+    message: 'Piloto vinculado desde administración.'
+  });
+});
+
 app.post('/api/admin/users/:userId/unlink-pilot', async (req, res) => {
   const context = await requireAdmin(req, res);
   if (!context) return;
@@ -3787,7 +4460,22 @@ async function buildDisplayNameCatalog() {
   if (stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
     try {
       const drivers = await runStrackerQuery(stracker.resolvedPath, 'SELECT PlayerId, SteamGuid, Name FROM Players ORDER BY Name ASC');
-      catalog.drivers = drivers.map((row) => buildDisplayNameCatalogItem('driver', row.PlayerId, row.SteamGuid, row.Name, getRawDriverName({ DriverName: row.Name, Name: row.Name }), store));
+      const driverItems = drivers.map((row) => buildDisplayNameCatalogItem('driver', row.PlayerId, row.SteamGuid, row.Name, getRawDriverName({ DriverName: row.Name, Name: row.Name }), store));
+      const driverNameCounts = new Map<string, number>();
+      for (const item of driverItems) {
+        const key = normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName);
+        if (!key) continue;
+        driverNameCounts.set(key, (driverNameCounts.get(key) || 0) + 1);
+      }
+      catalog.drivers = driverItems.map((item) => {
+        const key = normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName);
+        const duplicateNameCount = key ? driverNameCounts.get(key) || 0 : 0;
+        return {
+          ...item,
+          duplicateName: duplicateNameCount > 1,
+          duplicateNameCount
+        };
+      });
 
       const cars = await runStrackerQuery(stracker.resolvedPath, 'SELECT CarId, Car, UiCarName, Brand FROM Cars ORDER BY UiCarName ASC, Car ASC');
       catalog.cars = cars.map((row) => buildDisplayNameCatalogItem('car', row.CarId, row.Car, row.UiCarName || row.Car, getRawDisplayCar(row), store));
@@ -4647,6 +5335,125 @@ app.get('/api/combos', async (_req, res) => {
       ok: false,
       items: [],
       message: 'No se pudieron leer combos reales.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+
+app.get('/api/combos/stats', async (req, res) => {
+  const stracker = getSafeStrackerOrRespond(res);
+  if (!stracker?.resolvedPath) return;
+
+  try {
+    const limit = getQueryNumber(req, 'limit', 100, 1, 500);
+    const q = getQueryString(req, 'q') || getQueryString(req, 'search');
+    const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
+    const [laps, comboDefinitions] = await Promise.all([
+      readJoinedLaps(stracker.resolvedPath),
+      getCombos(stracker.resolvedPath)
+    ]);
+    let items = buildComboStatsFromLaps(laps, comboDefinitions);
+
+    if (q) {
+      items = items.filter((combo) => includesFilter(`${combo.comboId} ${combo.track?.name} ${combo.track?.code} ${combo.carSummary} ${combo.usedCarSummary} ${(combo.cars || []).map((car: any) => `${car.name} ${car.code} ${car.brand}`).join(' ')}`, q));
+    }
+
+    if (sort === 'laps') items = items.sort((a, b) => Number(b.totalLaps ?? 0) - Number(a.totalLaps ?? 0));
+    else if (sort === 'drivers') items = items.sort((a, b) => Number(b.driversCount ?? 0) - Number(a.driversCount ?? 0));
+    else if (sort === 'fastest') items = items.sort((a, b) => Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+    else items = items.sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
+
+    res.json({
+      ok: true,
+      mode: 'real-stracker',
+      count: Math.min(items.length, limit),
+      totalCombos: items.length,
+      totalComboDefinitions: comboDefinitions.length,
+      totalLogicalCombos: items.length,
+      mergePolicy: { newCarThresholdPercent: 75 },
+      sort,
+      filters: { q: q || null },
+      items: items.slice(0, limit),
+      message: 'Combos lógicos: mismo circuito y coches compatibles se agrupan. Si el 75% de los coches son nuevos, nace otro combo.'
+    });
+  } catch (error) {
+    console.error('[GC] Error generando combo stats:', error);
+    res.status(200).json({
+      ok: false,
+      items: [],
+      message: 'No se pudieron generar estadísticas de combos.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get('/api/combos/:comboId', async (req, res) => {
+  const stracker = getSafeStrackerOrRespond(res);
+  if (!stracker?.resolvedPath) return;
+
+  try {
+    const [laps, comboDefinitions] = await Promise.all([
+      readJoinedLaps(stracker.resolvedPath),
+      getCombos(stracker.resolvedPath)
+    ]);
+    const profile = buildComboProfile(req.params.comboId, laps, comboDefinitions);
+
+    if (!profile) {
+      res.status(200).json({
+        ok: false,
+        item: null,
+        message: 'No se encontró ese ComboId en stracker.db3.'
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      mode: 'real-stracker',
+      item: profile,
+      message: 'Ficha de combo lógico generada desde ComboId/familia de combos.'
+    });
+  } catch (error) {
+    console.error('[GC] Error generando combo profile:', error);
+    res.status(200).json({
+      ok: false,
+      item: null,
+      message: 'No se pudo generar la ficha del combo.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get('/api/combos/:trackId/:carId', async (req, res) => {
+  const stracker = getSafeStrackerOrRespond(res);
+  if (!stracker?.resolvedPath) return;
+
+  try {
+    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const profile = buildLegacyComboProfile(req.params.trackId, req.params.carId, laps);
+
+    if (!profile) {
+      res.status(200).json({
+        ok: false,
+        item: null,
+        message: 'No se encontró ese combo legacy TrackId + CarId en las vueltas reales.'
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      mode: 'real-stracker',
+      item: profile,
+      message: 'Ficha legacy TrackId + CarId. La vista principal usa /api/combos/:comboId.'
+    });
+  } catch (error) {
+    console.error('[GC] Error generando combo legacy profile:', error);
+    res.status(200).json({
+      ok: false,
+      item: null,
+      message: 'No se pudo generar la ficha legacy del combo.',
       error: error instanceof Error ? error.message : String(error)
     });
   }

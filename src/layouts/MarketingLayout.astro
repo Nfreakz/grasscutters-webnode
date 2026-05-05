@@ -1,54 +1,110 @@
 ---
 import '../styles/marketing.css';
+
 const {
   title = 'GrassCutters Racing',
-  description = 'Comunidad sim racing, datos reales y plataforma de pilotos.'
+  description = 'Comunidad de sim racing con Discord, app Android, hotlaps reales y plataforma para pilotos.',
+  bodyClass = '',
 } = Astro.props;
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const navItems = [
+  { href: '/', label: 'Inicio', match: '/' },
+  { href: '/comunidad', label: 'Comunidad', match: '/comunidad' },
+  { href: '/discord', label: 'Discord', match: '/discord' },
+  { href: '/app-android', label: 'App Android', match: '/app-android' },
+  { href: '/estado', label: 'Estado', match: '/estado' },
+];
+
+function isActive(match) {
+  if (match === '/') return path === '/';
+  return path.startsWith(match);
+}
 ---
 <!doctype html>
-<html lang="es" data-theme="lfm">
+<html lang="es" data-gc-scope="marketing">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#061008" />
+    <meta name="theme-color" content="#0a0d0b" />
     <title>{title}</title>
   </head>
-  <body class="gc-marketing-body">
-    <header class="mk-header">
-      <a class="mk-brand" href="/" aria-label="GrassCutters Racing">
-        <span class="mk-brand__mark">GC</span>
-        <span><strong>GrassCutters</strong><small>Racing Community</small></span>
+  <body class={`gc-public-body ${bodyClass}`}>
+    <header class="gc-public-header" data-public-header>
+      <a class="gc-public-brand" href="/" aria-label="GrassCutters Racing - inicio">
+        <span class="gc-public-brand-mark">GC</span>
+        <span class="gc-public-brand-copy">
+          <strong>GrassCutters</strong>
+          <small>Racing Community</small>
+        </span>
       </a>
-      <nav class="mk-nav" aria-label="Navegación landing">
-        <a href="#comunidad">Comunidad</a>
-        <a href="#datos">Datos</a>
-        <a href="#pilotos">Pilotos</a>
-        <a href="/discord">Discord</a>
+
+      <button class="gc-public-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" data-public-menu-toggle>
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="gc-public-nav" aria-label="Navegación pública" data-public-nav>
+        {navItems.map((item) => (
+          <a href={item.href} class:list={[{ 'is-active': isActive(item.match) }]}>{item.label}</a>
+        ))}
       </nav>
-      <div class="mk-actions">
-        <a class="mk-link" href="/login">Login</a>
-        <a class="mk-btn mk-btn--primary" href="/app">Entrar a la plataforma</a>
+
+      <div class="gc-public-actions">
+        <a class="gc-public-link" href="/login">Login</a>
+        <a class="gc-public-cta" href="/app">Plataforma</a>
       </div>
     </header>
 
-    <main>
+    <main class="gc-public-main">
       <slot />
     </main>
 
-    <footer class="mk-footer">
-      <div>
-        <strong>GrassCutters Racing</strong>
-        <span>Astro + Node + stracker + Discord</span>
+    <footer class="gc-public-footer">
+      <div class="gc-public-footer-main">
+        <div class="gc-public-footer-brand">
+          <strong>GrassCutters Racing</strong>
+          <p>Comunidad sim racing, datos reales de pista y plataforma para pilotos.</p>
+        </div>
+        <div class="gc-public-footer-grid">
+          <a href="/comunidad">Comunidad</a>
+          <a href="/discord">Discord</a>
+          <a href="/app-android">App Android</a>
+          <a href="/estado">Estado</a>
+          <a href="/datos">Sistema de datos</a>
+          <a href="/app">Plataforma</a>
+        </div>
       </div>
-      <a href="/app">Abrir plataforma</a>
+      <div class="gc-public-footer-bottom">
+        <span>© {new Date().getFullYear()} GrassCutters Racing</span>
+        <span>Assetto Corsa · stracker · Node.js · Astro</span>
+      </div>
     </footer>
 
     <script is:inline>
-      (() => {
-        const stored = localStorage.getItem('gc-theme');
-        if (stored) document.documentElement.setAttribute('data-theme', stored);
-      })();
+      const toggle = document.querySelector('[data-public-menu-toggle]');
+      const nav = document.querySelector('[data-public-nav]');
+      if (toggle && nav) {
+        toggle.addEventListener('click', () => {
+          const open = document.body.classList.toggle('gc-public-menu-open');
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+        nav.querySelectorAll('a').forEach((link) => {
+          link.addEventListener('click', () => {
+            document.body.classList.remove('gc-public-menu-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          });
+        });
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            document.body.classList.remove('gc-public-menu-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
     </script>
   </body>
 </html>

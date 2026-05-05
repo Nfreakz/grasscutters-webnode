@@ -1,0 +1,758 @@
+---
+export const prerender = false;
+
+import AppLayout from '../../layouts/AppLayout.astro';
+
+const rawId = Astro.params.id ?? '';
+const pageTitle = `Ficha piloto #${rawId} · GrassCutters`;
+---
+
+<AppLayout title={pageTitle}>
+  <section class="pilot-public-page" data-pilot-page data-player-id={rawId}>
+    <header class="pilot-hero">
+      <div class="pilot-hero__main">
+        <span class="pilot-kicker">Perfil público de piloto</span>
+        <h1 id="pilotTitle">Piloto #{rawId}</h1>
+        <p id="pilotSubtitle">Cargando ficha pública desde stracker.db3...</p>
+
+        <div class="pilot-actions">
+          <a href="/pilotos" class="pilot-btn pilot-btn--ghost">Volver a pilotos</a>
+          <a href="/hotlaps" class="pilot-btn pilot-btn--primary">Ver hotlaps</a>
+        </div>
+      </div>
+
+      <aside class="pilot-identity">
+        <div class="pilot-identity__row">
+          <span>Player ID</span>
+          <strong id="pilotIdValue">{rawId}</strong>
+        </div>
+        <div class="pilot-identity__row pilot-identity__row--guid">
+          <span>Steam GUID</span>
+          <strong id="pilotGuidValue">--</strong>
+        </div>
+        <div class="pilot-identity__row">
+          <span>Origen</span>
+          <strong>stracker.db3</strong>
+        </div>
+      </aside>
+    </header>
+
+    <div id="pilotStatus" class="pilot-status">
+      <span class="pilot-loader"></span>
+      <div>
+        <strong>Cargando datos del piloto</strong>
+        <p>Consultando vueltas, coches, circuitos y mejores combos.</p>
+      </div>
+    </div>
+
+    <section id="pilotContent" class="pilot-content is-hidden" aria-live="polite">
+      <div class="pilot-metrics" id="pilotMetrics"></div>
+
+      <section class="pilot-section">
+        <div class="pilot-section__head">
+          <div>
+            <span class="pilot-kicker">Mejores combos</span>
+            <h2>Donde más aprieta</h2>
+          </div>
+          <small>Ordenado por mejor vuelta válida</small>
+        </div>
+
+        <div class="pilot-table-wrap">
+          <table class="pilot-table">
+            <thead>
+              <tr>
+                <th>Circuito</th>
+                <th>Coche</th>
+                <th>Mejor vuelta</th>
+                <th>Vueltas</th>
+                <th>Limpias</th>
+                <th>Última actividad</th>
+              </tr>
+            </thead>
+            <tbody id="combosBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="pilot-grid-2">
+        <section class="pilot-section">
+          <div class="pilot-section__head">
+            <div>
+              <span class="pilot-kicker">Garaje</span>
+              <h2>Coches usados</h2>
+            </div>
+          </div>
+          <div class="pilot-list" id="garageRows"></div>
+        </section>
+
+        <section class="pilot-section">
+          <div class="pilot-section__head">
+            <div>
+              <span class="pilot-kicker">Circuitos</span>
+              <h2>Pistas corridas</h2>
+            </div>
+          </div>
+          <div class="pilot-list" id="trackRows"></div>
+        </section>
+      </div>
+
+      <section class="pilot-section">
+        <div class="pilot-section__head">
+          <div>
+            <span class="pilot-kicker">Últimas vueltas</span>
+            <h2>Actividad reciente</h2>
+          </div>
+          <small>Datos reales de stracker</small>
+        </div>
+
+        <div class="pilot-table-wrap">
+          <table class="pilot-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Circuito</th>
+                <th>Coche</th>
+                <th>Tiempo</th>
+                <th>Estado</th>
+                <th>Vmax</th>
+              </tr>
+            </thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </section>
+
+  <style is:global>
+    .pilot-public-page {
+      width: min(100%, 1500px);
+      margin: 0 auto;
+      padding: 28px 22px 70px;
+      color: var(--text, #eff6f0);
+    }
+
+    .pilot-public-page .is-hidden {
+      display: none !important;
+    }
+
+    .pilot-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 440px);
+      gap: 32px;
+      align-items: stretch;
+      padding: 32px 0 28px;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      position: relative;
+    }
+
+    .pilot-hero::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: min(280px, 36vw);
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent, #95ff00), transparent);
+    }
+
+    .pilot-kicker {
+      display: inline-flex;
+      width: fit-content;
+      color: var(--accent, #95ff00);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: .74rem;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .pilot-hero h1 {
+      margin: 0;
+      font-size: clamp(3rem, 8vw, 8rem);
+      line-height: .85;
+      letter-spacing: -.07em;
+      text-transform: uppercase;
+      max-width: 950px;
+    }
+
+    .pilot-hero p {
+      margin: 18px 0 0;
+      color: var(--text-soft, #b8c8ba);
+      max-width: 72ch;
+      font-size: 1rem;
+    }
+
+    .pilot-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 26px;
+    }
+
+    .pilot-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 15px;
+      border: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-size: .78rem;
+      font-weight: 900;
+      text-decoration: none;
+      color: var(--text, #eff6f0);
+      background: rgba(255,255,255,.02);
+    }
+
+    .pilot-btn:hover {
+      color: var(--accent, #95ff00);
+      border-color: color-mix(in srgb, var(--accent, #95ff00) 48%, transparent);
+    }
+
+    .pilot-btn--primary {
+      background: var(--accent, #95ff00);
+      border-color: var(--accent, #95ff00);
+      color: var(--text-inverse, #071009);
+    }
+
+    .pilot-btn--primary:hover {
+      color: var(--text-inverse, #071009);
+      background: var(--accent-hover, #b9ff54);
+      border-color: var(--accent-hover, #b9ff54);
+    }
+
+    .pilot-identity {
+      display: grid;
+      align-content: start;
+      border-top: 2px solid var(--accent, #95ff00);
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    }
+
+    .pilot-identity__row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+    }
+
+    .pilot-identity__row:last-child {
+      border-bottom: 0;
+    }
+
+    .pilot-identity__row span {
+      color: var(--text-dim, #829383);
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      font-size: .72rem;
+      font-weight: 900;
+    }
+
+    .pilot-identity__row strong {
+      color: var(--text, #eff6f0);
+      font-size: .92rem;
+      overflow-wrap: anywhere;
+    }
+
+    .pilot-identity__row--guid strong {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .72rem;
+      color: var(--text-soft, #b8c8ba);
+    }
+
+    .pilot-status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 22px 0;
+      padding: 18px 0;
+      border-top: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+    }
+
+    .pilot-status strong {
+      display: block;
+      color: var(--text, #eff6f0);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-size: .86rem;
+    }
+
+    .pilot-status p,
+    .pilot-status small {
+      display: block;
+      color: var(--text-soft, #b8c8ba);
+      margin-top: 4px;
+    }
+
+    .pilot-loader {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,.16);
+      border-top-color: var(--accent, #95ff00);
+      animation: pilot-spin .8s linear infinite;
+    }
+
+    @keyframes pilot-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .pilot-content {
+      display: grid;
+      gap: 26px;
+      padding-top: 22px;
+    }
+
+    .pilot-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.012));
+    }
+
+    .pilot-metric {
+      padding: 20px 18px;
+      border-right: 1px solid var(--border, rgba(255,255,255,.10));
+      min-height: 92px;
+    }
+
+    .pilot-metric:nth-child(4n) {
+      border-right: 0;
+    }
+
+    .pilot-metric__label,
+    .pilot-table th,
+    .pilot-list__meta,
+    .pilot-section__head small {
+      color: var(--text-dim, #829383);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-size: .72rem;
+      font-weight: 900;
+    }
+
+    .pilot-metric__value {
+      display: block;
+      margin-top: 10px;
+      color: var(--text, #eff6f0);
+      font-weight: 950;
+      font-size: clamp(1.35rem, 2.4vw, 2.45rem);
+      line-height: .95;
+      letter-spacing: -.045em;
+    }
+
+    .pilot-metric:first-child .pilot-metric__value,
+    .pilot-metric:nth-child(2) .pilot-metric__value {
+      color: var(--accent, #95ff00);
+    }
+
+    .pilot-grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 26px;
+    }
+
+    .pilot-section {
+      min-width: 0;
+    }
+
+    .pilot-section__head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 0 13px;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      margin-bottom: 14px;
+    }
+
+    .pilot-section__head h2 {
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: -.04em;
+      font-size: clamp(1.3rem, 2.5vw, 2.3rem);
+      line-height: .95;
+    }
+
+    .pilot-table-wrap {
+      overflow: auto;
+      border-top: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      background: rgba(0,0,0,.16);
+    }
+
+    .pilot-table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+      font-size: .94rem;
+    }
+
+    .pilot-table th,
+    .pilot-table td {
+      padding: 14px 13px;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .pilot-table thead th {
+      background: rgba(0,0,0,.30);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .pilot-table tbody tr:hover td {
+      background: rgba(255,255,255,.028);
+    }
+
+    .pilot-table strong {
+      color: var(--text, #eff6f0);
+      font-weight: 950;
+    }
+
+    .pilot-list {
+      display: grid;
+      border-top: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+    }
+
+    .pilot-list__row {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+    }
+
+    .pilot-list__row:last-child {
+      border-bottom: 0;
+    }
+
+    .pilot-list__index {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      color: var(--text-dim, #829383);
+      font-weight: 950;
+    }
+
+    .pilot-list__title {
+      display: block;
+      color: var(--text, #eff6f0);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .025em;
+      overflow-wrap: anywhere;
+    }
+
+    .pilot-list__meta {
+      display: block;
+      margin-top: 4px;
+      letter-spacing: .075em;
+    }
+
+    .pilot-list__value {
+      color: var(--accent, #95ff00);
+      font-weight: 950;
+      font-size: 1.05rem;
+      white-space: nowrap;
+    }
+
+    .pilot-status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      padding: 7px 10px;
+      border: 1px solid var(--border-strong, rgba(255,255,255,.16));
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .72rem;
+      font-weight: 950;
+    }
+
+    .pilot-status-pill--good {
+      color: var(--success, #4be39b);
+      border-color: color-mix(in srgb, var(--success, #4be39b) 35%, transparent);
+      background: rgba(75,227,155,.08);
+    }
+
+    .pilot-status-pill--bad {
+      color: var(--danger, #ff5d73);
+      border-color: color-mix(in srgb, var(--danger, #ff5d73) 35%, transparent);
+      background: rgba(255,93,115,.08);
+    }
+
+    .pilot-empty-row {
+      color: var(--text-dim, #829383);
+      padding: 20px 0;
+    }
+
+    @media (max-width: 1180px) {
+      .pilot-hero,
+      .pilot-grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .pilot-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pilot-metric:nth-child(2n) {
+        border-right: 0;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .pilot-public-page {
+        padding: 20px 16px 54px;
+      }
+
+      .pilot-hero h1 {
+        font-size: clamp(2.6rem, 15vw, 5rem);
+      }
+
+      .pilot-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .pilot-metric,
+      .pilot-metric:nth-child(2n),
+      .pilot-metric:nth-child(4n) {
+        border-right: 0;
+        border-bottom: 1px solid var(--border, rgba(255,255,255,.10));
+      }
+
+      .pilot-metric:last-child {
+        border-bottom: 0;
+      }
+
+      .pilot-identity__row,
+      .pilot-list__row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .pilot-list__value {
+        justify-self: start;
+      }
+    }
+  </style>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('[data-pilot-page]');
+      if (!root) return;
+
+      const playerId = root.dataset.playerId || '';
+      const statusEl = document.getElementById('pilotStatus');
+      const contentEl = document.getElementById('pilotContent');
+      const titleEl = document.getElementById('pilotTitle');
+      const subtitleEl = document.getElementById('pilotSubtitle');
+      const guidEl = document.getElementById('pilotGuidValue');
+      const metricsEl = document.getElementById('pilotMetrics');
+      const combosBody = document.getElementById('combosBody');
+      const recentBody = document.getElementById('recentBody');
+      const garageRows = document.getElementById('garageRows');
+      const trackRows = document.getElementById('trackRows');
+
+      const escapeHtml = (input) => String(input ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+      const firstValue = (...items) => {
+        for (const item of items) {
+          if (item !== undefined && item !== null && item !== '') return item;
+        }
+        return null;
+      };
+
+      const arr = (...items) => {
+        for (const item of items) {
+          if (Array.isArray(item)) return item;
+        }
+        return [];
+      };
+
+      const fmt = (input, fallback = '--') => firstValue(input) ?? fallback;
+      const fmtNumber = (input, fallback = '--') => {
+        const n = Number(input);
+        return Number.isFinite(n) ? n.toLocaleString('es-ES') : fallback;
+      };
+      const fmtPercent = (input) => {
+        const n = Number(input);
+        return Number.isFinite(n) ? `${n.toFixed(1)}%` : '--';
+      };
+      const fmtSpeed = (input) => {
+        const n = Number(input);
+        return Number.isFinite(n) ? `${Math.round(n)} km/h` : '--';
+      };
+      const fmtDate = (input) => {
+        const raw = firstValue(input);
+        if (!raw) return '--';
+        const date = new Date(raw);
+        if (Number.isNaN(date.getTime())) return '--';
+        return date.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+      };
+
+      const lapTime = (row) => fmt(firstValue(row?.lapTimeFormatted, row?.lapTime, row?.bestLapTimeFormatted, row?.bestLap, row?.bestTime));
+      const carName = (row) => fmt(firstValue(row?.carName, row?.car?.name, row?.uiCarName, row?.carCode, row?.car));
+      const trackName = (row) => fmt(firstValue(row?.trackName, row?.track?.name, row?.uiTrackName, row?.trackCode, row?.track));
+      const isValid = (row) => row?.valid === true || row?.isValid === true || row?.valid === 1 || row?.Valid === 1;
+
+      const showStatus = (html, bad = false) => {
+        statusEl.innerHTML = html;
+        statusEl.style.borderTopColor = bad ? 'var(--danger, #ff5d73)' : 'var(--border-strong, rgba(255,255,255,.16))';
+      };
+
+      const renderMetrics = (data) => {
+        const s = data.summary || {};
+        const best = firstValue(s.bestLap, data.bestLap);
+        const rank = firstValue(s.bestRank, data.bestRank, s.ranking, data.ranking);
+        const rankValue = typeof rank === 'object' ? firstValue(rank.position, rank.rank, rank.globalRank) : rank;
+        const vmax = firstValue(s.maxSpeedKmh, s.maxSpeed, best?.maxSpeedKmh, data.maxSpeedKmh);
+
+        const metrics = [
+          ['Mejor vuelta', best ? lapTime(best) : '--'],
+          ['Ranking global', rankValue ? `#${rankValue}` : '--'],
+          ['Vueltas válidas', fmtNumber(s.validLaps)],
+          ['Limpieza', fmtPercent(s.validityRate)],
+          ['Coches', fmtNumber(s.carsCount)],
+          ['Circuitos', fmtNumber(s.tracksCount)],
+          ['Combos', fmtNumber(s.combosCount)],
+          ['Vmax', fmtSpeed(vmax)],
+        ];
+
+        metricsEl.innerHTML = metrics.map(([label, value]) => `
+          <div class="pilot-metric">
+            <span class="pilot-metric__label">${escapeHtml(label)}</span>
+            <strong class="pilot-metric__value">${escapeHtml(value)}</strong>
+          </div>
+        `).join('');
+      };
+
+      const renderCombos = (data) => {
+        const rows = arr(data.bestCombos, data.combos, data.summary?.bestCombos, data.summary?.combos);
+        combosBody.innerHTML = rows.length ? rows.slice(0, 12).map((row) => `
+          <tr>
+            <td>${escapeHtml(trackName(row))}</td>
+            <td>${escapeHtml(carName(row))}</td>
+            <td><strong>${escapeHtml(lapTime(row))}</strong></td>
+            <td>${escapeHtml(fmtNumber(firstValue(row.totalLaps, row.laps, row.lapCount)))}</td>
+            <td>${escapeHtml(fmtNumber(firstValue(row.validLaps, row.cleanLaps)))}</td>
+            <td>${escapeHtml(fmtDate(firstValue(row.latestAt, row.lastSeenAt, row.timestampIso, row.lastLapAt)))}</td>
+          </tr>
+        `).join('') : '<tr><td colspan="6" class="pilot-empty-row">Sin combos suficientes todavía.</td></tr>';
+      };
+
+      const renderRecent = (data) => {
+        const rows = arr(data.latestLaps, data.recentLaps, data.summary?.latestLaps, data.summary?.recentLaps);
+        recentBody.innerHTML = rows.length ? rows.slice(0, 20).map((row) => `
+          <tr>
+            <td>${escapeHtml(fmtDate(firstValue(row.timestampIso, row.date, row.createdAt)))}</td>
+            <td>${escapeHtml(trackName(row))}</td>
+            <td>${escapeHtml(carName(row))}</td>
+            <td><strong>${escapeHtml(lapTime(row))}</strong></td>
+            <td><span class="pilot-status-pill ${isValid(row) ? 'pilot-status-pill--good' : 'pilot-status-pill--bad'}">${isValid(row) ? 'Válida' : 'No válida'}</span></td>
+            <td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td>
+          </tr>
+        `).join('') : '<tr><td colspan="6" class="pilot-empty-row">No hay vueltas recientes para mostrar.</td></tr>';
+      };
+
+      const renderList = (container, rows, config) => {
+        if (!rows.length) {
+          container.innerHTML = '<div class="pilot-empty-row">Sin datos disponibles.</div>';
+          return;
+        }
+
+        container.innerHTML = rows.slice(0, 12).map((row, index) => `
+          <div class="pilot-list__row">
+            <div class="pilot-list__index">${index + 1}</div>
+            <div>
+              <span class="pilot-list__title">${escapeHtml(config.title(row))}</span>
+              <span class="pilot-list__meta">${escapeHtml(config.meta(row))}</span>
+            </div>
+            <strong class="pilot-list__value">${escapeHtml(config.value(row))}</strong>
+          </div>
+        `).join('');
+      };
+
+      const renderGarage = (data) => {
+        const rows = arr(data.garage, data.cars, data.summary?.garage, data.summary?.cars);
+        renderList(garageRows, rows, {
+          title: (row) => carName(row),
+          meta: (row) => `${fmtNumber(firstValue(row.totalLaps, row.laps, row.lapCount))} vueltas · ${fmtNumber(firstValue(row.tracksCount, row.trackCount))} circuitos`,
+          value: (row) => lapTime(row),
+        });
+      };
+
+      const renderTracks = (data) => {
+        const rows = arr(data.tracks, data.circuits, data.summary?.tracks, data.summary?.circuits);
+        renderList(trackRows, rows, {
+          title: (row) => trackName(row),
+          meta: (row) => `${fmtNumber(firstValue(row.totalLaps, row.laps, row.lapCount))} vueltas · ${fmtNumber(firstValue(row.carsCount, row.carCount))} coches`,
+          value: (row) => lapTime(row),
+        });
+      };
+
+      const render = (data) => {
+        const pilot = firstValue(data.pilot, data.driver) || {};
+        const summary = data.summary || {};
+        const name = firstValue(pilot.name, pilot.driverName, data.pilotLink?.strackerName, `Piloto #${playerId}`);
+        const guid = firstValue(pilot.steamGuid, pilot.guid, data.pilotLink?.steamGuid);
+        const latest = firstValue(summary.latestLap, data.latestLap);
+
+        titleEl.textContent = name;
+        subtitleEl.textContent = latest
+          ? `Última actividad: ${fmtDate(latest.timestampIso)} · datos generados desde stracker.db3.`
+          : `Ficha pública del piloto #${playerId}. Datos generados desde stracker.db3.`;
+        guidEl.textContent = guid ? `${String(guid).slice(0, 18)}...${String(guid).slice(-8)}` : '--';
+        guidEl.title = guid || '';
+
+        renderMetrics(data);
+        renderCombos(data);
+        renderGarage(data);
+        renderTracks(data);
+        renderRecent(data);
+
+        statusEl.classList.add('is-hidden');
+        contentEl.classList.remove('is-hidden');
+      };
+
+      const load = async () => {
+        if (!playerId || !/^\d+$/.test(playerId)) {
+          showStatus(`<strong>Player ID no válido</strong><p>${escapeHtml(playerId)}</p>`, true);
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/pilots/${encodeURIComponent(playerId)}/profile`, { credentials: 'same-origin' });
+          const data = await response.json();
+
+          if (!response.ok || !data?.ok) {
+            showStatus(`<strong>No se pudo cargar la ficha</strong><p>${escapeHtml(data?.message || response.statusText)}</p>`, true);
+            return;
+          }
+
+          render(data);
+        } catch (error) {
+          showStatus(`<strong>Error cargando la ficha pública</strong><p>${escapeHtml(error?.message || error)}</p>`, true);
+        }
+      };
+
+      load();
+    })();
+  </script>
+</AppLayout>

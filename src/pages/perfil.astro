@@ -40,6 +40,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         <div class="gc-slab" id="linkedPilot">Cargando...</div>
         <div class="gc-actions">
           <a class="gc-btn" href="/login">Cambiar cuenta</a>
+          <a class="gc-btn" id="publicProfileAction" href="/pilotos" hidden>Perfil público</a>
           <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver hotlaps</a>
         </div>
       </aside>
@@ -220,6 +221,8 @@ import AppLayout from '../layouts/AppLayout.astro';
       $('profileText').textContent = data.message || 'Entra con tu cuenta para ver tus datos de piloto.';
       $('profileBadges').innerHTML = '<span class="gc-chip gc-chip--warn">Sesión requerida</span>';
       $('profileMeta').innerHTML = '<div class="gc-status-row"><span>Sesión</span><strong>No activa</strong></div>';
+      const publicAction = $('publicProfileAction');
+      if (publicAction) publicAction.hidden = true;
       $('linkedPilot').innerHTML = '<p>No hay sesión activa.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Entrar ahora</a></div>';
       ['metricBestLap','metricRank','metricValid','metricConsistency'].forEach((id) => setMetric(id, '-'));
       $('summaryRows').innerHTML = '<div><span>Estado</span><strong>Login requerido</strong></div>';
@@ -266,11 +269,26 @@ import AppLayout from '../layouts/AppLayout.astro';
         <div><span>Circuito favorito</span><strong>${escapeHtml(summary.favoriteTrack?.track?.name || summary.favoriteTrack?.name || '-')}</strong></div>
       `;
 
+      const linkedPlayerId = pilot.id || data.pilotLink?.playerId || null;
+      const publicAction = $('publicProfileAction');
+      if (publicAction) {
+        publicAction.hidden = !data.linked || !linkedPlayerId;
+        if (data.linked && linkedPlayerId) publicAction.href = `/pilotos/${encodeURIComponent(linkedPlayerId)}`;
+      }
+
+      const rawGuid = String(pilot.steamGuid || data.pilotLink?.steamGuid || '');
+      const shortGuid = rawGuid ? `${rawGuid.slice(0, 16)}...${rawGuid.slice(-8)}` : '-';
+
       $('linkedPilot').innerHTML = data.linked ? `
         <p><strong>${escapeHtml(pilot.name || data.pilotLink?.strackerName || '-')}</strong></p>
-        <p class="gc-small">Player ID: ${escapeHtml(pilot.id || data.pilotLink?.playerId || '-')}</p>
-        <p class="gc-small">Steam GUID: ${escapeHtml(pilot.steamGuid || data.pilotLink?.steamGuid || '-')}</p>
+        <p class="gc-small">Player ID: ${escapeHtml(linkedPlayerId || '-')}</p>
+        <p class="gc-small" title="${escapeHtml(rawGuid)}">Steam GUID: ${escapeHtml(shortGuid)}</p>
         <p class="gc-note">Vínculo creado: ${escapeHtml(fmtDate(data.pilotLink?.linkedAt))}</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/pilotos/${encodeURIComponent(linkedPlayerId || '')}">Abrir perfil público</a>
+          <button class="gc-btn" id="profileUnlinkPilotBtn" type="button">Desvincular piloto</button>
+        </div>
+        <p class="gc-message" id="profileUnlinkPilotMessage"></p>
       ` : `
         <p>Tu cuenta todavía no está vinculada a un piloto de stracker.</p>
         <p class="gc-note">Selecciona tu piloto real sin salir del perfil. Si hay nombres repetidos, usa el Player ID o Steam GUID para distinguirlos.</p>
@@ -278,6 +296,31 @@ import AppLayout from '../layouts/AppLayout.astro';
       `;
 
       if (!data.linked) initPilotLinker();
+      else {
+        const unlinkBtn = $('profileUnlinkPilotBtn');
+        const unlinkMsg = $('profileUnlinkPilotMessage');
+        unlinkBtn?.addEventListener('click', async () => {
+          if (!window.confirm('¿Seguro que quieres desvincular este piloto de tu cuenta?')) return;
+          unlinkBtn.disabled = true;
+          if (unlinkMsg) unlinkMsg.textContent = 'Desvinculando piloto...';
+          try {
+            const response = await fetch('/api/auth/unlink-pilot', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}'
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.ok === false) throw new Error(result.message || 'No se pudo desvincular el piloto.');
+            if (unlinkMsg) unlinkMsg.textContent = result.message || 'Piloto desvinculado.';
+            window.location.reload();
+          } catch (error) {
+            if (unlinkMsg) unlinkMsg.textContent = error.message || 'Error desvinculando piloto.';
+          } finally {
+            unlinkBtn.disabled = false;
+          }
+        });
+      }
 
       const combos = data.bestCombos || [];
       $('bestCombos').innerHTML = combos.length ? combos.slice(0, 18).map((lap, index) => `

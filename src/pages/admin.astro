@@ -223,9 +223,10 @@ import AppLayout from '../layouts/AppLayout.astro';
                 <th>Mejor vuelta</th>
                 <th>Coches</th>
                 <th>Última actividad</th>
+                <th>Acciones</th>
               </tr>
             </thead>
-            <tbody><tr><td colspan="6">Cargando pilotos...</td></tr></tbody>
+            <tbody><tr><td colspan="7">Cargando pilotos...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -411,7 +412,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     function renderUsers() {
       const query = String(els.userSearch.value || '').toLowerCase().trim();
       const filtered = users.filter((user) => {
-        const haystack = `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${user.linkedPilotName || ''}`.toLowerCase();
+        const haystack = `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${user.linkedPilotName || ''} ${user.linkedPlayerId || ''} ${user.pilotSteamGuid || user.linkedPilotSteamGuid || ''}`.toLowerCase();
         return !query || haystack.includes(query);
       });
 
@@ -426,12 +427,13 @@ import AppLayout from '../layouts/AppLayout.astro';
         <tr data-user-id="${escapeHtml(user.id)}">
           <td><strong>${escapeHtml(user.displayName)}</strong><br><span class="gc-muted-text">${escapeHtml(user.email)}</span></td>
           <td><span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${escapeHtml(user.role)}</span></td>
-          <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">ID ${escapeHtml(user.linkedPlayerId)}</span>` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
+          <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">Player ID ${escapeHtml(user.linkedPlayerId)}</span>${user.linkedPlayerId ? `<br><a class="gc-row-link__cta" href="/pilotos/${encodeURIComponent(user.linkedPlayerId)}">Ficha pública</a>` : ''}` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
           <td>${escapeHtml(user.activeSessions || 0)}</td>
           <td>${dateText(user.createdAt)}</td>
           <td>
             <div class="gc-admin-actions">
               <button class="gc-btn gc-btn--mini" data-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
+              <button class="gc-btn gc-btn--mini" data-action="link">${user.linkedPilotName ? 'Cambiar piloto' : 'Vincular piloto'}</button>
               <button class="gc-btn gc-btn--mini" data-action="unlink" ${user.linkedPilotName ? '' : 'disabled'}>Desvincular</button>
               <button class="gc-btn gc-btn--mini" data-action="revoke">Cerrar sesiones</button>
             </div>
@@ -452,7 +454,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       const query = String(els.nameSearch?.value || '').trim().toLowerCase();
       const view = els.nameViewFilter?.value || 'all';
       const items = selectedNameItems().filter((item) => {
-        const haystack = `${item.sourceCode || ''} ${item.sourceName || ''} ${item.autoName || ''} ${item.displayName || ''}`.toLowerCase();
+        const haystack = `${item.sourceCode || ''} ${item.sourceId || ''} ${item.sourceName || ''} ${item.autoName || ''} ${item.displayName || ''} ${item.duplicateName ? 'duplicado duplicate' : ''}`.toLowerCase();
         if (query && !haystack.includes(query)) return false;
         if (view === 'missing' && item.hasOverride) return false;
         if (view === 'overrides' && !item.hasOverride) return false;
@@ -462,7 +464,9 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const total = selectedNameItems().length;
       const overrides = selectedNameItems().filter((item) => item.hasOverride).length;
-      if (els.nameFiltersMeta) els.nameFiltersMeta.textContent = `${items.length} visibles de ${total}. Overrides activos: ${overrides}`;
+      const duplicated = selectedNameItems().filter((item) => item.duplicateName).length;
+      const duplicateText = kind === 'drivers' && duplicated ? ` · ${duplicated} nombres duplicados` : '';
+      if (els.nameFiltersMeta) els.nameFiltersMeta.textContent = `${items.length} visibles de ${total}. Overrides activos: ${overrides}${duplicateText}`;
 
       if (!items.length) {
         els.nameFiltersTable.innerHTML = '<tr><td colspan="5">Sin elementos para mostrar.</td></tr>';
@@ -471,10 +475,10 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       els.nameFiltersTable.innerHTML = items.map((item) => `
         <tr data-kind="${escapeHtml(item.kind)}" data-source-id="${escapeHtml(item.sourceId ?? '')}" data-source-code="${escapeHtml(item.sourceCode || '')}" data-source-name="${escapeHtml(item.sourceName || '')}" data-entry-id="${escapeHtml(item.entryId || '')}">
-          <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(item.sourceId ?? '-')} · ${escapeHtml(item.sourceCode || '-')}</span></td>
+          <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(item.sourceId ?? '-')} · ${escapeHtml(item.sourceCode || '-')}</span>${item.duplicateName ? '<br><span class="gc-chip gc-chip--warn">Nombre duplicado</span>' : ''}</td>
           <td>${escapeHtml(item.autoName || '-')}</td>
           <td><input class="gc-input gc-input--compact" data-name-input data-original-value="${escapeHtml(item.displayName || '')}" value="${escapeHtml(item.displayName || '')}" placeholder="Nombre visible" /></td>
-          <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}</td>
+          <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}${item.duplicateName ? '<br><span class="gc-muted-text">Editar por ID/GUID, no por nombre</span>' : ''}</td>
           <td>
             <div class="gc-admin-actions">
               <button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button>
@@ -504,8 +508,9 @@ import AppLayout from '../layouts/AppLayout.astro';
           <td><strong>${escapeHtml(pilot.bestLap || lapText(pilot.bestLapMs))}</strong></td>
           <td>${escapeHtml(pilot.carsCount || 0)}</td>
           <td>${escapeHtml(dateText(pilot.lastSeenAt))}</td>
+          <td><a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(pilot.id)}">Ficha</a></td>
         </tr>
-      `).join('') : '<tr><td colspan="6">No hay pilotos pendientes de vincular.</td></tr>';
+      `).join('') : '<tr><td colspan="7">No hay pilotos pendientes de vincular.</td></tr>';
     }
 
     async function loadAudit() {
@@ -686,6 +691,14 @@ import AppLayout from '../layouts/AppLayout.astro';
           await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
             method: 'POST',
             body: JSON.stringify({ role: button.dataset.role })
+          });
+        }
+        if (action === 'link') {
+          const playerId = window.prompt('Player ID del piloto stracker que quieres vincular a este usuario:');
+          if (!playerId || !playerId.trim()) return;
+          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/link-pilot`, {
+            method: 'POST',
+            body: JSON.stringify({ playerId: playerId.trim() })
           });
         }
         if (action === 'unlink') {

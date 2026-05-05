@@ -1,0 +1,163 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Combos | GrassCutters">
+  <div class="gc-page gc-combos-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Combo Center</span>
+        <h1 class="gc-title">Circuitos y paquetes de coches.</h1>
+        <p class="gc-subtitle">Vista por combo lógico: mismo circuito y paquete de coches compatible. Si otro ComboId solo añade algunos coches, se agrupa; si el 75% de coches son nuevos, nace otro combo.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Combo lógico</span>
+          <span class="gc-chip">Regla 75% coches nuevos</span>
+          <span class="gc-chip">Actividad reciente</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Combos</span><strong id="comboCount">...</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Visibles</span><strong id="comboVisible">...</strong></div>
+          <div class="gc-status-row"><span>Fuente</span><strong>ComboId agrupado</strong></div>
+          <div class="gc-status-row"><span>Orden</span><strong id="comboSortLabel">Recientes</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-toolbar">
+      <div class="gc-field"><label for="comboSearch">Buscar combo</label><input class="gc-input" id="comboSearch" placeholder="Circuito, coche, marca, ComboId, circuito, coche, marca..." autocomplete="off" /></div>
+      <div class="gc-field"><label for="comboSort">Orden</label><select class="gc-input" id="comboSort"><option value="recent">Actividad reciente</option><option value="laps">Más vueltas</option><option value="drivers">Más pilotos</option><option value="fastest">Mejor tiempo</option></select></div>
+      <button class="gc-btn gc-btn--primary" id="reloadCombos" type="button">Actualizar</button>
+    </section>
+
+    <section class="gc-table-wrap">
+      <table class="gc-table gc-combos-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Combo real</th>
+            <th>Coches del combo</th>
+            <th>Mejor vuelta</th>
+            <th>Pilotos</th>
+            <th>Vueltas</th>
+            <th>Limpieza</th>
+            <th>Última actividad</th>
+            <th>Ficha</th>
+          </tr>
+        </thead>
+        <tbody id="comboRows"><tr><td colspan="9">Cargando combos...</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-combo-main { display: grid; gap: .25rem; }
+    .gc-combo-title { font-weight: 900; color: var(--text); }
+    .gc-combo-sub { color: var(--muted); font-size: .82rem; word-break: break-word; }
+    .gc-combo-cars { max-width: 520px; }
+    .gc-combo-cars strong { display:block; color: var(--text); }
+    .gc-combo-car-list { display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.45rem; }
+    .gc-combo-car-pill { border:1px solid var(--line); padding:.25rem .45rem; font-size:.74rem; color:var(--muted); background: color-mix(in srgb, var(--surface), transparent 35%); }
+    .gc-combo-car-more { color: var(--muted); font-size:.78rem; }
+    .gc-combo-mini { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .8rem; }
+    .gc-combo-mini strong { color: var(--text); }
+    .gc-combo-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+  </style>
+
+  <script>
+    const rowsEl = document.getElementById('comboRows');
+    const countEl = document.getElementById('comboCount');
+    const visibleEl = document.getElementById('comboVisible');
+    const searchEl = document.getElementById('comboSearch');
+    const sortEl = document.getElementById('comboSort');
+    const sortLabelEl = document.getElementById('comboSortLabel');
+    const reloadEl = document.getElementById('reloadCombos');
+    let combos = [];
+
+    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const fmtDate = (value) => {
+      if (!value) return '--';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '--';
+      return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    };
+
+    function comboText(combo) {
+      const cars = Array.isArray(combo.cars) ? combo.cars : [];
+      const memberIds = Array.isArray(combo.memberComboIds) ? combo.memberComboIds.join(' ') : '';
+      return `${combo.comboId || ''} ${memberIds} ${combo.track?.name || combo.trackName || ''} ${combo.track?.code || ''} ${combo.carSummary || ''} ${cars.map((car) => `${car.name || ''} ${car.code || ''} ${car.brand || ''}`).join(' ')}`;
+    }
+
+    function renderCars(combo) {
+      const cars = Array.isArray(combo.cars) ? combo.cars : [];
+      const shown = cars.slice(0, 5);
+      const rest = Math.max(0, cars.length - shown.length);
+      return `
+        <div class="gc-combo-cars">
+          <strong>${escapeHtml(combo.carSummary || 'Sin coches detectados')}</strong>
+          <div class="gc-combo-car-list">
+            ${shown.map((car) => `<span class="gc-combo-car-pill">${escapeHtml(car.name || car.code || '-')}</span>`).join('')}
+            ${rest ? `<span class="gc-combo-car-more">+${rest} más</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function draw() {
+      const q = searchEl.value.trim().toLowerCase();
+      const rows = combos.filter((combo) => comboText(combo).toLowerCase().includes(q));
+      visibleEl.textContent = String(rows.length);
+      sortLabelEl.textContent = sortEl.options[sortEl.selectedIndex]?.textContent || 'Orden';
+
+      rowsEl.innerHTML = rows.map((combo, index) => {
+        const track = combo.track || {};
+        const url = combo.url || `/combos/${combo.comboId}`;
+        const best = combo.bestLap || {};
+        const memberIds = Array.isArray(combo.memberComboIds) ? combo.memberComboIds : [];
+        const idText = memberIds.length > 1 ? `Familia ${combo.comboId} · IDs ${memberIds.join(', ')}` : `Combo ID ${combo.comboId || '-'}`;
+        const mergedText = Number(combo.mergedCombosCount || 0) > 1 ? ` · ${combo.mergedCombosCount} ComboIds agrupados` : '';
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>
+              <div class="gc-combo-main">
+                <span class="gc-combo-title">${escapeHtml(track.name || '-')}</span>
+                <span class="gc-combo-sub">${escapeHtml(idText)} · Track ${escapeHtml(combo.trackId || '-')} · ${escapeHtml(track.code || '')}${escapeHtml(mergedText)}</span>
+              </div>
+            </td>
+            <td>${renderCars(combo)}</td>
+            <td><strong>${escapeHtml(combo.bestLapTime || best.lapTime || '--')}</strong><br><span class="gc-muted-text">${escapeHtml(best.driverName || best.playerName || '-')}</span></td>
+            <td>${escapeHtml(combo.driversCount || 0)}</td>
+            <td>${escapeHtml(combo.totalLaps || 0)}<br><span class="gc-muted-text">${escapeHtml(combo.validLaps || 0)} limpias</span></td>
+            <td><span class="gc-chip ${Number(combo.cleanRate) >= 70 ? 'gc-chip--accent' : ''}">${escapeHtml(combo.cleanRate ?? 0)}%</span></td>
+            <td>${escapeHtml(fmtDate(combo.lastSeenAt))}</td>
+            <td><a class="gc-btn gc-btn--mini" href="${escapeHtml(url)}">Abrir</a></td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="9">Sin combos con esos filtros.</td></tr>';
+    }
+
+    async function load() {
+      reloadEl.disabled = true;
+      rowsEl.innerHTML = '<tr><td colspan="9">Cargando combos...</td></tr>';
+      try {
+        const response = await fetch(`/api/combos/stats?limit=300&sort=${encodeURIComponent(sortEl.value)}`);
+        if (!response.ok) throw new Error('Endpoint no disponible');
+        const data = await response.json();
+        combos = data.items || [];
+        countEl.textContent = String(data.totalCombos ?? combos.length);
+        draw();
+      } catch (error) {
+        countEl.textContent = 'Error';
+        rowsEl.innerHTML = '<tr><td colspan="9">No se pudo cargar /api/combos/stats.</td></tr>';
+      } finally {
+        reloadEl.disabled = false;
+      }
+    }
+
+    searchEl.addEventListener('input', draw);
+    sortEl.addEventListener('change', load);
+    reloadEl.addEventListener('click', load);
+    load();
+  </script>
+</AppLayout>

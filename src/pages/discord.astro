@@ -1,54 +1,46 @@
 ---
-import AppLayout from '../layouts/AppLayout.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+const discordUrl = import.meta.env.PUBLIC_DISCORD_INVITE_URL || '#';
+const hasInvite = discordUrl !== '#';
 ---
-<AppLayout title="Discord | GrassCutters">
-  <div class="gc-page">
-    <section class="gc-hero gc-hero--compact">
-      <div>
-        <span class="gc-kicker">Discord bridge</span>
-        <h1 class="gc-title">Comunidad y anuncios.</h1>
-        <p class="gc-subtitle">Puente de comunidad para anuncios, estado del bot, eventos y futuras automatizaciones. Esta zona queda lista para conectar feeds y mensajes publicados desde el servidor.</p>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Bot preparado</span>
-          <span class="gc-chip">Eventos</span>
-          <span class="gc-chip">Anuncios web</span>
-        </div>
+<MarketingLayout title="Discord | GrassCutters Racing" description="Únete al Discord de GrassCutters Racing para eventos, anuncios, votaciones y comunidad.">
+  <section class="gc-page gc-hero">
+    <div>
+      <span class="gc-kicker">Discord GC</span>
+      <h1 class="gc-title">La grada, el briefing y el paddock.</h1>
+      <p class="gc-lead">Discord es la entrada social de GrassCutters: avisos, eventos, votaciones de combos, charlas y anuncios de la web.</p>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn-primary" href={discordUrl} target={hasInvite ? '_blank' : '_self'} rel={hasInvite ? 'noreferrer' : undefined}>{hasInvite ? 'Unirse al Discord' : 'Configura PUBLIC_DISCORD_INVITE_URL'}</a>
+        <a class="gc-btn" href="/comunidad">Ver comunidad</a>
       </div>
-      <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Bot</span><strong>Standby</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Módulo</span><strong>Discord.js</strong></div>
-          <div class="gc-status-row"><span>Webhooks</span><strong>Preparado</strong></div>
-          <div class="gc-status-row"><span>Publicación</span><strong>Web API</strong></div>
-        </div>
-      </aside>
-    </section>
+    </div>
 
-    <section class="gc-grid-3">
-      <article class="gc-slab">
-        <h3>Anuncios</h3>
-        <p>Mensajes publicados desde Discord hacia la web para que la comunidad no pierda eventos, cambios y avisos importantes.</p>
-        <span class="gc-badge">Canal web</span>
-      </article>
-      <article class="gc-slab">
-        <h3>Eventos</h3>
-        <p>Base preparada para mostrar carreras, votaciones, calendarios y próximos combos elegidos por la comunidad.</p>
-        <span class="gc-badge gc-chip--accent">Roadmap</span>
-      </article>
-      <article class="gc-slab">
-        <h3>Automatizaciones</h3>
-        <p>Puerta abierta a avisos automáticos: mejores vueltas, ganadores, resultados y recordatorios de carrera.</p>
-        <span class="gc-badge">Bot sync</span>
-      </article>
-    </section>
+    <aside class="gc-panel">
+      <div class="gc-panel-title">
+        <span class="gc-panel-kicker">Discord</span>
+        <strong class="gc-live"><span class="gc-dot"></span>Público</strong>
+      </div>
+      <div class="gc-panel-row"><span>Anuncios</span><strong>Web + eventos</strong></div>
+      <div class="gc-panel-row"><span>Votaciones</span><strong>Combos</strong></div>
+      <div class="gc-panel-row"><span>Briefing</span><strong>Carreras</strong></div>
+      <div class="gc-panel-row"><span>Acceso</span><strong>Comunidad</strong></div>
+    </aside>
+  </section>
 
-    <section class="gc-section">
-      <div class="gc-section-head"><h2>Flujo previsto</h2><p>Discord hacia plataforma</p></div>
-      <div class="gc-timeline">
-        <div class="gc-timeline__item"><span>01</span><div><strong>Mensaje en Discord</strong><p>El bot escucha el canal configurado y prepara el contenido.</p></div></div>
-        <div class="gc-timeline__item"><span>02</span><div><strong>Endpoint web</strong><p>La API recibe el aviso con secret y lo guarda para la web.</p></div></div>
-        <div class="gc-timeline__item"><span>03</span><div><strong>Bloque público</strong><p>La página muestra anuncios, eventos o estado del bot con estilo de plataforma.</p></div></div>
+  <section class="gc-page">
+    <div class="gc-grid-3">
+      <article class="gc-card"><code>DC</code><h3>Anuncios</h3><p>Novedades de la web, cambios de servidor, eventos y avisos rápidos.</p></article>
+      <article class="gc-card"><code>EV</code><h3>Eventos</h3><p>Calendario, combos elegidos y coordinación de carreras.</p></article>
+      <article class="gc-card"><code>ON</code><h3>Onboarding</h3><p>Primer paso antes de login, perfil y vinculación de piloto.</p></article>
+    </div>
+  </section>
+
+  {!hasInvite && (
+    <section class="gc-page gc-page-narrow">
+      <div class="gc-panel">
+        <span class="gc-panel-kicker">Pendiente</span>
+        <p>Añade la variable <code>PUBLIC_DISCORD_INVITE_URL</code> en Hostinger y en local para que el botón abra la invitación real.</p>
       </div>
     </section>
-  </div>
-</AppLayout>
+  )}
+</MarketingLayout>
