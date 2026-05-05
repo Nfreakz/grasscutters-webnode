@@ -1,73 +1,42 @@
 'use strict';
 
-/*
- * GrassCutters Hostinger bootstrap.
- * Hostinger sometimes starts the configured entry file directly with Node.
- * The real server is TypeScript (src/server/index.ts), so we start it through
- * the local tsx CLI installed in node_modules.
+/* GrassCutters Hostinger bootstrap V2.
+ * Arranca el servidor compilado en JavaScript real.
+ * Funciona tanto si Hostinger despliega la raíz completa como si usa dist/ como raíz.
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { pathToFileURL } = require('node:url');
 
 const rootDir = __dirname;
-const target = path.join(rootDir, 'src', 'server', 'index.ts');
-const candidates = [
-  path.join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
-  path.join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.cjs'),
-  path.join(rootDir, 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.cmd' : 'tsx')
-];
 
-function findExistingFile(items) {
-  return items.find((item) => item && fs.existsSync(item));
+function findExistingFile(candidates) {
+  return candidates.find((candidate) => candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || null;
 }
 
-const tsxCli = findExistingFile(candidates);
+const compiledServer = findExistingFile([
+  path.join(rootDir, 'server-node', 'index.mjs'),
+  path.join(rootDir, 'dist', 'server-node', 'index.mjs')
+]);
 
-if (!fs.existsSync(target)) {
-  console.error('[GC bootstrap] No existe el servidor TypeScript:', target);
+if (!compiledServer) {
+  console.error('[GC bootstrap] No se encontró servidor compilado.');
+  console.error('[GC bootstrap] Buscado en:');
+  console.error(' - ' + path.join(rootDir, 'server-node', 'index.mjs'));
+  console.error(' - ' + path.join(rootDir, 'dist', 'server-node', 'index.mjs'));
+  console.error('[GC bootstrap] Ejecuta npm run build y revisa que el directorio de salida sea dist o ./ según el deploy.');
   process.exit(1);
 }
 
-if (!tsxCli) {
-  console.error('[GC bootstrap] No se encontró tsx en node_modules. Ejecuta npm install o revisa el deploy.');
-  console.error('[GC bootstrap] Candidatos:', candidates.join(' | '));
-  process.exit(1);
-}
+process.env.GC_RUNTIME_ROOT = rootDir;
+process.env.GC_BOOTSTRAP_ENTRY = 'server.cjs';
 
-console.log('[GC bootstrap] Arrancando servidor TypeScript con tsx');
-console.log('[GC bootstrap] Target:', target);
-console.log('[GC bootstrap] TSX:', tsxCli);
+console.log('[GC bootstrap] Root:', rootDir);
+console.log('[GC bootstrap] GC_RUNTIME_ROOT:', process.env.GC_RUNTIME_ROOT);
+console.log('[GC bootstrap] Servidor compilado:', compiledServer);
 
-const args = tsxCli.endsWith('.cmd')
-  ? [target]
-  : [tsxCli, target];
-
-const command = tsxCli.endsWith('.cmd') ? tsxCli : process.execPath;
-
-const child = spawn(command, args, {
-  cwd: rootDir,
-  env: {
-    ...process.env,
-    GC_BOOTSTRAP_ENTRY: 'server.cjs'
-  },
-  stdio: 'inherit',
-  shell: false
-});
-
-child.on('exit', (code, signal) => {
-  if (signal) {
-    console.error(`[GC bootstrap] Servidor finalizado por señal ${signal}`);
-    process.kill(process.pid, signal);
-    return;
-  }
-
-  console.error(`[GC bootstrap] Servidor finalizado con código ${code ?? 0}`);
-  process.exit(code ?? 0);
-});
-
-child.on('error', (error) => {
-  console.error('[GC bootstrap] Error arrancando servidor:', error);
+import(pathToFileURL(compiledServer).href).catch((error) => {
+  console.error('[GC bootstrap] Error importando servidor compilado:', error);
   process.exit(1);
 });
