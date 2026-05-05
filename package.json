@@ -9,12 +9,13 @@
     "dev:server": "tsx watch src/server/index.ts",
     "prebuild": "node scripts/ensure-hostinger-runtime.mjs",
     "build": "astro build",
-    "start": "tsx src/server/index.ts",
+    "start": "node server.cjs",
     "preview": "npm run build && npm start",
     "check": "astro check",
     "format": "prettier . --write",
     "mysql:migrate-json": "node scripts/migrate-json-to-mysql.mjs",
-    "sqlite:migrate-json": "node scripts/migrate-json-to-sqlite.mjs"
+    "sqlite:migrate-json": "node scripts/migrate-json-to-sqlite.mjs",
+    "start:tsx": "tsx src/server/index.ts"
   },
   "dependencies": {
     "@astrojs/check": "latest",
