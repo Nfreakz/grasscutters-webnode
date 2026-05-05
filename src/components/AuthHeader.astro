@@ -1,11 +1,16 @@
 <script is:inline>
   (() => {
     const endpoints = ['/api/profile', '/api/auth/status'];
+    const logoutEndpoints = [
+      { url: '/api/auth/logout', method: 'POST' },
+      { url: '/api/logout', method: 'GET' }
+    ];
 
     const headerRoots = () => Array.from(document.querySelectorAll('.gc-public-header, .gc-topbar'));
     const inHeader = (el) => headerRoots().some((root) => root && root.contains(el));
     const authLinks = () => Array.from(document.querySelectorAll('[data-auth-link], a[href="/login"], a[href="/login/"]')).filter(inHeader);
     const authBadges = () => Array.from(document.querySelectorAll('[data-auth-status], [data-auth-state]')).filter(inHeader);
+    const logoutButtons = () => Array.from(document.querySelectorAll('[data-auth-logout]')).filter(inHeader);
 
     const pickUser = (data) => {
       if (!data || typeof data !== 'object') return null;
@@ -40,11 +45,22 @@
       return null;
     }
 
-    function setLoggedOut() {
-      document.documentElement.dataset.auth = 'false';
+    function hideBadges() {
       authBadges().forEach((badge) => {
         badge.hidden = true;
         badge.setAttribute('aria-hidden', 'true');
+        badge.textContent = 'Conectado';
+      });
+    }
+
+    function setLoggedOut() {
+      document.documentElement.dataset.auth = 'false';
+      hideBadges();
+      logoutButtons().forEach((button) => {
+        button.hidden = true;
+        button.disabled = false;
+        button.textContent = 'Salir';
+        button.setAttribute('aria-hidden', 'true');
       });
       authLinks().forEach((link) => {
         link.textContent = 'Login';
@@ -52,31 +68,90 @@
         link.classList.remove('is-authenticated', 'gc-auth-profile-link');
         link.removeAttribute('data-auth-profile-link');
         link.setAttribute('aria-label', 'Login');
+        link.setAttribute('title', 'Login');
       });
     }
 
     function setLoggedIn(data) {
       const name = userName(data);
       document.documentElement.dataset.auth = 'true';
-      authBadges().forEach((badge) => {
-        badge.hidden = false;
-        badge.removeAttribute('aria-hidden');
-        badge.textContent = 'Conectado';
-        badge.setAttribute('title', `Conectado como ${name}`);
-      });
+
+      // El estado queda unido al propio botón de perfil: “Conectado · Neo”.
+      // Así evitamos duplicar “Conectado” y “Neo” en el header.
+      hideBadges();
+
       authLinks().forEach((link) => {
-        link.textContent = name;
+        link.textContent = `Conectado · ${name}`;
         link.setAttribute('href', '/perfil');
-        link.setAttribute('title', 'Abrir mi perfil');
+        link.setAttribute('title', `Abrir perfil de ${name}`);
         link.setAttribute('aria-label', `Abrir perfil de ${name}`);
         link.classList.add('is-authenticated', 'gc-auth-profile-link');
         link.setAttribute('data-auth-profile-link', 'true');
       });
+
+      logoutButtons().forEach((button) => {
+        button.hidden = false;
+        button.disabled = false;
+        button.removeAttribute('aria-hidden');
+        button.textContent = 'Salir';
+        button.setAttribute('title', 'Cerrar sesión');
+      });
     }
 
+    function clearClientCookie() {
+      const expires = 'Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = `gc_session=; expires=${expires}; path=/; SameSite=Lax`;
+      document.cookie = `gc_session=; Max-Age=0; path=/; SameSite=Lax`;
+    }
+
+    async function logout(button) {
+      if (button?.dataset.logoutBusy === 'true') return;
+      if (button) {
+        button.dataset.logoutBusy = 'true';
+        button.disabled = true;
+        button.textContent = 'Saliendo';
+      }
+
+      let ok = false;
+      for (const endpoint of logoutEndpoints) {
+        try {
+          const response = await fetch(endpoint.url, {
+            method: endpoint.method,
+            credentials: 'include',
+            cache: 'no-store',
+            headers: endpoint.method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+            body: endpoint.method === 'POST' ? '{}' : undefined
+          });
+          if (response.ok || response.redirected) {
+            ok = true;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      clearClientCookie();
+      setLoggedOut();
+
+      if (!ok) {
+        console.warn('[GC] Logout sin respuesta del servidor. Se ha limpiado la sesión del cliente.');
+      }
+
+      window.location.assign('/');
+    }
+
+    function bindLogoutButtons() {
+      logoutButtons().forEach((button) => {
+        if (button.dataset.logoutBound === 'true') return;
+        button.dataset.logoutBound = 'true';
+        button.addEventListener('click', () => logout(button));
+      });
+    }
+
+    bindLogoutButtons();
     fetchAuth().then((data) => {
       if (isLogged(data)) setLoggedIn(data);
       else setLoggedOut();
+      bindLogoutButtons();
     }).catch(setLoggedOut);
   })();
 </script>

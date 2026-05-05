@@ -7,6 +7,7 @@ const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
 const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
 const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
 const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
+const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78';
 ---
 <MarketingLayout title="GrassCutters Racing | Comunidad sim racing" description="GrassCutters Racing: comunidad de Assetto Corsa con Discord, WhatsApp, rankings reales, combos activos y perfiles de piloto.">
   <section class="gc-page gc-hero gc-landing-hero">
@@ -72,7 +73,17 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         <div class="gc-week-combo__stat gc-week-combo__stat--best">
           <span>Mejor</span>
           <strong id="gcWeekComboBest">--</strong>
-          <small id="gcWeekComboBestMeta">Pendiente de datos</small>
+        </div>
+
+        <div class="gc-week-combo__leader">
+          <span class="gc-week-combo__leader-label">Más rápido</span>
+          <strong id="gcWeekComboBestDriver">Pendiente</strong>
+          <small id="gcWeekComboBestCar">Coche por confirmar</small>
+        </div>
+
+        <div class="gc-week-combo__join-wrap">
+          <a class="gc-btn gc-week-combo__join" href={serverJoinUrl} target="_blank" rel="noreferrer">Unirse al servidor</a>
+          <small>Abre el servidor directamente desde Content Manager.</small>
         </div>
       </div>
     </article>
@@ -287,7 +298,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       );
     };
 
-    const gcComboBestMeta = (combo) => {
+    const gcComboBestParts = (combo) => {
       const best = combo?.bestLap || combo?.best || combo?.fastestLap || combo?.leader || combo?.topLap || {};
       const driver = gcText(
         combo?.bestDriverName ??
@@ -310,10 +321,10 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         best?.car
       );
 
-      if (driver && car) return `${driver} · ${car}`;
-      if (driver) return driver;
-      if (car) return car;
-      return 'Mejor vuelta del combo';
+      return {
+        driver: driver || 'Piloto pendiente',
+        car: car || 'Coche por confirmar'
+      };
     };
 
     const gcComboDate = (combo) => {
@@ -354,13 +365,14 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         const laps = gcNumber(combo.totalLaps ?? combo.laps ?? combo.lapCount ?? combo.visibleLaps, 0);
         const drivers = gcNumber(combo.driversCount ?? combo.pilotsCount ?? combo.playersCount ?? combo.uniqueDrivers ?? combo.totalDrivers, 0);
         const bestTime = gcComboTime(combo);
-        const bestMeta = gcComboBestMeta(combo);
+        const bestParts = gcComboBestParts(combo);
 
         gcSetText('gcWeekComboTitle', gcTrackName(combo));
         gcSetText('gcWeekComboLaps', laps.toLocaleString('es-ES'));
         gcSetText('gcWeekComboDrivers', drivers.toLocaleString('es-ES'));
         gcSetText('gcWeekComboBest', bestTime || '--');
-        gcSetText('gcWeekComboBestMeta', bestMeta);
+        gcSetText('gcWeekComboBestDriver', bestParts.driver);
+        gcSetText('gcWeekComboBestCar', bestParts.car);
 
         const state = document.getElementById('gcWeekComboState');
         if (state && combo.mergedCombosCount > 1) {
@@ -380,7 +392,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         card?.removeAttribute('data-loading');
       } catch (error) {
         gcSetText('gcWeekComboTitle', 'Combo activo');
-        gcSetText('gcWeekComboBestMeta', 'Abre Combo Center para ver la actividad actual');
+        gcSetText('gcWeekComboBestDriver', 'Piloto pendiente');
+        gcSetText('gcWeekComboBestCar', 'Abre Combo Center para ver la actividad actual');
         document.getElementById('gcWeekComboCars').innerHTML = '<span class="gc-week-combo__chip">Datos no disponibles</span>';
         card?.setAttribute('data-error', 'true');
       }

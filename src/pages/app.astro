@@ -2,118 +2,699 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Panel | GrassCutters Platform">
-  <div class="gc-page">
-    <section class="gc-hero">
-      <div>
+  <div class="gc-page gc-dashboard-home">
+    <section class="gc-dash-hero">
+      <div class="gc-dash-hero__copy">
         <span class="gc-kicker">GC Platform</span>
         <h1 class="gc-title">Panel de mando GrassCutters.</h1>
-        <p class="gc-subtitle">La zona de trabajo de los pilotos: hotlaps reales, combos, perfiles, tracker y herramientas para seguir la actividad del servidor.</p>
+        <p class="gc-subtitle">Entrada rápida para ver tiempos, combos, pilotos y estado del servidor sin perderse por los menús.</p>
         <div class="gc-actions">
           <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver leaderboard</a>
           <a class="gc-btn" href="/combos">Combo Center</a>
           <a class="gc-btn gc-btn--ghost" href="/perfil">Mi perfil</a>
         </div>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent"><span class="gc-live-dot"></span> Datos activos</span>
-          <span class="gc-chip">Hotlaps</span>
-          <span class="gc-chip">Perfiles</span>
-        </div>
       </div>
 
-      <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Estado plataforma</span><strong id="homeHealth">ONLINE</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Web</span><strong>Activa</strong></div>
-          <div class="gc-status-row"><span>API</span><strong id="apiStatus">Comprobando</strong></div>
-          <div class="gc-status-row"><span>Tracker</span><strong id="trackerStatus">Lectura real</strong></div>
-          <div class="gc-status-row"><span>Servidor</span><strong id="syncStatus">Sincronizado</strong></div>
+      <aside class="gc-dash-status" aria-label="Estado rápido">
+        <div class="gc-dash-status__top">
+          <span>Estado plataforma</span>
+          <strong id="dashHealth"><span class="gc-live-dot"></span> Revisando</strong>
+        </div>
+        <div class="gc-dash-status__rows">
+          <div><span>API</span><strong id="apiStatus">...</strong></div>
+          <div><span>Datos</span><strong id="dataStatus">...</strong></div>
+          <div><span>Última lectura</span><strong id="dashUpdated">...</strong></div>
         </div>
       </aside>
     </section>
 
-    <section class="gc-metrics" id="overviewMetrics" aria-label="Métricas generales">
-      <div class="gc-metric"><span>Pilotos</span><strong>...</strong><small>Detectados</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong>...</strong><small>Registradas</small></div>
-      <div class="gc-metric"><span>Coches</span><strong>...</strong><small>Usados</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong class="is-accent">...</strong><small>Visitados</small></div>
+    <section class="gc-dash-metrics" id="overviewMetrics" aria-label="Resumen de datos">
+      <article class="gc-dash-metric">
+        <span>Pilotos</span>
+        <strong id="metricPilots">...</strong>
+        <small>detectados</small>
+      </article>
+      <article class="gc-dash-metric">
+        <span>Vueltas</span>
+        <strong id="metricLaps">...</strong>
+        <small>registradas</small>
+      </article>
+      <article class="gc-dash-metric">
+        <span>Coches</span>
+        <strong id="metricCars">...</strong>
+        <small>usados</small>
+      </article>
+      <article class="gc-dash-metric">
+        <span>Circuitos</span>
+        <strong id="metricTracks">...</strong>
+        <small>visitados</small>
+      </article>
     </section>
 
-    <section class="gc-command-strip" aria-label="Resumen rápido">
-      <div class="gc-command-item"><span>Leaderboard</span><strong>Hotlaps</strong><p>Tiempos reales, deltas y enlaces directos a fichas de piloto.</p></div>
-      <div class="gc-command-item"><span>Actividad</span><strong>Combos</strong><p>Circuitos y paquetes de coches agrupados para leer el servidor sin ruido.</p></div>
-      <div class="gc-command-item"><span>Pilotos</span><strong>Perfil</strong><p>Área privada, ficha pública y datos personales de pista.</p></div>
-    </section>
+    <section class="gc-dash-grid-main">
+      <div class="gc-dash-panel gc-dash-panel--routes">
+        <div class="gc-section-head">
+          <h2>Accesos de box</h2>
+          <p>Lo que más se usa, siempre a mano.</p>
+        </div>
 
-    <section class="gc-grid-2">
-      <div class="gc-section">
-        <div class="gc-section-head"><h2>Centro de plataforma</h2><p>Secciones principales</p></div>
-        <div class="gc-row-list">
-          <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Leaderboard</strong><br><span class="gc-row-link__desc">Tiempos reales con filtros rápidos.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/combos"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Combos</strong><br><span class="gc-row-link__desc">Actividad por circuito y paquete de coches.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/pilotos"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Pilotos</strong><br><span class="gc-row-link__desc">Directorio, fichas públicas y actividad.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-          <a class="gc-row-link" href="/perfil"><span class="gc-row-link__num">04</span><span><strong class="gc-row-link__title">Área piloto</strong><br><span class="gc-row-link__desc">Perfil privado, vínculo de piloto y métricas personales.</span></span><span class="gc-row-link__cta">Entrar</span></a>
+        <div class="gc-dash-routes">
+          <a class="gc-dash-route" href="/hotlaps">
+            <span class="gc-dash-route__num">01</span>
+            <span>
+              <strong>Leaderboard</strong>
+              <small>Filtros, tiempos y enlace directo a cada piloto.</small>
+            </span>
+            <em>Abrir</em>
+          </a>
+          <a class="gc-dash-route" href="/combos">
+            <span class="gc-dash-route__num">02</span>
+            <span>
+              <strong>Combos</strong>
+              <small>Circuito, paquete de coches y actividad agrupada.</small>
+            </span>
+            <em>Abrir</em>
+          </a>
+          <a class="gc-dash-route" href="/pilotos">
+            <span class="gc-dash-route__num">03</span>
+            <span>
+              <strong>Pilotos</strong>
+              <small>Directorio, fichas públicas y garaje de cada corredor.</small>
+            </span>
+            <em>Abrir</em>
+          </a>
+          <a class="gc-dash-route" href="/perfil">
+            <span class="gc-dash-route__num">04</span>
+            <span>
+              <strong>Área piloto</strong>
+              <small>Cuenta, vínculo stracker y resumen personal.</small>
+            </span>
+            <em>Entrar</em>
+          </a>
         </div>
       </div>
 
-      <aside class="gc-section">
-        <div class="gc-section-head"><h2>Últimas referencias</h2><p>Top hotlaps</p></div>
-        <div class="gc-table-meta"><span id="homeHotlapsCount">Cargando datos</span><span id="homeHotlapsUpdated">...</span></div>
+      <aside class="gc-dash-panel">
+        <div class="gc-section-head">
+          <h2>Últimas referencias</h2>
+          <p id="homeHotlapsUpdated">Cargando...</p>
+        </div>
+        <div class="gc-table-meta"><span id="homeHotlapsCount">...</span><span>Top actual</span></div>
         <div class="gc-table-wrap">
-          <table class="gc-table gc-table--compact">
+          <table class="gc-table gc-table--compact gc-dash-table">
             <thead><tr><th>Piloto</th><th>Coche</th><th>Tiempo</th></tr></thead>
             <tbody id="homeHotlaps"><tr><td colspan="3">Cargando...</td></tr></tbody>
           </table>
         </div>
       </aside>
     </section>
+
+    <section class="gc-dash-grid-3">
+      <article class="gc-dash-panel gc-dash-combo">
+        <div class="gc-section-head">
+          <h2>Combo activo</h2>
+          <p>Última lectura del servidor.</p>
+        </div>
+        <div id="activeCombo" class="gc-dash-combo__body">
+          <strong>Buscando combo...</strong>
+          <span>La ficha aparecerá cuando responda la API.</span>
+        </div>
+      </article>
+
+      <article class="gc-dash-panel">
+        <div class="gc-section-head">
+          <h2>Últimos cambios</h2>
+          <p>Resumen corto, sin muro de texto.</p>
+        </div>
+        <div class="gc-dash-changelog">
+          <div><span>66</span><strong>Logout</strong><small>Salir desde header público y panel.</small></div>
+          <div><span>65</span><strong>Sesión</strong><small>Login cambia a perfil cuando hay cuenta activa.</small></div>
+          <div><span>60</span><strong>Combo semana</strong><small>Descargas, mejor vuelta y coches visibles.</small></div>
+          <div><span>50</span><strong>Paletas</strong><small>GrassCutters como tema principal.</small></div>
+        </div>
+      </article>
+
+      <article class="gc-dash-panel">
+        <div class="gc-section-head">
+          <h2>Lectura rápida</h2>
+          <p>Datos útiles del último refresco.</p>
+        </div>
+        <div class="gc-slab-list gc-dash-reading">
+          <div><span>Limpias</span><strong id="metricValid">...</strong></div>
+          <div><span>Ratio limpieza</span><strong id="metricCleanRate">...</strong></div>
+          <div><span>Mejor vuelta</span><strong id="metricBestLap">...</strong></div>
+          <div><span>Top piloto</span><strong id="metricBestDriver">...</strong></div>
+        </div>
+      </article>
+    </section>
   </div>
+
+  <style is:global>
+    .gc-dashboard-home {
+      display: grid;
+      gap: clamp(24px, 4vw, 44px);
+    }
+
+    .gc-dash-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+      gap: clamp(24px, 5vw, 74px);
+      align-items: center;
+      padding-top: clamp(28px, 5vw, 72px);
+    }
+
+    .gc-dash-status,
+    .gc-dash-panel,
+    .gc-dash-metric {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+      box-shadow: 0 26px 80px rgba(0,0,0,.24);
+    }
+
+    .gc-dash-status {
+      border-top: 2px solid var(--accent);
+      padding: 24px;
+    }
+
+    .gc-dash-status__top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 950;
+      font-size: .74rem;
+      color: var(--dim);
+    }
+
+    .gc-dash-status__top strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .gc-dash-status__rows {
+      display: grid;
+      gap: 0;
+    }
+
+    .gc-dash-status__rows > div {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line-soft, rgba(255,255,255,.08));
+      color: var(--soft);
+    }
+
+    .gc-dash-status__rows > div:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .gc-dash-status__rows strong {
+      color: var(--text);
+      text-align: right;
+    }
+
+    .gc-dash-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.018);
+    }
+
+    .gc-dash-metric {
+      min-height: 128px;
+      padding: 20px;
+      border-width: 0 1px 0 0;
+      box-shadow: none;
+    }
+
+    .gc-dash-metric:last-child {
+      border-right: 0;
+    }
+
+    .gc-dash-metric span,
+    .gc-dash-combo__meta span,
+    .gc-dash-reading span {
+      display: block;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      font-size: .72rem;
+      font-weight: 950;
+    }
+
+    .gc-dash-metric strong {
+      display: block;
+      margin-top: 10px;
+      color: var(--text);
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: .9;
+      letter-spacing: -.06em;
+    }
+
+    .gc-dash-metric small {
+      display: block;
+      margin-top: 10px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: .68rem;
+    }
+
+    .gc-dash-grid-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, .42fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .gc-dash-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+
+    .gc-dash-panel {
+      padding: 24px;
+      min-width: 0;
+    }
+
+    .gc-dash-routes {
+      display: grid;
+      gap: 0;
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .gc-dash-route {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line-soft, rgba(255,255,255,.08));
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .gc-dash-route:hover strong,
+    .gc-dash-route:hover em {
+      color: var(--accent);
+    }
+
+    .gc-dash-route__num {
+      color: var(--dim);
+      font-size: 1.15rem;
+      font-weight: 950;
+    }
+
+    .gc-dash-route strong {
+      display: block;
+      color: var(--text);
+      font-size: clamp(1.15rem, 2vw, 1.8rem);
+      line-height: 1;
+      letter-spacing: -.04em;
+      text-transform: uppercase;
+    }
+
+    .gc-dash-route small {
+      display: block;
+      margin-top: 6px;
+      color: var(--soft);
+      line-height: 1.45;
+    }
+
+    .gc-dash-route em {
+      color: var(--accent);
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: .72rem;
+      font-weight: 950;
+    }
+
+    .gc-dash-table td,
+    .gc-dash-table th {
+      white-space: nowrap;
+    }
+
+    .gc-dash-table td:nth-child(2) {
+      max-width: 210px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .gc-dash-combo__body {
+      display: grid;
+      gap: 14px;
+    }
+
+    .gc-dash-combo__body > strong {
+      color: var(--text);
+      font-size: clamp(1.5rem, 3vw, 2.4rem);
+      line-height: .95;
+      letter-spacing: -.05em;
+    }
+
+    .gc-dash-combo__cars {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .gc-dash-combo__cars span {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--soft);
+      background: rgba(255,255,255,.035);
+      font-size: .82rem;
+    }
+
+    .gc-dash-combo__meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .gc-dash-combo__meta strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--text);
+      font-size: 1.1rem;
+    }
+
+    .gc-dash-changelog {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .gc-dash-changelog > div {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line-soft, rgba(255,255,255,.08));
+    }
+
+    .gc-dash-changelog > div:last-child {
+      border-bottom: 0;
+    }
+
+    .gc-dash-changelog span {
+      width: 34px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #07100b;
+      font-weight: 950;
+      font-size: .72rem;
+    }
+
+    .gc-dash-changelog strong {
+      display: block;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      font-size: .86rem;
+    }
+
+    .gc-dash-changelog small {
+      display: block;
+      margin-top: 3px;
+      color: var(--soft);
+      line-height: 1.35;
+    }
+
+    .gc-dash-reading > div {
+      padding-block: 12px;
+    }
+
+    .gc-dash-reading strong {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-dash-hero,
+      .gc-dash-grid-main,
+      .gc-dash-grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .gc-dash-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .gc-dash-metric:nth-child(2) {
+        border-right: 0;
+      }
+
+      .gc-dash-metric:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .gc-dash-route {
+        grid-template-columns: 40px minmax(0, 1fr);
+      }
+
+      .gc-dash-route em {
+        grid-column: 2;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .gc-dash-metrics,
+      .gc-dash-combo__meta {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-dash-metric {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .gc-dash-metric:last-child {
+        border-bottom: 0;
+      }
+    }
+  </style>
 
   <script>
     const $ = (selector) => document.querySelector(selector);
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+
+    const asText = (value) => {
+      if (value == null) return '';
+      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+      if (typeof value === 'object') {
+        return String(value.displayName || value.display_name || value.name || value.uiName || value.ui_name || value.code || value.Car || value.Track || '').trim();
+      }
+      return String(value).trim();
+    };
+
+    const fmtNumber = (value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '--';
+      return Math.round(n).toLocaleString('es-ES');
+    };
+
     const fmtMs = (ms) => {
       const n = Number(ms);
-      if (!Number.isFinite(n)) return '-';
+      if (!Number.isFinite(n) || n <= 0) return '-';
       const m = Math.floor(n / 60000);
       const s = Math.floor((n % 60000) / 1000);
       const x = String(Math.floor(n % 1000)).padStart(3, '0');
       return `${m}:${String(s).padStart(2, '0')}.${x}`;
     };
+
+    const getRows = (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      const candidates = [data.items, data.hotlaps, data.laps, data.players, data.pilots, data.combos, data.logicalCombos, data.rows, data.results, data.data];
+      for (const candidate of candidates) {
+        if (Array.isArray(candidate)) return candidate;
+        if (candidate && Array.isArray(candidate.items)) return candidate.items;
+      }
+      return [];
+    };
+
+    const readNumber = (data, keys) => {
+      const buckets = [data, data?.stats, data?.overview, data?.summary, data?.meta, data?.totals, data?.counts].filter(Boolean);
+      for (const bucket of buckets) {
+        for (const key of keys) {
+          const value = Number(bucket?.[key]);
+          if (Number.isFinite(value) && value >= 0) return value;
+        }
+      }
+      return null;
+    };
+
+    const uniqueCount = (rows, getter) => {
+      const set = new Set();
+      rows.forEach((row) => {
+        const value = asText(getter(row)).toLowerCase();
+        if (value && value !== '-' && value !== '[object object]') set.add(value);
+      });
+      return set.size;
+    };
+
+    const driverName = (row) => asText(row.driverName || row.playerName || row.name || row.driver || row.player);
+    const carName = (row) => asText(row.carName || row.uiCarName || row.car || row.carCode || row.Car);
+    const trackName = (row) => asText(row.trackName || row.uiTrackName || row.track || row.trackCode || row.Track || row.circuit);
+    const lapTime = (row) => asText(row.lapTimeFormatted || row.lapTimeText || row.lapTime) || fmtMs(row.lapTimeMs || row.LapTime || row.bestLapMs);
+    const isValid = (row) => row.valid === true || row.isValid === true || row.Valid === 1 || row.Valid === true || row.valid === 1;
+
     async function json(url) {
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(url);
       return res.json();
     }
 
-    json('/api/stats/overview').then((data) => {
-      const stats = data.stats || data.overview || data;
-      const vals = [
-        stats.totalDrivers || stats.drivers || stats.players || 0,
-        stats.totalLaps || stats.laps || 0,
-        stats.totalCars || stats.cars || 0,
-        stats.totalTracks || stats.tracks || 0
-      ];
-      document.querySelectorAll('#overviewMetrics strong').forEach((el, index) => {
-        el.textContent = String(vals[index] ?? 0);
-      });
-      $('#apiStatus').textContent = 'OK';
-    }).catch(() => {
-      $('#apiStatus').textContent = 'Sin respuesta';
-      $('#apiStatus').style.color = 'var(--warn)';
-    });
+    function animateNumber(selector, value) {
+      const el = $(selector);
+      const n = Number(value);
+      if (!el) return;
+      if (!Number.isFinite(n)) {
+        el.textContent = String(value ?? '--');
+        return;
+      }
+      const duration = 720;
+      const start = performance.now();
+      const from = 0;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = fmtNumber(from + (n - from) * eased);
+        if (t < 1) requestAnimationFrame(tick);
+        else el.textContent = fmtNumber(n);
+      };
+      requestAnimationFrame(tick);
+    }
 
-    json('/api/hotlaps?limit=6').then((data) => {
-      const rows = data.items || data.hotlaps || data.laps || [];
-      $('#homeHotlapsCount').textContent = `${rows.length} referencias`;
+    function renderHotlaps(rows, total) {
+      $('#homeHotlapsCount').textContent = `${fmtNumber(total || rows.length)} referencias`;
       $('#homeHotlapsUpdated').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       $('#homeHotlaps').innerHTML = rows.slice(0, 6).map((row) => `
         <tr>
-          <td><strong>${escapeHtml(row.driverName || row.playerName || row.name)}</strong></td>
-          <td>${escapeHtml(row.carName || row.car || row.uiCarName)}</td>
-          <td><strong>${escapeHtml(row.lapTimeFormatted || fmtMs(row.lapTimeMs || row.LapTime || row.lapTime))}</strong></td>
+          <td><strong>${escapeHtml(driverName(row) || '-')}</strong></td>
+          <td>${escapeHtml(carName(row) || '-')}</td>
+          <td><strong>${escapeHtml(lapTime(row))}</strong></td>
         </tr>
       `).join('') || '<tr><td colspan="3">Sin datos todavía</td></tr>';
+    }
+
+    function renderCombo(data) {
+      const rows = getRows(data);
+      const combo = rows[0] || data?.combo || data?.activeCombo || data?.latestCombo || data?.current || null;
+      const box = $('#activeCombo');
+      if (!box) return;
+      if (!combo) {
+        box.innerHTML = '<strong>Sin combo detectado</strong><span>Cuando stracker tenga actividad, aparecerá aquí.</span>';
+        return;
+      }
+
+      const title = trackName(combo) || asText(combo.trackName || combo.name || combo.title) || 'Combo activo';
+      const rawCars = Array.isArray(combo.cars) ? combo.cars : Array.isArray(combo.carList) ? combo.carList : Array.isArray(combo.comboCars) ? combo.comboCars : [];
+      const cars = rawCars.map(asText).filter(Boolean).slice(0, 8);
+      const laps = readNumber(combo, ['laps', 'totalLaps', 'lapCount', 'vueltas']) ?? combo.laps ?? combo.totalLaps ?? '-';
+      const pilots = readNumber(combo, ['pilots', 'drivers', 'players', 'pilotsCount', 'driversCount']) ?? combo.pilotsCount ?? '-';
+      const href = `/combos/${encodeURIComponent(combo.canonicalComboId || combo.comboId || combo.id || '')}`;
+
+      box.innerHTML = `
+        <strong>${escapeHtml(title)}</strong>
+        <div class="gc-dash-combo__cars">
+          ${cars.length ? cars.map((car) => `<span>${escapeHtml(car)}</span>`).join('') : '<span>Coches pendientes</span>'}
+        </div>
+        <div class="gc-dash-combo__meta">
+          <div><span>Vueltas</span><strong>${escapeHtml(fmtNumber(laps))}</strong></div>
+          <div><span>Pilotos</span><strong>${escapeHtml(fmtNumber(pilots))}</strong></div>
+          <div><span>Acceso</span><strong><a class="gc-feature-link" href="${escapeHtml(href)}">Abrir</a></strong></div>
+        </div>
+      `;
+    }
+
+    Promise.allSettled([
+      json('/api/stats/overview'),
+      json('/api/hotlaps?limit=10000&valid=all'),
+      json('/api/pilots'),
+      json('/api/combos/stats')
+    ]).then(([overviewResult, lapsResult, pilotsResult, combosResult]) => {
+      const overview = overviewResult.status === 'fulfilled' ? overviewResult.value : null;
+      const lapsData = lapsResult.status === 'fulfilled' ? lapsResult.value : null;
+      const pilotsData = pilotsResult.status === 'fulfilled' ? pilotsResult.value : null;
+      const combosData = combosResult.status === 'fulfilled' ? combosResult.value : null;
+
+      const lapsRows = getRows(lapsData);
+      const pilotsRows = getRows(pilotsData);
+      const comboRows = getRows(combosData);
+
+      const totalLaps = readNumber(overview, ['totalLaps', 'laps', 'lapCount', 'allLaps'])
+        ?? readNumber(lapsData, ['total', 'totalLaps', 'count', 'lapCount'])
+        ?? lapsRows.length;
+
+      const pilotsCount = readNumber(overview, ['totalDrivers', 'totalPilots', 'drivers', 'players', 'pilots'])
+        ?? readNumber(pilotsData, ['total', 'totalPilots', 'count', 'players', 'pilots'])
+        ?? pilotsRows.length
+        ?? uniqueCount(lapsRows, driverName);
+
+      const carsCount = readNumber(overview, ['totalCars', 'cars', 'carsCount'])
+        ?? readNumber(combosData, ['totalCars', 'cars', 'carsCount'])
+        ?? uniqueCount(lapsRows, carName);
+
+      const tracksCount = readNumber(overview, ['totalTracks', 'tracks', 'tracksCount', 'circuits'])
+        ?? readNumber(combosData, ['totalTracks', 'tracks', 'tracksCount', 'circuits'])
+        ?? uniqueCount(lapsRows, trackName);
+
+      const validLaps = readNumber(overview, ['validLaps', 'totalValidLaps', 'cleanLaps'])
+        ?? readNumber(lapsData, ['validLaps', 'totalValidLaps', 'cleanLaps'])
+        ?? lapsRows.filter(isValid).length;
+
+      const best = lapsRows[0] || null;
+      const cleanRate = totalLaps ? Math.round((Number(validLaps || 0) / Number(totalLaps || 0)) * 1000) / 10 : null;
+
+      animateNumber('#metricPilots', pilotsCount);
+      animateNumber('#metricLaps', totalLaps);
+      animateNumber('#metricCars', carsCount);
+      animateNumber('#metricTracks', tracksCount);
+
+      $('#metricValid').textContent = fmtNumber(validLaps);
+      $('#metricCleanRate').textContent = cleanRate == null ? '--' : `${cleanRate}%`;
+      $('#metricBestLap').textContent = best ? lapTime(best) : '--';
+      $('#metricBestDriver').textContent = best ? (driverName(best) || '--') : '--';
+
+      $('#apiStatus').textContent = 'OK';
+      $('#dataStatus').textContent = `${fmtNumber(totalLaps)} vueltas`;
+      $('#dashHealth').innerHTML = '<span class="gc-live-dot"></span> Online';
+      $('#dashUpdated').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+      renderHotlaps(lapsRows, readNumber(lapsData, ['total', 'totalLaps', 'count']) ?? lapsRows.length);
+      renderCombo(combosData || { items: comboRows });
     }).catch(() => {
+      $('#apiStatus').textContent = 'Sin respuesta';
+      $('#apiStatus').style.color = 'var(--warn)';
+      $('#dataStatus').textContent = 'Pendiente';
+      $('#dashHealth').textContent = 'Revisar';
       $('#homeHotlapsCount').textContent = 'Hotlaps no disponibles';
       $('#homeHotlaps').innerHTML = '<tr><td colspan="3">No se pudo leer el endpoint.</td></tr>';
     });

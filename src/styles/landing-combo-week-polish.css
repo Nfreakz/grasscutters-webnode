@@ -1,4 +1,4 @@
-/* Pack 59 - landing combo week final polish */
+/* Pack - combo week refine: join button + fastest driver card */
 
 .gc-landing-hero{
   padding-bottom: clamp(24px, 4vw, 46px);
@@ -46,7 +46,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.42fr);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.44fr);
   gap: clamp(24px, 4vw, 52px);
   align-items: stretch;
   min-height: 248px;
@@ -150,7 +150,6 @@
   min-width: 168px;
 }
 
-
 .gc-week-combo__actions .gc-btn-primary{
   color: #061018 !important;
   border-color: transparent !important;
@@ -164,9 +163,9 @@
 
 .gc-week-combo__side{
   display: grid;
-  grid-template-columns: minmax(72px, .56fr) minmax(72px, .56fr) minmax(190px, 1.34fr);
-  align-content: center;
-  gap: 10px;
+  grid-template-columns: minmax(72px, .56fr) minmax(72px, .56fr) minmax(180px, 1.18fr);
+  align-content: start;
+  gap: 12px 10px;
 }
 
 .gc-week-combo__stat{
@@ -195,17 +194,80 @@
   overflow: visible;
 }
 
-.gc-week-combo__stat small{
-  display: block;
-  margin-top: 12px;
-  max-width: 280px;
-  color: var(--gc-mk-muted);
-  font-size: .92rem;
-  line-height: 1.42;
+.gc-week-combo__stat--best{
+  min-width: 200px;
 }
 
-.gc-week-combo__stat--best{
-  min-width: 210px;
+.gc-week-combo__leader{
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--gc-mk-line-soft);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+}
+
+.gc-week-combo__leader-label{
+  color: var(--gc-mk-soft);
+  font-size: .72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .13em;
+}
+
+.gc-week-combo__leader strong{
+  color: var(--gc-mk-text);
+  font-size: clamp(1.05rem, 1.5vw, 1.24rem);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  word-break: break-word;
+}
+
+.gc-week-combo__leader small{
+  color: var(--gc-mk-muted);
+  font-size: .96rem;
+  line-height: 1.45;
+}
+
+.gc-week-combo__join-wrap{
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 6px;
+}
+
+.gc-week-combo__join-wrap small{
+  max-width: 360px;
+  color: var(--gc-mk-muted);
+  font-size: .82rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.gc-week-combo__join{
+  min-width: 260px;
+  justify-content: center;
+  color: #061018 !important;
+  border-color: transparent !important;
+  background:
+    radial-gradient(circle at 18% 15%, rgba(255,255,255,.55), transparent 28%),
+    linear-gradient(135deg, var(--gc-mk-accent), var(--gc-mk-accent-2)) !important;
+  box-shadow:
+    0 22px 58px color-mix(in srgb, var(--gc-mk-accent) 34%, transparent),
+    0 0 0 1px rgba(255,255,255,.16) inset;
+  font-weight: 1000;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  transform: translateZ(0);
+}
+
+.gc-week-combo__join:hover{
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 .gc-week-combo[data-loading="true"]{
@@ -242,8 +304,23 @@
     grid-template-columns: 1fr;
   }
 
-  .gc-week-combo__stat small{
+  .gc-week-combo__stat strong{
+    white-space: normal;
+  }
+
+  .gc-week-combo__leader,
+  .gc-week-combo__join-wrap{
+    margin-top: 0;
+  }
+
+  .gc-week-combo__join-wrap small{
     max-width: none;
+    text-align: center;
+  }
+
+  .gc-week-combo__join{
+    width: 100%;
+    min-width: 0;
   }
 
   .gc-week-combo{
