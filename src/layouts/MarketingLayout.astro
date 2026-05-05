@@ -1,5 +1,7 @@
 ---
 import '../styles/marketing.css';
+import '../styles/public-header-bg-final.css';
+import ThemeSwitcher from '../components/ThemeSwitcher.astro';
 
 const {
   title = 'GrassCutters Racing',
@@ -29,13 +31,13 @@ function isActive(match) {
 }
 ---
 <!doctype html>
-<html lang="es" data-gc-scope="marketing">
+<html lang="es" data-gc-scope="marketing" data-theme="lfm">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta name="robots" content={noindex ? 'noindex,nofollow' : 'index,follow'} />
-    <meta name="theme-color" content="#0a0d0b" />
+    <meta name="theme-color" content="#07110a" />
     <link rel="canonical" href={canonicalUrl} />
 
     <meta property="og:site_name" content="GrassCutters Racing" />
@@ -77,9 +79,12 @@ function isActive(match) {
         ))}
       </nav>
 
-      <div class="gc-public-actions">
-        <a class="gc-public-link" href="/login">Login</a>
-        <a class="gc-public-cta" href="/app">Plataforma</a>
+      <div class="gc-public-controls">
+        <ThemeSwitcher />
+        <div class="gc-public-actions">
+          <a class="gc-public-link" href="/login">Login</a>
+          <a class="gc-public-cta" href="/app">Plataforma</a>
+        </div>
       </div>
     </header>
 
@@ -91,7 +96,7 @@ function isActive(match) {
       <div class="gc-public-footer-main">
         <div class="gc-public-footer-brand">
           <strong>GrassCutters Racing</strong>
-          <p>Comunidad sim racing, datos reales de pista y plataforma para pilotos.</p>
+          <p>Comunidad sim racing con Discord, hotlaps, perfiles de piloto y herramientas para seguir la actividad del servidor.</p>
         </div>
         <div class="gc-public-footer-grid">
           <a href="/comunidad">Comunidad</a>
@@ -113,11 +118,11 @@ function isActive(match) {
     <script is:inline>
       const toggle = document.querySelector('[data-public-menu-toggle]');
       const nav = document.querySelector('[data-public-nav]');
+      const closeMenu = () => {
+        document.body.classList.remove('gc-public-menu-open');
+        toggle?.setAttribute('aria-expanded', 'false');
+      };
       if (toggle && nav) {
-        const closeMenu = () => {
-          document.body.classList.remove('gc-public-menu-open');
-          toggle.setAttribute('aria-expanded', 'false');
-        };
         toggle.addEventListener('click', () => {
           const open = document.body.classList.toggle('gc-public-menu-open');
           toggle.setAttribute('aria-expanded', String(open));

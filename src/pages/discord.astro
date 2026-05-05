@@ -1,16 +1,16 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
-const discordUrl = import.meta.env.PUBLIC_DISCORD_INVITE_URL || '#';
-const hasInvite = discordUrl !== '#';
+const discordUrl = import.meta.env.PUBLIC_DISCORD_INVITE_URL || '/comunidad';
+const hasInvite = Boolean(import.meta.env.PUBLIC_DISCORD_INVITE_URL);
 ---
 <MarketingLayout title="Discord | GrassCutters Racing" description="Únete al Discord de GrassCutters Racing para eventos, anuncios, votaciones y comunidad.">
   <section class="gc-page gc-hero">
     <div>
       <span class="gc-kicker">Discord GC</span>
-      <h1 class="gc-title">La grada, el briefing y el paddock.</h1>
-      <p class="gc-lead">Discord es la entrada social de GrassCutters: avisos, eventos, votaciones de combos, charlas y anuncios de la web.</p>
+      <h1 class="gc-title">El punto de encuentro.</h1>
+      <p class="gc-lead">Discord reúne los avisos, eventos, votaciones de combo, charlas y novedades de GrassCutters.</p>
       <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href={discordUrl} target={hasInvite ? '_blank' : '_self'} rel={hasInvite ? 'noreferrer' : undefined}>{hasInvite ? 'Unirse al Discord' : 'Configura PUBLIC_DISCORD_INVITE_URL'}</a>
+        <a class="gc-btn gc-btn-primary" href={discordUrl} target={hasInvite ? '_blank' : '_self'} rel={hasInvite ? 'noreferrer' : undefined}>{hasInvite ? 'Unirse al Discord' : 'Ver comunidad'}</a>
         <a class="gc-btn" href="/comunidad">Ver comunidad</a>
       </div>
     </div>
@@ -31,16 +31,7 @@ const hasInvite = discordUrl !== '#';
     <div class="gc-grid-3">
       <article class="gc-card"><code>DC</code><h3>Anuncios</h3><p>Novedades de la web, cambios de servidor, eventos y avisos rápidos.</p></article>
       <article class="gc-card"><code>EV</code><h3>Eventos</h3><p>Calendario, combos elegidos y coordinación de carreras.</p></article>
-      <article class="gc-card"><code>ON</code><h3>Onboarding</h3><p>Primer paso antes de login, perfil y vinculación de piloto.</p></article>
+      <article class="gc-card"><code>ON</code><h3>Nuevos pilotos</h3><p>El primer paso para entrar en la comunidad, crear cuenta y vincular piloto.</p></article>
     </div>
   </section>
-
-  {!hasInvite && (
-    <section class="gc-page gc-page-narrow">
-      <div class="gc-panel">
-        <span class="gc-panel-kicker">Pendiente</span>
-        <p>Añade la variable <code>PUBLIC_DISCORD_INVITE_URL</code> en Hostinger y en local para que el botón abra la invitación real.</p>
-      </div>
-    </section>
-  )}
 </MarketingLayout>

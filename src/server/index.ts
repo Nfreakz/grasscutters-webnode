@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../..');
+const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
 const distDir = path.join(rootDir, 'dist');
 const defaultAppDataDirRelativePath = './data';
 const defaultStrackerRelativePath = './data/stracker/stracker.db3';
@@ -5635,37 +5635,181 @@ app.use(
   })
 );
 
-app.use((req, res) => {
-  const fallback = path.join(distDir, 'index.html');
 
-  if (fs.existsSync(fallback)) {
-    res.sendFile(fallback);
-    return;
+/* GC_ASTRO_RUNTIME_PATCH_V3
+ * Runtime Hostinger + Astro para Express.
+ * V3: separa API, estáticos prerenderizados y SSR.
+ * Objetivo: / funciona, /admin, /hotlaps, /perfil, /combos y /pilotos también.
+ */
+function gcFindExistingDirectory(candidates) {
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) return candidate;
+  }
+  return null;
+}
+
+function gcFindExistingFile(candidates) {
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
+
+function gcSafeDecodeUrlPath(value) {
+  const raw = String(value || '/').split('?')[0].split('#')[0] || '/';
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function gcIsApiRequest(requestUrl) {
+  const decoded = gcSafeDecodeUrlPath(requestUrl);
+  return decoded === '/api' || decoded.startsWith('/api/') || decoded === '/gc-data' || decoded.startsWith('/gc-data/');
+}
+
+function gcFindStaticHtmlForRequest(clientDir, requestUrl) {
+  if (!clientDir) return null;
+  const decoded = gcSafeDecodeUrlPath(requestUrl);
+  if (gcIsApiRequest(decoded)) return null;
+
+  const clean = decoded.replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!clean) return path.join(clientDir, 'index.html');
+
+  return gcFindExistingFile([
+    path.join(clientDir, clean, 'index.html'),
+    path.join(clientDir, clean + '.html')
+  ]);
+}
+
+function gcRuntimeSnapshot(clientDir, astroEntry) {
+  function dirInfo(label, dirPath) {
+    const exists = Boolean(dirPath && fs.existsSync(dirPath));
+    return {
+      label,
+      path: dirPath,
+      exists,
+      isDirectory: exists ? fs.statSync(dirPath).isDirectory() : false
+    };
   }
 
-  res.status(200).type('html').send(`<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <title>GrassCutters Node</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-  </head>
-  <body style="font-family: system-ui; background:#06110d; color:#eefdf5; padding:40px; line-height:1.5;">
-    <h1>GrassCutters Node activo</h1>
-    <p>El servidor ha arrancado, pero todavía no existe la carpeta <strong>dist</strong>.</p>
-    <p>Ruta pedida: ${req.path}</p>
-    <p><a style="color:#83ff9f" href="/api/status">Ver /api/status</a></p>
-  </body>
-</html>`);
-});
+  function fileInfo(label, filePath) {
+    const exists = Boolean(filePath && fs.existsSync(filePath));
+    return {
+      label,
+      path: filePath,
+      exists,
+      isFile: exists ? fs.statSync(filePath).isFile() : false
+    };
+  }
 
-process.on('uncaughtException', (error) => {
-  console.error('[GC] uncaughtException:', error);
-});
+  return {
+    ok: true,
+    mode: 'astro-runtime-v3',
+    rootDir,
+    distDir,
+    clientDir,
+    astroEntry,
+    candidates: {
+      client: [
+        dirInfo('dist/client', path.join(distDir, 'client')),
+        dirInfo('root/client', path.join(rootDir, 'client')),
+        dirInfo('dist', distDir)
+      ],
+      server: [
+        fileInfo('dist/server/entry.mjs', path.join(distDir, 'server', 'entry.mjs')),
+        fileInfo('root/server/entry.mjs', path.join(rootDir, 'server', 'entry.mjs'))
+      ]
+    }
+  };
+}
 
-process.on('unhandledRejection', (error) => {
-  console.error('[GC] unhandledRejection:', error);
-});
+async function mountAstroRuntime() {
+  const clientDir = gcFindExistingDirectory([
+    path.join(distDir, 'client'),
+    path.join(rootDir, 'client'),
+    distDir
+  ]);
+
+  const astroEntry = gcFindExistingFile([
+    path.join(distDir, 'server', 'entry.mjs'),
+    path.join(rootDir, 'server', 'entry.mjs')
+  ]);
+
+  const runtimeState = gcRuntimeSnapshot(clientDir, astroEntry);
+  app.locals.gcAstroRuntime = runtimeState;
+
+  app.get('/api/runtime/status', (_req, res) => {
+    res.json(app.locals.gcAstroRuntime || runtimeState);
+  });
+
+  if (clientDir) {
+    const astroAssetsDir = path.join(clientDir, '_astro');
+    if (fs.existsSync(astroAssetsDir)) {
+      app.use('/_astro', express.static(astroAssetsDir, {
+        maxAge: process.env.NODE_ENV === 'production' ? '1y' : 0,
+        immutable: process.env.NODE_ENV === 'production'
+      }));
+    }
+
+    app.use(express.static(clientDir, {
+      maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+      index: false,
+      extensions: false
+    }));
+
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      if (gcIsApiRequest(req.originalUrl || req.url)) return next();
+
+      const htmlFile = gcFindStaticHtmlForRequest(clientDir, req.originalUrl || req.url);
+      if (htmlFile) {
+        res.sendFile(htmlFile);
+        return;
+      }
+
+      next();
+    });
+
+    console.log('[GC] Astro client V3 montado:', clientDir);
+  } else {
+    console.warn('[GC] Astro client V3 no encontrado.');
+  }
+
+  if (astroEntry) {
+    try {
+      const astroServer = await import(pathToFileURL(astroEntry).href);
+      const handler = astroServer.handler || astroServer.default;
+      if (typeof handler === 'function') {
+        app.use((req, res, next) => {
+          if (gcIsApiRequest(req.originalUrl || req.url)) return next();
+          Promise.resolve(handler(req, res, next)).catch((error) => {
+            console.error('[GC] Error en Astro SSR V3:', error);
+            if (!res.headersSent) {
+              res.status(500).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>GrassCutters SSR error</title></head><body style="background:#03140d;color:#f1fff6;font-family:Arial;padding:32px"><h1>Error renderizando Astro</h1><p>Revisa /api/runtime/status y los logs de Hostinger.</p></body></html>');
+            }
+          });
+        });
+        console.log('[GC] Astro SSR V3 montado:', astroEntry);
+      } else {
+        console.warn('[GC] Astro entry V3 encontrado, pero no exporta handler:', astroEntry);
+      }
+    } catch (error) {
+      console.error('[GC] Error importando Astro SSR V3:', error);
+    }
+  } else {
+    console.warn('[GC] Astro SSR V3 no encontrado. Las rutas dinámicas dependerán solo de HTML estático.');
+  }
+
+  app.use((req, res, next) => {
+    if (gcIsApiRequest(req.originalUrl || req.url)) return next();
+
+    res.status(404).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GrassCutters · ruta no encontrada</title></head><body style="margin:0;background:#03140d;color:#f1fff6;font-family:Arial,sans-serif;padding:32px;line-height:1.55"><main style="max-width:760px"><h1>Ruta no encontrada</h1><p>No se encontró una página estática ni SSR para <strong>' + escapeHtml(req.originalUrl || req.url) + '</strong>.</p><p><a style="color:#85ff55" href="/api/runtime/status">Ver runtime</a> · <a style="color:#85ff55" href="/">Volver al inicio</a></p></main></body></html>');
+  });
+}
+
+await mountAstroRuntime();
 
 app.listen(PORT, HOST, async () => {
   console.log(`[GC] Servidor activo en ${HOST}:${PORT}`);

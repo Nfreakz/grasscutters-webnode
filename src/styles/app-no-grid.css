@@ -1,0 +1,25 @@
+/* Pack 48 - Panel interno sin fondo a cuadros.
+   Mantiene las variables de paleta y elimina únicamente la trama de grid. */
+
+html:not([data-gc-scope="marketing"]) body,
+body:not(.gc-public-body) {
+  background:
+    radial-gradient(circle at 78% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 30rem),
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent2) 10%, transparent), transparent 28rem),
+    linear-gradient(180deg, var(--bg2), var(--bg) 360px, var(--bg)) !important;
+  background-size: auto, auto, auto !important;
+  background-attachment: fixed !important;
+}
+
+html:not([data-gc-scope="marketing"]) body::before,
+body:not(.gc-public-body)::before {
+  background-image: none !important;
+  content: none !important;
+}
+
+/* Refuerzo para shells internos que pudieran heredar overlays de otros packs. */
+.gc-shell,
+.gc-app,
+.gc-main {
+  background-image: none !important;
+}
