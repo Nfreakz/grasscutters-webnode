@@ -1,20 +1,42 @@
 <script is:inline>
   (() => {
-    const endpoints = ['/api/profile', '/api/auth/status'];
+    const root = document.documentElement;
+    const authEndpoints = ['/api/auth/me', '/api/profile'];
     const logoutEndpoints = [
       { url: '/api/auth/logout', method: 'POST' },
       { url: '/api/logout', method: 'GET' }
     ];
 
     const headerRoots = () => Array.from(document.querySelectorAll('.gc-public-header, .gc-topbar'));
-    const inHeader = (el) => headerRoots().some((root) => root && root.contains(el));
+    const inHeader = (el) => headerRoots().some((rootEl) => rootEl && rootEl.contains(el));
     const authLinks = () => Array.from(document.querySelectorAll('[data-auth-link], a[href="/login"], a[href="/login/"]')).filter(inHeader);
     const authBadges = () => Array.from(document.querySelectorAll('[data-auth-status], [data-auth-state]')).filter(inHeader);
     const logoutButtons = () => Array.from(document.querySelectorAll('[data-auth-logout]')).filter(inHeader);
+    const adminLinks = () => Array.from(document.querySelectorAll('[data-admin-only]'));
+
+    const normalizedPath = () => {
+      const path = window.location.pathname.replace(/\/$/, '');
+      return path || '/';
+    };
 
     const pickUser = (data) => {
       if (!data || typeof data !== 'object') return null;
-      return data.user || data.currentUser || data.account || data.profile?.user || data.session?.user || data.auth?.user || null;
+      return (
+        data.user ||
+        data.currentUser ||
+        data.account ||
+        data.profile?.user ||
+        data.profile?.account ||
+        data.session?.user ||
+        data.auth?.user ||
+        null
+      );
+    };
+
+    const isAdminUser = (data) => {
+      const user = pickUser(data) || {};
+      const role = String(user.role || data?.role || '').trim().toLowerCase();
+      return role === 'admin';
     };
 
     const isLogged = (data) => {
@@ -33,35 +55,41 @@
       return text.includes('@') ? text.split('@')[0] : text;
     };
 
-    async function fetchAuth() {
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint, { credentials: 'include', cache: 'no-store' });
-          if (!response.ok) continue;
-          const data = await response.json().catch(() => null);
-          if (data && (isLogged(data) || data.authenticated === false)) return data;
-        } catch (_) {}
-      }
-      return null;
-    }
+    const setAdminVisibility = (isAdmin) => {
+      root.dataset.admin = isAdmin ? 'true' : 'false';
+      adminLinks().forEach((link) => {
+        link.hidden = !isAdmin;
+        if (isAdmin) {
+          link.removeAttribute('aria-hidden');
+          link.removeAttribute('tabindex');
+        } else {
+          link.setAttribute('aria-hidden', 'true');
+          link.setAttribute('tabindex', '-1');
+        }
+      });
+    };
 
-    function hideBadges() {
+    const hideBadges = () => {
       authBadges().forEach((badge) => {
         badge.hidden = true;
         badge.setAttribute('aria-hidden', 'true');
         badge.textContent = 'Conectado';
       });
-    }
+    };
 
-    function setLoggedOut() {
-      document.documentElement.dataset.auth = 'false';
+    const setLoggedOut = () => {
+      root.dataset.auth = 'false';
+      root.dataset.authReady = 'true';
       hideBadges();
+      setAdminVisibility(false);
+
       logoutButtons().forEach((button) => {
         button.hidden = true;
         button.disabled = false;
         button.textContent = 'Salir';
         button.setAttribute('aria-hidden', 'true');
       });
+
       authLinks().forEach((link) => {
         link.textContent = 'Login';
         link.setAttribute('href', '/login');
@@ -70,15 +98,15 @@
         link.setAttribute('aria-label', 'Login');
         link.setAttribute('title', 'Login');
       });
-    }
+    };
 
-    function setLoggedIn(data) {
+    const setLoggedIn = (data) => {
       const name = userName(data);
-      document.documentElement.dataset.auth = 'true';
-
-      // El estado queda unido al propio botón de perfil: “Conectado · Neo”.
-      // Así evitamos duplicar “Conectado” y “Neo” en el header.
+      const isAdmin = isAdminUser(data);
+      root.dataset.auth = 'true';
+      root.dataset.authReady = 'true';
       hideBadges();
+      setAdminVisibility(isAdmin);
 
       authLinks().forEach((link) => {
         link.textContent = `Conectado · ${name}`;
@@ -96,13 +124,61 @@
         button.textContent = 'Salir';
         button.setAttribute('title', 'Cerrar sesión');
       });
+    };
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, {
+        credentials: 'include',
+        cache: 'no-store',
+        ...options
+      });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
     }
 
-    function clearClientCookie() {
+    async function fetchAuth() {
+      for (const endpoint of authEndpoints) {
+        try {
+          const data = await fetchJson(endpoint);
+          if (!data) continue;
+          if (isLogged(data) || data.authenticated === false) return data;
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    async function guardAdminRoute(authData) {
+      if (normalizedPath() !== '/admin') return;
+
+      try {
+        const data = await fetchJson('/api/admin/status');
+        if (!data) {
+          window.location.replace('/login');
+          return;
+        }
+
+        if (data.setupRequired) {
+          root.dataset.adminSetup = 'true';
+          return;
+        }
+
+        if (data.authorized === true) {
+          root.dataset.admin = 'true';
+          return;
+        }
+
+        const target = data.authenticated || isLogged(authData) ? '/app' : '/login';
+        window.location.replace(target);
+      } catch (_) {
+        if (!isAdminUser(authData)) window.location.replace('/login');
+      }
+    }
+
+    const clearClientCookie = () => {
       const expires = 'Thu, 01 Jan 1970 00:00:00 GMT';
       document.cookie = `gc_session=; expires=${expires}; path=/; SameSite=Lax`;
       document.cookie = `gc_session=; Max-Age=0; path=/; SameSite=Lax`;
-    }
+    };
 
     async function logout(button) {
       if (button?.dataset.logoutBusy === 'true') return;
@@ -131,11 +207,7 @@
 
       clearClientCookie();
       setLoggedOut();
-
-      if (!ok) {
-        console.warn('[GC] Logout sin respuesta del servidor. Se ha limpiado la sesión del cliente.');
-      }
-
+      if (!ok) console.warn('[GC] Logout sin respuesta del servidor. Se ha limpiado la sesión del cliente.');
       window.location.assign('/');
     }
 
@@ -148,10 +220,16 @@
     }
 
     bindLogoutButtons();
+    setAdminVisibility(false);
+
     fetchAuth().then((data) => {
       if (isLogged(data)) setLoggedIn(data);
       else setLoggedOut();
       bindLogoutButtons();
-    }).catch(setLoggedOut);
+      guardAdminRoute(data);
+    }).catch(() => {
+      setLoggedOut();
+      guardAdminRoute(null);
+    });
   })();
 </script>

@@ -24,17 +24,34 @@ const nav = [
   { href: '/tracker', label: 'Tracker', code: '04' },
   { href: '/herramientas', label: 'Herramientas', code: '05' },
   { href: '/perfil', label: 'Perfil', code: '06' },
-  { href: '/admin', label: 'Admin', code: '07' }
+  { href: '/admin', label: 'Admin', code: '07', adminOnly: true }
 ];
 ---
 <!doctype html>
-<html lang="es" data-theme="grasscutters">
+<html lang="es" data-theme="grasscutters" data-auth-ready="false" data-auth="unknown" data-admin="false">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#07110a" />
     <title>{title}</title>
+    <style is:inline>
+      .gc-force-backtop{
+        position:fixed !important;
+        top:auto !important;
+        left:auto !important;
+        right:max(18px, env(safe-area-inset-right)) !important;
+        bottom:max(18px, env(safe-area-inset-bottom)) !important;
+        z-index:80 !important;
+      }
+
+      @media(max-width:720px){
+        .gc-force-backtop{
+          right:14px !important;
+          bottom:14px !important;
+        }
+      }
+    </style>
   </head>
   <body>
     <a class="gc-skip" href="#contenido">Saltar al contenido</a>
@@ -52,7 +69,13 @@ const nav = [
 
         <nav class="gc-railnav" aria-label="Navegación principal">
           {nav.map((item) => (
-            <a href={item.href} aria-current={current === item.href ? 'page' : undefined}>
+            <a
+              href={item.href}
+              aria-current={current === item.href ? 'page' : undefined}
+              data-admin-only={item.adminOnly ? 'true' : undefined}
+              hidden={item.adminOnly ? true : undefined}
+              aria-hidden={item.adminOnly ? 'true' : undefined}
+            >
               <span>{item.code}</span>
               <strong>{item.label}</strong>
             </a>
@@ -87,7 +110,7 @@ const nav = [
             <a href="/combos">Combos</a>
             <a href="/pilotos">Pilotos</a>
             <a href="/perfil">Mi perfil</a>
-            <a href="/admin">Admin</a>
+            <a href="/admin" data-admin-only="true" hidden aria-hidden="true">Admin</a>
           </nav>
 
           <div class="gc-topbar__right">
@@ -122,6 +145,39 @@ const nav = [
         window.addEventListener('keydown', (event) => {
           if (event.key === 'Escape') setOpen(false);
         });
+      })();
+    </script>
+
+    <script is:inline>
+      (() => {
+        const looksLikeBackTop = (node) => {
+          if (!node) return false;
+          const label = [
+            node.getAttribute?.('aria-label'),
+            node.getAttribute?.('title'),
+            node.textContent
+          ].filter(Boolean).join(' ').trim().toLowerCase();
+          if (!label) return false;
+          return label.includes('volver arriba') || label.includes('subir arriba') || label.includes('back to top') || label === '↑' || label === '⬆';
+        };
+
+        const pinBackTop = () => {
+          document.querySelectorAll('button, a, [role="button"]').forEach((node) => {
+            if (!looksLikeBackTop(node)) return;
+            node.classList.add('gc-force-backtop');
+            node.style.setProperty('position', 'fixed', 'important');
+            node.style.setProperty('top', 'auto', 'important');
+            node.style.setProperty('left', 'auto', 'important');
+            node.style.setProperty('right', 'max(18px, env(safe-area-inset-right))', 'important');
+            node.style.setProperty('bottom', 'max(18px, env(safe-area-inset-bottom))', 'important');
+            node.style.setProperty('z-index', '80', 'important');
+          });
+        };
+
+        pinBackTop();
+        window.addEventListener('load', pinBackTop);
+        const observer = new MutationObserver(pinBackTop);
+        observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
       })();
     </script>
     <AuthHeader />

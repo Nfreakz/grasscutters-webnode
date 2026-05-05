@@ -4,8 +4,17 @@
 [data-auth-status][hidden],
 [data-auth-state][hidden],
 .gc-auth-logout[hidden],
-[data-auth-logout][hidden]{
+[data-auth-logout][hidden],
+[data-admin-only][hidden]{
   display:none !important;
+}
+
+html:not([data-admin="true"]) [data-admin-only]{
+  display:none !important;
+}
+
+html[data-auth-ready="false"] .gc-admin-page{
+  visibility:hidden;
 }
 
 .gc-public-auth-state,
@@ -107,7 +116,6 @@ html[data-theme="mono"] .gc-public-cta{
     max-width:130px;
   }
 }
-
 
 /* Pack 67 - header controls aligned */
 .gc-public-actions,
