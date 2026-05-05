@@ -5,9 +5,15 @@ const {
   title = 'GrassCutters Racing',
   description = 'Comunidad de sim racing con Discord, app Android, hotlaps reales y plataforma para pilotos.',
   bodyClass = '',
+  canonicalPath,
+  ogImage = '/og/grasscutters-og.svg',
+  noindex = false,
 } = Astro.props;
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || Astro.url.origin || 'https://grasscuttersracing.com').replace(/\/$/, '');
+const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
+const absoluteOgImage = String(ogImage).startsWith('http') ? ogImage : new URL(ogImage, siteUrl).toString();
 
 const navItems = [
   { href: '/', label: 'Inicio', match: '/' },
@@ -28,10 +34,28 @@ function isActive(match) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? 'noindex,nofollow' : 'index,follow'} />
     <meta name="theme-color" content="#0a0d0b" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:site_name" content="GrassCutters Racing" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={absoluteOgImage} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={absoluteOgImage} />
+
+    <link rel="manifest" href="/site.webmanifest" />
     <title>{title}</title>
   </head>
   <body class={`gc-public-body ${bodyClass}`}>
+    <a class="gc-skip-link" href="#contenido">Saltar al contenido</a>
+
     <header class="gc-public-header" data-public-header>
       <a class="gc-public-brand" href="/" aria-label="GrassCutters Racing - inicio">
         <span class="gc-public-brand-mark">GC</span>
@@ -59,7 +83,7 @@ function isActive(match) {
       </div>
     </header>
 
-    <main class="gc-public-main">
+    <main id="contenido" class="gc-public-main">
       <slot />
     </main>
 
@@ -74,6 +98,8 @@ function isActive(match) {
           <a href="/discord">Discord</a>
           <a href="/app-android">App Android</a>
           <a href="/estado">Estado</a>
+          <a href="/normas">Normas</a>
+          <a href="/privacidad">Privacidad</a>
           <a href="/datos">Sistema de datos</a>
           <a href="/app">Plataforma</a>
         </div>
@@ -88,21 +114,18 @@ function isActive(match) {
       const toggle = document.querySelector('[data-public-menu-toggle]');
       const nav = document.querySelector('[data-public-nav]');
       if (toggle && nav) {
+        const closeMenu = () => {
+          document.body.classList.remove('gc-public-menu-open');
+          toggle.setAttribute('aria-expanded', 'false');
+        };
         toggle.addEventListener('click', () => {
           const open = document.body.classList.toggle('gc-public-menu-open');
           toggle.setAttribute('aria-expanded', String(open));
         });
-        nav.querySelectorAll('a').forEach((link) => {
-          link.addEventListener('click', () => {
-            document.body.classList.remove('gc-public-menu-open');
-            toggle.setAttribute('aria-expanded', 'false');
-          });
-        });
+        nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+        document.querySelectorAll('.gc-public-actions a').forEach((link) => link.addEventListener('click', closeMenu));
         window.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
-            document.body.classList.remove('gc-public-menu-open');
-            toggle.setAttribute('aria-expanded', 'false');
-          }
+          if (event.key === 'Escape') closeMenu();
         });
       }
     </script>
