@@ -63,7 +63,7 @@ function findStaticHtmlForRequest(clientDir: string | null, requestUrl: string) 
 
   return findExistingFile([
     path.join(clientDir, clean, 'index.html'),
-    path.join(clientDir, `${clean}.html`)
+    path.join(clientDir, clean + '.html')
   ]);
 }
 
