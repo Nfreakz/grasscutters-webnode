@@ -1,0 +1,235 @@
+/* Pack 56 - Social buttons + footer cleanup */
+:root {
+  --gc-discord: #5865f2;
+  --gc-discord-2: #7289ff;
+  --gc-whatsapp: #25d366;
+  --gc-whatsapp-2: #00a884;
+  --gc-instagram-1: #833ab4;
+  --gc-instagram-2: #fd1d1d;
+  --gc-instagram-3: #fcb045;
+  --gc-social-on: #06100a;
+}
+
+.gc-sr {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.gc-social-actions,
+.gc-public-social-actions,
+.gc-social-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.gc-social-actions--secondary {
+  margin-top: 14px;
+}
+
+.gc-social-buttons--footer {
+  margin-top: 0;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gc-social-button,
+.gc-public-social-button,
+.gc-social-btn,
+a.gc-social-button,
+a.gc-public-social-button,
+a.gc-social-btn {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  font-weight: 950;
+  line-height: 1;
+  color: var(--gc-social-on) !important;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.gc-social-button:hover,
+.gc-public-social-button:hover,
+.gc-social-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
+}
+
+.gc-social-button--discord,
+.gc-public-social-button--discord,
+.gc-social-btn--discord,
+.gc-btn--discord,
+a[href*="discord.gg"].gc-social-button,
+a[href*="discord.gg"].gc-public-social-button,
+a[href*="discord.gg"].gc-social-btn {
+  background: linear-gradient(135deg, var(--gc-discord), var(--gc-discord-2));
+  border-color: color-mix(in srgb, var(--gc-discord) 70%, #fff 12%);
+  color: var(--gc-social-on) !important;
+  box-shadow: 0 18px 54px rgba(88, 101, 242, 0.22);
+}
+
+.gc-social-button--whatsapp,
+.gc-public-social-button--whatsapp,
+.gc-social-btn--whatsapp,
+.gc-btn--whatsapp,
+a[href*="chat.whatsapp.com"].gc-social-button,
+a[href*="chat.whatsapp.com"].gc-public-social-button,
+a[href*="chat.whatsapp.com"].gc-social-btn {
+  background: linear-gradient(135deg, var(--gc-whatsapp), var(--gc-whatsapp-2));
+  border-color: color-mix(in srgb, var(--gc-whatsapp) 72%, #fff 10%);
+  color: var(--gc-social-on) !important;
+  box-shadow: 0 18px 54px rgba(37, 211, 102, 0.2);
+}
+
+.gc-social-button--instagram,
+.gc-public-social-button--instagram,
+.gc-social-btn--instagram,
+.gc-btn--instagram,
+a[href*="instagram.com"].gc-social-button,
+a[href*="instagram.com"].gc-public-social-button,
+a[href*="instagram.com"].gc-social-btn {
+  background: linear-gradient(135deg, var(--gc-instagram-1), var(--gc-instagram-2) 48%, var(--gc-instagram-3));
+  border-color: color-mix(in srgb, var(--gc-instagram-2) 60%, #fff 12%);
+  color: var(--gc-social-on) !important;
+  box-shadow: 0 18px 54px rgba(253, 29, 29, 0.2);
+}
+
+.gc-social-link,
+a.gc-social-link {
+  border-radius: 999px !important;
+  min-height: 46px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  font-weight: 950;
+  color: var(--gc-social-on) !important;
+}
+
+.gc-social-link--discord,
+.gc-social-discord {
+  background: linear-gradient(135deg, var(--gc-discord), var(--gc-discord-2)) !important;
+  color: var(--gc-social-on) !important;
+}
+
+.gc-social-link--whatsapp,
+.gc-social-whatsapp {
+  background: linear-gradient(135deg, var(--gc-whatsapp), var(--gc-whatsapp-2)) !important;
+  color: var(--gc-social-on) !important;
+}
+
+.gc-social-link--instagram,
+.gc-social-instagram {
+  background: linear-gradient(135deg, var(--gc-instagram-1), var(--gc-instagram-2) 48%, var(--gc-instagram-3)) !important;
+  color: var(--gc-social-on) !important;
+}
+
+.gc-hero-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Footer: més compacte, sense logo GC i amb xarxes com icones. */
+.gc-public-footer-logo {
+  display: none !important;
+}
+
+.gc-public-footer-inner,
+.gc-public-footer-inner--compact {
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  gap: 16px !important;
+  padding-block: 12px !important;
+}
+
+.gc-social-buttons--icons .gc-social-btn {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: .7rem;
+  letter-spacing: -.02em;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .22);
+}
+
+.gc-social-buttons--icons .gc-social-btn span[aria-hidden="true"] {
+  display: inline-flex;
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.gc-public-footer-links {
+  justify-content: flex-start !important;
+}
+
+.gc-public-footer-meta {
+  font-size: .74rem !important;
+}
+
+@media (max-width: 900px) {
+  .gc-public-footer-inner,
+  .gc-public-footer-inner--compact {
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+  }
+
+  .gc-public-footer-links {
+    grid-column: 1 / -1;
+  }
+
+  .gc-public-footer-meta {
+    justify-items: start !important;
+    white-space: normal !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .gc-social-actions,
+  .gc-public-social-actions,
+  .gc-hero-secondary-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .gc-social-button,
+  .gc-public-social-button,
+  .gc-social-link,
+  .gc-hero-secondary-actions .gc-btn {
+    width: 100%;
+  }
+
+  .gc-social-buttons--footer,
+  .gc-social-buttons--icons {
+    display: flex;
+    width: auto;
+  }
+
+  .gc-public-footer-inner,
+  .gc-public-footer-inner--compact {
+    grid-template-columns: 1fr !important;
+  }
+}

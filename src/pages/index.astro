@@ -1,16 +1,29 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+import '../styles/landing-combo-week-polish.css';
+
+const discordUrl = 'https://discord.gg/jA4yuuH5T';
+const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
+const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
+const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
+const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
 ---
-<MarketingLayout title="GrassCutters Racing | Comunidad sim racing" description="GrassCutters Racing: comunidad de Assetto Corsa con Discord, app Android, hotlaps reales y plataforma para pilotos.">
-  <section class="gc-page gc-hero">
+<MarketingLayout title="GrassCutters Racing | Comunidad sim racing" description="GrassCutters Racing: comunidad de Assetto Corsa con Discord, WhatsApp, rankings reales, combos activos y perfiles de piloto.">
+  <section class="gc-page gc-hero gc-landing-hero">
     <div>
       <span class="gc-kicker">GrassCutters Racing</span>
       <h1 class="gc-title">Corre, compara y vuelve al box.</h1>
-      <p class="gc-lead">Una comunidad de sim racing con Discord, app Android y una plataforma propia para seguir hotlaps, combos, perfiles de piloto y actividad real del servidor.</p>
-      <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href="/app">Entrar a la plataforma</a>
-        <a class="gc-btn" href="/discord">Unirse a Discord</a>
+      <p class="gc-lead">Una comunidad de sim racing con Discord, rankings reales, perfiles de piloto y herramientas para seguir la actividad del servidor.</p>
+
+      <div class="gc-actions gc-social-actions" aria-label="Canales de la comunidad">
+        <a class="gc-btn gc-social-btn gc-social-btn--discord" href={discordUrl} target="_blank" rel="noreferrer">Discord</a>
+        <a class="gc-btn gc-social-btn gc-social-btn--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a>
+        <a class="gc-btn gc-social-btn gc-social-btn--instagram" href={instagramUrl} target="_blank" rel="noreferrer">Instagram</a>
+      </div>
+
+      <div class="gc-actions gc-secondary-actions">
         <a class="gc-btn" href="/app-android">App Android</a>
+        <a class="gc-btn" href="/app">Entrar a la plataforma</a>
       </div>
     </div>
 
@@ -20,17 +33,56 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         <strong class="gc-live"><span class="gc-dot"></span>Live</strong>
       </div>
       <div class="gc-panel-row"><span>Comunidad</span><strong>Discord</strong></div>
-      <div class="gc-panel-row"><span>Rankings</span><strong>Hotlaps</strong></div>
+      <div class="gc-panel-row"><span>Servidor</span><strong>Assetto Corsa</strong></div>
+      <div class="gc-panel-row"><span>Datos</span><strong>Hotlaps</strong></div>
       <div class="gc-panel-row"><span>Pilotos</span><strong>Perfiles</strong></div>
-      <div class="gc-panel-row"><span>Servidor</span><strong>stracker</strong></div>
     </aside>
+  </section>
+
+  <section class="gc-page gc-week-combo-section" aria-labelledby="gcWeekComboTitle">
+    <article class="gc-week-combo" id="gcWeekCombo" data-loading="true">
+      <div class="gc-week-combo__main">
+        <div class="gc-week-combo__badges">
+          <span class="gc-week-combo__tag">Combo de la semana</span>
+          <span class="gc-week-combo__state" id="gcWeekComboState">Último activo</span>
+        </div>
+
+        <h2 id="gcWeekComboTitle">Cargando combo...</h2>
+
+        <div class="gc-week-combo__cars" id="gcWeekComboCars">
+          <span class="gc-week-combo__chip">Leyendo coches</span>
+        </div>
+
+        <div class="gc-week-combo__actions">
+          <a class="gc-btn gc-btn-primary" href={carsDriveUrl} target="_blank" rel="noreferrer">Descargar coches</a>
+          <a class="gc-btn gc-btn-primary" href={tracksDriveUrl} target="_blank" rel="noreferrer">Descargar circuito</a>
+          <a class="gc-btn gc-btn-primary" id="gcWeekComboOpen" href="/combos">Abrir combo</a>
+        </div>
+      </div>
+
+      <div class="gc-week-combo__side" aria-label="Resumen del combo activo">
+        <div class="gc-week-combo__stat">
+          <span>Vueltas</span>
+          <strong id="gcWeekComboLaps">--</strong>
+        </div>
+        <div class="gc-week-combo__stat">
+          <span>Pilotos</span>
+          <strong id="gcWeekComboDrivers">--</strong>
+        </div>
+        <div class="gc-week-combo__stat gc-week-combo__stat--best">
+          <span>Mejor</span>
+          <strong id="gcWeekComboBest">--</strong>
+          <small id="gcWeekComboBestMeta">Pendiente de datos</small>
+        </div>
+      </div>
+    </article>
   </section>
 
   <section class="gc-metrics" aria-label="Métricas públicas">
     <div class="gc-metric"><span>Servidor</span><strong>Live</strong><small>Datos sincronizados</small></div>
-    <div class="gc-metric"><span>Hotlaps</span><strong id="gcMkLaps">...</strong><small>Vueltas registradas</small></div>
+    <div class="gc-metric"><span>Hotlaps</span><strong id="gcMkLaps">...</strong><small>Referencias registradas</small></div>
     <div class="gc-metric"><span>Pilotos</span><strong id="gcMkDrivers">...</strong><small>Perfiles detectados</small></div>
-    <div class="gc-metric"><span>Acceso</span><strong>App</strong><small>Web + Android</small></div>
+    <div class="gc-metric"><span>Vueltas totales</span><strong id="gcMkTotalLaps">...</strong><small>Actividad del servidor</small></div>
   </section>
 
   <section class="gc-page">
@@ -44,7 +96,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         <code>01</code>
         <h3>Discord</h3>
         <p>Anuncios, eventos, votaciones, briefing de carrera y punto de encuentro para pilotos nuevos.</p>
-        <a class="gc-feature-link" href="/discord">Abrir Discord</a>
+        <a class="gc-feature-link" href={discordUrl} target="_blank" rel="noreferrer">Abrir Discord</a>
       </article>
       <article class="gc-card">
         <code>02</code>
@@ -81,38 +133,306 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     </div>
   </section>
 
-  <section class="gc-page">
-    <div class="gc-cta-box">
-      <div>
-        <h2>Elige tu entrada.</h2>
-        <p>Discord para la comunidad, Android para acceso móvil y plataforma para consultar datos de pista.</p>
-      </div>
-      <div class="gc-actions">
-        <a class="gc-btn" href="/discord">Discord</a>
-        <a class="gc-btn" href="/app-android">Android</a>
-        <a class="gc-btn gc-btn-primary" href="/app">Plataforma</a>
-      </div>
-    </div>
-  </section>
-
   <script is:inline>
-    const setText = (id, value) => {
+    const gcSetText = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.textContent = String(value ?? '0');
     };
-    Promise.allSettled([
-      fetch('/api/hotlaps').then((res) => res.ok ? res.json() : null),
-      fetch('/api/pilots').then((res) => res.ok ? res.json() : null),
-    ]).then(([lapsResult, pilotsResult]) => {
-      const lapsData = lapsResult.status === 'fulfilled' ? lapsResult.value : null;
-      const pilotsData = pilotsResult.status === 'fulfilled' ? pilotsResult.value : null;
-      const laps = lapsData?.items || lapsData?.hotlaps || lapsData?.laps || [];
-      const pilots = pilotsData?.items || pilotsData?.pilots || pilotsData?.players || [];
-      setText('gcMkLaps', Array.isArray(laps) ? laps.length : (lapsData?.total || '--'));
-      setText('gcMkDrivers', Array.isArray(pilots) ? pilots.length : (pilotsData?.total || '--'));
-    }).catch(() => {
-      setText('gcMkLaps', '--');
-      setText('gcMkDrivers', '--');
-    });
+
+    const gcEscape = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[char]));
+
+    const gcText = (value) => {
+      if (value == null) return '';
+      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+      if (typeof value === 'object') {
+        return gcText(
+          value.displayName ??
+          value.name ??
+          value.uiName ??
+          value.uiCarName ??
+          value.uiTrackName ??
+          value.carName ??
+          value.trackName ??
+          value.driverName ??
+          value.playerName ??
+          value.code ??
+          value.car ??
+          value.track
+        );
+      }
+      return String(value).trim();
+    };
+
+    const gcFormatMs = (value) => {
+      const ms = Number(value);
+      if (!Number.isFinite(ms) || ms <= 0) return '--';
+      const minutes = Math.floor(ms / 60000);
+      const seconds = Math.floor((ms % 60000) / 1000);
+      const millis = Math.floor(ms % 1000);
+      return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+    };
+
+    const gcNumber = (value, fallback = 0) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    const gcArray = (value) => Array.isArray(value) ? value : [];
+
+    const gcAnimateNumber = (id, value) => {
+      const el = document.getElementById(id);
+      const end = Math.max(0, Math.round(gcNumber(value, 0)));
+      if (!el) return;
+      if (!Number.isFinite(end)) {
+        el.textContent = '--';
+        return;
+      }
+      const duration = 850;
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(end * eased).toLocaleString('es-ES');
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    const gcPickList = (data) => {
+      if (!data) return [];
+      return (
+        data.items ||
+        data.combos ||
+        data.stats ||
+        data.results ||
+        data.data ||
+        []
+      );
+    };
+
+    const gcPickTotal = (data, candidates = []) => {
+      if (!data) return 0;
+      for (const key of candidates) {
+        const n = Number(data?.[key]);
+        if (Number.isFinite(n)) return n;
+      }
+      const list = gcPickList(data);
+      return Array.isArray(list) ? list.length : 0;
+    };
+
+    const gcCarName = (car) => gcText(
+      car?.displayName ??
+      car?.uiCarName ??
+      car?.uiName ??
+      car?.carName ??
+      car?.name ??
+      car?.Car ??
+      car?.code ??
+      car
+    );
+
+    const gcExtractCars = (combo) => {
+      const raw = (
+        combo?.cars ||
+        combo?.carList ||
+        combo?.carNames ||
+        combo?.availableCars ||
+        combo?.comboCars ||
+        combo?.members?.cars ||
+        []
+      );
+
+      let cars = Array.isArray(raw) ? raw : [];
+      if (!cars.length && typeof raw === 'string') {
+        cars = raw.split(/[,|;]/g);
+      }
+
+      if (!cars.length && combo?.carName) cars = [combo.carName];
+      if (!cars.length && combo?.car?.name) cars = [combo.car];
+
+      const seen = new Set();
+      return cars
+        .map(gcCarName)
+        .filter(Boolean)
+        .filter((name) => {
+          const key = name.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+    };
+
+    const gcComboTime = (combo) => {
+      const best = combo?.bestLap || combo?.best || combo?.fastestLap || combo?.leader || combo?.topLap || {};
+      return (
+        gcText(combo?.bestLapTimeFormatted) ||
+        gcText(combo?.bestTimeFormatted) ||
+        gcText(combo?.bestLapFormatted) ||
+        gcText(best?.lapTimeFormatted) ||
+        gcText(best?.lapTime) ||
+        gcFormatMs(
+          combo?.bestLapTimeMs ??
+          combo?.bestTimeMs ??
+          combo?.bestLapMs ??
+          best?.lapTimeMs ??
+          best?.LapTime ??
+          best?.lapTime
+        )
+      );
+    };
+
+    const gcComboBestMeta = (combo) => {
+      const best = combo?.bestLap || combo?.best || combo?.fastestLap || combo?.leader || combo?.topLap || {};
+      const driver = gcText(
+        combo?.bestDriverName ??
+        combo?.fastestDriverName ??
+        combo?.leaderName ??
+        best?.driverName ??
+        best?.playerName ??
+        best?.name ??
+        best?.driver ??
+        best?.player
+      );
+
+      const car = gcText(
+        combo?.bestCarName ??
+        combo?.fastestCarName ??
+        best?.carName ??
+        best?.uiCarName ??
+        best?.car?.displayName ??
+        best?.car?.name ??
+        best?.car
+      );
+
+      if (driver && car) return `${driver} · ${car}`;
+      if (driver) return driver;
+      if (car) return car;
+      return 'Mejor vuelta del combo';
+    };
+
+    const gcComboDate = (combo) => {
+      const raw = combo?.lastActivityIso || combo?.lastSeenAt || combo?.latestLapAt || combo?.updatedAt || combo?.lastActivity || combo?.timestampIso || combo?.timestamp;
+      if (!raw) return 0;
+      if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
+      const parsed = Date.parse(String(raw));
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const gcComboId = (combo) => combo?.canonicalComboId ?? combo?.comboId ?? combo?.id ?? combo?.ComboId;
+
+    const gcTrackName = (combo) => gcText(
+      combo?.trackName ??
+      combo?.track?.displayName ??
+      combo?.track?.name ??
+      combo?.uiTrackName ??
+      combo?.circuitName ??
+      combo?.trackCode ??
+      combo?.track
+    ) || 'Combo activo';
+
+    async function gcLoadComboWeek() {
+      const card = document.getElementById('gcWeekCombo');
+      try {
+        const res = await fetch('/api/combos/stats', { cache: 'no-store' });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        const combos = gcPickList(data)
+          .filter(Boolean)
+          .sort((a, b) => gcComboDate(b) - gcComboDate(a));
+
+        const combo = combos.find((item) => gcNumber(item.totalLaps ?? item.laps ?? item.lapCount, 0) > 0) || combos[0];
+        if (!combo) throw new Error('Sin combos');
+
+        const comboId = gcComboId(combo);
+        const cars = gcExtractCars(combo);
+        const laps = gcNumber(combo.totalLaps ?? combo.laps ?? combo.lapCount ?? combo.visibleLaps, 0);
+        const drivers = gcNumber(combo.driversCount ?? combo.pilotsCount ?? combo.playersCount ?? combo.uniqueDrivers ?? combo.totalDrivers, 0);
+        const bestTime = gcComboTime(combo);
+        const bestMeta = gcComboBestMeta(combo);
+
+        gcSetText('gcWeekComboTitle', gcTrackName(combo));
+        gcSetText('gcWeekComboLaps', laps.toLocaleString('es-ES'));
+        gcSetText('gcWeekComboDrivers', drivers.toLocaleString('es-ES'));
+        gcSetText('gcWeekComboBest', bestTime || '--');
+        gcSetText('gcWeekComboBestMeta', bestMeta);
+
+        const state = document.getElementById('gcWeekComboState');
+        if (state && combo.mergedCombosCount > 1) {
+          state.textContent = `Familia de ${combo.mergedCombosCount} combos`;
+        }
+
+        const carsEl = document.getElementById('gcWeekComboCars');
+        if (carsEl) {
+          carsEl.innerHTML = cars.length
+            ? cars.map((name) => `<span class="gc-week-combo__chip">${gcEscape(name)}</span>`).join('')
+            : '<span class="gc-week-combo__chip">Coches por confirmar</span>';
+        }
+
+        const open = document.getElementById('gcWeekComboOpen');
+        if (open && comboId != null) open.href = `/combos/${encodeURIComponent(comboId)}`;
+
+        card?.removeAttribute('data-loading');
+      } catch (error) {
+        gcSetText('gcWeekComboTitle', 'Combo activo');
+        gcSetText('gcWeekComboBestMeta', 'Abre Combo Center para ver la actividad actual');
+        document.getElementById('gcWeekComboCars').innerHTML = '<span class="gc-week-combo__chip">Datos no disponibles</span>';
+        card?.setAttribute('data-error', 'true');
+      }
+    }
+
+    async function gcLoadLandingMetrics() {
+      const [overviewResult, hotlapsResult, pilotsResult] = await Promise.allSettled([
+        fetch('/api/stats/overview', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
+        fetch('/api/hotlaps?limit=5000', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
+        fetch('/api/pilots?limit=1', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
+      ]);
+
+      const overview = overviewResult.status === 'fulfilled' ? overviewResult.value : null;
+      const hotlaps = hotlapsResult.status === 'fulfilled' ? hotlapsResult.value : null;
+      const pilots = pilotsResult.status === 'fulfilled' ? pilotsResult.value : null;
+      const stats = overview?.stats || overview?.overview || overview || {};
+
+      const totalLaps = (
+        stats.totalLaps ??
+        stats.laps ??
+        stats.lapCount ??
+        gcPickTotal(hotlaps, ['totalLaps', 'total', 'count'])
+      );
+
+      const hotlapItems = gcPickList(hotlaps);
+      const hotlapTotal = (
+        hotlaps?.total ??
+        hotlaps?.count ??
+        hotlaps?.totalItems ??
+        hotlaps?.visibleTotal ??
+        hotlaps?.totalVisible ??
+        stats.totalHotlaps ??
+        stats.hotlaps ??
+        (Array.isArray(hotlapItems) && hotlapItems.length > 1 ? hotlapItems.length : totalLaps)
+      );
+
+      const pilotsTotal = (
+        pilots?.total ??
+        pilots?.count ??
+        pilots?.totalItems ??
+        stats.totalDrivers ??
+        stats.drivers ??
+        stats.players ??
+        gcPickTotal(pilots)
+      );
+
+      gcAnimateNumber('gcMkLaps', hotlapTotal);
+      gcAnimateNumber('gcMkDrivers', pilotsTotal);
+      gcAnimateNumber('gcMkTotalLaps', totalLaps);
+    }
+
+    gcLoadComboWeek();
+    gcLoadLandingMetrics();
   </script>
 </MarketingLayout>
