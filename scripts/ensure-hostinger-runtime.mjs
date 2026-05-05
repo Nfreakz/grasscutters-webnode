@@ -6,7 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const serverPath = path.join(rootDir, 'src', 'server', 'index.ts');
-const marker = 'GC_ASTRO_RUNTIME_PATCH_V1';
+const markerV1 = 'GC_ASTRO_RUNTIME_PATCH_V1';
+const markerV2 = 'GC_ASTRO_RUNTIME_PATCH_V2';
 
 if (!fs.existsSync(serverPath)) {
   console.error(`[GC patch] No existe ${serverPath}`);
@@ -15,56 +16,55 @@ if (!fs.existsSync(serverPath)) {
 
 let source = fs.readFileSync(serverPath, 'utf8');
 
-if (source.includes(marker)) {
-  console.log('[GC patch] Runtime Hostinger/Astro ya aplicado.');
-  process.exit(0);
-}
-
-source = source.replace(
-  "import { fileURLToPath } from 'node:url';",
-  "import { fileURLToPath, pathToFileURL } from 'node:url';"
-);
-
 if (!source.includes('pathToFileURL')) {
   source = source.replace(
-    "import path from 'node:path';",
-    "import path from 'node:path';\nimport { pathToFileURL } from 'node:url';"
+    "import { fileURLToPath } from 'node:url';",
+    "import { fileURLToPath, pathToFileURL } from 'node:url';"
   );
+
+  if (!source.includes('pathToFileURL')) {
+    source = source.replace(
+      "import path from 'node:path';",
+      "import path from 'node:path';\nimport { pathToFileURL } from 'node:url';"
+    );
+  }
 }
-
-const listenIndex = source.lastIndexOf('app.listen(');
-if (listenIndex === -1) {
-  console.error('[GC patch] No se ha encontrado app.listen(...) en src/server/index.ts');
-  process.exit(1);
-}
-
-const grassIndex = source.lastIndexOf('GrassCutters Node activo', listenIndex);
-const fallbackCandidates = [
-  grassIndex > -1 ? source.lastIndexOf("app.get('*'", grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf('app.get("*"', grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf("app.get('/*'", grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf('app.get("/*"', grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf('app.use((req, res)', grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf('app.use((request, response)', grassIndex) : -1,
-  grassIndex > -1 ? source.lastIndexOf('app.use(function', grassIndex) : -1
-].filter((index) => index >= 0);
-
-const fallbackStart = fallbackCandidates.length ? Math.max(...fallbackCandidates) : listenIndex;
 
 const runtimeBlock = `
-/* ${marker}
- * Hostinger ejecuta el servidor Node, pero Astro puede dejar el build en varias formas:
- * - dist/client + dist/server/entry.mjs
- * - client + server/entry.mjs cuando Hostinger despliega el contenido de dist como raíz
- * - dist clásico con index.html para páginas estáticas
- * Este bloque monta primero assets, después SSR y por último un fallback limpio.
+/* ${markerV2}
+ * Runtime Hostinger + Astro para Express.
+ * Corrige el caso importante de Hostinger: las páginas estáticas de Astro
+ * viven como carpetas con index.html (/admin/index.html, /hotlaps/index.html),
+ * por lo que express.static debe permitir índices. Las rutas dinámicas quedan
+ * para el handler SSR del adapter Node.
  */
 function findExistingDirectory(candidates: string[]) {
   return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) || null;
 }
 
 function findExistingFile(candidates: string[]) {
-  return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || null;
+  return candidates.find((candidate) => candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || null;
+}
+
+function safeDecodeUrlPath(value: string) {
+  const raw = String(value || '/').split('?')[0].split('#')[0] || '/';
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function findStaticHtmlForRequest(clientDir: string | null, requestUrl: string) {
+  if (!clientDir) return null;
+  const decoded = safeDecodeUrlPath(requestUrl);
+  const clean = decoded.replace(/^\\/+/, '').replace(/\\/+$/, '');
+  if (!clean) return path.join(clientDir, 'index.html');
+
+  return findExistingFile([
+    path.join(clientDir, clean, 'index.html'),
+    path.join(clientDir, `${clean}.html`)
+  ]);
 }
 
 async function mountAstroRuntime() {
@@ -78,7 +78,8 @@ async function mountAstroRuntime() {
   if (clientDir) {
     app.use(express.static(clientDir, {
       maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
-      index: false
+      index: 'index.html',
+      extensions: ['html']
     }));
     console.log('[GC] Astro client montado:', clientDir);
   }
@@ -107,9 +108,15 @@ async function mountAstroRuntime() {
     clientDir ? path.join(clientDir, 'index.html') : '',
     path.join(distDir, 'index.html'),
     path.join(rootDir, 'index.html')
-  ].filter(Boolean));
+  ]);
 
   app.use((req, res) => {
+    const routeHtml = findStaticHtmlForRequest(clientDir, req.originalUrl || req.url);
+    if (routeHtml) {
+      res.sendFile(routeHtml);
+      return;
+    }
+
     if (staticIndex) {
       res.sendFile(staticIndex);
       return;
@@ -143,7 +150,42 @@ await mountAstroRuntime();
 
 `;
 
+if (source.includes(markerV2)) {
+  console.log('[GC patch] Runtime Hostinger/Astro V2 ya aplicado.');
+  process.exit(0);
+}
+
+if (source.includes(markerV1)) {
+  const regex = new RegExp(`/\\* ${markerV1}[\\s\\S]*?await mountAstroRuntime\\(\\);\\n\\n`);
+  if (!regex.test(source)) {
+    console.error('[GC patch] Se encontró V1 pero no se pudo reemplazar el bloque automáticamente.');
+    process.exit(1);
+  }
+  source = source.replace(regex, runtimeBlock);
+  fs.writeFileSync(serverPath, source, 'utf8');
+  console.log('[GC patch] Runtime Hostinger/Astro actualizado de V1 a V2.');
+  process.exit(0);
+}
+
+const listenIndex = source.lastIndexOf('app.listen(');
+if (listenIndex === -1) {
+  console.error('[GC patch] No se ha encontrado app.listen(...) en src/server/index.ts');
+  process.exit(1);
+}
+
+const grassIndex = source.lastIndexOf('GrassCutters Node activo', listenIndex);
+const fallbackCandidates = [
+  grassIndex > -1 ? source.lastIndexOf("app.get('*'", grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf('app.get("*"', grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf("app.get('/*'", grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf('app.get("/*"', grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf('app.use((req, res)', grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf('app.use((request, response)', grassIndex) : -1,
+  grassIndex > -1 ? source.lastIndexOf('app.use(function', grassIndex) : -1
+].filter((index) => index >= 0);
+
+const fallbackStart = fallbackCandidates.length ? Math.max(...fallbackCandidates) : listenIndex;
 source = `${source.slice(0, fallbackStart)}${runtimeBlock}${source.slice(listenIndex)}`;
 
 fs.writeFileSync(serverPath, source, 'utf8');
-console.log('[GC patch] Runtime Hostinger/Astro aplicado en src/server/index.ts');
+console.log('[GC patch] Runtime Hostinger/Astro V2 aplicado en src/server/index.ts');
