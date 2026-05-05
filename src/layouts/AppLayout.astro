@@ -36,7 +36,24 @@ const nav = [
     <meta name="theme-color" content="#07110a" />
     <title>{title}</title>
     <style is:inline>
-      .gc-force-backtop{
+      .gc-backtop,
+      .gc-back-top,
+      .gc-back-to-top,
+      .gc-scroll-top,
+      .gc-scrolltop,
+      .gc-top-button,
+      [data-backtop],
+      [data-back-top],
+      [data-back-to-top],
+      [data-scroll-top],
+      [aria-label*="Volver"],
+      [aria-label*="volver"],
+      [aria-label*="Back to top"],
+      [aria-label*="back to top"],
+      [title*="Volver"],
+      [title*="volver"],
+      [title*="Back to top"],
+      [title*="back to top"]{
         position:fixed !important;
         top:auto !important;
         left:auto !important;
@@ -46,7 +63,24 @@ const nav = [
       }
 
       @media(max-width:720px){
-        .gc-force-backtop{
+        .gc-backtop,
+        .gc-back-top,
+        .gc-back-to-top,
+        .gc-scroll-top,
+        .gc-scrolltop,
+        .gc-top-button,
+        [data-backtop],
+        [data-back-top],
+        [data-back-to-top],
+        [data-scroll-top],
+        [aria-label*="Volver"],
+        [aria-label*="volver"],
+        [aria-label*="Back to top"],
+        [aria-label*="back to top"],
+        [title*="Volver"],
+        [title*="volver"],
+        [title*="Back to top"],
+        [title*="back to top"]{
           right:14px !important;
           bottom:14px !important;
         }
@@ -145,39 +179,6 @@ const nav = [
         window.addEventListener('keydown', (event) => {
           if (event.key === 'Escape') setOpen(false);
         });
-      })();
-    </script>
-
-    <script is:inline>
-      (() => {
-        const looksLikeBackTop = (node) => {
-          if (!node) return false;
-          const label = [
-            node.getAttribute?.('aria-label'),
-            node.getAttribute?.('title'),
-            node.textContent
-          ].filter(Boolean).join(' ').trim().toLowerCase();
-          if (!label) return false;
-          return label.includes('volver arriba') || label.includes('subir arriba') || label.includes('back to top') || label === '↑' || label === '⬆';
-        };
-
-        const pinBackTop = () => {
-          document.querySelectorAll('button, a, [role="button"]').forEach((node) => {
-            if (!looksLikeBackTop(node)) return;
-            node.classList.add('gc-force-backtop');
-            node.style.setProperty('position', 'fixed', 'important');
-            node.style.setProperty('top', 'auto', 'important');
-            node.style.setProperty('left', 'auto', 'important');
-            node.style.setProperty('right', 'max(18px, env(safe-area-inset-right))', 'important');
-            node.style.setProperty('bottom', 'max(18px, env(safe-area-inset-bottom))', 'important');
-            node.style.setProperty('z-index', '80', 'important');
-          });
-        };
-
-        pinBackTop();
-        window.addEventListener('load', pinBackTop);
-        const observer = new MutationObserver(pinBackTop);
-        observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
       })();
     </script>
     <AuthHeader />
