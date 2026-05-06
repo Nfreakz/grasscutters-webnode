@@ -1,0 +1,136 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+---
+<MarketingLayout title="Calendario | GrassCutters Racing" description="Calendario mensual de GrassCutters Racing con combo semanal, carreras LFM y carreras GrassCutters.">
+  <section class="gc-page gc-hero gc-hero-compact gc-calendar-page" data-calendar-page>
+    <div>
+      <span class="gc-kicker">Calendario GC</span>
+      <h1 class="gc-title">Calendario de pista.</h1>
+      <p class="gc-lead">Consulta el combo semanal, las carreras LFM y las carreras GrassCutters programadas.</p>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn-primary" href="/app">Entrar a la plataforma</a>
+        <a class="gc-btn" href="/comunidad">Ver comunidad</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="gc-page gc-calendar-shell" aria-label="Calendario mensual">
+    <div class="gc-calendar-top">
+      <div>
+        <span class="gc-section-kicker">Vista mensual</span>
+        <h2 id="gcCalendarTitle">Calendario</h2>
+        <p id="gcCalendarMeta">Cargando eventos...</p>
+      </div>
+      <div class="gc-calendar-controls">
+        <button class="gc-btn" type="button" id="gcCalendarPrev">Mes anterior</button>
+        <button class="gc-btn gc-btn-primary" type="button" id="gcCalendarToday">Hoy</button>
+        <button class="gc-btn" type="button" id="gcCalendarNext">Mes siguiente</button>
+      </div>
+    </div>
+
+    <div class="gc-calendar-legend" aria-label="Tipos de evento">
+      <span data-type="combo">Combo semanal</span>
+      <span data-type="race_lfm">Carrera LFM</span>
+      <span data-type="race_gc">Carrera GrassCutters</span>
+    </div>
+
+    <div class="gc-calendar-grid" id="gcCalendarGrid" aria-live="polite"></div>
+  </section>
+
+  <section class="gc-page gc-calendar-list-section">
+    <div class="gc-section-head">
+      <span class="gc-section-kicker">Próximos eventos</span>
+      <h2 class="gc-section-title">Lo siguiente en el box.</h2>
+      <p class="gc-section-lead">Los eventos se actualizan desde el panel de administración.</p>
+    </div>
+    <div class="gc-calendar-event-list" id="gcCalendarUpcoming"></div>
+  </section>
+
+  <style is:global>
+    .gc-calendar-shell{padding-top:0}.gc-calendar-top{display:flex;justify-content:space-between;gap:18px;align-items:end;border-bottom:1px solid var(--gc-mk-line);padding-bottom:18px}.gc-calendar-top h2{margin:6px 0 0;font-size:clamp(2rem,4.5vw,4rem);letter-spacing:-.07em;text-transform:uppercase}.gc-calendar-top p{margin:6px 0 0;color:var(--gc-mk-muted)}.gc-calendar-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gc-calendar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.gc-calendar-legend span{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:999px;color:var(--gc-mk-muted);background:rgba(255,255,255,.035);font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-legend [data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-legend [data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--gc-mk-line);border-left:1px solid var(--gc-mk-line);background:rgba(255,255,255,.018)}.gc-calendar-head,.gc-calendar-day{border-right:1px solid var(--gc-mk-line);border-bottom:1px solid var(--gc-mk-line)}.gc-calendar-head{padding:12px;color:var(--gc-mk-soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.12em;background:rgba(255,255,255,.04)}.gc-calendar-day{min-height:148px;padding:10px;background:rgba(0,0,0,.08)}.gc-calendar-day.is-muted{opacity:.42}.gc-calendar-day.is-today{box-shadow:inset 0 0 0 2px var(--gc-mk-accent)}.gc-calendar-day-number{display:flex;justify-content:space-between;align-items:center;color:var(--gc-mk-text);font-weight:950}.gc-calendar-day-number small{color:var(--gc-mk-soft);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-events{display:grid;gap:6px;margin-top:8px}.gc-calendar-event{display:grid;gap:2px;padding:8px;border:1px solid var(--gc-mk-line-soft);border-left:3px solid var(--gc-mk-accent);border-radius:12px;background:rgba(255,255,255,.04);text-decoration:none}.gc-calendar-event[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-event[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-event strong{color:var(--gc-mk-text);font-size:.8rem;line-height:1.2}.gc-calendar-event small{color:var(--gc-mk-soft);font-size:.7rem}.gc-calendar-event-list{display:grid;gap:12px}.gc-calendar-upcoming-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:16px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.022))}.gc-calendar-upcoming-date{display:grid;place-items:center;min-width:72px;min-height:62px;border:1px solid var(--gc-mk-line);border-radius:16px;color:#07110a;background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));font-weight:950}.gc-calendar-upcoming-date span{font-size:1.4rem;line-height:1}.gc-calendar-upcoming-date small{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-upcoming-card h3{margin:0;color:var(--gc-mk-text);font-size:1.15rem}.gc-calendar-upcoming-card p{margin:4px 0 0;color:var(--gc-mk-muted)}.gc-calendar-upcoming-type{color:var(--gc-mk-accent);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.1em}@media(max-width:900px){.gc-calendar-top{display:grid}.gc-calendar-controls{justify-content:flex-start}.gc-calendar-grid{grid-template-columns:1fr}.gc-calendar-head{display:none}.gc-calendar-day{min-height:unset}.gc-calendar-day.is-muted{display:none}.gc-calendar-upcoming-card{grid-template-columns:1fr}.gc-calendar-upcoming-date{width:max-content}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const title = document.getElementById('gcCalendarTitle');
+      const meta = document.getElementById('gcCalendarMeta');
+      const grid = document.getElementById('gcCalendarGrid');
+      const upcoming = document.getElementById('gcCalendarUpcoming');
+      const prev = document.getElementById('gcCalendarPrev');
+      const next = document.getElementById('gcCalendarNext');
+      const todayBtn = document.getElementById('gcCalendarToday');
+      const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      const weekDays = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+      const typeLabels = { combo:'Combo semanal', race_lfm:'Carrera LFM', race_gc:'Carrera GrassCutters' };
+      let cursor = new Date();
+      let events = [];
+
+      const pad = (n) => String(n).padStart(2, '0');
+      const keyOf = (date) => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const parseDate = (value) => { const d = new Date(`${value}T00:00:00`); return Number.isNaN(d.getTime()) ? null : d; };
+      const eventDate = (event) => parseDate(event.startDate || event.date);
+      const visibleEvents = () => events.filter((event) => event.visible !== false && eventDate(event)).sort((a,b) => eventDate(a) - eventDate(b));
+      const fmtEventTime = (event) => [event.startTime, event.endTime].filter(Boolean).join(' - ') || 'Horario por confirmar';
+
+      function eventHtml(event) {
+        const content = `<strong>${escapeHtml(event.title || 'Evento')}</strong><small>${escapeHtml(fmtEventTime(event))}</small>`;
+        return event.linkUrl ? `<a class="gc-calendar-event" data-type="${escapeHtml(event.type || 'combo')}" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${content}</a>` : `<div class="gc-calendar-event" data-type="${escapeHtml(event.type || 'combo')}">${content}</div>`;
+      }
+
+      function render() {
+        const year = cursor.getFullYear();
+        const month = cursor.getMonth();
+        title.textContent = `${monthNames[month]} ${year}`;
+        const first = new Date(year, month, 1);
+        const offset = (first.getDay() + 6) % 7;
+        const start = new Date(year, month, 1 - offset);
+        const todayKey = keyOf(new Date());
+        const monthEvents = visibleEvents().filter((event) => {
+          const d = eventDate(event);
+          return d && d.getFullYear() === year && d.getMonth() === month;
+        });
+        meta.textContent = `${monthEvents.length} eventos visibles este mes`;
+
+        const head = weekDays.map((day) => `<div class="gc-calendar-head">${day}</div>`).join('');
+        const cells = [];
+        for (let i = 0; i < 42; i++) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          const key = keyOf(date);
+          const dayEvents = visibleEvents().filter((event) => keyOf(eventDate(event)) === key);
+          cells.push(`<article class="gc-calendar-day ${date.getMonth() !== month ? 'is-muted' : ''} ${key === todayKey ? 'is-today' : ''}"><div class="gc-calendar-day-number"><span>${date.getDate()}</span>${key === todayKey ? '<small>Hoy</small>' : ''}</div><div class="gc-calendar-events">${dayEvents.slice(0,4).map(eventHtml).join('')}${dayEvents.length > 4 ? `<small class="gc-soft">+${dayEvents.length - 4} más</small>` : ''}</div></article>`);
+        }
+        grid.innerHTML = head + cells.join('');
+        renderUpcoming();
+      }
+
+      function renderUpcoming() {
+        const now = new Date();
+        const list = visibleEvents().filter((event) => eventDate(event) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())).slice(0, 8);
+        upcoming.innerHTML = list.length ? list.map((event) => {
+          const d = eventDate(event);
+          return `<article class="gc-calendar-upcoming-card"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-btn" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
+        }).join('') : '<div class="gc-panel"><p>No hay próximos eventos visibles todavía.</p></div>';
+      }
+
+      async function loadEvents() {
+        try {
+          const response = await fetch('/api/calendar-events', { cache:'no-store' });
+          if (!response.ok) throw new Error(String(response.status));
+          const data = await response.json();
+          events = (data.events || data.items || []).filter((event) => ['combo','race_lfm','race_gc'].includes(String(event.type || 'combo')));
+        } catch (error) {
+          events = [];
+          meta.textContent = 'No se pudo cargar la API de calendario.';
+        }
+        render();
+      }
+
+      prev.addEventListener('click', () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render(); });
+      next.addEventListener('click', () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1); render(); });
+      todayBtn.addEventListener('click', () => { cursor = new Date(); render(); });
+      loadEvents();
+    })();
+  </script>
+</MarketingLayout>

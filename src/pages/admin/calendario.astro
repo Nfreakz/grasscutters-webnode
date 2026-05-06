@@ -1,0 +1,257 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+---
+<AppLayout title="Admin calendario | GrassCutters">
+  <div class="gc-page gc-admin-calendar-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Calendario.</h1>
+        <p class="gc-subtitle">Gestiona el combo semanal, las carreras LFM y las carreras GrassCutters visibles en la página pública.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Eventos editables</span>
+          <span class="gc-chip">Vista mensual</span>
+          <span class="gc-chip">Solo admin</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Calendario</span><strong id="calAdminState">Comprobando</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Eventos</span><strong id="calAdminCount">...</strong></div>
+          <div class="gc-status-row"><span>Visibles</span><strong id="calAdminVisible">...</strong></div>
+          <div class="gc-status-row"><span>Última acción</span><strong id="calAdminLast">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-section" id="calAdminAccess" hidden>
+      <div class="gc-slab">
+        <h3>Acceso restringido</h3>
+        <p>Esta página solo funciona con una cuenta administradora.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Ir a login</a>
+          <a class="gc-btn" href="/admin">Volver a admin</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="gc-grid-2" id="calAdminContent" hidden>
+      <form class="gc-form gc-calendar-admin-form" id="calendarForm">
+        <h2 id="calendarFormTitle">Crear evento</h2>
+        <input type="hidden" name="id" />
+        <div class="gc-form-grid">
+          <label class="gc-field"><span>Tipo</span><select class="gc-select" name="type"><option value="combo">Combo semanal</option><option value="race_lfm">Carrera LFM</option><option value="race_gc">Carrera GrassCutters</option></select></label>
+          <label class="gc-field"><span>Título</span><input class="gc-input" name="title" required placeholder="Carrera GrassCutters en Suzuka" /></label>
+          <label class="gc-field"><span>Fecha inicio</span><input class="gc-input" name="startDate" type="date" required /></label>
+          <label class="gc-field"><span>Hora inicio</span><input class="gc-input" name="startTime" type="time" /></label>
+          <label class="gc-field"><span>Fecha fin</span><input class="gc-input" name="endDate" type="date" /></label>
+          <label class="gc-field"><span>Hora fin</span><input class="gc-input" name="endTime" type="time" /></label>
+          <label class="gc-field"><span>Circuito</span><input class="gc-input" name="trackName" placeholder="Suzuka" /></label>
+          <label class="gc-field"><span>Coches</span><input class="gc-input" name="carNames" placeholder="Toyota Supra JGTC 2000" /></label>
+          <label class="gc-field" style="grid-column:1 / -1"><span>Enlace opcional</span><input class="gc-input" name="linkUrl" placeholder="https://..." /></label>
+          <label class="gc-field" style="grid-column:1 / -1"><span>Descripción</span><textarea class="gc-input gc-calendar-textarea" name="description" rows="4" placeholder="Briefing, formato, notas o indicaciones."></textarea></label>
+        </div>
+        <div class="gc-calendar-checks">
+          <label><input type="checkbox" name="visible" checked /> Visible en calendario público</label>
+          <label><input type="checkbox" name="featured" /> Destacado</label>
+        </div>
+        <div class="gc-actions">
+          <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
+          <button class="gc-btn" type="button" id="calendarReset">Limpiar formulario</button>
+          <a class="gc-btn" href="/calendario" target="_blank" rel="noreferrer">Ver calendario público</a>
+        </div>
+        <p class="gc-message" id="calendarMessage"></p>
+      </form>
+
+      <section class="gc-section">
+        <div class="gc-section-head">
+          <div><h2>Eventos creados</h2><p id="calendarListMeta">Cargando...</p></div>
+          <button class="gc-btn" id="calendarReload" type="button">Recargar</button>
+        </div>
+        <div class="gc-toolbar">
+          <label class="gc-field"><span>Buscar</span><input class="gc-input" id="calendarSearch" type="search" placeholder="título, circuito, coche..." /></label>
+          <label class="gc-field"><span>Tipo</span><select class="gc-select" id="calendarTypeFilter"><option value="all">Todos</option><option value="combo">Combo semanal</option><option value="race_lfm">Carrera LFM</option><option value="race_gc">Carrera GrassCutters</option></select></label>
+        </div>
+        <div class="gc-calendar-admin-list" id="calendarAdminList">Cargando eventos...</div>
+      </section>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-admin-calendar-page{display:grid;gap:clamp(22px,3vw,34px)}.gc-calendar-admin-form{align-self:start}.gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}.gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft)}.gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}.gc-calendar-admin-list{display:grid;gap:10px}.gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}.gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}@media(max-width:900px){.gc-admin-calendar-page .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const form = document.getElementById('calendarForm');
+      const content = document.getElementById('calAdminContent');
+      const noAccess = document.getElementById('calAdminAccess');
+      const list = document.getElementById('calendarAdminList');
+      const message = document.getElementById('calendarMessage');
+      const state = document.getElementById('calAdminState');
+      const count = document.getElementById('calAdminCount');
+      const visibleCount = document.getElementById('calAdminVisible');
+      const last = document.getElementById('calAdminLast');
+      const meta = document.getElementById('calendarListMeta');
+      const search = document.getElementById('calendarSearch');
+      const typeFilter = document.getElementById('calendarTypeFilter');
+      const reload = document.getElementById('calendarReload');
+      const reset = document.getElementById('calendarReset');
+      const title = document.getElementById('calendarFormTitle');
+      const typeLabels = { combo:'Combo semanal', race_lfm:'Carrera LFM', race_gc:'Carrera GrassCutters' };
+      let events = [];
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const setMessage = (text, ok = false) => { message.textContent = text; message.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
+      const dateText = (event) => [event.startDate, event.startTime].filter(Boolean).join(' · ') || '-';
+      const fetchJson = async (url, options = {}) => {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) {
+          if (response.status === 404) throw new Error('API de calendario no encontrada. Aplica el patch del servidor incluido en el pack.');
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+        return data;
+      };
+
+      function serializeForm() {
+        const data = Object.fromEntries(new FormData(form));
+        return {
+          id: data.id || undefined,
+          type: ['combo','race_lfm','race_gc'].includes(String(data.type)) ? data.type : 'combo',
+          title: String(data.title || '').trim(),
+          startDate: data.startDate,
+          startTime: data.startTime || '',
+          endDate: data.endDate || '',
+          endTime: data.endTime || '',
+          trackName: String(data.trackName || '').trim(),
+          carNames: String(data.carNames || '').trim(),
+          linkUrl: String(data.linkUrl || '').trim(),
+          description: String(data.description || '').trim(),
+          visible: form.elements.visible.checked,
+          featured: form.elements.featured.checked
+        };
+      }
+
+      function resetForm() {
+        form.reset();
+        form.elements.id.value = '';
+        form.elements.visible.checked = true;
+        form.elements.featured.checked = false;
+        title.textContent = 'Crear evento';
+        setMessage('');
+      }
+
+      function editEvent(event) {
+        form.elements.id.value = event.id || '';
+        form.elements.type.value = ['combo','race_lfm','race_gc'].includes(String(event.type)) ? event.type : 'combo';
+        form.elements.title.value = event.title || '';
+        form.elements.startDate.value = event.startDate || '';
+        form.elements.startTime.value = event.startTime || '';
+        form.elements.endDate.value = event.endDate || '';
+        form.elements.endTime.value = event.endTime || '';
+        form.elements.trackName.value = event.trackName || '';
+        form.elements.carNames.value = event.carNames || '';
+        form.elements.linkUrl.value = event.linkUrl || '';
+        form.elements.description.value = event.description || '';
+        form.elements.visible.checked = event.visible !== false;
+        form.elements.featured.checked = Boolean(event.featured);
+        title.textContent = 'Editar evento';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function filteredEvents() {
+        const query = search.value.trim().toLowerCase();
+        const type = typeFilter.value;
+        return events.filter((event) => {
+          if (type !== 'all' && event.type !== type) return false;
+          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate].join(' ').toLowerCase();
+          return !query || haystack.includes(query);
+        }).sort((a,b) => String(a.startDate || '').localeCompare(String(b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
+      }
+
+      function render() {
+        const rows = filteredEvents();
+        count.textContent = String(events.length);
+        visibleCount.textContent = String(events.filter((event) => event.visible !== false).length);
+        meta.textContent = `${rows.length} eventos visibles de ${events.length}`;
+        if (!rows.length) {
+          list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>';
+          return;
+        }
+        list.innerHTML = rows.map((event) => `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><small>${event.visible === false ? 'Oculto' : 'Visible'}${event.featured ? ' · Destacado' : ''}</small></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}">${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}">Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`).join('');
+      }
+
+      async function loadEvents() {
+        state.textContent = 'Cargando';
+        const data = await fetchJson('/api/admin/calendar-events');
+        events = (data.events || data.items || []).filter((event) => ['combo','race_lfm','race_gc'].includes(String(event.type || 'combo')));
+        state.textContent = 'OK';
+        last.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+        render();
+      }
+
+      async function checkAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized !== true) throw new Error('Sin permisos');
+          content.hidden = false;
+          noAccess.hidden = true;
+          await loadEvents();
+        } catch (error) {
+          content.hidden = true;
+          noAccess.hidden = false;
+          state.textContent = 'Bloqueado';
+        }
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = serializeForm();
+        if (!payload.title || !payload.startDate) {
+          setMessage('Título y fecha inicio son obligatorios.');
+          return;
+        }
+        try {
+          const id = form.elements.id.value;
+          setMessage('Guardando evento...');
+          await fetchJson(id ? `/api/admin/calendar-events/${encodeURIComponent(id)}` : '/api/admin/calendar-events', { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+          setMessage('Evento guardado.', true);
+          resetForm();
+          await loadEvents();
+        } catch (error) {
+          setMessage(error.message || 'No se pudo guardar.');
+        }
+      });
+
+      list.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const id = button.dataset.id;
+        const item = events.find((event) => event.id === id);
+        if (!item) return;
+        if (button.dataset.action === 'edit') {
+          editEvent(item);
+          return;
+        }
+        try {
+          if (button.dataset.action === 'delete') {
+            if (!confirm('¿Borrar este evento del calendario?')) return;
+            await fetchJson(`/api/admin/calendar-events/${encodeURIComponent(id)}`, { method:'DELETE' });
+          }
+          if (button.dataset.action === 'toggle') {
+            await fetchJson(`/api/admin/calendar-events/${encodeURIComponent(id)}`, { method:'PUT', body: JSON.stringify({ ...item, visible: item.visible === false }) });
+          }
+          await loadEvents();
+        } catch (error) {
+          setMessage(error.message || 'No se pudo aplicar la acción.');
+        }
+      });
+
+      [search, typeFilter].forEach((node) => node.addEventListener('input', render));
+      reload.addEventListener('click', () => loadEvents().catch((error) => setMessage(error.message || 'No se pudo recargar.')));
+      reset.addEventListener('click', resetForm);
+      checkAdmin();
+    })();
+  </script>
+</AppLayout>

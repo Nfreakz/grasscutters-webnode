@@ -1,0 +1,152 @@
+<!-- GC_CALENDAR_ADMIN_SCRIPT_V1 -->
+  <script is:inline>
+    (() => {
+      const table = document.querySelector('#calendarAdminTable tbody');
+      const form = document.getElementById('calendarAdminForm');
+      const meta = document.getElementById('calendarAdminMeta');
+      const message = document.getElementById('calendarAdminMessage');
+      const resetBtn = document.getElementById('calendarAdminReset');
+      const reloadBtn = document.getElementById('calendarAdminReload');
+      if (!table || !form) return;
+
+      let events = [];
+      const labels = { combo: 'Combo', race: 'Carrera', training: 'Entreno', vote: 'Votación', notice: 'Aviso' };
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const dateText = (value) => {
+        const date = value ? new Date(value) : null;
+        if (!date || Number.isNaN(date.getTime())) return '-';
+        return date.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+      };
+      const toLocalInput = (value) => {
+        const date = value ? new Date(value) : null;
+        if (!date || Number.isNaN(date.getTime())) return '';
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 16);
+      };
+      const fromLocalInput = (value) => value ? new Date(value).toISOString() : '';
+
+      async function requestCalendar(url, options = {}) {
+        const res = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+          ...options
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) throw new Error(data.message || 'Error de calendario');
+        return data;
+      }
+
+      function resetForm() {
+        form.reset();
+        form.elements.id.value = '';
+        form.elements.enabled.checked = true;
+        message.textContent = '';
+      }
+
+      function fillForm(event) {
+        form.elements.id.value = event.id || '';
+        form.elements.type.value = event.type || 'combo';
+        form.elements.title.value = event.title || '';
+        form.elements.startsAt.value = toLocalInput(event.startsAt);
+        form.elements.endsAt.value = toLocalInput(event.endsAt);
+        form.elements.combo.value = event.combo || '';
+        form.elements.track.value = event.track || '';
+        form.elements.cars.value = Array.isArray(event.cars) ? event.cars.join(', ') : (event.cars || '');
+        form.elements.link.value = event.link || '';
+        form.elements.description.value = event.description || '';
+        form.elements.enabled.checked = event.enabled !== false;
+        form.elements.featured.checked = Boolean(event.featured);
+        message.textContent = 'Editando evento. Guarda para aplicar cambios.';
+        window.scrollTo({ top: form.getBoundingClientRect().top + window.scrollY - 120, behavior: 'smooth' });
+      }
+
+      function renderCalendarAdmin() {
+        const sorted = [...events].sort((a, b) => String(a.startsAt || '').localeCompare(String(b.startsAt || '')));
+        const visible = sorted.filter((event) => event.enabled !== false).length;
+        if (meta) meta.textContent = `${sorted.length} eventos guardados · ${visible} visibles en /calendario`;
+        table.innerHTML = sorted.length ? sorted.map((event) => `
+          <tr data-id="${escapeHtml(event.id)}">
+            <td>${escapeHtml(dateText(event.startsAt))}</td>
+            <td><span class="gc-chip ${event.type === 'combo' ? 'gc-chip--accent' : ''}">${escapeHtml(labels[event.type] || event.type)}</span></td>
+            <td><strong>${escapeHtml(event.title)}</strong><br><span class="gc-muted-text">${escapeHtml(event.description || '-')}</span></td>
+            <td>${escapeHtml(event.combo || '-')}<br><span class="gc-muted-text">${escapeHtml(event.track || '-')}</span></td>
+            <td>${event.enabled !== false ? '<span class="gc-chip gc-chip--accent">Visible</span>' : '<span class="gc-chip">Oculto</span>'}${event.featured ? '<br><span class="gc-chip">Destacado</span>' : ''}</td>
+            <td>
+              <div class="gc-admin-actions">
+                <button class="gc-btn gc-btn--mini" type="button" data-calendar-edit="${escapeHtml(event.id)}">Editar</button>
+                <button class="gc-btn gc-btn--mini" type="button" data-calendar-toggle="${escapeHtml(event.id)}">${event.enabled !== false ? 'Ocultar' : 'Mostrar'}</button>
+                <button class="gc-btn gc-btn--mini" type="button" data-calendar-delete="${escapeHtml(event.id)}">Borrar</button>
+              </div>
+            </td>
+          </tr>
+        `).join('') : '<tr><td colspan="6">No hay eventos todavía.</td></tr>';
+      }
+
+      async function loadCalendarAdmin() {
+        try {
+          message.textContent = 'Cargando calendario...';
+          const data = await requestCalendar('/api/admin/calendar/events');
+          events = Array.isArray(data.events) ? data.events : [];
+          renderCalendarAdmin();
+          message.textContent = 'Calendario cargado.';
+        } catch (error) {
+          message.textContent = error.message || 'No se pudo cargar el calendario.';
+          table.innerHTML = '<tr><td colspan="6">Error cargando eventos. Revisa permisos de admin y API.</td></tr>';
+        }
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+          id: form.elements.id.value || undefined,
+          type: form.elements.type.value,
+          title: form.elements.title.value,
+          startsAt: fromLocalInput(form.elements.startsAt.value),
+          endsAt: fromLocalInput(form.elements.endsAt.value),
+          combo: form.elements.combo.value,
+          track: form.elements.track.value,
+          cars: form.elements.cars.value.split(',').map((item) => item.trim()).filter(Boolean),
+          link: form.elements.link.value,
+          description: form.elements.description.value,
+          enabled: form.elements.enabled.checked,
+          featured: form.elements.featured.checked,
+        };
+        try {
+          message.textContent = 'Guardando evento...';
+          await requestCalendar('/api/admin/calendar/events', { method: 'POST', body: JSON.stringify(payload) });
+          resetForm();
+          await loadCalendarAdmin();
+          message.textContent = 'Evento guardado.';
+        } catch (error) {
+          message.textContent = error.message || 'No se pudo guardar el evento.';
+        }
+      });
+
+      table.addEventListener('click', async (event) => {
+        const editId = event.target?.dataset?.calendarEdit;
+        const toggleId = event.target?.dataset?.calendarToggle;
+        const deleteId = event.target?.dataset?.calendarDelete;
+        if (editId) {
+          const item = events.find((entry) => entry.id === editId);
+          if (item) fillForm(item);
+        }
+        if (toggleId) {
+          const item = events.find((entry) => entry.id === toggleId);
+          if (!item) return;
+          await requestCalendar('/api/admin/calendar/events', { method: 'POST', body: JSON.stringify({ ...item, enabled: item.enabled === false }) });
+          await loadCalendarAdmin();
+        }
+        if (deleteId) {
+          const ok = confirm('¿Borrar este evento del calendario?');
+          if (!ok) return;
+          await requestCalendar(`/api/admin/calendar/events/${encodeURIComponent(deleteId)}`, { method: 'DELETE' });
+          await loadCalendarAdmin();
+        }
+      });
+
+      resetBtn?.addEventListener('click', resetForm);
+      reloadBtn?.addEventListener('click', loadCalendarAdmin);
+      loadCalendarAdmin();
+    })();
+  </script>

@@ -1,0 +1,87 @@
+<!-- GC_CALENDAR_ADMIN_SECTION_V1 -->
+      <section class="gc-section gc-admin-calendar" id="calendarAdminPanel" style="grid-column: 1 / -1;">
+        <div class="gc-section-head">
+          <h2>Calendario</h2>
+          <p id="calendarAdminMeta">Combos de la semana, carreras, entrenamientos y avisos visibles en /calendario.</p>
+        </div>
+
+        <div class="gc-slab">
+          <h3>Crear o editar evento</h3>
+          <form class="gc-form" id="calendarAdminForm">
+            <input type="hidden" name="id" />
+            <div class="gc-form-grid">
+              <label class="gc-field">
+                <span>Tipo</span>
+                <select class="gc-select" name="type">
+                  <option value="combo">Combo semanal</option>
+                  <option value="race">Carrera</option>
+                  <option value="training">Entreno</option>
+                  <option value="vote">Votación</option>
+                  <option value="notice">Aviso</option>
+                </select>
+              </label>
+              <label class="gc-field">
+                <span>Título</span>
+                <input class="gc-input" name="title" type="text" placeholder="Suzuka JGTC, Carrera GT3, Votación de combo..." required />
+              </label>
+              <label class="gc-field">
+                <span>Inicio</span>
+                <input class="gc-input" name="startsAt" type="datetime-local" required />
+              </label>
+              <label class="gc-field">
+                <span>Fin opcional</span>
+                <input class="gc-input" name="endsAt" type="datetime-local" />
+              </label>
+            </div>
+
+            <div class="gc-form-grid">
+              <label class="gc-field">
+                <span>Combo</span>
+                <input class="gc-input" name="combo" type="text" placeholder="Combo de la semana" />
+              </label>
+              <label class="gc-field">
+                <span>Circuito</span>
+                <input class="gc-input" name="track" type="text" placeholder="Suzuka" />
+              </label>
+              <label class="gc-field">
+                <span>Coches</span>
+                <input class="gc-input" name="cars" type="text" placeholder="Toyota Supra JGTC, Nissan Skyline..." />
+              </label>
+              <label class="gc-field">
+                <span>Enlace</span>
+                <input class="gc-input" name="link" type="url" placeholder="Discord, inscripción, combo..." />
+              </label>
+            </div>
+
+            <label class="gc-field">
+              <span>Descripción</span>
+              <textarea class="gc-input" name="description" rows="3" placeholder="Briefing, normas rápidas, horario o explicación del evento."></textarea>
+            </label>
+
+            <div class="gc-actions gc-admin-calendar-actions">
+              <label class="gc-admin-check"><input type="checkbox" name="enabled" checked /> Visible</label>
+              <label class="gc-admin-check"><input type="checkbox" name="featured" /> Destacado</label>
+              <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
+              <button class="gc-btn" type="button" id="calendarAdminReset">Nuevo evento</button>
+              <button class="gc-btn" type="button" id="calendarAdminReload">Recargar</button>
+            </div>
+            <p class="gc-message" id="calendarAdminMessage"></p>
+          </form>
+        </div>
+
+        <div class="gc-table-wrap">
+          <table class="gc-table gc-table--compact" id="calendarAdminTable">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Evento</th>
+                <th>Combo / circuito</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody><tr><td colspan="6">Cargando calendario...</td></tr></tbody>
+          </table>
+        </div>
+      </section>

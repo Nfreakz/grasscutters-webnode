@@ -2,40 +2,48 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Herramientas | GrassCutters">
-  <div class="gc-page gc-tools-pro">
-    <section class="gc-hero gc-hero--compact gc-tools-hero">
-      <div>
-        <span class="gc-kicker">Herramientas Pro</span>
-        <h1 class="gc-title">Comparador de rendimiento.</h1>
-        <p class="gc-subtitle">Sistema configurable para comparar pilotos, coches y vueltas reales del servidor. Filtra por circuito, estado de vuelta, ventana temporal y tipo de análisis.</p>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Comparativas</span>
-          <span class="gc-chip">Gráficos Canvas</span>
-          <span class="gc-chip">Datos stracker</span>
+  <div class="gc-page gc-tools-v3">
+    <section class="gc-tools-v3-hero" aria-label="Laboratorio de rendimiento">
+      <div class="gc-tools-v3-hero__copy">
+        <span class="gc-kicker">Laboratorio de rendimiento</span>
+        <h1>Análisis útil de ritmo.</h1>
+        <p>
+          Compara ritmo real, consistencia y delta repetible usando las mejores vueltas del filtro actual.
+          La idea es separar una vuelta milagro de un ritmo que se puede sostener en carrera.
+        </p>
+        <div class="gc-tools-v3-tabs" aria-label="Atajos de lectura">
+          <button class="is-active" type="button" data-jump-tools="rhythm">Ritmo top N</button>
+          <button type="button" data-jump-tools="delta">Delta repetible</button>
+          <button type="button" data-jump-tools="diagnosis">Diagnóstico</button>
         </div>
       </div>
-      <aside class="gc-live-panel gc-tools-status-card">
-        <div class="gc-live-panel__title"><span>Datos</span><strong id="toolsDataState">Cargando</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Vueltas cargadas</span><strong id="toolsLoadedLaps">...</strong></div>
-          <div class="gc-status-row"><span>Pilotos</span><strong id="toolsLoadedDrivers">...</strong></div>
-          <div class="gc-status-row"><span>Coches</span><strong id="toolsLoadedCars">...</strong></div>
+
+      <aside class="gc-tools-v3-status" aria-label="Estado de datos">
+        <div class="gc-tools-v3-status__top">
+          <span>Datos</span>
+          <strong id="toolsDataState">Cargando</strong>
+        </div>
+        <div class="gc-tools-v3-status__rows">
+          <div><span>Vueltas leídas</span><strong id="toolsLoadedLaps">...</strong></div>
+          <div><span>Referencias</span><strong id="toolsSampleState">...</strong></div>
+          <div><span>Confianza</span><strong id="toolsConfidence">...</strong></div>
         </div>
       </aside>
     </section>
 
-    <section class="gc-tools-control-panel" aria-label="Configuración del comparador">
-      <div class="gc-tools-control-head">
+    <section class="gc-tools-v3-panel" aria-label="Configuración del análisis">
+      <div class="gc-tools-v3-panel__head">
         <div>
           <span class="gc-kicker">Configuración</span>
-          <h2>Qué quieres comparar</h2>
+          <h2>Qué quieres medir</h2>
+          <p>El análisis usa las mejores vueltas comparables del filtro actual, no solo la vuelta récord.</p>
         </div>
         <button class="gc-btn gc-btn--primary" id="toolsReload" type="button">Actualizar datos</button>
       </div>
 
-      <div class="gc-tools-toolbar">
-        <label class="gc-field">
-          <span>Tipo de análisis</span>
+      <div class="gc-tools-v3-form">
+        <label class="gc-tools-v3-field gc-tools-v3-field--wide">
+          <span>Tipo de comparativa</span>
           <select class="gc-select" id="toolsMode">
             <option value="driver">Piloto contra piloto</option>
             <option value="car">Coche contra coche</option>
@@ -43,31 +51,31 @@ import AppLayout from '../layouts/AppLayout.astro';
           </select>
         </label>
 
-        <label class="gc-field gc-tools-driver-field">
+        <label class="gc-tools-v3-field gc-tools-field--driver">
           <span>Piloto A</span>
           <select class="gc-select" id="toolsDriverA"></select>
         </label>
-        <label class="gc-field gc-tools-driver-field">
+        <label class="gc-tools-v3-field gc-tools-field--driver">
           <span>Piloto B</span>
           <select class="gc-select" id="toolsDriverB"></select>
         </label>
 
-        <label class="gc-field gc-tools-car-field">
+        <label class="gc-tools-v3-field gc-tools-field--car">
           <span>Coche A</span>
           <select class="gc-select" id="toolsCarA"></select>
         </label>
-        <label class="gc-field gc-tools-car-field">
+        <label class="gc-tools-v3-field gc-tools-field--car">
           <span>Coche B</span>
           <select class="gc-select" id="toolsCarB"></select>
         </label>
 
-        <label class="gc-field">
+        <label class="gc-tools-v3-field">
           <span>Circuito</span>
           <select class="gc-select" id="toolsTrack"></select>
         </label>
 
-        <label class="gc-field">
-          <span>Vueltas</span>
+        <label class="gc-tools-v3-field">
+          <span>Estado de vuelta</span>
           <select class="gc-select" id="toolsValid">
             <option value="valid">Solo válidas</option>
             <option value="all">Todas</option>
@@ -75,8 +83,8 @@ import AppLayout from '../layouts/AppLayout.astro';
           </select>
         </label>
 
-        <label class="gc-field">
-          <span>Ventana</span>
+        <label class="gc-tools-v3-field">
+          <span>Ventana temporal</span>
           <select class="gc-select" id="toolsWindow">
             <option value="all">Todo el histórico</option>
             <option value="7">Últimos 7 días</option>
@@ -85,153 +93,217 @@ import AppLayout from '../layouts/AppLayout.astro';
           </select>
         </label>
 
-        <label class="gc-field">
-          <span>Mínimo vueltas</span>
-          <input class="gc-input" id="toolsMinLaps" type="number" min="1" step="1" value="1" />
+        <label class="gc-tools-v3-field">
+          <span>Ritmo top N</span>
+          <input class="gc-input" id="toolsTopN" type="number" min="3" max="15" step="1" value="8" />
         </label>
       </div>
     </section>
 
-    <section class="gc-tools-summary-grid" aria-label="Resumen de comparativa">
-      <article class="gc-tools-racer-card gc-tools-racer-card--a">
-        <span class="gc-tools-tag">Referencia A</span>
+    <section class="gc-tools-v3-vs" aria-label="Resumen de referencias">
+      <article class="gc-tools-v3-driver-card gc-tools-v3-driver-card--a">
+        <span class="gc-tools-v3-tag">Referencia A</span>
         <h2 id="toolsNameA">...</h2>
-        <div class="gc-tools-racer-stats">
+        <p id="toolsSubA">Esperando datos</p>
+        <div class="gc-tools-v3-stat-grid">
           <div><span>Mejor vuelta</span><strong id="toolsBestA">--</strong></div>
-          <div><span>Media top 5</span><strong id="toolsAvgA">--</strong></div>
+          <div><span>Ritmo top N</span><strong id="toolsPaceA">--</strong></div>
+          <div><span>Consistencia</span><strong id="toolsConsistencyA">--</strong></div>
           <div><span>Limpieza</span><strong id="toolsCleanA">--</strong></div>
         </div>
       </article>
 
-      <article class="gc-tools-racer-card gc-tools-racer-card--center">
-        <span class="gc-tools-tag">Delta principal</span>
-        <h2 id="toolsDeltaMain">--</h2>
-        <p id="toolsDeltaText">Configura el comparador para calcular el delta.</p>
-        <div class="gc-tools-mini-result" id="toolsWinnerText">Esperando datos</div>
+      <article class="gc-tools-v3-delta-card">
+        <span class="gc-tools-v3-tag">Lectura de carrera</span>
+        <h2 id="toolsVerdict">--</h2>
+        <p id="toolsVerdictText">Configura dos referencias para calcular el delta.</p>
+        <div class="gc-tools-v3-delta-list">
+          <div><span>Delta récord</span><strong id="toolsDeltaBest">--</strong></div>
+          <div><span>Delta ritmo</span><strong id="toolsDeltaPace">--</strong></div>
+          <div><span>Delta estabilidad</span><strong id="toolsDeltaStability">--</strong></div>
+        </div>
       </article>
 
-      <article class="gc-tools-racer-card gc-tools-racer-card--b">
-        <span class="gc-tools-tag">Referencia B</span>
+      <article class="gc-tools-v3-driver-card gc-tools-v3-driver-card--b">
+        <span class="gc-tools-v3-tag">Referencia B</span>
         <h2 id="toolsNameB">...</h2>
-        <div class="gc-tools-racer-stats">
+        <p id="toolsSubB">Esperando datos</p>
+        <div class="gc-tools-v3-stat-grid">
           <div><span>Mejor vuelta</span><strong id="toolsBestB">--</strong></div>
-          <div><span>Media top 5</span><strong id="toolsAvgB">--</strong></div>
+          <div><span>Ritmo top N</span><strong id="toolsPaceB">--</strong></div>
+          <div><span>Consistencia</span><strong id="toolsConsistencyB">--</strong></div>
           <div><span>Limpieza</span><strong id="toolsCleanB">--</strong></div>
         </div>
       </article>
     </section>
 
-    <section class="gc-tools-charts-grid">
-      <article class="gc-section gc-tools-chart-card">
-        <div class="gc-section-head">
-          <h2>Comparativa de métricas</h2>
-          <p id="toolsChartMeta">Mejor vuelta, media, vueltas, limpieza y Vmax.</p>
+    <section class="gc-tools-v3-chart-card gc-tools-v3-chart-card--main" id="toolsRhythmSection">
+      <div class="gc-tools-v3-section-head">
+        <div>
+          <span class="gc-kicker">Ritmo repetible</span>
+          <h2>Curva de ritmo top N</h2>
         </div>
-        <canvas id="toolsBarChart" width="980" height="420" aria-label="Gráfico de métricas comparadas"></canvas>
-      </article>
-
-      <article class="gc-section gc-tools-chart-card">
-        <div class="gc-section-head">
-          <h2>Ritmo por vuelta</h2>
-          <p id="toolsTimelineMeta">Tiempos recientes ordenados por fecha.</p>
-        </div>
-        <canvas id="toolsTimelineChart" width="980" height="420" aria-label="Gráfico de ritmo por vuelta"></canvas>
-      </article>
+        <p>Cada punto es una vuelta ordenada de mejor a peor dentro del top N seleccionado.</p>
+      </div>
+      <canvas id="toolsRhythmChart" aria-label="Curva de ritmo repetible"></canvas>
     </section>
 
-    <section class="gc-grid-2 gc-tools-insight-grid">
-      <article class="gc-section gc-tools-insight-card">
-        <div class="gc-section-head"><h2>Lectura rápida</h2><p>Análisis automático</p></div>
-        <div class="gc-slab-list" id="toolsInsights">
+    <section class="gc-tools-v3-chart-card" id="toolsDeltaSection">
+      <div class="gc-tools-v3-section-head">
+        <div>
+          <span class="gc-kicker">Delta repetible</span>
+          <h2>Delta por muestra</h2>
+        </div>
+        <p>Barras hacia la derecha favorecen a A. Barras hacia la izquierda favorecen a B.</p>
+      </div>
+      <canvas id="toolsDeltaChart" aria-label="Delta por muestra"></canvas>
+    </section>
+
+    <section class="gc-tools-v3-lower-grid" id="toolsDiagnosisSection">
+      <article class="gc-tools-v3-diagnosis">
+        <div class="gc-tools-v3-section-head">
+          <div>
+            <span class="gc-kicker">Diagnóstico</span>
+            <h2>Conclusiones del filtro actual</h2>
+          </div>
+        </div>
+        <div class="gc-tools-v3-diagnosis-grid" id="toolsDiagnostics">
           <div><span>Estado</span><strong>Cargando datos</strong></div>
         </div>
       </article>
-      <article class="gc-section gc-tools-insight-card">
-        <div class="gc-section-head"><h2>Top vueltas usadas</h2><p>Las mejores referencias del filtro actual</p></div>
-        <div class="gc-tools-best-list" id="toolsBestList">Cargando...</div>
+
+      <article class="gc-tools-v3-best">
+        <div class="gc-tools-v3-section-head">
+          <div>
+            <span class="gc-kicker">Muestras</span>
+            <h2>Mejores vueltas usadas</h2>
+          </div>
+          <p>Las vueltas que realmente entran en el cálculo.</p>
+        </div>
+        <div class="gc-tools-v3-best-list" id="toolsBestList">Cargando...</div>
       </article>
     </section>
 
-    <section class="gc-section">
-      <div class="gc-section-head">
-        <h2>Vueltas de la comparativa</h2>
+    <section class="gc-tools-v3-table-card">
+      <div class="gc-tools-v3-section-head">
+        <div>
+          <span class="gc-kicker">Detalle</span>
+          <h2>Tabla de análisis</h2>
+        </div>
         <p id="toolsTableMeta">Cargando vueltas...</p>
       </div>
-      <div class="gc-table-wrap gc-tools-table-wrap">
-        <table class="gc-table gc-table--compact gc-tools-table">
+      <div class="gc-tools-v3-table-wrap">
+        <table class="gc-tools-v3-table">
           <thead>
             <tr>
               <th>Grupo</th>
+              <th>#</th>
               <th>Piloto</th>
               <th>Coche</th>
               <th>Circuito</th>
               <th>Tiempo</th>
+              <th>Delta global</th>
               <th>Estado</th>
-              <th>Vmax</th>
               <th>Fecha</th>
             </tr>
           </thead>
-          <tbody id="toolsLapsTable"><tr><td colspan="8">Cargando...</td></tr></tbody>
+          <tbody id="toolsLapsTable"><tr><td colspan="9">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
   </div>
 
   <style is:global>
-    .gc-tools-pro{display:grid;gap:clamp(22px,3vw,34px)}
-    .gc-tools-control-panel,.gc-tools-racer-card,.gc-tools-chart-card,.gc-tools-insight-card{border-top:2px solid var(--accent);border-bottom:1px solid var(--line2);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));padding:18px 0}
-    .gc-tools-control-head{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:14px}
-    .gc-tools-control-head h2{margin:6px 0 0;text-transform:uppercase;letter-spacing:-.045em;font-size:clamp(1.35rem,2.3vw,2.3rem)}
-    .gc-tools-toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
-    .gc-tools-toolbar .gc-field{min-width:0}
-    .gc-tools-toolbar .gc-field>span{color:var(--dim);text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;font-weight:950}
-    .gc-tools-summary-grid{display:grid;grid-template-columns:1fr .72fr 1fr;gap:18px;align-items:stretch}
-    .gc-tools-racer-card{padding:18px;display:grid;align-content:space-between;min-height:230px}
-    .gc-tools-racer-card h2{margin:10px 0 18px;font-size:clamp(1.55rem,3.2vw,3.2rem);line-height:.95;letter-spacing:-.06em;text-transform:uppercase;word-break:break-word}
-    .gc-tools-tag{color:var(--accent);text-transform:uppercase;letter-spacing:.13em;font-size:.72rem;font-weight:950}
-    .gc-tools-racer-card--center{border-top-color:var(--accent2);text-align:center;align-content:center}
-    .gc-tools-racer-card--center h2{font-size:clamp(2rem,4vw,4rem);color:var(--accent);margin-bottom:8px}
-    .gc-tools-racer-card--center p{color:var(--soft);margin:0 auto 14px;max-width:44ch}
-    .gc-tools-racer-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .gc-tools-racer-stats div,.gc-tools-mini-result,.gc-tools-best-list__row{border:1px solid var(--line);background:rgba(255,255,255,.025);padding:12px}
-    .gc-tools-racer-stats span{display:block;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;font-size:.66rem;font-weight:950}
-    .gc-tools-racer-stats strong{display:block;margin-top:6px;color:var(--text);font-size:1.05rem;line-height:1.05}
-    .gc-tools-mini-result{display:inline-flex;margin:0 auto;color:var(--accent);text-transform:uppercase;letter-spacing:.09em;font-size:.72rem;font-weight:950}
-    .gc-tools-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-    .gc-tools-chart-card{padding:18px;min-width:0}
-    .gc-tools-chart-card canvas{width:100%;height:auto;display:block;border:1px solid var(--line);background:rgba(0,0,0,.18)}
-    .gc-tools-insight-grid{align-items:start}
-    .gc-tools-best-list{display:grid;gap:8px}
-    .gc-tools-best-list__row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
-    .gc-tools-best-list__rank{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line2);color:var(--dim);font-weight:950}
-    .gc-tools-best-list__row strong{display:block;color:var(--text)}
-    .gc-tools-best-list__row small{display:block;color:var(--muted);margin-top:2px}
-    .gc-tools-best-list__time{color:var(--accent);font-weight:950;white-space:nowrap}
-    .gc-tools-table-wrap{max-height:560px;overflow:auto}
-    .gc-tools-table td:nth-child(5),.gc-tools-table td:nth-child(7){white-space:nowrap;font-variant-numeric:tabular-nums}
-    @media(max-width:1240px){.gc-tools-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-tools-summary-grid,.gc-tools-charts-grid{grid-template-columns:1fr}}
-    @media(max-width:720px){.gc-tools-toolbar,.gc-tools-racer-stats{grid-template-columns:1fr}.gc-tools-control-head{display:grid}.gc-tools-best-list__row{grid-template-columns:1fr}.gc-tools-best-list__time{white-space:normal}.gc-tools-racer-card{min-height:0}}
+    .gc-tools-v3{display:grid;gap:clamp(18px,2.4vw,30px);max-width:1480px;margin:0 auto}
+    .gc-tools-v3 *{box-sizing:border-box}
+    .gc-tools-v3 [hidden]{display:none!important}
+    .gc-tools-v3-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:clamp(18px,3vw,44px);align-items:end;border-bottom:1px solid var(--line);padding:clamp(20px,3vw,36px) 0 28px}
+    .gc-tools-v3-hero__copy h1{margin:.25rem 0 .75rem;font-size:clamp(3rem,7vw,6.6rem);line-height:.84;letter-spacing:-.08em;text-transform:uppercase;max-width:11ch}
+    .gc-tools-v3-hero__copy p{max-width:78ch;color:var(--soft);font-size:clamp(1rem,1.35vw,1.18rem);line-height:1.55;margin:0}
+    .gc-tools-v3-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+    .gc-tools-v3-tabs button{min-height:40px;border:1px solid var(--line2);background:rgba(255,255,255,.025);color:var(--text);padding:0 14px;text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:950;cursor:pointer}
+    .gc-tools-v3-tabs button:hover,.gc-tools-v3-tabs button.is-active{border-color:var(--accent);color:var(--accent);background:rgba(157,255,0,.08)}
+    .gc-tools-v3-status{border-top:3px solid var(--accent);border-bottom:1px solid var(--line2);background:linear-gradient(180deg,rgba(157,255,0,.08),rgba(255,255,255,.02));padding:18px;min-height:190px;display:grid;align-content:space-between}
+    .gc-tools-v3-status__top,.gc-tools-v3-status__rows div{display:flex;justify-content:space-between;gap:20px;align-items:center}
+    .gc-tools-v3-status__top span,.gc-tools-v3-status__rows span{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;font-weight:950}
+    .gc-tools-v3-status__top strong{color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+    .gc-tools-v3-status__rows{display:grid;gap:0;margin-top:16px}
+    .gc-tools-v3-status__rows div{border-top:1px solid var(--line);padding:13px 0;color:var(--soft)}
+    .gc-tools-v3-status__rows strong{font-size:1.04rem;color:var(--text);text-align:right}
+    .gc-tools-v3-panel,.gc-tools-v3-driver-card,.gc-tools-v3-delta-card,.gc-tools-v3-chart-card,.gc-tools-v3-diagnosis,.gc-tools-v3-best,.gc-tools-v3-table-card{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));border-top:2px solid var(--accent);border-bottom:1px solid var(--line2)}
+    .gc-tools-v3-panel{padding:20px}
+    .gc-tools-v3-panel__head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:18px}
+    .gc-tools-v3-panel__head h2,.gc-tools-v3-section-head h2{margin:.25rem 0 0;font-size:clamp(1.5rem,2.1vw,2.45rem);line-height:.98;letter-spacing:-.045em;text-transform:uppercase}
+    .gc-tools-v3-panel__head p,.gc-tools-v3-section-head p{margin:.35rem 0 0;color:var(--soft);font-size:1rem;line-height:1.4}
+    .gc-tools-v3-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-tools-v3-field{display:grid;gap:7px;min-width:0}
+    .gc-tools-v3-field--wide{grid-column:span 2}
+    .gc-tools-v3-field span{color:var(--dim);text-transform:uppercase;letter-spacing:.1em;font-size:.76rem;font-weight:950}
+    .gc-tools-v3-field .gc-select,.gc-tools-v3-field .gc-input{min-height:46px;width:100%;font-size:1rem;padding-inline:14px}
+    .gc-tools-v3-vs{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.86fr) minmax(0,1fr);gap:18px}
+    .gc-tools-v3-driver-card,.gc-tools-v3-delta-card{padding:20px;min-height:280px;display:grid;align-content:space-between;gap:18px}
+    .gc-tools-v3-driver-card h2,.gc-tools-v3-delta-card h2{margin:0;font-size:clamp(1.8rem,3.3vw,3.4rem);line-height:.92;letter-spacing:-.055em;text-transform:uppercase;word-break:break-word}
+    .gc-tools-v3-driver-card p,.gc-tools-v3-delta-card p{margin:0;color:var(--soft);font-size:1rem;line-height:1.45}
+    .gc-tools-v3-tag{display:block;color:var(--accent);text-transform:uppercase;letter-spacing:.13em;font-size:.76rem;font-weight:950}
+    .gc-tools-v3-delta-card{border-top-color:var(--accent2);text-align:center;background:linear-gradient(180deg,rgba(53,211,255,.06),rgba(255,255,255,.014))}
+    .gc-tools-v3-delta-card h2{color:var(--accent);font-size:clamp(2.1rem,3.8vw,4rem)}
+    .gc-tools-v3-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .gc-tools-v3-stat-grid div,.gc-tools-v3-delta-list div,.gc-tools-v3-diagnosis-grid div,.gc-tools-v3-best-row{border:1px solid var(--line);background:rgba(0,0,0,.15);padding:12px}
+    .gc-tools-v3-stat-grid span,.gc-tools-v3-delta-list span,.gc-tools-v3-diagnosis-grid span{display:block;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-size:.72rem;font-weight:950;margin-bottom:6px}
+    .gc-tools-v3-stat-grid strong,.gc-tools-v3-delta-list strong,.gc-tools-v3-diagnosis-grid strong{display:block;color:var(--text);font-size:1.08rem;line-height:1.12}
+    .gc-tools-v3-delta-list{display:grid;grid-template-columns:1fr;gap:8px;text-align:left}
+    .gc-tools-v3-chart-card,.gc-tools-v3-diagnosis,.gc-tools-v3-best,.gc-tools-v3-table-card{padding:20px;min-width:0}
+    .gc-tools-v3-section-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:14px}
+    .gc-tools-v3-section-head p{text-align:right;max-width:52ch;color:var(--muted)}
+    .gc-tools-v3-chart-card canvas{display:block;width:100%;height:330px;border:1px solid var(--line);background:rgba(0,0,0,.16)}
+    .gc-tools-v3-chart-card--main canvas{height:360px}
+    .gc-tools-v3-lower-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.72fr);gap:18px;align-items:start}
+    .gc-tools-v3-diagnosis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .gc-tools-v3-best-list{display:grid;gap:10px;max-height:420px;overflow:auto;padding-right:4px}
+    .gc-tools-v3-best-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+    .gc-tools-v3-best-rank{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line2);font-weight:950;color:var(--accent)}
+    .gc-tools-v3-best-main strong{display:block;color:var(--text);font-size:1rem;line-height:1.2}
+    .gc-tools-v3-best-main small{display:block;color:var(--muted);font-size:.84rem;line-height:1.35;margin-top:2px}
+    .gc-tools-v3-best-time{color:var(--accent);font-weight:950;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .gc-tools-v3-table-wrap{overflow:auto;border:1px solid var(--line);max-height:620px}
+    .gc-tools-v3-table{width:100%;border-collapse:collapse;min-width:1060px;background:rgba(0,0,0,.10)}
+    .gc-tools-v3-table th,.gc-tools-v3-table td{border-bottom:1px solid var(--line);padding:15px 14px;text-align:left;vertical-align:middle;font-size:.98rem;line-height:1.25}
+    .gc-tools-v3-table th{position:sticky;top:0;z-index:2;background:rgba(9,25,12,.96);color:var(--muted);text-transform:uppercase;letter-spacing:.11em;font-size:.72rem;font-weight:950}
+    .gc-tools-v3-table td:nth-child(6),.gc-tools-v3-table td:nth-child(7){font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:900}
+    .gc-tools-v3-state{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--accent);color:var(--accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:950;padding:7px 10px;white-space:nowrap}
+    .gc-tools-v3-state--bad{border-color:var(--warn);color:var(--warn)}
+    @media(max-width:1220px){.gc-tools-v3-hero,.gc-tools-v3-vs,.gc-tools-v3-lower-grid{grid-template-columns:1fr}.gc-tools-v3-form{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-tools-v3-field--wide{grid-column:span 2}.gc-tools-v3-section-head{align-items:start}.gc-tools-v3-section-head p{text-align:left}}
+    @media(max-width:760px){.gc-tools-v3{gap:18px}.gc-tools-v3-hero__copy h1{font-size:clamp(2.5rem,15vw,4.1rem)}.gc-tools-v3-panel,.gc-tools-v3-driver-card,.gc-tools-v3-delta-card,.gc-tools-v3-chart-card,.gc-tools-v3-diagnosis,.gc-tools-v3-best,.gc-tools-v3-table-card{padding:16px}.gc-tools-v3-panel__head,.gc-tools-v3-section-head{display:grid}.gc-tools-v3-form,.gc-tools-v3-stat-grid,.gc-tools-v3-diagnosis-grid{grid-template-columns:1fr}.gc-tools-v3-field--wide{grid-column:auto}.gc-tools-v3-best-row{grid-template-columns:auto 1fr}.gc-tools-v3-best-time{grid-column:2;white-space:normal}.gc-tools-v3-chart-card canvas,.gc-tools-v3-chart-card--main canvas{height:280px}.gc-tools-v3-table th,.gc-tools-v3-table td{padding:12px}}
   </style>
 
   <script is:inline>
     (() => {
       const $ = (id) => document.getElementById(id);
       const els = {
-        state: $('toolsDataState'), loadedLaps: $('toolsLoadedLaps'), loadedDrivers: $('toolsLoadedDrivers'), loadedCars: $('toolsLoadedCars'),
-        reload: $('toolsReload'), mode: $('toolsMode'), driverA: $('toolsDriverA'), driverB: $('toolsDriverB'), carA: $('toolsCarA'), carB: $('toolsCarB'), track: $('toolsTrack'), valid: $('toolsValid'), window: $('toolsWindow'), minLaps: $('toolsMinLaps'),
-        nameA: $('toolsNameA'), nameB: $('toolsNameB'), bestA: $('toolsBestA'), bestB: $('toolsBestB'), avgA: $('toolsAvgA'), avgB: $('toolsAvgB'), cleanA: $('toolsCleanA'), cleanB: $('toolsCleanB'),
-        deltaMain: $('toolsDeltaMain'), deltaText: $('toolsDeltaText'), winnerText: $('toolsWinnerText'), chartMeta: $('toolsChartMeta'), timelineMeta: $('toolsTimelineMeta'), insights: $('toolsInsights'), bestList: $('toolsBestList'), tableMeta: $('toolsTableMeta'), lapsTable: $('toolsLapsTable'),
-        barChart: $('toolsBarChart'), timelineChart: $('toolsTimelineChart')
+        state: $('toolsDataState'),
+        loaded: $('toolsLoadedLaps'),
+        sampleState: $('toolsSampleState'),
+        confidence: $('toolsConfidence'),
+        reload: $('toolsReload'),
+        mode: $('toolsMode'),
+        driverA: $('toolsDriverA'), driverB: $('toolsDriverB'),
+        carA: $('toolsCarA'), carB: $('toolsCarB'),
+        track: $('toolsTrack'), valid: $('toolsValid'), window: $('toolsWindow'), topN: $('toolsTopN'),
+        nameA: $('toolsNameA'), nameB: $('toolsNameB'), subA: $('toolsSubA'), subB: $('toolsSubB'),
+        bestA: $('toolsBestA'), bestB: $('toolsBestB'), paceA: $('toolsPaceA'), paceB: $('toolsPaceB'),
+        consistencyA: $('toolsConsistencyA'), consistencyB: $('toolsConsistencyB'), cleanA: $('toolsCleanA'), cleanB: $('toolsCleanB'),
+        verdict: $('toolsVerdict'), verdictText: $('toolsVerdictText'), deltaBest: $('toolsDeltaBest'), deltaPace: $('toolsDeltaPace'), deltaStability: $('toolsDeltaStability'),
+        rhythmChart: $('toolsRhythmChart'), deltaChart: $('toolsDeltaChart'),
+        diagnostics: $('toolsDiagnostics'), bestList: $('toolsBestList'), tableMeta: $('toolsTableMeta'), table: $('toolsLapsTable')
       };
 
       let allLaps = [];
-      let booted = false;
 
-      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
-        return String(path).split('.').reduce((acc, part) => acc === undefined || acc === null ? undefined : acc[part], source);
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
       };
       const firstValue = (row, paths) => {
         for (const path of paths) {
@@ -240,39 +312,42 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
         return '';
       };
-      const cleanObjectText = (value, fallback = '-') => {
+      const textValue = (value, fallback = '-') => {
         if (value === undefined || value === null || value === '') return fallback;
-        if (Array.isArray(value)) return value.length ? cleanObjectText(value[0], fallback) : fallback;
+        if (Array.isArray(value)) return value.length ? textValue(value[0], fallback) : fallback;
         if (typeof value === 'object') {
-          return String(value.displayName ?? value.visibleName ?? value.cleanName ?? value.uiName ?? value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ?? value.label ?? value.code ?? fallback).trim() || fallback;
+          return String(value.displayName ?? value.visibleName ?? value.cleanName ?? value.display_name ?? value.uiName ?? value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ?? value.label ?? value.code ?? fallback).trim() || fallback;
         }
-        return String(value).trim() || fallback;
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
       };
-      const driverName = (row) => cleanObjectText(firstValue(row, ['driver.displayName','driver.visibleName','driver.cleanName','driver.uiName','driver.name','driver.Name','driverName','playerName','pilotName','name','Name','driver','player']), 'Piloto');
-      const carName = (row) => cleanObjectText(firstValue(row, ['car.displayName','car.visibleName','car.cleanName','car.uiName','car.uiCarName','car.name','car.Name','carName','uiCarName','Car','car']), 'Coche');
-      const trackName = (row) => cleanObjectText(firstValue(row, ['track.displayName','track.visibleName','track.cleanName','track.uiName','track.uiTrackName','track.name','track.Name','trackName','uiTrackName','Track','track']), 'Circuito');
-      const playerId = (row) => firstValue(row, ['playerId','driverId','PlayerId','driver.id','driver.playerId']);
+      const displayFrom = (row, paths, fallback) => textValue(firstValue(row, paths), fallback);
+      const driverName = (row) => displayFrom(row, ['driverDisplayName','driverVisibleName','displayName','driverName','playerName','pilotName','name','Name','driver.displayName','driver.visibleName','driver.name','player.displayName','player.name','driver','player'], 'Piloto');
+      const carName = (row) => displayFrom(row, ['carDisplayName','carVisibleName','displayCarName','carName','uiCarName','car.displayName','car.visibleName','car.cleanName','car.uiName','car.uiCarName','car.name','Car','car'], 'Coche');
+      const trackName = (row) => displayFrom(row, ['trackDisplayName','trackVisibleName','displayTrackName','trackName','uiTrackName','track.displayName','track.visibleName','track.cleanName','track.uiName','track.uiTrackName','track.name','Track','track'], 'Circuito');
       const isInvalid = (row) => {
         const value = firstValue(row, ['valid','Valid','isValid']);
         return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
       };
-      const validLabel = (row) => isInvalid(row) ? 'No válida' : 'Válida';
       const lapMs = (row) => {
-        const raw = firstValue(row, ['lapTimeMs','LapTime','timeMs']);
-        const direct = Number(raw);
+        const direct = Number(firstValue(row, ['lapTimeMs','LapTime','timeMs','lap_time_ms']));
         if (Number.isFinite(direct) && direct > 0) return direct;
-        const text = String(firstValue(row, ['lapTimeFormatted','lapTimeText','lapTime','timeFormatted']) || '');
+        const text = String(firstValue(row, ['lapTimeFormatted','lapTimeText','lapTime','timeFormatted','time']) || '');
         const match = text.match(/(?:(\d+):)?(\d{1,2})[\.:](\d{3})/);
         if (!match) return null;
         return (Number(match[1] || 0) * 60000) + (Number(match[2]) * 1000) + Number(match[3]);
       };
-      const lapTimeText = (rowOrMs) => {
-        const ms = typeof rowOrMs === 'number' ? rowOrMs : lapMs(rowOrMs);
+      const lapTimeText = (value) => {
+        const ms = typeof value === 'number' ? value : lapMs(value);
         if (!Number.isFinite(ms) || ms <= 0) return '--';
         const m = Math.floor(ms / 60000);
         const s = Math.floor((ms % 60000) / 1000);
         const x = String(Math.floor(ms % 1000)).padStart(3, '0');
         return `${m}:${String(s).padStart(2, '0')}.${x}`;
+      };
+      const secText = (ms, signed = true) => {
+        if (!Number.isFinite(ms)) return '--';
+        const sign = ms > 0 ? '+' : ms < 0 ? '-' : signed ? '+' : '';
+        return `${sign}${(Math.abs(ms) / 1000).toFixed(3)}s`;
       };
       const dateMs = (row) => {
         const raw = firstValue(row, ['timestampIso','dateIso','createdAt','updatedAt','timestamp','Timestamp','session.endTimeIso','session.startTimeIso']);
@@ -286,67 +361,71 @@ import AppLayout from '../layouts/AppLayout.astro';
         if (!ms) return '--';
         return new Date(ms).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
       };
-      const maxSpeed = (row) => Number(firstValue(row, ['maxSpeedKmh','MaxSpeed_KMH','maxSpeed'])) || 0;
-      const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
-      const fmtNum = (value) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('es-ES') : '--';
-      const fmtPct = (value) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : '--';
-      const mean = (values) => values.length ? values.reduce((a,b)=>a+b,0)/values.length : null;
-      const uniq = (arr) => [...new Set(arr.filter(Boolean))];
-      const sortByName = (arr) => [...arr].sort((a,b)=>String(a).localeCompare(String(b), 'es'));
+      const mean = (values) => values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+      const std = (values) => {
+        if (values.length < 2) return 0;
+        const avg = mean(values);
+        return Math.sqrt(mean(values.map((value) => Math.pow(value - avg, 2))));
+      };
+      const unique = (arr) => [...new Set(arr.filter(Boolean))];
+      const sortNames = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), 'es'));
       const setOptions = (select, values, allLabel = null) => {
-        const current = select.value;
-        const options = [];
-        if (allLabel) options.push(`<option value="">${escapeHtml(allLabel)}</option>`);
-        options.push(...values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`));
-        select.innerHTML = options.join('');
-        if ([...select.options].some((option) => option.value === current)) select.value = current;
+        const old = select.value;
+        const html = [];
+        if (allLabel) html.push(`<option value="">${escapeHtml(allLabel)}</option>`);
+        html.push(...values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`));
+        select.innerHTML = html.join('');
+        if ([...select.options].some((option) => option.value === old)) select.value = old;
       };
 
-      function baseFilter(laps) {
+      function baseFilter() {
         const selectedTrack = els.track.value;
         const validMode = els.valid.value;
         const days = Number(els.window.value);
         const minDate = Number.isFinite(days) && days > 0 ? Date.now() - days * 86400000 : 0;
-        return laps.filter((lap) => {
+        return allLaps.filter((lap) => {
+          if (!Number.isFinite(lapMs(lap))) return false;
           if (selectedTrack && trackName(lap) !== selectedTrack) return false;
           if (validMode === 'valid' && isInvalid(lap)) return false;
           if (validMode === 'invalid' && !isInvalid(lap)) return false;
-          if (minDate && dateMs(lap) && dateMs(lap) < minDate) return false;
-          return Number.isFinite(lapMs(lap));
+          const lapDate = dateMs(lap);
+          if (minDate && lapDate && lapDate < minDate) return false;
+          return true;
         });
       }
 
-      function makeStats(name, laps) {
-        const times = laps.map(lapMs).filter((value) => Number.isFinite(value) && value > 0).sort((a,b)=>a-b);
+      function makeStats(name, laps, topN) {
         const validCount = laps.filter((lap) => !isInvalid(lap)).length;
+        const sorted = laps
+          .map((lap) => ({ lap, time: lapMs(lap) }))
+          .filter((item) => Number.isFinite(item.time) && item.time > 0)
+          .sort((a, b) => a.time - b.time);
+        const top = sorted.slice(0, topN);
+        const times = top.map((item) => item.time);
         const clean = laps.length ? (validCount / laps.length) * 100 : null;
-        const speeds = laps.map(maxSpeed).filter((value) => value > 0);
         return {
           name,
           laps,
+          sorted,
+          top,
+          sample: top.length,
           total: laps.length,
-          valid: validCount,
-          best: times[0] ?? null,
-          avg5: mean(times.slice(0, 5)),
-          avg10: mean(times.slice(0, 10)),
+          best: sorted[0]?.time ?? null,
+          pace: mean(times),
+          spread: std(times),
           clean,
-          vmax: speeds.length ? Math.max(...speeds) : null,
-          last: laps.reduce((max, lap) => Math.max(max, dateMs(lap)), 0),
-          cars: uniq(laps.map(carName)).length,
-          tracks: uniq(laps.map(trackName)).length
+          cars: unique(laps.map(carName)),
+          tracks: unique(laps.map(trackName))
         };
       }
 
-      function autoPick(valuesByLaps, index) {
-        return valuesByLaps[index]?.name || valuesByLaps[0]?.name || '';
-      }
-
       function refreshSelects() {
-        const drivers = sortByName(uniq(allLaps.map(driverName)));
-        const cars = sortByName(uniq(allLaps.map(carName)));
-        const tracks = sortByName(uniq(allLaps.map(trackName)));
-        const driverActivity = drivers.map((name) => ({ name, laps: allLaps.filter((lap) => driverName(lap) === name).length })).sort((a,b)=>b.laps-a.laps);
-        const carActivity = cars.map((name) => ({ name, laps: allLaps.filter((lap) => carName(lap) === name).length })).sort((a,b)=>b.laps-a.laps);
+        const drivers = sortNames(unique(allLaps.map(driverName)));
+        const cars = sortNames(unique(allLaps.map(carName)));
+        const tracks = sortNames(unique(allLaps.map(trackName)));
+        const byActivity = (values, getter) => values
+          .map((name) => ({ name, count: allLaps.filter((lap) => getter(lap) === name).length }))
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es'));
 
         setOptions(els.driverA, drivers);
         setOptions(els.driverB, drivers);
@@ -354,244 +433,361 @@ import AppLayout from '../layouts/AppLayout.astro';
         setOptions(els.carB, cars);
         setOptions(els.track, tracks, 'Todos los circuitos');
 
-        if (!els.driverA.value) els.driverA.value = autoPick(driverActivity, 0);
-        if (!els.driverB.value) els.driverB.value = autoPick(driverActivity, 1);
-        if (!els.carA.value) els.carA.value = autoPick(carActivity, 0);
-        if (!els.carB.value) els.carB.value = autoPick(carActivity, 1);
-      }
-
-      function getGroups() {
-        const mode = els.mode.value;
-        const source = baseFilter(allLaps);
-        let a = [];
-        let b = [];
-        let nameA = '';
-        let nameB = '';
-        if (mode === 'car') {
-          nameA = els.carA.value;
-          nameB = els.carB.value;
-          a = source.filter((lap) => carName(lap) === nameA);
-          b = source.filter((lap) => carName(lap) === nameB);
-        } else if (mode === 'package') {
-          nameA = `${els.driverA.value || 'Piloto A'} · ${els.carA.value || 'Coche A'}`;
-          nameB = `${els.driverB.value || 'Piloto B'} · ${els.carB.value || 'Coche B'}`;
-          a = source.filter((lap) => driverName(lap) === els.driverA.value && carName(lap) === els.carA.value);
-          b = source.filter((lap) => driverName(lap) === els.driverB.value && carName(lap) === els.carB.value);
-        } else {
-          nameA = els.driverA.value;
-          nameB = els.driverB.value;
-          a = source.filter((lap) => driverName(lap) === nameA);
-          b = source.filter((lap) => driverName(lap) === nameB);
-        }
-        return [makeStats(nameA || 'Referencia A', a), makeStats(nameB || 'Referencia B', b), source];
+        const driverActivity = byActivity(drivers, driverName);
+        const carActivity = byActivity(cars, carName);
+        if (!els.driverA.value) els.driverA.value = driverActivity[0]?.name || '';
+        if (!els.driverB.value || els.driverB.value === els.driverA.value) els.driverB.value = driverActivity[1]?.name || driverActivity[0]?.name || '';
+        if (!els.carA.value) els.carA.value = carActivity[0]?.name || '';
+        if (!els.carB.value || els.carB.value === els.carA.value) els.carB.value = carActivity[1]?.name || carActivity[0]?.name || '';
       }
 
       function updateVisibility() {
         const mode = els.mode.value;
-        document.querySelectorAll('.gc-tools-driver-field').forEach((field) => { field.hidden = mode === 'car'; });
-        document.querySelectorAll('.gc-tools-car-field').forEach((field) => { field.hidden = mode === 'driver'; });
+        document.querySelectorAll('.gc-tools-field--driver').forEach((field) => { field.hidden = mode === 'car'; });
+        document.querySelectorAll('.gc-tools-field--car').forEach((field) => { field.hidden = mode === 'driver'; });
       }
 
-      function drawText(ctx, text, x, y, opts = {}) {
-        ctx.fillStyle = opts.color || '#f4fff1';
-        ctx.font = opts.font || '14px system-ui';
-        ctx.textAlign = opts.align || 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(text), x, y);
+      function ensureDistinctSelection() {
+        const mode = els.mode.value;
+        if (mode === 'driver' && els.driverA.value === els.driverB.value) {
+          const options = [...els.driverB.options].map((option) => option.value).filter(Boolean);
+          els.driverB.value = options.find((value) => value !== els.driverA.value) || els.driverB.value;
+        }
+        if (mode === 'car' && els.carA.value === els.carB.value) {
+          const options = [...els.carB.options].map((option) => option.value).filter(Boolean);
+          els.carB.value = options.find((value) => value !== els.carA.value) || els.carB.value;
+        }
       }
 
-      function clearCanvas(canvas) {
+      function getGroups() {
+        const topN = Math.min(15, Math.max(3, Number(els.topN.value) || 8));
+        els.topN.value = String(topN);
+        const source = baseFilter();
+        const mode = els.mode.value;
+        let nameA = 'Referencia A';
+        let nameB = 'Referencia B';
+        let groupA = [];
+        let groupB = [];
+
+        if (mode === 'car') {
+          nameA = els.carA.value || 'Coche A';
+          nameB = els.carB.value || 'Coche B';
+          groupA = source.filter((lap) => carName(lap) === els.carA.value);
+          groupB = source.filter((lap) => carName(lap) === els.carB.value);
+        } else if (mode === 'package') {
+          nameA = `${els.driverA.value || 'Piloto A'} · ${els.carA.value || 'Coche A'}`;
+          nameB = `${els.driverB.value || 'Piloto B'} · ${els.carB.value || 'Coche B'}`;
+          groupA = source.filter((lap) => driverName(lap) === els.driverA.value && carName(lap) === els.carA.value);
+          groupB = source.filter((lap) => driverName(lap) === els.driverB.value && carName(lap) === els.carB.value);
+        } else {
+          nameA = els.driverA.value || 'Piloto A';
+          nameB = els.driverB.value || 'Piloto B';
+          groupA = source.filter((lap) => driverName(lap) === els.driverA.value);
+          groupB = source.filter((lap) => driverName(lap) === els.driverB.value);
+        }
+        return { a: makeStats(nameA, groupA, topN), b: makeStats(nameB, groupB, topN), source, topN, mode };
+      }
+
+      function confidenceLabel(a, b, topN) {
+        const sample = Math.min(a.sample, b.sample);
+        if (sample >= Math.min(topN, 8)) return 'Alta';
+        if (sample >= 4) return 'Media';
+        if (sample >= 2) return 'Baja';
+        return 'Sin muestra';
+      }
+
+      function fillSummary(a, b, topN, source) {
+        els.nameA.textContent = a.name;
+        els.nameB.textContent = b.name;
+        els.subA.textContent = `${a.sample}/${topN} vueltas usadas · ${a.total} filtradas`;
+        els.subB.textContent = `${b.sample}/${topN} vueltas usadas · ${b.total} filtradas`;
+        els.bestA.textContent = lapTimeText(a.best);
+        els.bestB.textContent = lapTimeText(b.best);
+        els.paceA.textContent = lapTimeText(a.pace);
+        els.paceB.textContent = lapTimeText(b.pace);
+        els.consistencyA.textContent = Number.isFinite(a.spread) ? secText(a.spread, false) : '--';
+        els.consistencyB.textContent = Number.isFinite(b.spread) ? secText(b.spread, false) : '--';
+        els.cleanA.textContent = Number.isFinite(a.clean) ? `${a.clean.toFixed(1)}%` : '--';
+        els.cleanB.textContent = Number.isFinite(b.clean) ? `${b.clean.toFixed(1)}%` : '--';
+
+        const deltaBest = Number.isFinite(a.best) && Number.isFinite(b.best) ? b.best - a.best : null;
+        const deltaPace = Number.isFinite(a.pace) && Number.isFinite(b.pace) ? b.pace - a.pace : null;
+        const deltaStability = Number.isFinite(a.spread) && Number.isFinite(b.spread) ? b.spread - a.spread : null;
+        els.deltaBest.textContent = Number.isFinite(deltaBest) ? secText(deltaBest) : '--';
+        els.deltaPace.textContent = Number.isFinite(deltaPace) ? secText(deltaPace) : '--';
+        els.deltaStability.textContent = Number.isFinite(deltaStability) ? secText(deltaStability) : '--';
+
+        const sample = Math.min(a.sample, b.sample);
+        els.sampleState.textContent = `${a.sample}/${topN} vs ${b.sample}/${topN}`;
+        els.confidence.textContent = confidenceLabel(a, b, topN);
+        if (sample < 2) {
+          els.verdict.textContent = 'Faltan vueltas';
+          els.verdictText.textContent = 'El filtro actual no tiene muestra suficiente para leer ritmo repetible.';
+        } else if (a.name === b.name) {
+          els.verdict.textContent = 'Misma referencia';
+          els.verdictText.textContent = 'Selecciona dos referencias distintas para que el delta tenga sentido.';
+        } else if (Math.abs(deltaPace || 0) < 250) {
+          els.verdict.textContent = 'Muy igualado';
+          els.verdictText.textContent = `Ritmo medio separado por solo ${secText(deltaPace || 0)} en el top ${sample}.`;
+        } else if ((deltaPace || 0) > 0) {
+          els.verdict.textContent = 'A sostiene mejor';
+          els.verdictText.textContent = `${a.name} tiene mejor ritmo repetible por ${secText(deltaPace)}.`;
+        } else {
+          els.verdict.textContent = 'B sostiene mejor';
+          els.verdictText.textContent = `${b.name} tiene mejor ritmo repetible por ${secText(-(deltaPace || 0))}.`;
+        }
+        els.tableMeta.textContent = `${a.sample + b.sample} vueltas usadas · ${source.length} vueltas filtradas.`;
+      }
+
+      function canvasSetup(canvas, fallbackHeight) {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(320, rect.width || canvas.clientWidth || 720);
+        const height = fallbackHeight;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgba(0,0,0,.12)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        return ctx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = 'rgba(0,0,0,.10)';
+        ctx.fillRect(0, 0, width, height);
+        return { ctx, width, height };
       }
 
-      function drawBarChart(a, b) {
-        const canvas = els.barChart;
-        const ctx = clearCanvas(canvas);
-        const metrics = [
-          { label:'Mejor vuelta', a:a.best, b:b.best, format:lapTimeText, lower:true },
-          { label:'Media top 5', a:a.avg5, b:b.avg5, format:lapTimeText, lower:true },
-          { label:'Vueltas', a:a.total, b:b.total, format:fmtNum },
-          { label:'Limpieza', a:a.clean, b:b.clean, format:fmtPct },
-          { label:'Vmax', a:a.vmax, b:b.vmax, format:fmtSpeed }
-        ];
-        const xLabel = 24;
-        const xBar = 190;
-        const width = canvas.width - xBar - 36;
-        const rowH = 72;
-        drawText(ctx, 'A', xBar, 30, { color:'#9dff00', font:'bold 16px system-ui' });
-        drawText(ctx, 'B', xBar + 64, 30, { color:'#35d3ff', font:'bold 16px system-ui' });
-        metrics.forEach((metric, index) => {
-          const y = 70 + index * rowH;
-          const values = [metric.a, metric.b].filter((v) => Number.isFinite(Number(v)) && Number(v) > 0).map(Number);
-          const max = values.length ? Math.max(...values) : 1;
-          const min = values.length ? Math.min(...values) : 0;
-          const score = (v) => {
-            if (!Number.isFinite(Number(v)) || Number(v) <= 0) return 0;
-            if (metric.lower) return max ? (max - Number(v) + (max - min || 1)) / (max || 1) : 0;
-            return max ? Number(v) / max : 0;
-          };
-          const aw = Math.max(4, Math.min(width, width * score(metric.a)));
-          const bw = Math.max(4, Math.min(width, width * score(metric.b)));
-          ctx.strokeStyle = 'rgba(255,255,255,.1)';
-          ctx.beginPath(); ctx.moveTo(20, y + 36); ctx.lineTo(canvas.width - 20, y + 36); ctx.stroke();
-          drawText(ctx, metric.label, xLabel, y, { color:'rgba(244,255,241,.7)', font:'bold 13px system-ui' });
-          ctx.fillStyle = 'rgba(157,255,0,.82)'; ctx.fillRect(xBar, y - 14, aw, 18);
-          ctx.fillStyle = 'rgba(53,211,255,.82)'; ctx.fillRect(xBar, y + 10, bw, 18);
-          drawText(ctx, metric.format(metric.a), xBar + aw + 10, y - 5, { font:'bold 14px system-ui' });
-          drawText(ctx, metric.format(metric.b), xBar + bw + 10, y + 19, { font:'bold 14px system-ui' });
+      function drawEmpty(ctx, width, height, text) {
+        ctx.fillStyle = 'rgba(244,255,241,.72)';
+        ctx.font = '800 18px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, width / 2, height / 2);
+      }
+
+      function drawRhythmChart(a, b) {
+        const { ctx, width, height } = canvasSetup(els.rhythmChart, els.rhythmChart.clientHeight || 360);
+        const sample = Math.min(a.sample, b.sample);
+        if (sample < 2) return drawEmpty(ctx, width, height, 'Sin muestra suficiente para dibujar ritmo repetible');
+        const topsA = a.top.slice(0, sample).map((item) => item.time);
+        const topsB = b.top.slice(0, sample).map((item) => item.time);
+        const base = Math.min(...topsA, ...topsB);
+        const deltas = [...topsA, ...topsB].map((value) => value - base);
+        const maxDelta = Math.max(1000, Math.max(...deltas));
+        const pad = { left: 70, right: 28, top: 34, bottom: 48 };
+        const plotW = width - pad.left - pad.right;
+        const plotH = height - pad.top - pad.bottom;
+
+        ctx.strokeStyle = 'rgba(255,255,255,.12)';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(244,255,241,.55)';
+        ctx.font = '700 12px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+          const y = pad.top + (plotH / 4) * i;
+          const value = (maxDelta / 4) * i;
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(width - pad.right, y);
+          ctx.stroke();
+          ctx.fillText(secText(value, true), pad.left - 10, y + 4);
+        }
+
+        const point = (value, index) => ({
+          x: pad.left + (sample === 1 ? plotW / 2 : (plotW * index) / (sample - 1)),
+          y: pad.top + ((value - base) / maxDelta) * plotH
+        });
+        const drawSeries = (values, color, label) => {
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          values.forEach((value, index) => {
+            const p = point(value, index);
+            if (index === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          });
+          ctx.stroke();
+          values.forEach((value, index) => {
+            const p = point(value, index);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            if (index === 0) {
+              ctx.font = '900 13px system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(label, p.x, Math.max(14, p.y - 14));
+            }
+          });
+        };
+        drawSeries(topsA, '#9dff00', 'A');
+        drawSeries(topsB, '#35d3ff', 'B');
+
+        ctx.fillStyle = 'rgba(244,255,241,.55)';
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < sample; i++) {
+          const x = pad.left + (sample === 1 ? plotW / 2 : (plotW * i) / (sample - 1));
+          ctx.fillText(String(i + 1), x, height - 18);
+        }
+      }
+
+      function drawDeltaChart(a, b) {
+        const { ctx, width, height } = canvasSetup(els.deltaChart, els.deltaChart.clientHeight || 330);
+        const sample = Math.min(a.sample, b.sample);
+        if (sample < 2) return drawEmpty(ctx, width, height, 'Sin muestra suficiente para calcular delta');
+        const deltas = Array.from({ length: sample }, (_, index) => b.top[index].time - a.top[index].time);
+        const absMax = Math.max(100, ...deltas.map((value) => Math.abs(value)));
+        const pad = { left: 62, right: 62, top: 30, bottom: 38 };
+        const plotW = width - pad.left - pad.right;
+        const rowH = (height - pad.top - pad.bottom) / sample;
+        const center = pad.left + plotW / 2;
+
+        ctx.strokeStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        ctx.moveTo(center, pad.top - 8);
+        ctx.lineTo(center, height - pad.bottom + 8);
+        ctx.stroke();
+
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillStyle = '#9dff00';
+        ctx.textAlign = 'left';
+        ctx.fillText('A gana', pad.left, 18);
+        ctx.fillStyle = '#35d3ff';
+        ctx.textAlign = 'right';
+        ctx.fillText('B gana', width - pad.right, 18);
+
+        deltas.forEach((delta, index) => {
+          const y = pad.top + rowH * index + rowH / 2;
+          const barMax = plotW / 2 - 20;
+          const barW = Math.max(2, Math.abs(delta) / absMax * barMax);
+          ctx.strokeStyle = 'rgba(255,255,255,.08)';
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y + rowH / 2 - 2);
+          ctx.lineTo(width - pad.right, y + rowH / 2 - 2);
+          ctx.stroke();
+          ctx.fillStyle = delta >= 0 ? 'rgba(157,255,0,.82)' : 'rgba(53,211,255,.82)';
+          const x = delta >= 0 ? center : center - barW;
+          ctx.fillRect(x, y - 9, barW, 18);
+          ctx.fillStyle = 'rgba(244,255,241,.72)';
+          ctx.font = '800 12px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(index + 1), pad.left - 24, y + 4);
+          ctx.textAlign = delta >= 0 ? 'left' : 'right';
+          ctx.fillText(secText(delta), delta >= 0 ? center + barW + 8 : center - barW - 8, y + 4);
         });
       }
 
-      function drawTimeline(a, b) {
-        const canvas = els.timelineChart;
-        const ctx = clearCanvas(canvas);
-        const lapsA = a.laps.filter((lap) => Number.isFinite(lapMs(lap))).sort((x,y)=>dateMs(x)-dateMs(y)).slice(-70);
-        const lapsB = b.laps.filter((lap) => Number.isFinite(lapMs(lap))).sort((x,y)=>dateMs(x)-dateMs(y)).slice(-70);
-        const all = [...lapsA, ...lapsB];
-        if (!all.length) {
-          drawText(ctx, 'Sin vueltas para dibujar con este filtro', canvas.width / 2, canvas.height / 2, { align:'center', color:'rgba(244,255,241,.72)', font:'bold 18px system-ui' });
-          return;
-        }
-        const times = all.map(lapMs).filter(Number.isFinite);
-        const min = Math.min(...times);
-        const max = Math.max(...times);
-        const pad = 48;
-        const plotW = canvas.width - pad * 2;
-        const plotH = canvas.height - pad * 2;
-        ctx.strokeStyle = 'rgba(255,255,255,.12)';
-        for (let i = 0; i <= 4; i++) {
-          const y = pad + (plotH / 4) * i;
-          ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(canvas.width - pad, y); ctx.stroke();
-          const value = min + ((max - min || 1) / 4) * i;
-          drawText(ctx, lapTimeText(value), 12, y, { color:'rgba(244,255,241,.55)', font:'12px system-ui' });
-        }
-        const drawSeries = (laps, color) => {
-          if (!laps.length) return;
-          ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
-          ctx.beginPath();
-          laps.forEach((lap, i) => {
-            const x = pad + (laps.length === 1 ? plotW/2 : (plotW * i / (laps.length - 1)));
-            const t = lapMs(lap);
-            const y = pad + plotH - ((t - min) / (max - min || 1)) * plotH;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          });
-          ctx.stroke();
-          laps.forEach((lap, i) => {
-            const x = pad + (laps.length === 1 ? plotW/2 : (plotW * i / (laps.length - 1)));
-            const t = lapMs(lap);
-            const y = pad + plotH - ((t - min) / (max - min || 1)) * plotH;
-            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-          });
-        };
-        drawSeries(lapsA, 'rgba(157,255,0,.9)');
-        drawSeries(lapsB, 'rgba(53,211,255,.9)');
-        drawText(ctx, a.name, pad, 24, { color:'rgba(157,255,0,.95)', font:'bold 14px system-ui' });
-        drawText(ctx, b.name, pad + 230, 24, { color:'rgba(53,211,255,.95)', font:'bold 14px system-ui' });
+      function renderDiagnostics(a, b, topN, source) {
+        const deltaPace = Number.isFinite(a.pace) && Number.isFinite(b.pace) ? b.pace - a.pace : null;
+        const deltaBest = Number.isFinite(a.best) && Number.isFinite(b.best) ? b.best - a.best : null;
+        const stable = Number.isFinite(a.spread) && Number.isFinite(b.spread) ? (a.spread <= b.spread ? `A, menor dispersión (${secText(a.spread, false)})` : `B, menor dispersión (${secText(b.spread, false)})`) : '--';
+        const paceWinner = Number.isFinite(deltaPace) ? (Math.abs(deltaPace) < 250 ? `Empate técnico (${secText(deltaPace)})` : deltaPace > 0 ? `A por ${secText(deltaPace)}` : `B por ${secText(-deltaPace)}`) : '--';
+        const bestWinner = Number.isFinite(deltaBest) ? (Math.abs(deltaBest) < 50 ? `Empate técnico (${secText(deltaBest)})` : deltaBest > 0 ? `A por ${secText(deltaBest)}` : `B por ${secText(-deltaBest)}`) : '--';
+        const reading = Number.isFinite(deltaPace) && Number.isFinite(deltaBest)
+          ? (Math.sign(deltaPace) === Math.sign(deltaBest) || Math.abs(deltaPace) < 250 ? 'El récord y el ritmo cuentan una historia parecida.' : 'Ojo: el récord y el ritmo no apuntan al mismo lado.')
+          : 'Faltan datos para una lectura completa.';
+        els.diagnostics.innerHTML = [
+          ['Ritmo repetible', paceWinner],
+          ['Vuelta récord', bestWinner],
+          ['Consistencia', stable],
+          ['Muestra', `${a.sample} A · ${b.sample} B · ${source.length} filtradas`],
+          ['Confianza', confidenceLabel(a, b, topN)],
+          ['Lectura', reading]
+        ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
       }
 
-      function render() {
-        updateVisibility();
-        const [a, b, source] = getGroups();
-        const minLaps = Math.max(1, Number(els.minLaps.value) || 1);
-        const enoughA = a.total >= minLaps;
-        const enoughB = b.total >= minLaps;
-        els.nameA.textContent = a.name;
-        els.nameB.textContent = b.name;
-        els.bestA.textContent = lapTimeText(a.best);
-        els.bestB.textContent = lapTimeText(b.best);
-        els.avgA.textContent = lapTimeText(a.avg5);
-        els.avgB.textContent = lapTimeText(b.avg5);
-        els.cleanA.textContent = fmtPct(a.clean);
-        els.cleanB.textContent = fmtPct(b.clean);
-        const delta = Number.isFinite(a.best) && Number.isFinite(b.best) ? b.best - a.best : null;
-        if (Number.isFinite(delta)) {
-          const leader = delta === 0 ? 'Empate técnico' : delta > 0 ? `${a.name} va por delante` : `${b.name} va por delante`;
-          els.deltaMain.textContent = `${delta > 0 ? '+' : delta < 0 ? '-' : ''}${lapTimeText(Math.abs(delta)).replace(/^0:/, '')}`;
-          els.deltaText.textContent = `Diferencia calculada sobre la mejor vuelta del filtro actual.`;
-          els.winnerText.textContent = leader;
-        } else {
-          els.deltaMain.textContent = '--';
-          els.deltaText.textContent = 'No hay suficientes vueltas para calcular un delta fiable.';
-          els.winnerText.textContent = 'Sin comparación';
-        }
-        if (!enoughA || !enoughB) {
-          els.winnerText.textContent = `Aviso: mínimo configurado ${minLaps} vuelta${minLaps === 1 ? '' : 's'}`;
-        }
-        els.chartMeta.textContent = `${source.length} vueltas disponibles tras filtros. ${a.total} en A y ${b.total} en B.`;
-        els.timelineMeta.textContent = `Últimas vueltas cronológicas: ${a.name} contra ${b.name}.`;
-        els.insights.innerHTML = `
-          <div><span>Filtro circuito</span><strong>${escapeHtml(els.track.value || 'Todos')}</strong></div>
-          <div><span>Vueltas usadas</span><strong>${escapeHtml(fmtNum(source.length))}</strong></div>
-          <div><span>${escapeHtml(a.name)}</span><strong>${escapeHtml(fmtNum(a.total))} vueltas · ${escapeHtml(a.tracks)} circuitos</strong></div>
-          <div><span>${escapeHtml(b.name)}</span><strong>${escapeHtml(fmtNum(b.total))} vueltas · ${escapeHtml(b.tracks)} circuitos</strong></div>
-          <div><span>Vmax A</span><strong>${escapeHtml(fmtSpeed(a.vmax))}</strong></div>
-          <div><span>Vmax B</span><strong>${escapeHtml(fmtSpeed(b.vmax))}</strong></div>
-        `;
-        const merged = [
-          ...a.laps.map((lap) => ({ lap, group:'A', groupName:a.name })),
-          ...b.laps.map((lap) => ({ lap, group:'B', groupName:b.name }))
-        ].filter((entry) => Number.isFinite(lapMs(entry.lap))).sort((x,y)=>lapMs(x.lap)-lapMs(y.lap));
-        els.bestList.innerHTML = merged.slice(0, 8).map((entry, index) => `
-          <div class="gc-tools-best-list__row">
-            <span class="gc-tools-best-list__rank">${index + 1}</span>
-            <span><strong>${escapeHtml(driverName(entry.lap))}</strong><small>${escapeHtml(carName(entry.lap))} · ${escapeHtml(trackName(entry.lap))} · ${escapeHtml(entry.groupName)}</small></span>
-            <span class="gc-tools-best-list__time">${escapeHtml(lapTimeText(entry.lap))}</span>
+      function renderBestList(a, b) {
+        const rows = [
+          ...a.top.map((item, index) => ({ group: 'A', index: index + 1, lap: item.lap, time: item.time })),
+          ...b.top.map((item, index) => ({ group: 'B', index: index + 1, lap: item.lap, time: item.time }))
+        ].sort((x, y) => x.time - y.time).slice(0, 12);
+        els.bestList.innerHTML = rows.map((row, index) => `
+          <div class="gc-tools-v3-best-row">
+            <div class="gc-tools-v3-best-rank">${index + 1}</div>
+            <div class="gc-tools-v3-best-main">
+              <strong>${escapeHtml(row.group)} · ${escapeHtml(driverName(row.lap))}</strong>
+              <small>${escapeHtml(carName(row.lap))} · ${escapeHtml(trackName(row.lap))} · muestra ${row.index}</small>
+            </div>
+            <div class="gc-tools-v3-best-time">${escapeHtml(lapTimeText(row.time))}</div>
           </div>
-        `).join('') || '<div class="gc-empty">Sin vueltas con este filtro.</div>';
-        els.tableMeta.textContent = `${merged.length} vueltas en la comparativa actual.`;
-        els.lapsTable.innerHTML = merged.slice(0, 60).map((entry) => `
-          <tr>
-            <td><span class="gc-chip ${entry.group === 'A' ? 'gc-chip--accent' : ''}">${escapeHtml(entry.group)}</span></td>
-            <td><strong>${escapeHtml(driverName(entry.lap))}</strong></td>
-            <td>${escapeHtml(carName(entry.lap))}</td>
-            <td>${escapeHtml(trackName(entry.lap))}</td>
-            <td><strong>${escapeHtml(lapTimeText(entry.lap))}</strong></td>
-            <td>${isInvalid(entry.lap) ? '<span class="gc-chip">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>'}</td>
-            <td>${escapeHtml(fmtSpeed(maxSpeed(entry.lap)))}</td>
-            <td>${escapeHtml(fmtDate(entry.lap))}</td>
-          </tr>
-        `).join('') || '<tr><td colspan="8">Sin vueltas con este filtro.</td></tr>';
-        drawBarChart(a, b);
-        drawTimeline(a, b);
+        `).join('') || '<div class="gc-tools-v3-best-row"><div class="gc-tools-v3-best-main"><strong>Sin vueltas suficientes</strong><small>Amplía el filtro o cambia referencias.</small></div></div>';
       }
 
-      async function load() {
-        els.reload.disabled = true;
+      function renderTable(a, b) {
+        const base = Math.min(a.best || Infinity, b.best || Infinity);
+        const rows = [];
+        const max = Math.max(a.sample, b.sample);
+        for (let index = 0; index < max; index++) {
+          if (a.top[index]) rows.push({ group: 'A', index: index + 1, lap: a.top[index].lap, time: a.top[index].time });
+          if (b.top[index]) rows.push({ group: 'B', index: index + 1, lap: b.top[index].lap, time: b.top[index].time });
+        }
+        els.table.innerHTML = rows.map((row) => `
+          <tr>
+            <td>${escapeHtml(row.group)}</td>
+            <td>${row.index}</td>
+            <td>${escapeHtml(driverName(row.lap))}</td>
+            <td>${escapeHtml(carName(row.lap))}</td>
+            <td>${escapeHtml(trackName(row.lap))}</td>
+            <td>${escapeHtml(lapTimeText(row.time))}</td>
+            <td>${escapeHtml(Number.isFinite(base) ? secText(row.time - base) : '--')}</td>
+            <td>${isInvalid(row.lap) ? '<span class="gc-tools-v3-state gc-tools-v3-state--bad">No válida</span>' : '<span class="gc-tools-v3-state">Válida</span>'}</td>
+            <td>${escapeHtml(fmtDate(row.lap))}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="9">Sin vueltas para esta comparativa.</td></tr>';
+      }
+
+      function drawAll() {
+        updateVisibility();
+        ensureDistinctSelection();
+        const { a, b, source, topN } = getGroups();
+        fillSummary(a, b, topN, source);
+        drawRhythmChart(a, b);
+        drawDeltaChart(a, b);
+        renderDiagnostics(a, b, topN, source);
+        renderBestList(a, b);
+        renderTable(a, b);
+      }
+
+      async function loadData() {
         els.state.textContent = 'Cargando';
+        els.reload.disabled = true;
         try {
-          const response = await fetch('/api/hotlaps?limit=900', { cache:'no-store', credentials:'same-origin' });
-          if (!response.ok) throw new Error('Endpoint no disponible');
-          const data = await response.json();
-          allLaps = (Array.isArray(data) ? data : data.items || data.hotlaps || data.laps || data.results || []).filter((lap) => Number.isFinite(lapMs(lap)));
-          els.loadedLaps.textContent = fmtNum(allLaps.length);
-          els.loadedDrivers.textContent = fmtNum(uniq(allLaps.map(driverName)).length);
-          els.loadedCars.textContent = fmtNum(uniq(allLaps.map(carName)).length);
-          els.state.textContent = 'Listo';
-          els.state.style.color = 'var(--accent)';
+          const res = await fetch('/api/hotlaps?limit=500', { cache: 'no-store', credentials: 'include' });
+          if (!res.ok) throw new Error('Endpoint no disponible');
+          const json = await res.json();
+          allLaps = json.items || json.hotlaps || json.laps || json.data || [];
+          els.loaded.textContent = String(allLaps.length);
+          els.state.textContent = 'OK';
           refreshSelects();
-          booted = true;
-          render();
+          drawAll();
         } catch (error) {
           els.state.textContent = 'Error';
-          els.state.style.color = 'var(--warn)';
-          els.lapsTable.innerHTML = '<tr><td colspan="8">No se pudo cargar /api/hotlaps.</td></tr>';
-          els.bestList.textContent = 'Sin datos disponibles.';
+          els.loaded.textContent = '0';
+          els.sampleState.textContent = '--';
+          els.confidence.textContent = '--';
+          els.verdict.textContent = 'Sin datos';
+          els.verdictText.textContent = 'No se pudo leer /api/hotlaps. Revisa que el servidor Node y stracker estén activos.';
+          els.table.innerHTML = '<tr><td colspan="9">Error cargando hotlaps. Revisa /api/hotlaps.</td></tr>';
+          drawAll();
         } finally {
           els.reload.disabled = false;
         }
       }
 
-      [els.mode, els.driverA, els.driverB, els.carA, els.carB, els.track, els.valid, els.window, els.minLaps].forEach((input) => {
-        input.addEventListener('input', () => { if (booted) render(); });
-        input.addEventListener('change', () => { if (booted) render(); });
+      [els.mode, els.driverA, els.driverB, els.carA, els.carB, els.track, els.valid, els.window, els.topN].forEach((input) => {
+        input?.addEventListener('input', drawAll);
+        input?.addEventListener('change', drawAll);
       });
-      els.reload.addEventListener('click', load);
-      updateVisibility();
-      load();
+      els.reload.addEventListener('click', loadData);
+      document.querySelectorAll('[data-jump-tools]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('[data-jump-tools]').forEach((item) => item.classList.remove('is-active'));
+          button.classList.add('is-active');
+          const key = button.getAttribute('data-jump-tools');
+          const target = key === 'delta' ? $('toolsDeltaSection') : key === 'diagnosis' ? $('toolsDiagnosisSection') : $('toolsRhythmSection');
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+      window.addEventListener('resize', () => window.requestAnimationFrame(drawAll));
+      loadData();
     })();
   </script>
 </AppLayout>
