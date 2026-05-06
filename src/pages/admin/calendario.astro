@@ -46,6 +46,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           <label class="gc-field"><span>Hora inicio</span><input class="gc-input" name="startTime" type="time" /></label>
           <label class="gc-field"><span>Fecha fin</span><input class="gc-input" name="endDate" type="date" /></label>
           <label class="gc-field"><span>Hora fin</span><input class="gc-input" name="endTime" type="time" /></label>
+          <label class="gc-field gc-calendar-repeat-until"><span>Repetir hasta</span><input class="gc-input" name="repeatUntil" type="date" /></label>
           <label class="gc-field"><span>Circuito</span><input class="gc-input" name="trackName" placeholder="Suzuka" /></label>
           <label class="gc-field"><span>Coches</span><input class="gc-input" name="carNames" placeholder="Toyota Supra JGTC 2000" /></label>
           <label class="gc-field" style="grid-column:1 / -1"><span>Enlace opcional</span><input class="gc-input" name="linkUrl" placeholder="https://..." /></label>
@@ -54,7 +55,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
         <div class="gc-calendar-checks">
           <label><input type="checkbox" name="visible" checked /> Visible en calendario público</label>
           <label><input type="checkbox" name="featured" /> Destacado</label>
+          <label><input type="checkbox" name="repeatEnabled" /> Repetir cada semana</label>
         </div>
+        <p class="gc-calendar-repeat-note">Si activas la repetición semanal, el evento se repetirá el mismo día de la semana y a la misma hora. Ejemplo: martes a las 21:30.</p>
         <div class="gc-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
           <button class="gc-btn" type="button" id="calendarReset">Limpiar formulario</button>
@@ -78,7 +81,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
   </div>
 
   <style is:global>
-    .gc-admin-calendar-page{display:grid;gap:clamp(22px,3vw,34px)}.gc-calendar-admin-form{align-self:start}.gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}.gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft)}.gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}.gc-calendar-admin-list{display:grid;gap:10px}.gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}.gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}@media(max-width:900px){.gc-admin-calendar-page .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
+    .gc-admin-calendar-page{display:grid;gap:clamp(22px,3vw,34px)}.gc-calendar-admin-form{align-self:start}.gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}.gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft)}.gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}.gc-calendar-repeat-note{margin:-4px 0 0;color:var(--dim);font-size:.86rem}.gc-calendar-repeat-until{transition:opacity .18s ease}.gc-calendar-repeat-until.is-disabled{opacity:.45}.gc-calendar-admin-list{display:grid;gap:10px}.gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}.gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}@media(max-width:900px){.gc-admin-calendar-page .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
   </style>
 
   <script is:inline>
@@ -104,6 +107,16 @@ import AppLayout from '../../layouts/AppLayout.astro';
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
       const setMessage = (text, ok = false) => { message.textContent = text; message.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
       const dateText = (event) => [event.startDate, event.startTime].filter(Boolean).join(' · ') || '-';
+      const repeatText = (event) => {
+        if (!(event.repeatEnabled || event.repeatFrequency === 'weekly')) return '';
+        return event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal';
+      };
+      function updateRepeatFields() {
+        const enabled = Boolean(form.elements.repeatEnabled?.checked);
+        const field = document.querySelector('.gc-calendar-repeat-until');
+        if (field) field.classList.toggle('is-disabled', !enabled);
+        if (form.elements.repeatUntil) form.elements.repeatUntil.disabled = !enabled;
+      }
       const fetchJson = async (url, options = {}) => {
         const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
         const data = await response.json().catch(() => ({}));
@@ -128,6 +141,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
           carNames: String(data.carNames || '').trim(),
           linkUrl: String(data.linkUrl || '').trim(),
           description: String(data.description || '').trim(),
+          repeatEnabled: form.elements.repeatEnabled.checked,
+          repeatFrequency: form.elements.repeatEnabled.checked ? 'weekly' : 'none',
+          repeatUntil: data.repeatUntil || '',
           visible: form.elements.visible.checked,
           featured: form.elements.featured.checked
         };
@@ -138,6 +154,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
         form.elements.id.value = '';
         form.elements.visible.checked = true;
         form.elements.featured.checked = false;
+        form.elements.repeatEnabled.checked = false;
+        form.elements.repeatUntil.value = '';
+        updateRepeatFields();
         title.textContent = 'Crear evento';
         setMessage('');
       }
@@ -154,8 +173,11 @@ import AppLayout from '../../layouts/AppLayout.astro';
         form.elements.carNames.value = event.carNames || '';
         form.elements.linkUrl.value = event.linkUrl || '';
         form.elements.description.value = event.description || '';
+        form.elements.repeatEnabled.checked = Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+        form.elements.repeatUntil.value = event.repeatUntil || '';
         form.elements.visible.checked = event.visible !== false;
         form.elements.featured.checked = Boolean(event.featured);
+        updateRepeatFields();
         title.textContent = 'Editar evento';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -165,7 +187,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         const type = typeFilter.value;
         return events.filter((event) => {
           if (type !== 'all' && event.type !== type) return false;
-          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate].join(' ').toLowerCase();
+          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate, event.repeatEnabled ? 'repetición semanal repetir' : ''].join(' ').toLowerCase();
           return !query || haystack.includes(query);
         }).sort((a,b) => String(a.startDate || '').localeCompare(String(b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
       }
@@ -179,7 +201,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>';
           return;
         }
-        list.innerHTML = rows.map((event) => `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><small>${event.visible === false ? 'Oculto' : 'Visible'}${event.featured ? ' · Destacado' : ''}</small></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}">${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}">Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`).join('');
+        list.innerHTML = rows.map((event) => `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><small>${event.visible === false ? 'Oculto' : 'Visible'}${event.featured ? ' · Destacado' : ''}${repeatText(event) ? ' · ' + escapeHtml(repeatText(event)) : ''}</small></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}">${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}">Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`).join('');
       }
 
       async function loadEvents() {
@@ -249,8 +271,10 @@ import AppLayout from '../../layouts/AppLayout.astro';
       });
 
       [search, typeFilter].forEach((node) => node.addEventListener('input', render));
+      form.elements.repeatEnabled?.addEventListener('change', updateRepeatFields);
       reload.addEventListener('click', () => loadEvents().catch((error) => setMessage(error.message || 'No se pudo recargar.')));
       reset.addEventListener('click', resetForm);
+      updateRepeatFields();
       checkAdmin();
     })();
   </script>
