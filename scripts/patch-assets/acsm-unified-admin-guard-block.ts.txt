@@ -1,0 +1,78 @@
+// GC ACSM UNIFIED ADMIN GUARD START
+
+app.get('/api/admin/acsm/status', async (req: any, res: any) => {
+  try {
+    const snapshot = await gcCompatAdminSnapshot(req);
+    if (!snapshot.authorized) {
+      res.status(403).json({
+        ok: false,
+        message: 'Acceso admin requerido.',
+        authenticated: snapshot.authenticated,
+        source: 'unified-admin-session'
+      });
+      return;
+    }
+
+    const info = gcAcsmSafeConfigV2();
+    let combo: any = null;
+    if (info.userConfigured && info.passwordConfigured) {
+      const { cfg, event, resolved } = await gcAcsmReadCurrentComboV2();
+      combo = {
+        serverName: cfg.serverName,
+        trackCode: cfg.trackCode,
+        trackName: resolved.trackName,
+        carCodes: cfg.carCodes,
+        cars: resolved.cars,
+        carNames: resolved.carNames,
+        unresolvedCars: resolved.unresolvedCars,
+        event
+      };
+    }
+
+    res.json({
+      ok: true,
+      config: info,
+      combo,
+      checkedAt: new Date().toISOString(),
+      source: 'unified-admin-session'
+    });
+  } catch (error: any) {
+    console.error('[GC] Error comprobando ACSM con admin unificado:', error);
+    res.status(500).json({
+      ok: false,
+      config: typeof gcAcsmSafeConfigV2 === 'function' ? gcAcsmSafeConfigV2() : null,
+      message: error?.message || 'No se pudo comprobar ACSM.'
+    });
+  }
+});
+
+app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
+  try {
+    const snapshot = await gcCompatAdminSnapshot(req);
+    if (!snapshot.authorized) {
+      res.status(403).json({
+        ok: false,
+        message: 'Acceso admin requerido.',
+        authenticated: snapshot.authenticated,
+        source: 'unified-admin-session'
+      });
+      return;
+    }
+
+    const result = await gcAcsmSyncCurrentComboV2();
+    res.json({
+      ok: true,
+      ...result,
+      syncedAt: new Date().toISOString(),
+      source: 'unified-admin-session'
+    });
+  } catch (error: any) {
+    console.error('[GC] Error sincronizando combo ACSM con admin unificado:', error);
+    res.status(500).json({
+      ok: false,
+      message: error?.message || 'No se pudo sincronizar el combo desde ACSM.'
+    });
+  }
+});
+
+// GC ACSM UNIFIED ADMIN GUARD END
