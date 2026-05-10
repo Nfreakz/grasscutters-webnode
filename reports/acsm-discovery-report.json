@@ -1,0 +1,1956 @@
+{
+  "ok": true,
+  "generatedAt": "2026-05-10T23:04:53.297Z",
+  "panelUrl": "http://185.216.144.78:8840/custom",
+  "notes": [
+    "No se han guardado contraseñas en este informe.",
+    "Si hay tablas interesantes, el siguiente pack puede sincronizar campeonatos/eventos a gc_calendar_events."
+  ],
+  "discovery": {
+    "mode": "sftp",
+    "host": "185.216.144.78",
+    "port": 8822,
+    "username": "da***ih",
+    "root": "/",
+    "candidates": [
+      {
+        "remotePath": "/185.216.144.78_9800/config.yml",
+        "filename": "config.yml",
+        "sizeBytes": 14268,
+        "modifiedAt": "2026-05-10T01:15:29.000Z",
+        "kind": "file"
+      },
+      {
+        "remotePath": "/185.216.144.78_9800/server-manager.log",
+        "filename": "server-manager.log",
+        "sizeBytes": 1032358,
+        "modifiedAt": "2026-05-10T22:39:18.000Z",
+        "kind": "file"
+      },
+      {
+        "remotePath": "/185.216.144.78_9800/cfg/entry_list.ini",
+        "filename": "entry_list.ini",
+        "sizeBytes": 1094,
+        "modifiedAt": "2026-05-10T20:56:01.000Z",
+        "kind": "ini"
+      },
+      {
+        "remotePath": "/185.216.144.78_9800/cfg/server_cfg.ini",
+        "filename": "server_cfg.ini",
+        "sizeBytes": 2176,
+        "modifiedAt": "2026-05-10T20:56:01.000Z",
+        "kind": "ini"
+      },
+      {
+        "remotePath": "/185.216.144.78_9800/saves/last_race_event.json",
+        "filename": "last_race_event.json",
+        "sizeBytes": 9884,
+        "modifiedAt": "2026-05-10T20:56:01.000Z",
+        "kind": "file"
+      },
+      {
+        "remotePath": "/185.216.144.78_9800/stracker/stracker.db3",
+        "filename": "stracker.db3",
+        "sizeBytes": 33049600,
+        "modifiedAt": "2026-05-10T23:04:14.000Z",
+        "kind": "database"
+      }
+    ],
+    "sqliteDatabases": [
+      {
+        "pathHash": "5b6d363b7a11",
+        "filename": "stracker.db3",
+        "sqlite": true,
+        "sizeBytes": 33049600,
+        "tables": [
+          {
+            "name": "Blacklist",
+            "columns": [
+              {
+                "name": "BlacklistId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "DateAdded",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Duration",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSEvent",
+            "columns": [
+              {
+                "name": "EventId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "EventName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CSId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSEventSessions",
+            "columns": [
+              {
+                "name": "CSEventSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "EventId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PointSchemaId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSPointSchema",
+            "columns": [
+              {
+                "name": "PointSchemaId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PSName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSPointSchemaEntry",
+            "columns": [
+              {
+                "name": "PointSchemaEntryId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PointSchemaId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Position",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Points",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSSeasons",
+            "columns": [
+              {
+                "name": "CSId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "CSName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Cars",
+            "columns": [
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "Car",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RequiredCarChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "UiCarName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Brand",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "BadgeData",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 115
+          },
+          {
+            "name": "ChatHistory",
+            "columns": [
+              {
+                "name": "ChatHistoryId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Timestamp",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Content",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Server",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 980
+          },
+          {
+            "name": "ComboCars",
+            "columns": [
+              {
+                "name": "ComboCarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 251
+          },
+          {
+            "name": "Combos",
+            "columns": [
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 36
+          },
+          {
+            "name": "GroupEntries",
+            "columns": [
+              {
+                "name": "GroupEntryId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "GroupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Lap",
+            "columns": [
+              {
+                "name": "LapId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerInSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TyreCompoundId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "LapCount",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "LapTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime0",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime1",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime2",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime3",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime4",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime5",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime6",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime7",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime8",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime9",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "HistoryInfo",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FuelRatio",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Valid",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorsAreSoftSplits",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxABS",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxTC",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TemperatureAmbient",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TemperatureTrack",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Timestamp",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidABS",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidTC",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoBlib",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoBrake",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoClutch",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoShift",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidIdealLine",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidStabilityControl",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidSlipStream",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidTyreBlankets",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxSpeed_KMH",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TimeInPitLane",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TimeInPit",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ESCPressed",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Cuts",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CollisionsCar",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CollisionsEnv",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "GripLevel",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Ballast",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 9070
+          },
+          {
+            "name": "LapBinBlob",
+            "columns": [
+              {
+                "name": "LapBinBlobId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "LapId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "HistoryInfo",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 8754
+          },
+          {
+            "name": "MinoratingCache",
+            "columns": [
+              {
+                "name": "MRCacheId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Timestamp",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Minorating",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "PiSCorrections",
+            "columns": [
+              {
+                "name": "PiSCorrectionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerInSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "DeltaPoints",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "DeltaTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "DeltaLaps",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Comment",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 147
+          },
+          {
+            "name": "PlayerGroups",
+            "columns": [
+              {
+                "name": "GroupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "GroupName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "PlayerInSession",
+            "columns": [
+              {
+                "name": "PlayerInSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ACVersion",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PTVersion",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TrackChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishPosition",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RaceFinished",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ABS",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoBlib",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoBrake",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoClutch",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoShift",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "IdealLine",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "StabilityControl",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TractionControl",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "VisualDamage",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "InputMethod",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Shifter",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishPositionOrig",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TeamId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 1184
+          },
+          {
+            "name": "Players",
+            "columns": [
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "SteamGuid",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Name",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ArtInt",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "IsOnline",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Whitelisted",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MessagesDisabled",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Anonymized",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 28
+          },
+          {
+            "name": "Session",
+            "columns": [
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionType",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Multiplayer",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "NumberOfLaps",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Duration",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ServerIpPort",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "StartTimeDate",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "EndTimeDate",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PenaltiesEnabled",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AllowedTyresOut",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TyreWearFactor",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FuelRate",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Damage",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 435
+          },
+          {
+            "name": "SetupDeposit",
+            "columns": [
+              {
+                "name": "SetupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "GroupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Name",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Setup",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Teams",
+            "columns": [
+              {
+                "name": "TeamId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TeamName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Tracks",
+            "columns": [
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "Track",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RequiredTrackChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "UiTrackName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Length",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MapData",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 16
+          },
+          {
+            "name": "TyreCompounds",
+            "columns": [
+              {
+                "name": "TyreCompoundId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TyreCompound",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 1
+          }
+        ],
+        "interestingTables": [
+          {
+            "name": "CSEvent",
+            "columns": [
+              {
+                "name": "EventId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "EventName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CSId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "CSEventSessions",
+            "columns": [
+              {
+                "name": "CSEventSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "EventId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PointSchemaId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Cars",
+            "columns": [
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "Car",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RequiredCarChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "UiCarName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Brand",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "BadgeData",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 115
+          },
+          {
+            "name": "ComboCars",
+            "columns": [
+              {
+                "name": "ComboCarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 251
+          },
+          {
+            "name": "Combos",
+            "columns": [
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 36
+          },
+          {
+            "name": "Lap",
+            "columns": [
+              {
+                "name": "LapId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerInSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TyreCompoundId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "LapCount",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "LapTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime0",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime1",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime2",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime3",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime4",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime5",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime6",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime7",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime8",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorTime9",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "HistoryInfo",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FuelRatio",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Valid",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SectorsAreSoftSplits",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxABS",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxTC",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TemperatureAmbient",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TemperatureTrack",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Timestamp",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidABS",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidTC",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoBlib",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoBrake",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoClutch",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidAutoShift",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidIdealLine",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidStabilityControl",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidSlipStream",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AidTyreBlankets",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MaxSpeed_KMH",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TimeInPitLane",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TimeInPit",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ESCPressed",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Cuts",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CollisionsCar",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CollisionsEnv",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "GripLevel",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Ballast",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 9070
+          },
+          {
+            "name": "PlayerInSession",
+            "columns": [
+              {
+                "name": "PlayerInSessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ACVersion",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PTVersion",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TrackChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishPosition",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RaceFinished",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ABS",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoBlib",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoBrake",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoClutch",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AutoShift",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "IdealLine",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "StabilityControl",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TractionControl",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "VisualDamage",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "InputMethod",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Shifter",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishTime",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FinishPositionOrig",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TeamId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 1184
+          },
+          {
+            "name": "Session",
+            "columns": [
+              {
+                "name": "SessionId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "SessionType",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Multiplayer",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "NumberOfLaps",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Duration",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ServerIpPort",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "StartTimeDate",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "EndTimeDate",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "PenaltiesEnabled",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "AllowedTyresOut",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TyreWearFactor",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "FuelRate",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Damage",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "ComboId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 435
+          },
+          {
+            "name": "SetupDeposit",
+            "columns": [
+              {
+                "name": "SetupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "PlayerId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "CarId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "GroupId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Name",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Setup",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 0
+          },
+          {
+            "name": "Tracks",
+            "columns": [
+              {
+                "name": "TrackId",
+                "type": "INTEGER",
+                "notNull": false,
+                "pk": true
+              },
+              {
+                "name": "Track",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "RequiredTrackChecksum",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "UiTrackName",
+                "type": "TEXT",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "Length",
+                "type": "REAL",
+                "notNull": false,
+                "pk": false
+              },
+              {
+                "name": "MapData",
+                "type": "BLOB",
+                "notNull": false,
+                "pk": false
+              }
+            ],
+            "count": 16
+          }
+        ],
+        "remotePath": "/185.216.144.78_9800/stracker/stracker.db3"
+      }
+    ],
+    "iniFiles": [
+      {
+        "filename": "entry_list.ini",
+        "pathHash": "69f3fb0fe8d9",
+        "keys": {},
+        "remotePath": "/185.216.144.78_9800/cfg/entry_list.ini"
+      },
+      {
+        "filename": "server_cfg.ini",
+        "pathHash": "1351faee9bb0",
+        "keys": {
+          "TRACK": "circuit_sebring2021",
+          "CONFIG_TRACK": "SUN_ANGLE=48",
+          "CARS": "yzd_oreca_07_2021;ag_oreca_03r_lmp2;ag_mazda_rt24-p;rwd_p20_lmp2",
+          "NAME": "Grasscutters AC Server 1  - LMP2 in SEBRING RACEWAY",
+          "PASSWORD": "[redacted]",
+          "REGISTER_TO_LOBBY": "1",
+          "PICKUP_MODE_ENABLED": "1"
+        },
+        "remotePath": "/185.216.144.78_9800/cfg/server_cfg.ini"
+      }
+    ],
+    "scannedEntries": 506
+  }
+}

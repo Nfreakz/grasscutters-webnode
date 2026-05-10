@@ -4312,6 +4312,208 @@ app.delete('/api/admin/calendar-events/:id', async (req: any, res: any) => {
   }
 });
 
+// GC ACSM SYNC START
+
+type GcAcsmServerCfgV1 = {
+  raw: string;
+  values: Record<string, string>;
+  trackCode: string;
+  trackConfig: string;
+  carCodes: string[];
+  serverName: string;
+};
+
+function gcAcsmTextV1(value: unknown, fallback = '') {
+  return String(value ?? fallback).trim();
+}
+
+function gcAcsmBoolV1(value: unknown, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  const text = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'si', 'sí', 'on'].includes(text)) return true;
+  if (['0', 'false', 'no', 'off'].includes(text)) return false;
+  return fallback;
+}
+
+function gcAcsmCleanAssetNameV1(value: unknown, fallback = '') {
+  const text = gcAcsmTextV1(value, fallback);
+  if (!text) return fallback;
+  return text
+    .replace(/;/g, ', ')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function gcAcsmCurrentWeekStartDateV1() {
+  const configured = process.env.ACSM_COMBO_START_DATE?.trim();
+  if (configured) return configured;
+  const date = new Date();
+  const dayFromMonday = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - dayFromMonday);
+  return date.toISOString().slice(0, 10);
+}
+
+function gcAcsmDefaultServerCfgPathV1() {
+  return process.env.ACSM_SERVER_CFG_PATH?.trim() || '/185.216.144.78_9800/cfg/server_cfg.ini';
+}
+
+function gcAcsmDefaultLastRaceEventPathV1() {
+  return process.env.ACSM_LAST_RACE_EVENT_PATH?.trim() || '/185.216.144.78_9800/saves/last_race_event.json';
+}
+
+function gcAcsmSftpConfigV1() {
+  return {
+    host: process.env.ACSM_SFTP_HOST?.trim() || '185.216.144.78',
+    port: Number(process.env.ACSM_SFTP_PORT || 8822),
+    username: process.env.ACSM_SFTP_USER?.trim() || '',
+    password: process.env.ACSM_SFTP_PASSWORD || '',
+    readyTimeout: Number(process.env.ACSM_SFTP_TIMEOUT_MS || 25000)
+  };
+}
+
+function gcAcsmSafeConfigV1() {
+  const cfg = gcAcsmSftpConfigV1();
+  return {
+    panelUrl: process.env.ACSM_PANEL_URL?.trim() || 'http://185.216.144.78:8840/custom',
+    hostConfigured: Boolean(cfg.host),
+    port: cfg.port,
+    userConfigured: Boolean(cfg.username),
+    passwordConfigured: Boolean(cfg.password),
+    serverCfgPath: gcAcsmDefaultServerCfgPathV1(),
+    lastRaceEventPath: gcAcsmDefaultLastRaceEventPathV1()
+  };
+}
+
+async function gcAcsmReadRemoteFileV1(remotePath: string) {
+  const cfg = gcAcsmSftpConfigV1();
+  if (!cfg.host || !cfg.username || !cfg.password) {
+    throw new Error('Faltan variables ACSM_SFTP_HOST, ACSM_SFTP_USER o ACSM_SFTP_PASSWORD.');
+  }
+  const mod: any = await import('ssh2-sftp-client');
+  const SftpClient = mod.default || mod;
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect(cfg);
+    const data = await sftp.get(remotePath);
+    return Buffer.isBuffer(data) ? data.toString('utf8') : Buffer.from(data as any).toString('utf8');
+  } finally {
+    await sftp.end().catch(() => undefined);
+  }
+}
+
+function gcAcsmParseIniV1(raw: string): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const originalLine of String(raw || '').split(/\r?\n/)) {
+    const line = originalLine.trim();
+    if (!line || line.startsWith(';') || line.startsWith('#') || line.startsWith('[')) continue;
+    const index = line.indexOf('=');
+    if (index <= 0) continue;
+    const key = line.slice(0, index).trim().toUpperCase();
+    const value = line.slice(index + 1).trim();
+    if (key) values[key] = value;
+  }
+  return values;
+}
+
+function gcAcsmParseServerCfgV1(raw: string): GcAcsmServerCfgV1 {
+  const values = gcAcsmParseIniV1(raw);
+  const carCodes = gcAcsmTextV1(values.CARS).split(';').map((item) => item.trim()).filter(Boolean);
+  return {
+    raw,
+    values,
+    trackCode: gcAcsmTextV1(values.TRACK),
+    trackConfig: gcAcsmTextV1(values.CONFIG_TRACK),
+    carCodes,
+    serverName: gcAcsmTextV1(values.NAME)
+  };
+}
+
+function gcAcsmBuildComboEventV1(cfg: GcAcsmServerCfgV1) {
+  const trackName = gcAcsmCleanAssetNameV1(cfg.trackCode || cfg.serverName, 'Circuito por confirmar');
+  const carNames = cfg.carCodes.map((car) => gcAcsmCleanAssetNameV1(car)).filter(Boolean).join(', ');
+  const panelUrl = process.env.ACSM_PANEL_URL?.trim() || 'http://185.216.144.78:8840/custom';
+  const startDate = gcAcsmCurrentWeekStartDateV1();
+  const startTime = process.env.ACSM_COMBO_START_TIME?.trim() || '';
+  const titlePrefix = process.env.ACSM_COMBO_TITLE_PREFIX?.trim() || 'Combo semanal';
+  return gcCalendarNormalizeEventDbV8({
+    id: process.env.ACSM_COMBO_EVENT_ID?.trim() || 'acsm-current-combo',
+    type: 'combo',
+    title: `${titlePrefix} · ${trackName}`,
+    startDate,
+    startTime,
+    endDate: '',
+    endTime: '',
+    trackName,
+    carNames,
+    linkUrl: panelUrl,
+    description: [
+      'Importado automáticamente desde Assetto Corsa Server Manager.',
+      cfg.serverName ? `Servidor: ${cfg.serverName}` : '',
+      cfg.trackCode ? `Track code: ${cfg.trackCode}` : '',
+      cfg.trackConfig ? `Config track: ${cfg.trackConfig}` : '',
+      cfg.carCodes.length ? `Car codes: ${cfg.carCodes.join(';')}` : ''
+    ].filter(Boolean).join('\n'),
+    repeatEnabled: gcAcsmBoolV1(process.env.ACSM_COMBO_REPEAT_WEEKLY, false),
+    repeatFrequency: gcAcsmBoolV1(process.env.ACSM_COMBO_REPEAT_WEEKLY, false) ? 'weekly' : 'none',
+    repeatUntil: process.env.ACSM_COMBO_REPEAT_UNTIL?.trim() || '',
+    visible: true,
+    featured: true
+  });
+}
+
+async function gcAcsmReadCurrentComboV1() {
+  const raw = await gcAcsmReadRemoteFileV1(gcAcsmDefaultServerCfgPathV1());
+  const cfg = gcAcsmParseServerCfgV1(raw);
+  return { cfg, event: gcAcsmBuildComboEventV1(cfg) };
+}
+
+async function gcAcsmSyncCurrentComboV1() {
+  const { cfg, event } = await gcAcsmReadCurrentComboV1();
+  const events = await gcCalendarReadEventsDbV8();
+  const nextEvents = [...events.filter((item) => item.id !== event.id), event];
+  await gcCalendarWriteEventsDbV8(nextEvents);
+  return { cfg, event, totalEvents: nextEvents.length, source: gcCalendarStorageSourceDbV8() };
+}
+
+app.get('/api/admin/acsm/status', async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const info = gcAcsmSafeConfigV1();
+    let combo: any = null;
+    if (info.userConfigured && info.passwordConfigured) {
+      const { cfg, event } = await gcAcsmReadCurrentComboV1();
+      combo = {
+        serverName: cfg.serverName,
+        trackCode: cfg.trackCode,
+        trackName: event.trackName,
+        carCodes: cfg.carCodes,
+        carNames: event.carNames,
+        event
+      };
+    }
+    res.json({ ok: true, config: info, combo, checkedAt: new Date().toISOString() });
+  } catch (error: any) {
+    console.error('[GC] Error comprobando ACSM:', error);
+    res.status(500).json({ ok: false, config: gcAcsmSafeConfigV1(), message: error?.message || 'No se pudo comprobar ACSM.' });
+  }
+});
+
+app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const result = await gcAcsmSyncCurrentComboV1();
+    res.json({ ok: true, ...result, syncedAt: new Date().toISOString() });
+  } catch (error: any) {
+    console.error('[GC] Error sincronizando combo ACSM:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo sincronizar el combo desde ACSM.' });
+  }
+});
+
+// GC ACSM SYNC END
+
 // GC CALENDAR DB STORAGE END
 
 
@@ -6642,6 +6844,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
