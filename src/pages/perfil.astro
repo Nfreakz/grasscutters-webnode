@@ -138,7 +138,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           return !query || haystack.includes(query);
         }).slice(0, 150);
         if (!filtered.length) {
-          linkUi.select.innerHTML = "<option value="">Sin pilotos con ese filtro</option>";
+          linkUi.select.innerHTML = '<option value="">Sin pilotos con ese filtro</option>';
           renderPilotPreview();
           return;
         }
@@ -146,7 +146,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           const id = candidateId(pilot);
           const laps = Number(pilot.totalLaps ?? pilot.laps ?? 0);
           const label = candidateName(pilot) + " · ID " + id + (laps ? " · " + laps + " vueltas" : "");
-          return "<option value="" + escapeHtml(id) + "">" + escapeHtml(label) + "</option>";
+          return '<option value="' + escapeHtml(id) + '">' + escapeHtml(label) + '</option>';
         }).join("");
         renderPilotPreview();
       }
@@ -165,11 +165,11 @@ import AppLayout from '../layouts/AppLayout.astro';
           "<span>Player ID: " + escapeHtml(candidateId(pilot)) + "</span>" +
           "<span>Vueltas: " + escapeHtml(pilot.totalLaps ?? pilot.laps ?? 0) + " · Válidas: " + escapeHtml(pilot.validLaps ?? 0) + "</span>" +
           "<span>Mejor vuelta: " + escapeHtml(pilot.bestLap || fmtMs(pilot.bestLapMs)) + "</span>" +
-          "<span title="" + escapeHtml(guid) + "">Steam GUID: " + escapeHtml(shortGuid) + "</span>";
+          '<span title="' + escapeHtml(guid) + '">Steam GUID: ' + escapeHtml(shortGuid) + '</span>';
       }
       async function loadPilotCandidates() {
         if (pilotCandidates.length) { renderPilotCandidates(); return; }
-        if (linkUi.select) linkUi.select.innerHTML = "<option value="">Cargando pilotos...</option>";
+        if (linkUi.select) linkUi.select.innerHTML = '<option value="">Cargando pilotos...</option>';
         setLinkMessage("Cargando pilotos de stracker...");
         const response = await fetch("/api/pilots?limit=500", { credentials:"include", cache:"no-store" });
         const data = await response.json().catch(() => null);
