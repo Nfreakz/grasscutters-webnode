@@ -536,6 +536,10 @@ function getDisplayNamesPath() {
   return getStorageFilePath('APP_DISPLAY_NAMES_PATH', 'app/display-names.json');
 }
 
+function getCalendarEventsPath() {
+  return getStorageFilePath('APP_CALENDAR_EVENTS_PATH', 'app/calendar-events.json');
+}
+
 function getDisplayNamesDbInfo() {
   if (useMysqlStorage()) {
     return { configured: true, source: 'mysql', persistent: true, table: 'gc_display_names', mysql: getMysqlStorageSafeConfig() };
@@ -3726,6 +3730,441 @@ const mockPilots = [
 
 const app = express();
 
+// GC CALENDAR DB STORAGE START
+
+type GcCalendarEventDbV8 = {
+  id: string;
+  type: string;
+  title: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  trackName: string;
+  carNames: string;
+  linkUrl: string;
+  description: string;
+  repeatEnabled: boolean;
+  repeatFrequency: 'none' | 'weekly';
+  repeatUntil: string;
+  visible: boolean;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const gcCalendarAllowedTypesDbV8 = new Set(['combo', 'race_lfm', 'race_gc']);
+const gcCalendarJsonFallbackRelativePathDbV8 = 'app/calendar-events.json';
+
+function gcCalendarNowDbV8() {
+  return new Date().toISOString();
+}
+
+function gcCalendarStorageSourceDbV8() {
+  if (useMysqlStorage()) return 'mysql';
+  if (useSqliteStorage()) return 'sqlite';
+  return 'json';
+}
+
+function gcCalendarJsonPathDbV8() {
+  return getStorageFilePath('APP_CALENDAR_EVENTS_PATH', gcCalendarJsonFallbackRelativePathDbV8);
+}
+
+function gcCalendarToBoolDbV8(value: unknown, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  const text = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'si', 'sí', 'on'].includes(text)) return true;
+  if (['0', 'false', 'no', 'off'].includes(text)) return false;
+  return fallback;
+}
+
+function gcCalendarTextDbV8(value: unknown, fallback = '') {
+  return String(value ?? fallback).trim();
+}
+
+function gcCalendarSanitizeTypeDbV8(value: unknown) {
+  const type = String(value || 'combo').trim().toLowerCase();
+  return gcCalendarAllowedTypesDbV8.has(type) ? type : 'combo';
+}
+
+function gcCalendarNormalizeEventDbV8(input: any, existing?: Partial<GcCalendarEventDbV8> | null): GcCalendarEventDbV8 {
+  const now = gcCalendarNowDbV8();
+  const repeatEnabled = gcCalendarToBoolDbV8(input?.repeatEnabled ?? input?.repeat_enabled, false) || String(input?.repeatFrequency ?? input?.repeat_frequency ?? '').toLowerCase() === 'weekly';
+  const id = gcCalendarTextDbV8(input?.id || existing?.id || crypto.randomUUID());
+  return {
+    id,
+    type: gcCalendarSanitizeTypeDbV8(input?.type ?? existing?.type),
+    title: gcCalendarTextDbV8(input?.title || existing?.title || 'Evento'),
+    startDate: gcCalendarTextDbV8(input?.startDate ?? input?.start_date ?? existing?.startDate),
+    startTime: gcCalendarTextDbV8(input?.startTime ?? input?.start_time ?? existing?.startTime),
+    endDate: gcCalendarTextDbV8(input?.endDate ?? input?.end_date ?? existing?.endDate),
+    endTime: gcCalendarTextDbV8(input?.endTime ?? input?.end_time ?? existing?.endTime),
+    trackName: gcCalendarTextDbV8(input?.trackName ?? input?.track_name ?? existing?.trackName),
+    carNames: gcCalendarTextDbV8(input?.carNames ?? input?.car_names ?? existing?.carNames),
+    linkUrl: gcCalendarTextDbV8(input?.linkUrl ?? input?.link_url ?? existing?.linkUrl),
+    description: gcCalendarTextDbV8(input?.description ?? existing?.description),
+    repeatEnabled,
+    repeatFrequency: repeatEnabled ? 'weekly' : 'none',
+    repeatUntil: gcCalendarTextDbV8(input?.repeatUntil ?? input?.repeat_until ?? existing?.repeatUntil),
+    visible: gcCalendarToBoolDbV8(input?.visible ?? existing?.visible, true),
+    featured: gcCalendarToBoolDbV8(input?.featured ?? existing?.featured, false),
+    createdAt: gcCalendarTextDbV8(input?.createdAt ?? input?.created_at ?? existing?.createdAt ?? now),
+    updatedAt: now
+  };
+}
+
+function gcCalendarRowToEventDbV8(row: any): GcCalendarEventDbV8 {
+  return gcCalendarNormalizeEventDbV8({
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    endDate: row.end_date,
+    endTime: row.end_time,
+    trackName: row.track_name,
+    carNames: row.car_names,
+    linkUrl: row.link_url,
+    description: row.description,
+    repeatEnabled: row.repeat_enabled,
+    repeatFrequency: row.repeat_frequency,
+    repeatUntil: row.repeat_until,
+    visible: row.visible,
+    featured: row.featured,
+    createdAt: mysqlDate(row.created_at) || row.created_at,
+    updatedAt: mysqlDate(row.updated_at) || row.updated_at
+  });
+}
+
+function gcCalendarSortEventsDbV8(events: GcCalendarEventDbV8[]) {
+  return [...events].sort((a, b) => {
+    const left = `${a.startDate || ''} ${a.startTime || '00:00'} ${a.title || ''}`;
+    const right = `${b.startDate || ''} ${b.startTime || '00:00'} ${b.title || ''}`;
+    return left.localeCompare(right, 'es');
+  });
+}
+
+async function gcCalendarEnsureMysqlSchemaDbV8() {
+  if (!useMysqlStorage()) return;
+  await ensureMysqlSchema();
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_calendar_events (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      type VARCHAR(40) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      start_date VARCHAR(20) NOT NULL,
+      start_time VARCHAR(20) NULL,
+      end_date VARCHAR(20) NULL,
+      end_time VARCHAR(20) NULL,
+      track_name VARCHAR(255) NULL,
+      car_names VARCHAR(255) NULL,
+      link_url VARCHAR(500) NULL,
+      description TEXT NULL,
+      repeat_enabled TINYINT(1) NOT NULL DEFAULT 0,
+      repeat_frequency VARCHAR(20) NOT NULL DEFAULT 'none',
+      repeat_until VARCHAR(20) NULL,
+      visible TINYINT(1) NOT NULL DEFAULT 1,
+      featured TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_calendar_events_start (start_date, start_time),
+      INDEX idx_gc_calendar_events_type (type),
+      INDEX idx_gc_calendar_events_visible (visible)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+function gcCalendarEnsureSqliteSchemaDbV8(db: any) {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gc_calendar_events (
+      id TEXT NOT NULL PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      start_time TEXT NULL,
+      end_date TEXT NULL,
+      end_time TEXT NULL,
+      track_name TEXT NULL,
+      car_names TEXT NULL,
+      link_url TEXT NULL,
+      description TEXT NULL,
+      repeat_enabled INTEGER NOT NULL DEFAULT 0,
+      repeat_frequency TEXT NOT NULL DEFAULT 'none',
+      repeat_until TEXT NULL,
+      visible INTEGER NOT NULL DEFAULT 1,
+      featured INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_calendar_events_start ON gc_calendar_events(start_date, start_time)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_calendar_events_type ON gc_calendar_events(type)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_calendar_events_visible ON gc_calendar_events(visible)`);
+}
+
+function gcCalendarReadLegacyJsonDbV8(): GcCalendarEventDbV8[] {
+  const filePath = gcCalendarJsonPathDbV8();
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const rawEvents = Array.isArray(parsed) ? parsed : Array.isArray(parsed.events) ? parsed.events : Array.isArray(parsed.items) ? parsed.items : [];
+    return gcCalendarSortEventsDbV8(rawEvents.map((event: any) => gcCalendarNormalizeEventDbV8(event)).filter((event: GcCalendarEventDbV8) => event.title && event.startDate));
+  } catch (error) {
+    console.error('[GC] Error leyendo calendar-events.json:', error);
+    return [];
+  }
+}
+
+function gcCalendarWriteLegacyJsonDbV8(events: GcCalendarEventDbV8[]) {
+  const filePath = gcCalendarJsonPathDbV8();
+  ensureDirForFile(filePath);
+  const payload = { version: 1, updatedAt: gcCalendarNowDbV8(), events: gcCalendarSortEventsDbV8(events) };
+  const tempPath = `${filePath}.tmp`;
+  fs.writeFileSync(tempPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  fs.renameSync(tempPath, filePath);
+}
+
+async function gcCalendarReadEventsDbV8(skipMigration = false): Promise<GcCalendarEventDbV8[]> {
+  if (useMysqlStorage()) {
+    await gcCalendarEnsureMysqlSchemaDbV8();
+    const rows = await mysqlQuery('SELECT * FROM gc_calendar_events ORDER BY start_date ASC, start_time ASC, title ASC');
+    const events = rows.map(gcCalendarRowToEventDbV8);
+    if (!skipMigration && events.length === 0) await gcCalendarMaybeMigrateLegacyJsonDbV8();
+    if (!skipMigration && events.length === 0) return gcCalendarReadEventsDbV8(true);
+    return gcCalendarSortEventsDbV8(events);
+  }
+
+  if (useSqliteStorage()) {
+    const events = await withAppSqliteDb((db) => {
+      gcCalendarEnsureSqliteSchemaDbV8(db);
+      return sqliteQuery(db, 'SELECT * FROM gc_calendar_events ORDER BY start_date ASC, start_time ASC, title ASC').map(gcCalendarRowToEventDbV8);
+    }, true);
+    if (!skipMigration && events.length === 0) await gcCalendarMaybeMigrateLegacyJsonDbV8();
+    if (!skipMigration && events.length === 0) return gcCalendarReadEventsDbV8(true);
+    return gcCalendarSortEventsDbV8(events);
+  }
+
+  return gcCalendarReadLegacyJsonDbV8();
+}
+
+async function gcCalendarWriteEventsDbV8(events: GcCalendarEventDbV8[]) {
+  const normalizedEvents = gcCalendarSortEventsDbV8(events.map((event) => gcCalendarNormalizeEventDbV8(event)));
+
+  if (useMysqlStorage()) {
+    await gcCalendarEnsureMysqlSchemaDbV8();
+    const pool = await getMysqlPool();
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.query('DELETE FROM gc_calendar_events');
+      for (const event of normalizedEvents) {
+        await connection.query(
+          `INSERT INTO gc_calendar_events
+            (id, type, title, start_date, start_time, end_date, end_time, track_name, car_names, link_url, description, repeat_enabled, repeat_frequency, repeat_until, visible, featured, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            event.id,
+            event.type,
+            event.title,
+            event.startDate,
+            event.startTime || null,
+            event.endDate || null,
+            event.endTime || null,
+            event.trackName || null,
+            event.carNames || null,
+            event.linkUrl || null,
+            event.description || null,
+            event.repeatEnabled ? 1 : 0,
+            event.repeatFrequency || 'none',
+            event.repeatUntil || null,
+            event.visible ? 1 : 0,
+            event.featured ? 1 : 0,
+            isoToMysql(event.createdAt) || isoToMysql(gcCalendarNowDbV8()),
+            isoToMysql(event.updatedAt) || isoToMysql(gcCalendarNowDbV8())
+          ]
+        );
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+    return;
+  }
+
+  if (useSqliteStorage()) {
+    await withAppSqliteDb((db) => {
+      gcCalendarEnsureSqliteSchemaDbV8(db);
+      db.run('BEGIN TRANSACTION');
+      try {
+        db.run('DELETE FROM gc_calendar_events');
+        for (const event of normalizedEvents) {
+          db.run(
+            `INSERT INTO gc_calendar_events
+              (id, type, title, start_date, start_time, end_date, end_time, track_name, car_names, link_url, description, repeat_enabled, repeat_frequency, repeat_until, visible, featured, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              event.id,
+              event.type,
+              event.title,
+              event.startDate,
+              event.startTime || null,
+              event.endDate || null,
+              event.endTime || null,
+              event.trackName || null,
+              event.carNames || null,
+              event.linkUrl || null,
+              event.description || null,
+              event.repeatEnabled ? 1 : 0,
+              event.repeatFrequency || 'none',
+              event.repeatUntil || null,
+              event.visible ? 1 : 0,
+              event.featured ? 1 : 0,
+              event.createdAt,
+              event.updatedAt
+            ]
+          );
+        }
+        db.run('COMMIT');
+      } catch (error) {
+        db.run('ROLLBACK');
+        throw error;
+      }
+    }, true);
+    return;
+  }
+
+  gcCalendarWriteLegacyJsonDbV8(normalizedEvents);
+}
+
+async function gcCalendarMaybeMigrateLegacyJsonDbV8() {
+  if (!useMysqlStorage() && !useSqliteStorage()) return;
+  const legacyEvents = gcCalendarReadLegacyJsonDbV8();
+  if (!legacyEvents.length) return;
+  await gcCalendarWriteEventsDbV8(legacyEvents);
+  console.log(`[GC] ${legacyEvents.length} eventos de calendario migrados a ${gcCalendarStorageSourceDbV8()}.`);
+}
+
+async function gcCalendarRequireAdminDbV8(req: any, res: any) {
+  const host = HOST === '0.0.0.0' ? '127.0.0.1' : HOST;
+  try {
+    const response = await fetch(`http://${host}:${PORT}/api/admin/status`, {
+      method: 'GET',
+      headers: { cookie: String(req.headers?.cookie || '') },
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(() => null);
+    if (response.ok && data?.authorized === true) return true;
+  } catch (error) {
+    console.error('[GC] No se pudo verificar admin para calendario:', error);
+  }
+  res.status(403).json({ ok: false, message: 'Acceso admin requerido.' });
+  return false;
+}
+
+const gcCalendarJsonBodyDbV8 = express.json({ limit: '1mb' });
+
+app.get('/api/calendar-events', async (_req: any, res: any) => {
+  try {
+    const events = (await gcCalendarReadEventsDbV8()).filter((event) => event.visible !== false);
+    res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), events, items: events });
+  } catch (error: any) {
+    console.error('[GC] Error leyendo calendario público:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo leer el calendario.' });
+  }
+});
+
+app.get('/api/admin/calendar-events/storage', async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  const jsonPath = gcCalendarJsonPathDbV8();
+  res.json({
+    ok: true,
+    source: gcCalendarStorageSourceDbV8(),
+    mysql: useMysqlStorage() ? getMysqlStorageSafeConfig() : null,
+    sqlite: useSqliteStorage() ? getSqliteStorageSafeConfig() : null,
+    jsonFallbackPath: jsonPath,
+    jsonFallbackExists: fs.existsSync(jsonPath)
+  });
+});
+
+app.get('/api/admin/calendar-events', async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const events = await gcCalendarReadEventsDbV8();
+    res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), events, items: events });
+  } catch (error: any) {
+    console.error('[GC] Error leyendo calendario admin:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo leer el calendario.' });
+  }
+});
+
+app.post('/api/admin/calendar-events', gcCalendarJsonBodyDbV8, async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const events = await gcCalendarReadEventsDbV8();
+    const event = gcCalendarNormalizeEventDbV8(req.body || {});
+    if (!event.title || !event.startDate) {
+      res.status(400).json({ ok: false, message: 'Título y fecha inicio son obligatorios.' });
+      return;
+    }
+    const nextEvents = [...events.filter((item) => item.id !== event.id), event];
+    await gcCalendarWriteEventsDbV8(nextEvents);
+    res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), event, events: gcCalendarSortEventsDbV8(nextEvents) });
+  } catch (error: any) {
+    console.error('[GC] Error creando evento calendario:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo crear el evento.' });
+  }
+});
+
+app.put('/api/admin/calendar-events/:id', gcCalendarJsonBodyDbV8, async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const id = String(req.params.id || '').trim();
+    const events = await gcCalendarReadEventsDbV8();
+    const existing = events.find((event) => event.id === id);
+    if (!existing) {
+      res.status(404).json({ ok: false, message: 'Evento no encontrado.' });
+      return;
+    }
+    const event = gcCalendarNormalizeEventDbV8({ ...(req.body || {}), id }, existing);
+    if (!event.title || !event.startDate) {
+      res.status(400).json({ ok: false, message: 'Título y fecha inicio son obligatorios.' });
+      return;
+    }
+    const nextEvents = events.map((item) => item.id === id ? event : item);
+    await gcCalendarWriteEventsDbV8(nextEvents);
+    res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), event, events: gcCalendarSortEventsDbV8(nextEvents) });
+  } catch (error: any) {
+    console.error('[GC] Error actualizando evento calendario:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo actualizar el evento.' });
+  }
+});
+
+app.delete('/api/admin/calendar-events/:id', async (req: any, res: any) => {
+  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
+  try {
+    const id = String(req.params.id || '').trim();
+    const events = await gcCalendarReadEventsDbV8();
+    const nextEvents = events.filter((event) => event.id !== id);
+    if (nextEvents.length === events.length) {
+      res.status(404).json({ ok: false, message: 'Evento no encontrado.' });
+      return;
+    }
+    await gcCalendarWriteEventsDbV8(nextEvents);
+    res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), events: gcCalendarSortEventsDbV8(nextEvents) });
+  } catch (error: any) {
+    console.error('[GC] Error borrando evento calendario:', error);
+    res.status(500).json({ ok: false, message: error?.message || 'No se pudo borrar el evento.' });
+  }
+});
+
+// GC CALENDAR DB STORAGE END
+
+
 // GC_CALENDAR_EVENTS_PATCH_V6_ROUTE_FIRST
 app.use(express.json({ limit: '1mb' }));
 
@@ -6053,6 +6492,9 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
+
 
 
 
