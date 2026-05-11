@@ -23,7 +23,8 @@ import '../styles/motorsport.css';
   </section>
   <script is:inline>
     const summary = document.querySelector('[data-ms-summary]');
+    const h = (v) => String(v ?? '').replace(/[&<>\"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
     fetch('/api/motorsport/summary').then(r=>r.json()).then(d=>{const s=d.summary||{}; summary.innerHTML=['circuits:Circuitos','records:Records','media:Media','series:Series'].map(x=>{const [k,l]=x.split(':');return `<div class="gc-ms-metric"><strong>${s[k]??0}</strong><span>${l}</span></div>`}).join('')}).catch(()=>{});
-    document.querySelector('[data-ms-search]')?.addEventListener('submit',async e=>{e.preventDefault();const q=new FormData(e.currentTarget).get('q')||'';const box=document.querySelector('[data-ms-results]');const d=await fetch('/api/motorsport/search?q='+encodeURIComponent(q)).then(r=>r.json());box.innerHTML=(d.results||[]).map(i=>`<a class="gc-ms-row" href="${i.type==='circuit'?'/guia-motorsport/circuitos/'+i.slug:'#'}"><strong>${i.name}</strong><br><span class="gc-ms-muted">${i.type}</span></a>`).join('')||'<p>No hay resultados.</p>'});
+    document.querySelector('[data-ms-search]')?.addEventListener('submit',async e=>{e.preventDefault();const q=new FormData(e.currentTarget).get('q')||'';const box=document.querySelector('[data-ms-results]');const d=await fetch('/api/motorsport/search?q='+encodeURIComponent(q)).then(r=>r.json());box.innerHTML=(d.results||[]).map(i=>`<a class="gc-ms-row" href="${i.type==='circuit'?'/guia-motorsport/circuitos/'+encodeURIComponent(i.slug||''):'#'}"><strong>${h(i.name)}</strong><br><span class="gc-ms-muted">${h(i.type)}</span></a>`).join('')||'<p>No hay resultados.</p>'});
   </script>
 </MarketingLayout>

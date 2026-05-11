@@ -129,6 +129,19 @@ async function mysqlQuery(sql: string, params: unknown[] = []) {
   const [rows] = await pool.query(sql, params);
   return rows as any[];
 }
+async function mysqlColumnExists(tableName: string, columnName: string) {
+  const rows = await mysqlQuery(
+    'SELECT COUNT(*) AS count_value FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [tableName, columnName]
+  );
+  return Number(rows[0]?.count_value || 0) > 0;
+}
+
+async function mysqlEnsureColumn(tableName: string, columnName: string, definition: string) {
+  if (await mysqlColumnExists(tableName, columnName)) return;
+  await mysqlExecute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+}
+
 
 async function ensureMysqlSchema() {
   if (!useMysqlStorage() || mysqlSchemaReady) return;
@@ -264,7 +277,7 @@ async function ensureMysqlSchema() {
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_motorsport_circuits (
       id VARCHAR(64) NOT NULL PRIMARY KEY, legacy_id VARCHAR(191) NULL, slug VARCHAR(191) NOT NULL UNIQUE, name VARCHAR(255) NOT NULL,
-      country_id VARCHAR(64) NULL, circuit_type VARCHAR(80) NULL, location VARCHAR(255) NULL, length_meters INT NULL, opened_year INT NULL, description TEXT NULL,
+      country_id VARCHAR(64) NULL, country_name VARCHAR(255) NULL, continent_id VARCHAR(64) NULL, continent_name VARCHAR(255) NULL, circuit_type VARCHAR(80) NULL, location VARCHAR(255) NULL, length_meters INT NULL, turns INT NULL, direction VARCHAR(80) NULL, surface VARCHAR(120) NULL, fia_grade VARCHAR(80) NULL, opened_year INT NULL, latitude DECIMAL(10,7) NULL, longitude DECIMAL(10,7) NULL, description_short TEXT NULL, description TEXT NULL, official_url TEXT NULL, wikipedia_url TEXT NULL,
       raw_json LONGTEXT NULL, import_batch_id VARCHAR(64) NULL, created_at DATETIME(3) NOT NULL, updated_at DATETIME(3) NOT NULL,
       INDEX idx_gc_motorsport_circuits_slug (slug), INDEX idx_gc_motorsport_circuits_country (country_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -325,7 +338,7 @@ async function ensureMysqlSchema() {
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_motorsport_records (
       id VARCHAR(64) NOT NULL PRIMARY KEY, legacy_id VARCHAR(191) NULL, circuit_id VARCHAR(64) NOT NULL, layout_id VARCHAR(64) NULL, vehicle_id VARCHAR(64) NULL, person_id VARCHAR(64) NULL, series_id VARCHAR(64) NULL,
-      title VARCHAR(255) NOT NULL, category VARCHAR(120) NULL, value VARCHAR(120) NULL, record_date DATE NULL, year INT NULL, raw_json LONGTEXT NULL, import_batch_id VARCHAR(64) NULL, created_at DATETIME(3) NOT NULL, updated_at DATETIME(3) NOT NULL,
+      title VARCHAR(255) NOT NULL, category VARCHAR(120) NULL, value VARCHAR(120) NULL, value_ms INT NULL, driver VARCHAR(255) NULL, vehicle VARCHAR(255) NULL, team VARCHAR(255) NULL, source_url TEXT NULL, record_date DATE NULL, year INT NULL, raw_json LONGTEXT NULL, import_batch_id VARCHAR(64) NULL, created_at DATETIME(3) NOT NULL, updated_at DATETIME(3) NOT NULL,
       INDEX idx_gc_motorsport_records_circuit (circuit_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
@@ -333,7 +346,7 @@ async function ensureMysqlSchema() {
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_motorsport_media (
       id VARCHAR(64) NOT NULL PRIMARY KEY, legacy_id VARCHAR(191) NULL, entity_type VARCHAR(40) NOT NULL, entity_id VARCHAR(64) NOT NULL, media_type VARCHAR(40) NOT NULL, url TEXT NOT NULL,
-      title VARCHAR(255) NULL, alt_text VARCHAR(255) NULL, is_primary TINYINT(1) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, credit VARCHAR(255) NULL, license VARCHAR(120) NULL,
+      title VARCHAR(255) NULL, alt_text VARCHAR(255) NULL, description TEXT NULL, source_url TEXT NULL, is_primary TINYINT(1) NOT NULL DEFAULT 0, is_technical_primary TINYINT(1) NOT NULL DEFAULT 0, is_publicable TINYINT(1) NOT NULL DEFAULT 1, sort_order INT NOT NULL DEFAULT 0, credit VARCHAR(255) NULL, author VARCHAR(255) NULL, license VARCHAR(120) NULL,
       raw_json LONGTEXT NULL, import_batch_id VARCHAR(64) NULL, created_at DATETIME(3) NOT NULL, updated_at DATETIME(3) NOT NULL,
       INDEX idx_gc_motorsport_media_entity (entity_type, entity_id), INDEX idx_gc_motorsport_media_type (media_type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -369,6 +382,23 @@ async function ensureMysqlSchema() {
       INDEX idx_gc_motorsport_sources_entity (entity_type, entity_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+
+  for (const [columnName, definition] of [
+    ['country_name', 'VARCHAR(255) NULL'], ['continent_id', 'VARCHAR(64) NULL'], ['continent_name', 'VARCHAR(255) NULL'],
+    ['turns', 'INT NULL'], ['direction', 'VARCHAR(80) NULL'], ['surface', 'VARCHAR(120) NULL'], ['fia_grade', 'VARCHAR(80) NULL'],
+    ['latitude', 'DECIMAL(10,7) NULL'], ['longitude', 'DECIMAL(10,7) NULL'], ['description_short', 'TEXT NULL'],
+    ['official_url', 'TEXT NULL'], ['wikipedia_url', 'TEXT NULL']
+  ] as Array<[string, string]>) await mysqlEnsureColumn('gc_motorsport_circuits', columnName, definition);
+
+  for (const [columnName, definition] of [
+    ['value_ms', 'INT NULL'], ['driver', 'VARCHAR(255) NULL'], ['vehicle', 'VARCHAR(255) NULL'], ['team', 'VARCHAR(255) NULL'], ['source_url', 'TEXT NULL']
+  ] as Array<[string, string]>) await mysqlEnsureColumn('gc_motorsport_records', columnName, definition);
+
+  for (const [columnName, definition] of [
+    ['description', 'TEXT NULL'], ['source_url', 'TEXT NULL'], ['is_technical_primary', 'TINYINT(1) NOT NULL DEFAULT 0'],
+    ['is_publicable', 'TINYINT(1) NOT NULL DEFAULT 1'], ['author', 'VARCHAR(255) NULL']
+  ] as Array<[string, string]>) await mysqlEnsureColumn('gc_motorsport_media', columnName, definition);
 
   mysqlSchemaReady = true;
 }
@@ -585,8 +615,15 @@ function gcMotorsportArray(payload: MotorsportImportPayload, key: string) {
   return Array.isArray(value) ? value : [];
 }
 
+
+function gcMotorsportNormalizeId(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const raw = String(value).trim();
+  return /^-?\d+\.0+$/.test(raw) ? raw.split('.')[0] : raw;
+}
+
 function gcMotorsportStableId(prefix: string, value: any) {
-  if (value?.id) return String(value.id);
+  if (value?.id) return String(gcMotorsportNormalizeId(value.id));
   const basis = String(value?.slug || value?.legacy_id || value?.name || value?.title || crypto.randomUUID());
   return `${prefix}-${crypto.createHash('sha1').update(basis).digest('hex').slice(0, 16)}`;
 }
@@ -638,8 +675,17 @@ function gcMotorsportMapCircuit(row: any, related: any = {}) {
     type: row.circuit_type,
     location: row.location,
     lengthMeters: row.length_meters,
+    turns: row.turns,
+    direction: row.direction,
+    surface: row.surface,
+    fiaGrade: row.fia_grade,
     openedYear: row.opened_year,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    descriptionShort: row.description_short,
     description: row.description,
+    officialUrl: row.official_url,
+    wikipediaUrl: row.wikipedia_url,
     cover: cover ? { url: cover.url, type: cover.media_type, title: cover.title, alt: cover.alt_text } : null,
     coverKind: cover ? cover.media_type : 'placeholder',
     hasPhoto: gallery.some((item: any) => item.media_type === 'foto'),
@@ -671,14 +717,15 @@ function gcMotorsportValidateImport(payload: MotorsportImportPayload) {
     if (!circuit.name || !circuit.slug) issues.push(`Circuito sin nombre o slug: ${circuit.id || circuit.legacy_id || 'sin-id'}`);
     if (circuit.slug && circuitSlugs.has(circuit.slug)) issues.push(`Slug de circuito duplicado: ${circuit.slug}`);
     if (circuit.slug) circuitSlugs.add(circuit.slug);
-    if (circuit.id && circuitIds.has(circuit.id)) issues.push(`ID de circuito duplicado: ${circuit.id}`);
-    if (circuit.id) circuitIds.add(circuit.id);
+    const circuitId = gcMotorsportNormalizeId(circuit.id);
+    if (circuitId && circuitIds.has(circuitId)) issues.push(`ID de circuito duplicado: ${circuit.id}`);
+    if (circuitId) circuitIds.add(circuitId);
   }
   for (const layout of gcMotorsportArray(payload, 'layouts')) {
-    if (layout.circuit_id && !circuitIds.has(layout.circuit_id)) issues.push(`Layout asociado a circuito inexistente: ${layout.id || layout.slug}`);
+    if (layout.circuit_id && !circuitIds.has(String(gcMotorsportNormalizeId(layout.circuit_id)))) issues.push(`Layout asociado a circuito inexistente: ${layout.id || layout.slug}`);
   }
   for (const record of gcMotorsportArray(payload, 'records')) {
-    if (record.circuit_id && !circuitIds.has(record.circuit_id)) issues.push(`Record asociado a circuito inexistente: ${record.id || record.title}`);
+    if (record.circuit_id && !circuitIds.has(String(gcMotorsportNormalizeId(record.circuit_id)))) issues.push(`Record asociado a circuito inexistente: ${record.id || record.title}`);
   }
   for (const media of gcMotorsportArray(payload, 'media')) {
     if (!gcMotorsportValidMediaUrl(media.url)) issues.push(`Media con URL inválida: ${media.id || media.url || 'sin-url'}`);
@@ -702,7 +749,7 @@ async function gcMotorsportCounts() {
 async function gcMotorsportListCircuits() {
   if (!(await gcMotorsportEnsureAvailable())) return gcMotorsportMock.circuits;
   const rows = await mysqlQuery(`
-    SELECT c.*, co.name AS country_name, co.iso2 AS country_code, ct.name AS continent_name,
+    SELECT c.*, COALESCE(co.name, c.country_name) AS country_name, co.iso2 AS country_code, COALESCE(ct.name, c.continent_name) AS continent_name,
       (SELECT COUNT(*) FROM gc_motorsport_records r WHERE r.circuit_id = c.id) AS records_count
     FROM gc_motorsport_circuits c
     LEFT JOIN gc_motorsport_countries co ON co.id = c.country_id
@@ -712,7 +759,7 @@ async function gcMotorsportListCircuits() {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
   const placeholders = ids.map(() => '?').join(',');
-  const media = await mysqlQuery(`SELECT * FROM gc_motorsport_media WHERE entity_type = 'circuit' AND entity_id IN (${placeholders}) ORDER BY is_primary DESC, sort_order ASC, title ASC`, ids);
+  const media = await mysqlQuery(`SELECT * FROM gc_motorsport_media WHERE entity_type = 'circuit' AND is_publicable = 1 AND entity_id IN (${placeholders}) ORDER BY is_primary DESC, sort_order ASC, title ASC`, ids);
   const records = await mysqlQuery(`SELECT circuit_id, COUNT(*) AS count_value FROM gc_motorsport_records WHERE circuit_id IN (${placeholders}) GROUP BY circuit_id`, ids);
   return rows.map((row) => gcMotorsportMapCircuit({ ...row, records_count: records.find((r) => r.circuit_id === row.id)?.count_value || 0 }, { media: media.filter((m) => m.entity_id === row.id) }));
 }
@@ -720,7 +767,7 @@ async function gcMotorsportListCircuits() {
 async function gcMotorsportGetCircuit(slug: string) {
   if (!(await gcMotorsportEnsureAvailable())) return gcMotorsportMock.circuits.find((c) => c.slug === slug) || null;
   const rows = await mysqlQuery(`
-    SELECT c.*, co.name AS country_name, co.iso2 AS country_code, ct.name AS continent_name
+    SELECT c.*, COALESCE(co.name, c.country_name) AS country_name, co.iso2 AS country_code, COALESCE(ct.name, c.continent_name) AS continent_name
     FROM gc_motorsport_circuits c
     LEFT JOIN gc_motorsport_countries co ON co.id = c.country_id
     LEFT JOIN gc_motorsport_continents ct ON ct.id = co.continent_id
@@ -729,7 +776,7 @@ async function gcMotorsportGetCircuit(slug: string) {
   const row = rows[0];
   if (!row) return null;
   const [media, layouts, records, corners, aliases, sources, series, relations] = await Promise.all([
-    mysqlQuery(`SELECT * FROM gc_motorsport_media WHERE entity_type = 'circuit' AND entity_id = ? ORDER BY is_primary DESC, sort_order ASC, title ASC`, [row.id]),
+    mysqlQuery(`SELECT * FROM gc_motorsport_media WHERE entity_type = 'circuit' AND is_publicable = 1 AND entity_id = ? ORDER BY is_primary DESC, sort_order ASC, title ASC`, [row.id]),
     mysqlQuery(`SELECT * FROM gc_motorsport_layouts WHERE circuit_id = ? ORDER BY name ASC`, [row.id]),
     mysqlQuery(`SELECT * FROM gc_motorsport_records WHERE circuit_id = ? ORDER BY record_date DESC, year DESC, title ASC`, [row.id]),
     mysqlQuery(`SELECT * FROM gc_motorsport_corners WHERE circuit_id = ? ORDER BY corner_number ASC, name ASC`, [row.id]),
@@ -783,21 +830,21 @@ async function gcMotorsportApplyImport(payload: MotorsportImportPayload, actorId
   await gcMotorsportUpsert('gc_motorsport_import_batches', { id: batchId, source_name: payload.summary?.source || 'json normalizado', summary_json: gcMotorsportJson(payload.summary || {}), applied_by_user_id: actorId, created_at: now, updated_at: now });
 
   for (const item of gcMotorsportArray(payload, 'continents')) await gcMotorsportUpsert('gc_motorsport_continents', { id: gcMotorsportStableId('continent', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'countries')) await gcMotorsportUpsert('gc_motorsport_countries', { id: gcMotorsportStableId('country', item), legacy_id: item.legacy_id || null, continent_id: item.continent_id || null, iso2: item.iso2 || item.country_code || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'circuits')) await gcMotorsportUpsert('gc_motorsport_circuits', { id: gcMotorsportStableId('circuit', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, country_id: item.country_id || null, circuit_type: item.type || item.circuit_type || null, location: item.location || null, length_meters: item.length_meters || null, opened_year: item.opened_year || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'layouts')) await gcMotorsportUpsert('gc_motorsport_layouts', { id: gcMotorsportStableId('layout', item), legacy_id: item.legacy_id || null, circuit_id: item.circuit_id, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, length_meters: item.length_meters || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'corners')) await gcMotorsportUpsert('gc_motorsport_corners', { id: gcMotorsportStableId('corner', item), legacy_id: item.legacy_id || null, circuit_id: item.circuit_id, layout_id: item.layout_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, corner_number: item.corner_number || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'countries')) await gcMotorsportUpsert('gc_motorsport_countries', { id: gcMotorsportStableId('country', item), legacy_id: item.legacy_id || null, continent_id: gcMotorsportNormalizeId(item.continent_id) || null, iso2: item.iso2 || item.country_code || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'circuits')) await gcMotorsportUpsert('gc_motorsport_circuits', { id: gcMotorsportStableId('circuit', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, country_id: gcMotorsportNormalizeId(item.country_id) || null, country_name: item.country || item.country_name || null, continent_id: gcMotorsportNormalizeId(item.continent_id) || null, continent_name: item.continent || item.continent_name || null, circuit_type: item.type || item.circuit_type || null, location: item.location || null, length_meters: item.length_meters || null, turns: item.turns || null, direction: item.direction || null, surface: item.surface || null, fia_grade: item.fia_grade || null, opened_year: item.opened_year || null, latitude: item.latitude || null, longitude: item.longitude || null, description_short: item.descriptionShort || item.description_short || null, description: item.description || null, official_url: item.official_url || null, wikipedia_url: item.wikipedia_url || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'layouts')) await gcMotorsportUpsert('gc_motorsport_layouts', { id: gcMotorsportStableId('layout', item), legacy_id: item.legacy_id || null, circuit_id: gcMotorsportNormalizeId(item.circuit_id), slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, length_meters: item.length_meters || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'corners')) await gcMotorsportUpsert('gc_motorsport_corners', { id: gcMotorsportStableId('corner', item), legacy_id: item.legacy_id || null, circuit_id: gcMotorsportNormalizeId(item.circuit_id), layout_id: gcMotorsportNormalizeId(item.layout_id) || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, corner_number: item.corner_number || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'series')) await gcMotorsportUpsert('gc_motorsport_series', { id: gcMotorsportStableId('series', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, category: item.category || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'people')) await gcMotorsportUpsert('gc_motorsport_people', { id: gcMotorsportStableId('person', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, role: item.role || 'piloto', country_id: item.country_id || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'constructors')) await gcMotorsportUpsert('gc_motorsport_constructors', { id: gcMotorsportStableId('constructor', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, country_id: item.country_id || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'vehicles')) await gcMotorsportUpsert('gc_motorsport_vehicles', { id: gcMotorsportStableId('vehicle', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, constructor_id: item.constructor_id || null, category: item.category || null, year: item.year || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'records')) await gcMotorsportUpsert('gc_motorsport_records', { id: gcMotorsportStableId('record', item), legacy_id: item.legacy_id || null, circuit_id: item.circuit_id, layout_id: item.layout_id || null, vehicle_id: item.vehicle_id || null, person_id: item.person_id || null, series_id: item.series_id || null, title: item.title || item.name || 'Record', category: item.category || null, value: item.value || item.time || null, record_date: item.record_date || null, year: item.year || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'media')) await gcMotorsportUpsert('gc_motorsport_media', { id: gcMotorsportStableId('media', item), legacy_id: item.legacy_id || null, entity_type: item.entity_type, entity_id: item.entity_id, media_type: gcMotorsportMediaType(item.media_type || item.type), url: item.url, title: item.title || null, alt_text: item.alt_text || item.alt || null, is_primary: item.is_primary ? 1 : 0, sort_order: item.sort_order || 0, credit: item.credit || null, license: item.license || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'aliases')) await gcMotorsportUpsert('gc_motorsport_aliases', { id: gcMotorsportStableId('alias', item), entity_type: item.entity_type, entity_id: item.entity_id, alias: item.alias, normalized_alias: gcMotorsportNormalizeAlias(item.alias), raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'relations')) await gcMotorsportUpsert('gc_motorsport_relations', { id: gcMotorsportStableId('relation', item), entity_type: item.entity_type, entity_id: item.entity_id, target_type: item.target_type, target_id: item.target_id, relation_type: item.relation_type || 'relacionado', description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'people')) await gcMotorsportUpsert('gc_motorsport_people', { id: gcMotorsportStableId('person', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, role: item.role || 'piloto', country_id: gcMotorsportNormalizeId(item.country_id) || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'constructors')) await gcMotorsportUpsert('gc_motorsport_constructors', { id: gcMotorsportStableId('constructor', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, country_id: gcMotorsportNormalizeId(item.country_id) || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'vehicles')) await gcMotorsportUpsert('gc_motorsport_vehicles', { id: gcMotorsportStableId('vehicle', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, constructor_id: gcMotorsportNormalizeId(item.constructor_id) || null, category: item.category || null, year: item.year || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'records')) await gcMotorsportUpsert('gc_motorsport_records', { id: gcMotorsportStableId('record', item), legacy_id: item.legacy_id || null, circuit_id: gcMotorsportNormalizeId(item.circuit_id), layout_id: gcMotorsportNormalizeId(item.layout_id) || null, vehicle_id: gcMotorsportNormalizeId(item.vehicle_id) || null, person_id: gcMotorsportNormalizeId(item.person_id) || null, series_id: gcMotorsportNormalizeId(item.series_id) || null, title: item.title || item.name || 'Record', category: item.category || null, value: item.value || item.time || null, value_ms: item.value_ms || null, driver: item.driver || null, vehicle: item.vehicle || null, team: item.team || null, source_url: item.source_url || null, record_date: item.record_date || null, year: item.year || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'media')) await gcMotorsportUpsert('gc_motorsport_media', { id: gcMotorsportStableId('media', item), legacy_id: item.legacy_id || null, entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), media_type: gcMotorsportMediaType(item.media_type || item.type), url: item.url, title: item.title || null, alt_text: item.alt_text || item.alt || null, description: item.description || null, source_url: item.source_url || null, is_primary: item.is_primary ? 1 : 0, is_technical_primary: item.is_technical_primary ? 1 : 0, is_publicable: item.is_publicable === false ? 0 : 1, sort_order: item.sort_order || 0, credit: item.credit || item.author || null, author: item.author || null, license: item.license || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'aliases')) await gcMotorsportUpsert('gc_motorsport_aliases', { id: gcMotorsportStableId('alias', item), entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), alias: item.alias, normalized_alias: item.normalized_alias || gcMotorsportNormalizeAlias(item.alias), raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'relations')) await gcMotorsportUpsert('gc_motorsport_relations', { id: gcMotorsportStableId('relation', item), entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), target_type: item.target_type, target_id: gcMotorsportNormalizeId(item.target_id), relation_type: item.relation_type || 'relacionado', description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'glossary')) await gcMotorsportUpsert('gc_motorsport_glossary', { id: gcMotorsportStableId('glossary', item), slug: item.slug || gcMotorsportNormalizeSlug(item.term || item.name), term: item.term || item.name, definition: item.definition || item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'sources')) await gcMotorsportUpsert('gc_motorsport_sources', { id: gcMotorsportStableId('source', item), entity_type: item.entity_type, entity_id: item.entity_id, title: item.title || item.name || item.url, url: item.url || null, source_type: item.source_type || item.type || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'circuitSeries')) await gcMotorsportUpsert('gc_motorsport_circuit_series', { id: gcMotorsportStableId('circuit-series', item), circuit_id: item.circuit_id, series_id: item.series_id, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'sources')) await gcMotorsportUpsert('gc_motorsport_sources', { id: gcMotorsportStableId('source', item), entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), title: item.title || item.name || item.url, url: item.url || null, source_type: item.source_type || item.type || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'circuitSeries')) await gcMotorsportUpsert('gc_motorsport_circuit_series', { id: gcMotorsportStableId('circuit-series', item), circuit_id: gcMotorsportNormalizeId(item.circuit_id), series_id: gcMotorsportNormalizeId(item.series_id), raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const issue of [...validation.issues.map((message) => ({ severity: 'error', message })), ...validation.warnings.map((message) => ({ severity: 'warning', message }))]) {
     await gcMotorsportUpsert('gc_motorsport_import_issues', { id: crypto.randomUUID(), import_batch_id: batchId, severity: issue.severity, entity_type: null, entity_id: null, message: issue.message, raw_json: gcMotorsportJson(issue), created_at: now, updated_at: now });
   }
@@ -5063,7 +5110,7 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
 
 
 // GC_CALENDAR_EVENTS_PATCH_V6_ROUTE_FIRST
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 const gcCalendarV6AllowedTypes = ['combo', 'race_lfm', 'race_gc'] as const;
 type GcCalendarV6Type = typeof gcCalendarV6AllowedTypes[number];
@@ -5291,7 +5338,7 @@ app.delete(['/api/admin/calendar-events/:id', '/api/admin/calendar/events/:id', 
 
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 
 
@@ -7461,6 +7508,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 

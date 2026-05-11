@@ -4,6 +4,10 @@ import argparse, json, sys
 from urllib.parse import urlparse
 MEDIA_TYPES={'foto','plano','mapa','layout','logo','referencia','oficial'}
 BAD_IMAGE_HOSTS=('wikipedia.org','wikimedia.org')
+def norm_id(v):
+    if v is None or v == '': return None
+    raw=str(v).strip()
+    return raw.split('.')[0] if raw.replace('.','',1).lstrip('-').isdigit() and raw.endswith('.0') else raw
 def valid_url(u):
     if not u: return False
     if str(u).startswith('/'): return True
@@ -24,13 +28,13 @@ def check(path):
                 i=x.get('id')
                 if i in seen: issues.append(f'id duplicado en {key}: {i}')
                 if i: seen.add(i)
-    circuit_ids={c.get('id') for c in d.get('circuits',[])}
+    circuit_ids={norm_id(c.get('id')) for c in d.get('circuits',[])}
     for c in d.get('circuits',[]):
         if not c.get('name') or not c.get('slug'): issues.append(f"circuito sin nombre/slug: {c.get('id')}")
     for l in d.get('layouts',[]):
-        if l.get('circuit_id') not in circuit_ids: issues.append(f"layout con circuito inexistente: {l.get('id')}")
+        if norm_id(l.get('circuit_id')) not in circuit_ids: issues.append(f"layout con circuito inexistente: {l.get('id')}")
     for r in d.get('records',[]):
-        if r.get('circuit_id') not in circuit_ids: issues.append(f"record con circuito inexistente: {r.get('id')}")
+        if norm_id(r.get('circuit_id')) not in circuit_ids: issues.append(f"record con circuito inexistente: {r.get('id')}")
     covers={}
     for m in d.get('media',[]):
         mt=m.get('media_type') or m.get('type')
