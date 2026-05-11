@@ -1,0 +1,102 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+<AppLayout title="Admin usuarios | GrassCutters">
+  <div class="gc-page gc-admin-page-clean">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Usuarios.</h1>
+        <p class="gc-subtitle">Cuentas web, roles, sesiones activas y pilotos vinculados.</p>
+      </div>
+      <aside class="gc-live-panel"><div class="gc-live-panel__title"><span>Usuarios</span><strong id="adminState">Comprobando</strong></div><div class="gc-status-list"><div class="gc-status-row"><span>Total</span><strong id="usersTotal">...</strong></div><div class="gc-status-row"><span>Admins</span><strong id="usersAdmins">...</strong></div><div class="gc-status-row"><span>Vinculados</span><strong id="usersLinked">...</strong></div></div></aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-section-head"><h2>Acceso restringido</h2><p>Solo administradores</p></div>
+      <div class="gc-slab"><p>Inicia sesión con una cuenta administradora.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Login</a><button class="gc-btn" id="retryAdmin" type="button">Reintentar</button></div></div>
+    </section>
+
+    <section id="adminContent" hidden>
+      <section class="gc-section">
+        <div class="gc-section-head"><h2>Usuarios registrados</h2><p id="usersMeta">Cargando...</p></div>
+        <div class="gc-toolbar">
+          <label class="gc-field"><span>Buscar</span><input class="gc-input" id="userSearch" type="search" placeholder="email, piloto, nombre..." /></label>
+          <label class="gc-field"><span>Rol</span><select class="gc-select" id="roleFilter"><option value="all">Todos</option><option value="admin">Admins</option><option value="pilot">Pilotos</option></select></label>
+          <label class="gc-field"><span>Vínculo</span><select class="gc-select" id="linkFilter"><option value="all">Todos</option><option value="linked">Vinculados</option><option value="unlinked">Sin vincular</option></select></label>
+          <button class="gc-btn" id="reloadUsers" type="button">Recargar</button>
+        </div>
+        <div class="gc-table-wrap">
+          <table class="gc-table" id="usersTable">
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Piloto</th><th>Sesiones</th><th>Alta</th><th>Acciones</th></tr></thead>
+            <tbody><tr><td colspan="6">Cargando usuarios...</td></tr></tbody>
+          </table>
+        </div>
+        <p class="gc-message" id="usersMessage"></p>
+      </section>
+
+      <section class="gc-section">
+        <div class="gc-section-head"><h2>Pilotos sin cuenta vinculada</h2><p id="unlinkedMeta">Cargando pilotos...</p></div>
+        <div class="gc-table-wrap">
+          <table class="gc-table gc-table--compact" id="unlinkedTable">
+            <thead><tr><th>Piloto</th><th>Vueltas</th><th>Válidas</th><th>Mejor vuelta</th><th>Coches</th><th>Última actividad</th><th>Acciones</th></tr></thead>
+            <tbody><tr><td colspan="7">Cargando pilotos...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = { gate:$('adminGate'), content:$('adminContent'), state:$('adminState'), retry:$('retryAdmin'), total:$('usersTotal'), admins:$('usersAdmins'), linked:$('usersLinked'), meta:$('usersMeta'), table:document.querySelector('#usersTable tbody'), search:$('userSearch'), role:$('roleFilter'), link:$('linkFilter'), reload:$('reloadUsers'), msg:$('usersMessage'), unlinkedMeta:$('unlinkedMeta'), unlinkedTable:document.querySelector('#unlinkedTable tbody') };
+      let users = [];
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const dateText = (v) => { if (!v) return '-'; const d = new Date(v); return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' }); };
+      const lapText = (ms) => { const n = Number(ms); if (!Number.isFinite(n) || n <= 0) return '--'; const m = Math.floor(n/60000); const s = Math.floor((n%60000)/1000); const x = String(Math.floor(n%1000)).padStart(3,'0'); return `${m}:${String(s).padStart(2,'0')}.${x}`; };
+      async function fetchJson(url, options = {}) { const r = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options }); const d = await r.json().catch(() => ({})); if (!r.ok || d.ok === false) throw new Error(d.message || `HTTP ${r.status}`); return d; }
+      async function isAdmin() { try { const s = await fetchJson('/api/admin/status'); if (s.authorized === true) return true; } catch {} const p = await fetchJson('/api/profile'); return p.user?.role === 'admin'; }
+      function show(mode) { els.gate.hidden = mode !== 'gate'; els.content.hidden = mode !== 'content'; }
+      function renderUsers() {
+        const q = String(els.search.value || '').toLowerCase().trim();
+        const role = els.role.value;
+        const link = els.link.value;
+        const rows = users.filter((u) => {
+          if (role !== 'all' && u.role !== role) return false;
+          const linked = Boolean(u.linkedPilotName || u.linkedPlayerId || u.pilotLink);
+          if (link === 'linked' && !linked) return false;
+          if (link === 'unlinked' && linked) return false;
+          const hay = [u.displayName,u.email,u.role,u.linkedPilotName,u.linkedPlayerId,u.pilotSteamGuid,u.linkedPilotSteamGuid].join(' ').toLowerCase();
+          return !q || hay.includes(q);
+        });
+        els.meta.textContent = `${rows.length} de ${users.length} usuarios`;
+        els.total.textContent = String(users.length);
+        els.admins.textContent = String(users.filter((u) => u.role === 'admin').length);
+        els.linked.textContent = String(users.filter((u) => u.linkedPilotName || u.linkedPlayerId || u.pilotLink).length);
+        els.table.innerHTML = rows.length ? rows.map((u) => `<tr data-user-id="${esc(u.id)}"><td><strong>${esc(u.displayName || '-')}</strong><br><span class="gc-muted-text">${esc(u.email || '-')}</span></td><td><span class="gc-chip ${u.role === 'admin' ? 'gc-chip--accent' : ''}">${esc(u.role || '-')}</span></td><td>${u.linkedPilotName ? `${esc(u.linkedPilotName)}<br><span class="gc-muted-text">Player ID ${esc(u.linkedPlayerId || '-')}</span>` : '<span class="gc-muted-text">Sin vincular</span>'}</td><td>${esc(u.activeSessions || 0)}</td><td>${esc(dateText(u.createdAt))}</td><td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-action="role" data-role="${u.role === 'admin' ? 'pilot' : 'admin'}">${u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button><button class="gc-btn gc-btn--mini" data-action="revoke">Cerrar sesiones</button></div></td></tr>`).join('') : '<tr><td colspan="6">Sin usuarios para mostrar.</td></tr>';
+      }
+      async function loadUsers() { const data = await fetchJson('/api/admin/users'); users = data.users || data.items || []; renderUsers(); els.msg.textContent = ''; }
+      async function loadUnlinked() { try { const data = await fetchJson('/api/admin/unlinked-pilots'); const pilots = data.pilots || data.items || []; els.unlinkedMeta.textContent = `${pilots.length} pilotos detectados sin cuenta vinculada`; els.unlinkedTable.innerHTML = pilots.length ? pilots.slice(0,80).map((p) => `<tr><td><strong>${esc(p.name || '-')}</strong><br><span class="gc-muted-text">ID ${esc(p.id || '-')} · ${esc(p.steamGuid || '-')}</span></td><td>${esc(p.totalLaps || 0)}</td><td>${esc(p.validLaps || 0)}</td><td><strong>${esc(p.bestLap || lapText(p.bestLapMs))}</strong></td><td>${esc(p.carsCount || 0)}</td><td>${esc(dateText(p.lastSeenAt))}</td><td><a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(p.id)}">Ficha</a></td></tr>`).join('') : '<tr><td colspan="7">No hay pilotos pendientes de vincular.</td></tr>'; } catch (e) { els.unlinkedTable.innerHTML = `<tr><td colspan="7">${esc(e.message || 'No se pudieron cargar pilotos.')}</td></tr>`; } }
+      async function tryUserAction(id, action, payload) {
+        const tries = action === 'role'
+          ? [{url:`/api/admin/users/${encodeURIComponent(id)}/role`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}`,method:'PATCH'},{url:`/api/admin/users/${encodeURIComponent(id)}`,method:'PUT'}]
+          : [{url:`/api/admin/users/${encodeURIComponent(id)}/sessions/revoke`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}/sessions`,method:'DELETE'},{url:`/api/admin/sessions/revoke`,method:'POST'}];
+        let lastError;
+        for (const item of tries) {
+          try { return await fetchJson(item.url, { method:item.method, body:JSON.stringify(payload) }); } catch (e) { lastError = e; }
+        }
+        throw lastError || new Error('Acción no disponible.');
+      }
+      els.table.addEventListener('click', async (ev) => { const btn = ev.target.closest('button[data-action]'); if (!btn) return; const row = btn.closest('tr[data-user-id]'); const id = row?.dataset.userId; if (!id) return; try { els.msg.textContent = 'Aplicando acción...'; if (btn.dataset.action === 'role') await tryUserAction(id, 'role', { role: btn.dataset.role }); if (btn.dataset.action === 'revoke') await tryUserAction(id, 'revoke', { userId:id }); els.msg.textContent = 'Acción aplicada.'; els.msg.style.color = 'var(--accent)'; await loadUsers(); } catch (e) { els.msg.textContent = e.message || 'No se pudo aplicar la acción.'; els.msg.style.color = 'var(--soft)'; } });
+      [els.search, els.role, els.link].forEach((n) => n.addEventListener('input', renderUsers));
+      els.reload.addEventListener('click', () => loadUsers().catch((e) => els.msg.textContent = e.message));
+      els.retry.addEventListener('click', init);
+      async function init() { show('gate'); try { if (!(await isAdmin())) return show('gate'); show('content'); await Promise.allSettled([loadUsers(), loadUnlinked()]); } catch { show('gate'); } }
+      init();
+    })();
+  </script>
+</AppLayout>

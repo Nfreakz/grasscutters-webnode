@@ -1,18 +1,19 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+import AdminSubnav from '../components/AdminSubnav.astro';
 ---
 <AppLayout title="Admin | GrassCutters">
-  <div class="gc-page gc-admin-page gc-admin-clean-page">
+  <div class="gc-page gc-admin-page-clean">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Admin console</span>
         <h1 class="gc-title">Control de boxes.</h1>
-        <p class="gc-subtitle">Panel privado para usuarios, permisos, storage, nombres corregidos, stracker y sincronización ACSM.</p>
+        <p class="gc-subtitle">Resumen de administración. Los módulos pesados ahora están separados para evitar una página infinita.</p>
         <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Usuarios</span>
-          <span class="gc-chip">Permisos</span>
+          <span class="gc-chip gc-chip--accent">Resumen</span>
           <span class="gc-chip">MySQL</span>
           <span class="gc-chip">ACSM</span>
+          <span class="gc-chip">stracker</span>
         </div>
       </div>
       <aside class="gc-live-panel">
@@ -23,38 +24,15 @@ import AppLayout from '../layouts/AppLayout.astro';
       </aside>
     </section>
 
-    <section class="gc-section gc-admin-gate" id="adminGate" hidden>
-      <div class="gc-section-head">
-        <h2>Acceso restringido</h2>
-        <p>Solo administradores</p>
-      </div>
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-section-head"><h2>Acceso restringido</h2><p>Solo administradores</p></div>
       <div class="gc-slab">
         <h3 id="adminGateTitle">No tienes permisos de admin</h3>
         <p id="adminGateText">Inicia sesión con una cuenta administradora.</p>
-        <div class="gc-actions">
-          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
-          <button class="gc-btn" id="adminGateRetry" type="button">Reintentar</button>
-        </div>
+        <div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Login</a><button class="gc-btn" id="adminGateRetry" type="button">Reintentar</button></div>
       </div>
-    </section>
-
-    <section class="gc-grid-2 gc-admin-setup" id="adminSetup" hidden>
-      <form class="gc-section gc-form" id="bootstrapForm">
-        <div class="gc-section-head">
-          <h2>Crear primer administrador</h2>
-          <p>Solo aparece si el sistema confirma que no existe ningún admin.</p>
-        </div>
-        <p class="gc-admin-note">Indica el email de una cuenta registrada y el secreto de setup configurado en el servidor.</p>
-        <div class="gc-form-grid">
-          <label class="gc-field"><span>Email de cuenta</span><input class="gc-input" name="email" type="email" /></label>
-          <label class="gc-field"><span>Secret admin</span><input class="gc-input" name="secret" type="password" autocomplete="off" /></label>
-        </div>
-        <div class="gc-actions">
-          <button class="gc-btn gc-btn--primary" type="submit">Promocionar admin</button>
-          <a class="gc-btn" href="/login">Ir a login</a>
-        </div>
-        <p class="gc-message" id="bootstrapMessage"></p>
-      </form>
     </section>
 
     <section id="adminContent" hidden>
@@ -67,420 +45,107 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       <section class="gc-grid-2">
         <div class="gc-section">
-          <div class="gc-section-head">
-            <h2>Usuarios registrados</h2>
-            <p id="usersMeta">Cargando usuarios...</p>
+          <div class="gc-section-head"><h2>Módulos de administración</h2><p>Accesos separados para trabajar sin scroll infinito.</p></div>
+          <div class="gc-row-list">
+            <a class="gc-row-link" href="/admin/usuarios"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Usuarios</strong><br><span class="gc-row-link__desc">Cuentas, roles, sesiones y pilotos vinculados.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/admin/nombres"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Nombres visibles</strong><br><span class="gc-row-link__desc">Alias de pilotos, coches y circuitos.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/admin/calendario"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Calendario</strong><br><span class="gc-row-link__desc">Eventos, combo semanal y sincronización ACSM.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/admin/sistema"><span class="gc-row-link__num">04</span><span><strong class="gc-row-link__title">Sistema</strong><br><span class="gc-row-link__desc">Storage, stracker, ACSM y diagnóstico.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+            <a class="gc-row-link" href="/admin/historial"><span class="gc-row-link__num">05</span><span><strong class="gc-row-link__title">Historial</strong><br><span class="gc-row-link__desc">Auditoría de acciones sensibles.</span></span><span class="gc-row-link__cta">Abrir</span></a>
           </div>
-          <div class="gc-toolbar">
-            <label class="gc-field"><span>Buscar</span><input class="gc-input" id="userSearch" type="search" placeholder="email, piloto, nombre..." /></label>
-            <button class="gc-btn" id="reloadUsers" type="button">Recargar</button>
-          </div>
-          <div class="gc-table-wrap">
-            <table class="gc-table" id="usersTable">
-              <thead><tr><th>Usuario</th><th>Rol</th><th>Piloto</th><th>Sesiones</th><th>Alta</th><th>Acciones</th></tr></thead>
-              <tbody><tr><td colspan="6">Cargando usuarios...</td></tr></tbody>
-            </table>
-          </div>
-          <p class="gc-message" id="usersMessage"></p>
         </div>
 
         <aside class="gc-section">
-          <div class="gc-section-head"><h2>Sistema</h2><p>Estado operativo</p></div>
+          <div class="gc-section-head"><h2>Estado rápido</h2><p>Datos principales del sistema.</p></div>
           <div class="gc-slab">
-            <h3>Storage persistente</h3>
-            <p id="storageText">Comprobando storage...</p>
+            <h3>Storage</h3>
+            <p id="storageText">Cargando...</p>
             <div class="gc-slab-list" id="storageRows"><div><span>Storage</span><strong>...</strong></div></div>
-            <div class="gc-actions"><button class="gc-btn" id="reloadStorage" type="button">Revisar storage</button></div>
-            <p class="gc-message" id="storageMessage"></p>
           </div>
-
           <div class="gc-slab">
-            <h3>Stracker</h3>
-            <p id="strackerAdminText">Cargando estado de base de datos...</p>
-            <div class="gc-slab-list" id="strackerAdminRows"><div><span>DB</span><strong>...</strong></div></div>
-            <div class="gc-actions">
-              <button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button>
-              <a class="gc-btn" href="/app">Ver panel</a>
-            </div>
-            <p class="gc-message" id="syncMessage"></p>
+            <h3>stracker</h3>
+            <p id="strackerText">Cargando...</p>
+            <div class="gc-slab-list" id="strackerRows"><div><span>DB</span><strong>...</strong></div></div>
           </div>
-
           <div class="gc-slab">
             <h3>ACSM</h3>
-            <p id="acsmText">Sincroniza el combo activo del Assetto Corsa Server Manager.</p>
-            <div class="gc-slab-list" id="acsmRows"><div><span>Estado</span><strong>...</strong></div></div>
-            <div class="gc-actions">
-              <button class="gc-btn" id="checkAcsmBtn" type="button">Probar ACSM</button>
-              <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
-              <a class="gc-btn" href="/admin/calendario">Calendario admin</a>
-            </div>
+            <p id="acsmText">Cargando...</p>
+            <div class="gc-actions"><button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button><a class="gc-btn" href="/calendario">Ver calendario</a></div>
             <p class="gc-message" id="acsmMessage"></p>
           </div>
         </aside>
       </section>
-
-      <section class="gc-section" id="nameFiltersPanel">
-        <div class="gc-section-head"><h2>Filtro automático de nombres</h2><p id="nameFiltersMeta">Cargando catálogo...</p></div>
-        <div class="gc-slab">
-          <h3>Nombres visibles</h3>
-          <p class="gc-admin-note">Edita alias para pilotos, coches y circuitos. Estos nombres se usan en toda la web cuando la API los devuelve corregidos.</p>
-          <form class="gc-form gc-admin-inline-form" id="manualNameForm">
-            <div class="gc-form-grid">
-              <label class="gc-field"><span>Tipo</span><select class="gc-select" name="kind"><option value="car">Coche</option><option value="track">Circuito</option><option value="driver">Piloto</option></select></label>
-              <label class="gc-field"><span>Código original</span><input class="gc-input" name="sourceCode" type="text" placeholder="porsche_935_mobydick_gr5" /></label>
-              <label class="gc-field"><span>Nombre original opcional</span><input class="gc-input" name="sourceName" type="text" placeholder="UiCarName / UiTrackName" /></label>
-              <label class="gc-field"><span>Nombre visible</span><input class="gc-input" name="displayName" type="text" placeholder="Porsche 935 Mobydick GR5" /></label>
-            </div>
-            <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar alias manual</button></div>
-          </form>
-
-          <div class="gc-toolbar">
-            <label class="gc-field"><span>Tipo</span><select class="gc-select" id="nameKindFilter"><option value="cars">Coches</option><option value="tracks">Circuitos</option><option value="drivers">Pilotos</option></select></label>
-            <label class="gc-field"><span>Buscar</span><input class="gc-input" id="nameSearch" type="search" placeholder="código, nombre visible, original..." /></label>
-            <label class="gc-field"><span>Vista</span><select class="gc-select" id="nameViewFilter"><option value="all">Todos</option><option value="missing">Sin override</option><option value="overrides">Solo modificados</option></select></label>
-            <button class="gc-btn gc-btn--primary" id="saveVisibleNames" type="button">Guardar visibles</button>
-            <button class="gc-btn" id="reloadNameFilters" type="button">Recargar</button>
-          </div>
-          <div class="gc-table-wrap">
-            <table class="gc-table" id="nameFiltersTable"><thead><tr><th>Original</th><th>Automático</th><th>Nombre visible</th><th>Estado</th><th>Acciones</th></tr></thead><tbody><tr><td colspan="5">Cargando nombres...</td></tr></tbody></table>
-          </div>
-          <p class="gc-message" id="nameFiltersMessage"></p>
-        </div>
-      </section>
-
-      <section class="gc-grid-2">
-        <section class="gc-section" id="unlinkedPilotsPanel">
-          <div class="gc-section-head"><h2>Pilotos sin cuenta vinculada</h2><p id="unlinkedPilotsMeta">Cargando pilotos...</p></div>
-          <div class="gc-table-wrap"><table class="gc-table gc-table--compact" id="unlinkedPilotsTable"><thead><tr><th>Piloto</th><th>Vueltas</th><th>Válidas</th><th>Mejor vuelta</th><th>Coches</th><th>Última actividad</th><th>Acciones</th></tr></thead><tbody><tr><td colspan="7">Cargando pilotos...</td></tr></tbody></table></div>
-        </section>
-
-        <section class="gc-section" id="auditPanel">
-          <div class="gc-section-head"><h2>Historial admin</h2><p id="auditMeta">Últimos cambios</p></div>
-          <div class="gc-toolbar"><button class="gc-btn" id="reloadAudit" type="button">Recargar historial</button></div>
-          <div class="gc-table-wrap"><table class="gc-table gc-table--compact" id="auditTable"><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Entidad</th><th>Detalle</th></tr></thead><tbody><tr><td colspan="5">Cargando historial...</td></tr></tbody></table></div>
-        </section>
-      </section>
     </section>
   </div>
-
-  <style is:global>
-    .gc-admin-clean-page{display:grid;gap:clamp(22px,3vw,34px)}
-    .gc-admin-clean-page [hidden]{display:none!important}
-    .gc-admin-inline-form{margin-bottom:18px}
-    .gc-admin-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .gc-input--compact{min-height:36px;padding:7px 10px}
-    .gc-admin-gate,.gc-admin-setup{border-top:2px solid var(--accent);padding-top:20px}
-  </style>
 
   <script is:inline>
     (() => {
       const $ = (id) => document.getElementById(id);
       const els = {
-        adminState: $('adminState'), adminStatusRows: $('adminStatusRows'), adminGate: $('adminGate'), adminSetup: $('adminSetup'), adminContent: $('adminContent'), adminGateTitle: $('adminGateTitle'), adminGateText: $('adminGateText'), adminGateRetry: $('adminGateRetry'),
+        gate: $('adminGate'), content: $('adminContent'), state: $('adminState'), rows: $('adminStatusRows'), retry: $('adminGateRetry'),
         metricUsers: $('metricUsers'), metricAdmins: $('metricAdmins'), metricLinked: $('metricLinked'), metricSessions: $('metricSessions'),
-        usersMeta: $('usersMeta'), usersTable: document.querySelector('#usersTable tbody'), userSearch: $('userSearch'), reloadUsers: $('reloadUsers'), usersMessage: $('usersMessage'),
-        storageText: $('storageText'), storageRows: $('storageRows'), storageMessage: $('storageMessage'), reloadStorage: $('reloadStorage'),
-        strackerAdminText: $('strackerAdminText'), strackerAdminRows: $('strackerAdminRows'), syncMessage: $('syncMessage'), forceSyncBtn: $('forceSyncBtn'),
-        acsmText: $('acsmText'), acsmRows: $('acsmRows'), acsmMessage: $('acsmMessage'), checkAcsmBtn: $('checkAcsmBtn'), syncAcsmBtn: $('syncAcsmBtn'),
-        bootstrapForm: $('bootstrapForm'), bootstrapMessage: $('bootstrapMessage'),
-        manualNameForm: $('manualNameForm'), nameFiltersMeta: $('nameFiltersMeta'), nameKindFilter: $('nameKindFilter'), nameSearch: $('nameSearch'), nameViewFilter: $('nameViewFilter'), saveVisibleNames: $('saveVisibleNames'), reloadNameFilters: $('reloadNameFilters'), nameFiltersTable: document.querySelector('#nameFiltersTable tbody'), nameFiltersMessage: $('nameFiltersMessage'),
-        unlinkedPilotsMeta: $('unlinkedPilotsMeta'), unlinkedPilotsTable: document.querySelector('#unlinkedPilotsTable tbody'), auditMeta: $('auditMeta'), auditTable: document.querySelector('#auditTable tbody'), reloadAudit: $('reloadAudit')
+        storageText: $('storageText'), storageRows: $('storageRows'), strackerText: $('strackerText'), strackerRows: $('strackerRows'), acsmText: $('acsmText'), acsmMessage: $('acsmMessage'), syncAcsmBtn: $('syncAcsmBtn')
       };
-      let users = [];
-      let nameCatalog = { drivers: [], cars: [], tracks: [] };
-
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-      const compact = (value, n = 52) => { const text = String(value ?? '-'); return text.length > n ? `...${text.slice(-n + 3)}` : text; };
-      const dateText = (value) => { if (!value) return '-'; const date = new Date(value); return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' }); };
-      const lapText = (ms) => { const n = Number(ms); if (!Number.isFinite(n) || n <= 0) return '--'; const m = Math.floor(n / 60000); const s = Math.floor((n % 60000) / 1000); const x = String(Math.floor(n % 1000)).padStart(3, '0'); return `${m}:${String(s).padStart(2, '0')}.${x}`; };
-      const message = (el, text, ok = false) => { if (!el) return; el.textContent = text || ''; el.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
-
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
       async function fetchJson(url, options = {}) {
         const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
         return data;
       }
-
-      function setView(mode) {
-        els.adminGate.hidden = mode !== 'gate';
-        els.adminSetup.hidden = mode !== 'setup';
-        els.adminContent.hidden = mode !== 'content';
-      }
-
       async function getAdminStatus() {
         try {
           const status = await fetchJson('/api/admin/status');
-          if (status.authorized === true) return status;
-          if (status.setupRequired === true) return status;
+          if (status.authorized === true || status.setupRequired === true) return status;
         } catch {}
         const profile = await fetchJson('/api/profile');
-        return {
-          ok: true,
-          authenticated: profile.authenticated !== false,
-          authorized: profile.user?.role === 'admin',
-          setupRequired: false,
-          setupSecretConfigured: true,
-          currentUser: profile.user || null,
-          summary: {},
-          admin: {}
-        };
+        return { ok:true, authenticated: profile.authenticated !== false, authorized: profile.user?.role === 'admin', setupRequired:false, currentUser: profile.user || null, summary:{}, admin:{} };
       }
-
+      function show(mode) { els.gate.hidden = mode !== 'gate'; els.content.hidden = mode !== 'content'; }
       function renderStatus(data) {
         const summary = data.summary || {};
         els.metricUsers.textContent = summary.usersCount ?? '-';
         els.metricAdmins.textContent = summary.adminsCount ?? '-';
         els.metricLinked.textContent = summary.linkedUsersCount ?? '-';
         els.metricSessions.textContent = summary.activeSessionsCount ?? '-';
-        els.adminState.textContent = data.authorized ? 'Activo' : data.setupRequired ? 'Setup' : 'Bloqueado';
-        els.adminState.style.color = data.authorized ? 'var(--accent)' : 'var(--warn)';
-        els.adminStatusRows.innerHTML = `
-          <div class="gc-status-row"><span>Usuario</span><strong>${escapeHtml(data.currentUser?.displayName || '-')}</strong></div>
-          <div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(data.currentUser?.role || '-')}</strong></div>
-          <div class="gc-status-row"><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>
-        `;
-        renderStorage(data.admin?.storage || data.storage || {});
-        renderStracker(data.admin?.stracker || {});
+        els.state.textContent = data.authorized ? 'Activo' : 'Bloqueado';
+        els.state.style.color = data.authorized ? 'var(--accent)' : 'var(--warn)';
+        els.rows.innerHTML = `<div class="gc-status-row"><span>Usuario</span><strong>${esc(data.currentUser?.displayName || '-')}</strong></div><div class="gc-status-row"><span>Rol</span><strong>${esc(data.currentUser?.role || '-')}</strong></div><div class="gc-status-row"><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>`;
+        const storage = data.admin?.storage?.storage || data.admin?.storage || {};
+        const files = data.admin?.storage?.files || {};
+        els.storageText.textContent = storage.persistent === false ? 'Atención: revisa la ruta persistente.' : `OK: ${storage.source || files.users?.source || 'storage'} persistente.`;
+        els.storageRows.innerHTML = `<div><span>Usuarios</span><strong>${esc(files.users?.source || storage.source || '-')}</strong></div><div><span>Nombres</span><strong>${esc(files.displayNames?.source || storage.source || '-')}</strong></div><div><span>Persistente</span><strong>${storage.persistent === false ? 'No' : 'Sí'}</strong></div>`;
+        const stracker = data.admin?.stracker || {};
+        els.strackerText.textContent = stracker.exists ? 'Base stracker detectada.' : 'No se ha detectado stracker.db3.';
+        els.strackerRows.innerHTML = `<div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div><div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div><div><span>Tamaño</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>`;
       }
-
-      function renderStorage(data) {
-        const storage = data.storage || data;
-        const files = data.files || {};
-        const usersInfo = files.users || {};
-        const displayInfo = files.displayNames || {};
-        const source = usersInfo.source || displayInfo.source || storage.source || 'desconocido';
-        const persistent = usersInfo.persistent ?? displayInfo.persistent ?? storage.persistent;
-        els.storageText.textContent = persistent ? `OK: storage persistente en ${source}.` : 'Atención: revisa storage persistente.';
-        els.storageRows.innerHTML = `
-          <div><span>Usuarios</span><strong>${escapeHtml(usersInfo.source || source)}</strong></div>
-          <div><span>Nombres</span><strong>${escapeHtml(displayInfo.source || source)}</strong></div>
-          <div><span>Persistente</span><strong>${persistent ? 'Sí' : 'No'}</strong></div>
-          <div><span>Ruta</span><strong>${escapeHtml(compact(storage.dataRoot || usersInfo.resolvedPath || '-'))}</strong></div>
-        `;
-      }
-
-      function renderStracker(stracker) {
-        if (!stracker || !Object.keys(stracker).length) return;
-        els.strackerAdminText.textContent = stracker.exists ? 'Base stracker detectada.' : 'No se ha detectado stracker.db3.';
-        const overview = stracker.overview || {};
-        els.strackerAdminRows.innerHTML = `
-          <div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div>
-          <div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div>
-          <div><span>Tamaño</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>
-          <div><span>Vueltas</span><strong>${overview.totalLaps ?? '-'}</strong></div>
-        `;
-      }
-
-      function renderUsers() {
-        const query = String(els.userSearch.value || '').toLowerCase().trim();
-        const rows = users.filter((user) => [user.displayName, user.email, user.role, user.linkedPilotName, user.linkedPlayerId, user.pilotSteamGuid, user.linkedPilotSteamGuid].join(' ').toLowerCase().includes(query));
-        els.usersMeta.textContent = `${rows.length} de ${users.length} usuarios`;
-        els.usersTable.innerHTML = rows.length ? rows.map((user) => `
-          <tr data-user-id="${escapeHtml(user.id)}">
-            <td><strong>${escapeHtml(user.displayName || '-')}</strong><br><span class="gc-muted-text">${escapeHtml(user.email || '-')}</span></td>
-            <td><span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${escapeHtml(user.role || '-')}</span></td>
-            <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">Player ID ${escapeHtml(user.linkedPlayerId || '-')}</span>` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
-            <td>${escapeHtml(user.activeSessions || 0)}</td>
-            <td>${escapeHtml(dateText(user.createdAt))}</td>
-            <td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-user-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button><button class="gc-btn gc-btn--mini" data-user-action="revoke">Cerrar sesiones</button></div></td>
-          </tr>`).join('') : '<tr><td colspan="6">Sin usuarios para mostrar.</td></tr>';
-      }
-
-      async function loadUsers() {
-        try {
-          const data = await fetchJson('/api/admin/users');
-          users = data.users || data.items || [];
-          renderUsers();
-          message(els.usersMessage, '');
-        } catch (error) {
-          els.usersTable.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message || 'No se pudieron cargar usuarios.')}</td></tr>`;
-        }
-      }
-
-      function selectedNameItems() {
-        const key = els.nameKindFilter.value || 'cars';
-        return nameCatalog[key] || [];
-      }
-
-      function renderNameFilters() {
-        const query = String(els.nameSearch.value || '').toLowerCase().trim();
-        const view = els.nameViewFilter.value;
-        const all = selectedNameItems();
-        const rows = all.filter((item) => {
-          const haystack = [item.sourceCode, item.sourceId, item.sourceName, item.autoName, item.displayName, item.duplicateName ? 'duplicado' : ''].join(' ').toLowerCase();
-          if (query && !haystack.includes(query)) return false;
-          if (view === 'missing' && item.hasOverride) return false;
-          if (view === 'overrides' && !item.hasOverride) return false;
-          return true;
-        });
-        const overrides = all.filter((item) => item.hasOverride).length;
-        els.nameFiltersMeta.textContent = `${rows.length} visibles de ${all.length}. Overrides activos: ${overrides}`;
-        els.nameFiltersTable.innerHTML = rows.length ? rows.slice(0, 400).map((item) => `
-          <tr data-kind="${escapeHtml(item.kind)}" data-source-id="${escapeHtml(item.sourceId ?? '')}" data-source-code="${escapeHtml(item.sourceCode || '')}" data-source-name="${escapeHtml(item.sourceName || '')}">
-            <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(item.sourceId ?? '-')} · ${escapeHtml(item.sourceCode || '-')}</span></td>
-            <td>${escapeHtml(item.autoName || '-')}</td>
-            <td><input class="gc-input gc-input--compact" data-name-input data-original-value="${escapeHtml(item.displayName || '')}" value="${escapeHtml(item.displayName || '')}" placeholder="Nombre visible" /></td>
-            <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}</td>
-            <td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button><button class="gc-btn gc-btn--mini" data-name-action="auto" ${item.hasOverride ? '' : 'disabled'}>Usar auto</button></div></td>
-          </tr>`).join('') : '<tr><td colspan="5">Sin elementos para mostrar.</td></tr>';
-      }
-
-      async function loadNameFilters() {
-        try {
-          const data = await fetchJson('/api/admin/name-filters');
-          nameCatalog = data.catalog || { drivers: [], cars: [], tracks: [] };
-          renderNameFilters();
-          message(els.nameFiltersMessage, '');
-        } catch (error) {
-          els.nameFiltersTable.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || 'No se pudo cargar catálogo.')}</td></tr>`;
-        }
-      }
-
-      function collectNameChanges(rows) {
-        return rows.map((row) => {
-          const input = row.querySelector('[data-name-input]');
-          const next = String(input?.value || '').trim();
-          const original = String(input?.dataset.originalValue || '').trim();
-          if (!next || next === original) return null;
-          return {
-            kind: row.dataset.kind,
-            sourceId: row.dataset.sourceId ? Number(row.dataset.sourceId) : null,
-            sourceCode: row.dataset.sourceCode || null,
-            sourceName: row.dataset.sourceName || null,
-            displayName: next
-          };
-        }).filter(Boolean);
-      }
-
-      async function saveNameItems(items) {
-        if (!items.length) { message(els.nameFiltersMessage, 'No hay cambios para guardar.'); return; }
-        message(els.nameFiltersMessage, `Guardando ${items.length} cambios...`);
-        await fetchJson('/api/admin/name-filters/bulk', { method:'POST', body: JSON.stringify({ items }) });
-        message(els.nameFiltersMessage, `${items.length} cambios guardados.`, true);
-        await loadNameFilters();
-        await loadAudit();
-      }
-
-      async function loadUnlinkedPilots() {
-        try {
-          const data = await fetchJson('/api/admin/unlinked-pilots');
-          const pilots = data.pilots || data.items || [];
-          els.unlinkedPilotsMeta.textContent = `${pilots.length} pilotos detectados sin cuenta vinculada`;
-          els.unlinkedPilotsTable.innerHTML = pilots.length ? pilots.slice(0, 50).map((pilot) => `<tr><td><strong>${escapeHtml(pilot.name || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(pilot.id || '-')} · ${escapeHtml(pilot.steamGuid || '-')}</span></td><td>${escapeHtml(pilot.totalLaps || 0)}</td><td>${escapeHtml(pilot.validLaps || 0)}</td><td><strong>${escapeHtml(pilot.bestLap || lapText(pilot.bestLapMs))}</strong></td><td>${escapeHtml(pilot.carsCount || 0)}</td><td>${escapeHtml(dateText(pilot.lastSeenAt))}</td><td><a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(pilot.id)}">Ficha</a></td></tr>`).join('') : '<tr><td colspan="7">No hay pilotos pendientes de vincular.</td></tr>';
-        } catch (error) {
-          els.unlinkedPilotsTable.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message || 'No se pudieron cargar pilotos.')}</td></tr>`;
-        }
-      }
-
-      async function loadAudit() {
-        try {
-          const data = await fetchJson('/api/admin/audit-log?limit=60');
-          const items = data.items || [];
-          els.auditMeta.textContent = `${items.length} eventos recientes`;
-          els.auditTable.innerHTML = items.length ? items.map((item) => `<tr><td>${escapeHtml(dateText(item.createdAt))}</td><td><strong>${escapeHtml(item.actorName || item.actorEmail || 'Sistema')}</strong><br><span class="gc-muted-text">${escapeHtml(item.actorEmail || '')}</span></td><td><span class="gc-chip">${escapeHtml(item.action)}</span></td><td>${escapeHtml(item.entityType)}<br><span class="gc-muted-text">${escapeHtml(item.entityId || '-')}</span></td><td>${escapeHtml(JSON.stringify(item.afterValue || item.beforeValue || '').slice(0, 120))}</td></tr>`).join('') : '<tr><td colspan="5">Sin historial todavía.</td></tr>';
-        } catch (error) {
-          els.auditTable.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || 'No se pudo cargar historial.')}</td></tr>`;
-        }
-      }
-
-      async function checkAcsm() {
-        try {
-          message(els.acsmMessage, 'Comprobando ACSM...');
-          const data = await fetchJson('/api/admin/acsm/status');
-          els.acsmRows.innerHTML = `<div><span>Auth</span><strong>${data.authorized ? 'OK' : 'No'}</strong></div><div><span>Source</span><strong>${escapeHtml(data.source || '-')}</strong></div><div><span>SFTP</span><strong>${data.config?.hostConfigured && data.config?.userConfigured ? 'Configurado' : 'Falta'}</strong></div>`;
-          message(els.acsmMessage, 'ACSM disponible.', true);
-        } catch (error) {
-          message(els.acsmMessage, error.message || 'No se pudo comprobar ACSM.');
-        }
-      }
-
       async function syncAcsm() {
         try {
-          message(els.acsmMessage, 'Sincronizando combo ACSM...');
+          els.acsmMessage.textContent = 'Sincronizando combo desde ACSM...';
           const data = await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
-          message(els.acsmMessage, `Combo sincronizado en ${data.source || 'storage'}.`, true);
-          await loadAudit();
+          els.acsmText.textContent = `Último sync correcto. Storage: ${data.source || '-'}.`;
+          els.acsmMessage.textContent = `Combo sincronizado. Eventos: ${data.totalEvents ?? '-'}`;
+          els.acsmMessage.style.color = 'var(--accent)';
         } catch (error) {
-          message(els.acsmMessage, error.message || 'No se pudo sincronizar ACSM.');
+          els.acsmText.textContent = 'No se pudo sincronizar ACSM.';
+          els.acsmMessage.textContent = error.message || 'Error ACSM.';
+          els.acsmMessage.style.color = 'var(--soft)';
         }
       }
-
       async function init() {
-        setView('gate');
-        els.adminState.textContent = 'Comprobando';
+        show('gate');
         try {
           const status = await getAdminStatus();
           renderStatus(status);
-          if (status.authorized === true) {
-            setView('content');
-            await Promise.allSettled([loadUsers(), loadNameFilters(), loadUnlinkedPilots(), loadAudit(), checkAcsm()]);
-            return;
-          }
-          if (status.setupRequired === true) {
-            setView('setup');
-            return;
-          }
-          setView('gate');
-          els.adminGateTitle.textContent = 'No tienes permisos de admin';
-          els.adminGateText.textContent = 'Inicia sesión con una cuenta administradora.';
+          if (status.authorized === true) { show('content'); return; }
+          show('gate');
         } catch (error) {
-          setView('gate');
-          els.adminState.textContent = 'Error';
-          els.adminGateTitle.textContent = 'No se pudo validar la sesión';
-          els.adminGateText.textContent = error.message || 'Reintenta o vuelve a iniciar sesión.';
+          show('gate');
+          els.state.textContent = 'Error';
         }
       }
-
-      els.adminGateRetry?.addEventListener('click', init);
-      els.reloadUsers?.addEventListener('click', loadUsers);
-      els.userSearch?.addEventListener('input', renderUsers);
-      els.reloadNameFilters?.addEventListener('click', loadNameFilters);
-      [els.nameKindFilter, els.nameSearch, els.nameViewFilter].forEach((node) => node?.addEventListener('input', renderNameFilters));
-      els.saveVisibleNames?.addEventListener('click', () => saveNameItems(collectNameChanges(Array.from(document.querySelectorAll('#nameFiltersTable tbody tr[data-kind]')))).catch((error) => message(els.nameFiltersMessage, error.message || 'No se pudo guardar.')));
-      els.nameFiltersTable?.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-name-action]');
-        if (!button) return;
-        const row = button.closest('tr[data-kind]');
-        if (!row) return;
-        if (button.dataset.nameAction === 'auto') row.querySelector('[data-name-input]').value = '';
-        saveNameItems(collectNameChanges([row])).catch((error) => message(els.nameFiltersMessage, error.message || 'No se pudo guardar.'));
-      });
-      els.manualNameForm?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const data = Object.fromEntries(new FormData(els.manualNameForm));
-        try {
-          await saveNameItems([{ kind:data.kind, sourceCode:data.sourceCode || null, sourceName:data.sourceName || data.sourceCode || '', displayName:data.displayName }]);
-          els.manualNameForm.reset();
-        } catch (error) { message(els.nameFiltersMessage, error.message || 'No se pudo guardar alias.'); }
-      });
-      els.reloadAudit?.addEventListener('click', loadAudit);
-      els.reloadStorage?.addEventListener('click', init);
-      els.checkAcsmBtn?.addEventListener('click', checkAcsm);
+      els.retry?.addEventListener('click', init);
       els.syncAcsmBtn?.addEventListener('click', syncAcsm);
-      els.forceSyncBtn?.addEventListener('click', async () => {
-        try { message(els.syncMessage, 'Forzando sync...'); await fetchJson('/api/admin/stracker/sync', { method:'POST' }); message(els.syncMessage, 'Sync lanzado.', true); }
-        catch (error) { message(els.syncMessage, error.message || 'No se pudo lanzar sync.'); }
-      });
-      els.usersTable?.addEventListener('click', async (event) => {
-        const button = event.target.closest('button[data-user-action]');
-        if (!button) return;
-        const row = button.closest('tr[data-user-id]');
-        const userId = row?.dataset.userId;
-        if (!userId) return;
-        try {
-          if (button.dataset.userAction === 'role') await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, { method:'POST', body: JSON.stringify({ role: button.dataset.role }) });
-          if (button.dataset.userAction === 'revoke') await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, { method:'POST' });
-          await loadUsers();
-        } catch (error) { message(els.usersMessage, error.message || 'No se pudo aplicar acción.'); }
-      });
-      els.bootstrapForm?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const payload = Object.fromEntries(new FormData(els.bootstrapForm));
-        try { await fetchJson('/api/admin/bootstrap', { method:'POST', body: JSON.stringify(payload) }); message(els.bootstrapMessage, 'Admin creado. Recargando...', true); setTimeout(init, 650); }
-        catch (error) { message(els.bootstrapMessage, error.message || 'No se pudo crear admin.'); }
-      });
-
       init();
     })();
   </script>

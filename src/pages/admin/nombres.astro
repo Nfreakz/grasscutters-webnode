@@ -1,0 +1,68 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+<AppLayout title="Admin nombres | GrassCutters">
+  <div class="gc-page gc-admin-page-clean">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Nombres visibles.</h1>
+        <p class="gc-subtitle">Alias para pilotos, coches y circuitos usados por toda la plataforma.</p>
+      </div>
+      <aside class="gc-live-panel"><div class="gc-live-panel__title"><span>Catálogo</span><strong id="catalogState">Cargando</strong></div><div class="gc-status-list"><div class="gc-status-row"><span>Elementos</span><strong id="itemsCount">...</strong></div><div class="gc-status-row"><span>Overrides</span><strong id="overrideCount">...</strong></div></div></aside>
+    </section>
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden><div class="gc-section-head"><h2>Acceso restringido</h2><p>Solo administradores</p></div><div class="gc-slab"><p>Inicia sesión con una cuenta administradora.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Login</a><button class="gc-btn" id="retryAdmin" type="button">Reintentar</button></div></div></section>
+
+    <section id="adminContent" hidden>
+      <section class="gc-section">
+        <div class="gc-section-head"><h2>Alias manual rápido</h2><p>Útil cuando un coche o circuito no aparece en el catálogo.</p></div>
+        <form class="gc-form gc-admin-inline-form" id="manualNameForm">
+          <div class="gc-form-grid">
+            <label class="gc-field"><span>Tipo</span><select class="gc-select" name="kind"><option value="car">Coche</option><option value="track">Circuito</option><option value="driver">Piloto</option></select></label>
+            <label class="gc-field"><span>Código original</span><input class="gc-input" name="sourceCode" type="text" placeholder="porsche_935_mobydick_gr5" /></label>
+            <label class="gc-field"><span>Nombre original opcional</span><input class="gc-input" name="sourceName" type="text" placeholder="UiCarName / UiTrackName" /></label>
+            <label class="gc-field"><span>Nombre visible</span><input class="gc-input" name="displayName" type="text" placeholder="Porsche 935 Mobydick GR5" /></label>
+          </div>
+          <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar alias manual</button><p class="gc-message" id="manualMessage"></p></div>
+        </form>
+      </section>
+
+      <section class="gc-section">
+        <div class="gc-section-head"><h2>Catálogo editable</h2><p id="nameFiltersMeta">Cargando catálogo...</p></div>
+        <div class="gc-toolbar">
+          <label class="gc-field"><span>Tipo</span><select class="gc-select" id="nameKindFilter"><option value="cars">Coches</option><option value="tracks">Circuitos</option><option value="drivers">Pilotos</option></select></label>
+          <label class="gc-field"><span>Buscar</span><input class="gc-input" id="nameSearch" type="search" placeholder="código, nombre visible, original..." /></label>
+          <label class="gc-field"><span>Vista</span><select class="gc-select" id="nameViewFilter"><option value="all">Todos</option><option value="missing">Sin override</option><option value="overrides">Solo modificados</option></select></label>
+          <button class="gc-btn gc-btn--primary" id="saveVisibleNames" type="button">Guardar visibles</button>
+          <button class="gc-btn" id="reloadNameFilters" type="button">Recargar</button>
+        </div>
+        <div class="gc-table-wrap"><table class="gc-table" id="nameFiltersTable"><thead><tr><th>Original</th><th>Automático</th><th>Nombre visible</th><th>Estado</th><th>Acciones</th></tr></thead><tbody><tr><td colspan="5">Cargando nombres...</td></tr></tbody></table></div>
+        <p class="gc-message" id="nameFiltersMessage"></p>
+      </section>
+    </section>
+  </div>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = { gate:$('adminGate'), content:$('adminContent'), retry:$('retryAdmin'), state:$('catalogState'), count:$('itemsCount'), overrides:$('overrideCount'), form:$('manualNameForm'), manualMsg:$('manualMessage'), meta:$('nameFiltersMeta'), kind:$('nameKindFilter'), search:$('nameSearch'), view:$('nameViewFilter'), save:$('saveVisibleNames'), reload:$('reloadNameFilters'), table:document.querySelector('#nameFiltersTable tbody'), msg:$('nameFiltersMessage') };
+      let catalog = { drivers:[], cars:[], tracks:[] };
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      async function fetchJson(url, options = {}) { const r = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options }); const d = await r.json().catch(() => ({})); if (!r.ok || d.ok === false) throw new Error(d.message || `HTTP ${r.status}`); return d; }
+      async function isAdmin(){ try{const s=await fetchJson('/api/admin/status'); if(s.authorized===true)return true;}catch{} const p=await fetchJson('/api/profile'); return p.user?.role==='admin'; }
+      function show(mode){ els.gate.hidden = mode !== 'gate'; els.content.hidden = mode !== 'content'; }
+      function items(){ return catalog[els.kind.value || 'cars'] || []; }
+      function render(){ const q=String(els.search.value||'').toLowerCase().trim(); const view=els.view.value; const all=items(); const rows=all.filter((i)=>{ const hay=[i.sourceCode,i.sourceId,i.sourceName,i.autoName,i.displayName,i.duplicateName?'duplicado':''].join(' ').toLowerCase(); if(q&&!hay.includes(q))return false; if(view==='missing'&&i.hasOverride)return false; if(view==='overrides'&&!i.hasOverride)return false; return true; }); const over=all.filter((i)=>i.hasOverride).length; els.meta.textContent=`${rows.length} visibles de ${all.length}. Overrides activos: ${over}`; els.count.textContent=String(all.length); els.overrides.textContent=String(over); els.table.innerHTML=rows.length?rows.slice(0,500).map((i)=>`<tr data-kind="${esc(i.kind)}" data-source-id="${esc(i.sourceId??'')}" data-source-code="${esc(i.sourceCode||'')}" data-source-name="${esc(i.sourceName||'')}"><td><strong>${esc(i.sourceName||i.sourceCode||'-')}</strong><br><span class="gc-muted-text">ID ${esc(i.sourceId??'-')} · ${esc(i.sourceCode||'-')}</span>${i.duplicateName?'<br><span class="gc-chip gc-chip--warn">Duplicado</span>':''}</td><td>${esc(i.autoName||'-')}</td><td><input class="gc-input gc-input--compact" data-name-input data-original-value="${esc(i.displayName||'')}" value="${esc(i.displayName||'')}" placeholder="Nombre visible" /></td><td>${i.hasOverride?'<span class="gc-chip gc-chip--accent">Override</span>':'<span class="gc-chip">Auto</span>'}</td><td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button><button class="gc-btn gc-btn--mini" data-name-action="auto" ${i.hasOverride?'':'disabled'}>Usar auto</button></div></td></tr>`).join(''):'<tr><td colspan="5">Sin elementos para mostrar.</td></tr>'; els.state.textContent='OK'; }
+      async function load(){ els.state.textContent='Cargando'; const data=await fetchJson('/api/admin/name-filters'); catalog=data.catalog||{drivers:[],cars:[],tracks:[]}; render(); els.msg.textContent=''; }
+      function collect(rows){ return rows.map((row)=>{ const input=row.querySelector('[data-name-input]'); const next=String(input?.value||'').trim(); const original=String(input?.dataset.originalValue||'').trim(); if(!next||next===original)return null; return { kind:row.dataset.kind, sourceId:row.dataset.sourceId?Number(row.dataset.sourceId):null, sourceCode:row.dataset.sourceCode||null, sourceName:row.dataset.sourceName||null, displayName:next }; }).filter(Boolean); }
+      async function save(items){ if(!items.length){els.msg.textContent='No hay cambios para guardar.';return;} els.msg.textContent=`Guardando ${items.length} cambios...`; await fetchJson('/api/admin/name-filters/bulk',{method:'POST',body:JSON.stringify({items})}); els.msg.textContent=`${items.length} cambios guardados.`; els.msg.style.color='var(--accent)'; await load(); }
+      els.form.addEventListener('submit', async (ev)=>{ ev.preventDefault(); const data=Object.fromEntries(new FormData(els.form)); const item={kind:data.kind,sourceCode:String(data.sourceCode||'').trim()||null,sourceName:String(data.sourceName||'').trim()||null,displayName:String(data.displayName||'').trim()}; if(!item.displayName||(!item.sourceCode&&!item.sourceName)){els.manualMsg.textContent='Falta código/original y nombre visible.';return;} try{await save([item]); els.form.reset(); els.manualMsg.textContent='Alias guardado.'; els.manualMsg.style.color='var(--accent)';}catch(e){els.manualMsg.textContent=e.message||'No se pudo guardar.';} });
+      els.table.addEventListener('click',(ev)=>{ const btn=ev.target.closest('button[data-name-action]'); if(!btn)return; const row=btn.closest('tr[data-kind]'); if(!row)return; if(btn.dataset.nameAction==='auto'){ const input=row.querySelector('[data-name-input]'); input.value=''; } save(collect([row])).catch((e)=>els.msg.textContent=e.message||'No se pudo guardar.'); });
+      [els.kind,els.search,els.view].forEach((n)=>n.addEventListener('input',render)); els.save.addEventListener('click',()=>save(collect(Array.from(document.querySelectorAll('#nameFiltersTable tbody tr[data-kind]')))).catch((e)=>els.msg.textContent=e.message)); els.reload.addEventListener('click',()=>load().catch((e)=>els.msg.textContent=e.message)); els.retry.addEventListener('click',init);
+      async function init(){ show('gate'); try{ if(!(await isAdmin()))return show('gate'); show('content'); await load(); }catch{ show('gate'); } } init();
+    })();
+  </script>
+</AppLayout>
