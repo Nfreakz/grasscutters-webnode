@@ -23,13 +23,13 @@ OUT_KEYS = ['continents', 'countries', 'circuits', 'layouts', 'corners', 'series
 ID_KEYS = {'id', 'legacy_id', 'pais_id', 'continente_id', 'country_id', 'continent_id', 'circuito_id',
            'circuit_id', 'layout_id', 'curva_id', 'corner_id', 'persona_id', 'person_id', 'vehiculo_id',
            'vehicle_id', 'constructor_id', 'serie_id', 'campeonato_id', 'series_id', 'entidad_id',
-           'entity_id', 'target_id'}
+           'entity_id', 'target_id', 'objetivo_id', 'destino_id'}
 ENTITY_TYPES = {
     'circuito': 'circuit', 'circuitos': 'circuit', 'circuit': 'circuit',
     'layout': 'layout', 'layouts': 'layout',
     'curva': 'corner', 'curvas': 'corner', 'corner': 'corner',
     'persona': 'person', 'personas': 'person', 'piloto': 'person', 'pilotos': 'person', 'person': 'person',
-    'vehiculo': 'vehicle', 'vehículos': 'vehicle', 'vehicle': 'vehicle',
+    'vehiculo': 'vehicle', 'vehículo': 'vehicle', 'vehiculos': 'vehicle', 'vehículos': 'vehicle', 'vehicle': 'vehicle',
     'constructor': 'constructor', 'constructores': 'constructor',
     'serie': 'series', 'series': 'series', 'campeonato': 'series', 'campeonatos': 'series',
 }
@@ -190,7 +190,7 @@ def normalize_entity(key, raw_row):
             'license': first(row, 'license', 'licencia'),
             'is_primary': to_bool(first(row, 'is_primary', 'principal_publica', 'principal')),
             'is_technical_primary': to_bool(first(row, 'is_technical_primary', 'principal_tecnica')),
-            'is_publicable': True if first(row, 'es_imagen_publicable') is None else to_bool(first(row, 'es_imagen_publicable')),
+            'is_publicable': (media_type not in ('referencia', 'oficial')) if first(row, 'es_imagen_publicable') is None else to_bool(first(row, 'es_imagen_publicable')),
             'sort_order': to_int(first(row, 'sort_order', 'orden')) or 0,
         }
         return normalize_common(out, 'media', out.get('url'))
@@ -233,6 +233,64 @@ def normalize_entity(key, raw_row):
             'normalized_alias': first(row, 'normalized_alias', 'alias_normalizado') or slugify(alias),
         }
         return normalize_common(out, 'aliases', alias, out.get('entity_id'))
+
+
+    if key == 'relations':
+        out = {
+            **row,
+            'id': normalize_id(row.get('id')),
+            'entity_type': normalize_entity_type(first(row, 'entity_type', 'entidad_tipo')),
+            'entity_id': normalize_id(first(row, 'entity_id', 'entidad_id')),
+            'target_type': normalize_entity_type(first(row, 'target_type', 'objetivo_tipo', 'target_tipo', 'destino_tipo')),
+            'target_id': normalize_id(first(row, 'target_id', 'objetivo_id', 'destino_id')),
+            'relation_type': first(row, 'relation_type', 'tipo_relacion', 'tipo') or 'relacionado',
+            'description': first(row, 'description', 'descripcion_larga', 'descripcion'),
+        }
+        return normalize_common(out, 'relations', out.get('entity_id'), out.get('target_id'), out.get('relation_type'))
+
+    if key == 'sources':
+        out = {
+            **row,
+            'id': normalize_id(row.get('id')),
+            'entity_type': normalize_entity_type(first(row, 'entity_type', 'entidad_tipo')),
+            'entity_id': normalize_id(first(row, 'entity_id', 'entidad_id')),
+            'title': first(row, 'title', 'titulo', 'name', 'nombre', 'url'),
+            'url': first(row, 'url'),
+            'source_type': first(row, 'source_type', 'tipo_fuente', 'tipo'),
+        }
+        return normalize_common(out, 'sources', out.get('entity_id'), out.get('url'))
+
+    if key == 'people':
+        row['name'] = name
+        row['slug'] = first(row, 'slug') or slugify(name or row.get('legacy_id') or row.get('id'))
+        row['country_id'] = normalize_id(first(row, 'country_id', 'pais_id'))
+        row['role'] = first(row, 'role', 'rol', 'tipo')
+        row['description'] = first(row, 'description', 'descripcion_larga', 'descripcion')
+        row['birth_date'] = first(row, 'birth_date', 'fecha_nacimiento')
+        return normalize_common(row, 'people', name)
+
+    if key == 'vehicles':
+        row['name'] = name
+        row['slug'] = first(row, 'slug') or slugify(name or row.get('legacy_id') or row.get('id'))
+        row['constructor_id'] = normalize_id(first(row, 'constructor_id'))
+        row['category'] = first(row, 'category', 'categoria')
+        row['year'] = to_int(first(row, 'year', 'anio', 'año'))
+        row['description'] = first(row, 'description', 'descripcion_larga', 'descripcion')
+        return normalize_common(row, 'vehicles', name)
+
+    if key == 'constructors':
+        row['name'] = name
+        row['slug'] = first(row, 'slug') or slugify(name or row.get('legacy_id') or row.get('id'))
+        row['country_id'] = normalize_id(first(row, 'country_id', 'pais_id'))
+        row['description'] = first(row, 'description', 'descripcion_larga', 'descripcion')
+        return normalize_common(row, 'constructors', name)
+
+    if key == 'series':
+        row['name'] = name
+        row['slug'] = first(row, 'slug') or slugify(name or row.get('legacy_id') or row.get('id'))
+        row['category'] = first(row, 'category', 'categoria')
+        row['description'] = first(row, 'description', 'descripcion_larga', 'descripcion')
+        return normalize_common(row, 'series', name)
 
     if key == 'circuitSeries':
         out = {

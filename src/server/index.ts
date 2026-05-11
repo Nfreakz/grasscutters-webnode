@@ -641,11 +641,12 @@ function gcMotorsportNormalizeAlias(value: unknown) {
 
 function gcMotorsportValidMediaUrl(url: unknown) {
   if (!url) return false;
+  if (String(url).startsWith('/')) return true;
   try {
     const parsed = new URL(String(url));
     return parsed.protocol === 'https:' || parsed.protocol === 'http:';
   } catch {
-    return String(url).startsWith('/');
+    return false;
   }
 }
 
@@ -654,15 +655,55 @@ function gcMotorsportMediaType(value: unknown) {
   return ['foto', 'plano', 'mapa', 'layout', 'logo', 'referencia', 'oficial'].includes(mediaType) ? mediaType : 'referencia';
 }
 
+function gcMotorsportIsImageType(mediaType: unknown) {
+  return ['foto', 'plano', 'mapa', 'layout', 'logo'].includes(gcMotorsportMediaType(mediaType));
+}
+
+function gcMotorsportDirectImageUrl(url: unknown) {
+  const raw = String(url || '');
+  if (raw.startsWith('/')) return true;
+  try {
+    const parsed = new URL(raw);
+    return /\.(jpe?g|png|webp|svg)$/i.test(decodeURIComponent(parsed.pathname));
+  } catch {
+    return false;
+  }
+}
+
+function gcMotorsportImageUrlAllowed(url: unknown) {
+  const raw = String(url || '');
+  if (!gcMotorsportValidMediaUrl(raw)) return false;
+  if (raw.startsWith('/')) return true;
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.toLowerCase();
+    const pathname = decodeURIComponent(parsed.pathname);
+    const lowerPathname = pathname.toLowerCase();
+    if (host === 'upload.wikimedia.org') return true;
+    if (host === 'commons.wikimedia.org') {
+      if (lowerPathname.startsWith('/wiki/file:')) return false;
+      return lowerPathname.startsWith('/wiki/special:filepath/') || gcMotorsportDirectImageUrl(raw);
+    }
+    if (host.endsWith('wikipedia.org') && lowerPathname.startsWith('/wiki/')) return false;
+    return gcMotorsportDirectImageUrl(raw);
+  } catch {
+    return false;
+  }
+}
+
+function gcMotorsportIsPublicImageMedia(item: any) {
+  return gcMotorsportIsImageType(item?.media_type || item?.type) && item?.is_publicable !== false && Number(item?.is_publicable ?? 1) !== 0 && gcMotorsportImageUrlAllowed(item?.url);
+}
+
 function gcMotorsportCalculateCover(mediaRows: any[]) {
-  const valid = mediaRows.filter((item) => gcMotorsportValidMediaUrl(item.url));
+  const valid = mediaRows.filter((item) => gcMotorsportIsPublicImageMedia(item));
   const photos = valid.filter((item) => item.media_type === 'foto');
   const technical = valid.filter((item) => ['plano', 'mapa', 'layout'].includes(item.media_type));
-  return photos.find((item) => Number(item.is_primary) === 1) || photos[0] || technical.find((item) => Number(item.is_primary) === 1) || technical[0] || null;
+  return photos.find((item) => Number(item.is_primary) === 1) || photos[0] || technical.find((item) => Number(item.is_primary) === 1 || Number(item.is_technical_primary) === 1) || technical[0] || null;
 }
 
 function gcMotorsportMapCircuit(row: any, related: any = {}) {
-  const gallery = (related.media || []).filter((item: any) => gcMotorsportValidMediaUrl(item.url)).sort((a: any, b: any) => Number(b.is_primary || 0) - Number(a.is_primary || 0) || Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(a.title || '').localeCompare(String(b.title || '')));
+  const gallery = (related.media || []).filter((item: any) => gcMotorsportIsPublicImageMedia(item)).sort((a: any, b: any) => Number(b.is_primary || 0) - Number(a.is_primary || 0) || Number(a.sort_order || 0) - Number(b.sort_order || 0) || String(a.title || '').localeCompare(String(b.title || '')));
   const cover = gcMotorsportCalculateCover(gallery);
   return {
     id: row.id,
@@ -728,9 +769,16 @@ function gcMotorsportValidateImport(payload: MotorsportImportPayload) {
     if (record.circuit_id && !circuitIds.has(String(gcMotorsportNormalizeId(record.circuit_id)))) issues.push(`Record asociado a circuito inexistente: ${record.id || record.title}`);
   }
   for (const media of gcMotorsportArray(payload, 'media')) {
-    if (!gcMotorsportValidMediaUrl(media.url)) issues.push(`Media con URL inválida: ${media.id || media.url || 'sin-url'}`);
     const mediaType = gcMotorsportMediaType(media.media_type || media.type);
+    if (!gcMotorsportValidMediaUrl(media.url)) issues.push(`Media con URL inválida: ${media.id || media.url || 'sin-url'}`);
     if (mediaType !== (media.media_type || media.type)) warnings.push(`Tipo de media normalizado en ${media.id || media.url}: ${media.media_type || media.type} -> ${mediaType}`);
+    if (gcMotorsportIsImageType(mediaType) && !gcMotorsportImageUrlAllowed(media.url)) issues.push(`URL no válida como imagen publicable: ${media.id || media.url || 'sin-id'} -> ${media.url || 'sin-url'}`);
+    if ((mediaType === 'referencia' || mediaType === 'oficial') && media.is_primary) issues.push(`Referencia/oficial marcada como portada: ${media.id || media.url || 'sin-id'}`);
+    if ((mediaType === 'referencia' || mediaType === 'oficial') && media.is_publicable) warnings.push(`Referencia/oficial marcada como publicable; no contará como imagen: ${media.id || media.url || 'sin-id'}`);
+    if (gcMotorsportIsImageType(mediaType) && media.entity_type === 'circuit') {
+      const entityId = gcMotorsportNormalizeId(media.entity_id);
+      if (!entityId || !circuitIds.has(String(entityId))) issues.push(`Media de circuito con entity_id inexistente: ${media.id || media.url || 'sin-id'} -> ${media.entity_id || 'sin-entity-id'}`);
+    }
   }
   return { issues, warnings, isDangerousImport: issues.length > 0 };
 }
@@ -839,7 +887,7 @@ async function gcMotorsportApplyImport(payload: MotorsportImportPayload, actorId
   for (const item of gcMotorsportArray(payload, 'constructors')) await gcMotorsportUpsert('gc_motorsport_constructors', { id: gcMotorsportStableId('constructor', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, country_id: gcMotorsportNormalizeId(item.country_id) || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'vehicles')) await gcMotorsportUpsert('gc_motorsport_vehicles', { id: gcMotorsportStableId('vehicle', item), legacy_id: item.legacy_id || null, slug: item.slug || gcMotorsportNormalizeSlug(item.name), name: item.name, constructor_id: gcMotorsportNormalizeId(item.constructor_id) || null, category: item.category || null, year: item.year || null, description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'records')) await gcMotorsportUpsert('gc_motorsport_records', { id: gcMotorsportStableId('record', item), legacy_id: item.legacy_id || null, circuit_id: gcMotorsportNormalizeId(item.circuit_id), layout_id: gcMotorsportNormalizeId(item.layout_id) || null, vehicle_id: gcMotorsportNormalizeId(item.vehicle_id) || null, person_id: gcMotorsportNormalizeId(item.person_id) || null, series_id: gcMotorsportNormalizeId(item.series_id) || null, title: item.title || item.name || 'Record', category: item.category || null, value: item.value || item.time || null, value_ms: item.value_ms || null, driver: item.driver || null, vehicle: item.vehicle || null, team: item.team || null, source_url: item.source_url || null, record_date: item.record_date || null, year: item.year || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
-  for (const item of gcMotorsportArray(payload, 'media')) await gcMotorsportUpsert('gc_motorsport_media', { id: gcMotorsportStableId('media', item), legacy_id: item.legacy_id || null, entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), media_type: gcMotorsportMediaType(item.media_type || item.type), url: item.url, title: item.title || null, alt_text: item.alt_text || item.alt || null, description: item.description || null, source_url: item.source_url || null, is_primary: item.is_primary ? 1 : 0, is_technical_primary: item.is_technical_primary ? 1 : 0, is_publicable: item.is_publicable === false ? 0 : 1, sort_order: item.sort_order || 0, credit: item.credit || item.author || null, author: item.author || null, license: item.license || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
+  for (const item of gcMotorsportArray(payload, 'media')) await gcMotorsportUpsert('gc_motorsport_media', { id: gcMotorsportStableId('media', item), legacy_id: item.legacy_id || null, entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), media_type: gcMotorsportMediaType(item.media_type || item.type), url: item.url, title: item.title || null, alt_text: item.alt_text || item.alt || null, description: item.description || null, source_url: item.source_url || null, is_primary: ['referencia', 'oficial'].includes(gcMotorsportMediaType(item.media_type || item.type)) ? 0 : (item.is_primary ? 1 : 0), is_technical_primary: item.is_technical_primary ? 1 : 0, is_publicable: ['referencia', 'oficial'].includes(gcMotorsportMediaType(item.media_type || item.type)) ? 0 : (item.is_publicable === false ? 0 : 1), sort_order: item.sort_order || 0, credit: item.credit || item.author || null, author: item.author || null, license: item.license || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'aliases')) await gcMotorsportUpsert('gc_motorsport_aliases', { id: gcMotorsportStableId('alias', item), entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), alias: item.alias, normalized_alias: item.normalized_alias || gcMotorsportNormalizeAlias(item.alias), raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'relations')) await gcMotorsportUpsert('gc_motorsport_relations', { id: gcMotorsportStableId('relation', item), entity_type: item.entity_type, entity_id: gcMotorsportNormalizeId(item.entity_id), target_type: item.target_type, target_id: gcMotorsportNormalizeId(item.target_id), relation_type: item.relation_type || 'relacionado', description: item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
   for (const item of gcMotorsportArray(payload, 'glossary')) await gcMotorsportUpsert('gc_motorsport_glossary', { id: gcMotorsportStableId('glossary', item), slug: item.slug || gcMotorsportNormalizeSlug(item.term || item.name), term: item.term || item.name, definition: item.definition || item.description || null, raw_json: gcMotorsportJson(item), import_batch_id: batchId, created_at: now, updated_at: now });
@@ -4808,7 +4856,7 @@ async function gcCalendarRequireAdminDbV8(req: any, res: any) {
   return Boolean(context);
 }
 
-const gcCalendarJsonBodyDbV8 = express.json({ limit: '1mb' });
+const gcCalendarJsonBodyDbV8 = express.json({ limit: '25mb' });
 
 app.get('/api/calendar-events', async (_req: any, res: any) => {
   try {
@@ -7508,6 +7556,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
