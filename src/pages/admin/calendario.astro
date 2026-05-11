@@ -2,7 +2,7 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 ---
 <AppLayout title="Admin calendario | GrassCutters">
-  <div class="gc-page gc-admin-calendar-page">
+  <div class="gc-page gc-admin-calendar-page gc-admin-calendar-clean">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Administración</span>
@@ -11,7 +11,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Eventos editables</span>
           <span class="gc-chip">Vista mensual</span>
-          <span class="gc-chip">Solo admin</span>
+          <span class="gc-chip">ACSM</span>
         </div>
       </div>
       <aside class="gc-live-panel">
@@ -27,10 +27,11 @@ import AppLayout from '../../layouts/AppLayout.astro';
     <section class="gc-section" id="calAdminAccess" hidden>
       <div class="gc-slab">
         <h3>Acceso restringido</h3>
-        <p>Esta página solo funciona con una cuenta administradora.</p>
+        <p id="calAdminAccessText">Esta página solo funciona con una cuenta administradora.</p>
         <div class="gc-actions">
           <a class="gc-btn gc-btn--primary" href="/login">Ir a login</a>
           <a class="gc-btn" href="/admin">Volver a admin</a>
+          <button class="gc-btn" id="calAdminRetry" type="button">Reintentar</button>
         </div>
       </div>
     </section>
@@ -57,11 +58,11 @@ import AppLayout from '../../layouts/AppLayout.astro';
           <label><input type="checkbox" name="featured" /> Destacado</label>
           <label><input type="checkbox" name="repeatEnabled" /> Repetir cada semana</label>
         </div>
-        <p class="gc-calendar-repeat-note">Si activas la repetición semanal, el evento se repetirá el mismo día de la semana y a la misma hora. Ejemplo: martes a las 21:30.</p>
+        <p class="gc-calendar-repeat-note">Si activas la repetición semanal, el evento se repetirá el mismo día de la semana y a la misma hora.</p>
         <div class="gc-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
           <button class="gc-btn" type="button" id="calendarReset">Limpiar formulario</button>
-          <button class="gc-btn gc-btn--primary" type="button" id="calendarSyncAcsm">Sincronizar ACSM</button>
+          <button class="gc-btn" type="button" id="calendarSyncAcsm">Sincronizar ACSM</button>
           <a class="gc-btn" href="/calendario" target="_blank" rel="noreferrer">Ver calendario público</a>
         </div>
         <p class="gc-message" id="calendarMessage"></p>
@@ -82,52 +83,77 @@ import AppLayout from '../../layouts/AppLayout.astro';
   </div>
 
   <style is:global>
-    .gc-admin-calendar-page{display:grid;gap:clamp(22px,3vw,34px)}.gc-calendar-admin-form{align-self:start}.gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}.gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft)}.gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}.gc-calendar-repeat-note{margin:-4px 0 0;color:var(--dim);font-size:.86rem}.gc-calendar-repeat-until{transition:opacity .18s ease}.gc-calendar-repeat-until.is-disabled{opacity:.45}.gc-calendar-admin-list{display:grid;gap:10px}.gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}.gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}@media(max-width:900px){.gc-admin-calendar-page .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
+    .gc-admin-calendar-clean{display:grid;gap:clamp(22px,3vw,34px)}
+    .gc-admin-calendar-clean [hidden]{display:none!important}
+    .gc-calendar-admin-form{align-self:start}
+    .gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}
+    .gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft)}
+    .gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}
+    .gc-calendar-repeat-note{margin:-4px 0 0;color:var(--dim);font-size:.86rem}
+    .gc-calendar-repeat-until{transition:opacity .18s ease}.gc-calendar-repeat-until.is-disabled{opacity:.45}
+    .gc-calendar-admin-list{display:grid;gap:10px}.gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}
+    .gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}
+    .gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}
+    @media(max-width:900px){.gc-admin-calendar-page .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
   </style>
 
   <script is:inline>
     (() => {
-      const form = document.getElementById('calendarForm');
-      const content = document.getElementById('calAdminContent');
-      const noAccess = document.getElementById('calAdminAccess');
-      const list = document.getElementById('calendarAdminList');
-      const message = document.getElementById('calendarMessage');
-      const state = document.getElementById('calAdminState');
-      const count = document.getElementById('calAdminCount');
-      const visibleCount = document.getElementById('calAdminVisible');
-      const last = document.getElementById('calAdminLast');
-      const meta = document.getElementById('calendarListMeta');
-      const search = document.getElementById('calendarSearch');
-      const typeFilter = document.getElementById('calendarTypeFilter');
-      const reload = document.getElementById('calendarReload');
-      const reset = document.getElementById('calendarReset');
-      const syncAcsm = document.getElementById('calendarSyncAcsm');
-      const title = document.getElementById('calendarFormTitle');
+      const $ = (id) => document.getElementById(id);
+      const form = $('calendarForm');
+      const content = $('calAdminContent');
+      const noAccess = $('calAdminAccess');
+      const accessText = $('calAdminAccessText');
+      const list = $('calendarAdminList');
+      const message = $('calendarMessage');
+      const state = $('calAdminState');
+      const count = $('calAdminCount');
+      const visibleCount = $('calAdminVisible');
+      const last = $('calAdminLast');
+      const meta = $('calendarListMeta');
+      const search = $('calendarSearch');
+      const typeFilter = $('calendarTypeFilter');
+      const reload = $('calendarReload');
+      const reset = $('calendarReset');
+      const title = $('calendarFormTitle');
+      const syncAcsm = $('calendarSyncAcsm');
+      const retry = $('calAdminRetry');
       const typeLabels = { combo:'Combo semanal', race_lfm:'Carrera LFM', race_gc:'Carrera GrassCutters' };
       let events = [];
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-      const setMessage = (text, ok = false) => { message.textContent = text; message.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
+      const setMessage = (text, ok = false) => { message.textContent = text || ''; message.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
       const dateText = (event) => [event.startDate, event.startTime].filter(Boolean).join(' · ') || '-';
-      const repeatText = (event) => {
-        if (!(event.repeatEnabled || event.repeatFrequency === 'weekly')) return '';
-        return event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal';
-      };
+      const repeatText = (event) => (event.repeatEnabled || event.repeatFrequency === 'weekly') ? (event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal') : '';
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) {
+          if (response.status === 404) throw new Error('API no encontrada. Revisa el servidor desplegado.');
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+        return data;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return true;
+        } catch {}
+        try {
+          const profile = await fetchJson('/api/profile');
+          return profile.user?.role === 'admin';
+        } catch {}
+        return false;
+      }
+
       function updateRepeatFields() {
         const enabled = Boolean(form.elements.repeatEnabled?.checked);
         const field = document.querySelector('.gc-calendar-repeat-until');
         if (field) field.classList.toggle('is-disabled', !enabled);
         if (form.elements.repeatUntil) form.elements.repeatUntil.disabled = !enabled;
       }
-      const fetchJson = async (url, options = {}) => {
-        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.ok === false) {
-          if (response.status === 404) throw new Error('API de calendario no encontrada. Aplica el patch del servidor incluido en el pack.');
-          throw new Error(data.message || `HTTP ${response.status}`);
-        }
-        return data;
-      };
 
       function serializeForm() {
         const data = Object.fromEntries(new FormData(form));
@@ -199,10 +225,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         count.textContent = String(events.length);
         visibleCount.textContent = String(events.filter((event) => event.visible !== false).length);
         meta.textContent = `${rows.length} eventos visibles de ${events.length}`;
-        if (!rows.length) {
-          list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>';
-          return;
-        }
+        if (!rows.length) { list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>'; return; }
         list.innerHTML = rows.map((event) => `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><small>${event.visible === false ? 'Oculto' : 'Visible'}${event.featured ? ' · Destacado' : ''}${repeatText(event) ? ' · ' + escapeHtml(repeatText(event)) : ''}</small></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}">${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}">Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`).join('');
       }
 
@@ -215,53 +238,24 @@ import AppLayout from '../../layouts/AppLayout.astro';
         render();
       }
 
-      // GC CALENDAR ADMIN AUTH CLEANUP V1 START
-      async function readCalendarAdminStatus() {
-        const status = await fetchJson('/api/admin/status').catch((error) => ({ ok:false, error, message:error?.message || 'No se pudo leer /api/admin/status' }));
-        if (status?.authorized === true) return { ...status, setupRequired:false };
-
-        const profile = await fetchJson('/api/profile').catch((error) => ({ ok:false, error, message:error?.message || 'No se pudo leer /api/profile' }));
-        const user = profile?.user || profile?.currentUser;
-        if (user?.role === 'admin') {
-          return {
-            ...(status && !status.error ? status : {}),
-            ok: true,
-            authenticated: true,
-            authorized: true,
-            setupRequired: false,
-            currentUser: user,
-            source: 'calendar-admin-profile-fallback'
-          };
-        }
-
-        if (status?.error) throw status.error;
-        throw new Error(status?.message || profile?.message || 'Acceso admin requerido.');
-      }
-
       async function checkAdmin() {
-        try {
-          const status = await readCalendarAdminStatus();
-          if (status.authorized !== true) throw new Error('Sin permisos');
+        state.textContent = 'Comprobando';
+        if (await isAdmin()) {
           content.hidden = false;
           noAccess.hidden = true;
-          state.textContent = 'OK';
           await loadEvents();
-        } catch (error) {
-          content.hidden = true;
-          noAccess.hidden = false;
-          state.textContent = 'Bloqueado';
-          setMessage(error.message || 'Acceso admin requerido.');
+          return;
         }
+        content.hidden = true;
+        noAccess.hidden = false;
+        accessText.textContent = 'No se ha podido validar una cuenta administradora activa.';
+        state.textContent = 'Bloqueado';
       }
-      // GC CALENDAR ADMIN AUTH CLEANUP V1 END
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const payload = serializeForm();
-        if (!payload.title || !payload.startDate) {
-          setMessage('Título y fecha inicio son obligatorios.');
-          return;
-        }
+        if (!payload.title || !payload.startDate) { setMessage('Título y fecha inicio son obligatorios.'); return; }
         try {
           const id = form.elements.id.value;
           setMessage('Guardando evento...');
@@ -269,9 +263,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           setMessage('Evento guardado.', true);
           resetForm();
           await loadEvents();
-        } catch (error) {
-          setMessage(error.message || 'No se pudo guardar.');
-        }
+        } catch (error) { setMessage(error.message || 'No se pudo guardar.'); }
       });
 
       list.addEventListener('click', async (event) => {
@@ -280,10 +272,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         const id = button.dataset.id;
         const item = events.find((event) => event.id === id);
         if (!item) return;
-        if (button.dataset.action === 'edit') {
-          editEvent(item);
-          return;
-        }
+        if (button.dataset.action === 'edit') { editEvent(item); return; }
         try {
           if (button.dataset.action === 'delete') {
             if (!confirm('¿Borrar este evento del calendario?')) return;
@@ -293,25 +282,23 @@ import AppLayout from '../../layouts/AppLayout.astro';
             await fetchJson(`/api/admin/calendar-events/${encodeURIComponent(id)}`, { method:'PUT', body: JSON.stringify({ ...item, visible: item.visible === false }) });
           }
           await loadEvents();
-        } catch (error) {
-          setMessage(error.message || 'No se pudo aplicar la acción.');
-        }
+        } catch (error) { setMessage(error.message || 'No se pudo aplicar la acción.'); }
+      });
+
+      syncAcsm.addEventListener('click', async () => {
+        try {
+          setMessage('Sincronizando combo desde ACSM...');
+          const data = await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
+          setMessage(`Combo ACSM sincronizado en ${data.source || 'storage'}.`, true);
+          await loadEvents();
+        } catch (error) { setMessage(error.message || 'No se pudo sincronizar ACSM.'); }
       });
 
       [search, typeFilter].forEach((node) => node.addEventListener('input', render));
       form.elements.repeatEnabled?.addEventListener('change', updateRepeatFields);
       reload.addEventListener('click', () => loadEvents().catch((error) => setMessage(error.message || 'No se pudo recargar.')));
       reset.addEventListener('click', resetForm);
-      syncAcsm?.addEventListener('click', async () => {
-        try {
-          setMessage('Sincronizando combo desde ACSM...');
-          await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
-          setMessage('Combo ACSM sincronizado.', true);
-          await loadEvents();
-        } catch (error) {
-          setMessage(error.message || 'No se pudo sincronizar ACSM.');
-        }
-      });
+      retry.addEventListener('click', checkAdmin);
       updateRepeatFields();
       checkAdmin();
     })();

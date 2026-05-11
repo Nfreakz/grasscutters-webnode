@@ -2,49 +2,52 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Admin | GrassCutters">
-  <div class="gc-page gc-admin-page">
+  <div class="gc-page gc-admin-page gc-admin-clean-page">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Admin console</span>
         <h1 class="gc-title">Control de boxes.</h1>
-        <p class="gc-subtitle">Panel privado para usuarios, permisos, sesiones y sincronización de stracker. La idea es tener un puesto de mando limpio antes de enchufar Discord, eventos y herramientas avanzadas.</p>
+        <p class="gc-subtitle">Panel privado para usuarios, permisos, storage, nombres corregidos, stracker y sincronización ACSM.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Usuarios</span>
           <span class="gc-chip">Permisos</span>
-          <span class="gc-chip">Sync GTX</span>
+          <span class="gc-chip">MySQL</span>
+          <span class="gc-chip">ACSM</span>
         </div>
       </div>
       <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Admin</span><strong id="adminState">...</strong></div>
+        <div class="gc-live-panel__title"><span>Admin</span><strong id="adminState">Comprobando</strong></div>
         <div class="gc-status-list" id="adminStatusRows">
           <div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div>
         </div>
       </aside>
     </section>
 
-    <section class="gc-metrics" id="adminMetrics">
-      <div class="gc-metric"><span>Usuarios</span><strong id="metricUsers">...</strong><small>cuentas web</small></div>
-      <div class="gc-metric"><span>Admins</span><strong id="metricAdmins">...</strong><small>permisos</small></div>
-      <div class="gc-metric"><span>Vinculados</span><strong id="metricLinked">...</strong><small>piloto real</small></div>
-      <div class="gc-metric"><span>Sesiones</span><strong id="metricSessions">...</strong><small>activas</small></div>
+    <section class="gc-section gc-admin-gate" id="adminGate" hidden>
+      <div class="gc-section-head">
+        <h2>Acceso restringido</h2>
+        <p>Solo administradores</p>
+      </div>
+      <div class="gc-slab">
+        <h3 id="adminGateTitle">No tienes permisos de admin</h3>
+        <p id="adminGateText">Inicia sesión con una cuenta administradora.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+          <button class="gc-btn" id="adminGateRetry" type="button">Reintentar</button>
+        </div>
+      </div>
     </section>
 
-    <section class="gc-section" id="setupPanel" hidden>
-      <div class="gc-section-head">
-        <h2>Crear primer administrador</h2>
-        <p>Usa ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET</p>
-      </div>
-      <form class="gc-form" id="bootstrapForm">
-        <p class="gc-admin-note">No hay ninguna cuenta admin todavía. Inicia sesión con la cuenta que quieras promocionar o indica el email de una cuenta registrada.</p>
+    <section class="gc-grid-2 gc-admin-setup" id="adminSetup" hidden>
+      <form class="gc-section gc-form" id="bootstrapForm">
+        <div class="gc-section-head">
+          <h2>Crear primer administrador</h2>
+          <p>Solo aparece si el sistema confirma que no existe ningún admin.</p>
+        </div>
+        <p class="gc-admin-note">Indica el email de una cuenta registrada y el secreto de setup configurado en el servidor.</p>
         <div class="gc-form-grid">
-          <label class="gc-field">
-            <span>Email de cuenta</span>
-            <input class="gc-input" name="email" type="email" placeholder="opcional si ya has iniciado sesión" />
-          </label>
-          <label class="gc-field">
-            <span>Secret admin</span>
-            <input class="gc-input" name="secret" type="password" autocomplete="off" placeholder="ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET" />
-          </label>
+          <label class="gc-field"><span>Email de cuenta</span><input class="gc-input" name="email" type="email" /></label>
+          <label class="gc-field"><span>Secret admin</span><input class="gc-input" name="secret" type="password" autocomplete="off" /></label>
         </div>
         <div class="gc-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Promocionar admin</button>
@@ -54,831 +57,431 @@ import AppLayout from '../layouts/AppLayout.astro';
       </form>
     </section>
 
-    <section class="gc-grid-2" id="adminContent" hidden>
-      <div class="gc-section">
-        <div class="gc-section-head">
-          <h2>Usuarios registrados</h2>
-          <p id="usersMeta">Cargando...</p>
-        </div>
-        <div class="gc-toolbar">
-          <label class="gc-field">
-            <span>Buscar</span>
-            <input class="gc-input" id="userSearch" type="search" placeholder="email, piloto, nombre..." />
-          </label>
-          <button class="gc-btn" id="reloadUsers" type="button">Recargar</button>
-        </div>
-        <div class="gc-table-wrap">
-          <table class="gc-table" id="usersTable">
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Rol</th>
-                <th>Piloto</th>
-                <th>Sesiones</th>
-                <th>Alta</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td colspan="6">Cargando usuarios...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <section id="adminContent" hidden>
+      <section class="gc-metrics">
+        <div class="gc-metric"><span>Usuarios</span><strong id="metricUsers">...</strong><small>cuentas web</small></div>
+        <div class="gc-metric"><span>Admins</span><strong id="metricAdmins">...</strong><small>permisos</small></div>
+        <div class="gc-metric"><span>Vinculados</span><strong id="metricLinked">...</strong><small>piloto real</small></div>
+        <div class="gc-metric"><span>Sesiones</span><strong id="metricSessions">...</strong><small>activas</small></div>
+      </section>
 
-      <aside class="gc-section">
-        <div class="gc-section-head">
-          <h2>Sistema</h2>
-          <p>Estado operativo</p>
-        </div>
-        <div class="gc-slab">
-          <h3>Stracker</h3>
-          <p id="strackerAdminText">Cargando estado de base de datos...</p>
-          <div class="gc-slab-list" id="strackerAdminRows">
-            <div><span>DB</span><strong>...</strong></div>
+      <section class="gc-grid-2">
+        <div class="gc-section">
+          <div class="gc-section-head">
+            <h2>Usuarios registrados</h2>
+            <p id="usersMeta">Cargando usuarios...</p>
           </div>
-          <div class="gc-actions">
-            <button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button>
-            <a class="gc-btn" href="/app">Ver panel</a>
+          <div class="gc-toolbar">
+            <label class="gc-field"><span>Buscar</span><input class="gc-input" id="userSearch" type="search" placeholder="email, piloto, nombre..." /></label>
+            <button class="gc-btn" id="reloadUsers" type="button">Recargar</button>
           </div>
-          <p class="gc-message" id="syncMessage"></p>
+          <div class="gc-table-wrap">
+            <table class="gc-table" id="usersTable">
+              <thead><tr><th>Usuario</th><th>Rol</th><th>Piloto</th><th>Sesiones</th><th>Alta</th><th>Acciones</th></tr></thead>
+              <tbody><tr><td colspan="6">Cargando usuarios...</td></tr></tbody>
+            </table>
+          </div>
+          <p class="gc-message" id="usersMessage"></p>
         </div>
 
-        <div class="gc-slab" id="storagePanel">
-          <h3>Storage persistente</h3>
-          <p id="storageText">Comprobando rutas de datos...</p>
-          <div class="gc-slab-list" id="storageRows">
-            <div><span>APP_DATA_DIR</span><strong>...</strong></div>
+        <aside class="gc-section">
+          <div class="gc-section-head"><h2>Sistema</h2><p>Estado operativo</p></div>
+          <div class="gc-slab">
+            <h3>Storage persistente</h3>
+            <p id="storageText">Comprobando storage...</p>
+            <div class="gc-slab-list" id="storageRows"><div><span>Storage</span><strong>...</strong></div></div>
+            <div class="gc-actions"><button class="gc-btn" id="reloadStorage" type="button">Revisar storage</button></div>
+            <p class="gc-message" id="storageMessage"></p>
           </div>
-          <div class="gc-actions">
-            <button class="gc-btn" id="reloadStorage" type="button">Revisar storage</button>
-          </div>
-          <p class="gc-message" id="storageMessage"></p>
-        </div>
 
-        <div class="gc-slab">
-          <h3>Accesos rápidos</h3>
-          <div class="gc-row-list gc-row-list--compact">
-            <a class="gc-row-link" href="/hotlaps"><span class="gc-row-link__num">01</span><span><strong class="gc-row-link__title">Hotlaps</strong><br><span class="gc-row-link__desc">Leaderboard real.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-            <a class="gc-row-link" href="/pilotos"><span class="gc-row-link__num">02</span><span><strong class="gc-row-link__title">Pilotos</strong><br><span class="gc-row-link__desc">Directorio real.</span></span><span class="gc-row-link__cta">Abrir</span></a>
-            <a class="gc-row-link" href="/perfil"><span class="gc-row-link__num">03</span><span><strong class="gc-row-link__title">Perfil</strong><br><span class="gc-row-link__desc">Cuenta actual.</span></span><span class="gc-row-link__cta">Abrir</span></a>
+          <div class="gc-slab">
+            <h3>Stracker</h3>
+            <p id="strackerAdminText">Cargando estado de base de datos...</p>
+            <div class="gc-slab-list" id="strackerAdminRows"><div><span>DB</span><strong>...</strong></div></div>
+            <div class="gc-actions">
+              <button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button>
+              <a class="gc-btn" href="/app">Ver panel</a>
+            </div>
+            <p class="gc-message" id="syncMessage"></p>
           </div>
-        </div>
-      </aside>
 
-      <section class="gc-section" id="nameFiltersPanel" style="grid-column: 1 / -1;">
-        <div class="gc-section-head">
-          <h2>Filtro automático de nombres</h2>
-          <p id="nameFiltersMeta">Cargando catálogo...</p>
-        </div>
+          <div class="gc-slab">
+            <h3>ACSM</h3>
+            <p id="acsmText">Sincroniza el combo activo del Assetto Corsa Server Manager.</p>
+            <div class="gc-slab-list" id="acsmRows"><div><span>Estado</span><strong>...</strong></div></div>
+            <div class="gc-actions">
+              <button class="gc-btn" id="checkAcsmBtn" type="button">Probar ACSM</button>
+              <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
+              <a class="gc-btn" href="/admin/calendario">Calendario admin</a>
+            </div>
+            <p class="gc-message" id="acsmMessage"></p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="gc-section" id="nameFiltersPanel">
+        <div class="gc-section-head"><h2>Filtro automático de nombres</h2><p id="nameFiltersMeta">Cargando catálogo...</p></div>
         <div class="gc-slab">
           <h3>Nombres visibles</h3>
-          <p class="gc-admin-note">La web convierte códigos como <strong>porsche_935_mobydick_gr5</strong> o <strong>salzburgring</strong> en nombres limpios automáticamente. Desde aquí puedes forzar alias para pilotos, coches y circuitos sin tocar código.</p>
-
+          <p class="gc-admin-note">Edita alias para pilotos, coches y circuitos. Estos nombres se usan en toda la web cuando la API los devuelve corregidos.</p>
           <form class="gc-form gc-admin-inline-form" id="manualNameForm">
             <div class="gc-form-grid">
-              <label class="gc-field">
-                <span>Tipo</span>
-                <select class="gc-select" name="kind">
-                  <option value="car">Coche</option>
-                  <option value="track">Circuito</option>
-                  <option value="driver">Piloto</option>
-                </select>
-              </label>
-              <label class="gc-field">
-                <span>Código original</span>
-                <input class="gc-input" name="sourceCode" type="text" placeholder="porsche_935_mobydick_gr5" />
-              </label>
-              <label class="gc-field">
-                <span>Nombre original opcional</span>
-                <input class="gc-input" name="sourceName" type="text" placeholder="UiCarName / UiTrackName" />
-              </label>
-              <label class="gc-field">
-                <span>Nombre visible</span>
-                <input class="gc-input" name="displayName" type="text" placeholder="Porsche 935 Mobydick GR5" />
-              </label>
+              <label class="gc-field"><span>Tipo</span><select class="gc-select" name="kind"><option value="car">Coche</option><option value="track">Circuito</option><option value="driver">Piloto</option></select></label>
+              <label class="gc-field"><span>Código original</span><input class="gc-input" name="sourceCode" type="text" placeholder="porsche_935_mobydick_gr5" /></label>
+              <label class="gc-field"><span>Nombre original opcional</span><input class="gc-input" name="sourceName" type="text" placeholder="UiCarName / UiTrackName" /></label>
+              <label class="gc-field"><span>Nombre visible</span><input class="gc-input" name="displayName" type="text" placeholder="Porsche 935 Mobydick GR5" /></label>
             </div>
-            <div class="gc-actions">
-              <button class="gc-btn gc-btn--primary" type="submit">Guardar alias manual</button>
-              <small class="gc-muted-text">Útil cuando un coche o circuito no aparece en el catálogo.</small>
-            </div>
+            <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar alias manual</button></div>
           </form>
 
           <div class="gc-toolbar">
-            <label class="gc-field">
-              <span>Tipo</span>
-              <select class="gc-select" id="nameKindFilter">
-                <option value="cars">Coches</option>
-                <option value="tracks">Circuitos</option>
-                <option value="drivers">Pilotos</option>
-              </select>
-            </label>
-            <label class="gc-field">
-              <span>Buscar</span>
-              <input class="gc-input" id="nameSearch" type="search" placeholder="código, nombre visible, original..." />
-            </label>
-            <label class="gc-field">
-              <span>Vista</span>
-              <select class="gc-select" id="nameViewFilter">
-                <option value="all">Todos</option>
-                <option value="missing">Sin override</option>
-                <option value="overrides">Solo modificados</option>
-              </select>
-            </label>
+            <label class="gc-field"><span>Tipo</span><select class="gc-select" id="nameKindFilter"><option value="cars">Coches</option><option value="tracks">Circuitos</option><option value="drivers">Pilotos</option></select></label>
+            <label class="gc-field"><span>Buscar</span><input class="gc-input" id="nameSearch" type="search" placeholder="código, nombre visible, original..." /></label>
+            <label class="gc-field"><span>Vista</span><select class="gc-select" id="nameViewFilter"><option value="all">Todos</option><option value="missing">Sin override</option><option value="overrides">Solo modificados</option></select></label>
             <button class="gc-btn gc-btn--primary" id="saveVisibleNames" type="button">Guardar visibles</button>
             <button class="gc-btn" id="reloadNameFilters" type="button">Recargar</button>
           </div>
           <div class="gc-table-wrap">
-            <table class="gc-table" id="nameFiltersTable">
-              <thead>
-                <tr>
-                  <th>Original</th>
-                  <th>Automático</th>
-                  <th>Nombre visible</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td colspan="5">Cargando nombres...</td></tr>
-              </tbody>
-            </table>
+            <table class="gc-table" id="nameFiltersTable"><thead><tr><th>Original</th><th>Automático</th><th>Nombre visible</th><th>Estado</th><th>Acciones</th></tr></thead><tbody><tr><td colspan="5">Cargando nombres...</td></tr></tbody></table>
           </div>
           <p class="gc-message" id="nameFiltersMessage"></p>
         </div>
       </section>
 
-      <section class="gc-section" id="unlinkedPilotsPanel" style="grid-column: 1 / -1;">
-        <div class="gc-section-head">
-          <h2>Pilotos sin cuenta vinculada</h2>
-          <p id="unlinkedPilotsMeta">Cargando pilotos detectados...</p>
-        </div>
-        <div class="gc-table-wrap">
-          <table class="gc-table gc-table--compact" id="unlinkedPilotsTable">
-            <thead>
-              <tr>
-                <th>Piloto</th>
-                <th>Vueltas</th>
-                <th>Válidas</th>
-                <th>Mejor vuelta</th>
-                <th>Coches</th>
-                <th>Última actividad</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody><tr><td colspan="7">Cargando pilotos...</td></tr></tbody>
-          </table>
-        </div>
-      </section>
+      <section class="gc-grid-2">
+        <section class="gc-section" id="unlinkedPilotsPanel">
+          <div class="gc-section-head"><h2>Pilotos sin cuenta vinculada</h2><p id="unlinkedPilotsMeta">Cargando pilotos...</p></div>
+          <div class="gc-table-wrap"><table class="gc-table gc-table--compact" id="unlinkedPilotsTable"><thead><tr><th>Piloto</th><th>Vueltas</th><th>Válidas</th><th>Mejor vuelta</th><th>Coches</th><th>Última actividad</th><th>Acciones</th></tr></thead><tbody><tr><td colspan="7">Cargando pilotos...</td></tr></tbody></table></div>
+        </section>
 
-      <section class="gc-section" id="auditPanel" style="grid-column: 1 / -1;">
-        <div class="gc-section-head">
-          <h2>Historial admin</h2>
-          <p id="auditMeta">Últimos cambios de nombres, roles y acciones sensibles</p>
-        </div>
-        <div class="gc-toolbar">
-          <button class="gc-btn" id="reloadAudit" type="button">Recargar historial</button>
-        </div>
-        <div class="gc-table-wrap">
-          <table class="gc-table gc-table--compact" id="auditTable">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Admin</th>
-                <th>Acción</th>
-                <th>Entidad</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody><tr><td colspan="5">Cargando historial...</td></tr></tbody>
-          </table>
-        </div>
+        <section class="gc-section" id="auditPanel">
+          <div class="gc-section-head"><h2>Historial admin</h2><p id="auditMeta">Últimos cambios</p></div>
+          <div class="gc-toolbar"><button class="gc-btn" id="reloadAudit" type="button">Recargar historial</button></div>
+          <div class="gc-table-wrap"><table class="gc-table gc-table--compact" id="auditTable"><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Entidad</th><th>Detalle</th></tr></thead><tbody><tr><td colspan="5">Cargando historial...</td></tr></tbody></table></div>
+        </section>
       </section>
-    </section>
-
-    <section class="gc-section" id="noAccessPanel" hidden>
-      <div class="gc-section-head">
-        <h2>Acceso restringido</h2>
-        <p>Solo administradores</p>
-      </div>
-      <div class="gc-slab">
-        <h3>No tienes permisos de admin</h3>
-        <p id="noAccessText">Inicia sesión con una cuenta administradora o crea el primer admin si todavía no existe.</p>
-        <div class="gc-actions">
-          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
-          <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
-        </div>
-      </div>
     </section>
   </div>
 
-  <script>
-    const els = {
-      adminState: document.getElementById('adminState'),
-      adminStatusRows: document.getElementById('adminStatusRows'),
-      setupPanel: document.getElementById('setupPanel'),
-      noAccessPanel: document.getElementById('noAccessPanel'),
-      adminContent: document.getElementById('adminContent'),
-      metricUsers: document.getElementById('metricUsers'),
-      metricAdmins: document.getElementById('metricAdmins'),
-      metricLinked: document.getElementById('metricLinked'),
-      metricSessions: document.getElementById('metricSessions'),
-      usersMeta: document.getElementById('usersMeta'),
-      usersTable: document.querySelector('#usersTable tbody'),
-      userSearch: document.getElementById('userSearch'),
-      strackerAdminText: document.getElementById('strackerAdminText'),
-      strackerAdminRows: document.getElementById('strackerAdminRows'),
-      syncMessage: document.getElementById('syncMessage'),
-      storageText: document.getElementById('storageText'),
-      storageRows: document.getElementById('storageRows'),
-      storageMessage: document.getElementById('storageMessage'),
-      reloadStorage: document.getElementById('reloadStorage'),
-      forceSyncBtn: document.getElementById('forceSyncBtn'),
-      bootstrapForm: document.getElementById('bootstrapForm'),
-      bootstrapMessage: document.getElementById('bootstrapMessage'),
-      reloadUsers: document.getElementById('reloadUsers'),
-      retryAdmin: document.getElementById('retryAdmin'),
-      nameFiltersPanel: document.getElementById('nameFiltersPanel'),
-      manualNameForm: document.getElementById('manualNameForm'),
-      nameFiltersMeta: document.getElementById('nameFiltersMeta'),
-      nameKindFilter: document.getElementById('nameKindFilter'),
-      nameSearch: document.getElementById('nameSearch'),
-      nameViewFilter: document.getElementById('nameViewFilter'),
-      saveVisibleNames: document.getElementById('saveVisibleNames'),
-      reloadNameFilters: document.getElementById('reloadNameFilters'),
-      nameFiltersTable: document.querySelector('#nameFiltersTable tbody'),
-      nameFiltersMessage: document.getElementById('nameFiltersMessage'),
-      unlinkedPilotsMeta: document.getElementById('unlinkedPilotsMeta'),
-      unlinkedPilotsTable: document.querySelector('#unlinkedPilotsTable tbody'),
-      auditMeta: document.getElementById('auditMeta'),
-      auditTable: document.querySelector('#auditTable tbody'),
-      reloadAudit: document.getElementById('reloadAudit')
-    };
+  <style is:global>
+    .gc-admin-clean-page{display:grid;gap:clamp(22px,3vw,34px)}
+    .gc-admin-clean-page [hidden]{display:none!important}
+    .gc-admin-inline-form{margin-bottom:18px}
+    .gc-admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .gc-input--compact{min-height:36px;padding:7px 10px}
+    .gc-admin-gate,.gc-admin-setup{border-top:2px solid var(--accent);padding-top:20px}
+  </style>
 
-    let users = [];
-    let nameCatalog = { drivers: [], cars: [], tracks: [] };
-    let currentNameItems = [];
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        adminState: $('adminState'), adminStatusRows: $('adminStatusRows'), adminGate: $('adminGate'), adminSetup: $('adminSetup'), adminContent: $('adminContent'), adminGateTitle: $('adminGateTitle'), adminGateText: $('adminGateText'), adminGateRetry: $('adminGateRetry'),
+        metricUsers: $('metricUsers'), metricAdmins: $('metricAdmins'), metricLinked: $('metricLinked'), metricSessions: $('metricSessions'),
+        usersMeta: $('usersMeta'), usersTable: document.querySelector('#usersTable tbody'), userSearch: $('userSearch'), reloadUsers: $('reloadUsers'), usersMessage: $('usersMessage'),
+        storageText: $('storageText'), storageRows: $('storageRows'), storageMessage: $('storageMessage'), reloadStorage: $('reloadStorage'),
+        strackerAdminText: $('strackerAdminText'), strackerAdminRows: $('strackerAdminRows'), syncMessage: $('syncMessage'), forceSyncBtn: $('forceSyncBtn'),
+        acsmText: $('acsmText'), acsmRows: $('acsmRows'), acsmMessage: $('acsmMessage'), checkAcsmBtn: $('checkAcsmBtn'), syncAcsmBtn: $('syncAcsmBtn'),
+        bootstrapForm: $('bootstrapForm'), bootstrapMessage: $('bootstrapMessage'),
+        manualNameForm: $('manualNameForm'), nameFiltersMeta: $('nameFiltersMeta'), nameKindFilter: $('nameKindFilter'), nameSearch: $('nameSearch'), nameViewFilter: $('nameViewFilter'), saveVisibleNames: $('saveVisibleNames'), reloadNameFilters: $('reloadNameFilters'), nameFiltersTable: document.querySelector('#nameFiltersTable tbody'), nameFiltersMessage: $('nameFiltersMessage'),
+        unlinkedPilotsMeta: $('unlinkedPilotsMeta'), unlinkedPilotsTable: document.querySelector('#unlinkedPilotsTable tbody'), auditMeta: $('auditMeta'), auditTable: document.querySelector('#auditTable tbody'), reloadAudit: $('reloadAudit')
+      };
+      let users = [];
+      let nameCatalog = { drivers: [], cars: [], tracks: [] };
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-      }[char]));
-    }
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const compact = (value, n = 52) => { const text = String(value ?? '-'); return text.length > n ? `...${text.slice(-n + 3)}` : text; };
+      const dateText = (value) => { if (!value) return '-'; const date = new Date(value); return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' }); };
+      const lapText = (ms) => { const n = Number(ms); if (!Number.isFinite(n) || n <= 0) return '--'; const m = Math.floor(n / 60000); const s = Math.floor((n % 60000) / 1000); const x = String(Math.floor(n % 1000)).padStart(3, '0'); return `${m}:${String(s).padStart(2, '0')}.${x}`; };
+      const message = (el, text, ok = false) => { if (!el) return; el.textContent = text || ''; el.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
 
-    function dateText(value) {
-      if (!value) return '-';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '-';
-      return date.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-    }
-
-    function lapText(ms) {
-      const n = Number(ms);
-      if (!Number.isFinite(n) || n <= 0) return '--';
-      const m = Math.floor(n / 60000);
-      const s = Math.floor((n % 60000) / 1000);
-      const x = String(Math.floor(n % 1000)).padStart(3, '0');
-      return `${m}:${String(s).padStart(2, '0')}.${x}`;
-    }
-
-    function compactJson(value) {
-      if (!value) return '-';
-      try {
-        if (typeof value === 'string') return value.slice(0, 140);
-        if (value.displayName) return value.displayName;
-        if (value.after?.displayName) return value.after.displayName;
-        if (value.count !== undefined) return `${value.count} cambios`;
-        return JSON.stringify(value).slice(0, 140);
-      } catch {
-        return String(value).slice(0, 140);
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
       }
-    }
 
-    // GC ADMIN VISIBILITY CLEANUP V1 SETPANELS START
-    window.gcAdminAuthorized = false;
-    function setPanels({ setup = false, content = false, noAccess = false }) {
-      if (window.gcAdminAuthorized === true) {
-        setup = false;
-        content = true;
-        noAccess = false;
+      function setView(mode) {
+        els.adminGate.hidden = mode !== 'gate';
+        els.adminSetup.hidden = mode !== 'setup';
+        els.adminContent.hidden = mode !== 'content';
       }
-      els.setupPanel.hidden = !setup;
-      els.adminContent.hidden = !content;
-      els.noAccessPanel.hidden = !noAccess;
-    }
-    // GC ADMIN VISIBILITY CLEANUP V1 SETPANELS END
 
-    function renderStatus(data) {
-      // GC ADMIN VISIBILITY CLEANUP V1 RENDERSTATUS START
-      if (data?.authorized === true) {
-        window.gcAdminAuthorized = true;
-        data.setupRequired = false;
-      } else if (data?.setupRequired === true) {
-        window.gcAdminAuthorized = false;
+      async function getAdminStatus() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return status;
+          if (status.setupRequired === true) return status;
+        } catch {}
+        const profile = await fetchJson('/api/profile');
+        return {
+          ok: true,
+          authenticated: profile.authenticated !== false,
+          authorized: profile.user?.role === 'admin',
+          setupRequired: false,
+          setupSecretConfigured: true,
+          currentUser: profile.user || null,
+          summary: {},
+          admin: {}
+        };
       }
-      // GC ADMIN VISIBILITY CLEANUP V1 RENDERSTATUS END
-      const summary = data.summary || {};
-      els.metricUsers.textContent = summary.usersCount ?? '0';
-      els.metricAdmins.textContent = summary.adminsCount ?? '0';
-      els.metricLinked.textContent = summary.linkedUsersCount ?? '0';
-      els.metricSessions.textContent = summary.activeSessionsCount ?? '0';
 
-      if (data.authorized) {
-        els.adminState.textContent = 'Activo';
-        els.adminState.style.color = 'var(--accent)';
+      function renderStatus(data) {
+        const summary = data.summary || {};
+        els.metricUsers.textContent = summary.usersCount ?? '-';
+        els.metricAdmins.textContent = summary.adminsCount ?? '-';
+        els.metricLinked.textContent = summary.linkedUsersCount ?? '-';
+        els.metricSessions.textContent = summary.activeSessionsCount ?? '-';
+        els.adminState.textContent = data.authorized ? 'Activo' : data.setupRequired ? 'Setup' : 'Bloqueado';
+        els.adminState.style.color = data.authorized ? 'var(--accent)' : 'var(--warn)';
         els.adminStatusRows.innerHTML = `
-          <div class="gc-status-row"><span>Usuario</span><strong>${escapeHtml(data.currentUser?.displayName || 'Admin')}</strong></div>
+          <div class="gc-status-row"><span>Usuario</span><strong>${escapeHtml(data.currentUser?.displayName || '-')}</strong></div>
           <div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(data.currentUser?.role || '-')}</strong></div>
           <div class="gc-status-row"><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>
         `;
-      } else if (data.setupRequired) {
-        els.adminState.textContent = 'Setup';
-        els.adminState.style.color = 'var(--warn)';
-        els.adminStatusRows.innerHTML = `
-          <div class="gc-status-row"><span>Admin</span><strong>No creado</strong></div>
-          <div class="gc-status-row"><span>Secret</span><strong>${data.setupSecretConfigured ? 'Configurado' : 'Falta'}</strong></div>
-          <div class="gc-status-row"><span>Sesión</span><strong>${data.authenticated ? 'Activa' : 'No'}</strong></div>
-        `;
-      } else {
-        els.adminState.textContent = 'Bloqueado';
-        els.adminState.style.color = 'var(--danger)';
-        els.adminStatusRows.innerHTML = `
-          <div class="gc-status-row"><span>Sesión</span><strong>${data.authenticated ? 'Activa' : 'No'}</strong></div>
-          <div class="gc-status-row"><span>Permiso</span><strong>No admin</strong></div>
+        renderStorage(data.admin?.storage || data.storage || {});
+        renderStracker(data.admin?.stracker || {});
+      }
+
+      function renderStorage(data) {
+        const storage = data.storage || data;
+        const files = data.files || {};
+        const usersInfo = files.users || {};
+        const displayInfo = files.displayNames || {};
+        const source = usersInfo.source || displayInfo.source || storage.source || 'desconocido';
+        const persistent = usersInfo.persistent ?? displayInfo.persistent ?? storage.persistent;
+        els.storageText.textContent = persistent ? `OK: storage persistente en ${source}.` : 'Atención: revisa storage persistente.';
+        els.storageRows.innerHTML = `
+          <div><span>Usuarios</span><strong>${escapeHtml(usersInfo.source || source)}</strong></div>
+          <div><span>Nombres</span><strong>${escapeHtml(displayInfo.source || source)}</strong></div>
+          <div><span>Persistente</span><strong>${persistent ? 'Sí' : 'No'}</strong></div>
+          <div><span>Ruta</span><strong>${escapeHtml(compact(storage.dataRoot || usersInfo.resolvedPath || '-'))}</strong></div>
         `;
       }
 
-      const stracker = data.admin?.stracker;
-      if (stracker) {
+      function renderStracker(stracker) {
+        if (!stracker || !Object.keys(stracker).length) return;
+        els.strackerAdminText.textContent = stracker.exists ? 'Base stracker detectada.' : 'No se ha detectado stracker.db3.';
         const overview = stracker.overview || {};
-        els.strackerAdminText.textContent = stracker.exists
-          ? 'Base stracker detectada y lista para administración.'
-          : 'No se ha detectado stracker.db3 todavía.';
         els.strackerAdminRows.innerHTML = `
           <div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div>
           <div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div>
           <div><span>Tamaño</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>
-          <div><span>Tablas</span><strong>${overview.totalTables ?? '-'}</strong></div>
           <div><span>Vueltas</span><strong>${overview.totalLaps ?? '-'}</strong></div>
-          <div><span>Auto-sync</span><strong>${stracker.autoSync?.canRun ? 'Activo' : 'Off'}</strong></div>
         `;
       }
-    }
 
-    function renderUsers() {
-      const query = String(els.userSearch.value || '').toLowerCase().trim();
-      const filtered = users.filter((user) => {
-        const haystack = `${user.displayName || ''} ${user.email || ''} ${user.role || ''} ${user.linkedPilotName || ''} ${user.linkedPlayerId || ''} ${user.pilotSteamGuid || user.linkedPilotSteamGuid || ''}`.toLowerCase();
-        return !query || haystack.includes(query);
-      });
-
-      els.usersMeta.textContent = `${filtered.length} de ${users.length} usuarios`;
-
-      if (!filtered.length) {
-        els.usersTable.innerHTML = '<tr><td colspan="6">Sin usuarios para mostrar.</td></tr>';
-        return;
+      function renderUsers() {
+        const query = String(els.userSearch.value || '').toLowerCase().trim();
+        const rows = users.filter((user) => [user.displayName, user.email, user.role, user.linkedPilotName, user.linkedPlayerId, user.pilotSteamGuid, user.linkedPilotSteamGuid].join(' ').toLowerCase().includes(query));
+        els.usersMeta.textContent = `${rows.length} de ${users.length} usuarios`;
+        els.usersTable.innerHTML = rows.length ? rows.map((user) => `
+          <tr data-user-id="${escapeHtml(user.id)}">
+            <td><strong>${escapeHtml(user.displayName || '-')}</strong><br><span class="gc-muted-text">${escapeHtml(user.email || '-')}</span></td>
+            <td><span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${escapeHtml(user.role || '-')}</span></td>
+            <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">Player ID ${escapeHtml(user.linkedPlayerId || '-')}</span>` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
+            <td>${escapeHtml(user.activeSessions || 0)}</td>
+            <td>${escapeHtml(dateText(user.createdAt))}</td>
+            <td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-user-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button><button class="gc-btn gc-btn--mini" data-user-action="revoke">Cerrar sesiones</button></div></td>
+          </tr>`).join('') : '<tr><td colspan="6">Sin usuarios para mostrar.</td></tr>';
       }
 
-      els.usersTable.innerHTML = filtered.map((user) => `
-        <tr data-user-id="${escapeHtml(user.id)}">
-          <td><strong>${escapeHtml(user.displayName)}</strong><br><span class="gc-muted-text">${escapeHtml(user.email)}</span></td>
-          <td><span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${escapeHtml(user.role)}</span></td>
-          <td>${user.linkedPilotName ? `${escapeHtml(user.linkedPilotName)}<br><span class="gc-muted-text">Player ID ${escapeHtml(user.linkedPlayerId)}</span>${user.linkedPlayerId ? `<br><a class="gc-row-link__cta" href="/pilotos/${encodeURIComponent(user.linkedPlayerId)}">Ficha pública</a>` : ''}` : '<span class="gc-muted-text">Sin vincular</span>'}</td>
-          <td>${escapeHtml(user.activeSessions || 0)}</td>
-          <td>${dateText(user.createdAt)}</td>
-          <td>
-            <div class="gc-admin-actions">
-              <button class="gc-btn gc-btn--mini" data-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
-              <button class="gc-btn gc-btn--mini" data-action="link">${user.linkedPilotName ? 'Cambiar piloto' : 'Vincular piloto'}</button>
-              <button class="gc-btn gc-btn--mini" data-action="unlink" ${user.linkedPilotName ? '' : 'disabled'}>Desvincular</button>
-              <button class="gc-btn gc-btn--mini" data-action="revoke">Cerrar sesiones</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-
-    function selectedNameItems() {
-      const key = els.nameKindFilter?.value || 'cars';
-      return nameCatalog[key] || [];
-    }
-
-    function renderNameFilters() {
-      if (!els.nameFiltersTable) return;
-      const kind = els.nameKindFilter?.value || 'cars';
-      const query = String(els.nameSearch?.value || '').trim().toLowerCase();
-      const view = els.nameViewFilter?.value || 'all';
-      const items = selectedNameItems().filter((item) => {
-        const haystack = `${item.sourceCode || ''} ${item.sourceId || ''} ${item.sourceName || ''} ${item.autoName || ''} ${item.displayName || ''} ${item.duplicateName ? 'duplicado duplicate' : ''}`.toLowerCase();
-        if (query && !haystack.includes(query)) return false;
-        if (view === 'missing' && item.hasOverride) return false;
-        if (view === 'overrides' && !item.hasOverride) return false;
-        return true;
-      });
-      currentNameItems = items;
-
-      const total = selectedNameItems().length;
-      const overrides = selectedNameItems().filter((item) => item.hasOverride).length;
-      const duplicated = selectedNameItems().filter((item) => item.duplicateName).length;
-      const duplicateText = kind === 'drivers' && duplicated ? ` · ${duplicated} nombres duplicados` : '';
-      if (els.nameFiltersMeta) els.nameFiltersMeta.textContent = `${items.length} visibles de ${total}. Overrides activos: ${overrides}${duplicateText}`;
-
-      if (!items.length) {
-        els.nameFiltersTable.innerHTML = '<tr><td colspan="5">Sin elementos para mostrar.</td></tr>';
-        return;
-      }
-
-      els.nameFiltersTable.innerHTML = items.map((item) => `
-        <tr data-kind="${escapeHtml(item.kind)}" data-source-id="${escapeHtml(item.sourceId ?? '')}" data-source-code="${escapeHtml(item.sourceCode || '')}" data-source-name="${escapeHtml(item.sourceName || '')}" data-entry-id="${escapeHtml(item.entryId || '')}">
-          <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(item.sourceId ?? '-')} · ${escapeHtml(item.sourceCode || '-')}</span>${item.duplicateName ? '<br><span class="gc-chip gc-chip--warn">Nombre duplicado</span>' : ''}</td>
-          <td>${escapeHtml(item.autoName || '-')}</td>
-          <td><input class="gc-input gc-input--compact" data-name-input data-original-value="${escapeHtml(item.displayName || '')}" value="${escapeHtml(item.displayName || '')}" placeholder="Nombre visible" /></td>
-          <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}${item.duplicateName ? '<br><span class="gc-muted-text">Editar por ID/GUID, no por nombre</span>' : ''}</td>
-          <td>
-            <div class="gc-admin-actions">
-              <button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button>
-              <button class="gc-btn gc-btn--mini" data-name-action="auto" ${item.hasOverride ? '' : 'disabled'}>Usar auto</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    async function loadNameFilters() {
-      const data = await fetchJson('/api/admin/name-filters');
-      nameCatalog = data.catalog || { drivers: [], cars: [], tracks: [] };
-      renderNameFilters();
-    }
-
-    async function loadUnlinkedPilots() {
-      if (!els.unlinkedPilotsTable) return;
-      const data = await fetchJson('/api/admin/unlinked-pilots');
-      const pilots = data.pilots || [];
-      if (els.unlinkedPilotsMeta) els.unlinkedPilotsMeta.textContent = `${pilots.length} pilotos detectados sin cuenta vinculada`;
-      els.unlinkedPilotsTable.innerHTML = pilots.length ? pilots.slice(0, 50).map((pilot) => `
-        <tr>
-          <td><strong>${escapeHtml(pilot.name)}</strong><br><span class="gc-muted-text">ID ${escapeHtml(pilot.id)} · ${escapeHtml(pilot.steamGuid || '-')}</span></td>
-          <td>${escapeHtml(pilot.totalLaps || 0)}</td>
-          <td>${escapeHtml(pilot.validLaps || 0)}</td>
-          <td><strong>${escapeHtml(pilot.bestLap || lapText(pilot.bestLapMs))}</strong></td>
-          <td>${escapeHtml(pilot.carsCount || 0)}</td>
-          <td>${escapeHtml(dateText(pilot.lastSeenAt))}</td>
-          <td><a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(pilot.id)}">Ficha</a></td>
-        </tr>
-      `).join('') : '<tr><td colspan="7">No hay pilotos pendientes de vincular.</td></tr>';
-    }
-
-    async function loadAudit() {
-      if (!els.auditTable) return;
-      const data = await fetchJson('/api/admin/audit-log?limit=60');
-      const items = data.items || [];
-      if (els.auditMeta) els.auditMeta.textContent = `${items.length} eventos recientes`;
-      els.auditTable.innerHTML = items.length ? items.map((item) => `
-        <tr>
-          <td>${escapeHtml(dateText(item.createdAt))}</td>
-          <td><strong>${escapeHtml(item.actorName || item.actorEmail || 'Sistema')}</strong><br><span class="gc-muted-text">${escapeHtml(item.actorEmail || '')}</span></td>
-          <td><span class="gc-chip">${escapeHtml(item.action)}</span></td>
-          <td>${escapeHtml(item.entityType)}<br><span class="gc-muted-text">${escapeHtml(item.entityId || '-')}</span></td>
-          <td>${escapeHtml(compactJson(item.afterValue || item.beforeValue))}</td>
-        </tr>
-      `).join('') : '<tr><td colspan="5">Sin historial todavía.</td></tr>';
-    }
-
-    async function saveVisibleNameChanges() {
-      const rows = Array.from(document.querySelectorAll('#nameFiltersTable tbody tr[data-kind]'));
-      const items = rows.map((row) => {
-        const input = row.querySelector('[data-name-input]');
-        const next = String(input?.value || '').trim();
-        const original = String(input?.dataset.originalValue || '').trim();
-        if (!next || next === original) return null;
-        return {
-          kind: row.dataset.kind,
-          sourceId: row.dataset.sourceId ? Number(row.dataset.sourceId) : null,
-          sourceCode: row.dataset.sourceCode || null,
-          sourceName: row.dataset.sourceName || null,
-          displayName: next
-        };
-      }).filter(Boolean);
-
-      if (!items.length) {
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'No hay cambios visibles para guardar.';
-        return;
-      }
-
-      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = `Guardando ${items.length} cambios...`;
-      await fetchJson('/api/admin/name-filters/bulk', { method: 'POST', body: JSON.stringify({ items }) });
-      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = `${items.length} cambios guardados.`;
-      await loadNameFilters();
-      await loadAudit();
-    }
-
-    function shortPath(value) {
-      const text = String(value || '-');
-      if (text.length <= 52) return text;
-      return `...${text.slice(-49)}`;
-    }
-
-    function renderStorage(data) {
-      if (!els.storageText || !els.storageRows) return;
-      const storage = data.storage || {};
-      const files = data.files || {};
-      const displayNames = files.displayNames || {};
-      const users = files.users || {};
-      const appDriver = displayNames.source || storage.source || 'desconocido';
-      const dbBacked = appDriver === 'mysql' || appDriver === 'sqlite';
-
-      els.storageText.textContent = dbBacked
-        ? `OK: usuarios, sesiones y filtros están guardándose en ${appDriver === 'mysql' ? 'MySQL/MariaDB' : 'SQLite local'}.`
-        : storage.persistent
-          ? 'OK: los datos viven fuera del directorio de deploy.'
-          : 'Atención: los datos siguen dentro del proyecto y pueden perderse en deploy.';
-      els.storageText.style.color = (dbBacked || storage.persistent) ? 'var(--accent)' : 'var(--warn)';
-
-      const row = (label, value) => `<div><span>${escapeHtml(label)}</span><strong title="${escapeHtml(value)}">${escapeHtml(shortPath(value))}</strong></div>`;
-      const rows = [
-        row('Storage app', appDriver),
-        row('Persistente', (dbBacked || storage.persistent) ? 'Sí' : 'No')
-      ];
-
-      if (dbBacked) {
-        rows.push(row('Usuarios / sesiones', users.table || 'gc_users / gc_sessions'));
-        rows.push(row('Filtros de nombres', displayNames.table || 'gc_display_names'));
-        rows.push(row('Audit log', 'gc_admin_audit_log'));
-      } else {
-        rows.push(row('APP_DATA_DIR', storage.dataRoot));
-        rows.push(row('users.json', users.resolvedPath));
-        rows.push(row('display-names.json', displayNames.resolvedPath));
-      }
-
-      rows.push(row('stracker.db3', files.stracker?.resolvedPath));
-      els.storageRows.innerHTML = rows.join('');
-    }
-
-    async function loadStorage() {
-      const data = await fetchJson('/api/admin/storage/status');
-      renderStorage(data);
-      if (els.storageMessage) els.storageMessage.textContent = data.message || '';
-    }
-
-    async function fetchJson(url, options = {}) {
-      const response = await fetch(url, {
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-        ...options
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.message || `Error ${response.status}`);
-      }
-      return data;
-    }
-
-    async function loadUsers() {
-      const data = await fetchJson('/api/admin/users');
-      users = data.users || [];
-      renderUsers();
-    }
-
-    async function loadAdmin() {
-      try {
-        const data = await fetchJson('/api/admin/status');
-        renderStatus(data);
-
-        if (data.authorized) {
-          setPanels({ content: true });
-          await loadUsers();
-          await loadNameFilters();
-          await loadStorage();
-          await loadUnlinkedPilots();
-          await loadAudit();
-        } else if (data.setupRequired) {
-          setPanels({ setup: true });
-        } else {
-          setPanels({ noAccess: true });
+      async function loadUsers() {
+        try {
+          const data = await fetchJson('/api/admin/users');
+          users = data.users || data.items || [];
+          renderUsers();
+          message(els.usersMessage, '');
+        } catch (error) {
+          els.usersTable.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message || 'No se pudieron cargar usuarios.')}</td></tr>`;
         }
-      } catch (error) {
-        els.adminState.textContent = 'Error';
-        els.adminState.style.color = 'var(--danger)';
-        els.adminStatusRows.innerHTML = `<div class="gc-status-row"><span>API</span><strong>${escapeHtml(error.message)}</strong></div>`;
-        setPanels({ noAccess: true });
       }
-    }
 
-    els.userSearch?.addEventListener('input', renderUsers);
-    els.reloadUsers?.addEventListener('click', () => loadUsers().catch((error) => alert(error.message)));
-    els.retryAdmin?.addEventListener('click', loadAdmin);
-    els.reloadStorage?.addEventListener('click', () => loadStorage().catch((error) => { if (els.storageMessage) els.storageMessage.textContent = error.message; }));
+      function selectedNameItems() {
+        const key = els.nameKindFilter.value || 'cars';
+        return nameCatalog[key] || [];
+      }
 
-    els.bootstrapForm?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = new FormData(els.bootstrapForm);
-      els.bootstrapMessage.textContent = 'Promocionando...';
-      try {
-        const data = await fetchJson('/api/admin/bootstrap', {
-          method: 'POST',
-          body: JSON.stringify({
-            email: String(form.get('email') || '').trim(),
-            secret: String(form.get('secret') || '').trim()
-          })
+      function renderNameFilters() {
+        const query = String(els.nameSearch.value || '').toLowerCase().trim();
+        const view = els.nameViewFilter.value;
+        const all = selectedNameItems();
+        const rows = all.filter((item) => {
+          const haystack = [item.sourceCode, item.sourceId, item.sourceName, item.autoName, item.displayName, item.duplicateName ? 'duplicado' : ''].join(' ').toLowerCase();
+          if (query && !haystack.includes(query)) return false;
+          if (view === 'missing' && item.hasOverride) return false;
+          if (view === 'overrides' && !item.hasOverride) return false;
+          return true;
         });
-        els.bootstrapMessage.textContent = data.message || 'Admin creado.';
-        if (data.authenticatedAsTarget) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-        }
-        await loadAdmin();
-      } catch (error) {
-        els.bootstrapMessage.textContent = error.message;
-      }
-    });
-
-    els.usersTable?.addEventListener('click', async (event) => {
-      const button = event.target.closest('button[data-action]');
-      if (!button || button.disabled) return;
-      const row = button.closest('tr[data-user-id]');
-      const userId = row?.dataset.userId;
-      if (!userId) return;
-
-      const action = button.dataset.action;
-      button.disabled = true;
-
-      try {
-        if (action === 'role') {
-          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
-            method: 'POST',
-            body: JSON.stringify({ role: button.dataset.role })
-          });
-        }
-        if (action === 'link') {
-          const playerId = window.prompt('Player ID del piloto stracker que quieres vincular a este usuario:');
-          if (!playerId || !playerId.trim()) return;
-          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/link-pilot`, {
-            method: 'POST',
-            body: JSON.stringify({ playerId: playerId.trim() })
-          });
-        }
-        if (action === 'unlink') {
-          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/unlink-pilot`, { method: 'POST', body: '{}' });
-        }
-        if (action === 'revoke') {
-          await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/revoke-sessions`, { method: 'POST', body: '{}' });
-        }
-        await loadUsers();
-        await loadAdmin();
-      } catch (error) {
-        alert(error.message);
-      } finally {
-        button.disabled = false;
-      }
-    });
-
-    els.nameKindFilter?.addEventListener('change', renderNameFilters);
-    els.nameSearch?.addEventListener('input', renderNameFilters);
-    els.nameViewFilter?.addEventListener('change', renderNameFilters);
-    els.saveVisibleNames?.addEventListener('click', () => saveVisibleNameChanges().catch((error) => { if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message; }));
-    els.reloadAudit?.addEventListener('click', () => loadAudit().catch((error) => { if (els.auditMeta) els.auditMeta.textContent = error.message; }));
-    els.reloadNameFilters?.addEventListener('click', () => loadNameFilters().catch((error) => {
-      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
-    }));
-    els.manualNameForm?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = new FormData(els.manualNameForm);
-      const payload = {
-        kind: String(form.get('kind') || '').trim(),
-        sourceId: null,
-        sourceCode: String(form.get('sourceCode') || '').trim() || null,
-        sourceName: String(form.get('sourceName') || '').trim() || null,
-        displayName: String(form.get('displayName') || '').trim()
-      };
-
-      if (!payload.sourceCode && !payload.sourceName) {
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Pon al menos código original o nombre original.';
-        return;
+        const overrides = all.filter((item) => item.hasOverride).length;
+        els.nameFiltersMeta.textContent = `${rows.length} visibles de ${all.length}. Overrides activos: ${overrides}`;
+        els.nameFiltersTable.innerHTML = rows.length ? rows.slice(0, 400).map((item) => `
+          <tr data-kind="${escapeHtml(item.kind)}" data-source-id="${escapeHtml(item.sourceId ?? '')}" data-source-code="${escapeHtml(item.sourceCode || '')}" data-source-name="${escapeHtml(item.sourceName || '')}">
+            <td><strong>${escapeHtml(item.sourceName || item.sourceCode || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(item.sourceId ?? '-')} · ${escapeHtml(item.sourceCode || '-')}</span></td>
+            <td>${escapeHtml(item.autoName || '-')}</td>
+            <td><input class="gc-input gc-input--compact" data-name-input data-original-value="${escapeHtml(item.displayName || '')}" value="${escapeHtml(item.displayName || '')}" placeholder="Nombre visible" /></td>
+            <td>${item.hasOverride ? '<span class="gc-chip gc-chip--accent">Override</span>' : '<span class="gc-chip">Auto</span>'}</td>
+            <td><div class="gc-admin-actions"><button class="gc-btn gc-btn--mini" data-name-action="save">Guardar</button><button class="gc-btn gc-btn--mini" data-name-action="auto" ${item.hasOverride ? '' : 'disabled'}>Usar auto</button></div></td>
+          </tr>`).join('') : '<tr><td colspan="5">Sin elementos para mostrar.</td></tr>';
       }
 
-      if (!payload.displayName) {
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'El nombre visible no puede estar vacío.';
-        return;
+      async function loadNameFilters() {
+        try {
+          const data = await fetchJson('/api/admin/name-filters');
+          nameCatalog = data.catalog || { drivers: [], cars: [], tracks: [] };
+          renderNameFilters();
+          message(els.nameFiltersMessage, '');
+        } catch (error) {
+          els.nameFiltersTable.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || 'No se pudo cargar catálogo.')}</td></tr>`;
+        }
       }
 
-      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Guardando alias manual...';
-      try {
-        await fetchJson('/api/admin/name-filters', { method: 'POST', body: JSON.stringify(payload) });
-        els.manualNameForm.reset();
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Alias manual guardado.';
+      function collectNameChanges(rows) {
+        return rows.map((row) => {
+          const input = row.querySelector('[data-name-input]');
+          const next = String(input?.value || '').trim();
+          const original = String(input?.dataset.originalValue || '').trim();
+          if (!next || next === original) return null;
+          return {
+            kind: row.dataset.kind,
+            sourceId: row.dataset.sourceId ? Number(row.dataset.sourceId) : null,
+            sourceCode: row.dataset.sourceCode || null,
+            sourceName: row.dataset.sourceName || null,
+            displayName: next
+          };
+        }).filter(Boolean);
+      }
+
+      async function saveNameItems(items) {
+        if (!items.length) { message(els.nameFiltersMessage, 'No hay cambios para guardar.'); return; }
+        message(els.nameFiltersMessage, `Guardando ${items.length} cambios...`);
+        await fetchJson('/api/admin/name-filters/bulk', { method:'POST', body: JSON.stringify({ items }) });
+        message(els.nameFiltersMessage, `${items.length} cambios guardados.`, true);
         await loadNameFilters();
         await loadAudit();
-      } catch (error) {
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
       }
-    });
 
-
-    els.nameFiltersTable?.addEventListener('click', async (event) => {
-      const button = event.target.closest('button[data-name-action]');
-      if (!button || button.disabled) return;
-      const row = button.closest('tr');
-      const input = row?.querySelector('[data-name-input]');
-      if (!row || !input) return;
-
-      button.disabled = true;
-      if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Guardando nombre...';
-
-      try {
-        const payload = {
-          kind: row.dataset.kind,
-          sourceId: row.dataset.sourceId ? Number(row.dataset.sourceId) : null,
-          sourceCode: row.dataset.sourceCode || null,
-          sourceName: row.dataset.sourceName || null,
-          displayName: input.value.trim()
-        };
-
-        if (button.dataset.nameAction === 'save') {
-          await fetchJson('/api/admin/name-filters', { method: 'POST', body: JSON.stringify(payload) });
-          if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Nombre visible guardado.';
-        } else {
-          await fetchJson('/api/admin/name-filters/delete', {
-            method: 'POST',
-            body: JSON.stringify({ ...payload, entryId: row.dataset.entryId || null })
-          });
-          if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = 'Override eliminado. Se usará el nombre automático.';
+      async function loadUnlinkedPilots() {
+        try {
+          const data = await fetchJson('/api/admin/unlinked-pilots');
+          const pilots = data.pilots || data.items || [];
+          els.unlinkedPilotsMeta.textContent = `${pilots.length} pilotos detectados sin cuenta vinculada`;
+          els.unlinkedPilotsTable.innerHTML = pilots.length ? pilots.slice(0, 50).map((pilot) => `<tr><td><strong>${escapeHtml(pilot.name || '-')}</strong><br><span class="gc-muted-text">ID ${escapeHtml(pilot.id || '-')} · ${escapeHtml(pilot.steamGuid || '-')}</span></td><td>${escapeHtml(pilot.totalLaps || 0)}</td><td>${escapeHtml(pilot.validLaps || 0)}</td><td><strong>${escapeHtml(pilot.bestLap || lapText(pilot.bestLapMs))}</strong></td><td>${escapeHtml(pilot.carsCount || 0)}</td><td>${escapeHtml(dateText(pilot.lastSeenAt))}</td><td><a class="gc-btn gc-btn--mini" href="/pilotos/${encodeURIComponent(pilot.id)}">Ficha</a></td></tr>`).join('') : '<tr><td colspan="7">No hay pilotos pendientes de vincular.</td></tr>';
+        } catch (error) {
+          els.unlinkedPilotsTable.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message || 'No se pudieron cargar pilotos.')}</td></tr>`;
         }
-
-        await loadNameFilters();
-        await loadAudit();
-      } catch (error) {
-        if (els.nameFiltersMessage) els.nameFiltersMessage.textContent = error.message;
-      } finally {
-        button.disabled = false;
       }
-    });
 
-    els.forceSyncBtn?.addEventListener('click', async () => {
-      els.forceSyncBtn.disabled = true;
-      els.syncMessage.textContent = 'Sincronizando stracker desde GTX...';
-      try {
-        const data = await fetchJson('/api/admin/stracker/sync', { method: 'POST', body: '{}' });
-        els.syncMessage.textContent = data.message || 'Sync completada.';
-        await loadAdmin();
-      } catch (error) {
-        els.syncMessage.textContent = error.message;
-      } finally {
-        els.forceSyncBtn.disabled = false;
-      }
-    });
-
-    loadAdmin();
-
-    // GC ADMIN VISIBILITY CLEANUP V1 WATCHDOG START
-    async function gcAdminVisibilityWatchdog() {
-      try {
-        const readJson = async (url) => {
-          const response = await fetch(url, { credentials:'include', cache:'no-store' });
-          return response.json().catch(() => ({}));
-        };
-        let status = await readJson('/api/admin/status');
-        if (status?.authorized !== true) {
-          const profile = await readJson('/api/profile');
-          const user = profile?.user || profile?.currentUser;
-          if (user?.role === 'admin') {
-            status = {
-              ...(status || {}),
-              ok: true,
-              authenticated: true,
-              authorized: true,
-              setupRequired: false,
-              currentUser: user,
-              source: 'admin-profile-fallback'
-            };
-          }
+      async function loadAudit() {
+        try {
+          const data = await fetchJson('/api/admin/audit-log?limit=60');
+          const items = data.items || [];
+          els.auditMeta.textContent = `${items.length} eventos recientes`;
+          els.auditTable.innerHTML = items.length ? items.map((item) => `<tr><td>${escapeHtml(dateText(item.createdAt))}</td><td><strong>${escapeHtml(item.actorName || item.actorEmail || 'Sistema')}</strong><br><span class="gc-muted-text">${escapeHtml(item.actorEmail || '')}</span></td><td><span class="gc-chip">${escapeHtml(item.action)}</span></td><td>${escapeHtml(item.entityType)}<br><span class="gc-muted-text">${escapeHtml(item.entityId || '-')}</span></td><td>${escapeHtml(JSON.stringify(item.afterValue || item.beforeValue || '').slice(0, 120))}</td></tr>`).join('') : '<tr><td colspan="5">Sin historial todavía.</td></tr>';
+        } catch (error) {
+          els.auditTable.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || 'No se pudo cargar historial.')}</td></tr>`;
         }
+      }
 
-        if (status?.authorized === true) {
-          window.gcAdminAuthorized = true;
-          status.setupRequired = false;
+      async function checkAcsm() {
+        try {
+          message(els.acsmMessage, 'Comprobando ACSM...');
+          const data = await fetchJson('/api/admin/acsm/status');
+          els.acsmRows.innerHTML = `<div><span>Auth</span><strong>${data.authorized ? 'OK' : 'No'}</strong></div><div><span>Source</span><strong>${escapeHtml(data.source || '-')}</strong></div><div><span>SFTP</span><strong>${data.config?.hostConfigured && data.config?.userConfigured ? 'Configurado' : 'Falta'}</strong></div>`;
+          message(els.acsmMessage, 'ACSM disponible.', true);
+        } catch (error) {
+          message(els.acsmMessage, error.message || 'No se pudo comprobar ACSM.');
+        }
+      }
+
+      async function syncAcsm() {
+        try {
+          message(els.acsmMessage, 'Sincronizando combo ACSM...');
+          const data = await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
+          message(els.acsmMessage, `Combo sincronizado en ${data.source || 'storage'}.`, true);
+          await loadAudit();
+        } catch (error) {
+          message(els.acsmMessage, error.message || 'No se pudo sincronizar ACSM.');
+        }
+      }
+
+      async function init() {
+        setView('gate');
+        els.adminState.textContent = 'Comprobando';
+        try {
+          const status = await getAdminStatus();
           renderStatus(status);
-          setPanels({ content:true });
-          const loaders = [
-            'loadUsers',
-            'loadStorage',
-            'loadNameFilters',
-            'loadUnlinkedPilots',
-            'loadAudit'
-          ];
-          for (const loaderName of loaders) {
-            if (typeof window[loaderName] === 'function') {
-              try { await window[loaderName](); } catch (_) {}
-            }
+          if (status.authorized === true) {
+            setView('content');
+            await Promise.allSettled([loadUsers(), loadNameFilters(), loadUnlinkedPilots(), loadAudit(), checkAcsm()]);
+            return;
           }
+          if (status.setupRequired === true) {
+            setView('setup');
+            return;
+          }
+          setView('gate');
+          els.adminGateTitle.textContent = 'No tienes permisos de admin';
+          els.adminGateText.textContent = 'Inicia sesión con una cuenta administradora.';
+        } catch (error) {
+          setView('gate');
+          els.adminState.textContent = 'Error';
+          els.adminGateTitle.textContent = 'No se pudo validar la sesión';
+          els.adminGateText.textContent = error.message || 'Reintenta o vuelve a iniciar sesión.';
         }
-      } catch (_) {}
-    }
-    window.addEventListener('pageshow', () => {
-      gcAdminVisibilityWatchdog();
-      window.setTimeout(gcAdminVisibilityWatchdog, 700);
-      window.setTimeout(gcAdminVisibilityWatchdog, 1800);
-    });
-    // GC ADMIN VISIBILITY CLEANUP V1 WATCHDOG END
+      }
 
+      els.adminGateRetry?.addEventListener('click', init);
+      els.reloadUsers?.addEventListener('click', loadUsers);
+      els.userSearch?.addEventListener('input', renderUsers);
+      els.reloadNameFilters?.addEventListener('click', loadNameFilters);
+      [els.nameKindFilter, els.nameSearch, els.nameViewFilter].forEach((node) => node?.addEventListener('input', renderNameFilters));
+      els.saveVisibleNames?.addEventListener('click', () => saveNameItems(collectNameChanges(Array.from(document.querySelectorAll('#nameFiltersTable tbody tr[data-kind]')))).catch((error) => message(els.nameFiltersMessage, error.message || 'No se pudo guardar.')));
+      els.nameFiltersTable?.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-name-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-kind]');
+        if (!row) return;
+        if (button.dataset.nameAction === 'auto') row.querySelector('[data-name-input]').value = '';
+        saveNameItems(collectNameChanges([row])).catch((error) => message(els.nameFiltersMessage, error.message || 'No se pudo guardar.'));
+      });
+      els.manualNameForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(els.manualNameForm));
+        try {
+          await saveNameItems([{ kind:data.kind, sourceCode:data.sourceCode || null, sourceName:data.sourceName || data.sourceCode || '', displayName:data.displayName }]);
+          els.manualNameForm.reset();
+        } catch (error) { message(els.nameFiltersMessage, error.message || 'No se pudo guardar alias.'); }
+      });
+      els.reloadAudit?.addEventListener('click', loadAudit);
+      els.reloadStorage?.addEventListener('click', init);
+      els.checkAcsmBtn?.addEventListener('click', checkAcsm);
+      els.syncAcsmBtn?.addEventListener('click', syncAcsm);
+      els.forceSyncBtn?.addEventListener('click', async () => {
+        try { message(els.syncMessage, 'Forzando sync...'); await fetchJson('/api/admin/stracker/sync', { method:'POST' }); message(els.syncMessage, 'Sync lanzado.', true); }
+        catch (error) { message(els.syncMessage, error.message || 'No se pudo lanzar sync.'); }
+      });
+      els.usersTable?.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-user-action]');
+        if (!button) return;
+        const row = button.closest('tr[data-user-id]');
+        const userId = row?.dataset.userId;
+        if (!userId) return;
+        try {
+          if (button.dataset.userAction === 'role') await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, { method:'POST', body: JSON.stringify({ role: button.dataset.role }) });
+          if (button.dataset.userAction === 'revoke') await fetchJson(`/api/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, { method:'POST' });
+          await loadUsers();
+        } catch (error) { message(els.usersMessage, error.message || 'No se pudo aplicar acción.'); }
+      });
+      els.bootstrapForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = Object.fromEntries(new FormData(els.bootstrapForm));
+        try { await fetchJson('/api/admin/bootstrap', { method:'POST', body: JSON.stringify(payload) }); message(els.bootstrapMessage, 'Admin creado. Recargando...', true); setTimeout(init, 650); }
+        catch (error) { message(els.bootstrapMessage, error.message || 'No se pudo crear admin.'); }
+      });
+
+      init();
+    })();
   </script>
 </AppLayout>
