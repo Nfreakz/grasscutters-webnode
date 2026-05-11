@@ -3730,6 +3730,187 @@ const mockPilots = [
 
 const app = express();
 
+// GC ACSM PRIORITY MYSQL GUARD V6 START
+function gcAcsmV6ParseCookies(req: any) {
+  const header = String(req?.headers?.cookie || '');
+  const out: Record<string, string> = {};
+  for (const part of header.split(';')) {
+    const index = part.indexOf('=');
+    if (index === -1) continue;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (!key) continue;
+    try { out[key] = decodeURIComponent(value); }
+    catch { out[key] = value; }
+  }
+  return out;
+}
+
+function gcAcsmV6Sha256(value: string) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function gcAcsmV6MysqlDate(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(value);
+}
+
+async function gcAcsmV6MysqlAdminFromCookie(req: any) {
+  const cookies = gcAcsmV6ParseCookies(req);
+  const token = cookies[sessionCookieName] || cookies.gc_session || '';
+  if (!token) return { authenticated: false, authorized: false, message: 'Login requerido.' };
+
+  const host = process.env.MYSQL_HOST?.trim();
+  const database = process.env.MYSQL_DATABASE?.trim();
+  const user = process.env.MYSQL_USER?.trim();
+  const password = process.env.MYSQL_PASSWORD ?? '';
+  const port = Number(process.env.MYSQL_PORT || 3306);
+  if (!host || !database || !user) {
+    return { authenticated: false, authorized: false, message: 'MySQL no configurado para validar sesión admin.' };
+  }
+
+  const tokenHash = gcAcsmV6Sha256(token);
+  const mysqlModule: any = await import('mysql2/promise');
+  const mysql = mysqlModule.default ?? mysqlModule;
+  const connection = await mysql.createConnection({ host, port, database, user, password, charset: 'utf8mb4', timezone: 'Z' });
+  try {
+    const [rows] = await connection.execute(
+      `SELECT
+          u.id,
+          u.email,
+          u.display_name AS displayName,
+          u.role,
+          u.pilot_player_id AS pilotPlayerId,
+          u.pilot_steam_guid AS pilotSteamGuid,
+          u.pilot_stracker_name AS pilotStrackerName,
+          u.pilot_linked_at AS pilotLinkedAt,
+          u.created_at AS createdAt,
+          u.updated_at AS updatedAt,
+          u.last_login_at AS lastLoginAt,
+          s.expires_at AS sessionExpiresAt
+        FROM gc_sessions s
+        INNER JOIN gc_users u ON u.id = s.user_id
+        WHERE s.token_hash = ?
+        LIMIT 1`,
+      [tokenHash]
+    );
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) return { authenticated: false, authorized: false, message: 'Sesión no encontrada.' };
+
+    const expiresAt = row.sessionExpiresAt ? new Date(row.sessionExpiresAt) : null;
+    if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      return { authenticated: false, authorized: false, message: 'Sesión caducada.' };
+    }
+
+    const currentUser = {
+      id: String(row.id),
+      email: String(row.email || ''),
+      displayName: String(row.displayName || ''),
+      role: String(row.role || 'pilot'),
+      pilotLink: row.pilotPlayerId ? {
+        playerId: Number(row.pilotPlayerId),
+        steamGuid: row.pilotSteamGuid || null,
+        strackerName: row.pilotStrackerName || '',
+        linkedAt: gcAcsmV6MysqlDate(row.pilotLinkedAt)
+      } : null,
+      createdAt: gcAcsmV6MysqlDate(row.createdAt),
+      updatedAt: gcAcsmV6MysqlDate(row.updatedAt),
+      lastLoginAt: gcAcsmV6MysqlDate(row.lastLoginAt)
+    };
+
+    return {
+      authenticated: true,
+      authorized: currentUser.role === 'admin',
+      currentUser,
+      message: currentUser.role === 'admin' ? 'OK' : 'Acceso admin requerido.'
+    };
+  } finally {
+    await connection.end();
+  }
+}
+
+async function gcAcsmV6ResolveAdmin(req: any) {
+  if (useMysqlStorage()) {
+    return gcAcsmV6MysqlAdminFromCookie(req);
+  }
+
+  // Fallback local: si existe el guard antiguo y funciona, lo dejamos trabajar.
+  // En producción MySQL no se usa fetch interno, que era lo que fallaba en Hostinger.
+  const host = req?.headers?.host || `127.0.0.1:${PORT}`;
+  const proto = req?.headers?.['x-forwarded-proto'] || (String(host).includes('localhost') || String(host).includes('127.0.0.1') ? 'http' : 'https');
+  const url = `${proto}://${host}/api/profile`;
+  const response = await fetch(url, { headers: { cookie: String(req?.headers?.cookie || '') } });
+  const data: any = await response.json().catch(() => null);
+  return {
+    authenticated: Boolean(data?.authenticated || data?.ok),
+    authorized: data?.user?.role === 'admin' || data?.currentUser?.role === 'admin',
+    currentUser: data?.user || data?.currentUser || null,
+    message: data?.message || 'OK'
+  };
+}
+
+app.get('/api/admin/acsm/status', async (req: any, res: any) => {
+  try {
+    const auth = await gcAcsmV6ResolveAdmin(req);
+    if (!auth.authenticated) return res.status(401).json({ ok: false, authenticated: false, authorized: false, source: 'acsm-priority-mysql-guard-v6', message: auth.message || 'Login requerido.' });
+    if (!auth.authorized) return res.status(403).json({ ok: false, authenticated: true, authorized: false, source: 'acsm-priority-mysql-guard-v6', message: auth.message || 'Acceso admin requerido.' });
+
+    const config = typeof gcAcsmSafeConfigV1 === 'function' ? gcAcsmSafeConfigV1() : { available: false };
+    let currentCombo: any = null;
+    let readError: string | null = null;
+    if (config?.hostConfigured && config?.userConfigured && config?.passwordConfigured && typeof gcAcsmReadCurrentComboV1 === 'function') {
+      try {
+        const current = await gcAcsmReadCurrentComboV1();
+        currentCombo = current?.event || null;
+      } catch (error: any) {
+        readError = error?.message || String(error);
+      }
+    }
+
+    res.json({
+      ok: true,
+      authenticated: true,
+      authorized: true,
+      source: 'acsm-priority-mysql-guard-v6',
+      currentUser: auth.currentUser || null,
+      config,
+      currentCombo,
+      readError
+    });
+  } catch (error: any) {
+    console.error('[GC] Error ACSM status v6:', error);
+    res.status(500).json({ ok: false, source: 'acsm-priority-mysql-guard-v6', message: error?.message || 'No se pudo comprobar ACSM.' });
+  }
+});
+
+app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
+  try {
+    const auth = await gcAcsmV6ResolveAdmin(req);
+    if (!auth.authenticated) return res.status(401).json({ ok: false, authenticated: false, authorized: false, source: 'acsm-priority-mysql-guard-v6', message: auth.message || 'Login requerido.' });
+    if (!auth.authorized) return res.status(403).json({ ok: false, authenticated: true, authorized: false, source: 'acsm-priority-mysql-guard-v6', message: auth.message || 'Acceso admin requerido.' });
+
+    if (typeof gcAcsmSyncCurrentComboV1 !== 'function') {
+      return res.status(500).json({ ok: false, source: 'acsm-priority-mysql-guard-v6', message: 'No se encontraron las funciones de sincronización ACSM. Aplica primero el pack ACSM current combo sync.' });
+    }
+
+    const result = await gcAcsmSyncCurrentComboV1();
+    res.json({
+      ...result,
+      ok: result?.ok !== false,
+      authenticated: true,
+      authorized: true,
+      guardSource: 'acsm-priority-mysql-guard-v6',
+      currentUser: auth.currentUser || null
+    });
+  } catch (error: any) {
+    console.error('[GC] Error sincronizando combo ACSM v6:', error);
+    res.status(500).json({ ok: false, source: 'acsm-priority-mysql-guard-v6', message: error?.message || 'No se pudo sincronizar el combo desde ACSM.' });
+  }
+});
+// GC ACSM PRIORITY MYSQL GUARD V6 END
+
 // GC ACSM PROFILE GUARD ROUTES V4 START
 // Rutas ACSM prioritarias. Usan /api/profile como fuente de verdad para permisos admin,
 // porque es el endpoint que ya valida correctamente la sesión gc_session en producción.
@@ -6972,6 +7153,9 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
+
 
 
 
