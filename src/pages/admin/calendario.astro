@@ -61,6 +61,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         <div class="gc-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
           <button class="gc-btn" type="button" id="calendarReset">Limpiar formulario</button>
+          <button class="gc-btn gc-btn--primary" type="button" id="calendarSyncAcsm">Sincronizar ACSM</button>
           <a class="gc-btn" href="/calendario" target="_blank" rel="noreferrer">Ver calendario público</a>
         </div>
         <p class="gc-message" id="calendarMessage"></p>
@@ -100,6 +101,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
       const typeFilter = document.getElementById('calendarTypeFilter');
       const reload = document.getElementById('calendarReload');
       const reset = document.getElementById('calendarReset');
+      const syncAcsm = document.getElementById('calendarSyncAcsm');
       const title = document.getElementById('calendarFormTitle');
       const typeLabels = { combo:'Combo semanal', race_lfm:'Carrera LFM', race_gc:'Carrera GrassCutters' };
       let events = [];
@@ -213,19 +215,45 @@ import AppLayout from '../../layouts/AppLayout.astro';
         render();
       }
 
+      // GC CALENDAR ADMIN AUTH CLEANUP V1 START
+      async function readCalendarAdminStatus() {
+        const status = await fetchJson('/api/admin/status').catch((error) => ({ ok:false, error, message:error?.message || 'No se pudo leer /api/admin/status' }));
+        if (status?.authorized === true) return { ...status, setupRequired:false };
+
+        const profile = await fetchJson('/api/profile').catch((error) => ({ ok:false, error, message:error?.message || 'No se pudo leer /api/profile' }));
+        const user = profile?.user || profile?.currentUser;
+        if (user?.role === 'admin') {
+          return {
+            ...(status && !status.error ? status : {}),
+            ok: true,
+            authenticated: true,
+            authorized: true,
+            setupRequired: false,
+            currentUser: user,
+            source: 'calendar-admin-profile-fallback'
+          };
+        }
+
+        if (status?.error) throw status.error;
+        throw new Error(status?.message || profile?.message || 'Acceso admin requerido.');
+      }
+
       async function checkAdmin() {
         try {
-          const status = await fetchJson('/api/admin/status');
+          const status = await readCalendarAdminStatus();
           if (status.authorized !== true) throw new Error('Sin permisos');
           content.hidden = false;
           noAccess.hidden = true;
+          state.textContent = 'OK';
           await loadEvents();
         } catch (error) {
           content.hidden = true;
           noAccess.hidden = false;
           state.textContent = 'Bloqueado';
+          setMessage(error.message || 'Acceso admin requerido.');
         }
       }
+      // GC CALENDAR ADMIN AUTH CLEANUP V1 END
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -274,6 +302,16 @@ import AppLayout from '../../layouts/AppLayout.astro';
       form.elements.repeatEnabled?.addEventListener('change', updateRepeatFields);
       reload.addEventListener('click', () => loadEvents().catch((error) => setMessage(error.message || 'No se pudo recargar.')));
       reset.addEventListener('click', resetForm);
+      syncAcsm?.addEventListener('click', async () => {
+        try {
+          setMessage('Sincronizando combo desde ACSM...');
+          await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
+          setMessage('Combo ACSM sincronizado.', true);
+          await loadEvents();
+        } catch (error) {
+          setMessage(error.message || 'No se pudo sincronizar ACSM.');
+        }
+      });
       updateRepeatFields();
       checkAdmin();
     })();
