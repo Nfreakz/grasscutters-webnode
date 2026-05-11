@@ -1,0 +1,15 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import '../../styles/motorsport.css';
+const config = { title: 'Pilotos', api: '/api/motorsport/people', key: 'people', text: 'Pilotos, personas y protagonistas vinculados a circuitos y records.' };
+---
+<MarketingLayout title={config.title + ' · Guía Motorsport'} description={config.text} canonicalPath="/guia-motorsport/personas">
+<section class="gc-ms"><div class="gc-ms-hero"><span class="gc-ms-kicker">Guía Motorsport</span><h1>{config.title}</h1><p>{config.text}</p><input class="gc-ms-input" data-q placeholder="Filtrar entradas"></div><div class="gc-ms-section gc-ms-grid" data-list></div></section>
+<script define:vars={{ config }}>
+let entries=[];const box=document.querySelector('[data-list]');const q=document.querySelector('[data-q]');
+function label(x){return x.name||x.term||x.title||'Entrada sin título'}
+function meta(x){return x.category||x.role||x.definition||x.description||x.country_id||'Ficha de Guía Motorsport'}
+function render(){const n=(q.value||'').toLowerCase();const list=entries.filter(x=>JSON.stringify(x).toLowerCase().includes(n));box.innerHTML=list.map(x=>`<article class="gc-ms-card"><span class="gc-ms-kicker">${config.title}</span><h3>${label(x)}</h3><p>${meta(x)}</p></article>`).join('')||'<p>No hay entradas disponibles.</p>'}
+fetch(config.api).then(r=>r.json()).then(d=>{entries=d[config.key]||[];render()});q.addEventListener('input',render);
+</script>
+</MarketingLayout>

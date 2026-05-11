@@ -1,0 +1,29 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import '../styles/motorsport.css';
+---
+<MarketingLayout title="Guía Motorsport · GrassCutters" description="Base editorial GrassCutters sobre circuitos, series, pilotos, vehículos, records y glosario motorsport." canonicalPath="/guia-motorsport">
+  <section class="gc-ms">
+    <div class="gc-ms-hero">
+      <span class="gc-ms-kicker">Base de conocimiento racing</span>
+      <h1>Guía Motorsport</h1>
+      <p>Circuitos, layouts, curvas, campeonatos, pilotos, vehículos, records, media, glosario y fuentes en una guía estable preparada para datos importados desde SQLite/ZIP.</p>
+      <div class="gc-ms-actions"><a class="gc-ms-button gc-ms-button--primary" href="/guia-motorsport/circuitos">Ver circuitos</a><a class="gc-ms-button" href="/guia-motorsport/glosario">Abrir glosario</a></div>
+      <form class="gc-ms-actions" data-ms-search><input class="gc-ms-input" name="q" placeholder="Buscar circuito, serie, piloto o vehículo"/><button class="gc-ms-button" type="submit">Buscar</button></form>
+      <div class="gc-ms-list" data-ms-results></div>
+    </div>
+    <div class="gc-ms-section gc-ms-metrics" data-ms-summary><div class="gc-ms-metric"><strong>—</strong><span>Circuitos</span></div><div class="gc-ms-metric"><strong>—</strong><span>Records</span></div><div class="gc-ms-metric"><strong>—</strong><span>Media</span></div><div class="gc-ms-metric"><strong>—</strong><span>Series</span></div></div>
+    <div class="gc-ms-section gc-ms-grid">
+      <a class="gc-ms-card" href="/guia-motorsport/circuitos"><span class="gc-ms-kicker">01</span><h3>Circuitos</h3><p>Fichas, layouts, curvas, records y galerías.</p></a>
+      <a class="gc-ms-card" href="/guia-motorsport/series"><span class="gc-ms-kicker">02</span><h3>Series</h3><p>Campeonatos y presencia por circuito.</p></a>
+      <a class="gc-ms-card" href="/guia-motorsport/personas"><span class="gc-ms-kicker">03</span><h3>Pilotos</h3><p>Personas relevantes y aliases.</p></a>
+      <a class="gc-ms-card" href="/guia-motorsport/vehiculos"><span class="gc-ms-kicker">04</span><h3>Vehículos</h3><p>Modelos, constructores y categorías.</p></a>
+      <a class="gc-ms-card" href="/guia-motorsport/glosario"><span class="gc-ms-kicker">05</span><h3>Glosario</h3><p>Términos racing explicados en castellano.</p></a>
+    </div>
+  </section>
+  <script is:inline>
+    const summary = document.querySelector('[data-ms-summary]');
+    fetch('/api/motorsport/summary').then(r=>r.json()).then(d=>{const s=d.summary||{}; summary.innerHTML=['circuits:Circuitos','records:Records','media:Media','series:Series'].map(x=>{const [k,l]=x.split(':');return `<div class="gc-ms-metric"><strong>${s[k]??0}</strong><span>${l}</span></div>`}).join('')}).catch(()=>{});
+    document.querySelector('[data-ms-search]')?.addEventListener('submit',async e=>{e.preventDefault();const q=new FormData(e.currentTarget).get('q')||'';const box=document.querySelector('[data-ms-results]');const d=await fetch('/api/motorsport/search?q='+encodeURIComponent(q)).then(r=>r.json());box.innerHTML=(d.results||[]).map(i=>`<a class="gc-ms-row" href="${i.type==='circuit'?'/guia-motorsport/circuitos/'+i.slug:'#'}"><strong>${i.name}</strong><br><span class="gc-ms-muted">${i.type}</span></a>`).join('')||'<p>No hay resultados.</p>'});
+  </script>
+</MarketingLayout>
