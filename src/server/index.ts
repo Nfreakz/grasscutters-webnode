@@ -10,6 +10,7 @@ import { registerMotorsportArchiveRoutes } from './motorsport-archive-routes';
 import { registerMotorsportArchiveImageUrlRoutes } from './motorsport-archive-image-url-routes';
 import { registerMotorsportArchiveHardDeleteRoutes } from './motorsport-archive-hard-delete-routes';
 import { registerAdminUserProfileLinkRoutes } from './admin-user-profile-link-routes';
+import { registerMotorsportArchiveAdminMysqlRoutes } from './motorsport-archive-admin-mysql-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -3751,6 +3752,10 @@ const mockPilots = [
 
 const app = express();
 
+// GC Archivo Motorsport admin MySQL/create/import routes.
+registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
+
+
 // GC Admin user/profile link routes.
 registerAdminUserProfileLinkRoutes(app, { rootDir });
 
@@ -6916,6 +6921,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 /* GC_ASTRO_RUNTIME_PATCH_V3

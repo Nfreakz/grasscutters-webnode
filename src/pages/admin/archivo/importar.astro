@@ -1,0 +1,132 @@
+---
+export const prerender = false;
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+<AppLayout title="Importar Archivo Motorsport | GrassCutters">
+  <div class="gc-page gc-admin-page-clean">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo Motorsport</span>
+        <h1 class="gc-title">Importar CSV.</h1>
+        <p class="gc-subtitle">Sube uno o varios CSV desde el navegador. Se importarán a MySQL en Hostinger como borrador por defecto.</p>
+      </div>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <h2>Subir archivos</h2>
+        <p>Compatible con circuitos, pilotos, vehículos, campeonatos, records y glosario.</p>
+      </div>
+
+      <div class="gc-slab gc-import-box">
+        <label class="gc-field">
+          <span>CSV</span>
+          <input class="gc-input" id="archivoCsvFiles" type="file" accept=".csv,text/csv" multiple />
+        </label>
+
+        <div class="gc-admin-actions">
+          <label class="gc-check"><input id="archivoDryRun" type="checkbox" checked /> Solo probar, no escribir</label>
+          <label class="gc-check"><input id="archivoPublish" type="checkbox" /> Publicar directamente</label>
+          <label class="gc-check"><input id="archivoForce" type="checkbox" /> Actualizar existentes</label>
+        </div>
+
+        <div class="gc-admin-actions">
+          <button class="gc-btn gc-btn--primary" id="archivoImportBtn" type="button">Importar CSV</button>
+          <a class="gc-btn" href="/admin/archivo">Volver al Archivo</a>
+        </div>
+
+        <p class="gc-message" id="archivoImportMsg"></p>
+      </div>
+    </section>
+
+    <section class="gc-section" id="archivoImportResultSection" hidden>
+      <div class="gc-section-head">
+        <h2>Resultado</h2>
+        <p>Resumen de la importación.</p>
+      </div>
+      <pre class="gc-import-result" id="archivoImportResult"></pre>
+    </section>
+  </div>
+
+  <style>
+    .gc-import-box{display:grid;gap:16px}
+    .gc-check{display:flex;gap:8px;align-items:center;color:var(--soft)}
+    .gc-import-result{
+      white-space:pre-wrap;
+      word-break:break-word;
+      padding:16px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.24);
+      color:var(--soft);
+      max-height:520px;
+      overflow:auto;
+    }
+  </style>
+
+  <script is:inline>
+    const fileInput = document.getElementById('archivoCsvFiles');
+    const btn = document.getElementById('archivoImportBtn');
+    const msg = document.getElementById('archivoImportMsg');
+    const resultSection = document.getElementById('archivoImportResultSection');
+    const resultBox = document.getElementById('archivoImportResult');
+    const dryRun = document.getElementById('archivoDryRun');
+    const publish = document.getElementById('archivoPublish');
+    const force = document.getElementById('archivoForce');
+
+    async function readFile(file) {
+      return {
+        name: file.name,
+        content: await file.text(),
+      };
+    }
+
+    btn?.addEventListener('click', async () => {
+      const files = Array.from(fileInput?.files || []);
+      if (!files.length) {
+        msg.textContent = 'Selecciona al menos un CSV.';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.textContent = 'Leyendo CSV...';
+      resultSection.hidden = true;
+
+      try {
+        const payload = {
+          files: await Promise.all(files.map(readFile)),
+          dryRun: Boolean(dryRun.checked),
+          publish: Boolean(publish.checked),
+          force: Boolean(force.checked),
+        };
+
+        msg.textContent = 'Importando...';
+
+        const response = await fetch('/api/admin/archive/import-csv-web', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok) {
+          throw new Error(data?.message || data?.error || 'No se pudo importar.');
+        }
+
+        msg.textContent = data.dryRun
+          ? 'Prueba completada. No se ha escrito nada.'
+          : 'Importación completada.';
+
+        resultBox.textContent = JSON.stringify(data, null, 2);
+        resultSection.hidden = false;
+      } catch (error) {
+        msg.textContent = error?.message || 'Error importando CSV.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</AppLayout>
