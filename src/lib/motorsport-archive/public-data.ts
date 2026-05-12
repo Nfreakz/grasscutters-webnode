@@ -40,28 +40,23 @@ export function normalizeArchiveCategory(value: unknown) {
     circuito: 'circuitos',
     circuitos: 'circuitos',
     track: 'circuitos',
-
     driver: 'pilotos',
     drivers: 'pilotos',
     pilot: 'pilotos',
     piloto: 'pilotos',
     pilotos: 'pilotos',
-
     vehicle: 'vehiculos',
     vehicles: 'vehiculos',
     vehiculo: 'vehiculos',
     vehículos: 'vehiculos',
     vehiculos: 'vehiculos',
     car: 'vehiculos',
-
     championship: 'campeonatos',
     championships: 'campeonatos',
     campeonato: 'campeonatos',
     campeonatos: 'campeonatos',
-
     record: 'records',
     records: 'records',
-
     glossary: 'glosario',
     glosario: 'glosario',
     concepto: 'glosario',
@@ -95,11 +90,24 @@ function normalizeFacts(value: any) {
   return [];
 }
 
+function cleanMediaUrl(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/')) return raw;
+
+  if (raw.startsWith('archive-media/')) return `/${raw}`;
+
+  return raw;
+}
+
 function normalizeMedia(item: any) {
   const media = Array.isArray(item.media) ? item.media : [];
+
   const mapped = media.map((m: any, index: number) => ({
     id: String(m.id || `media-${index}`),
-    url: String(m.url || m.localUrl || m.local_url || m.image || '').trim(),
+    url: cleanMediaUrl(m.url || m.localUrl || m.local_url || m.image || ''),
+    localUrl: cleanMediaUrl(m.localUrl || m.url || m.local_url || ''),
     alt: String(m.alt || m.title || item.title || '').trim(),
     source: String(m.source || '').trim(),
     sourceUrl: String(m.sourceUrl || m.source_url || m.originalUrl || '').trim(),
@@ -108,13 +116,14 @@ function normalizeMedia(item: any) {
     isPrimary: Boolean(m.isPrimary || m.isMain || m.primary || m.cover),
     isMain: Boolean(m.isMain || m.isPrimary || m.primary || m.cover),
     locked: Boolean(m.locked),
-  })).filter((m: any) => m.url);
+  })).filter((m: any) => m.url || m.localUrl);
 
-  const cover = String(item.coverUrl || item.image || item.imageUrl || item.localUrl || '').trim();
-  if (cover && !mapped.some((m: any) => m.url === cover)) {
+  const cover = cleanMediaUrl(item.coverUrl || item.image || item.imageUrl || item.localUrl || '');
+  if (cover && !mapped.some((m: any) => m.url === cover || m.localUrl === cover)) {
     mapped.unshift({
       id: 'cover',
       url: cover,
+      localUrl: cover,
       alt: String(item.coverAlt || item.title || '').trim(),
       source: '',
       sourceUrl: '',
@@ -124,6 +133,11 @@ function normalizeMedia(item: any) {
       isMain: true,
       locked: true,
     });
+  }
+
+  if (mapped.length && !mapped.some((m: any) => m.isPrimary || m.isMain)) {
+    mapped[0].isPrimary = true;
+    mapped[0].isMain = true;
   }
 
   return mapped.sort((a: any, b: any) => Number(b.isPrimary || b.isMain) - Number(a.isPrimary || a.isMain));
@@ -150,9 +164,10 @@ export function normalizeArchiveItem(raw: any): ArchivePublicItem {
     coverAlt: '',
   } as ArchivePublicItem;
 
-  item.media = normalizeMedia(item);
-  item.coverUrl = item.media[0]?.url || '/og/grasscutters-og.svg';
-  item.coverAlt = item.media[0]?.alt || item.title;
+  item.media = normalizeMedia(raw);
+  const cover = item.media.find((m: any) => m.isPrimary || m.isMain) || item.media[0] || null;
+  item.coverUrl = cleanMediaUrl(cover?.url || cover?.localUrl || raw.coverUrl || '') || '/og/grasscutters-og.svg';
+  item.coverAlt = cover?.alt || raw.coverAlt || item.title;
 
   return item;
 }
@@ -208,7 +223,7 @@ export function getArchiveItemUrl(item: ArchivePublicItem) {
 }
 
 export function getArchiveCoverUrl(item: ArchivePublicItem) {
-  return item.coverUrl || item.media?.[0]?.url || '/og/grasscutters-og.svg';
+  return cleanMediaUrl(item.coverUrl || item.media?.[0]?.url || item.media?.[0]?.localUrl || '') || '/og/grasscutters-og.svg';
 }
 
 export function getArchiveCoverAlt(item: ArchivePublicItem) {

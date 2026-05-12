@@ -9,146 +9,142 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
     <header class="gc-archive-url-hero">
       <p class="gc-archive-kicker">Archivo Motorsport</p>
-      <h1>Gestión de imágenes</h1>
+      <h1>Imágenes</h1>
       <p>Añade imágenes a una ficha pegando una URL externa o subiendo un archivo propio desde tu PC.</p>
     </header>
 
-    <div class="gc-image-tabs" role="tablist" aria-label="Opciones de imagen">
-      <button class="is-active" type="button" data-tab="url">Imagen por URL</button>
-      <button type="button" data-tab="upload">Subir desde PC</button>
+    <div class="gc-media-two-cols">
+      <article class="gc-media-card">
+        <div class="gc-media-card-head">
+          <span>Opción 1</span>
+          <h2>Añadir por URL</h2>
+          <p>Ideal para Wikimedia, webs oficiales o imágenes externas con fuente clara.</p>
+        </div>
+
+        <form id="media-url-form" class="gc-archive-url-form">
+          <label class="gc-field gc-field--full">
+            <span>Ficha</span>
+            <select id="itemIdUrl" name="itemId" required>
+              <option value="">Cargando fichas...</option>
+            </select>
+          </label>
+
+          <label class="gc-field gc-field--full">
+            <span>URL de imagen</span>
+            <div class="gc-url-row">
+              <input id="imageUrl" name="imageUrl" type="url" required placeholder="https://..." />
+              <button type="button" id="inspectBtn" class="gc-button-secondary">Leer</button>
+            </div>
+          </label>
+
+          <label class="gc-field gc-field--full">
+            <span>Texto alternativo</span>
+            <input id="alt" name="alt" type="text" />
+          </label>
+
+          <label class="gc-field">
+            <span>Fuente</span>
+            <input id="source" name="source" type="text" value="URL externa" />
+          </label>
+
+          <label class="gc-field">
+            <span>URL fuente</span>
+            <input id="sourceUrl" name="sourceUrl" type="url" />
+          </label>
+
+          <label class="gc-field">
+            <span>Autor</span>
+            <input id="author" name="author" type="text" />
+          </label>
+
+          <label class="gc-field">
+            <span>Licencia</span>
+            <input id="license" name="license" type="text" />
+          </label>
+
+          <div class="gc-checks gc-field--full">
+            <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Portada</label>
+            <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear</label>
+          </div>
+
+          <div class="gc-preview-frame gc-field--full">
+            <img id="previewImg" src="" alt="" hidden />
+            <span id="previewEmpty">Vista previa URL</span>
+          </div>
+
+          <div class="gc-actions gc-field--full">
+            <button type="submit" class="gc-button-primary">Añadir por URL</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="gc-media-card">
+        <div class="gc-media-card-head">
+          <span>Opción 2</span>
+          <h2>Subir desde PC</h2>
+          <p>Guarda la imagen en el almacenamiento persistente del Archivo.</p>
+        </div>
+
+        <form id="media-upload-form" class="gc-archive-url-form">
+          <label class="gc-field gc-field--full">
+            <span>Ficha</span>
+            <select id="itemIdUpload" name="itemId" required>
+              <option value="">Cargando fichas...</option>
+            </select>
+          </label>
+
+          <label class="gc-field gc-field--full">
+            <span>Archivo de imagen</span>
+            <input id="uploadFile" type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" required />
+          </label>
+
+          <div class="gc-upload-preview gc-field--full" id="uploadPreview" hidden>
+            <img id="uploadPreviewImg" src="" alt="Vista previa" />
+            <div>
+              <strong id="uploadPreviewName">Imagen seleccionada</strong>
+              <p id="uploadPreviewSize"></p>
+            </div>
+          </div>
+
+          <label class="gc-field gc-field--full">
+            <span>Texto alternativo</span>
+            <input id="uploadAlt" type="text" />
+          </label>
+
+          <label class="gc-field">
+            <span>Fuente</span>
+            <input id="uploadSource" type="text" value="GrassCutters Racing" />
+          </label>
+
+          <label class="gc-field">
+            <span>URL fuente</span>
+            <input id="uploadSourceUrl" type="url" placeholder="Opcional" />
+          </label>
+
+          <label class="gc-field">
+            <span>Autor</span>
+            <input id="uploadAuthor" type="text" placeholder="Autor o equipo" />
+          </label>
+
+          <label class="gc-field">
+            <span>Licencia</span>
+            <input id="uploadLicense" type="text" value="Imagen propia / GrassCutters Racing" />
+          </label>
+
+          <div class="gc-checks gc-field--full">
+            <label><input type="checkbox" id="uploadPrimary" checked /> Portada</label>
+            <label><input type="checkbox" id="uploadLocked" checked /> Bloquear</label>
+          </div>
+
+          <div class="gc-actions gc-field--full">
+            <button type="submit" class="gc-button-primary">Subir imagen</button>
+          </div>
+        </form>
+      </article>
     </div>
 
-    <div class="gc-archive-url-card" data-panel="url">
-      <form id="media-url-form" class="gc-archive-url-form">
-        <label class="gc-field gc-field--full">
-          <span>Ficha</span>
-          <select id="itemIdUrl" name="itemId" required>
-            <option value="">Cargando fichas...</option>
-          </select>
-        </label>
-
-        <label class="gc-field gc-field--full">
-          <span>URL de imagen</span>
-          <div class="gc-url-row">
-            <input id="imageUrl" name="imageUrl" type="url" required placeholder="https://..." />
-            <button type="button" id="inspectBtn" class="gc-button-secondary">Leer datos</button>
-          </div>
-        </label>
-
-        <label class="gc-field gc-field--full">
-          <span>Texto alternativo</span>
-          <input id="alt" name="alt" type="text" />
-        </label>
-
-        <label class="gc-field">
-          <span>Fuente</span>
-          <input id="source" name="source" type="text" value="URL externa" />
-        </label>
-
-        <label class="gc-field">
-          <span>URL fuente</span>
-          <input id="sourceUrl" name="sourceUrl" type="url" />
-        </label>
-
-        <label class="gc-field">
-          <span>Autor</span>
-          <input id="author" name="author" type="text" />
-        </label>
-
-        <label class="gc-field">
-          <span>Licencia</span>
-          <input id="license" name="license" type="text" />
-        </label>
-
-        <div class="gc-checks gc-field--full">
-          <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Marcar como portada</label>
-          <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear imagen buena</label>
-        </div>
-
-        <div class="gc-actions gc-field--full">
-          <button type="submit" class="gc-button-primary">Añadir imagen por URL</button>
-          <a class="gc-button-secondary" href="/admin/archivo">Volver</a>
-        </div>
-      </form>
-
-      <aside class="gc-archive-url-preview">
-        <h2>Vista previa</h2>
-        <div class="gc-preview-frame">
-          <img id="previewImg" src="" alt="" hidden />
-          <span id="previewEmpty">Sin imagen todavía</span>
-        </div>
-        <div id="metaBox" class="gc-meta-box">Pega una URL y pulsa “Leer datos”.</div>
-      </aside>
-    </div>
-
-    <div class="gc-archive-url-card" data-panel="upload" hidden>
-      <form id="media-upload-form" class="gc-archive-url-form">
-        <label class="gc-field gc-field--full">
-          <span>Ficha</span>
-          <select id="itemIdUpload" name="itemId" required>
-            <option value="">Cargando fichas...</option>
-          </select>
-        </label>
-
-        <label class="gc-field gc-field--full">
-          <span>Archivo de imagen</span>
-          <input id="uploadFile" type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" required />
-        </label>
-
-        <div class="gc-upload-preview gc-field--full" id="uploadPreview" hidden>
-          <img id="uploadPreviewImg" src="" alt="Vista previa" />
-          <div>
-            <strong id="uploadPreviewName">Imagen seleccionada</strong>
-            <p id="uploadPreviewSize"></p>
-          </div>
-        </div>
-
-        <label class="gc-field gc-field--full">
-          <span>Texto alternativo</span>
-          <input id="uploadAlt" type="text" />
-        </label>
-
-        <label class="gc-field">
-          <span>Fuente</span>
-          <input id="uploadSource" type="text" value="GrassCutters Racing" />
-        </label>
-
-        <label class="gc-field">
-          <span>URL fuente</span>
-          <input id="uploadSourceUrl" type="url" placeholder="Opcional" />
-        </label>
-
-        <label class="gc-field">
-          <span>Autor</span>
-          <input id="uploadAuthor" type="text" placeholder="Autor o equipo" />
-        </label>
-
-        <label class="gc-field">
-          <span>Licencia</span>
-          <input id="uploadLicense" type="text" value="Imagen propia / GrassCutters Racing" />
-        </label>
-
-        <div class="gc-checks gc-field--full">
-          <label><input type="checkbox" id="uploadPrimary" checked /> Marcar como portada</label>
-          <label><input type="checkbox" id="uploadLocked" checked /> Bloquear imagen buena</label>
-        </div>
-
-        <div class="gc-actions gc-field--full">
-          <button type="submit" class="gc-button-primary">Subir imagen</button>
-          <a class="gc-button-secondary" href="/admin/archivo">Volver</a>
-        </div>
-      </form>
-
-      <aside class="gc-archive-url-preview">
-        <h2>Imagen local</h2>
-        <div class="gc-preview-frame">
-          <img id="uploadSidePreviewImg" src="" alt="" hidden />
-          <span id="uploadSidePreviewEmpty">Selecciona un archivo</span>
-        </div>
-        <div class="gc-meta-box">
-          La imagen se guardará en el almacenamiento persistente y se servirá desde <code>/archive-media</code>.
-        </div>
-      </aside>
+    <div class="gc-actions gc-media-back">
+      <a class="gc-button-secondary" href="/admin/archivo">Volver al Archivo</a>
     </div>
 
     <div id="status" class="gc-status" hidden></div>
@@ -158,11 +154,12 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     .gc-archive-url-page{max-width:1180px;margin:0 auto;padding:24px 18px 56px}
     .gc-archive-url-hero{margin:18px 0 20px;padding:24px;border:1px solid rgba(137,195,92,.22);border-radius:24px;background:linear-gradient(135deg,rgba(137,195,92,.10),rgba(255,255,255,.03))}
     .gc-archive-kicker{margin:0 0 8px;color:#9fd46f;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}
-    .gc-image-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
-    .gc-image-tabs button{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;border-radius:999px;padding:11px 16px;font-weight:900;cursor:pointer}
-    .gc-image-tabs button.is-active{background:#89c35c;color:#081008;border-color:#89c35c}
-    .gc-archive-url-card{display:grid;grid-template-columns:minmax(0,1.2fr) 360px;gap:18px}
-    .gc-archive-url-form,.gc-archive-url-preview{padding:20px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(255,255,255,.04)}
+    .gc-media-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .gc-media-card{padding:20px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(255,255,255,.04)}
+    .gc-media-card-head{margin-bottom:18px}
+    .gc-media-card-head span{display:inline-flex;margin-bottom:6px;color:#9fd46f;font-size:.74rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    .gc-media-card-head h2{margin:0 0 6px}
+    .gc-media-card-head p{margin:0;color:rgba(255,255,255,.72)}
     .gc-archive-url-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
     .gc-field{display:grid;gap:7px}
     .gc-field--full{grid-column:1/-1}
@@ -173,7 +170,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     .gc-button-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.12)}
     .gc-preview-frame{display:grid;place-items:center;aspect-ratio:16/10;border-radius:18px;background:rgba(0,0,0,.28);overflow:hidden}
     .gc-preview-frame img{width:100%;height:100%;object-fit:cover}
-    .gc-meta-box{margin-top:14px;padding:14px;border-radius:16px;background:rgba(0,0,0,.18)}
     .gc-upload-preview{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);border-radius:16px}
     .gc-upload-preview img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:rgba(0,0,0,.25)}
     .gc-status{max-width:1180px;margin:18px auto 0;padding:14px 16px;border-radius:16px}
@@ -181,7 +177,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     .gc-status.error{display:block;background:rgba(205,61,75,.14);border:1px solid rgba(205,61,75,.45);color:#ffd0d6}
     .gc-checks{display:flex;gap:14px;flex-wrap:wrap}
     .gc-checks label{display:flex;gap:8px;align-items:center;color:rgba(255,255,255,.76)}
-    @media(max-width:900px){.gc-archive-url-card{grid-template-columns:1fr}.gc-archive-url-form{grid-template-columns:1fr}.gc-url-row,.gc-upload-preview{grid-template-columns:1fr}}
+    .gc-media-back{margin-top:18px}
+    @media(max-width:980px){.gc-media-two-cols{grid-template-columns:1fr}}
+    @media(max-width:680px){.gc-archive-url-form,.gc-url-row,.gc-upload-preview{grid-template-columns:1fr}}
   </style>
 
   <script is:inline>
@@ -229,17 +227,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         }
       }
 
-      document.querySelectorAll('[data-tab]').forEach((button) => {
-        button.addEventListener('click', () => {
-          document.querySelectorAll('[data-tab]').forEach((entry) => entry.classList.remove('is-active'));
-          button.classList.add('is-active');
-          const tab = button.dataset.tab;
-          document.querySelectorAll('[data-panel]').forEach((panel) => {
-            panel.hidden = panel.dataset.panel !== tab;
-          });
-        });
-      });
-
       $('inspectBtn').addEventListener('click', async () => {
         const url = $('imageUrl').value.trim();
         if (!url) return showStatus('error', 'Pega una URL primero.');
@@ -253,7 +240,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           const meta = data.metadata || {};
           $('source').value = meta.source || $('source').value;
           $('sourceUrl').value = meta.sourceUrl || url;
-          $('metaBox').innerHTML = `Fuente: ${meta.source || 'pendiente'}<br>Licencia: ${meta.license || 'pendiente'}`;
           showStatus('ok', 'Metadatos leídos.');
         } catch (error) {
           showStatus('error', error.message || 'No se pudieron leer datos.');
@@ -265,21 +251,19 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const itemId = $('itemIdUrl').value;
         if (!itemId) return showStatus('error', 'Selecciona una ficha.');
 
-        const payload = {
-          imageUrl: $('imageUrl').value,
-          alt: $('alt').value,
-          source: $('source').value,
-          sourceUrl: $('sourceUrl').value,
-          author: $('author').value,
-          license: $('license').value,
-          makePrimary: $('makePrimary').checked,
-          locked: $('locked').checked,
-        };
-
         try {
           const data = await json(`${API}/items/${encodeURIComponent(itemId)}/media/from-url`, {
             method: 'POST',
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+              imageUrl: $('imageUrl').value,
+              alt: $('alt').value,
+              source: $('source').value,
+              sourceUrl: $('sourceUrl').value,
+              author: $('author').value,
+              license: $('license').value,
+              makePrimary: $('makePrimary').checked,
+              locked: $('locked').checked,
+            }),
           });
           showStatus('ok', `Imagen añadida a <strong>${data.itemTitle}</strong>.`);
         } catch (error) {
@@ -300,8 +284,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const file = $('uploadFile').files?.[0];
         if (!file) {
           $('uploadPreview').hidden = true;
-          $('uploadSidePreviewImg').hidden = true;
-          $('uploadSidePreviewEmpty').hidden = false;
           return;
         }
 
@@ -310,9 +292,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         $('uploadPreviewImg').src = url;
         $('uploadPreviewName').textContent = file.name;
         $('uploadPreviewSize').textContent = `${file.type || 'imagen'} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-        $('uploadSidePreviewImg').src = url;
-        $('uploadSidePreviewImg').hidden = false;
-        $('uploadSidePreviewEmpty').hidden = true;
 
         const selected = $('itemIdUpload').selectedOptions?.[0]?.textContent?.split(' · ')[0] || '';
         if (!$('uploadAlt').value && selected) $('uploadAlt').value = `Imagen de ${selected}`;
@@ -329,7 +308,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         try {
           showStatus('ok', 'Leyendo imagen...');
           const dataUrl = await fileToDataUrl(file);
-          showStatus('ok', 'Subiendo imagen...');
 
           const data = await json(`${API}/items/${encodeURIComponent(itemId)}/media/upload`, {
             method: 'POST',
