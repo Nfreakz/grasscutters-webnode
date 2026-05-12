@@ -141,7 +141,7 @@ html[data-gc-scope="marketing"] .gc-status-card {
   inset: 0;
   z-index: -4;
   background:
-    radial-gradient(circle at 16% 22%, rgba(137,255,72,.16), transparent 38%),
+    radial-gradient(circle at 16% 22%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent), transparent 38%),
     linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
     linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%);
   pointer-events: none;
@@ -195,7 +195,7 @@ html[data-gc-scope="marketing"] .gc-status-card {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 18% 12%, rgba(137,255,72,.16), transparent 30%),
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent), transparent 30%),
     rgba(0,0,0,.10);
   pointer-events: none;
 }
@@ -286,7 +286,7 @@ html[data-gc-scope="marketing"] .gc-status-card {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at 18% 12%, rgba(137,255,72,.18), transparent 32%),
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.18 * 100%), transparent), transparent 32%),
     linear-gradient(180deg, rgba(5,16,9,.16), rgba(5,16,9,.76) 58%, rgba(5,16,9,.97)),
     linear-gradient(90deg, rgba(5,16,9,.78), rgba(5,16,9,.28));
   pointer-events: none;
@@ -319,14 +319,14 @@ html[data-gc-scope="marketing"] .gc-status-card {
 /* Comunidad nav active + text polish v8.6.6 */
 html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active,
 html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"] {
-  color: var(--gc-mk-accent, #9cff3f) !important;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 34%, transparent) !important;
+  color: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) !important;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) 34%, transparent) !important;
 }
 
 html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active::after,
 html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"]::after {
-  background: var(--gc-mk-accent, #9cff3f) !important;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 40%, transparent);
+  background: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) 40%, transparent);
 }
 
 .gc-page-comunidad .gc-community-philosophy .gc-section-title {
@@ -354,7 +354,7 @@ html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="p
 
 .gc-page-comunidad .gc-community-for-image::before {
   background:
-    radial-gradient(circle at 18% 12%, rgba(137,255,72,.12), transparent 28%),
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent), transparent 28%),
     linear-gradient(180deg, rgba(5,16,9,.14), rgba(5,16,9,.70) 58%, rgba(5,16,9,.96)),
     linear-gradient(90deg, rgba(5,16,9,.62), rgba(5,16,9,.22) 36%, rgba(5,16,9,.18) 64%, rgba(5,16,9,.62));
 }
@@ -384,3 +384,1002 @@ html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="p
   opacity: .95;
 }
 
+
+
+/* Home hero video v8.7 */
+.gc-public-body .gc-home-hero-video {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  width: 100%;
+  max-width: none;
+  min-height: clamp(620px, 78vh, 920px);
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: 0;
+}
+
+.gc-public-body .gc-home-hero-inner {
+  width: min(100% - 48px, var(--gc-mk-container, 1180px));
+  margin-inline: auto;
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+  gap: clamp(18px, 4vw, 48px);
+  align-items: center;
+}
+
+.gc-public-body .gc-home-hero-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .74;
+  filter: saturate(.96) contrast(1.08) brightness(.66);
+}
+
+.gc-public-body .gc-home-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  background:
+    radial-gradient(circle at 14% 22%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.17 * 100%), transparent), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-public-body .gc-home-hero-video::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: -3;
+  height: clamp(180px, 24vh, 320px);
+  background:
+    linear-gradient(180deg, rgba(4,12,7,0), rgba(4,12,7,.72) 48%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-public-body .gc-home-hero-video .gc-title,
+.gc-public-body .gc-home-hero-video .gc-lead {
+  text-shadow: 0 3px 30px rgba(0,0,0,.72);
+}
+
+.gc-public-body .gc-home-hero-video .gc-panel {
+  backdrop-filter: blur(18px);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--gc-mk-accent) 12%, transparent), transparent 18rem),
+    linear-gradient(180deg, rgba(5,16,9,.76), rgba(5,16,9,.52));
+}
+
+.gc-public-body .gc-week-combo-section {
+  margin-top: clamp(-88px, -6vw, -44px);
+  position: relative;
+  z-index: 6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-public-body .gc-home-hero-bg-video {
+    display: none;
+  }
+
+  .gc-public-body .gc-home-hero-video {
+    background-image:
+      linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.64)),
+      url('/images/home-hero-poster.webp');
+    background-size: cover;
+    background-position: center;
+  }
+}
+
+@media (max-width: 920px) {
+  .gc-public-body .gc-home-hero-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .gc-public-body .gc-home-hero-video {
+    min-height: 720px;
+  }
+
+  .gc-public-body .gc-home-hero-inner {
+    width: min(100% - 28px, var(--gc-mk-container, 1180px));
+  }
+
+  .gc-public-body .gc-week-combo-section {
+    margin-top: -44px;
+  }
+}
+
+
+
+/* Comunidad poster cleanup v8.7.1 */
+.gc-public-body .gc-comunidad-hero-poster,
+.gc-public-body picture.gc-comunidad-hero-poster,
+.gc-public-body img[src*="comunidad-hero-poster"] {
+  display: none !important;
+}
+
+/* Home logo showcase v8.7.1 */
+.gc-public-body .gc-home-logo-stage {
+  position: relative;
+  min-height: clamp(300px, 38vw, 430px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.gc-public-body .gc-home-logo-glow {
+  position: absolute;
+  inset: 8% 10%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.30 * 100%), transparent) 0%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.14 * 100%), transparent) 28%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.03 * 100%), transparent) 54%, transparent 74%),
+    radial-gradient(circle at 70% 30%, rgba(0,255,200,.12), transparent 38%);
+  filter: blur(26px);
+  transform: scale(1.04);
+  animation: gcHomeLogoGlow 5.2s ease-in-out infinite;
+  z-index: -3;
+}
+
+.gc-public-body .gc-home-logo-rings {
+  position: absolute;
+  width: min(92%, 420px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -2;
+  background:
+    radial-gradient(circle, transparent 48%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent) 49%, transparent 52%),
+    radial-gradient(circle, transparent 62%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.09 * 100%), transparent) 63%, transparent 66%),
+    radial-gradient(circle, transparent 76%, rgba(0,255,200,.08) 77%, transparent 80%);
+  opacity: .9;
+  animation: gcHomeLogoSpin 20s linear infinite;
+}
+
+.gc-public-body .gc-home-logo-card {
+  position: relative;
+  width: min(82%, 340px);
+  aspect-ratio: 1 / 1;
+  border-radius: 32px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.14 * 100%), transparent), transparent 34%),
+    rgba(7,19,11,.58);
+  border: 1px solid color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.20 * 100%), transparent);
+  box-shadow:
+    0 24px 80px rgba(0,0,0,.42),
+    0 0 0 1px rgba(255,255,255,.03) inset,
+    0 0 48px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.10 * 100%), transparent);
+  backdrop-filter: blur(14px);
+  animation: gcHomeLogoFloat 6s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-logo-card::before {
+  content: "";
+  position: absolute;
+  inset: -30% 42% -30% -18%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+  transform: rotate(18deg);
+  filter: blur(8px);
+  animation: gcHomeLogoShine 5.5s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-logo-image {
+  width: min(68%, 210px);
+  height: auto;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 30px rgba(0,0,0,.48))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent));
+  transform: translateZ(0);
+}
+
+.gc-public-body .gc-home-logo-pulse {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  right: 13%;
+  top: 18%;
+  background: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f));
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.55 * 100%), transparent);
+  animation: gcHomePulse 2.2s ease-out infinite;
+  z-index: 3;
+}
+
+@keyframes gcHomeLogoFloat {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+}
+
+@keyframes gcHomeLogoGlow {
+  0%, 100% { opacity: .88; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes gcHomeLogoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gcHomeLogoShine {
+  0%, 100% { transform: translateX(-22%) rotate(18deg); opacity: .18; }
+  50% { transform: translateX(92%) rotate(18deg); opacity: .46; }
+}
+
+@keyframes gcHomePulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.50 * 100%), transparent); }
+  70% { box-shadow: 0 0 0 20px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(0 * 100%), transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(0 * 100%), transparent); }
+}
+
+@media (max-width: 920px) {
+  .gc-public-body .gc-home-logo-stage {
+    min-height: 280px;
+    margin-top: 12px;
+  }
+
+  .gc-public-body .gc-home-logo-card {
+    width: min(76vw, 300px);
+  }
+}
+
+
+/* Home logo force v8.7.2 */
+.gc-public-body .gc-home-hero-video {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  width: 100%;
+  max-width: none;
+  min-height: clamp(620px, 78vh, 920px);
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: 0;
+}
+
+.gc-public-body .gc-home-hero-inner {
+  width: min(100% - 48px, var(--gc-mk-container, 1180px));
+  margin-inline: auto;
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr);
+  gap: clamp(18px, 5vw, 70px);
+  align-items: center;
+}
+
+.gc-public-body .gc-home-hero-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .74;
+  filter: saturate(.96) contrast(1.08) brightness(.66);
+}
+
+.gc-public-body .gc-home-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  background:
+    radial-gradient(circle at 14% 22%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.17 * 100%), transparent), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-public-body .gc-home-hero-video::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: -3;
+  height: clamp(180px, 24vh, 320px);
+  background: linear-gradient(180deg, rgba(4,12,7,0), rgba(4,12,7,.72) 48%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-public-body .gc-home-hero-video .gc-title,
+.gc-public-body .gc-home-hero-video .gc-lead {
+  text-shadow: 0 3px 30px rgba(0,0,0,.72);
+}
+
+.gc-public-body .gc-home-logo-stage {
+  position: relative;
+  min-height: clamp(300px, 38vw, 460px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.gc-public-body .gc-home-logo-glow {
+  position: absolute;
+  inset: 4% 6%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.34 * 100%), transparent) 0%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.15 * 100%), transparent) 30%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.03 * 100%), transparent) 56%, transparent 74%),
+    radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--gc-mk-accent-2, var(--gc-mk-accent, #9cff3f)) calc(.14 * 100%), transparent), transparent 42%);
+  filter: blur(30px);
+  animation: gcHomeLogoGlow 5.2s ease-in-out infinite;
+  z-index: -3;
+}
+
+.gc-public-body .gc-home-logo-rings {
+  position: absolute;
+  width: min(94%, 440px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -2;
+  background:
+    radial-gradient(circle, transparent 47%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.14 * 100%), transparent) 49%, transparent 52%),
+    radial-gradient(circle, transparent 62%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.10 * 100%), transparent) 63%, transparent 66%),
+    radial-gradient(circle, transparent 76%, rgba(0,255,200,.08) 77%, transparent 80%);
+  animation: gcHomeLogoSpin 20s linear infinite;
+}
+
+.gc-public-body .gc-home-logo-card {
+  position: relative;
+  width: min(82%, 350px);
+  aspect-ratio: 1;
+  border-radius: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent), transparent 34%),
+    rgba(7,19,11,.54);
+  border: 1px solid color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.20 * 100%), transparent);
+  box-shadow:
+    0 24px 80px rgba(0,0,0,.42),
+    0 0 0 1px rgba(255,255,255,.03) inset,
+    0 0 60px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent);
+  backdrop-filter: blur(14px);
+  animation: gcHomeLogoFloat 6s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-logo-card::before {
+  content: "";
+  position: absolute;
+  inset: -30% 42% -30% -18%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.20), transparent);
+  transform: rotate(18deg);
+  filter: blur(8px);
+  animation: gcHomeLogoShine 5.5s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-logo-image {
+  width: min(70%, 220px);
+  height: auto;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 30px rgba(0,0,0,.48))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.14 * 100%), transparent));
+}
+
+.gc-public-body .gc-home-logo-pulse {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  right: 13%;
+  top: 18%;
+  background: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f));
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.55 * 100%), transparent);
+  animation: gcHomePulse 2.2s ease-out infinite;
+  z-index: 3;
+}
+
+.gc-public-body .gc-week-combo-section {
+  margin-top: clamp(-88px, -6vw, -44px);
+  position: relative;
+  z-index: 6;
+}
+
+@keyframes gcHomeLogoFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+}
+
+@keyframes gcHomeLogoGlow {
+  0%, 100% { opacity: .88; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes gcHomeLogoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gcHomeLogoShine {
+  0%, 100% { transform: translateX(-22%) rotate(18deg); opacity: .18; }
+  50% { transform: translateX(92%) rotate(18deg); opacity: .46; }
+}
+
+@keyframes gcHomePulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.50 * 100%), transparent); }
+  70% { box-shadow: 0 0 0 20px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(0 * 100%), transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(0 * 100%), transparent); }
+}
+
+@media (max-width: 920px) {
+  .gc-public-body .gc-home-hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .gc-public-body .gc-home-logo-stage {
+    min-height: 280px;
+    margin-top: 12px;
+  }
+}
+
+/* Comunidad card webp only v8.7.2 */
+.gc-page-comunidad .gc-community-card-picture {
+  display: contents !important;
+}
+
+.gc-page-comunidad .gc-community-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+
+/* Home free floating logo v8.7.3 */
+.gc-public-body .gc-home-logo-stage--free {
+  position: relative;
+  min-height: clamp(300px, 38vw, 460px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  perspective: 900px;
+}
+
+/* Mata cualquier estilo de card anterior si el HTML viejo quedó cacheado. */
+.gc-public-body .gc-home-logo-stage--free .gc-home-logo-card {
+  all: unset;
+  display: contents;
+}
+
+.gc-public-body .gc-home-logo-aura {
+  position: absolute;
+  width: min(92%, 440px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -4;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.34 * 100%), transparent) 0%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.18 * 100%), transparent) 24%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.05 * 100%), transparent) 48%, transparent 72%),
+    radial-gradient(circle at 68% 32%, color-mix(in srgb, var(--gc-mk-accent-2, var(--gc-mk-accent, #9cff3f)) calc(.16 * 100%), transparent), transparent 42%);
+  filter: blur(34px);
+  animation: gcHomeFreeLogoAura 5.4s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-logo-orbit {
+  position: absolute;
+  width: min(90%, 420px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -3;
+  opacity: .82;
+  background:
+    radial-gradient(circle, transparent 54%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent) 55%, transparent 57%),
+    radial-gradient(circle, transparent 72%, color-mix(in srgb, var(--gc-mk-accent-2, var(--gc-mk-accent, #9cff3f)) calc(.10 * 100%), transparent) 73%, transparent 75%);
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent));
+  animation: gcHomeFreeLogoOrbit 24s linear infinite;
+}
+
+.gc-public-body .gc-home-logo-free {
+  width: min(78%, 360px);
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+  transform-origin: center;
+  filter:
+    drop-shadow(0 22px 42px rgba(0,0,0,.58))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.26 * 100%), transparent))
+    drop-shadow(0 0 54px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent));
+  animation: gcHomeFreeLogoFloat 6.2s ease-in-out infinite;
+  transition:
+    transform .42s cubic-bezier(.2,.8,.2,1),
+    filter .42s ease,
+    opacity .42s ease;
+  will-change: transform, filter;
+}
+
+.gc-public-body .gc-home-logo-stage--free:hover .gc-home-logo-free {
+  transform: translateY(-16px) scale(1.16) rotateX(4deg) rotateZ(1deg);
+  filter:
+    drop-shadow(0 28px 58px rgba(0,0,0,.62))
+    drop-shadow(0 0 28px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.46 * 100%), transparent))
+    drop-shadow(0 0 92px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.24 * 100%), transparent));
+}
+
+.gc-public-body .gc-home-logo-stage--free:hover .gc-home-logo-aura {
+  animation-duration: 2.6s;
+  opacity: 1;
+}
+
+@keyframes gcHomeFreeLogoFloat {
+  0%, 100% { transform: translateY(0) scale(1) rotateZ(-.8deg); }
+  50% { transform: translateY(-12px) scale(1.035) rotateZ(.8deg); }
+}
+
+@keyframes gcHomeFreeLogoAura {
+  0%, 100% { opacity: .74; transform: scale(.98); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes gcHomeFreeLogoOrbit {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-public-body .gc-home-logo-free,
+  .gc-public-body .gc-home-logo-aura,
+  .gc-public-body .gc-home-logo-orbit {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .gc-public-body .gc-home-logo-stage--free {
+    min-height: 260px;
+    margin-top: 12px;
+  }
+
+  .gc-public-body .gc-home-logo-free {
+    width: min(72vw, 280px);
+  }
+}
+
+
+/* Home floating logo replace v8.7.4 */
+.gc-public-body .gc-home-hero-video {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  width: 100%;
+  max-width: none;
+  min-height: clamp(620px, 78vh, 920px);
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.gc-public-body .gc-home-hero-inner {
+  width: min(100% - 48px, var(--gc-mk-container, 1180px));
+  margin-inline: auto;
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(260px, .95fr);
+  gap: clamp(24px, 5vw, 76px);
+  align-items: center;
+}
+
+.gc-public-body .gc-home-hero-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .74;
+  filter: saturate(.96) contrast(1.08) brightness(.66);
+}
+
+.gc-public-body .gc-home-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  background:
+    radial-gradient(circle at 14% 22%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.17 * 100%), transparent), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-public-body .gc-home-hero-video::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: -3;
+  height: clamp(180px, 24vh, 320px);
+  background: linear-gradient(180deg, rgba(4,12,7,0), rgba(4,12,7,.72) 48%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+/* Oculta sí o sí la card antigua si sobrevive por algún patch anterior. */
+.gc-public-body .gc-home-hero-video > .gc-panel,
+.gc-public-body .gc-home-hero-inner > .gc-panel,
+.gc-public-body .gc-home-hero-video aside[aria-label="Estado rápido de plataforma"] {
+  display: none !important;
+}
+
+.gc-public-body .gc-home-floating-logo {
+  position: relative;
+  min-height: clamp(300px, 38vw, 460px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  perspective: 900px;
+}
+
+.gc-public-body .gc-home-floating-logo__glow {
+  position: absolute;
+  width: min(94%, 450px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -3;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.36 * 100%), transparent) 0%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.18 * 100%), transparent) 26%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.05 * 100%), transparent) 50%, transparent 74%),
+    radial-gradient(circle at 68% 32%, color-mix(in srgb, var(--gc-mk-accent-2, var(--gc-mk-accent, #9cff3f)) calc(.16 * 100%), transparent), transparent 42%);
+  filter: blur(34px);
+  animation: gcHomeFloatGlow 5.4s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-floating-logo__orbit {
+  position: absolute;
+  width: min(90%, 420px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -2;
+  opacity: .82;
+  background:
+    radial-gradient(circle, transparent 54%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.15 * 100%), transparent) 55%, transparent 57%),
+    radial-gradient(circle, transparent 72%, color-mix(in srgb, var(--gc-mk-accent-2, var(--gc-mk-accent, #9cff3f)) calc(.10 * 100%), transparent) 73%, transparent 75%);
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.16 * 100%), transparent));
+  animation: gcHomeFloatOrbit 24s linear infinite;
+}
+
+.gc-public-body .gc-home-floating-logo__img {
+  width: min(78%, 360px);
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+  transform-origin: center;
+  filter:
+    drop-shadow(0 22px 42px rgba(0,0,0,.58))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.26 * 100%), transparent))
+    drop-shadow(0 0 54px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.12 * 100%), transparent));
+  animation: gcHomeFloatLogo 6.2s ease-in-out infinite;
+  transition:
+    transform .42s cubic-bezier(.2,.8,.2,1),
+    filter .42s ease;
+  will-change: transform, filter;
+}
+
+.gc-public-body .gc-home-floating-logo:hover .gc-home-floating-logo__img {
+  transform: translateY(-18px) scale(1.18) rotateX(4deg) rotateZ(1deg);
+  filter:
+    drop-shadow(0 30px 62px rgba(0,0,0,.64))
+    drop-shadow(0 0 32px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.48 * 100%), transparent))
+    drop-shadow(0 0 100px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) calc(.26 * 100%), transparent));
+}
+
+.gc-public-body .gc-home-floating-logo:hover .gc-home-floating-logo__glow {
+  animation-duration: 2.4s;
+  opacity: 1;
+}
+
+@keyframes gcHomeFloatLogo {
+  0%, 100% { transform: translateY(0) scale(1) rotateZ(-.8deg); }
+  50% { transform: translateY(-12px) scale(1.035) rotateZ(.8deg); }
+}
+
+@keyframes gcHomeFloatGlow {
+  0%, 100% { opacity: .74; transform: scale(.98); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes gcHomeFloatOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-public-body .gc-home-floating-logo__img,
+  .gc-public-body .gc-home-floating-logo__glow,
+  .gc-public-body .gc-home-floating-logo__orbit {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .gc-public-body .gc-home-hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .gc-public-body .gc-home-floating-logo {
+    min-height: 260px;
+    margin-top: 12px;
+  }
+
+  .gc-public-body .gc-home-floating-logo__img {
+    width: min(72vw, 280px);
+  }
+}
+
+
+/* Palette sync v8.7.5 */
+html[data-gc-scope="marketing"] {
+  --gc-accent-live: var(--gc-mk-accent, #9cff3f);
+  --gc-accent-soft-04: color-mix(in srgb, var(--gc-accent-live) 4%, transparent);
+  --gc-accent-soft-08: color-mix(in srgb, var(--gc-accent-live) 8%, transparent);
+  --gc-accent-soft-12: color-mix(in srgb, var(--gc-accent-live) 12%, transparent);
+  --gc-accent-soft-18: color-mix(in srgb, var(--gc-accent-live) 18%, transparent);
+  --gc-accent-soft-26: color-mix(in srgb, var(--gc-accent-live) 26%, transparent);
+  --gc-accent-soft-34: color-mix(in srgb, var(--gc-accent-live) 34%, transparent);
+}
+
+/* Menú activo: mismo color que la paleta, nunca negro ni lima fija. */
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active,
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"] {
+  color: var(--gc-accent-live) !important;
+  text-shadow: 0 0 18px var(--gc-accent-soft-34) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active::after,
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"]::after {
+  background: var(--gc-accent-live) !important;
+  box-shadow: 0 0 18px var(--gc-accent-soft-34) !important;
+}
+
+/* Botón principal: mantiene texto oscuro, pero el degradado sigue la paleta. */
+html[data-gc-scope="marketing"] .gc-public-body .gc-btn-primary {
+  color: #061006 !important;
+  background:
+    linear-gradient(90deg,
+      var(--gc-accent-live),
+      color-mix(in srgb, var(--gc-accent-live) 74%, #ffffff 26%)
+    ) !important;
+  border-color: color-mix(in srgb, var(--gc-accent-live) 70%, transparent) !important;
+}
+
+/* Home hero: scrim y efectos con paleta activa. */
+.gc-public-body .gc-home-hero-scrim {
+  background:
+    radial-gradient(circle at 14% 22%, var(--gc-accent-soft-18), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%) !important;
+}
+
+.gc-public-body .gc-home-floating-logo__glow,
+.gc-public-body .gc-home-logo-aura,
+.gc-public-body .gc-home-logo-glow {
+  background:
+    radial-gradient(circle, var(--gc-accent-soft-34) 0%, var(--gc-accent-soft-18) 26%, var(--gc-accent-soft-04) 50%, transparent 74%),
+    radial-gradient(circle at 68% 32%, color-mix(in srgb, var(--gc-accent-live) 14%, transparent), transparent 42%) !important;
+}
+
+.gc-public-body .gc-home-floating-logo__orbit,
+.gc-public-body .gc-home-logo-orbit,
+.gc-public-body .gc-home-logo-rings {
+  background:
+    radial-gradient(circle, transparent 54%, var(--gc-accent-soft-18) 55%, transparent 57%),
+    radial-gradient(circle, transparent 72%, var(--gc-accent-soft-12) 73%, transparent 75%) !important;
+  filter: drop-shadow(0 0 18px var(--gc-accent-soft-18)) !important;
+}
+
+.gc-public-body .gc-home-floating-logo__img,
+.gc-public-body .gc-home-logo-free,
+.gc-public-body .gc-home-logo-image {
+  filter:
+    drop-shadow(0 22px 42px rgba(0,0,0,.58))
+    drop-shadow(0 0 20px var(--gc-accent-soft-26))
+    drop-shadow(0 0 54px var(--gc-accent-soft-12)) !important;
+}
+
+.gc-public-body .gc-home-floating-logo:hover .gc-home-floating-logo__img,
+.gc-public-body .gc-home-logo-stage--free:hover .gc-home-logo-free {
+  filter:
+    drop-shadow(0 30px 62px rgba(0,0,0,.64))
+    drop-shadow(0 0 32px color-mix(in srgb, var(--gc-accent-live) 48%, transparent))
+    drop-shadow(0 0 100px var(--gc-accent-soft-26)) !important;
+}
+
+/* Comunidad hero y cards con paleta activa. */
+.gc-page-comunidad .gc-community-hero-scrim {
+  background:
+    radial-gradient(circle at 16% 22%, var(--gc-accent-soft-18), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%) !important;
+}
+
+.gc-page-comunidad .gc-community-for-image,
+.gc-page-comunidad .gc-panel,
+.gc-page-comunidad .gc-lane {
+  border-color: color-mix(in srgb, var(--gc-accent-live) 16%, rgba(255,255,255,.10)) !important;
+}
+
+.gc-page-comunidad .gc-community-for-image::before {
+  background:
+    radial-gradient(circle at 18% 12%, var(--gc-accent-soft-12), transparent 30%),
+    linear-gradient(180deg, rgba(5,16,9,.14), rgba(5,16,9,.70) 58%, rgba(5,16,9,.96)),
+    linear-gradient(90deg, rgba(5,16,9,.62), rgba(5,16,9,.22) 36%, rgba(5,16,9,.18) 64%, rgba(5,16,9,.62)) !important;
+}
+
+.gc-page-comunidad .gc-community-for-image::after {
+  background:
+    linear-gradient(180deg,
+      rgba(5,16,9,.82) 0%,
+      color-mix(in srgb, var(--gc-accent-live) 5%, rgba(5,16,9,.14)) 16%,
+      rgba(5,16,9,0) 28%,
+      rgba(5,16,9,0) 72%,
+      rgba(5,16,9,.26) 84%,
+      rgba(5,16,9,.84) 100%),
+    linear-gradient(90deg,
+      rgba(5,16,9,.88) 0%,
+      color-mix(in srgb, var(--gc-accent-live) 5%, rgba(5,16,9,.18)) 14%,
+      rgba(5,16,9,0) 26%,
+      rgba(5,16,9,0) 74%,
+      rgba(5,16,9,.22) 86%,
+      rgba(5,16,9,.88) 100%) !important;
+}
+
+.gc-page-comunidad .gc-kicker,
+.gc-page-comunidad .gc-section-kicker,
+.gc-page-comunidad .gc-panel-kicker,
+.gc-page-comunidad .gc-lane > span {
+  color: var(--gc-accent-live) !important;
+}
+
+/* Cards públicas: tintado suave por paleta, no verde fijo. */
+html[data-gc-scope="marketing"] .gc-panel,
+html[data-gc-scope="marketing"] .gc-card,
+html[data-gc-scope="marketing"] .gc-lane,
+html[data-gc-scope="marketing"] .gc-status-card {
+  background:
+    radial-gradient(circle at 0 0, var(--gc-accent-soft-08), transparent 18rem),
+    linear-gradient(180deg, rgba(255,255,255,.062), rgba(255,255,255,.028)) !important;
+}
+
+
+
+/* Home logo absolute v8.7.6 */
+.gc-public-body .gc-home-hero-video {
+  position: relative !important;
+  overflow: hidden;
+  isolation: isolate;
+  width: 100%;
+  max-width: none;
+  min-height: clamp(620px, 78vh, 920px);
+}
+
+/* Oculta la card vieja si por caché o HTML sobreviviera. */
+.gc-public-body .gc-home-hero-video .gc-panel[aria-label="Estado rápido de plataforma"],
+.gc-public-body .gc-home-hero-video aside[aria-label="Estado rápido de plataforma"],
+.gc-public-body .gc-home-hero-video .gc-panel:has(.gc-panel-kicker) {
+  display: none !important;
+}
+
+.gc-public-body .gc-home-floating-logo-absolute {
+  position: absolute;
+  z-index: 8;
+  right: max(7vw, calc((100vw - var(--gc-mk-container, 1180px)) / 2 + 20px));
+  top: 50%;
+  width: clamp(220px, 26vw, 390px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  isolation: isolate;
+  perspective: 900px;
+  cursor: pointer;
+}
+
+.gc-public-body .gc-home-floating-logo-absolute__glow {
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  z-index: -3;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 34%, transparent) 0%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 18%, transparent) 27%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 5%, transparent) 52%, transparent 74%),
+    radial-gradient(circle at 68% 32%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 14%, transparent), transparent 42%);
+  filter: blur(34px);
+  animation: gcHomeLogoAbsGlow 5.4s ease-in-out infinite;
+}
+
+.gc-public-body .gc-home-floating-logo-absolute__orbit {
+  position: absolute;
+  inset: 2%;
+  border-radius: 50%;
+  z-index: -2;
+  opacity: .82;
+  background:
+    radial-gradient(circle, transparent 54%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 16%, transparent) 55%, transparent 57%),
+    radial-gradient(circle, transparent 72%, color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 10%, transparent) 73%, transparent 75%);
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 16%, transparent));
+  animation: gcHomeLogoAbsOrbit 24s linear infinite;
+}
+
+.gc-public-body .gc-home-floating-logo-absolute__img {
+  width: 78%;
+  max-width: 360px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  transform-origin: center;
+  filter:
+    drop-shadow(0 22px 42px rgba(0,0,0,.58))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 26%, transparent))
+    drop-shadow(0 0 54px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 12%, transparent));
+  animation: gcHomeLogoAbsFloat 6.2s ease-in-out infinite;
+  transition:
+    transform .42s cubic-bezier(.2,.8,.2,1),
+    filter .42s ease;
+  will-change: transform, filter;
+}
+
+.gc-public-body .gc-home-floating-logo-absolute:hover .gc-home-floating-logo-absolute__img {
+  transform: translateY(-18px) scale(1.2) rotateX(4deg) rotateZ(1deg);
+  filter:
+    drop-shadow(0 30px 62px rgba(0,0,0,.64))
+    drop-shadow(0 0 32px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 48%, transparent))
+    drop-shadow(0 0 100px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 26%, transparent));
+}
+
+.gc-public-body .gc-home-floating-logo-absolute:hover .gc-home-floating-logo-absolute__glow {
+  animation-duration: 2.4s;
+  opacity: 1;
+}
+
+@keyframes gcHomeLogoAbsFloat {
+  0%, 100% { transform: translateY(0) scale(1) rotateZ(-.8deg); }
+  50% { transform: translateY(-12px) scale(1.035) rotateZ(.8deg); }
+}
+
+@keyframes gcHomeLogoAbsGlow {
+  0%, 100% { opacity: .74; transform: scale(.98); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes gcHomeLogoAbsOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-public-body .gc-home-floating-logo-absolute__img,
+  .gc-public-body .gc-home-floating-logo-absolute__glow,
+  .gc-public-body .gc-home-floating-logo-absolute__orbit {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .gc-public-body .gc-home-floating-logo-absolute {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: min(72vw, 300px);
+    margin: 28px auto 0;
+  }
+}
