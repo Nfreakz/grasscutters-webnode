@@ -3,17 +3,12 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
 <AppLayout title="Archivo Motorsport | Admin GrassCutters">
-  <div class="gc-page gc-admin-page-clean gc-archive-admin-page">
+  <div class="gc-page gc-admin-page-clean">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Archivo Motorsport</span>
         <h1 class="gc-title">Archivo editable.</h1>
-        <p class="gc-subtitle">Módulo limpio para crear y revisar fichas sin depender de CSV, Wikimedia ni scripts experimentales.</p>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Storage propio</span>
-          <span class="gc-chip">Borrador/publicado</span>
-          <span class="gc-chip">Media bloqueable</span>
-        </div>
+        <p class="gc-subtitle">Panel unificado MySQL/local para crear, editar, revisar e importar fichas sin rutas antiguas.</p>
       </div>
       <aside class="gc-live-panel">
         <div class="gc-live-panel__title"><span>Fichas</span><strong id="archiveStatusLabel">Cargando</strong></div>
@@ -29,171 +24,64 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
     <section class="gc-section">
       <div class="gc-section-head">
-        <div>
-          <h2>Gestión del archivo</h2>
-          <p>El contenido queda visible en local aunque el endpoint de estado tarde o falle. Si el API falla, lo verás aquí sin esconder la pantalla.</p>
-        </div>
+        <div><h2>Gestión del archivo</h2><p>Listado directo desde la API unificada.</p></div>
         <div class="gc-admin-actions">
           <a class="gc-btn gc-btn--primary" href="/admin/archivo/nuevo">Nueva ficha</a>
+          <a class="gc-btn" href="/admin/archivo/importar">Importar CSV</a>
+          <a class="gc-btn" href="/admin/archivo/imagen-url">Añadir imagen URL</a>
           <button class="gc-btn" id="refreshArchiveBtn" type="button">Recargar</button>
           <button class="gc-btn" id="demoArchiveBtn" type="button">Crear demo</button>
         </div>
       </div>
-
-      <div class="gc-slab" id="archiveNotice" hidden>
-        <h3 id="archiveNoticeTitle">Aviso</h3>
-        <p id="archiveNoticeText"></p>
-      </div>
-
-      <div class="gc-row-list" id="archiveItems">
-        <div class="gc-admin-empty">Cargando fichas...</div>
-      </div>
+      <div class="gc-slab" id="archiveNotice" hidden><h3 id="archiveNoticeTitle">Aviso</h3><p id="archiveNoticeText"></p></div>
+      <div class="gc-row-list" id="archiveItems"><div class="gc-admin-empty">Cargando fichas...</div></div>
     </section>
   </div>
 
   <script is:inline>
     (() => {
+      const API = '/api/admin/archive/unified';
       const $ = (id) => document.getElementById(id);
-      const els = {
-        status: $('archiveStatusLabel'),
-        total: $('archiveTotal'),
-        published: $('archivePublished'),
-        drafts: $('archiveDrafts'),
-        items: $('archiveItems'),
-        notice: $('archiveNotice'),
-        noticeTitle: $('archiveNoticeTitle'),
-        noticeText: $('archiveNoticeText'),
-        refresh: $('refreshArchiveBtn'),
-        demo: $('demoArchiveBtn')
-      };
-
-      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
-
-      async function fetchJson(url, options = {}) {
-        const response = await fetch(url, {
-          credentials: 'include',
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' },
-          ...options
-        });
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const els = { status:$('archiveStatusLabel'), total:$('archiveTotal'), published:$('archivePublished'), drafts:$('archiveDrafts'), items:$('archiveItems'), notice:$('archiveNotice'), noticeTitle:$('archiveNoticeTitle'), noticeText:$('archiveNoticeText'), refresh:$('refreshArchiveBtn'), demo:$('demoArchiveBtn') };
+      async function fetchJson(url, options={}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.ok === false) {
-          throw new Error(data.message || data.error || `HTTP ${response.status}`);
-        }
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
         return data;
       }
-
-      function showNotice(title, text) {
-        els.notice.hidden = false;
-        els.noticeTitle.textContent = title;
-        els.noticeText.textContent = text;
-      }
-
-      function clearNotice() {
-        els.notice.hidden = true;
-        els.noticeTitle.textContent = '';
-        els.noticeText.textContent = '';
-      }
-
-      function normalizeItems(data) {
-        if (Array.isArray(data?.items)) return data.items;
-        if (Array.isArray(data?.archive?.items)) return data.archive.items;
-        if (Array.isArray(data?.data?.items)) return data.data.items;
-        return [];
-      }
-
-      function statusLabel(item) {
-        const status = String(item.status || 'draft');
-        if (status === 'published') return 'Publicado';
-        if (status === 'hidden') return 'Oculto';
-        return 'Borrador';
-      }
-
-      function categoryLabel(item) {
-        const category = String(item.category || item.type || 'item');
-        const map = {
-          circuit: 'Circuito',
-          driver: 'Piloto',
-          vehicle: 'Vehículo',
-          championship: 'Campeonato',
-          record: 'Récord',
-          glossary: 'Glosario'
-        };
-        return map[category] || category;
-      }
-
+      function showNotice(title, text) { els.notice.hidden = false; els.noticeTitle.textContent = title; els.noticeText.textContent = text; }
+      function clearNotice() { els.notice.hidden = true; }
+      function cat(item) { return item.category || item.type || 'general'; }
+      function statusLabel(item) { return item.status === 'published' ? 'Publicado' : item.status === 'hidden' ? 'Oculto' : 'Borrador'; }
       function render(items) {
-        const total = items.length;
-        const published = items.filter((item) => item.status === 'published').length;
-        const drafts = items.filter((item) => item.status !== 'published').length;
-
         els.status.textContent = 'Operativo';
-        els.total.textContent = total;
-        els.published.textContent = published;
-        els.drafts.textContent = drafts;
-
-        if (!items.length) {
-          els.items.innerHTML = '<div class="gc-admin-empty">Todavía no hay fichas. Crea una ficha nueva o genera una demo.</div>';
-          return;
-        }
-
-        els.items.innerHTML = items.map((item, index) => {
-          const id = esc(item.id || item.slug || index);
-          const title = esc(item.title || item.nombre || 'Ficha sin título');
-          const summary = esc(item.summary || item.descripcion_corta || item.description || 'Sin resumen todavía.');
-          return `
-            <a class="gc-row-link" href="/admin/archivo/editar/${encodeURIComponent(item.id || item.slug || index)}">
-              <span class="gc-row-link__num">${String(index + 1).padStart(2, '0')}</span>
-              <span>
-                <strong class="gc-row-link__title">${title}</strong><br>
-                <span class="gc-row-link__desc">${esc(categoryLabel(item))} · ${esc(statusLabel(item))} · ${summary}</span>
-              </span>
-              <span class="gc-row-link__cta">Editar</span>
-            </a>
-          `;
-        }).join('');
+        els.total.textContent = items.length;
+        els.published.textContent = items.filter((i) => i.status === 'published').length;
+        els.drafts.textContent = items.filter((i) => i.status !== 'published').length;
+        if (!items.length) { els.items.innerHTML = '<div class="gc-admin-empty">Todavía no hay fichas.</div>'; return; }
+        els.items.innerHTML = items.map((item, index) => `
+          <a class="gc-row-link" href="/admin/archivo/editar/${encodeURIComponent(item.id || item.slug || index)}">
+            <span class="gc-row-link__num">${String(index + 1).padStart(2, '0')}</span>
+            <span><strong class="gc-row-link__title">${esc(item.title || 'Sin título')}</strong><br><span class="gc-row-link__desc">${esc(cat(item))} · ${esc(statusLabel(item))} · ${esc(item.summary || 'Sin resumen')}</span></span>
+            <span class="gc-row-link__cta">Editar</span>
+          </a>`).join('');
       }
-
       async function loadArchive() {
-        clearNotice();
-        els.status.textContent = 'Cargando';
-        try {
-          const data = await fetchJson('/api/admin/archive/items');
-          render(normalizeItems(data));
-        } catch (error) {
-          els.status.textContent = 'API error';
-          els.items.innerHTML = '<div class="gc-admin-empty">No se pudieron cargar las fichas del Archivo Motorsport.</div>';
-          showNotice('No se pudo leer el API del Archivo', error.message || 'Error desconocido. Revisa que PATCH_SERVER_INDEX.md esté aplicado y que el servidor se haya reiniciado.');
-        }
+        clearNotice(); els.status.textContent = 'Cargando';
+        try { const data = await fetchJson(`${API}/items`); render(Array.isArray(data.items) ? data.items : []); }
+        catch (error) { els.status.textContent = 'API error'; els.items.innerHTML = '<div class="gc-admin-empty">No se pudieron cargar fichas.</div>'; showNotice('No se pudo leer el Archivo', error.message || 'Error desconocido'); }
       }
-
       async function createDemo() {
-        clearNotice();
-        els.demo.disabled = true;
-        els.demo.textContent = 'Creando...';
-        try {
-          await fetchJson('/api/admin/archive/reset-demo', { method: 'POST' });
-          await loadArchive();
-          showNotice('Demo creada', 'Se han creado fichas de prueba para validar el flujo del Archivo Motorsport.');
-        } catch (error) {
-          showNotice('No se pudo crear la demo', error.message || 'Error desconocido.');
-        } finally {
-          els.demo.disabled = false;
-          els.demo.textContent = 'Crear demo';
-        }
+        clearNotice(); els.demo.disabled = true; els.demo.textContent = 'Creando...';
+        try { const data = await fetchJson(`${API}/demo`, { method:'POST' }); await loadArchive(); showNotice('Demo creada', `Creadas ${data.created}, omitidas ${data.skipped}.`); }
+        catch (error) { showNotice('No se pudo crear la demo', error.message || 'Error desconocido'); }
+        finally { els.demo.disabled = false; els.demo.textContent = 'Crear demo'; }
       }
-
       els.refresh?.addEventListener('click', loadArchive);
       els.demo?.addEventListener('click', createDemo);
       loadArchive();
     })();
   </script>
-
-  <script src="/gc-archivo-admin-v822.js" is:inline></script>
-
-  <script src="/gc-archivo-admin-v823.js" is:inline></script>
-
-  <script src="/gc-archivo-safe-api-v824.js" is:inline></script>
 </AppLayout>
-
 <script src="/gc-admin-pagination.js" is:inline></script>
