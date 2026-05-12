@@ -1,0 +1,375 @@
+---
+export const prerender = false;
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../../components/AdminSubnav.astro';
+
+const itemId = Astro.params.id;
+---
+<AppLayout title="Editar ficha | Archivo Motorsport">
+  <div class="gc-page gc-admin-page-clean gc-archive-editor" data-item-id={itemId}>
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo Motorsport</span>
+        <h1 class="gc-title">Editar ficha.</h1>
+        <p class="gc-subtitle">Texto, datos principales y media local controlada desde admin.</p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Estado</span><strong id="archiveEditorState">Cargando</strong></div>
+        <div class="gc-status-list"><div class="gc-status-row"><span>ID</span><strong>{itemId}</strong></div></div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="archiveEditorError" hidden>
+      <div class="gc-slab">
+        <h3>No se pudo cargar la ficha</h3>
+        <p id="archiveEditorErrorText">Error desconocido.</p>
+        <div class="gc-actions"><a class="gc-btn" href="/admin/archivo">Volver</a></div>
+      </div>
+    </section>
+
+    <section id="archiveEditorContent" hidden>
+      <section class="gc-grid-2">
+        <form class="gc-section gc-form" id="archiveMainForm">
+          <div class="gc-section-head"><h2>Contenido</h2><p>Datos editoriales de la ficha.</p></div>
+          <div class="gc-field"><label>Título</label><input name="title" id="fieldTitle" required /></div>
+          <div class="gc-field"><label>Slug</label><input name="slug" id="fieldSlug" required /></div>
+          <div class="gc-field"><label>Tipo</label><select name="type" id="fieldType"><option value="circuit">Circuito</option><option value="driver">Piloto</option><option value="vehicle">Vehículo</option><option value="championship">Campeonato</option><option value="record">Récord</option><option value="glossary">Glosario</option></select></div>
+          <div class="gc-field"><label>Estado</label><select name="status" id="fieldStatus"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></div>
+          <div class="gc-field"><label>Resumen</label><textarea name="summary" id="fieldSummary" rows="4"></textarea></div>
+          <div class="gc-field"><label>Texto largo</label><textarea name="body" id="fieldBody" rows="10"></textarea></div>
+          <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar ficha</button><a class="gc-btn" href="/admin/archivo">Volver</a>
+<!-- GC_ARCHIVE_DELETE_INLINE_START -->
+<button type="button" class="gc-admin-danger-button gc-archive-delete-inline" id="deleteArchiveItemButton" data-archive-delete>
+  Borrar ficha
+</button>
+<!-- GC_ARCHIVE_DELETE_INLINE_END --></div>
+          <p class="gc-message" id="archiveSaveMsg"></p>
+        </form>
+
+        <section class="gc-section">
+          <div class="gc-section-head"><h2>Portada y galería</h2><p>Sube SVG, JPG, PNG o WEBP. Máximo 6 MB.</p></div>
+          <div class="gc-slab gc-archive-cover-preview">
+            <img id="archiveCoverPreview" src="/og/grasscutters-og.svg" alt="Portada" />
+            <div><strong id="archiveCoverTitle">Sin portada</strong><p id="archiveCoverText">Cuando subas una imagen principal aparecerá aquí.</p></div>
+          </div>
+
+          <form class="gc-form" id="archiveMediaForm">
+            <div class="gc-field"><label>Archivo</label><input type="file" id="mediaFile" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" required /></div>
+            <div class="gc-field"><label>Texto alternativo</label><input id="mediaAlt" placeholder="Ej. Portada editorial de Monza" /></div>
+            <div class="gc-field"><label>Fuente</label><input id="mediaSource" value="GrassCutters Racing" /></div>
+            <div class="gc-field"><label>Autor</label><input id="mediaAuthor" placeholder="Autor, IA, Wikimedia, etc." /></div>
+            <div class="gc-field"><label>Licencia</label><input id="mediaLicense" value="Uso propio / pendiente de revisar" /></div>
+            <label class="gc-check"><input id="mediaMakeMain" type="checkbox" checked /> Marcar como portada</label>
+            <label class="gc-check"><input id="mediaLocked" type="checkbox" checked /> Bloquear imagen buena</label>
+            <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Subir imagen</button></div>
+            <p class="gc-message" id="mediaMsg"></p>
+          </form>
+        </section>
+      </section>
+
+      <section class="gc-section">
+        <div class="gc-section-head"><h2>Media de la ficha</h2><p>Imágenes asociadas, portada y candados.</p></div>
+        <div class="gc-archive-media-grid" id="archiveMediaGrid"></div>
+      </section>
+    </section>
+  </div>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('.gc-archive-editor');
+      const itemId = root?.dataset?.itemId;
+      const $ = (id) => document.getElementById(id);
+      let currentItem = null;
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      }
+      function showError(message) {
+        $('archiveEditorContent').hidden = true;
+        $('archiveEditorError').hidden = false;
+        $('archiveEditorErrorText').textContent = message;
+        $('archiveEditorState').textContent = 'Error';
+      }
+      function fillForm(item) {
+        $('fieldTitle').value = item.title || '';
+        $('fieldSlug').value = item.slug || '';
+        $('fieldType').value = item.type || 'circuit';
+        $('fieldStatus').value = item.status || 'draft';
+        $('fieldSummary').value = item.summary || '';
+        $('fieldBody').value = item.body || '';
+        renderMedia(item);
+        $('archiveEditorContent').hidden = false;
+        $('archiveEditorError').hidden = true;
+        $('archiveEditorState').textContent = item.status || 'OK';
+      }
+      function renderMedia(item) {
+        const media = Array.isArray(item.media) ? item.media : [];
+        const main = media.find((image) => image.isMain) || media[0];
+        if (main?.url) {
+          $('archiveCoverPreview').src = main.url;
+          $('archiveCoverTitle').textContent = main.alt || item.title || 'Portada';
+          $('archiveCoverText').textContent = `${main.source || 'Fuente no indicada'} · ${main.license || 'Licencia no indicada'}`;
+        }
+        const grid = $('archiveMediaGrid');
+        if (!media.length) {
+          grid.innerHTML = '<div class="gc-admin-empty">Todavía no hay imágenes asociadas.</div>';
+          return;
+        }
+        grid.innerHTML = media.map((image) => `
+          <article class="gc-archive-media-card">
+            <img src="${esc(image.url)}" alt="${esc(image.alt || '')}" />
+            <div class="gc-archive-media-card__body">
+              <strong>${image.isMain ? 'Portada' : 'Imagen'}</strong>
+              <p>${esc(image.alt || 'Sin texto alternativo')}</p>
+              <small>${image.locked ? 'Bloqueada' : 'Editable'} · ${esc(image.license || 'Licencia no indicada')}</small>
+              <div class="gc-actions">
+                ${image.isMain ? '' : `<button class="gc-btn" data-main="${esc(image.id)}" type="button">Hacer portada</button>`}
+                <button class="gc-btn" data-lock="${esc(image.id)}" data-locked="${image.locked ? '0' : '1'}" type="button">${image.locked ? 'Desbloquear' : 'Bloquear'}</button>
+                <button class="gc-btn" data-delete="${esc(image.id)}" type="button">Quitar</button>
+              </div>
+            </div>
+          </article>`).join('');
+        grid.querySelectorAll('[data-main]').forEach((button) => button.addEventListener('click', () => patchMedia(button.dataset.main, { makeMain: true })));
+        grid.querySelectorAll('[data-lock]').forEach((button) => button.addEventListener('click', () => patchMedia(button.dataset.lock, { locked: button.dataset.locked === '1' })));
+        grid.querySelectorAll('[data-delete]').forEach((button) => button.addEventListener('click', () => deleteMedia(button.dataset.delete)));
+      }
+      async function loadItem() {
+        try {
+          const data = await fetchJson(`/api/admin/archive/items/${encodeURIComponent(itemId)}`);
+          currentItem = data.item || data.data || data;
+          fillForm(currentItem);
+        } catch (error) {
+          showError(error.message || 'No se pudo cargar la ficha.');
+        }
+      }
+      $('archiveMainForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        $('archiveSaveMsg').textContent = 'Guardando...';
+        const payload = {
+          title: $('fieldTitle').value,
+          slug: $('fieldSlug').value,
+          type: $('fieldType').value,
+          status: $('fieldStatus').value,
+          summary: $('fieldSummary').value,
+          body: $('fieldBody').value,
+        };
+        try {
+          const data = await fetchJson(`/api/admin/archive/items/${encodeURIComponent(itemId)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          currentItem = data.item || data.data || data;
+          fillForm(currentItem);
+          $('archiveSaveMsg').textContent = 'Ficha guardada.';
+        } catch (error) {
+          $('archiveSaveMsg').textContent = error.message || 'No se pudo guardar.';
+        }
+      });
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+      $('archiveMediaForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const file = $('mediaFile').files?.[0];
+        if (!file) return;
+        $('mediaMsg').textContent = 'Subiendo imagen...';
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          const payload = {
+            dataUrl,
+            fileName: file.name,
+            alt: $('mediaAlt').value || currentItem?.title || '',
+            source: $('mediaSource').value,
+            author: $('mediaAuthor').value,
+            license: $('mediaLicense').value,
+            makeMain: $('mediaMakeMain').checked,
+            locked: $('mediaLocked').checked,
+            type: 'image'
+          };
+          const data = await fetchJson(`/api/admin/archive/items/${encodeURIComponent(itemId)}/media`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          currentItem = data.item;
+          fillForm(currentItem);
+          $('mediaFile').value = '';
+          $('mediaMsg').textContent = 'Imagen subida.';
+        } catch (error) {
+          $('mediaMsg').textContent = error.message || 'No se pudo subir la imagen.';
+        }
+      });
+      async function patchMedia(mediaId, payload) {
+        const data = await fetchJson(`/api/admin/archive/items/${encodeURIComponent(itemId)}/media/${encodeURIComponent(mediaId)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        currentItem = data.item;
+        fillForm(currentItem);
+      }
+      async function deleteMedia(mediaId) {
+        if (!confirm('¿Quitar esta imagen de la ficha?')) return;
+        const data = await fetchJson(`/api/admin/archive/items/${encodeURIComponent(itemId)}/media/${encodeURIComponent(mediaId)}`, { method:'DELETE' });
+        currentItem = data.item;
+        fillForm(currentItem);
+      }
+      loadItem();
+    })();
+  </script>
+
+  <style is:global>
+    .gc-archive-cover-preview{display:grid;grid-template-columns:180px 1fr;gap:14px;align-items:center}.gc-archive-cover-preview img{width:100%;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);background:rgba(255,255,255,.04)}.gc-check{display:flex;gap:8px;align-items:center;color:var(--soft);margin:8px 0}.gc-archive-media-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.gc-archive-media-card{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.018)}.gc-archive-media-card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:rgba(255,255,255,.04);border:1px solid var(--line)}.gc-archive-media-card p{margin:3px 0 6px;color:var(--soft)}.gc-archive-media-card small{display:block;color:var(--dim);margin-bottom:8px}@media(max-width:720px){.gc-archive-cover-preview,.gc-archive-media-card{grid-template-columns:1fr}}
+  
+/* GC_ARCHIVE_DELETE_STYLE_START */
+.gc-archive-delete-inline,
+.gc-admin-danger-button.gc-archive-delete-inline {
+  border: 1px solid rgba(255, 90, 90, .45);
+  background: rgba(255, 90, 90, .10);
+  color: #ffd7d7;
+  padding: 12px 18px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: 44px;
+}
+.gc-archive-delete-inline:hover,
+.gc-admin-danger-button.gc-archive-delete-inline:hover {
+  background: rgba(255, 90, 90, .20);
+  border-color: rgba(255, 130, 130, .75);
+}
+/* GC_ARCHIVE_DELETE_STYLE_END */
+
+</style>
+
+
+<!-- ARCHIVO_MOTORSPORT_AUTOSLUG_V67 -->
+<script is:inline>
+  (() => {
+    const slugify = (value) => String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/&/g, ' y ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+      .slice(0, 90);
+
+    const findInput = (names) => {
+      for (const name of names) {
+        const el = document.querySelector(
+          `input[name="${name}"], textarea[name="${name}"], #${name}, [data-archivo-field="${name}"]`
+        );
+        if (el) return el;
+      }
+      return null;
+    };
+
+    const titleInput = findInput(['title', 'titulo', 'nombre', 'name']);
+    const slugInput = findInput(['slug']);
+    if (!titleInput || !slugInput) return;
+
+    let touchedSlug = Boolean(slugInput.value && slugInput.value.trim());
+    slugInput.dataset.autoslugReady = 'true';
+
+    const normalizeCurrentSlug = () => {
+      const next = slugify(slugInput.value);
+      if (slugInput.value !== next) slugInput.value = next;
+    };
+
+    const updateSlug = () => {
+      if (touchedSlug) return;
+      const next = slugify(titleInput.value);
+      if (next) slugInput.value = next;
+    };
+
+    slugInput.addEventListener('input', () => { touchedSlug = true; normalizeCurrentSlug(); });
+    titleInput.addEventListener('input', updateSlug);
+    updateSlug();
+
+    const wrapper = slugInput.closest('.gc-field, label, div') || slugInput.parentElement;
+    if (wrapper && !wrapper.querySelector('[data-archivo-regenerate-slug]')) {
+      const controls = document.createElement('div');
+      controls.style.display = 'flex';
+      controls.style.gap = '8px';
+      controls.style.flexWrap = 'wrap';
+      controls.style.marginTop = '8px';
+      controls.innerHTML = `
+        <button class="gc-btn" type="button" data-archivo-regenerate-slug>Regenerar slug</button>
+        <small style="opacity:.72">Se genera desde el título. En fichas existentes solo cambia si pulsas el botón.</small>
+      `;
+      wrapper.appendChild(controls);
+      controls.querySelector('[data-archivo-regenerate-slug]')?.addEventListener('click', () => {
+        touchedSlug = false;
+        updateSlug();
+        touchedSlug = true;
+      });
+    }
+  })();
+</script>
+
+
+<!-- ARCHIVO_RELATIONS_V68 -->
+<section class="gc-section" id="archivoRelationsPanel">
+  <div class="gc-section-head"><h2>Relaciones</h2><p>Automáticas, con opción de fijar u ocultar desde el storage.</p></div>
+  <div class="gc-slab">
+    <p class="gc-note">Las relaciones automáticas se recalculan con <code>node scripts/rebuild-archivo-relations.mjs</code>. Las manuales se conservan.</p>
+    <div class="gc-actions"><button class="gc-btn" type="button" id="archivoReloadRelations">Ver relaciones en consola</button></div>
+  </div>
+</section>
+<script is:inline>
+  (() => {
+    document.getElementById('archivoReloadRelations')?.addEventListener('click', () => {
+      console.info('[Archivo Motorsport] Las relaciones se guardan en relationsAuto, relationsManual y relationsHidden dentro del storage.');
+    });
+  })();
+</script>
+
+</AppLayout>
+
+<!-- GC_ARCHIVE_DELETE_SCRIPT_START -->
+<script>
+  (() => {
+    const button = document.getElementById('deleteArchiveItemButton');
+    if (!button) return;
+
+    button.addEventListener('click', async () => {
+      const itemId = window.location.pathname.split('/').filter(Boolean).pop();
+      if (!itemId) {
+        alert('No se ha podido detectar el ID de la ficha.');
+        return;
+      }
+
+      const first = confirm('¿Seguro que quieres borrar esta ficha del Archivo Motorsport?');
+      if (!first) return;
+
+      const second = confirm('Última confirmación: se eliminará la ficha. Se creará backup del storage antes de borrar.');
+      if (!second) return;
+
+      button.disabled = true;
+      const previousText = button.textContent;
+      button.textContent = 'Borrando...';
+
+      try {
+        const response = await fetch('/api/admin/archive/items/' + encodeURIComponent(itemId), {
+          method: 'DELETE'
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.ok) {
+          throw new Error(data?.message || data?.error || 'No se pudo borrar la ficha.');
+        }
+
+        window.location.href = '/admin/archivo';
+      } catch (error) {
+        alert(error?.message || 'No se pudo borrar la ficha.');
+        button.disabled = false;
+        button.textContent = previousText || 'Borrar ficha';
+      }
+    });
+  })();
+</script>
+<!-- GC_ARCHIVE_DELETE_SCRIPT_END -->
+

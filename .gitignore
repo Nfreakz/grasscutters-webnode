@@ -1,40 +1,77 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 .astro/
+
+# Environment
 .env
 .env.local
 .env.production
+.env.*.local
+
+# Logs / OS
 *.log
 .DS_Store
 Thumbs.db
 
+# Runtime reports
+prepush-report.json
+tracked-cleanup-candidates.txt
+tree-full.txt
+archivo.txt
+
+# Local persistent/generated data
+gc-local-persistent/
+
+# App local DB/storage
 /data/app/*.db
 /data/app/*.db-shm
 /data/app/*.db-wal
 /data/app/*.sqlite
+/data/app/*.sqlite-*
 /data/app/*.sqlite3
+/data/app/*.db3
 /data/app/*.json
 /data/app/*.tmp
 
+# Specific app runtime JSON
+/data/app/calendar-events.json
+/data/app/calendar-events.*.json
+/data/app/users.json
+/data/app/display-names.json
+/data/app/motorsport-archive.json
+
+# Archivo Motorsport local/import/generated data
+/data/archive-import/
+/public/archive-media/
+
+# Stracker local DB/backups
 /data/stracker/*.db3
 /data/stracker/*.sqlite
 /data/stracker/*.sqlite3
 /data/stracker/*.bak
 /data/stracker/*.backup
-# GrassCutters runtime data
-/data/app/calendar-events.json
-/data/app/calendar-events.*.json
-/data/app/users.json
-/data/app/display-names.json
-*.backup-calendar-*
-*.backup-profile-*
-src/**/*.backup-*
 
-# Local backups / patch leftovers
+# Backups / patch leftovers
+*.backup
 *.backup*
 *.bak
 *.tmp
+*.old
+*.orig
+*.rej
+*.backup-calendar-*
+*.backup-profile-*
+*.backup-hard-delete-*
+*.backup-link-pilot-*
+*.backup-unlink-pilot-*
+src/**/*.backup-*
+src/**/*.backup*
+scripts/**/*.backup-*
+scripts/**/*.backup*
+
+# Temporary patch scripts from development
 scripts/apply_*.cjs
 scripts/check_*.cjs
-tracked-cleanup-candidates.txt
-tree-full.txt

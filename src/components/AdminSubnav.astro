@@ -5,6 +5,10 @@ const items = [
   { href: '/admin/usuarios', label: 'Usuarios', desc: 'Cuentas y permisos' },
   { href: '/admin/nombres', label: 'Nombres', desc: 'Alias visibles' },
   { href: '/admin/calendario', label: 'Calendario', desc: 'Eventos y ACSM' },
+  { href: '/admin/archivo', label: 'Archivo', desc: 'Archivo Motorsport' },
+  { href: '/admin/archivo/calidad', label: 'Calidad', desc: 'Revisión de fichas' },
+  { href: '/admin/archivo/relaciones', label: 'Relaciones', desc: 'Conexiones entre fichas' },
+  { href: '/admin/archivo/imagen-url', label: 'Imagen URL', desc: 'Descargar y asociar' },
   { href: '/admin/sistema', label: 'Sistema', desc: 'Storage y sync' },
   { href: '/admin/historial', label: 'Historial', desc: 'Auditoría' }
 ];
@@ -22,7 +26,7 @@ const isActive = (href) => current === href || (href !== '/admin' && current.sta
 <style is:global>
   .gc-admin-subnav{
     display:grid;
-    grid-template-columns:repeat(6,minmax(0,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(138px,1fr));
     gap:10px;
     margin:0 0 clamp(18px,2vw,26px);
   }
@@ -60,6 +64,5 @@ const isActive = (href) => current === href || (href !== '/admin' && current.sta
   .gc-admin-empty{padding:18px;border:1px solid var(--line);background:rgba(255,255,255,.018);color:var(--soft)}
   .gc-input--compact{min-height:36px;padding:7px 10px}
   .gc-admin-page-clean .gc-section{min-width:0}
-  @media(max-width:1100px){.gc-admin-subnav{grid-template-columns:repeat(3,minmax(0,1fr))}}
   @media(max-width:720px){.gc-admin-subnav{grid-template-columns:1fr}.gc-admin-subnav a{min-height:auto}}
 </style>

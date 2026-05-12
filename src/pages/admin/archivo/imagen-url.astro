@@ -1,0 +1,152 @@
+---
+export const prerender = false;
+import fs from 'node:fs';
+import path from 'node:path';
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+
+const storageFile = path.join(process.cwd(), 'data', 'app', 'motorsport-archive.json');
+let items = [];
+try {
+  const raw = JSON.parse(fs.readFileSync(storageFile, 'utf8'));
+  items = Array.isArray(raw.items) ? raw.items : [];
+} catch {
+  items = [];
+}
+const sorted = items.map((item) => ({
+  id: String(item.id || ''),
+  title: String(item.title || item.name || item.slug || item.id || 'Sin título'),
+  category: String(item.category || item.type || 'general'),
+  status: String(item.status || 'draft'),
+})).sort((a, b) => a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }));
+---
+<AppLayout title="Archivo Motorsport · Imagen por URL" description="Descargar una imagen desde URL y asociarla a una ficha del Archivo Motorsport.">
+  <section class="gc-archive-url-page">
+    <AdminSubnav />
+
+    <header class="gc-archive-url-hero">
+      <p class="gc-archive-kicker">Archivo Motorsport</p>
+      <h1>Añadir imagen desde URL</h1>
+      <p>Pega un enlace directo o una URL de Wikimedia Commons. Si el sistema puede leer los metadatos, rellenará autor, licencia, fuente y texto alternativo automáticamente.</p>
+    </header>
+
+    <div class="gc-archive-url-card">
+      <form id="media-url-form" class="gc-archive-url-form">
+        <label class="gc-field gc-field--full">
+          <span>Ficha</span>
+          <select id="itemId" name="itemId" required>
+            <option value="">Selecciona una ficha</option>
+            {sorted.map((item) => (
+              <option value={item.id}>{item.title} · {item.category} · {item.status}</option>
+            ))}
+          </select>
+        </label>
+
+        <label class="gc-field gc-field--full">
+          <span>URL de imagen</span>
+          <div class="gc-url-row">
+            <input id="imageUrl" name="imageUrl" type="url" required placeholder="https://commons.wikimedia.org/wiki/File:..." />
+            <button type="button" id="inspectBtn" class="gc-button-secondary">Leer datos</button>
+          </div>
+          <small>Wikimedia Commons se puede autocompletar. En webs externas quizá haya que rellenar licencia/fuente a mano.</small>
+        </label>
+
+        <label class="gc-field gc-field--full">
+          <span>Texto alternativo</span>
+          <input id="alt" name="alt" type="text" placeholder="Descripción breve de la imagen" />
+        </label>
+
+        <label class="gc-field">
+          <span>Fuente</span>
+          <input id="source" name="source" type="text" value="URL externa" />
+        </label>
+
+        <label class="gc-field">
+          <span>URL fuente / crédito</span>
+          <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://..." />
+        </label>
+
+        <label class="gc-field">
+          <span>Autor</span>
+          <input id="author" name="author" type="text" placeholder="Autor o crédito" />
+        </label>
+
+        <label class="gc-field">
+          <span>Licencia</span>
+          <input id="license" name="license" type="text" placeholder="CC BY-SA 4.0, uso propio, etc." />
+        </label>
+
+        <div class="gc-checks gc-field--full">
+          <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Marcar como portada principal</label>
+          <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear imagen buena</label>
+        </div>
+
+        <div class="gc-actions gc-field--full">
+          <button type="submit" class="gc-button-primary">Descargar y añadir</button>
+          <a class="gc-button-secondary" href="/admin/archivo">Volver</a>
+        </div>
+      </form>
+
+      <aside class="gc-archive-url-preview">
+        <h2>Vista previa</h2>
+        <div class="gc-preview-frame">
+          <img id="previewImg" src="" alt="" hidden />
+          <span id="previewEmpty">Sin imagen todavía</span>
+        </div>
+        <div id="metaBox" class="gc-meta-box">Pega una URL y pulsa “Leer datos”.</div>
+      </aside>
+    </div>
+
+    <div id="status" class="gc-status" hidden></div>
+  </section>
+
+  <style is:global>
+    .gc-archive-url-page{max-width:1180px;margin:0 auto;padding:24px 18px 56px}.gc-archive-url-hero{margin:18px 0 20px;padding:24px;border:1px solid rgba(137,195,92,.22);border-radius:24px;background:linear-gradient(135deg,rgba(137,195,92,.10),rgba(255,255,255,.03))}.gc-archive-kicker{margin:0 0 8px;color:#9fd46f;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}.gc-archive-url-hero h1{margin:0 0 8px;font-size:clamp(2rem,4vw,3.1rem)}.gc-archive-url-hero p{margin:0;color:rgba(255,255,255,.76);max-width:820px}.gc-archive-url-card{display:grid;grid-template-columns:minmax(0,1.2fr) 360px;gap:18px}.gc-archive-url-form,.gc-archive-url-preview{padding:20px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(255,255,255,.04)}.gc-archive-url-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.gc-field{display:grid;gap:7px}.gc-field--full{grid-column:1/-1}.gc-field span{font-weight:700;color:rgba(255,255,255,.88)}.gc-field small{color:rgba(255,255,255,.58)}.gc-field input,.gc-field select{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(5,10,8,.68);color:inherit}.gc-url-row{display:grid;grid-template-columns:1fr auto;gap:10px}.gc-checks{display:flex;gap:16px;flex-wrap:wrap}.gc-checks label{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.82)}.gc-actions{display:flex;gap:12px;flex-wrap:wrap}.gc-button-primary,.gc-button-secondary{border:0;border-radius:999px;padding:12px 18px;font-weight:800;text-decoration:none;cursor:pointer}.gc-button-primary{background:#89c35c;color:#081008}.gc-button-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.12)}.gc-preview-frame{display:grid;place-items:center;aspect-ratio:16/10;border-radius:18px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);overflow:hidden;color:rgba(255,255,255,.54)}.gc-preview-frame img{width:100%;height:100%;object-fit:cover}.gc-meta-box{margin-top:14px;padding:14px;border-radius:16px;background:rgba(0,0,0,.18);color:rgba(255,255,255,.72);font-size:.92rem;line-height:1.45}.gc-status{max-width:1180px;margin:18px auto 0;padding:14px 16px;border-radius:16px}.gc-status.ok{display:block;background:rgba(64,168,96,.15);border:1px solid rgba(64,168,96,.45);color:#c4f4d4}.gc-status.error{display:block;background:rgba(205,61,75,.14);border:1px solid rgba(205,61,75,.45);color:#ffd0d6}@media(max-width:900px){.gc-archive-url-card{grid-template-columns:1fr}.gc-archive-url-form{grid-template-columns:1fr}.gc-url-row{grid-template-columns:1fr}}
+  </style>
+
+  <script>
+    const form = document.getElementById('media-url-form');
+    const statusBox = document.getElementById('status');
+    const inspectBtn = document.getElementById('inspectBtn');
+    const imageInput = document.getElementById('imageUrl');
+    const previewImg = document.getElementById('previewImg');
+    const previewEmpty = document.getElementById('previewEmpty');
+    const metaBox = document.getElementById('metaBox');
+
+    function showStatus(kind, message) { statusBox.hidden = false; statusBox.className = `gc-status ${kind}`; statusBox.innerHTML = message; }
+    function setValue(id, value) { const el = document.getElementById(id); if (el && value && !el.value) el.value = value; }
+    function showPreview(url, alt='') { if (!url) return; previewImg.src = url; previewImg.alt = alt || ''; previewImg.hidden = false; previewEmpty.hidden = true; }
+
+    async function inspectUrl() {
+      const imageUrl = imageInput.value.trim();
+      if (!imageUrl) { showStatus('error', 'Pega una URL primero.'); return null; }
+      metaBox.textContent = 'Leyendo metadatos...';
+      try {
+        const res = await fetch('/api/admin/archive/media/inspect-url', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ imageUrl }) });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'No se pudieron leer metadatos.');
+        const m = data.metadata || {};
+        setValue('alt', m.alt || ''); setValue('source', m.source || ''); setValue('sourceUrl', m.sourceUrl || ''); setValue('author', m.author || ''); setValue('license', m.license || ''); showPreview(m.imageUrl || imageUrl, m.alt || '');
+        metaBox.innerHTML = `<strong>${m.provider === 'wikimedia' ? 'Wikimedia Commons detectado' : 'URL externa'}</strong><br>Fuente: ${m.source || 'pendiente'}<br>Autor: ${m.author || 'pendiente'}<br>Licencia: ${m.license || 'pendiente'}`;
+        showStatus('ok', 'Metadatos leídos. Revisa los campos antes de descargar.');
+        return m;
+      } catch (error) { metaBox.textContent = 'No se pudieron leer metadatos. Rellena los campos a mano.'; showStatus('error', error?.message || 'Error leyendo metadatos.'); return null; }
+    }
+
+    inspectBtn?.addEventListener('click', inspectUrl);
+    imageInput?.addEventListener('blur', () => { if (imageInput.value.trim()) inspectUrl(); });
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const fd = new FormData(form); const itemId = String(fd.get('itemId') || '').trim();
+      if (!itemId) { showStatus('error','Selecciona una ficha.'); return; }
+      const payload = { imageUrl:String(fd.get('imageUrl')||''), alt:String(fd.get('alt')||''), source:String(fd.get('source')||''), sourceUrl:String(fd.get('sourceUrl')||''), author:String(fd.get('author')||''), license:String(fd.get('license')||''), makePrimary:fd.get('makePrimary')==='on', locked:fd.get('locked')==='on' };
+      showStatus('ok','Descargando y guardando imagen...');
+      try {
+        const res = await fetch(`/api/admin/archive/items/${encodeURIComponent(itemId)}/media/from-url`, { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json(); if (!res.ok || !data?.ok) throw new Error(data?.error || 'No se pudo añadir la imagen.');
+        showStatus('ok', `Imagen añadida correctamente.<br><strong>Ficha:</strong> ${data.itemTitle}<br><strong>Local:</strong> ${data.media?.url || ''}`);
+      } catch (error) { showStatus('error', error?.message || 'Error desconocido.'); }
+    });
+  </script>
+</AppLayout>

@@ -1,0 +1,189 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+
+export const prerender = false;
+
+type ArchiveItem = {
+  id?: string;
+  type?: string;
+  category?: string;
+  slug?: string;
+  title?: string;
+  status?: string;
+  summary?: string;
+  body?: string;
+  facts?: Record<string, unknown>;
+  media?: Array<Record<string, unknown>>;
+  updatedAt?: string;
+};
+
+const rootDir = process.cwd();
+const storePath = path.join(rootDir, 'data', 'app', 'motorsport-archive.json');
+
+function readStore(): { items: ArchiveItem[]; updatedAt?: string } {
+  try {
+    if (!fs.existsSync(storePath)) return { items: [] };
+    const parsed = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+    return {
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+      updatedAt: parsed.updatedAt
+    };
+  } catch {
+    return { items: [] };
+  }
+}
+
+function getCategoryLabel(item: ArchiveItem) {
+  const value = String(item.category || item.type || '').toLowerCase();
+  const labels: Record<string, string> = {
+    circuit: 'Circuito',
+    circuits: 'Circuito',
+    circuito: 'Circuito',
+    driver: 'Piloto',
+    drivers: 'Piloto',
+    piloto: 'Piloto',
+    vehicle: 'Vehículo',
+    vehicles: 'Vehículo',
+    vehiculo: 'Vehículo',
+    campeonato: 'Campeonato',
+    championship: 'Campeonato',
+    championships: 'Campeonato',
+    record: 'Récord',
+    records: 'Récord',
+    glosario: 'Glosario',
+    glossary: 'Glosario'
+  };
+  return labels[value] || value || 'Ficha';
+}
+
+function hasMainMedia(item: ArchiveItem) {
+  const media = Array.isArray(item.media) ? item.media : [];
+  return media.some((entry) => Boolean(entry?.isMain || entry?.main || entry?.cover || entry?.locked) && Boolean(entry?.url || entry?.localUrl || entry?.local_url));
+}
+
+function hasAnyMedia(item: ArchiveItem) {
+  const media = Array.isArray(item.media) ? item.media : [];
+  return media.some((entry) => Boolean(entry?.url || entry?.localUrl || entry?.local_url));
+}
+
+function factCount(item: ArchiveItem) {
+  const facts = item.facts && typeof item.facts === 'object' ? item.facts : {};
+  return Object.values(facts).filter((value) => String(value ?? '').trim().length > 0).length;
+}
+
+function scoreItem(item: ArchiveItem) {
+  let score = 0;
+  const issues: string[] = [];
+  const summaryLen = String(item.summary || '').trim().length;
+  const bodyLen = String(item.body || '').trim().length;
+  const facts = factCount(item);
+
+  if (String(item.status || '').toLowerCase() === 'published') score += 20;
+  else issues.push('No publicada');
+
+  if (summaryLen >= 80) score += 20;
+  else issues.push('Resumen corto o vacío');
+
+  if (bodyLen >= 250) score += 25;
+  else issues.push('Texto largo corto o vacío');
+
+  if (hasMainMedia(item)) score += 20;
+  else if (hasAnyMedia(item)) { score += 10; issues.push('Sin portada marcada'); }
+  else issues.push('Sin imagen');
+
+  if (facts >= 4) score += 15;
+  else issues.push('Pocos datos rápidos');
+
+  const level = score >= 80 ? 'lista' : score >= 50 ? 'revisar' : 'pobre';
+  return { score, level, issues };
+}
+
+const store = readStore();
+const items = store.items.map((item) => ({ ...item, quality: scoreItem(item) }));
+const stats = {
+  total: items.length,
+  published: items.filter((item) => String(item.status || '').toLowerCase() === 'published').length,
+  draft: items.filter((item) => String(item.status || '').toLowerCase() === 'draft').length,
+  hidden: items.filter((item) => String(item.status || '').toLowerCase() === 'hidden').length,
+  lista: items.filter((item) => item.quality.level === 'lista').length,
+  revisar: items.filter((item) => item.quality.level === 'revisar').length,
+  pobre: items.filter((item) => item.quality.level === 'pobre').length
+};
+---
+<AppLayout title="Calidad Archivo Motorsport | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-archive-quality-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo Motorsport</span>
+        <h1 class="gc-title">Calidad y publicación.</h1>
+        <p class="gc-subtitle">Panel interno para revisar qué fichas están listas, cuáles necesitan trabajo y cuáles siguen en borrador.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">{stats.total} fichas</span>
+          <span class="gc-chip">{stats.published} publicadas</span>
+          <span class="gc-chip">{stats.pobre} pobres</span>
+        </div>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Estado</span><strong>{stats.lista} listas</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Revisar</span><strong>{stats.revisar}</strong></div>
+          <div class="gc-status-row"><span>Pobres</span><strong>{stats.pobre}</strong></div>
+          <div class="gc-status-row"><span>Borradores</span><strong>{stats.draft}</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-metrics">
+      <div class="gc-metric"><span>Total</span><strong>{stats.total}</strong><small>fichas</small></div>
+      <div class="gc-metric"><span>Publicadas</span><strong>{stats.published}</strong><small>visibles en /archivo</small></div>
+      <div class="gc-metric"><span>Listas</span><strong>{stats.lista}</strong><small>calidad alta</small></div>
+      <div class="gc-metric"><span>Revisar</span><strong>{stats.revisar}</strong><small>mejorables</small></div>
+      <div class="gc-metric"><span>Pobres</span><strong>{stats.pobre}</strong><small>incompletas</small></div>
+    </section>
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <h2>Checklist de fichas</h2>
+        <p>Una ficha lista debería tener portada, resumen, texto largo, datos rápidos y estado publicado.</p>
+      </div>
+
+      {items.length ? (
+        <div class="archive-quality-table">
+          <div class="archive-quality-row archive-quality-row--head">
+            <span>Ficha</span>
+            <span>Tipo</span>
+            <span>Estado</span>
+            <span>Calidad</span>
+            <span>Problemas</span>
+            <span></span>
+          </div>
+          {items.map((item) => (
+            <div class:list={["archive-quality-row", `is-${item.quality.level}`]}>
+              <span><strong>{item.title || 'Sin título'}</strong><small>{item.slug || item.id}</small></span>
+              <span>{getCategoryLabel(item)}</span>
+              <span>{item.status || 'draft'}</span>
+              <span><strong>{item.quality.score}/100</strong><small>{item.quality.level}</small></span>
+              <span>{item.quality.issues.length ? item.quality.issues.join(' · ') : 'Sin problemas graves'}</span>
+              <span><a class="gc-btn gc-btn--small" href={`/admin/archivo/editar/${item.id}`}>Editar</a></span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="gc-slab">
+          <h3>No hay fichas todavía</h3>
+          <p>Crea una demo o una ficha nueva desde el panel del Archivo Motorsport.</p>
+          <div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/admin/archivo">Volver al archivo</a></div>
+        </div>
+      )}
+    </section>
+  </div>
+
+  <style is:global>
+    .archive-quality-table{display:grid;gap:8px}.archive-quality-row{display:grid;grid-template-columns:1.3fr .6fr .6fr .55fr 1.6fr auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);background:rgba(255,255,255,.018)}.archive-quality-row--head{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);background:rgba(255,255,255,.035)}.archive-quality-row strong{display:block}.archive-quality-row small{display:block;color:var(--dim);font-size:.75rem}.archive-quality-row.is-lista{border-color:rgba(122,255,144,.22)}.archive-quality-row.is-revisar{border-color:rgba(255,208,102,.22)}.archive-quality-row.is-pobre{border-color:rgba(255,111,111,.28)}.gc-btn--small{min-height:32px;padding:6px 10px;font-size:.78rem}@media(max-width:980px){.archive-quality-row{grid-template-columns:1fr}.archive-quality-row--head{display:none}}
+  </style>
+</AppLayout>

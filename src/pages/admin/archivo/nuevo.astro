@@ -1,0 +1,92 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+<AppLayout title="Nueva ficha Archivo | GrassCutters">
+  <div class="gc-page gc-admin-page-clean">
+    <section class="gc-hero gc-hero--compact"><div><span class="gc-kicker">Archivo Motorsport</span><h1 class="gc-title">Nueva ficha.</h1><p class="gc-subtitle">Crea una ficha limpia. Más adelante añadiremos subida de imágenes desde este mismo panel.</p></div></section>
+    <AdminSubnav />
+    <section class="gc-section"><div class="gc-section-head"><h2>Contenido</h2><p>Los campos principales ya quedan listos para el storage nuevo.</p></div><form class="gc-form" id="itemForm">
+      <div class="gc-field"><label>Categoría</label><select name="category"><option value="circuit">Circuito</option><option value="driver">Piloto</option><option value="vehicle">Vehículo</option><option value="championship">Campeonato</option><option value="record">Récord</option><option value="glossary">Glosario</option></select></div>
+      <div class="gc-field"><label>Título</label><input name="title" required /></div>
+      <div class="gc-field"><label>Slug</label><input name="slug" placeholder="se genera si lo dejas vacío" /></div>
+      <div class="gc-field"><label>Estado</label><select name="status"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></div>
+      <div class="gc-field"><label>Resumen</label><textarea name="summary" rows="3"></textarea></div>
+      <div class="gc-field"><label>Texto largo</label><textarea name="body" rows="10"></textarea></div>
+      <div class="gc-field"><label>Datos rápidos</label><textarea name="factsText" rows="7" placeholder="País: Italia&#10;Longitud: 5.793 km&#10;Año: 1922"></textarea></div>
+      <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar</button><a class="gc-btn" href="/admin/archivo">Cancelar</a></div><p class="gc-message" id="msg"></p>
+    </form></section>
+  </div>
+  <script is:inline>
+    (() => { const form=document.getElementById('itemForm'); const msg=document.getElementById('msg'); const parseFacts=(text)=>String(text||'').split(/\n+/).map(l=>{const [label,...rest]=l.split(':'); return {label:(label||'').trim(), value:rest.join(':').trim()};}).filter(f=>f.label||f.value); form.addEventListener('submit', async (e)=>{e.preventDefault(); msg.textContent='Guardando...'; const data=Object.fromEntries(new FormData(form)); const payload={...data, facts:parseFacts(data.factsText)}; delete payload.factsText; const res=await fetch('/api/admin/archive/items',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const json=await res.json().catch(()=>({})); if(!res.ok||json.ok===false){msg.textContent=json.message||'No se pudo guardar';return;} window.location.href=`/admin/archivo/editar/${encodeURIComponent(json.item.id)}`; }); })();
+  </script>
+
+
+<!-- ARCHIVO_MOTORSPORT_AUTOSLUG_V67 -->
+<script is:inline>
+  (() => {
+    const slugify = (value) => String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/&/g, ' y ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+      .slice(0, 90);
+
+    const findInput = (names) => {
+      for (const name of names) {
+        const el = document.querySelector(
+          `input[name="${name}"], textarea[name="${name}"], #${name}, [data-archivo-field="${name}"]`
+        );
+        if (el) return el;
+      }
+      return null;
+    };
+
+    const titleInput = findInput(['title', 'titulo', 'nombre', 'name']);
+    const slugInput = findInput(['slug']);
+    if (!titleInput || !slugInput) return;
+
+    let touchedSlug = Boolean(slugInput.value && slugInput.value.trim());
+    slugInput.dataset.autoslugReady = 'true';
+
+    const normalizeCurrentSlug = () => {
+      const next = slugify(slugInput.value);
+      if (slugInput.value !== next) slugInput.value = next;
+    };
+
+    const updateSlug = () => {
+      if (touchedSlug) return;
+      const next = slugify(titleInput.value);
+      if (next) slugInput.value = next;
+    };
+
+    slugInput.addEventListener('input', () => { touchedSlug = true; normalizeCurrentSlug(); });
+    titleInput.addEventListener('input', updateSlug);
+    updateSlug();
+
+    const wrapper = slugInput.closest('.gc-field, label, div') || slugInput.parentElement;
+    if (wrapper && !wrapper.querySelector('[data-archivo-regenerate-slug]')) {
+      const controls = document.createElement('div');
+      controls.style.display = 'flex';
+      controls.style.gap = '8px';
+      controls.style.flexWrap = 'wrap';
+      controls.style.marginTop = '8px';
+      controls.innerHTML = `
+        <button class="gc-btn" type="button" data-archivo-regenerate-slug>Regenerar slug</button>
+        <small style="opacity:.72">Se genera desde el título. En fichas existentes solo cambia si pulsas el botón.</small>
+      `;
+      wrapper.appendChild(controls);
+      controls.querySelector('[data-archivo-regenerate-slug]')?.addEventListener('click', () => {
+        touchedSlug = false;
+        updateSlug();
+        touchedSlug = true;
+      });
+    }
+  })();
+</script>
+
+</AppLayout>

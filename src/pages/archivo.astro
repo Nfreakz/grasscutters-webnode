@@ -1,0 +1,64 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { ARCHIVE_PUBLIC_CATEGORIES, getArchiveCoverAlt, getArchiveCoverUrl, getArchiveItemUrl, getArchiveStats, searchArchiveItems } from '../lib/motorsport-archive/public';
+
+export const prerender = false;
+
+const q = String(Astro.url.searchParams.get('q') || '').trim();
+const stats = getArchiveStats();
+const results = searchArchiveItems(q);
+---
+<MarketingLayout title="Archivo Motorsport | GrassCutters Racing" description="Archivo editable de circuitos, pilotos, vehículos, campeonatos, récords y conceptos motorsport." canonicalPath="/archivo">
+  <section class="gc-page archive-hero">
+    <div>
+      <span class="gc-kicker">Archivo Motorsport</span>
+      <h1 class="gc-title">Un archivo vivo para ordenar historias, datos e imágenes del motorsport.</h1>
+      <p class="gc-lead">Fichas revisables, portadas locales y contenido publicado desde el admin. Nada de depender de enlaces rotos para que la página se vea bien.</p>
+      <form class="archive-search" method="get" action="/archivo">
+        <input type="search" name="q" value={q} placeholder="Busca Monza, Senna, Porsche 917..." />
+        <button type="submit">Buscar</button>
+      </form>
+      <div class="archive-chips">
+        {ARCHIVE_PUBLIC_CATEGORIES.map((category) => <a href={`/archivo/${category.slug}/`}>{category.label}</a>)}
+      </div>
+    </div>
+    <aside class="archive-stats">
+      <article><strong>{stats.total}</strong><span>fichas publicadas</span></article>
+      {stats.categories.map((category) => <article><strong>{category.count}</strong><span>{category.label}</span></article>)}
+    </aside>
+  </section>
+
+  <section class="gc-page archive-section">
+    <div class="archive-section-head">
+      <div>
+        <h2>{q ? `Resultados para “${q}”` : 'Últimas fichas publicadas'}</h2>
+        <p>{q ? `${results.length} resultado${results.length === 1 ? '' : 's'} encontrado${results.length === 1 ? '' : 's'}.` : 'Solo aparecen fichas marcadas como publicadas en el admin.'}</p>
+      </div>
+    </div>
+
+    {results.length ? (
+      <div class="archive-grid">
+        {results.map((item) => (
+          <a class="archive-card" href={getArchiveItemUrl(item)}>
+            <img src={getArchiveCoverUrl(item)} alt={getArchiveCoverAlt(item)} loading="lazy" onerror="this.onerror=null;this.src='/images/biblia-placeholder.svg';" />
+            <div>
+              <span>{ARCHIVE_PUBLIC_CATEGORIES.find((category) => category.key === item.category)?.singular}</span>
+              <h3>{item.title}</h3>
+              <p>{item.summary || 'Ficha publicada en el Archivo Motorsport.'}</p>
+              {item.facts.length ? <ul>{item.facts.slice(0, 3).map((fact) => <li><strong>{fact.label}:</strong> {fact.value}</li>)}</ul> : null}
+            </div>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <div class="archive-empty">
+        <h3>Aún no hay fichas publicadas</h3>
+        <p>Publica una ficha desde <code>/admin/archivo</code> y aparecerá aquí.</p>
+      </div>
+    )}
+  </section>
+
+  <style is:global>
+    .archive-hero{display:grid;grid-template-columns:1.15fr .85fr;gap:1.4rem;align-items:start}.archive-search{display:flex;gap:.75rem;margin:1.2rem 0}.archive-search input{flex:1;min-width:0;padding:.95rem 1rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit}.archive-search button{padding:.95rem 1.2rem;border:0;border-radius:999px;background:var(--accent,#7aff90);color:#07110a;font-weight:800;cursor:pointer}.archive-chips{display:flex;gap:.6rem;flex-wrap:wrap}.archive-chips a{padding:.48rem .78rem;border:1px solid rgba(255,255,255,.12);border-radius:999px;color:inherit;text-decoration:none}.archive-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}.archive-stats article{padding:1rem;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}.archive-stats strong{display:block;font-size:1.6rem}.archive-stats span{opacity:.78}.archive-section{padding-top:0}.archive-section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:1rem}.archive-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.archive-card{display:grid;grid-template-rows:auto 1fr;gap:.85rem;padding:.9rem;border-radius:24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);text-decoration:none;color:inherit;transition:transform .18s ease,border-color .18s ease}.archive-card:hover{transform:translateY(-2px);border-color:rgba(122,255,144,.32)}.archive-card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:18px;background:#101810}.archive-card span{display:inline-block;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;opacity:.65;margin-bottom:.25rem}.archive-card h3{margin:.1rem 0 .35rem}.archive-card p{margin:0;color:rgba(255,255,255,.78)}.archive-card ul{display:grid;gap:.25rem;margin:.7rem 0 0;padding:0;list-style:none;font-size:.9rem}.archive-empty{padding:1.2rem;border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}@media(max-width:980px){.archive-hero{grid-template-columns:1fr}.archive-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.archive-search{flex-direction:column}.archive-stats,.archive-grid{grid-template-columns:1fr}}
+  </style>
+</MarketingLayout>

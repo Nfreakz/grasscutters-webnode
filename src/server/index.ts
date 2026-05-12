@@ -1,10 +1,15 @@
 import 'dotenv/config';
+import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import crypto from 'node:crypto';
 
+import { registerMotorsportArchiveRoutes } from './motorsport-archive-routes';
+import { registerMotorsportArchiveImageUrlRoutes } from './motorsport-archive-image-url-routes';
+import { registerMotorsportArchiveHardDeleteRoutes } from './motorsport-archive-hard-delete-routes';
+import { registerAdminUserProfileLinkRoutes } from './admin-user-profile-link-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -3746,6 +3751,28 @@ const mockPilots = [
 
 const app = express();
 
+// GC Admin user/profile link routes.
+registerAdminUserProfileLinkRoutes(app, { rootDir });
+
+
+// GC Archivo Motorsport hard-delete route must be registered before legacy archive routes.
+registerMotorsportArchiveHardDeleteRoutes(app, { rootDir });
+
+
+/* GC Archivo Motorsport archive-media static mount */
+const archiveMediaDir = process.env.ARCHIVE_MEDIA_DIR?.trim()
+  ? path.resolve(process.env.ARCHIVE_MEDIA_DIR.trim())
+  : path.join(rootDir, 'public', 'archive-media');
+
+if (fs.existsSync(archiveMediaDir)) {
+  app.use('/archive-media', express.static(archiveMediaDir, {
+    index: false,
+    immutable: true,
+    maxAge: '30d'
+  }));
+}
+
+
 // GC ACSM PRIORITY MYSQL GUARD V6 START
 async function gcAcsmV6ResolveAdmin(req: any) {
   const access = await getCurrentAdminAccess(req as express.Request);
@@ -4852,6 +4879,9 @@ app.delete(['/api/admin/calendar-events/:id', '/api/admin/calendar/events/:id', 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
+registerMotorsportArchiveRoutes(app, { rootDir });
+registerMotorsportArchiveImageUrlRoutes(app, { rootDir });
+registerMotorsportArchiveDeleteRoutes(app, { rootDir });
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -6886,6 +6916,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 /* GC_ASTRO_RUNTIME_PATCH_V3
  * Runtime Hostinger + Astro para Express.

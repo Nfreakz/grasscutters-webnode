@@ -1,0 +1,187 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+export const prerender = false;
+
+type ArchiveItem = {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  status: string;
+  summary: string;
+  body?: string;
+  facts?: Record<string, unknown>;
+  media?: Array<Record<string, unknown>>;
+  relations?: Array<Record<string, unknown>>;
+};
+
+const CATEGORY_META: Record<string, { slug: string; label: string; singular: string }> = {
+  circuits: { slug: 'circuitos', label: 'Circuitos', singular: 'circuito' },
+  circuitos: { slug: 'circuitos', label: 'Circuitos', singular: 'circuito' },
+  drivers: { slug: 'pilotos', label: 'Pilotos', singular: 'piloto' },
+  pilotos: { slug: 'pilotos', label: 'Pilotos', singular: 'piloto' },
+  vehicles: { slug: 'vehiculos', label: 'Vehículos', singular: 'vehículo' },
+  vehiculos: { slug: 'vehiculos', label: 'Vehículos', singular: 'vehículo' },
+  championships: { slug: 'campeonatos', label: 'Campeonatos', singular: 'campeonato' },
+  campeonatos: { slug: 'campeonatos', label: 'Campeonatos', singular: 'campeonato' },
+  records: { slug: 'records', label: 'Récords', singular: 'récord' },
+  glossary: { slug: 'glosario', label: 'Glosario', singular: 'concepto' },
+  glosario: { slug: 'glosario', label: 'Glosario', singular: 'concepto' }
+};
+
+function compact(value: unknown) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function storagePath() {
+  return path.join(process.cwd(), 'data', 'app', 'motorsport-archive.json');
+}
+
+function readStorage() {
+  const filePath = storagePath();
+  if (!fs.existsSync(filePath)) return { items: [] as ArchiveItem[] };
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return {
+      items: Array.isArray(data?.items) ? data.items : []
+    };
+  } catch {
+    return { items: [] as ArchiveItem[] };
+  }
+}
+
+function categoryMeta(category: string) {
+  return CATEGORY_META[compact(category).toLowerCase()] || { slug: compact(category).toLowerCase() || 'items', label: compact(category) || 'Archivo', singular: 'ficha' };
+}
+
+function itemUrl(item: ArchiveItem) {
+  const meta = categoryMeta(item.category);
+  return `/archivo/${meta.slug}/${item.slug}/`;
+}
+
+function getCover(item: ArchiveItem) {
+  const media = Array.isArray(item.media) ? item.media : [];
+  const main = media.find((entry) => entry?.isMain || entry?.main || entry?.role === 'cover') || media[0];
+  return compact(main?.url || main?.localUrl || main?.local_url || '/og/grasscutters-og.svg');
+}
+
+function factText(item: ArchiveItem) {
+  const facts = item.facts && typeof item.facts === 'object' ? item.facts : {};
+  return Object.entries(facts)
+    .filter(([, value]) => compact(value))
+    .map(([key, value]) => `${key}: ${compact(value)}`)
+    .join(' · ');
+}
+
+function searchText(item: ArchiveItem) {
+  return [item.title, item.slug, item.category, item.summary, item.body, factText(item)].join(' ').toLowerCase();
+}
+
+function scoreItem(item: ArchiveItem, query: string) {
+  if (!query) return 1;
+  const q = query.toLowerCase();
+  const title = compact(item.title).toLowerCase();
+  const slug = compact(item.slug).toLowerCase();
+  const text = searchText(item);
+  let score = 0;
+  if (title === q) score += 100;
+  if (title.includes(q)) score += 50;
+  if (slug.includes(q)) score += 30;
+  if (text.includes(q)) score += 10;
+  for (const part of q.split(/\s+/).filter(Boolean)) {
+    if (title.includes(part)) score += 8;
+    if (text.includes(part)) score += 3;
+  }
+  return score;
+}
+
+const q = compact(Astro.url.searchParams.get('q'));
+const category = compact(Astro.url.searchParams.get('cat'));
+const storage = readStorage();
+const allPublished = storage.items.filter((item) => compact(item.status || 'draft') === 'published');
+const categories = Array.from(new Set(allPublished.map((item) => categoryMeta(item.category).slug))).map((slug) => {
+  const found = allPublished.find((item) => categoryMeta(item.category).slug === slug);
+  return found ? categoryMeta(found.category) : { slug, label: slug, singular: 'ficha' };
+});
+const filtered = allPublished
+  .filter((item) => !category || categoryMeta(item.category).slug === category)
+  .map((item) => ({ item, score: scoreItem(item, q) }))
+  .filter((row) => !q || row.score > 0)
+  .sort((a, b) => b.score - a.score || compact(a.item.title).localeCompare(compact(b.item.title)))
+  .slice(0, 60);
+---
+<MarketingLayout
+  title={q ? `Buscar “${q}” | Archivo Motorsport` : 'Buscar | Archivo Motorsport'}
+  description="Buscador público del Archivo Motorsport de GrassCutters Racing."
+  canonicalPath="/archivo/buscar"
+>
+  <section class="gc-page archive-search-hero">
+    <span class="gc-kicker">Archivo Motorsport</span>
+    <h1 class="gc-title">Buscar en el archivo</h1>
+    <p class="gc-lead">Encuentra circuitos, pilotos, vehículos, campeonatos, récords y conceptos sin rebuscar por cajones.</p>
+
+    <form class="archive-search-form" method="get" action="/archivo/buscar">
+      <input type="search" name="q" value={q} placeholder="Monza, Porsche 917, Senna, GT3..." />
+      <select name="cat" aria-label="Filtrar por categoría">
+        <option value="">Todas las categorías</option>
+        {categories.map((cat) => <option value={cat.slug} selected={category === cat.slug}>{cat.label}</option>)}
+      </select>
+      <button type="submit">Buscar</button>
+    </form>
+
+    <div class="archive-search-links">
+      <a href="/archivo">Volver al Archivo</a>
+      <a href="/archivo/circuitos/">Circuitos</a>
+      <a href="/archivo/pilotos/">Pilotos</a>
+      <a href="/archivo/vehiculos/">Vehículos</a>
+    </div>
+  </section>
+
+  <section class="gc-page archive-search-results">
+    <div class="archive-search-results-head">
+      <div>
+        <h2>{q ? `Resultados para “${q}”` : 'Últimas fichas publicadas'}</h2>
+        <p>{filtered.length} {filtered.length === 1 ? 'resultado' : 'resultados'} visibles.</p>
+      </div>
+    </div>
+
+    {filtered.length ? (
+      <div class="archive-search-grid">
+        {filtered.map(({ item }) => {
+          const meta = categoryMeta(item.category);
+          return (
+            <a class="archive-search-card" href={itemUrl(item)}>
+              <img src={getCover(item)} alt={item.title} loading="lazy" onerror="this.onerror=null;this.src='/og/grasscutters-og.svg';" />
+              <div>
+                <span>{meta.singular}</span>
+                <h3>{item.title}</h3>
+                <p>{item.summary || 'Ficha del Archivo Motorsport.'}</p>
+                {factText(item) ? <small>{factText(item)}</small> : null}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    ) : (
+      <div class="archive-search-empty">
+        <h2>No hay resultados</h2>
+        <p>Prueba con menos palabras o cambia el filtro de categoría.</p>
+      </div>
+    )}
+  </section>
+
+  <style is:global>
+    .archive-search-hero{padding-bottom:clamp(18px,3vw,30px)}
+    .archive-search-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,260px) auto;gap:10px;margin:22px 0 14px}
+    .archive-search-form input,.archive-search-form select{min-height:46px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.04);color:inherit;padding:0 15px}
+    .archive-search-form button{min-height:46px;border:0;border-radius:999px;padding:0 20px;background:var(--accent,#7aff90);color:#07110a;font-weight:800;cursor:pointer}
+    .archive-search-links{display:flex;flex-wrap:wrap;gap:8px}.archive-search-links a{padding:8px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;color:inherit;text-decoration:none;background:rgba(255,255,255,.03)}
+    .archive-search-results{padding-top:0}.archive-search-results-head{display:flex;justify-content:space-between;gap:1rem;align-items:end;margin-bottom:16px}.archive-search-results-head h2{margin:0 0 4px}.archive-search-results-head p{margin:0;color:var(--soft,rgba(255,255,255,.72))}
+    .archive-search-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.archive-search-card{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:22px;background:rgba(255,255,255,.035);color:inherit;text-decoration:none;transition:transform .16s ease,border-color .16s ease}.archive-search-card:hover{transform:translateY(-2px);border-color:rgba(122,255,144,.35)}.archive-search-card img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:#101810}.archive-search-card span{display:inline-block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;color:var(--soft,rgba(255,255,255,.72))}.archive-search-card h3{margin:0 0 6px;font-size:1.05rem}.archive-search-card p{margin:0 0 8px;color:rgba(255,255,255,.78)}.archive-search-card small{display:block;color:rgba(255,255,255,.58);line-height:1.35}.archive-search-empty{padding:22px;border-radius:22px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035)}
+    @media(max-width:1100px){.archive-search-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){.archive-search-form{grid-template-columns:1fr}.archive-search-grid{grid-template-columns:1fr}.archive-search-card{grid-template-columns:92px minmax(0,1fr)}}
+  </style>
+</MarketingLayout>
