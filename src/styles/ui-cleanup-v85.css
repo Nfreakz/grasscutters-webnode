@@ -1,0 +1,386 @@
+/* GC UI Cleanup v8.5
+   Capa final de limpieza visual para páginas públicas.
+   Importar después de marketing.css y landing-final.css.
+*/
+
+html[data-gc-scope="marketing"] {
+  --gc-ink-on-accent: #061006;
+}
+
+/* Botones verdes: texto oscuro siempre, incluso si otra capa hereda blanco. */
+html[data-gc-scope="marketing"] .gc-public-body .gc-btn-primary,
+html[data-gc-scope="marketing"] .gc-public-body a.gc-btn-primary,
+html[data-gc-scope="marketing"] .gc-public-body button.gc-btn-primary,
+html[data-gc-scope="marketing"] .gc-public-body .gc-week-badge,
+html[data-gc-scope="marketing"] .gc-public-body .gc-card code,
+html[data-gc-scope="marketing"] .gc-public-body .gc-lane > span,
+html[data-gc-scope="marketing"] .gc-public-body .gc-row-num,
+html[data-gc-scope="marketing"] .gc-public-body .gc-policy-card span {
+  color: var(--gc-ink-on-accent) !important;
+  text-shadow: none !important;
+}
+
+/* Botones secundarios algo más legibles y consistentes. */
+html[data-gc-scope="marketing"] .gc-public-body .gc-btn {
+  letter-spacing: .01em;
+}
+
+html[data-gc-scope="marketing"] .gc-public-body .gc-btn:not(.gc-btn-primary):hover {
+  border-color: color-mix(in srgb, var(--gc-mk-accent) 38%, var(--gc-mk-line));
+}
+
+/* Comunidad: limpieza de espaciado y tono. */
+.gc-page-comunidad .gc-community-hero {
+  padding-bottom: clamp(14px, 2.6vw, 28px);
+}
+
+.gc-page-comunidad .gc-community-hero .gc-title {
+  max-width: 980px;
+}
+
+.gc-page-comunidad .gc-community-hero .gc-lead {
+  max-width: 760px;
+}
+
+.gc-page-comunidad .gc-community-intro {
+  padding-top: clamp(10px, 2vw, 22px);
+}
+
+.gc-page-comunidad .gc-feature-list {
+  margin-top: 18px !important;
+}
+
+.gc-page-comunidad .gc-community-for {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.gc-page-comunidad .gc-community-for p {
+  max-width: 620px;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.gc-page-comunidad .gc-community-philosophy .gc-section-head {
+  max-width: 920px;
+}
+
+.gc-page-comunidad .gc-lane {
+  min-height: 190px;
+}
+
+.gc-page-comunidad .gc-lane p {
+  line-height: 1.58;
+}
+
+/* Pequeña mejora general para cards públicas: menos bloque pesado, más limpio. */
+html[data-gc-scope="marketing"] .gc-panel,
+html[data-gc-scope="marketing"] .gc-card,
+html[data-gc-scope="marketing"] .gc-lane,
+html[data-gc-scope="marketing"] .gc-status-card {
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--gc-mk-accent) 6%, transparent), transparent 18rem),
+    linear-gradient(180deg, rgba(255,255,255,.062), rgba(255,255,255,.028));
+}
+
+/* Ajuste responsive: los CTAs no deben quedar como pastillas minúsculas con texto apretado. */
+@media (max-width: 620px) {
+  html[data-gc-scope="marketing"] .gc-actions {
+    width: 100%;
+  }
+
+  html[data-gc-scope="marketing"] .gc-actions .gc-btn {
+    flex: 1 1 100%;
+  }
+}
+
+
+
+
+
+
+
+
+
+/* Comunidad hero blend + card bg v8.6.4 */
+.gc-page-comunidad .gc-community-hero-video {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  width: 100%;
+  max-width: none;
+  min-height: clamp(620px, 78vh, 900px);
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: 0;
+}
+
+.gc-page-comunidad .gc-community-hero-inner {
+  width: min(100% - 48px, var(--gc-mk-container, 1180px));
+  margin-inline: auto;
+  position: relative;
+  z-index: 4;
+}
+
+.gc-page-comunidad .gc-community-hero-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .76;
+  filter: saturate(.96) contrast(1.08) brightness(.68);
+}
+
+.gc-page-comunidad .gc-community-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  background:
+    radial-gradient(circle at 16% 22%, rgba(137,255,72,.16), transparent 38%),
+    linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.72) 44%, rgba(4,12,7,.30)),
+    linear-gradient(180deg, rgba(4,12,7,.38) 0%, rgba(4,12,7,.74) 62%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+/* Fundido inferior para que el vídeo no corte contra el fondo. */
+.gc-page-comunidad .gc-community-hero-video::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: -3;
+  height: clamp(180px, 24vh, 310px);
+  background:
+    linear-gradient(180deg, rgba(4,12,7,0), rgba(4,12,7,.72) 48%, var(--gc-mk-bg, #041009) 100%);
+  pointer-events: none;
+}
+
+.gc-page-comunidad .gc-community-hero-video .gc-title,
+.gc-page-comunidad .gc-community-hero-video .gc-lead {
+  text-shadow: 0 3px 30px rgba(0,0,0,.72);
+}
+
+.gc-page-comunidad .gc-community-intro {
+  margin-top: clamp(-96px, -7vw, -52px);
+  position: relative;
+  z-index: 6;
+}
+
+/* Card Para quién es con imagen fija: public/images/comunidad-card-bg.webp */
+.gc-page-comunidad .gc-community-for-image {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 420px;
+  justify-content: flex-end;
+  background-color: rgba(5,16,9,.92);
+  background-image:
+    linear-gradient(180deg, rgba(5,16,9,.18), rgba(5,16,9,.78) 58%, rgba(5,16,9,.96)),
+    linear-gradient(90deg, rgba(5,16,9,.76), rgba(5,16,9,.26)),
+    url('/images/comunidad-card-bg.webp');
+  background-size: cover;
+  background-position: center;
+  border-color: color-mix(in srgb, var(--gc-mk-accent) 22%, var(--gc-mk-line));
+}
+
+.gc-page-comunidad .gc-community-for-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(137,255,72,.16), transparent 30%),
+    rgba(0,0,0,.10);
+  pointer-events: none;
+}
+
+.gc-page-comunidad .gc-community-for-image .gc-panel-kicker,
+.gc-page-comunidad .gc-community-for-image p,
+.gc-page-comunidad .gc-community-for-image .gc-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.gc-page-comunidad .gc-community-for-image p {
+  max-width: 560px;
+  text-shadow: 0 2px 18px rgba(0,0,0,.60);
+}
+
+.gc-page-comunidad .gc-community-for-image .gc-actions {
+  margin-top: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-page-comunidad .gc-community-hero-bg-video {
+    display: none;
+  }
+
+  .gc-page-comunidad .gc-community-hero-video {
+    background-image:
+      linear-gradient(90deg, rgba(4,12,7,.96), rgba(4,12,7,.64)),
+      url('/images/comunidad-hero-poster.webp');
+    background-size: cover;
+    background-position: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .gc-page-comunidad .gc-community-hero-video {
+    min-height: 620px;
+  }
+
+  .gc-page-comunidad .gc-community-hero-inner {
+    width: min(100% - 28px, var(--gc-mk-container, 1180px));
+  }
+
+  .gc-page-comunidad .gc-community-intro {
+    margin-top: -46px;
+  }
+
+  .gc-page-comunidad .gc-community-for-image {
+    min-height: 360px;
+  }
+}
+
+
+
+
+
+/* Comunidad card real image v8.6.5 */
+.gc-page-comunidad .gc-community-for-image {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 420px;
+  justify-content: flex-end;
+  background: rgba(5,16,9,.92) !important;
+  border-color: color-mix(in srgb, var(--gc-mk-accent) 22%, var(--gc-mk-line));
+}
+
+.gc-page-comunidad .gc-community-card-picture,
+.gc-page-comunidad .gc-community-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gc-page-comunidad .gc-community-card-bg {
+  object-fit: cover;
+  object-position: center;
+  opacity: .72;
+  filter: saturate(.95) contrast(1.08) brightness(.72);
+}
+
+.gc-page-comunidad .gc-community-for-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(137,255,72,.18), transparent 32%),
+    linear-gradient(180deg, rgba(5,16,9,.16), rgba(5,16,9,.76) 58%, rgba(5,16,9,.97)),
+    linear-gradient(90deg, rgba(5,16,9,.78), rgba(5,16,9,.28));
+  pointer-events: none;
+}
+
+.gc-page-comunidad .gc-community-for-image .gc-panel-kicker,
+.gc-page-comunidad .gc-community-for-image p,
+.gc-page-comunidad .gc-community-for-image .gc-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.gc-page-comunidad .gc-community-for-image p {
+  max-width: 560px;
+  text-shadow: 0 2px 18px rgba(0,0,0,.60);
+}
+
+.gc-page-comunidad .gc-community-for-image .gc-actions {
+  margin-top: 24px;
+}
+
+@media (max-width: 720px) {
+  .gc-page-comunidad .gc-community-for-image {
+    min-height: 360px;
+  }
+}
+
+
+
+/* Comunidad nav active + text polish v8.6.6 */
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active,
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"] {
+  color: var(--gc-mk-accent, #9cff3f) !important;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 34%, transparent) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active::after,
+html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"]::after {
+  background: var(--gc-mk-accent, #9cff3f) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, #9cff3f) 40%, transparent);
+}
+
+.gc-page-comunidad .gc-community-philosophy .gc-section-title {
+  max-width: 920px;
+}
+
+.gc-page-comunidad .gc-community-philosophy .gc-section-lead {
+  max-width: 780px;
+}
+
+
+
+/* Comunidad card soften edges v8.6.7 */
+.gc-page-comunidad .gc-community-for-image {
+  border-color: rgba(255,255,255,.08) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.04),
+    0 16px 48px rgba(0,0,0,.28);
+}
+
+.gc-page-comunidad .gc-community-for-image .gc-community-card-bg {
+  transform: scale(1.03);
+  filter: saturate(.96) contrast(1.04) brightness(.70);
+}
+
+.gc-page-comunidad .gc-community-for-image::before {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(137,255,72,.12), transparent 28%),
+    linear-gradient(180deg, rgba(5,16,9,.14), rgba(5,16,9,.70) 58%, rgba(5,16,9,.96)),
+    linear-gradient(90deg, rgba(5,16,9,.62), rgba(5,16,9,.22) 36%, rgba(5,16,9,.18) 64%, rgba(5,16,9,.62));
+}
+
+.gc-page-comunidad .gc-community-for-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(5,16,9,.82) 0%,
+      rgba(5,16,9,.14) 16%,
+      rgba(5,16,9,0) 28%,
+      rgba(5,16,9,0) 72%,
+      rgba(5,16,9,.26) 84%,
+      rgba(5,16,9,.84) 100%),
+    linear-gradient(90deg,
+      rgba(5,16,9,.88) 0%,
+      rgba(5,16,9,.18) 14%,
+      rgba(5,16,9,0) 26%,
+      rgba(5,16,9,0) 74%,
+      rgba(5,16,9,.22) 86%,
+      rgba(5,16,9,.88) 100%);
+  filter: blur(18px);
+  opacity: .95;
+}
+
