@@ -346,7 +346,24 @@ function demoItems() {
   ];
 }
 
+function detectCsvDelimiter(content: string) {
+  const firstLine = String(content || '').split(/\r?\n/).find((line) => line.trim()) || '';
+  const candidates = [';', ',', '\\t'];
+  let best = ',';
+  let bestCount = -1;
+  for (const candidate of candidates) {
+    const delimiter = candidate === '\\t' ? '\t' : candidate;
+    const count = firstLine.split(delimiter).length - 1;
+    if (count > bestCount) {
+      best = delimiter;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 function parseCsv(content: string) {
+  const delimiter = detectCsvDelimiter(content);
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -361,7 +378,7 @@ function parseCsv(content: string) {
       continue;
     }
     if (char === '"') { quoted = true; continue; }
-    if (char === ',') { row.push(field); field = ''; continue; }
+    if (char === delimiter) { row.push(field); field = ''; continue; }
     if (char === '\n') { row.push(field); rows.push(row); row = []; field = ''; continue; }
     if (char === '\r') continue;
     field += char;
@@ -369,8 +386,11 @@ function parseCsv(content: string) {
   row.push(field);
   if (row.some((cell) => String(cell).trim())) rows.push(row);
   if (!rows.length) return [];
-  const headers = rows[0].map((header) => String(header || '').trim());
-  return rows.slice(1).filter((cells) => cells.some((cell) => String(cell).trim())).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ''])));
+  const headers = rows[0].map((header) => String(header || '').trim().replace(/^\uFEFF/, ''));
+  return rows
+    .slice(1)
+    .filter((cells) => cells.some((cell) => String(cell).trim()))
+    .map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ''])));
 }
 
 function first(row: any, keys: string[]) {
@@ -402,17 +422,80 @@ function mediaFromRow(row: any, title: string) {
   return media;
 }
 
+
+function detectCategoryFromFile(fileName: string) {
+  const lower = String(fileName || '').toLowerCase();
+  if (lower.includes('circuit')) return 'circuitos';
+  if (lower.includes('piloto') || lower.includes('driver')) return 'pilotos';
+  if (lower.includes('vehiculo') || lower.includes('vehículo') || lower.includes('car')) return 'vehiculos';
+  if (lower.includes('campeonato') || lower.includes('champ')) return 'campeonatos';
+  if (lower.includes('record')) return 'records';
+  if (lower.includes('glosario') || lower.includes('glossary')) return 'glosario';
+  return 'general';
+}
+
+function isKnownArchiveCategory(value: string) {
+  return new Set(['circuitos', 'pilotos', 'vehiculos', 'campeonatos', 'records', 'glosario', 'general']).has(value);
+}
+
+function resolveCsvArchiveCategory(row: any, fileName: string) {
+  const raw = first(row, ['archive_category', 'archiveCategory', 'tipo_ficha', 'tipo_archivo', 'category', 'categoria', 'type', 'tipo']);
+  const normalized = normalizeCategory(raw);
+  if (raw && isKnownArchiveCategory(normalized)) return normalized;
+  return detectCategoryFromFile(fileName);
+}
+
+function csvSafeId(row: any, category: string, slug: string) {
+  const rawId = first(row, ['id', 'ID']);
+  if (!rawId) return undefined;
+  const clean = slugify(rawId);
+  if (!clean) return undefined;
+  if (/^\d+$/.test(clean)) return `${publicCategory(category)}-${clean}`;
+  return clean;
+}
+
 function csvItem(row: any, fileName: string, index: number, publish: boolean, existing?: any) {
-  const category = normalizeCategory(first(row, ['category','categoria','type','tipo']) || (fileName.toLowerCase().includes('glosario') ? 'glosario' : 'general'));
+  const category = resolveCsvArchiveCategory(row, fileName);
   const title = first(row, ['title','titulo','nombre','name']) || `${itemType(category)} ${index + 1}`;
-  const skip = new Set(['id','slug','title','titulo','nombre','name','summary','resumen','descripcion_corta','body','descripcion','descripcion_larga','texto','category','categoria','type','tipo','status','estado','published','publicado']);
-  const facts = Object.entries(row).filter(([k, v]) => !skip.has(k.toLowerCase()) && !k.toLowerCase().startsWith('imagen_') && !k.toLowerCase().startsWith('image_') && !k.toLowerCase().startsWith('media_') && String(v ?? '').trim()).map(([label, value]) => ({ label: label.replace(/_/g, ' '), value: String(value ?? '').trim() }));
+  const rawDetailCategory = first(row, ['categoria', 'category']);
+  const normalizedDetailCategory = normalizeCategory(rawDetailCategory);
+  const detailCategoryIsArchiveCategory = rawDetailCategory && isKnownArchiveCategory(normalizedDetailCategory);
+
+  const skip = new Set([
+    'id','slug','title','titulo','nombre','name',
+    'summary','resumen','descripcion_corta','description',
+    'body','descripcion','descripcion_larga','texto','content',
+    'archive_category','archivecategory','tipo_ficha','tipo_archivo',
+    'type','tipo','status','estado','published','publicado'
+  ]);
+
+  if (detailCategoryIsArchiveCategory) {
+    skip.add('categoria');
+    skip.add('category');
+  }
+
+  const facts = Object.entries(row)
+    .filter(([k, v]) => {
+      const key = String(k || '').toLowerCase();
+      if (skip.has(key)) return false;
+      if (key.startsWith('imagen_') || key.startsWith('image_') || key.startsWith('media_') || key.startsWith('svg_')) return false;
+      return String(v ?? '').trim();
+    })
+    .map(([label, value]) => ({ label: label.replace(/_/g, ' '), value: String(value ?? '').trim() }));
+
+  if (rawDetailCategory && !detailCategoryIsArchiveCategory && !facts.some((fact) => String(fact.label).toLowerCase() === 'categoria')) {
+    facts.unshift({ label: 'Categoría', value: rawDetailCategory });
+  }
+
+  const slug = first(row, ['slug']) || slugify(title);
+  const safeId = csvSafeId(row, category, slug);
+
   return normalizeItem({
     ...(existing || {}),
-    id: first(row, ['id']) || existing?.id,
+    id: safeId || existing?.id,
     category,
     title,
-    slug: first(row, ['slug']) || existing?.slug,
+    slug,
     status: publish ? 'published' : 'draft',
     summary: first(row, ['summary','resumen','descripcion_corta','description']) || existing?.summary,
     body: first(row, ['body','descripcion_larga','descripcion','texto','content']) || existing?.body,
