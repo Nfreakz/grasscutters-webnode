@@ -11,6 +11,7 @@ import { registerMotorsportArchiveImageUrlRoutes } from './motorsport-archive-im
 import { registerMotorsportArchiveHardDeleteRoutes } from './motorsport-archive-hard-delete-routes';
 import { registerAdminUserProfileLinkRoutes } from './admin-user-profile-link-routes';
 import { registerMotorsportArchiveAdminMysqlRoutes } from './motorsport-archive-admin-mysql-routes';
+import { registerMotorsportArchiveImportDeleteFixV823 } from './motorsport-archive-import-delete-fix-v823-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -4882,6 +4883,10 @@ app.delete(['/api/admin/calendar-events/:id', '/api/admin/calendar/events/:id', 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
+// GC Archivo Motorsport import/delete fix v8.2.3 routes.
+registerMotorsportArchiveImportDeleteFixV823(app);
+
+
 // GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
 registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
 
@@ -6925,6 +6930,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
