@@ -4882,8 +4882,10 @@ app.delete(['/api/admin/calendar-events/:id', '/api/admin/calendar/events/:id', 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
-// GC Archivo Motorsport admin MySQL/import routes must run after JSON body parser.
+// GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
 registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
+
+
 
 
 registerMotorsportArchiveRoutes(app, { rootDir });
@@ -6923,6 +6925,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
