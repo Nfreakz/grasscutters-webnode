@@ -3756,6 +3756,22 @@ const mockPilots = [
 
 const app = express();
 
+/* GC Archivo Motorsport persistent archive-media static mount v8.4.1 */
+{
+  const gcArchiveMediaDir = process.env.ARCHIVE_MEDIA_DIR?.trim()
+    ? path.resolve(process.env.ARCHIVE_MEDIA_DIR.trim())
+    : path.join(rootDir, 'public', 'archive-media');
+
+  if (fs.existsSync(gcArchiveMediaDir)) {
+    app.use('/archive-media', express.static(gcArchiveMediaDir, {
+      index: false,
+      immutable: true,
+      maxAge: '30d'
+    }));
+  }
+}
+
+
 
 
 // GC Admin user/profile link routes.
@@ -6945,6 +6961,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
