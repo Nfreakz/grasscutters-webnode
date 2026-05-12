@@ -22,9 +22,16 @@ await esbuild.build({
   platform: 'node',
   format: 'esm',
   target: 'node22',
-  bundle: false,
+  bundle: true,
+  packages: 'external',
   sourcemap: false,
-  logLevel: 'info'
+  logLevel: 'info',
+  banner: {
+    js: [
+      "import { createRequire as __gcCreateRequire } from 'node:module';",
+      "const require = __gcCreateRequire(import.meta.url);"
+    ].join('\n')
+  }
 });
 
-console.log('[GC build-server] Servidor compilado:', outFile);
+console.log('[GC build-server] Servidor compilado en bundle:', outFile);
