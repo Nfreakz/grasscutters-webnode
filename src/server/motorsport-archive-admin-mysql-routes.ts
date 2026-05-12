@@ -176,7 +176,6 @@ function normalizeItem(input: any, existing?: ArchiveItem | null): ArchiveItem {
   const title = String(input.title || input.titulo || input.name || input.nombre || prev.title || 'Ficha sin título').trim();
   const slug = slugify(input.slug || prev.slug || title);
   const id = String(input.id || prev.id || `${slug}-${crypto.randomBytes(4).toString('hex')}`);
-
   const media = normalizeMedia(input.media ?? prev.media);
   const main = media.find((m: any) => m.isMain || m.isPrimary) || media[0] || null;
 
@@ -253,8 +252,8 @@ function parseCsv(content: string) {
 
   row.push(field);
   if (row.some((cell) => String(cell).trim())) rows.push(row);
-
   if (!rows.length) return [];
+
   const headers = rows[0].map((header) => String(header || '').trim());
   return rows.slice(1)
     .filter((cells) => cells.some((cell) => String(cell).trim()))
@@ -284,6 +283,7 @@ function itemFromCsvRow(row: any, fileName: string, index: number, publish: bool
   const category = normalizeCategory(row.category || row.categoria || detectCategoryFromFile(fileName));
   const title = first(row, ['title', 'titulo', 'nombre', 'name']) || `${itemType(category)} ${index + 1}`;
   const media = [];
+
   for (let i = 1; i <= 5; i += 1) {
     const url = String(row[`imagen_${i}_url`] || '').trim();
     if (!url) continue;
@@ -343,6 +343,17 @@ async function mysqlFind(connection: any, id: string) {
   try { return JSON.parse(row.item_json); } catch { return null; }
 }
 
+async function mysqlFindByCategorySlug(connection: any, category: string, slug: string) {
+  await ensureSchema(connection);
+  const [rows] = await connection.execute(
+    'SELECT item_json FROM gc_archive_items WHERE category = ? AND slug = ? LIMIT 1',
+    [category, slug],
+  );
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return null;
+  try { return JSON.parse(row.item_json); } catch { return null; }
+}
+
 async function mysqlUpsert(connection: any, item: ArchiveItem) {
   await ensureSchema(connection);
   await connection.execute(
@@ -367,6 +378,37 @@ async function mysqlUpsert(connection: any, item: ArchiveItem) {
       mysqlDate(item.updatedAt),
     ],
   );
+}
+
+function demoItems() {
+  return [
+    normalizeItem({
+      id: 'demo-circuito-monza',
+      category: 'circuitos',
+      title: 'Autodromo Nazionale Monza',
+      slug: 'autodromo-nazionale-monza',
+      status: 'draft',
+      summary: 'Ficha de demostración del Archivo Motorsport.',
+      body: 'Contenido de demostración para validar creación, edición y publicación en producción.',
+      facts: [
+        { label: 'País', value: 'Italia' },
+        { label: 'Tipo', value: 'Circuito permanente' },
+      ],
+    }),
+    normalizeItem({
+      id: 'demo-piloto-alonso',
+      category: 'pilotos',
+      title: 'Fernando Alonso',
+      slug: 'fernando-alonso',
+      status: 'draft',
+      summary: 'Piloto de demostración del Archivo Motorsport.',
+      body: 'Ficha de prueba para validar relaciones y vista pública.',
+      facts: [
+        { label: 'País', value: 'España' },
+        { label: 'Disciplina', value: 'Motorsport' },
+      ],
+    }),
+  ];
 }
 
 export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDir }: { rootDir: string }) {
@@ -418,6 +460,8 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
       if (isMysql()) {
         const connection = await getConnection();
         try {
+          const existing = await mysqlFind(connection, item.id) || await mysqlFindByCategorySlug(connection, item.category, item.slug);
+          if (existing) return res.status(409).json({ ok: false, message: 'Ya existe una ficha con ese ID o slug.' });
           await mysqlUpsert(connection, item);
           return res.json({ ok: true, item, created: true, storage: 'mysql' });
         } finally {
@@ -467,6 +511,52 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
   app.patch('/api/admin/archive/items/:id', updateItem);
   app.put('/api/admin/archive/items/:id', updateItem);
 
+  async function createDemo(_req: Request, res: Response) {
+    try {
+      const items = demoItems();
+      let created = 0;
+      let skipped = 0;
+
+      if (isMysql()) {
+        const connection = await getConnection();
+        try {
+          for (const item of items) {
+            const existing = await mysqlFind(connection, item.id) || await mysqlFindByCategorySlug(connection, item.category, item.slug);
+            if (existing) {
+              skipped += 1;
+              continue;
+            }
+            await mysqlUpsert(connection, item);
+            created += 1;
+          }
+          return res.json({ ok: true, created, skipped, items, storage: 'mysql' });
+        } finally {
+          await connection.end();
+        }
+      }
+
+      const { store } = readJsonStore(rootDir);
+      for (const item of items) {
+        const existing = store.items.find((entry: any) => entry.id === item.id || (entry.category === item.category && entry.slug === item.slug));
+        if (existing) {
+          skipped += 1;
+          continue;
+        }
+        store.items.unshift(item);
+        created += 1;
+      }
+      const filePath = writeJsonStore(rootDir, store);
+      return res.json({ ok: true, created, skipped, items, storage: 'json', filePath });
+    } catch (error: any) {
+      return res.status(500).json({ ok: false, message: error?.message || 'Error creando demo.' });
+    }
+  }
+
+  app.post('/api/admin/archive/demo', createDemo);
+  app.post('/api/admin/archive/create-demo', createDemo);
+  app.post('/api/admin/archive/seed-demo', createDemo);
+  app.post('/api/admin/archive/items/demo', createDemo);
+
   app.post('/api/admin/archive/import-csv-web', async (req: Request, res: Response) => {
     try {
       const files = Array.isArray(req.body?.files) ? req.body.files : [];
@@ -474,14 +564,19 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
       const dryRun = req.body?.dryRun === true || String(req.body?.dryRun || '').toLowerCase() === 'true';
       const force = req.body?.force === true || String(req.body?.force || '').toLowerCase() === 'true';
 
-      if (!files.length) return res.status(400).json({ ok: false, message: 'No se han recibido CSV.' });
+      if (!files.length) {
+        return res.status(400).json({
+          ok: false,
+          message: 'No se han recibido CSV. Revisa que el archivo no esté vacío y que el servidor tenga express.json activo antes de esta ruta.',
+          bodyKeys: req.body ? Object.keys(req.body) : [],
+        });
+      }
 
       let created = 0;
       let updated = 0;
       let skipped = 0;
       let readRows = 0;
       const details: any[] = [];
-
       const connection = isMysql() ? await getConnection() : null;
 
       try {
@@ -498,7 +593,7 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
             const item = itemFromCsvRow(rows[i], fileName, i, publish);
 
             if (connection) {
-              const existing = await mysqlFind(connection, item.id) || await mysqlFind(connection, item.slug);
+              const existing = await mysqlFind(connection, item.id) || await mysqlFindByCategorySlug(connection, item.category, item.slug);
               if (existing && !force) {
                 skipped += 1;
                 continue;

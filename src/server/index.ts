@@ -3752,8 +3752,6 @@ const mockPilots = [
 
 const app = express();
 
-// GC Archivo Motorsport admin MySQL/create/import routes.
-registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
 
 
 // GC Admin user/profile link routes.
@@ -4654,7 +4652,7 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
 
 
 // GC_CALENDAR_EVENTS_PATCH_V6_ROUTE_FIRST
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 const gcCalendarV6AllowedTypes = ['combo', 'race_lfm', 'race_gc'] as const;
 type GcCalendarV6Type = typeof gcCalendarV6AllowedTypes[number];
@@ -4883,6 +4881,10 @@ app.delete(['/api/admin/calendar-events/:id', '/api/admin/calendar/events/:id', 
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
+
+// GC Archivo Motorsport admin MySQL/import routes must run after JSON body parser.
+registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
+
 
 registerMotorsportArchiveRoutes(app, { rootDir });
 registerMotorsportArchiveImageUrlRoutes(app, { rootDir });
@@ -6921,6 +6923,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
