@@ -1,21 +1,21 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
-import { ARCHIVE_PUBLIC_CATEGORIES, getArchiveCoverAlt, getArchiveCoverUrl, getArchiveItemUrl, getArchiveStats, searchArchiveItems } from '../lib/motorsport-archive/public';
+import { ARCHIVE_PUBLIC_CATEGORIES, getArchiveCoverAlt, getArchiveCoverUrl, getArchiveItemUrl, getArchiveStats, searchArchiveItems } from '../lib/motorsport-archive/public-data';
 
 export const prerender = false;
 
 const q = String(Astro.url.searchParams.get('q') || '').trim();
-const stats = getArchiveStats();
-const results = searchArchiveItems(q);
+const stats = await getArchiveStats();
+const results = await searchArchiveItems(q);
 ---
 <MarketingLayout title="Archivo Motorsport | GrassCutters Racing" description="Archivo editable de circuitos, pilotos, vehículos, campeonatos, récords y conceptos motorsport." canonicalPath="/archivo">
   <section class="gc-page archive-hero">
     <div>
       <span class="gc-kicker">Archivo Motorsport</span>
       <h1 class="gc-title">Un archivo vivo para ordenar historias, datos e imágenes del motorsport.</h1>
-      <p class="gc-lead">Fichas revisables, portadas locales y contenido publicado desde el admin. Nada de depender de enlaces rotos para que la página se vea bien.</p>
+      <p class="gc-lead">Fichas revisables, portadas locales y contenido publicado desde el admin.</p>
       <form class="archive-search" method="get" action="/archivo">
-        <input type="search" name="q" value={q} placeholder="Busca Monza, Senna, Porsche 917..." />
+        <input type="search" name="q" value={q} placeholder="Busca Monza, Senna, apex, drafting..." />
         <button type="submit">Buscar</button>
       </form>
       <div class="archive-chips">
@@ -42,10 +42,10 @@ const results = searchArchiveItems(q);
           <a class="archive-card" href={getArchiveItemUrl(item)}>
             <img src={getArchiveCoverUrl(item)} alt={getArchiveCoverAlt(item)} loading="lazy" onerror="this.onerror=null;this.src='/images/biblia-placeholder.svg';" />
             <div>
-              <span>{ARCHIVE_PUBLIC_CATEGORIES.find((category) => category.key === item.category)?.singular}</span>
+              <span>{ARCHIVE_PUBLIC_CATEGORIES.find((category) => category.key === item.category)?.singular || item.category}</span>
               <h3>{item.title}</h3>
               <p>{item.summary || 'Ficha publicada en el Archivo Motorsport.'}</p>
-              {item.facts.length ? <ul>{item.facts.slice(0, 3).map((fact) => <li><strong>{fact.label}:</strong> {fact.value}</li>)}</ul> : null}
+              {item.facts?.length ? <ul>{item.facts.slice(0, 3).map((fact) => <li><strong>{fact.label}:</strong> {fact.value}</li>)}</ul> : null}
             </div>
           </a>
         ))}

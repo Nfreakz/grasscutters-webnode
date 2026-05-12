@@ -1,116 +1,38 @@
 ---
 export const prerender = false;
-import fs from 'node:fs';
-import path from 'node:path';
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import { ARCHIVE_PUBLIC_CATEGORIES, findPublishedArchiveItem, getArchiveCoverAlt, getArchiveCoverUrl, getArchiveItemUrl, getPublishedArchiveItems, normalizeArchiveCategory } from '../../../lib/motorsport-archive/public-data';
 
 const categoryParam = String(Astro.params.category || '').replace(/\/$/, '');
 const slugParam = String(Astro.params.slug || '').replace(/\/$/, '');
-const storageFile = path.join(process.cwd(), 'data', 'app', 'motorsport-archive.json');
 
-function readStorage() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(storageFile, 'utf8'));
-    return Array.isArray(raw.items) ? raw.items : [];
-  } catch {
-    return [];
-  }
-}
-
-function norm(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function categorySlug(item) {
-  const value = norm(item.category || item.type || 'general');
-  const map = {
-    circuit: 'circuitos', circuits: 'circuitos', circuito: 'circuitos', circuitos: 'circuitos',
-    driver: 'pilotos', drivers: 'pilotos', piloto: 'pilotos', pilotos: 'pilotos',
-    vehicle: 'vehiculos', vehicles: 'vehiculos', vehiculo: 'vehiculos', vehículos: 'vehiculos',
-    championship: 'campeonatos', championships: 'campeonatos', campeonato: 'campeonatos', campeonatos: 'campeonatos',
-    record: 'records', records: 'records',
-    glossary: 'glosario', glosario: 'glosario', concepto: 'glosario'
-  };
-  return map[value] || value || 'general';
-}
-
-function getTitle(item) {
-  return String(item.title || item.name || item.nombre || item.slug || 'Ficha sin título');
-}
-
-function getSummary(item) {
-  return String(item.summary || item.descripcion_corta || item.description || '').trim();
-}
-
-function getBody(item) {
-  return String(item.body || item.text || item.descripcion_larga || item.content || '').trim();
-}
-
-function getFacts(item) {
-  const facts = item.facts || item.quickFacts || item.data || {};
-  if (Array.isArray(facts)) return facts.map((f) => ({ label: f.label || f.name || '', value: f.value || '' })).filter((f) => f.label && f.value);
-  return Object.entries(facts).map(([label, value]) => ({ label, value: String(value ?? '') })).filter((f) => f.value);
-}
-
-function getMedia(item) {
-  const media = Array.isArray(item.media) ? item.media : [];
-  const mapped = media.map((m, index) => ({
-    id: m.id || `media-${index}`,
-    url: m.localUrl || m.local_url || m.url || m.image || '',
-    alt: m.alt || m.title || getTitle(item),
-    source: m.source || '',
-    sourceUrl: m.sourceUrl || m.source_url || '',
-    author: m.author || '',
-    license: m.license || '',
-    isPrimary: Boolean(m.isPrimary || m.primary || m.cover),
-    locked: Boolean(m.locked),
-  })).filter((m) => m.url);
-
-  const cover = item.coverUrl || item.image || item.imageUrl || item.localUrl || '';
-  if (cover && !mapped.some((m) => m.url === cover)) {
-    mapped.unshift({ id: 'cover', url: cover, alt: item.coverAlt || getTitle(item), source: '', sourceUrl: '', author: '', license: '', isPrimary: true, locked: true });
-  }
-
-  return mapped.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
-}
-
-function relationIds(item) {
-  const rel = item.relations || item.related || [];
-  if (!Array.isArray(rel)) return [];
-  return rel
-    .filter((r) => !r.hidden)
-    .sort((a, b) => Number(b.pinned || b.manual) - Number(a.pinned || a.manual) || Number(b.score || 0) - Number(a.score || 0))
-    .map((r) => String(r.targetId || r.id || r.itemId || '').trim())
-    .filter(Boolean)
-    .slice(0, 8);
-}
-
-const items = readStorage();
-const published = items.filter((item) => String(item.status || 'draft').toLowerCase() === 'published');
-const item = published.find((entry) => categorySlug(entry) === categoryParam && String(entry.slug || '') === slugParam);
+const item = await findPublishedArchiveItem(categoryParam, slugParam);
 
 if (!item) {
   return Astro.redirect('/archivo');
 }
 
-const title = getTitle(item);
-const summary = getSummary(item);
-const body = getBody(item);
-const facts = getFacts(item);
-const media = getMedia(item);
+const title = item.title;
+const summary = item.summary || '';
+const body = item.body || '';
+const facts = Array.isArray(item.facts) ? item.facts : [];
+const media = Array.isArray(item.media) ? item.media : [];
 const hero = media[0];
-const related = relationIds(item).map((id) => published.find((entry) => String(entry.id) === id)).filter(Boolean);
-const fallbackRelated = related.length ? [] : published.filter((entry) => String(entry.id) !== String(item.id) && categorySlug(entry) === categorySlug(item)).slice(0, 4);
-const relatedItems = related.length ? related : fallbackRelated;
+const published = await getPublishedArchiveItems();
+const relatedItems = published
+  .filter((entry) => entry.id !== item.id && normalizeArchiveCategory(entry.category || entry.type) === normalizeArchiveCategory(item.category || item.type))
+  .slice(0, 4);
+const categoryLabel = ARCHIVE_PUBLIC_CATEGORIES.find((category) => category.key === item.category)?.label || item.category;
 ---
 <MarketingLayout title={`${title} | Archivo Motorsport`} description={summary || `Ficha del Archivo Motorsport: ${title}`} canonicalPath={`/archivo/${categoryParam}/${slugParam}/`}>
   <link rel="stylesheet" href="/gc-archivo-share-v832.css" />
+
   <section class="gc-page archivo-detail-hero">
     <div class="archivo-detail-copy">
       <nav class="archivo-breadcrumbs" aria-label="Breadcrumbs">
         <a href="/archivo">Archivo Motorsport</a>
         <span>/</span>
-        <a href={`/archivo/${categoryParam}/`}>{categoryParam}</a>
+        <a href={`/archivo/${categoryParam}/`}>{categoryLabel}</a>
         <span>/</span>
         <strong>{title}</strong>
       </nav>
@@ -124,10 +46,10 @@ const relatedItems = related.length ? related : fallbackRelated;
       ) : null}
     </div>
     <div class="archivo-media-card">
-      <img id="archivoHeroImage" src={hero?.url || '/og/grasscutters-og.svg'} alt={hero?.alt || title} loading="eager" />
+      <img id="archivoHeroImage" src={getArchiveCoverUrl(item)} alt={getArchiveCoverAlt(item)} loading="eager" />
       {hero ? (
         <div class="archivo-media-credit">
-          <strong>{hero.alt}</strong>
+          <strong>{hero.alt || title}</strong>
           {hero.source || hero.author || hero.license ? <span>{[hero.source, hero.author, hero.license].filter(Boolean).join(' · ')}</span> : null}
         </div>
       ) : null}
@@ -144,7 +66,7 @@ const relatedItems = related.length ? related : fallbackRelated;
         {media.map((image, index) => (
           <button type="button" class:list={["archivo-gallery-thumb", { 'is-active': index === 0 }]} data-gallery-src={image.url} data-gallery-alt={image.alt}>
             <img src={image.url} alt={image.alt} loading="lazy" />
-            <span>{image.isPrimary ? 'Portada' : `Imagen ${index + 1}`}</span>
+            <span>{image.isPrimary || image.isMain ? 'Portada' : `Imagen ${index + 1}`}</span>
           </button>
         ))}
       </div>
@@ -163,7 +85,7 @@ const relatedItems = related.length ? related : fallbackRelated;
         <div class="archivo-credits-list">
           {media.map((image) => (
             <div class="archivo-credit-item">
-              <strong>{image.alt}</strong>
+              <strong>{image.alt || title}</strong>
               {image.author ? <span>Autor: {image.author}</span> : null}
               {image.license ? <span>Licencia: {image.license}</span> : null}
               {image.sourceUrl ? <a href={image.sourceUrl} target="_blank" rel="noreferrer">Ver fuente</a> : null}
@@ -174,25 +96,24 @@ const relatedItems = related.length ? related : fallbackRelated;
     </aside>
   </section>
 
+  <div class="gc-page" data-archive-detail-share></div>
+
   {relatedItems.length ? (
     <section class="gc-page archivo-related-wrap">
       <div class="archivo-section-head">
         <h2>Relacionados</h2>
-        <p>{related.length ? 'Relaciones destacadas del archivo.' : 'Más fichas de la misma categoría.'}</p>
+        <p>Más fichas de la misma categoría.</p>
       </div>
       <div class="archivo-related-grid">
-        {relatedItems.map((entry) => {
-          const entryMedia = getMedia(entry);
-          return (
-            <a class="archivo-related-card" href={`/archivo/${categorySlug(entry)}/${entry.slug}/`}>
-              <img src={entryMedia[0]?.url || '/og/grasscutters-og.svg'} alt={getTitle(entry)} loading="lazy" />
-              <div>
-                <strong>{getTitle(entry)}</strong>
-                <span>{getSummary(entry) || categorySlug(entry)}</span>
-              </div>
-            </a>
-          );
-        })}
+        {relatedItems.map((entry) => (
+          <a class="archivo-related-card" href={getArchiveItemUrl(entry)}>
+            <img src={getArchiveCoverUrl(entry)} alt={entry.title} loading="lazy" />
+            <div>
+              <strong>{entry.title}</strong>
+              <span>{entry.summary || entry.category}</span>
+            </div>
+          </a>
+        ))}
       </div>
     </section>
   ) : null}
