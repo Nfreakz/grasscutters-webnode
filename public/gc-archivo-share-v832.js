@@ -1,5 +1,5 @@
 (() => {
-  const SHARE_MARK = 'gcArchiveShareV834';
+  const SHARE_MARK = 'gcArchiveShareV835';
   const PUBLIC_ORIGIN = 'https://grasscuttersracing.com';
 
   const icons = {
@@ -23,8 +23,7 @@
   }
 
   function pageTitle() {
-    const h1 = document.querySelector('h1');
-    return cleanText(h1?.textContent || document.title || 'Archivo Motorsport');
+    return cleanText(document.querySelector('h1')?.textContent || document.title || 'Archivo Motorsport');
   }
 
   function pageSummary() {
@@ -32,7 +31,6 @@
       document.querySelector('meta[name="description"]')?.getAttribute('content'),
       document.querySelector('.gc-lead')?.textContent,
       document.querySelector('.gc-subtitle')?.textContent,
-      document.querySelector('p')?.textContent,
     ];
     return cleanText(candidates.find(Boolean) || '');
   }
@@ -40,10 +38,7 @@
   function canonicalUrl() {
     const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '';
     if (canonical && !canonical.includes('localhost') && !canonical.includes('127.0.0.1')) return canonical;
-
-    const path = window.location.pathname || '/archivo/';
-    const search = window.location.search || '';
-    return `${PUBLIC_ORIGIN}${path}${search}`;
+    return `${PUBLIC_ORIGIN}${window.location.pathname || '/archivo/'}${window.location.search || ''}`;
   }
 
   function encoded(value) {
@@ -55,18 +50,16 @@
     const title = pageTitle();
     const summary = pageSummary();
     const text = summary ? `${title} · ${summary}` : title;
-    const emailSubject = `GrassCutters Racing · ${title}`;
-    const emailBody = `${text}\n\n${url}`;
 
     return [
-      { key: 'copy', label: 'Copiar', title: 'Copiar enlace', href: url, action: 'copy' },
-      { key: 'whatsapp', label: 'WhatsApp', title: 'Compartir por WhatsApp', href: `https://wa.me/?text=${encoded(`${text}\n${url}`)}` },
-      { key: 'telegram', label: 'Telegram', title: 'Compartir por Telegram', href: `https://t.me/share/url?url=${encoded(url)}&text=${encoded(text)}` },
-      { key: 'x', label: 'X', title: 'Compartir en X', href: `https://twitter.com/intent/tweet?url=${encoded(url)}&text=${encoded(text)}` },
-      { key: 'facebook', label: 'Facebook', title: 'Compartir en Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encoded(url)}` },
-      { key: 'linkedin', label: 'LinkedIn', title: 'Compartir en LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encoded(url)}` },
-      { key: 'reddit', label: 'Reddit', title: 'Compartir en Reddit', href: `https://www.reddit.com/submit?url=${encoded(url)}&title=${encoded(title)}` },
-      { key: 'email', label: 'Email', title: 'Enviar por email', href: `mailto:?subject=${encoded(emailSubject)}&body=${encoded(emailBody)}` },
+      { key: 'copy', label: 'Copiar enlace', href: url, action: 'copy' },
+      { key: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/?text=${encoded(`${text}\n${url}`)}` },
+      { key: 'telegram', label: 'Telegram', href: `https://t.me/share/url?url=${encoded(url)}&text=${encoded(text)}` },
+      { key: 'x', label: 'X', href: `https://twitter.com/intent/tweet?url=${encoded(url)}&text=${encoded(text)}` },
+      { key: 'facebook', label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encoded(url)}` },
+      { key: 'linkedin', label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encoded(url)}` },
+      { key: 'reddit', label: 'Reddit', href: `https://www.reddit.com/submit?url=${encoded(url)}&title=${encoded(title)}` },
+      { key: 'email', label: 'Email', href: `mailto:?subject=${encoded(`GrassCutters Racing · ${title}`)}&body=${encoded(`${text}\n\n${url}`)}` },
     ];
   }
 
@@ -93,36 +86,16 @@
     const url = canonicalUrl();
 
     return `
-      <section class="gc-archive-share gc-archive-share--public" data-${SHARE_MARK}="true">
-        <div class="gc-archive-share__top">
-          <div>
-            <span class="gc-archive-share__kicker">Compartir</span>
-            <h2>Comparte esta ficha</h2>
-          </div>
-          <button class="gc-archive-share__quick-copy" type="button" data-copy-link="${url}">
-            ${icons.copy}
-            <span>Copiar enlace</span>
-          </button>
+      <nav class="gc-archive-share gc-archive-share--minimal" data-${SHARE_MARK}="true" aria-label="Compartir ficha">
+        <span class="gc-archive-share__label">Compartir</span>
+        <div class="gc-archive-share__icons">
+          ${links.map((link) => link.action === 'copy'
+            ? `<button class="gc-archive-share__icon is-${link.key}" type="button" data-copy-link="${url}" title="${link.label}" aria-label="${link.label}">${icons[link.key]}</button>`
+            : `<a class="gc-archive-share__icon is-${link.key}" href="${link.href}" title="${link.label}" aria-label="${link.label}" target="_blank" rel="noopener noreferrer">${icons[link.key]}</a>`
+          ).join('')}
         </div>
-
-        <div class="gc-archive-share__actions">
-          ${links.filter((link) => link.key !== 'copy').map((link) => `
-            <a class="gc-archive-share__btn is-${link.key}" href="${link.href}" title="${link.title}" aria-label="${link.title}" target="_blank" rel="noopener noreferrer">
-              ${icons[link.key] || ''}
-              <span>${link.label}</span>
-            </a>
-          `).join('')}
-        </div>
-
-        <div class="gc-archive-share__url">
-          <input value="${url.replace(/"/g, '&quot;')}" readonly aria-label="URL pública de la ficha" />
-          <button type="button" data-copy-link="${url}" aria-label="Copiar URL pública">
-            ${icons.copy}
-            <span>Copiar</span>
-          </button>
-        </div>
-        <p class="gc-archive-share__msg" aria-live="polite"></p>
-      </section>
+        <span class="gc-archive-share__msg" aria-live="polite"></span>
+      </nav>
     `;
   }
 
@@ -161,11 +134,14 @@
 
       try {
         await copyToClipboard(url);
-        if (msg) msg.textContent = 'Enlace copiado. Listo para pegar en Discord.';
+        if (msg) msg.textContent = 'Copiado';
         button.classList.add('is-copied');
-        setTimeout(() => button.classList.remove('is-copied'), 1200);
+        setTimeout(() => {
+          button.classList.remove('is-copied');
+          if (msg) msg.textContent = '';
+        }, 1400);
       } catch {
-        if (msg) msg.textContent = 'No se pudo copiar automáticamente. Copia el enlace del campo.';
+        if (msg) msg.textContent = 'No se pudo copiar';
       }
     }, true);
   }
