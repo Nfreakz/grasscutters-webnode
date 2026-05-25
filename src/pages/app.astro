@@ -7,7 +7,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div>
         <span class="gc-kicker">GrassCutters Platform</span>
         <h1 class="gc-title">Panel de pista.</h1>
-        <p class="gc-subtitle">Entrada rápida al combo activo, últimas vueltas, estado de sesión y accesos principales de la plataforma.</p>
+        <p class="gc-subtitle">Resumen de pista con combo activo, actividad reciente y accesos principales.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent" id="gcAppStatusChip">Panel listo</span>
           <span class="gc-chip" id="gcAppComboChip">Combo activo</span>
@@ -26,9 +26,9 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     <section class="gc-metrics gc-app-metrics-v3" aria-label="Métricas rápidas">
       <div class="gc-metric"><span>Pilotos</span><strong id="gcMetricDrivers">...</strong><small>detectados</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>desde stracker</small></div>
-      <div class="gc-metric"><span>Coches</span><strong id="gcMetricCars">...</strong><small>detectados</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong id="gcMetricTracks">...</strong><small>detectados</small></div>
+      <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>registradas</small></div>
+      <div class="gc-metric"><span>Coches</span><strong id="gcMetricCars">...</strong><small>en actividad</small></div>
+      <div class="gc-metric"><span>Circuitos</span><strong id="gcMetricTracks">...</strong><small>en actividad</small></div>
     </section>
 
     <section class="gc-app-top-grid-v3" aria-label="Resumen principal">
@@ -76,6 +76,22 @@ import AppLayout from '../layouts/AppLayout.astro';
       </article>
     </section>
 
+    <section class="gc-section gc-app-references-v3">
+      <div class="gc-section-head gc-app-card-head-v3">
+        <div>
+          <h2>Últimas vueltas</h2>
+          <p id="gcRefsMeta">Cargando actividad reciente...</p>
+        </div>
+        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
+      </div>
+      <div class="gc-table-wrap gc-app-table-wrap-v3">
+        <table class="gc-table gc-app-table-v3">
+          <thead><tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead>
+          <tbody id="gcRefsTable"><tr><td colspan="5">Leyendo vueltas recientes...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="gc-section gc-app-actions-v3">
       <div class="gc-section-head gc-app-card-head-v3">
         <div>
@@ -94,21 +110,6 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
     </section>
 
-    <section class="gc-section gc-app-references-v3">
-      <div class="gc-section-head gc-app-card-head-v3">
-        <div>
-          <h2>Últimas vueltas</h2>
-          <p id="gcRefsMeta">Cargando actividad reciente...</p>
-        </div>
-        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
-      </div>
-      <div class="gc-table-wrap gc-app-table-wrap-v3">
-        <table class="gc-table gc-app-table-v3">
-          <thead><tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead>
-          <tbody id="gcRefsTable"><tr><td colspan="5">Leyendo vueltas recientes...</td></tr></tbody>
-        </table>
-      </div>
-    </section>
   </div>
 
   <style>
@@ -136,14 +137,18 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-app-table-v3 td,.gc-app-table-v3 th{white-space:nowrap}
     .gc-app-table-v3 td:nth-child(2){min-width:250px}
     .gc-app-table-v3 td:nth-child(3){min-width:180px}
-    .gc-app-action-grid-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-    .gc-app-action-card-v3{display:grid;grid-template-columns:48px minmax(0,1fr);gap:14px;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));transition:transform .16s ease,border-color .16s ease,background .16s ease}
+    .gc-app-hero-v3{padding-block:clamp(22px,3vw,34px)!important}
+    .gc-app-hero-v3 .gc-title{font-size:clamp(2.45rem,5.6vw,4.9rem)}
+    .gc-app-hero-v3 .gc-subtitle{max-width:760px}
+    .gc-app-actions-v3{padding-block:clamp(18px,2vw,26px)}
+    .gc-app-action-grid-v3{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+    .gc-app-action-card-v3{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));transition:transform .16s ease,border-color .16s ease,background .16s ease;min-height:86px}
     .gc-app-action-card-v3:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026))}
-    .gc-app-action-card-v3>span{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:#07110a;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:.72rem;font-weight:1000;letter-spacing:.05em}
-    .gc-app-action-card-v3 strong{display:block;color:var(--text);font-size:1.02rem;line-height:1.2}
-    .gc-app-action-card-v3 p{margin:.35rem 0 0;color:var(--muted);line-height:1.5}
-    @media(max-width:1100px){.gc-app-top-grid-v3,.gc-app-combo-body-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3,.gc-app-action-grid-v3{grid-template-columns:1fr}.gc-app-table-wrap-v3{max-height:none}}
+    .gc-app-action-card-v3>span{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:#07110a;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:.64rem;font-weight:1000;letter-spacing:.05em}
+    .gc-app-action-card-v3 strong{display:block;color:var(--text);font-size:.95rem;line-height:1.15}
+    .gc-app-action-card-v3 p{margin:.28rem 0 0;color:var(--muted);line-height:1.35;font-size:.82rem}
+    @media(max-width:1180px){.gc-app-action-grid-v3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1100px){.gc-app-top-grid-v3,.gc-app-combo-body-v3{grid-template-columns:1fr}}
+    @media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-app-action-card-v3{min-height:78px}.gc-app-table-wrap-v3{max-height:none}}@media(max-width:460px){.gc-app-action-grid-v3{grid-template-columns:1fr}}
   </style>
 
   <script is:inline>
@@ -470,7 +475,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         renderStracker(stracker, recentLaps, bestHotlaps, combosData);
         setText('gcAppStatusChip','Live');
 
-        console.info('[GC /app v1.3]', {
+        console.info('[GC /app v1.4]', {
           pilots: items(pilots).length,
           drivers: items(drivers).length,
           combos: items(combosData).length,
