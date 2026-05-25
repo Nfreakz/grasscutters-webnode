@@ -1,7 +1,6 @@
 ---
 import '../styles/marketing.css';
 
-import logoUrl from '../assets/logo.png';
 import '../styles/landing-final.css';
 import '../styles/auth-header-status.css';
 import '../styles/ui-cleanup-v85.css';
@@ -25,6 +24,9 @@ const absoluteOgImage = String(ogImage).startsWith('http') ? ogImage : new URL(o
 const discordUrl = 'https://discord.gg/jA4yuuH5T';
 const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
 const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
+
+const hudOvertakeUrl = 'https://www.overtake.gg/downloads/grasscutters-lua-hud-lite.84201/';
+const hudPatreonUrl = 'https://www.patreon.com/c/neorsgarage';
 
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
@@ -83,7 +85,7 @@ function isActive(match) {
 
     <header class="gc-public-header" data-public-header>
       <a class="gc-public-brand" href="/" aria-label="GrassCutters Racing - inicio">
-        <span class="gc-public-brand-mark gc-public-brand-mark--logo"><img src={logoUrl.src} alt="" loading="eager" /></span>
+        <span class="gc-public-brand-mark gc-public-brand-mark--logo"><img src="/images/newlogo.png" alt="" loading="eager" /></span>
         <span class="gc-public-brand-copy">
           <strong>GrassCutters</strong>
           <small>Racing Community</small>
@@ -113,6 +115,25 @@ function isActive(match) {
     <main id="contenido" class="gc-public-main">
       <slot />
     </main>
+
+
+<!-- GC HUD POPUP V8.8.8 START -->
+    <aside class="gc-hud-popup" data-hud-popup hidden aria-label="Anuncio GrassCutters HUD">
+      <button class="gc-hud-popup__close" type="button" aria-label="Cerrar anuncio" data-hud-popup-close>×</button>
+      <div class="gc-hud-popup__media" aria-hidden="true">
+        <img src="/images/hudlogo.png" alt="" loading="lazy" />
+      </div>
+      <div class="gc-hud-popup__content">
+        <span class="gc-hud-popup__kicker">GrassCutters HUD</span>
+        <h2>HUD Lite y PRO ya disponibles.</h2>
+        <p>Overlay para Assetto Corsa / CSP con timing, relative y clasificación. Si eres miembro de la comunidad, solicita tu versión PRO a cualquier admin.</p>
+        <div class="gc-hud-popup__actions">
+          <a class="gc-btn gc-hud-popup__btn gc-hud-popup__btn--overtake" href={hudOvertakeUrl} target="_blank" rel="noreferrer">Descargar en Overtake</a>
+          <a class="gc-btn gc-hud-popup__btn gc-hud-popup__btn--patreon" href={hudPatreonUrl} target="_blank" rel="noreferrer">Patreon</a>
+        </div>
+      </div>
+    </aside>
+<!-- GC HUD POPUP V8.8.8 END -->
 
     <footer class="gc-public-footer gc-public-footer--compact">
       <div class="gc-public-footer-inner">
@@ -155,6 +176,39 @@ function isActive(match) {
         });
       })();
     </script>
+
+<!-- GC HUD POPUP SCRIPT V8.8.8 START -->
+    <script is:inline>
+      (() => {
+        const popup = document.querySelector('[data-hud-popup]');
+        const close = document.querySelector('[data-hud-popup-close]');
+        if (!popup || !close) return;
+
+        const key = 'gc-hud-popup-v2-dismissed-at';
+        const cooldownDays = 7;
+        const now = Date.now();
+        const dismissedAt = Number(localStorage.getItem(key) || 0);
+        const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+
+        if (dismissedAt && now - dismissedAt < cooldownMs) return;
+
+        const show = () => {
+          popup.hidden = false;
+          requestAnimationFrame(() => popup.classList.add('is-visible'));
+        };
+
+        const hide = () => {
+          popup.classList.remove('is-visible');
+          localStorage.setItem(key, String(Date.now()));
+          window.setTimeout(() => { popup.hidden = true; }, 220);
+        };
+
+        close.addEventListener('click', hide);
+        window.setTimeout(show, 1400);
+      })();
+    </script>
+<!-- GC HUD POPUP SCRIPT V8.8.8 END -->
+
     <AuthHeader />
   </body>
 </html>
