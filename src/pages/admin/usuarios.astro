@@ -84,14 +84,61 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       async function tryUserAction(id, action, payload) {
         const tries = action === 'role'
           ? [{url:`/api/admin/users/${encodeURIComponent(id)}/role`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}`,method:'PATCH'},{url:`/api/admin/users/${encodeURIComponent(id)}`,method:'PUT'}]
-          : [{url:`/api/admin/users/${encodeURIComponent(id)}/sessions/revoke`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}/sessions`,method:'DELETE'},{url:`/api/admin/sessions/revoke`,method:'POST'}];
+          : action === 'password'
+            ? [{url:`/api/admin/users/${encodeURIComponent(id)}/password`,method:'POST'}]
+            : [{url:`/api/admin/users/${encodeURIComponent(id)}/revoke-sessions`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}/sessions/revoke`,method:'POST'},{url:`/api/admin/users/${encodeURIComponent(id)}/sessions`,method:'DELETE'},{url:`/api/admin/sessions/revoke`,method:'POST'}];
         let lastError;
         for (const item of tries) {
           try { return await fetchJson(item.url, { method:item.method, body:JSON.stringify(payload) }); } catch (e) { lastError = e; }
         }
         throw lastError || new Error('Acción no disponible.');
       }
-      els.table.addEventListener('click', async (ev) => { const btn = ev.target.closest('button[data-action]'); if (!btn) return; const row = btn.closest('tr[data-user-id]'); const id = row?.dataset.userId; if (!id) return; try { els.msg.textContent = 'Aplicando acción...'; if (btn.dataset.action === 'role') await tryUserAction(id, 'role', { role: btn.dataset.role }); if (btn.dataset.action === 'revoke') await tryUserAction(id, 'revoke', { userId:id }); els.msg.textContent = 'Acción aplicada.'; els.msg.style.color = 'var(--accent)'; await loadUsers(); } catch (e) { els.msg.textContent = e.message || 'No se pudo aplicar la acción.'; els.msg.style.color = 'var(--soft)'; } });
+      async function resetPasswordFlow(id) {
+        const user = users.find((item) => item.id === id);
+        const label = user?.displayName || user?.email || 'usuario';
+        const first = window.prompt(`Nueva contraseña temporal para ${label} (mínimo 8 caracteres):`);
+        if (first === null) return null;
+        if (first.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.');
+        const second = window.prompt('Repite la nueva contraseña para confirmar:');
+        if (second === null) return null;
+        if (first !== second) throw new Error('Las contraseñas no coinciden.');
+        return tryUserAction(id, 'password', { password:first });
+      }
+      els.table.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('button[data-action]');
+        if (!btn) return;
+        const row = btn.closest('tr[data-user-id]');
+        const id = row?.dataset.userId;
+        if (!id) return;
+
+        try {
+          els.msg.textContent = 'Aplicando acción...';
+
+          if (btn.dataset.action === 'role') {
+            await tryUserAction(id, 'role', { role: btn.dataset.role });
+          }
+
+          if (btn.dataset.action === 'revoke') {
+            await tryUserAction(id, 'revoke', { userId:id });
+          }
+
+          if (btn.dataset.action === 'password') {
+            const result = await resetPasswordFlow(id);
+            if (result === null) {
+              els.msg.textContent = 'Reset de contraseña cancelado.';
+              els.msg.style.color = 'var(--soft)';
+              return;
+            }
+          }
+
+          els.msg.textContent = btn.dataset.action === 'password' ? 'Contraseña actualizada y sesiones cerradas.' : 'Acción aplicada.';
+          els.msg.style.color = 'var(--accent)';
+          await loadUsers();
+        } catch (e) {
+          els.msg.textContent = e.message || 'No se pudo aplicar la acción.';
+          els.msg.style.color = 'var(--soft)';
+        }
+      });
       [els.search, els.role, els.link].forEach((n) => n.addEventListener('input', renderUsers));
       els.reload.addEventListener('click', () => loadUsers().catch((e) => els.msg.textContent = e.message));
       els.retry.addEventListener('click', init);

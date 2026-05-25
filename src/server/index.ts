@@ -5503,6 +5503,82 @@ app.post('/api/admin/users/:userId/revoke-sessions', async (req, res) => {
   });
 });
 
+// GC ADMIN PASSWORD RESET V8.8.2 START
+app.post('/api/admin/users/:userId/password', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const password = String(req.body?.password ?? '');
+
+  if (password.length < 8) {
+    res.status(400).json({ ok: false, message: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    return;
+  }
+
+  if (password.length > 128) {
+    res.status(400).json({ ok: false, message: 'La nueva contraseña es demasiado larga.' });
+    return;
+  }
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  const beforeSessions = countSessionsForUser(store, target.id);
+  const beforeValue = {
+    userId: target.id,
+    email: target.email,
+    activeSessions: beforeSessions,
+    passwordAlgorithm: target.password?.algorithm ?? null
+  };
+
+  target.password = hashPassword(password);
+  target.updatedAt = new Date().toISOString();
+
+  // Seguridad: tras resetear contraseña se cierran las sesiones del usuario.
+  // Si el admin se resetea a sí mismo, se conserva la sesión actual para no expulsarlo en medio de la operación.
+  store.sessions = store.sessions.filter((session) => {
+    if (session.userId !== target.id) return true;
+    if (target.id === context.user.id && session.id === context.session.id) return true;
+    return false;
+  });
+
+  await writeUserStoreAsync(store);
+
+  const afterSessions = countSessionsForUser(store, target.id);
+  const sessionsRevoked = Math.max(0, beforeSessions - afterSessions);
+
+  await writeAdminAuditLog(
+    req,
+    { context },
+    'user.password_reset',
+    'user',
+    target.id,
+    beforeValue,
+    {
+      userId: target.id,
+      email: target.email,
+      activeSessions: afterSessions,
+      sessionsRevoked,
+      passwordChanged: true
+    }
+  );
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    sessionsRevoked,
+    message: target.id === context.user.id
+      ? 'Contraseña actualizada. Se han cerrado otras sesiones de tu cuenta.'
+      : 'Contraseña actualizada y sesiones del usuario cerradas.'
+  });
+});
+// GC ADMIN PASSWORD RESET V8.8.2 END
+
 app.post('/api/admin/stracker/sync', async (req, res) => {
   const context = await requireAdmin(req, res);
   if (!context) return;
@@ -6966,6 +7042,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 
