@@ -25,17 +25,35 @@ import AppLayout from '../layouts/AppLayout.astro';
     </section>
 
     <section class="gc-toolbar" aria-label="Filtros del leaderboard">
-      <div class="gc-field"><label for="driverFilter">Piloto</label><input class="gc-input" id="driverFilter" placeholder="Filtrar piloto" autocomplete="off" /></div>
-      <div class="gc-field"><label for="carFilter">Coche</label><input class="gc-input" id="carFilter" placeholder="Filtrar coche" autocomplete="off" /></div>
-      <div class="gc-field"><label for="trackFilter">Circuito</label><input class="gc-input" id="trackFilter" placeholder="Filtrar circuito" autocomplete="off" /></div>
-      <div class="gc-field"><label for="validFilter">Estado</label><select class="gc-select" id="validFilter"><option value="all">Todas</option><option value="valid">Válidas</option><option value="invalid">No válidas</option></select></div>
+      <div class="gc-field">
+        <label for="driverFilter">Piloto</label>
+        <select class="gc-select" id="driverFilter">
+          <option value="all">Todos los pilotos</option>
+        </select>
+      </div>
+      <div class="gc-field">
+        <label for="carFilter">Coche</label>
+        <select class="gc-select" id="carFilter">
+          <option value="all">Todos los coches</option>
+        </select>
+      </div>
+      <div class="gc-field">
+        <label for="trackFilter">Circuito</label>
+        <select class="gc-select" id="trackFilter">
+          <option value="all">Todos los circuitos</option>
+        </select>
+      </div>
+      <div class="gc-field">
+        <label for="validFilter">Estado</label>
+        <select class="gc-select" id="validFilter"><option value="all">Todas</option><option value="valid">Válidas</option><option value="invalid">No válidas</option></select>
+      </div>
       <button class="gc-btn gc-btn--primary" id="reloadHotlaps" type="button">Actualizar</button>
       <button class="gc-btn" id="clearFilters" type="button">Limpiar</button>
     </section>
 
     <div class="gc-table-meta">
       <span id="leaderboardHint">Cargando leaderboard...</span>
-      <span>Ordenado por mejor tiempo</span>
+      <span>Ordenado por fecha reciente</span>
     </div>
 
     <section class="gc-table-wrap">
@@ -64,6 +82,8 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-driver-link{color:var(--text);text-decoration:none;font-weight:900}
     .gc-driver-link:hover{color:var(--accent)}
     .gc-leaderboard-sub{display:block;margin-top:.18rem;color:var(--muted);font-size:.72rem;letter-spacing:.04em;text-transform:uppercase}
+    .gc-hotlaps-page .gc-toolbar .gc-select{min-width:190px}
+    .gc-table-meta span:last-child{color:var(--muted)}
   </style>
 
   <script is:inline>
@@ -98,6 +118,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         if (raw === fallback) return fallback;
         return raw.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
       };
+      const normalizeFilterValue = (value) => cleanFallbackName(value, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       const displayFrom = (row, paths, fallback = '-') => cleanFallbackName(firstValue(row, paths), fallback);
       const fmtMs = (ms) => {
         const n = Number(ms);
@@ -126,16 +147,44 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
       const isInvalid = (row) => { const value = firstValue(row, ['valid','Valid','isValid']); return value === 0 || value === false || value === '0' || value === 'false' || value === 'no'; };
 
+      const lapTimestamp = (row) => {
+        const raw = lapDate(row);
+        if (!raw) return 0;
+        const time = new Date(raw).getTime();
+        return Number.isFinite(time) ? time : 0;
+      };
+      const populateSelect = (select, rows, getter, allLabel) => {
+        if (!select) return;
+        const current = select.value || 'all';
+        const map = new Map();
+        rows.forEach((row) => {
+          const label = getter(row);
+          const value = normalizeFilterValue(label);
+          if (!value || value === '-') return;
+          if (!map.has(value)) map.set(value, label);
+        });
+        const options = [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity:'base' }));
+        select.innerHTML = '<option value="all">' + escapeHtml(allLabel) + '</option>' + options.map(([value, label]) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>').join('');
+        select.value = map.has(current) ? current : 'all';
+      };
+      function populateFilterOptions() {
+        populateSelect(els.driver, cache, driverName, 'Todos los pilotos');
+        populateSelect(els.car, cache, carName, 'Todos los coches');
+        populateSelect(els.track, cache, trackName, 'Todos los circuitos');
+      }
       function draw() {
-        const driver = els.driver.value.trim().toLowerCase(); const car = els.car.value.trim().toLowerCase(); const track = els.track.value.trim().toLowerCase(); const valid = els.valid.value;
+        const driver = els.driver.value || 'all';
+        const car = els.car.value || 'all';
+        const track = els.track.value || 'all';
+        const valid = els.valid.value;
         const rows = cache.filter((row) => {
-          if (driver && !driverName(row).toLowerCase().includes(driver)) return false;
-          if (car && !carName(row).toLowerCase().includes(car)) return false;
-          if (track && !trackName(row).toLowerCase().includes(track)) return false;
+          if (driver !== 'all' && normalizeFilterValue(driverName(row)) !== driver) return false;
+          if (car !== 'all' && normalizeFilterValue(carName(row)) !== car) return false;
+          if (track !== 'all' && normalizeFilterValue(trackName(row)) !== track) return false;
           if (valid === 'valid' && isInvalid(row)) return false;
           if (valid === 'invalid' && !isInvalid(row)) return false;
           return true;
-        });
+        }).sort((a, b) => lapTimestamp(b) - lapTimestamp(a) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999));
         const best = Math.min(...rows.map(lapMs).filter((value) => Number.isFinite(value)));
         els.visible.textContent = String(rows.length);
         els.hint.textContent = rows.length ? `${rows.length} vueltas visibles de ${cache.length}` : 'No hay resultados con esos filtros';
@@ -149,16 +198,17 @@ import AppLayout from '../layouts/AppLayout.astro';
       async function load() {
         els.rows.innerHTML = '<tr><td colspan="10">Cargando...</td></tr>'; els.reload.disabled = true;
         try {
-          const res = await fetch('/api/hotlaps?limit=350', { cache:'no-store', credentials:'include' });
+          const res = await fetch('/api/hotlaps?limit=1000', { cache:'no-store', credentials:'include' });
           if (!res.ok) throw new Error('Endpoint no disponible'); const json = await res.json();
           cache = json.items || json.hotlaps || json.laps || json.data || [];
+          populateFilterOptions();
           els.loaded.textContent = String(cache.length); els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }); els.source.textContent = 'OK'; els.source.style.color = ''; draw();
         } catch (error) {
           els.source.textContent = 'Error'; els.source.style.color = 'var(--warn)'; els.hint.textContent = 'No se pudo cargar /api/hotlaps'; els.rows.innerHTML = '<tr><td colspan="10">Error cargando hotlaps. Revisa que el endpoint esté activo.</td></tr>';
         } finally { els.reload.disabled = false; }
       }
       [els.driver, els.car, els.track, els.valid].forEach((input) => input.addEventListener('input', draw));
-      els.reload.addEventListener('click', load); els.clear.addEventListener('click', () => { els.driver.value=''; els.car.value=''; els.track.value=''; els.valid.value='all'; draw(); });
+      els.reload.addEventListener('click', load); els.clear.addEventListener('click', () => { els.driver.value='all'; els.car.value='all'; els.track.value='all'; els.valid.value='all'; draw(); });
       load();
     })();
   </script>
