@@ -6134,6 +6134,70 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
+// GC AUTH CHANGE PASSWORD V8.8.4 START
+app.post('/api/auth/password', async (req, res) => {
+  const context = await getAuthContextAsync(req);
+
+  if (!context) {
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+    return;
+  }
+
+  const currentPassword = String(req.body?.currentPassword ?? '');
+  const newPassword = String(req.body?.newPassword ?? '');
+
+  if (!currentPassword) {
+    res.status(400).json({ ok: false, message: 'Introduce tu contraseña actual.' });
+    return;
+  }
+
+  if (!verifyPassword(currentPassword, context.user.password)) {
+    res.status(401).json({ ok: false, message: 'La contraseña actual no es correcta.' });
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    res.status(400).json({ ok: false, message: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+    return;
+  }
+
+  if (newPassword.length > 128) {
+    res.status(400).json({ ok: false, message: 'La nueva contraseña es demasiado larga.' });
+    return;
+  }
+
+  if (newPassword === currentPassword) {
+    res.status(400).json({ ok: false, message: 'La nueva contraseña debe ser distinta a la actual.' });
+    return;
+  }
+
+  const beforeSessions = countSessionsForUser(context.store, context.user.id);
+
+  context.user.password = hashPassword(newPassword);
+  context.user.updatedAt = new Date().toISOString();
+
+  // Conserva la sesión actual y cierra el resto por seguridad.
+  context.store.sessions = context.store.sessions.filter((session) => {
+    if (session.userId !== context.user.id) return true;
+    return session.id === context.session.id;
+  });
+
+  await writeUserStoreAsync(context.store);
+
+  const afterSessions = countSessionsForUser(context.store, context.user.id);
+  const sessionsRevoked = Math.max(0, beforeSessions - afterSessions);
+
+  res.json({
+    ok: true,
+    user: publicUser(context.user),
+    sessionsRevoked,
+    message: sessionsRevoked > 0
+      ? 'Contraseña actualizada. Se han cerrado otras sesiones de tu cuenta.'
+      : 'Contraseña actualizada correctamente.'
+  });
+});
+// GC AUTH CHANGE PASSWORD V8.8.4 END
+
 app.post('/api/auth/logout', async (req, res) => {
   const token = readAuthToken(req);
   const store = await readUserStoreAsync();
@@ -7042,6 +7106,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 

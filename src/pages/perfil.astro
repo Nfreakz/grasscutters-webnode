@@ -59,6 +59,33 @@ import AppLayout from '../layouts/AppLayout.astro';
       </aside>
     </section>
 
+<!-- GC PROFILE CHANGE PASSWORD V8.8.4 START -->
+    <section class="gc-section gc-profile-password-card" id="passwordSection" hidden>
+      <div class="gc-section-head">
+        <h2>Cambiar contraseña</h2>
+        <p>Actualiza tu acceso. Si has recibido una contraseña temporal, cámbiala aquí.</p>
+      </div>
+      <div class="gc-grid-3 gc-profile-password-grid">
+        <label class="gc-field">
+          <span>Contraseña actual</span>
+          <input class="gc-input" id="currentPasswordInput" type="password" autocomplete="current-password" />
+        </label>
+        <label class="gc-field">
+          <span>Nueva contraseña</span>
+          <input class="gc-input" id="newPasswordInput" type="password" autocomplete="new-password" minlength="8" />
+        </label>
+        <label class="gc-field">
+          <span>Repetir nueva contraseña</span>
+          <input class="gc-input" id="confirmPasswordInput" type="password" autocomplete="new-password" minlength="8" />
+        </label>
+      </div>
+      <div class="gc-actions">
+        <button class="gc-btn gc-btn--primary" id="changePasswordBtn" type="button">Guardar nueva contraseña</button>
+      </div>
+      <p class="gc-message" id="changePasswordMessage"></p>
+    </section>
+<!-- GC PROFILE CHANGE PASSWORD V8.8.4 END -->
+
     <section class="gc-grid-2">
       <div class="gc-section"><div class="gc-section-head"><h2>Mejores combos</h2><p>Coche + circuito con posición de referencia</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>#</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Rank</th><th>Limpias</th></tr></thead><tbody id="bestCombos"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
       <div class="gc-section"><div class="gc-section-head"><h2>Últimas vueltas</h2><p>Actividad reciente real</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>Fecha</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Estado</th><th>Vmax</th></tr></thead><tbody id="recentLaps"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
@@ -82,6 +109,11 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-profile-link-preview span{display:block;color:var(--dim);font-size:.82rem;margin-top:4px}
     .gc-profile-link-actions{align-items:center}
     @media(max-width:720px){.gc-profile-link-actions .gc-btn{width:100%}}
+/* GC PROFILE CHANGE PASSWORD V8.8.4 START */
+    .gc-profile-password-card{margin-top:18px}
+    .gc-profile-password-grid{align-items:end}
+    @media(max-width:920px){.gc-profile-password-grid{grid-template-columns:1fr}}
+    /* GC PROFILE CHANGE PASSWORD V8.8.4 END */
   </style>
   <script is:inline>
     (() => {
@@ -251,4 +283,101 @@ import AppLayout from '../layouts/AppLayout.astro';
       fetch('/api/profile', { credentials:'include', cache:'no-store' }).then((response) => response.json()).then((data) => { if (!data.ok && data.authenticated === false) renderUnauthenticated(data); else renderProfile(data); }).catch((error) => { $('accountState').textContent='Error'; $('accountState').style.color='var(--warn)'; $('profileText').textContent = error.message || 'No se pudo cargar /api/profile.'; $('recentLaps').innerHTML = noRows(6,'No se pudo cargar el perfil.'); });
     })();
   </script>
+<!-- GC PROFILE CHANGE PASSWORD SCRIPT V8.8.4 START -->
+  <script is:inline>
+    (() => {
+      const section = document.getElementById('passwordSection');
+      const currentInput = document.getElementById('currentPasswordInput');
+      const newInput = document.getElementById('newPasswordInput');
+      const confirmInput = document.getElementById('confirmPasswordInput');
+      const button = document.getElementById('changePasswordBtn');
+      const message = document.getElementById('changePasswordMessage');
+
+      if (!section || !currentInput || !newInput || !confirmInput || !button || !message) return;
+
+      const setMessage = (text, tone = '') => {
+        message.textContent = text || '';
+        message.style.color = tone === 'ok' ? 'var(--accent)' : tone === 'error' ? 'var(--danger)' : 'var(--soft)';
+      };
+
+      const setBusy = (busy) => {
+        button.disabled = Boolean(busy);
+        currentInput.disabled = Boolean(busy);
+        newInput.disabled = Boolean(busy);
+        confirmInput.disabled = Boolean(busy);
+      };
+
+      async function checkSession() {
+        try {
+          const response = await fetch('/api/auth/me', { credentials:'include', cache:'no-store' });
+          const data = await response.json().catch(() => null);
+          section.hidden = !(response.ok && data?.authenticated === true);
+        } catch {
+          section.hidden = true;
+        }
+      }
+
+      async function changePassword() {
+        const currentPassword = String(currentInput.value || '');
+        const newPassword = String(newInput.value || '');
+        const confirmPassword = String(confirmInput.value || '');
+
+        if (!currentPassword) {
+          setMessage('Introduce tu contraseña actual.', 'error');
+          currentInput.focus();
+          return;
+        }
+
+        if (newPassword.length < 8) {
+          setMessage('La nueva contraseña debe tener al menos 8 caracteres.', 'error');
+          newInput.focus();
+          return;
+        }
+
+        if (newPassword !== confirmPassword) {
+          setMessage('Las nuevas contraseñas no coinciden.', 'error');
+          confirmInput.focus();
+          return;
+        }
+
+        setBusy(true);
+        setMessage('Actualizando contraseña...');
+
+        try {
+          const response = await fetch('/api/auth/password', {
+            method:'POST',
+            credentials:'include',
+            cache:'no-store',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ currentPassword, newPassword })
+          });
+
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.message || 'No se pudo cambiar la contraseña.');
+          }
+
+          currentInput.value = '';
+          newInput.value = '';
+          confirmInput.value = '';
+          setMessage(data.message || 'Contraseña actualizada correctamente.', 'ok');
+        } catch (error) {
+          setMessage(error.message || 'No se pudo cambiar la contraseña.', 'error');
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      button.addEventListener('click', changePassword);
+      [currentInput, newInput, confirmInput].forEach((input) => {
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') changePassword();
+        });
+      });
+
+      checkSession();
+    })();
+  </script>
+<!-- GC PROFILE CHANGE PASSWORD SCRIPT V8.8.4 END -->
 </AppLayout>
