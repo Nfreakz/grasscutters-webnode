@@ -20,14 +20,18 @@ const current = normalizePath(Astro.url.pathname);
 const nav = [
   { href: '/', label: 'Inicio', code: '00' },
   { href: '/app', label: 'Panel', code: '01' },
-  { href: '/calendario', label: 'Calendario', code: '02' },
-  { href: '/hotlaps', label: 'Hotlaps', code: '03' },
-  { href: '/pilotos', label: 'Pilotos', code: '04' },
-  { href: '/combos', label: 'Combos', code: '05' },
-  { href: '/herramientas', label: 'Herramientas', code: '06' },
-  { href: '/perfil', label: 'Perfil', code: '07' },
-  { href: '/admin', label: 'Admin', code: '08', adminOnly: true },
-  { href: '/admin/calendario', label: 'Calendario admin', code: '09', adminOnly: true }
+  { href: '/hotlaps', label: 'Hotlaps', code: '02' },
+  { href: '/pilotos', label: 'Pilotos', code: '03' },
+  { href: '/combos', label: 'Combos', code: '04' },
+  {
+    label: 'Herramientas',
+    code: '05',
+    children: [
+      { href: '/herramientas/fov', label: 'FOV Calculator', code: '05.1' }
+    ]
+  },
+  { href: '/perfil', label: 'Perfil', code: '06' },
+  { href: '/admin', label: 'Admin', code: '07', adminOnly: true }
 ];
 ---
 <!doctype html>
@@ -63,6 +67,97 @@ const nav = [
         right:max(18px, env(safe-area-inset-right)) !important;
         bottom:max(18px, env(safe-area-inset-bottom)) !important;
         z-index:80 !important;
+      }
+
+
+      .gc-railnav__group{
+        display:grid;
+        gap:4px;
+      }
+
+      .gc-railnav__parent{
+        width:100%;
+        appearance:none;
+        -webkit-appearance:none;
+        display:grid;
+        grid-template-columns:36px minmax(0,1fr) auto;
+        align-items:center;
+        gap:12px;
+        min-height:48px;
+        padding:0 14px;
+        border:1px solid transparent;
+        background:transparent!important;
+        color:var(--text);
+        text-align:left;
+        font:inherit;
+        cursor:pointer;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+      }
+
+      .gc-railnav__parent:hover{
+        border-color:color-mix(in srgb,var(--accent) 22%,transparent);
+        background:rgba(255,255,255,.018)!important;
+      }
+
+      .gc-railnav__parent span{
+        color:var(--muted);
+        font-size:.72rem;
+        font-weight:950;
+        letter-spacing:.06em;
+      }
+
+      .gc-railnav__parent strong{
+        color:var(--text);
+        font-size:.94rem;
+        font-weight:950;
+        min-width:0;
+      }
+
+      .gc-railnav__parent em{
+        color:var(--muted);
+        font-style:normal;
+        transition:transform .16s ease,color .16s ease;
+      }
+
+      .gc-railnav__group.is-open .gc-railnav__parent{
+        background:transparent!important;
+        border-color:transparent;
+      }
+
+      .gc-railnav__group.is-open .gc-railnav__parent em{
+        transform:rotate(180deg);
+        color:var(--accent);
+      }
+
+      .gc-railnav__children{
+        display:none;
+        gap:4px;
+        margin-left:0;
+        padding-left:18px;
+        border-left:0;
+      }
+
+      .gc-railnav__group.is-open .gc-railnav__children{
+        display:grid;
+      }
+
+      .gc-railnav .gc-railnav__child{
+        min-height:36px;
+        padding-block:8px;
+        opacity:.88;
+      }
+
+      .gc-railnav .gc-railnav__child span{
+        font-size:.66rem;
+      }
+
+      .gc-railnav .gc-railnav__child strong{
+        font-size:.86rem;
+      }
+
+      .gc-railnav .gc-railnav__child[aria-current="page"]{
+        opacity:1;
       }
 
       @media(max-width:720px){
@@ -106,16 +201,49 @@ const nav = [
 
         <nav class="gc-railnav" aria-label="Navegación principal">
           {nav.map((item) => (
-            <a
-              href={item.href}
-              aria-current={current === item.href ? 'page' : undefined}
-              data-admin-only={item.adminOnly ? 'true' : undefined}
-              hidden={item.adminOnly ? true : undefined}
-              aria-hidden={item.adminOnly ? 'true' : undefined}
-            >
-              <span>{item.code}</span>
-              <strong>{item.label}</strong>
-            </a>
+            item.children ? (
+              <div
+                class:list={['gc-railnav__group', item.children.some((child) => current === child.href) ? 'is-open' : '']}
+                data-nav-group
+                data-admin-only={item.adminOnly ? 'true' : undefined}
+                hidden={item.adminOnly ? true : undefined}
+                aria-hidden={item.adminOnly ? 'true' : undefined}
+              >
+                <button
+                  class="gc-railnav__parent"
+                  type="button"
+                  aria-expanded={item.children.some((child) => current === child.href) ? 'true' : 'false'}
+                  data-nav-group-toggle
+                >
+                  <span>{item.code}</span>
+                  <strong>{item.label}</strong>
+                  <em aria-hidden="true">▾</em>
+                </button>
+                <div class="gc-railnav__children" data-nav-group-panel>
+                  {item.children.map((child) => (
+                    <a
+                      class="gc-railnav__child"
+                      href={child.href}
+                      aria-current={current === child.href ? 'page' : undefined}
+                    >
+                      <span>{child.code}</span>
+                      <strong>{child.label}</strong>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <a
+                href={item.href}
+                aria-current={current === item.href ? 'page' : undefined}
+                data-admin-only={item.adminOnly ? 'true' : undefined}
+                hidden={item.adminOnly ? true : undefined}
+                aria-hidden={item.adminOnly ? 'true' : undefined}
+              >
+                <span>{item.code}</span>
+                <strong>{item.label}</strong>
+              </a>
+            )
           ))}
         </nav>
 
@@ -170,6 +298,18 @@ const nav = [
         };
         btn?.addEventListener('click', () => setOpen(!root.classList.contains('gc-nav-open')));
         closeTargets.forEach((el) => el.addEventListener('click', () => setOpen(false)));
+
+        document.querySelectorAll('[data-nav-group]').forEach((group) => {
+          const toggle = group.querySelector('[data-nav-group-toggle]');
+          const panel = group.querySelector('[data-nav-group-panel]');
+          if (!toggle || !panel) return;
+
+          toggle.addEventListener('click', () => {
+            const isOpen = group.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', String(isOpen));
+          });
+        });
+
         window.addEventListener('keydown', (event) => {
           if (event.key === 'Escape') setOpen(false);
         });

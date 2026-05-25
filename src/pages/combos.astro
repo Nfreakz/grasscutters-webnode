@@ -2,19 +2,20 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Combos | GrassCutters">
-  <div class="gc-page gc-combos-pro-page">
-    <section class="gc-hero gc-hero--compact gc-combos-hero">
+  <div class="gc-page gc-combos-page-v21">
+    <section class="gc-hero gc-hero--compact gc-combos-hero-v21">
       <div>
         <span class="gc-kicker">Centro de combos</span>
-        <h1 class="gc-title">Circuitos y paquetes.</h1>
-        <p class="gc-subtitle">Vista agrupada de circuitos y coches del servidor. Prioriza nombres corregidos, actividad real, mejores referencias y lectura rápida para elegir dónde rodar.</p>
+        <h1 class="gc-title">Combos.</h1>
+        <p class="gc-subtitle">Circuitos, paquetes de coches, actividad real y referencias rápidas para decidir dónde rodar.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Nombres corregidos</span>
           <span class="gc-chip">Actividad real</span>
           <span class="gc-chip">Ficha por combo</span>
         </div>
       </div>
-      <aside class="gc-live-panel">
+
+      <aside class="gc-live-panel gc-combos-status-v21">
         <div class="gc-live-panel__title"><span>Combos</span><strong id="comboCount">...</strong></div>
         <div class="gc-status-list">
           <div class="gc-status-row"><span>Visibles</span><strong id="comboVisible">...</strong></div>
@@ -24,18 +25,19 @@ import AppLayout from '../layouts/AppLayout.astro';
       </aside>
     </section>
 
-    <section class="gc-metrics gc-combos-metrics" aria-label="Métricas de combos">
+    <section class="gc-metrics gc-combos-metrics-v21" aria-label="Métricas de combos">
       <div class="gc-metric"><span>Combos</span><strong id="metricCombos">...</strong><small>detectados</small></div>
       <div class="gc-metric"><span>Con vueltas</span><strong id="metricActive">...</strong><small>actividad real</small></div>
       <div class="gc-metric"><span>Vueltas</span><strong id="metricLaps">...</strong><small>total agrupado</small></div>
       <div class="gc-metric"><span>Coches</span><strong id="metricCars">...</strong><small>únicos visibles</small></div>
     </section>
 
-    <section class="gc-toolbar gc-combos-toolbar" aria-label="Filtros de combos">
-      <div class="gc-field">
+    <section class="gc-toolbar gc-combos-toolbar-v21" aria-label="Filtros de combos">
+      <div class="gc-field gc-combos-search-v21">
         <label for="comboSearch">Buscar combo</label>
         <input class="gc-input" id="comboSearch" placeholder="Circuito, coche, marca o Combo ID" autocomplete="off" />
       </div>
+
       <div class="gc-field">
         <label for="comboActivity">Actividad</label>
         <select class="gc-select" id="comboActivity">
@@ -45,6 +47,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           <option value="30">Últimos 30 días</option>
         </select>
       </div>
+
       <div class="gc-field">
         <label for="comboSort">Orden</label>
         <select class="gc-select" id="comboSort">
@@ -56,51 +59,58 @@ import AppLayout from '../layouts/AppLayout.astro';
           <option value="cars">Más coches</option>
         </select>
       </div>
+
       <button class="gc-btn gc-btn--primary" id="reloadCombos" type="button">Actualizar</button>
       <button class="gc-btn" id="clearCombos" type="button">Limpiar</button>
     </section>
 
-    <section class="gc-combos-feature-grid" aria-label="Combos destacados">
-      <article class="gc-combo-feature-card gc-combo-feature-card--main" id="comboFeatureRecent">
-        <span class="gc-combo-feature-kicker">Combo activo</span>
+    <section class="gc-combos-feature-grid-v21" aria-label="Combos destacados">
+      <article class="gc-combo-feature-card-v21 gc-combo-feature-card-v21--main" id="comboFeatureRecent">
+        <span class="gc-combo-feature-kicker-v21">Combo activo</span>
         <h2>Cargando...</h2>
         <p>Último combo con actividad detectada.</p>
       </article>
-      <article class="gc-combo-feature-card" id="comboFeatureLaps">
-        <span class="gc-combo-feature-kicker">Más rodado</span>
+
+      <article class="gc-combo-feature-card-v21" id="comboFeatureLaps">
+        <span class="gc-combo-feature-kicker-v21">Más rodado</span>
         <h2>...</h2>
         <p>Combo con más vueltas agrupadas.</p>
       </article>
-      <article class="gc-combo-feature-card" id="comboFeatureClean">
-        <span class="gc-combo-feature-kicker">Más limpio</span>
+
+      <article class="gc-combo-feature-card-v21" id="comboFeatureClean">
+        <span class="gc-combo-feature-kicker-v21">Más limpio</span>
         <h2>...</h2>
         <p>Mayor ratio de vueltas válidas.</p>
       </article>
     </section>
 
-    <section class="gc-section gc-combo-card-section">
-      <div class="gc-section-head gc-combo-section-head">
+    <section class="gc-section gc-combo-card-section-v21">
+      <div class="gc-section-head">
         <div>
+          <span class="gc-kicker">Selección rápida</span>
           <h2>Combos destacados</h2>
           <p id="comboCardsMeta">Cargando actividad reciente...</p>
         </div>
-        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
+        <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver hotlaps</a>
       </div>
-      <div class="gc-combo-card-grid" id="comboCards">
-        <article class="gc-combo-card"><strong>Cargando combos...</strong></article>
+
+      <div class="gc-combo-card-grid-v21" id="comboCards">
+        <article class="gc-combo-card-v21"><strong>Cargando combos...</strong></article>
       </div>
     </section>
 
-    <section class="gc-section">
-      <div class="gc-section-head gc-combo-section-head">
+    <section class="gc-section gc-combo-table-section-v21">
+      <div class="gc-section-head">
         <div>
+          <span class="gc-kicker">Directorio</span>
           <h2>Listado completo</h2>
           <p id="comboTableMeta">Cargando combos...</p>
         </div>
         <span class="gc-chip" id="comboSourceChip">API</span>
       </div>
-      <div class="gc-table-wrap gc-combo-table-wrap">
-        <table class="gc-table gc-combos-table-pro">
+
+      <div class="gc-table-wrap gc-combo-table-wrap-v21">
+        <table class="gc-table gc-combos-table-v21">
           <thead>
             <tr>
               <th>#</th>
@@ -121,281 +131,327 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <style is:global>
-    .gc-combos-pro-page{
+    .gc-combos-page-v21{
       display:grid;
-      gap:clamp(22px,3vw,34px);
+      gap:clamp(18px,2.3vw,28px);
     }
 
-    .gc-combos-metrics{
+    .gc-combos-hero-v21{
+      padding-block:clamp(22px,3vw,34px)!important;
       margin:0;
     }
 
-    .gc-combos-toolbar{
+    .gc-combos-hero-v21 .gc-title{
+      font-size:clamp(3.2rem,7vw,6rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-combos-hero-v21 .gc-subtitle{
+      max-width:760px;
+    }
+
+    .gc-combos-metrics-v21{
+      margin:0;
+    }
+
+    .gc-combos-toolbar-v21{
       align-items:end;
+      gap:10px;
+      margin:0;
     }
 
-    .gc-combos-toolbar .gc-field:first-child{
-      min-width:min(100%,360px);
-      flex:1.6 1 320px;
+    .gc-combos-toolbar-v21 .gc-field{
+      flex:1 1 180px;
     }
 
-    .gc-combos-feature-grid{
+    .gc-combos-toolbar-v21 .gc-combos-search-v21{
+      flex:1.7 1 340px;
+    }
+
+    .gc-combos-toolbar-v21 .gc-input,
+    .gc-combos-toolbar-v21 .gc-select{
+      min-width:0;
+      width:100%;
+    }
+
+    .gc-combos-feature-grid-v21{
       display:grid;
-      grid-template-columns:minmax(0,1.3fr) minmax(260px,.75fr) minmax(260px,.75fr);
-      gap:16px;
+      grid-template-columns:minmax(0,1.3fr) minmax(240px,.75fr) minmax(240px,.75fr);
+      gap:14px;
     }
 
-    .gc-combo-feature-card{
+    .gc-combo-feature-card-v21{
       position:relative;
       overflow:hidden;
-      min-height:210px;
+      min-height:180px;
       display:grid;
       align-content:space-between;
-      gap:18px;
-      padding:22px;
+      gap:14px;
+      padding:18px;
       border:1px solid var(--line);
       border-top:2px solid var(--accent);
       background:
-        radial-gradient(circle at 12% 10%, color-mix(in srgb,var(--accent) 12%, transparent), transparent 28rem),
+        radial-gradient(circle at 12% 10%, color-mix(in srgb,var(--accent) 10%, transparent), transparent 24rem),
         linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
-      box-shadow:0 18px 70px rgba(0,0,0,.18);
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
     }
 
-    .gc-combo-feature-card--main{
-      min-height:250px;
+    .gc-combo-feature-card-v21--main{
+      min-height:210px;
     }
 
-    .gc-combo-feature-card::after{
+    .gc-combo-feature-card-v21::after{
       content:"";
       position:absolute;
-      right:-44px;
-      bottom:-44px;
-      width:160px;
-      height:160px;
-      border:1px solid color-mix(in srgb,var(--accent) 32%, transparent);
-      opacity:.28;
-      transform:rotate(18deg);
+      right:-50px;
+      bottom:-50px;
+      width:150px;
+      height:150px;
+      border:1px solid color-mix(in srgb,var(--accent) 28%, transparent);
+      border-radius:50%;
+      opacity:.25;
       pointer-events:none;
     }
 
-    .gc-combo-feature-kicker,
-    .gc-combo-card__kicker,
-    .gc-combo-car-pill,
-    .gc-combo-sub,
-    .gc-combo-feature-meta span{
+    .gc-combo-feature-kicker-v21,
+    .gc-combo-card-kicker-v21,
+    .gc-combo-car-pill-v21,
+    .gc-combo-sub-v21,
+    .gc-combo-feature-meta-v21 span{
       color:var(--dim);
       text-transform:uppercase;
       letter-spacing:.105em;
-      font-size:.72rem;
+      font-size:.7rem;
       font-weight:950;
     }
 
-    .gc-combo-feature-card h2{
+    .gc-combo-feature-card-v21 h2{
       margin:6px 0 8px;
       color:var(--text);
-      font-size:clamp(1.8rem,3.8vw,3.85rem);
+      font-size:clamp(1.7rem,3.4vw,3.45rem);
       line-height:.9;
       letter-spacing:-.07em;
       text-transform:uppercase;
       word-break:break-word;
     }
 
-    .gc-combo-feature-card p{
+    .gc-combo-feature-card-v21 p{
       margin:0;
       color:var(--soft);
-      line-height:1.5;
+      line-height:1.42;
     }
 
-    .gc-combo-feature-meta{
+    .gc-combo-feature-meta-v21{
       display:flex;
       flex-wrap:wrap;
-      gap:8px;
-      margin-top:16px;
+      gap:7px;
+      margin-top:12px;
     }
 
-    .gc-combo-feature-meta span{
+    .gc-combo-feature-meta-v21 span{
       display:inline-flex;
       align-items:center;
-      min-height:30px;
-      padding:0 10px;
+      min-height:28px;
+      padding:0 9px;
       border:1px solid var(--line);
       background:rgba(255,255,255,.025);
       color:var(--soft);
     }
 
-    .gc-combo-feature-card .gc-btn{
+    .gc-combo-feature-card-v21 .gc-btn{
       width:max-content;
-      margin-top:18px;
+      margin-top:14px;
     }
 
-    .gc-combo-section-head{
-      margin-bottom:16px;
+    .gc-combo-card-section-v21,
+    .gc-combo-table-section-v21{
+      margin:0;
     }
 
-    .gc-combo-card-grid{
+    .gc-combo-card-grid-v21{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:14px;
+      gap:12px;
     }
 
-    .gc-combo-card{
-      min-height:230px;
+    .gc-combo-card-v21{
+      min-height:212px;
       display:grid;
       align-content:space-between;
-      gap:16px;
-      padding:18px;
+      gap:14px;
+      padding:16px;
       border:1px solid var(--line);
+      border-radius:18px;
       background:linear-gradient(135deg,rgba(255,255,255,.042),rgba(255,255,255,.014));
+      transition:border-color .16s ease, background .16s ease, transform .16s ease;
     }
 
-    .gc-combo-card:hover{
+    .gc-combo-card-v21:hover{
+      transform:translateY(-2px);
       border-color:color-mix(in srgb,var(--accent) 44%, var(--line));
       background:linear-gradient(135deg,rgba(255,255,255,.062),rgba(255,255,255,.02));
     }
 
-    .gc-combo-card h3{
-      margin:8px 0 8px;
+    .gc-combo-card-v21 h3{
+      margin:7px 0 7px;
       color:var(--text);
-      font-size:clamp(1.25rem,2.2vw,1.95rem);
+      font-size:clamp(1.2rem,2vw,1.8rem);
       line-height:1;
       letter-spacing:-.055em;
       text-transform:uppercase;
     }
 
-    .gc-combo-card p{
+    .gc-combo-card-v21 p{
       margin:0;
       color:var(--soft);
+      line-height:1.42;
     }
 
-    .gc-combo-card__cars{
+    .gc-combo-card-cars-v21{
       display:flex;
       flex-wrap:wrap;
       gap:6px;
-      margin-top:12px;
+      margin-top:10px;
     }
 
-    .gc-combo-car-pill{
+    .gc-combo-car-pill-v21{
       display:inline-flex;
       align-items:center;
-      min-height:28px;
+      min-height:26px;
       padding:0 8px;
       border:1px solid var(--line);
       color:var(--soft);
       background:rgba(255,255,255,.025);
       letter-spacing:.055em;
       text-transform:none;
-      font-size:.74rem;
+      font-size:.72rem;
       font-weight:850;
     }
 
-    .gc-combo-card__stats{
+    .gc-combo-card-stats-v21{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:8px;
-      margin-top:16px;
+      gap:7px;
+      margin-top:14px;
     }
 
-    .gc-combo-card__stats div{
-      padding:10px;
+    .gc-combo-card-stats-v21 div{
+      padding:9px;
       border:1px solid var(--line);
+      border-radius:12px;
       background:rgba(0,0,0,.12);
     }
 
-    .gc-combo-card__stats span{
+    .gc-combo-card-stats-v21 span{
       display:block;
       color:var(--dim);
-      font-size:.64rem;
+      font-size:.62rem;
       text-transform:uppercase;
       letter-spacing:.1em;
       font-weight:950;
     }
 
-    .gc-combo-card__stats strong{
+    .gc-combo-card-stats-v21 strong{
       display:block;
       margin-top:5px;
       color:var(--text);
-      font-size:1.08rem;
+      font-size:1rem;
       line-height:1;
     }
 
-    .gc-combo-main{
+    .gc-combo-main-v21{
       display:grid;
       gap:4px;
-      min-width:260px;
+      min-width:240px;
     }
 
-    .gc-combo-title{
+    .gc-combo-title-v21{
       color:var(--text);
       font-weight:950;
       font-size:1.02rem;
       line-height:1.2;
     }
 
-    .gc-combo-sub{
+    .gc-combo-sub-v21{
       color:var(--muted);
       letter-spacing:.065em;
       word-break:break-word;
     }
 
-    .gc-combo-cars{
+    .gc-combo-cars-v21{
       max-width:560px;
     }
 
-    .gc-combo-cars strong{
+    .gc-combo-cars-v21 strong{
       display:block;
       color:var(--text);
       line-height:1.25;
     }
 
-    .gc-combo-car-list{
+    .gc-combo-car-list-v21{
       display:flex;
       flex-wrap:wrap;
       gap:6px;
       margin-top:8px;
     }
 
-    .gc-combo-car-more{
+    .gc-combo-car-more-v21{
       color:var(--muted);
       font-size:.78rem;
       align-self:center;
     }
 
-    .gc-combos-table-pro td:nth-child(4),
-    .gc-combos-table-pro td:nth-child(5),
-    .gc-combos-table-pro td:nth-child(6),
-    .gc-combos-table-pro td:nth-child(7){
+    .gc-combo-table-wrap-v21{
+      max-height:calc(100vh - 250px);
+      min-height:360px;
+      overflow:auto;
+    }
+
+    .gc-combos-table-v21{
+      min-width:1180px;
+    }
+
+    .gc-combos-table-v21 thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:color-mix(in srgb,var(--bg) 92%,black);
+      backdrop-filter:blur(12px);
+    }
+
+    .gc-combos-table-v21 td:nth-child(4),
+    .gc-combos-table-v21 td:nth-child(5),
+    .gc-combos-table-v21 td:nth-child(6),
+    .gc-combos-table-v21 td:nth-child(7){
       white-space:nowrap;
       font-variant-numeric:tabular-nums;
     }
 
-    .gc-combo-table-wrap{
-      max-height:720px;
-      overflow:auto;
-    }
-
-    .gc-combo-link{
+    .gc-combo-link-v21{
       color:var(--text);
       font-weight:950;
     }
 
-    .gc-combo-link:hover{
+    .gc-combo-link-v21:hover{
       color:var(--accent);
     }
 
     @media(max-width:1180px){
-      .gc-combos-feature-grid,
-      .gc-combo-card-grid{
+      .gc-combos-feature-grid-v21,
+      .gc-combo-card-grid-v21{
         grid-template-columns:1fr;
+      }
+
+      .gc-combo-table-wrap-v21{
+        max-height:none;
       }
     }
 
     @media(max-width:720px){
-      .gc-combo-card__stats{
+      .gc-combo-card-stats-v21{
         grid-template-columns:1fr;
-      }
-
-      .gc-combo-table-wrap{
-        max-height:none;
       }
     }
   </style>
@@ -469,8 +525,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             fallback
           );
         }
-        const text = String(value).trim();
-        return text || fallback;
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
       };
 
       const numberValue = (value, fallback = 0) => {
@@ -511,9 +566,13 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const comboId = (combo) => pick(combo, ['canonicalComboId','comboId','id','ComboId']);
       const comboUrl = (combo) => combo.url || (comboId(combo) != null ? `/combos/${encodeURIComponent(comboId(combo))}` : '/combos');
-      const trackName = (combo) => displayText(pick(combo, ['track','track.displayName','track.visibleName','track.cleanName','track.uiName','track.name','trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code']), 'Combo activo');
-      const rawTrackCode = (combo) => displayText(pick(combo, ['track.code','trackCode','trackId']), '');
 
+      const trackName = (combo) => displayText(pick(combo, [
+        'track','track.displayName','track.visibleName','track.cleanName','track.uiName','track.name',
+        'trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code'
+      ]), 'Combo activo');
+
+      const rawTrackCode = (combo) => displayText(pick(combo, ['track.code','trackCode','trackId']), '');
       const carName = (car) => displayText(car, 'Coche');
       const driverName = (value) => displayText(value, 'Piloto');
 
@@ -522,10 +581,12 @@ import AppLayout from '../layouts/AppLayout.astro';
         let list = [];
         if (Array.isArray(raw)) list = raw;
         else if (typeof raw === 'string') list = raw.split(/[,|;]/g);
+
         if (!list.length) {
           const single = pick(combo, ['car','carName','uiCarName','bestLap.car','bestLap.carName']);
           if (single) list = [single];
         }
+
         const seen = new Set();
         return list.map(carName).filter(Boolean).filter((name) => {
           const key = name.toLowerCase();
@@ -547,6 +608,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       const totalLaps = (combo) => numberValue(pick(combo, ['totalLaps','laps','lapCount','visibleLaps']), 0);
       const validLaps = (combo) => numberValue(pick(combo, ['validLaps','cleanLaps','validLapCount']), 0);
       const driversCount = (combo) => numberValue(pick(combo, ['driversCount','pilotsCount','playersCount','uniqueDrivers','totalDrivers']), 0);
+
       const cleanRate = (combo) => {
         const direct = Number(pick(combo, ['cleanRate','validityRate','cleanPercent','validPercent']));
         if (Number.isFinite(direct)) return direct;
@@ -554,9 +616,17 @@ import AppLayout from '../layouts/AppLayout.astro';
         const valid = validLaps(combo);
         return total ? (valid / total) * 100 : 0;
       };
-      const bestLap = (combo) => pick(combo, ['bestLap','best','fastestLap','leader','topLap']) || {};
-      const bestTime = (combo) => displayText(pick(combo, ['bestLapTimeFormatted','bestTimeFormatted','bestLapFormatted','bestLapTime','bestTime','bestLap.lapTimeFormatted','bestLap.lapTime']), '') || formatTime(pick(combo, ['bestLapTimeMs','bestTimeMs','bestLapMs','bestLap.lapTimeMs','bestLap.LapTime']));
-      const bestDriver = (combo) => driverName(pick(combo, ['bestDriverName','fastestDriverName','leaderName','bestLap.driverName','bestLap.playerName','bestLap.name','bestLap.driver','bestLap.player']));
+
+      const bestTime = (combo) => displayText(pick(combo, [
+        'bestLapTimeFormatted','bestTimeFormatted','bestLapFormatted','bestLapTime','bestTime',
+        'bestLap.lapTimeFormatted','bestLap.lapTime'
+      ]), '') || formatTime(pick(combo, ['bestLapTimeMs','bestTimeMs','bestLapMs','bestLap.lapTimeMs','bestLap.LapTime']));
+
+      const bestDriver = (combo) => driverName(pick(combo, [
+        'bestDriverName','fastestDriverName','leaderName','bestLap.driverName','bestLap.playerName',
+        'bestLap.name','bestLap.driver','bestLap.player'
+      ]));
+
       const lastDateRaw = (combo) => pick(combo, ['lastActivityIso','lastSeenAt','latestLapAt','updatedAt','lastActivity','timestampIso','timestamp','lastLapAt']);
       const memberCount = (combo) => numberValue(pick(combo, ['mergedCombosCount']), Array.isArray(combo.memberComboIds) ? combo.memberComboIds.length : 1) || 1;
 
@@ -573,17 +643,20 @@ import AppLayout from '../layouts/AppLayout.astro';
         const mode = els.activity.value;
         if (mode === 'all') return true;
         if (mode === 'active') return totalLaps(combo) > 0;
+
         const days = Number(mode);
         if (!Number.isFinite(days)) return true;
+
         const last = dateMs(lastDateRaw(combo));
         if (!last) return false;
-        const maxAge = days * 24 * 60 * 60 * 1000;
-        return Date.now() - last <= maxAge;
+
+        return Date.now() - last <= days * 24 * 60 * 60 * 1000;
       };
 
       const sortedCombos = (rows) => {
         const sort = els.sort.value;
         const copy = [...rows];
+
         copy.sort((a, b) => {
           if (sort === 'laps') return totalLaps(b) - totalLaps(a);
           if (sort === 'drivers') return driversCount(b) - driversCount(a);
@@ -596,6 +669,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           }
           return dateMs(lastDateRaw(b)) - dateMs(lastDateRaw(a));
         });
+
         return copy;
       };
 
@@ -609,17 +683,20 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const renderFeature = (node, combo, label, fallback) => {
         if (!node) return;
+
         if (!combo) {
-          node.innerHTML = `<span class="gc-combo-feature-kicker">${escapeHtml(label)}</span><h2>${escapeHtml(fallback)}</h2><p>Sin datos suficientes.</p>`;
+          node.innerHTML = `<span class="gc-combo-feature-kicker-v21">${escapeHtml(label)}</span><h2>${escapeHtml(fallback)}</h2><p>Sin datos suficientes.</p>`;
           return;
         }
+
         const url = comboUrl(combo);
+
         node.innerHTML = `
           <div>
-            <span class="gc-combo-feature-kicker">${escapeHtml(label)}</span>
+            <span class="gc-combo-feature-kicker-v21">${escapeHtml(label)}</span>
             <h2>${escapeHtml(trackName(combo))}</h2>
             <p>${escapeHtml(carSummary(combo, 3))}</p>
-            <div class="gc-combo-feature-meta">
+            <div class="gc-combo-feature-meta-v21">
               <span>${escapeHtml(formatNumber(totalLaps(combo)))} vueltas</span>
               <span>${escapeHtml(formatNumber(driversCount(combo)))} pilotos</span>
               <span>${escapeHtml(bestTime(combo))}</span>
@@ -632,23 +709,26 @@ import AppLayout from '../layouts/AppLayout.astro';
       const renderCards = (rows) => {
         const shown = rows.slice(0, 6);
         els.cardsMeta.textContent = shown.length ? `${shown.length} combos destacados de ${rows.length} visibles` : 'Sin combos visibles con los filtros actuales.';
+
         els.cards.innerHTML = shown.length ? shown.map((combo, index) => {
           const cars = carList(combo).slice(0, 5);
           const rest = Math.max(0, carList(combo).length - cars.length);
           const url = comboUrl(combo);
+
           return `
-            <article class="gc-combo-card">
+            <article class="gc-combo-card-v21">
               <div>
-                <span class="gc-combo-card__kicker">Combo ${index + 1}</span>
+                <span class="gc-combo-card-kicker-v21">Combo ${index + 1}</span>
                 <h3>${escapeHtml(trackName(combo))}</h3>
                 <p>${escapeHtml(formatDate(lastDateRaw(combo)))} · ${escapeHtml(memberCount(combo))} ${memberCount(combo) === 1 ? 'Combo ID' : 'Combo IDs'}</p>
-                <div class="gc-combo-card__cars">
-                  ${cars.map((name) => `<span class="gc-combo-car-pill">${escapeHtml(name)}</span>`).join('')}
-                  ${rest ? `<span class="gc-combo-car-more">+${rest} más</span>` : ''}
+                <div class="gc-combo-card-cars-v21">
+                  ${cars.map((name) => `<span class="gc-combo-car-pill-v21">${escapeHtml(name)}</span>`).join('')}
+                  ${rest ? `<span class="gc-combo-car-more-v21">+${rest} más</span>` : ''}
                 </div>
               </div>
+
               <div>
-                <div class="gc-combo-card__stats">
+                <div class="gc-combo-card-stats-v21">
                   <div><span>Vueltas</span><strong>${escapeHtml(formatNumber(totalLaps(combo)))}</strong></div>
                   <div><span>Pilotos</span><strong>${escapeHtml(formatNumber(driversCount(combo)))}</strong></div>
                   <div><span>Mejor</span><strong>${escapeHtml(bestTime(combo))}</strong></div>
@@ -657,19 +737,20 @@ import AppLayout from '../layouts/AppLayout.astro';
               </div>
             </article>
           `;
-        }).join('') : '<article class="gc-combo-card"><strong>Sin combos visibles.</strong><p>Prueba a limpiar los filtros.</p></article>';
+        }).join('') : '<article class="gc-combo-card-v21"><strong>Sin combos visibles.</strong><p>Prueba a limpiar los filtros.</p></article>';
       };
 
       const renderCars = (combo) => {
         const cars = carList(combo);
         const shown = cars.slice(0, 6);
         const rest = Math.max(0, cars.length - shown.length);
+
         return `
-          <div class="gc-combo-cars">
+          <div class="gc-combo-cars-v21">
             <strong>${escapeHtml(carSummary(combo, 3))}</strong>
-            <div class="gc-combo-car-list">
-              ${shown.map((name) => `<span class="gc-combo-car-pill">${escapeHtml(name)}</span>`).join('')}
-              ${rest ? `<span class="gc-combo-car-more">+${rest} más</span>` : ''}
+            <div class="gc-combo-car-list-v21">
+              ${shown.map((name) => `<span class="gc-combo-car-pill-v21">${escapeHtml(name)}</span>`).join('')}
+              ${rest ? `<span class="gc-combo-car-more-v21">+${rest} más</span>` : ''}
             </div>
           </div>
         `;
@@ -677,18 +758,19 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const renderTable = (rows) => {
         els.tableMeta.textContent = rows.length ? `${rows.length} combos visibles de ${combos.length}` : 'No hay combos con esos filtros.';
+
         els.rows.innerHTML = rows.length ? rows.map((combo, index) => {
           const url = comboUrl(combo);
           const id = comboId(combo) ?? '-';
-          const last = formatDate(lastDateRaw(combo));
           const clean = cleanRate(combo);
+
           return `
             <tr>
               <td>${index + 1}</td>
               <td>
-                <div class="gc-combo-main">
-                  <a class="gc-combo-link" href="${escapeHtml(url)}">${escapeHtml(trackName(combo))}</a>
-                  <span class="gc-combo-sub">Combo ${escapeHtml(id)} · ${escapeHtml(memberCount(combo))} ${memberCount(combo) === 1 ? 'ID agrupado' : 'IDs agrupados'}${rawTrackCode(combo) ? ` · ${escapeHtml(rawTrackCode(combo))}` : ''}</span>
+                <div class="gc-combo-main-v21">
+                  <a class="gc-combo-link-v21" href="${escapeHtml(url)}">${escapeHtml(trackName(combo))}</a>
+                  <span class="gc-combo-sub-v21">Combo ${escapeHtml(id)} · ${escapeHtml(memberCount(combo))} ${memberCount(combo) === 1 ? 'ID agrupado' : 'IDs agrupados'}${rawTrackCode(combo) ? ` · ${escapeHtml(rawTrackCode(combo))}` : ''}</span>
                 </div>
               </td>
               <td>${renderCars(combo)}</td>
@@ -696,7 +778,7 @@ import AppLayout from '../layouts/AppLayout.astro';
               <td>${escapeHtml(formatNumber(driversCount(combo)))}</td>
               <td>${escapeHtml(formatNumber(totalLaps(combo)))}<br><span class="gc-muted-text">${escapeHtml(formatNumber(validLaps(combo)))} limpias</span></td>
               <td><span class="gc-chip ${clean >= 70 ? 'gc-chip--accent' : ''}">${escapeHtml(formatPercent(clean))}</span></td>
-              <td>${escapeHtml(last)}</td>
+              <td>${escapeHtml(formatDate(lastDateRaw(combo)))}</td>
               <td><a class="gc-btn gc-btn--mini" href="${escapeHtml(url)}">Abrir</a></td>
             </tr>
           `;
@@ -707,63 +789,85 @@ import AppLayout from '../layouts/AppLayout.astro';
         const active = combos.filter((combo) => totalLaps(combo) > 0).length;
         const laps = combos.reduce((sum, combo) => sum + totalLaps(combo), 0);
         const uniqueCars = new Set();
+
         combos.forEach((combo) => carList(combo).forEach((car) => uniqueCars.add(car.toLowerCase())));
+
         els.metricCombos.textContent = formatNumber(combos.length);
         els.metricActive.textContent = formatNumber(active);
         els.metricLaps.textContent = formatNumber(laps);
         els.metricCars.textContent = uniqueCars.size ? formatNumber(uniqueCars.size) : '—';
       };
 
-      const renderHighlights = () => {
-        const activeCombos = combos.filter((combo) => totalLaps(combo) > 0);
-        const recent = sortedCombos(activeCombos)[0] || sortedCombos(combos)[0];
-        const laps = [...combos].sort((a, b) => totalLaps(b) - totalLaps(a))[0];
-        const clean = combos.filter((combo) => totalLaps(combo) >= 3).sort((a, b) => cleanRate(b) - cleanRate(a))[0];
+      const renderFeatures = () => {
+        const active = combos.filter((combo) => totalLaps(combo) > 0);
+        const recent = sortedCombos(active)[0];
+        const laps = [...active].sort((a, b) => totalLaps(b) - totalLaps(a))[0];
+        const clean = [...active].sort((a, b) => cleanRate(b) - cleanRate(a))[0];
+
         renderFeature(els.featureRecent, recent, 'Combo activo', 'Sin actividad');
         renderFeature(els.featureLaps, laps, 'Más rodado', 'Sin vueltas');
-        renderFeature(els.featureClean, clean, 'Más limpio', 'Sin datos');
+        renderFeature(els.featureClean, clean, 'Más limpio', 'Sin limpias');
       };
 
       const draw = () => {
         const rows = currentRows();
+        const selected = els.sort.options[els.sort.selectedIndex];
+
         els.visible.textContent = formatNumber(rows.length);
-        els.sortLabel.textContent = els.sort.options[els.sort.selectedIndex]?.textContent || 'Orden';
+        els.sortLabel.textContent = selected ? selected.textContent : 'Recientes';
+
+        renderFeatures();
         renderCards(rows);
         renderTable(rows);
-        renderHighlights();
+
+        console.info('[GC combos v2.1]', {
+          loaded: combos.length,
+          visible: rows.length,
+          sort: els.sort.value
+        });
       };
 
-      const load = async () => {
+      async function load() {
         els.reload.disabled = true;
-        els.source.textContent = 'Cargando';
         els.rows.innerHTML = '<tr><td colspan="9">Cargando combos...</td></tr>';
-        els.cards.innerHTML = '<article class="gc-combo-card"><strong>Cargando combos...</strong></article>';
+
         try {
-          const response = await fetch(`/api/combos/stats?limit=300&sort=${encodeURIComponent(els.sort.value)}`, { credentials:'same-origin', cache:'no-store' });
-          if (!response.ok) throw new Error('Endpoint no disponible');
+          let response = await fetch('/api/combos/stats?limit=300&sort=recent', { credentials:'include', cache:'no-store' });
+
+          if (!response.ok) {
+            response = await fetch('/api/combos?limit=300', { credentials:'include', cache:'no-store' });
+          }
+
+          if (!response.ok) throw new Error('Endpoint de combos no disponible');
+
           const data = await response.json();
-          combos = Array.isArray(data.items) ? data.items : Array.isArray(data.combos) ? data.combos : Array.isArray(data.results) ? data.results : [];
-          els.count.textContent = formatNumber(data.totalCombos ?? data.total ?? combos.length);
+          combos = Array.isArray(data) ? data : (data.items || data.combos || data.results || data.data || []);
+          combos = combos.filter(Boolean);
+
+          els.count.textContent = formatNumber(data.total ?? data.count ?? combos.length);
           els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
           els.source.textContent = 'API OK';
+
           renderMetrics();
           draw();
         } catch (error) {
-          els.count.textContent = 'Error';
-          els.visible.textContent = '0';
-          els.source.textContent = 'Error API';
-          els.tableMeta.textContent = 'No se pudo cargar /api/combos/stats.';
-          els.rows.innerHTML = '<tr><td colspan="9">No se pudo cargar /api/combos/stats.</td></tr>';
-          els.cards.innerHTML = '<article class="gc-combo-card"><strong>Error cargando combos.</strong><p>Revisa el endpoint de combos.</p></article>';
+          els.source.textContent = 'Error';
+          els.source.style.color = 'var(--warn)';
+          els.rows.innerHTML = '<tr><td colspan="9">No se pudo cargar la API de combos.</td></tr>';
+          els.cards.innerHTML = '<article class="gc-combo-card-v21"><strong>Error cargando combos.</strong><p>Revisa /api/combos/stats.</p></article>';
+          console.warn('[GC combos v2.1] Error', error);
         } finally {
           els.reload.disabled = false;
         }
-      };
+      }
 
-      els.search.addEventListener('input', draw);
-      els.activity.addEventListener('change', draw);
-      els.sort.addEventListener('change', draw);
+      [els.search, els.activity, els.sort].forEach((input) => {
+        input.addEventListener('input', draw);
+        input.addEventListener('change', draw);
+      });
+
       els.reload.addEventListener('click', load);
+
       els.clear.addEventListener('click', () => {
         els.search.value = '';
         els.activity.value = 'all';

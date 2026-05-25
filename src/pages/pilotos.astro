@@ -2,19 +2,20 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Pilotos | GrassCutters">
-  <div class="gc-page gc-pilotos-pro-v3">
-    <section class="gc-hero gc-hero--compact">
+  <div class="gc-page gc-pilotos-pro-v9">
+    <section class="gc-hero gc-hero--compact gc-pilotos-hero-v9">
       <div>
         <span class="gc-kicker">Directorio de pilotos</span>
-        <h1 class="gc-title">Pilotos detectados.</h1>
-        <p class="gc-subtitle">Listado real de pilotos registrado por stracker. Los nombres visibles usan siempre el nombre corregido cuando existe.</p>
+        <h1 class="gc-title">Pilotos.</h1>
+        <p class="gc-subtitle">Actividad de la comunidad, perfiles públicos y referencias rápidas de cada piloto detectado por stracker.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Nombres corregidos</span>
           <span class="gc-chip">Ficha pública</span>
           <span class="gc-chip">Actividad reciente</span>
         </div>
       </div>
-      <aside class="gc-live-panel">
+
+      <aside class="gc-live-panel gc-pilotos-status-v9">
         <div class="gc-live-panel__title"><span>Directorio</span><strong id="pilotCount">...</strong></div>
         <div class="gc-status-list">
           <div class="gc-status-row"><span>Fuente</span><strong>stracker</strong></div>
@@ -24,27 +25,30 @@ import AppLayout from '../layouts/AppLayout.astro';
       </aside>
     </section>
 
-    <section class="gc-metrics gc-pilotos-metrics-v3" aria-label="Resumen de pilotos">
+    <section class="gc-metrics gc-pilotos-metrics-v9" aria-label="Resumen de pilotos">
       <div class="gc-metric"><span>Pilotos</span><strong id="metricPilots">...</strong><small>detectados</small></div>
-      <div class="gc-metric"><span>Con actividad</span><strong id="metricActive">...</strong><small>últimos 7 días</small></div>
-      <div class="gc-metric"><span>Online</span><strong id="metricOnline">...</strong><small>si stracker informa</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong id="metricLaps">...</strong><small>lectura disponible</small></div>
+      <div class="gc-metric"><span>Activos</span><strong id="metricActive">...</strong><small>últimos 7 días</small></div>
+      <div class="gc-metric"><span>Vueltas</span><strong id="metricLaps">...</strong><small>total visible</small></div>
+      <div class="gc-metric"><span>Más activo</span><strong id="metricTopLaps">...</strong><small id="metricTopPilot">cargando</small></div>
     </section>
 
-    <section class="gc-toolbar gc-pilotos-toolbar-v3" aria-label="Filtros de pilotos">
-      <div class="gc-field">
+    <section class="gc-toolbar gc-pilotos-toolbar-v9" aria-label="Filtros de pilotos">
+      <div class="gc-field gc-pilotos-search-v9">
         <label for="pilotSearch">Buscar piloto</label>
-        <input class="gc-input" id="pilotSearch" placeholder="Nombre visible, ID o Steam GUID" autocomplete="off" />
+        <input class="gc-input" id="pilotSearch" placeholder="Nombre, ID o Steam GUID" autocomplete="off" />
       </div>
+
       <div class="gc-field">
         <label for="pilotActivity">Actividad</label>
         <select class="gc-select" id="pilotActivity">
           <option value="all">Todos</option>
           <option value="recent">Activos recientes</option>
+          <option value="withlaps">Con vueltas</option>
           <option value="online">Online</option>
           <option value="historic">Históricos</option>
         </select>
       </div>
+
       <div class="gc-field">
         <label for="pilotSort">Orden</label>
         <select class="gc-select" id="pilotSort">
@@ -54,33 +58,38 @@ import AppLayout from '../layouts/AppLayout.astro';
           <option value="best">Mejor vuelta</option>
         </select>
       </div>
+
       <button class="gc-btn gc-btn--primary" id="reloadPilots" type="button">Actualizar</button>
       <button class="gc-btn" id="clearPilots" type="button">Limpiar</button>
     </section>
 
-    <section class="gc-section gc-pilotos-featured-v3">
+    <section class="gc-section gc-pilotos-featured-v9">
       <div class="gc-section-head">
         <div>
-          <h2>Pilotos con movimiento</h2>
-          <p>Últimos pilotos detectados en pista.</p>
+          <span class="gc-kicker">Movimiento</span>
+          <h2>Pilotos destacados</h2>
+          <p>Lectura rápida de los pilotos con más actividad o movimiento reciente.</p>
         </div>
         <span class="gc-chip" id="pilotFeaturedCount">...</span>
       </div>
-      <div class="gc-pilot-card-grid-v3" id="pilotCards">
-        <article class="gc-pilot-card-v3"><strong>Cargando pilotos...</strong></article>
+
+      <div class="gc-pilot-card-grid-v9" id="pilotCards">
+        <article class="gc-pilot-card-v9"><strong>Cargando pilotos...</strong></article>
       </div>
     </section>
 
-    <section class="gc-section">
+    <section class="gc-section gc-pilotos-table-section-v9">
       <div class="gc-section-head">
         <div>
+          <span class="gc-kicker">Directorio</span>
           <h2>Listado completo</h2>
           <p id="pilotHint">Cargando listado...</p>
         </div>
-        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
+        <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver hotlaps</a>
       </div>
-      <div class="gc-table-wrap gc-pilotos-table-wrap-v3">
-        <table class="gc-table gc-pilotos-table-v3">
+
+      <div class="gc-table-wrap gc-pilotos-table-wrap-v9">
+        <table class="gc-table gc-pilotos-table-v9">
           <thead>
             <tr>
               <th>#</th>
@@ -100,28 +109,247 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <style is:global>
-    .gc-pilotos-pro-v3{display:grid;gap:clamp(22px,3vw,34px)}
-    .gc-pilotos-toolbar-v3{align-items:end}
-    .gc-pilotos-featured-v3{min-width:0}
-    .gc-pilot-card-grid-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-    .gc-pilot-card-v3{display:grid;gap:12px;min-height:190px;padding:18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));box-shadow:0 18px 55px rgba(0,0,0,.14)}
-    .gc-pilot-card-v3__top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-    .gc-pilot-card-v3__name{display:block;color:var(--text);font-size:1.28rem;line-height:1.05;font-weight:950;letter-spacing:-.045em;word-break:break-word}
-    .gc-pilot-card-v3__state{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 9px;border:1px solid var(--line);color:var(--soft);font-size:.66rem;font-weight:950;text-transform:uppercase;letter-spacing:.09em;white-space:nowrap;background:rgba(255,255,255,.025)}
-    .gc-pilot-card-v3__state.is-online,.gc-pilot-card-v3__state.is-recent{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 46%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
-    .gc-pilot-card-v3__meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .gc-pilot-card-v3__metric{padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02)}
-    .gc-pilot-card-v3__metric span{display:block;color:var(--dim);font-size:.68rem;font-weight:950;text-transform:uppercase;letter-spacing:.1em}
-    .gc-pilot-card-v3__metric strong{display:block;margin-top:5px;color:var(--text);font-size:1.08rem;line-height:1}
-    .gc-pilot-card-v3__last{color:var(--soft);line-height:1.42;font-size:.92rem;min-height:2.6em}
-    .gc-pilot-card-v3__actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
-    .gc-pilot-card-v3__actions small{color:var(--muted);font-size:.8rem}
-    .gc-pilotos-table-wrap-v3{max-height:640px;overflow:auto}
-    .gc-pilotos-table-v3 td:nth-child(4),.gc-pilotos-table-v3 td:nth-child(5),.gc-pilotos-table-v3 td:nth-child(7){white-space:nowrap;font-variant-numeric:tabular-nums}
-    .gc-piloto-name-v3{display:block;color:var(--text);font-weight:950;font-size:1rem;line-height:1.2;word-break:break-word}
-    .gc-piloto-sub-v3{display:block;margin-top:4px;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em}
-    @media(max-width:1180px){.gc-pilot-card-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:720px){.gc-pilot-card-grid-v3{grid-template-columns:1fr}.gc-pilotos-table-wrap-v3{max-height:none}.gc-pilotos-table-v3{min-width:940px}}
+    .gc-pilotos-pro-v9{
+      display:grid;
+      gap:clamp(18px,2.3vw,28px);
+    }
+
+    .gc-pilotos-hero-v9{
+      padding-block:clamp(22px,3vw,34px)!important;
+      margin:0;
+    }
+
+    .gc-pilotos-hero-v9 .gc-title{
+      font-size:clamp(3.2rem,7vw,6rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-pilotos-hero-v9 .gc-subtitle{
+      max-width:760px;
+    }
+
+    .gc-pilotos-metrics-v9{
+      margin:0;
+    }
+
+    .gc-pilotos-toolbar-v9{
+      align-items:end;
+      gap:10px;
+      margin:0;
+    }
+
+    .gc-pilotos-toolbar-v9 .gc-field{
+      flex:1 1 170px;
+    }
+
+    .gc-pilotos-toolbar-v9 .gc-pilotos-search-v9{
+      flex:1.7 1 320px;
+    }
+
+    .gc-pilotos-toolbar-v9 .gc-input,
+    .gc-pilotos-toolbar-v9 .gc-select{
+      min-width:0;
+      width:100%;
+    }
+
+    .gc-pilotos-featured-v9{
+      min-width:0;
+      margin:0;
+    }
+
+    .gc-pilot-card-grid-v9{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-pilot-card-v9{
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      gap:12px;
+      min-height:156px;
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+      box-shadow:0 16px 48px rgba(0,0,0,.14);
+    }
+
+    .gc-pilot-card-v9::after{
+      content:"";
+      position:absolute;
+      right:-44px;
+      bottom:-54px;
+      width:130px;
+      height:130px;
+      border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);
+      border-radius:50%;
+      opacity:.2;
+      pointer-events:none;
+    }
+
+    .gc-pilot-card-v9__top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .gc-pilot-card-v9__name{
+      display:block;
+      color:var(--text);
+      font-size:1.08rem;
+      line-height:1.05;
+      font-weight:950;
+      letter-spacing:-.04em;
+      word-break:break-word;
+    }
+
+    .gc-pilot-card-v9__state{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:26px;
+      padding:0 8px;
+      border:1px solid var(--line);
+      color:var(--soft);
+      font-size:.62rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      white-space:nowrap;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-pilot-card-v9__state.is-online,
+    .gc-pilot-card-v9__state.is-recent{
+      color:var(--accent);
+      border-color:color-mix(in srgb,var(--accent) 46%,transparent);
+      background:color-mix(in srgb,var(--accent) 10%,transparent);
+    }
+
+    .gc-pilot-card-v9__meta{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+    }
+
+    .gc-pilot-card-v9__metric{
+      padding:9px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .gc-pilot-card-v9__metric span{
+      display:block;
+      color:var(--dim);
+      font-size:.62rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.1em;
+    }
+
+    .gc-pilot-card-v9__metric strong{
+      display:block;
+      margin-top:5px;
+      color:var(--text);
+      font-size:1rem;
+      line-height:1;
+    }
+
+    .gc-pilot-card-v9__last{
+      margin:0;
+      color:var(--soft);
+      line-height:1.35;
+      font-size:.84rem;
+      min-height:2.35em;
+    }
+
+    .gc-pilot-card-v9__actions{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:auto;
+    }
+
+    .gc-pilot-card-v9__actions small{
+      color:var(--muted);
+      font-size:.74rem;
+    }
+
+    .gc-pilotos-table-section-v9{
+      margin:0;
+    }
+
+    .gc-pilotos-table-wrap-v9{
+      max-height:calc(100vh - 260px);
+      min-height:360px;
+      overflow:auto;
+    }
+
+    .gc-pilotos-table-v9{
+      min-width:980px;
+    }
+
+    .gc-pilotos-table-v9 thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:color-mix(in srgb,var(--bg) 92%,black);
+      backdrop-filter:blur(12px);
+    }
+
+    .gc-pilotos-table-v9 td:nth-child(4),
+    .gc-pilotos-table-v9 td:nth-child(5),
+    .gc-pilotos-table-v9 td:nth-child(7){
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-piloto-name-v9{
+      display:block;
+      color:var(--text);
+      font-weight:950;
+      font-size:1rem;
+      line-height:1.2;
+      word-break:break-word;
+    }
+
+    .gc-piloto-sub-v9{
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:.72rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    @media(max-width:1280px){
+      .gc-pilot-card-grid-v9{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-pilot-card-grid-v9{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-pilotos-table-wrap-v9{
+        max-height:none;
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-pilot-card-grid-v9{
+        grid-template-columns:1fr;
+      }
+    }
   </style>
 
   <script is:inline>
@@ -140,16 +368,22 @@ import AppLayout from '../layouts/AppLayout.astro';
       const clearEl = document.getElementById('clearPilots');
       const metricPilots = document.getElementById('metricPilots');
       const metricActive = document.getElementById('metricActive');
-      const metricOnline = document.getElementById('metricOnline');
       const metricLaps = document.getElementById('metricLaps');
+      const metricTopLaps = document.getElementById('metricTopLaps');
+      const metricTopPilot = document.getElementById('metricTopPilot');
+
       let pilots = [];
 
-      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+      }[char]));
+
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
         return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
       };
+
       const firstValue = (source, paths) => {
         for (const path of paths) {
           const value = valueAt(source, path);
@@ -157,17 +391,33 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
         return '';
       };
+
       const textValue = (value, fallback = '-') => {
         if (value === undefined || value === null || value === '') return fallback;
-        if (typeof value === 'object') return String(value.displayName ?? value.visibleName ?? value.cleanName ?? value.uiName ?? value.name ?? value.Name ?? value.code ?? fallback).trim();
+        if (typeof value === 'object') {
+          return String(
+            value.displayName ??
+            value.visibleName ??
+            value.cleanName ??
+            value.uiName ??
+            value.name ??
+            value.Name ??
+            value.code ??
+            fallback
+          ).trim();
+        }
         return String(value).trim() || fallback;
       };
+
       const cleanFallbackName = (value, fallback = '-') => {
         const raw = textValue(value, fallback);
         if (raw === fallback) return fallback;
         return raw.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
       };
+
+      const normalize = (value) => cleanFallbackName(value, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       const displayFrom = (source, paths, fallback = '-') => cleanFallbackName(firstValue(source, paths), fallback);
+
       const pilotId = (pilot) => firstValue(pilot, ['id','playerId','PlayerId','driverId','pilotId']);
       const pilotName = (pilot) => displayFrom(pilot, ['displayName','visibleName','cleanName','name','Name','driverName','playerName','pilotName','driver.displayName','driver.name','player.name'], 'Piloto');
       const pilotGuid = (pilot) => firstValue(pilot, ['steamGuid','SteamGuid','guid','steamGUID']);
@@ -176,21 +426,25 @@ import AppLayout from '../layouts/AppLayout.astro';
       const lastCar = (pilot) => displayFrom(pilot, ['lastCarDisplayName','lastCarName','carDisplayName','carName','lastCar.displayName','lastCar.visibleName','lastCar.uiCarName','lastCar.name','car.displayName','car.name'], '-');
       const lastSeenRaw = (pilot) => firstValue(pilot, ['lastSeenAt','lastActivityAt','latestLapAt','updatedAt','timestampIso','lastLapAt','stats.lastSeenAt']);
       const isOnline = (pilot) => Boolean(firstValue(pilot, ['isOnline','IsOnline','online','is_online']));
+
       const dateMs = (value) => {
         if (!value) return 0;
         if (typeof value === 'number') return value > 20000000000 ? value : value * 1000;
         const parsed = Date.parse(String(value));
         return Number.isFinite(parsed) ? parsed : 0;
       };
+
       const isRecent = (pilot) => {
         const ms = dateMs(lastSeenRaw(pilot));
         return ms > 0 && (Date.now() - ms) <= 7 * 24 * 60 * 60 * 1000;
       };
+
       const dateText = (value) => {
         const ms = dateMs(value);
         if (!ms) return '--';
         return new Date(ms).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
       };
+
       const stateText = (pilot) => isOnline(pilot) ? 'Online' : isRecent(pilot) ? 'Activo' : 'Histórico';
       const stateClass = (pilot) => isOnline(pilot) ? 'is-online' : isRecent(pilot) ? 'is-recent' : '';
       const profileUrl = (pilot) => {
@@ -201,64 +455,92 @@ import AppLayout from '../layouts/AppLayout.astro';
       function sortedRows(rows) {
         const next = [...rows];
         const mode = sortEl.value;
-        if (mode === 'name') next.sort((a,b) => pilotName(a).localeCompare(pilotName(b), 'es'));
-        else if (mode === 'laps') next.sort((a,b) => totalLaps(b) - totalLaps(a));
-        else if (mode === 'best') next.sort((a,b) => {
-          const av = Number(firstValue(a, ['bestLapMs','bestLapTimeMs','stats.bestLapMs'])) || Number.MAX_SAFE_INTEGER;
-          const bv = Number(firstValue(b, ['bestLapMs','bestLapTimeMs','stats.bestLapMs'])) || Number.MAX_SAFE_INTEGER;
-          return av - bv;
-        });
-        else next.sort((a,b) => dateMs(lastSeenRaw(b)) - dateMs(lastSeenRaw(a)));
+
+        if (mode === 'name') {
+          next.sort((a,b) => pilotName(a).localeCompare(pilotName(b), 'es', { sensitivity:'base' }));
+        } else if (mode === 'laps') {
+          next.sort((a,b) => totalLaps(b) - totalLaps(a));
+        } else if (mode === 'best') {
+          next.sort((a,b) => {
+            const av = Number(firstValue(a, ['bestLapMs','bestLapTimeMs','stats.bestLapMs'])) || Number.MAX_SAFE_INTEGER;
+            const bv = Number(firstValue(b, ['bestLapMs','bestLapTimeMs','stats.bestLapMs'])) || Number.MAX_SAFE_INTEGER;
+            return av - bv;
+          });
+        } else {
+          next.sort((a,b) => dateMs(lastSeenRaw(b)) - dateMs(lastSeenRaw(a)) || totalLaps(b) - totalLaps(a));
+        }
+
         return next;
       }
 
       function filteredRows() {
-        const q = searchEl.value.trim().toLowerCase();
+        const q = normalize(searchEl.value || '');
         const mode = activityEl.value;
+
         return sortedRows(pilots.filter((pilot) => {
-          const haystack = `${pilotName(pilot)} ${pilotId(pilot) || ''} ${pilotGuid(pilot) || ''}`.toLowerCase();
+          const haystack = normalize(`${pilotName(pilot)} ${pilotId(pilot) || ''} ${pilotGuid(pilot) || ''} ${lastCar(pilot) || ''}`);
           if (q && !haystack.includes(q)) return false;
           if (mode === 'recent' && !isRecent(pilot)) return false;
+          if (mode === 'withlaps' && totalLaps(pilot) <= 0) return false;
           if (mode === 'online' && !isOnline(pilot)) return false;
           if (mode === 'historic' && (isRecent(pilot) || isOnline(pilot))) return false;
           return true;
         }));
       }
 
+      function updateMetrics(rows) {
+        const active = rows.filter(isRecent).length;
+        const laps = rows.reduce((sum, pilot) => sum + totalLaps(pilot), 0);
+        const top = [...rows].sort((a, b) => totalLaps(b) - totalLaps(a))[0];
+
+        metricPilots.textContent = String(rows.length);
+        metricActive.textContent = String(active);
+        metricLaps.textContent = laps.toLocaleString('es-ES');
+        metricTopLaps.textContent = top ? totalLaps(top).toLocaleString('es-ES') : '—';
+        metricTopPilot.textContent = top ? pilotName(top) : 'sin datos';
+      }
+
       function drawCards(rows) {
-        const featured = sortedRows(rows.filter((pilot) => isRecent(pilot) || totalLaps(pilot) > 0)).slice(0, 6);
+        const featured = sortedRows(rows.filter((pilot) => isRecent(pilot) || totalLaps(pilot) > 0)).slice(0, 8);
         featuredCountEl.textContent = `${featured.length} destacados`;
+
         cardsEl.innerHTML = featured.length ? featured.map((pilot) => {
           const url = profileUrl(pilot);
+
           return `
-            <article class="gc-pilot-card-v3">
-              <div class="gc-pilot-card-v3__top">
-                <strong class="gc-pilot-card-v3__name">${escapeHtml(pilotName(pilot))}</strong>
-                <span class="gc-pilot-card-v3__state ${stateClass(pilot)}">${escapeHtml(stateText(pilot))}</span>
+            <article class="gc-pilot-card-v9">
+              <div class="gc-pilot-card-v9__top">
+                <strong class="gc-pilot-card-v9__name">${escapeHtml(pilotName(pilot))}</strong>
+                <span class="gc-pilot-card-v9__state ${stateClass(pilot)}">${escapeHtml(stateText(pilot))}</span>
               </div>
-              <div class="gc-pilot-card-v3__meta">
-                <div class="gc-pilot-card-v3__metric"><span>Vueltas</span><strong>${escapeHtml(totalLaps(pilot).toLocaleString('es-ES'))}</strong></div>
-                <div class="gc-pilot-card-v3__metric"><span>Mejor</span><strong>${escapeHtml(bestLap(pilot))}</strong></div>
+
+              <div class="gc-pilot-card-v9__meta">
+                <div class="gc-pilot-card-v9__metric"><span>Vueltas</span><strong>${escapeHtml(totalLaps(pilot).toLocaleString('es-ES'))}</strong></div>
+                <div class="gc-pilot-card-v9__metric"><span>Mejor</span><strong>${escapeHtml(bestLap(pilot))}</strong></div>
               </div>
-              <p class="gc-pilot-card-v3__last">${escapeHtml(dateText(lastSeenRaw(pilot)))} · ${escapeHtml(lastCar(pilot))}</p>
-              <div class="gc-pilot-card-v3__actions">
+
+              <p class="gc-pilot-card-v9__last">${escapeHtml(dateText(lastSeenRaw(pilot)))} · ${escapeHtml(lastCar(pilot))}</p>
+
+              <div class="gc-pilot-card-v9__actions">
                 <small>${escapeHtml(isRecent(pilot) ? 'Actividad reciente' : 'Histórico')}</small>
                 ${url ? `<a class="gc-btn gc-btn--mini" href="${escapeHtml(url)}">Abrir ficha</a>` : '<span class="gc-muted-text">Sin ficha</span>'}
               </div>
             </article>
           `;
-        }).join('') : '<article class="gc-pilot-card-v3"><strong>Sin pilotos con movimiento.</strong><p class="gc-muted-text">No hay actividad reciente disponible.</p></article>';
+        }).join('') : '<article class="gc-pilot-card-v9"><strong>Sin pilotos con movimiento.</strong><p class="gc-muted-text">No hay actividad reciente disponible.</p></article>';
       }
 
       function drawTable(rows) {
         visibleEl.textContent = String(rows.length);
         hintEl.textContent = `${rows.length} pilotos visibles de ${pilots.length}`;
+
         rowsEl.innerHTML = rows.map((pilot, index) => {
           const url = profileUrl(pilot);
+
           return `
             <tr>
               <td>${index + 1}</td>
-              <td><strong class="gc-piloto-name-v3">${escapeHtml(pilotName(pilot))}</strong><span class="gc-piloto-sub-v3">${escapeHtml(isRecent(pilot) ? 'Actividad reciente' : 'Piloto registrado')}</span></td>
+              <td><strong class="gc-piloto-name-v9">${escapeHtml(pilotName(pilot))}</strong><span class="gc-piloto-sub-v9">${escapeHtml(isRecent(pilot) ? 'Actividad reciente' : 'Piloto registrado')}</span></td>
               <td><span class="gc-chip ${stateClass(pilot) ? 'gc-chip--accent' : ''}">${escapeHtml(stateText(pilot))}</span></td>
               <td><strong>${escapeHtml(totalLaps(pilot).toLocaleString('es-ES'))}</strong></td>
               <td><strong>${escapeHtml(bestLap(pilot))}</strong></td>
@@ -272,46 +554,59 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       function draw() {
         const rows = filteredRows();
+        updateMetrics(rows);
         drawCards(rows);
         drawTable(rows);
+
+        console.info('[GC pilotos v1.9]', {
+          loaded: pilots.length,
+          visible: rows.length,
+          sort: sortEl.value,
+          activity: activityEl.value
+        });
       }
 
       async function load() {
         reloadEl.disabled = true;
         rowsEl.innerHTML = '<tr><td colspan="8">Cargando pilotos...</td></tr>';
+
         try {
           const response = await fetch('/api/pilots?limit=800&valid=all', { cache:'no-store', credentials:'include' });
           if (!response.ok) throw new Error('Endpoint no disponible');
+
           const data = await response.json();
           pilots = Array.isArray(data) ? data : (data.items || data.pilots || data.drivers || data.data || []);
+
           countEl.textContent = String(data.total ?? data.count ?? pilots.length);
           updatedEl.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-          metricPilots.textContent = String(data.total ?? data.count ?? pilots.length);
-          metricActive.textContent = String(pilots.filter(isRecent).length);
-          metricOnline.textContent = String(pilots.filter(isOnline).length);
-          metricLaps.textContent = pilots.reduce((sum, pilot) => sum + totalLaps(pilot), 0).toLocaleString('es-ES');
+
           draw();
         } catch (error) {
           countEl.textContent = 'Error';
           countEl.style.color = 'var(--warn)';
           hintEl.textContent = 'No se pudo cargar /api/pilots.';
           rowsEl.innerHTML = '<tr><td colspan="8">No se pudo cargar /api/pilots.</td></tr>';
-          cardsEl.innerHTML = '<article class="gc-pilot-card-v3"><strong>Error cargando pilotos.</strong><p class="gc-muted-text">Revisa el endpoint /api/pilots.</p></article>';
+          cardsEl.innerHTML = '<article class="gc-pilot-card-v9"><strong>Error cargando pilotos.</strong><p class="gc-muted-text">Revisa el endpoint /api/pilots.</p></article>';
+          console.warn('[GC pilotos v1.9] Error', error);
         } finally {
           reloadEl.disabled = false;
         }
       }
 
-      [searchEl, activityEl, sortEl].forEach((input) => input.addEventListener('input', draw));
-      sortEl.addEventListener('change', draw);
-      activityEl.addEventListener('change', draw);
+      [searchEl, activityEl, sortEl].forEach((input) => {
+        input.addEventListener('input', draw);
+        input.addEventListener('change', draw);
+      });
+
       reloadEl.addEventListener('click', load);
+
       clearEl.addEventListener('click', () => {
         searchEl.value = '';
         activityEl.value = 'all';
         sortEl.value = 'recent';
         draw();
       });
+
       load();
     })();
   </script>

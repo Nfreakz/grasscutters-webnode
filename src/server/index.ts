@@ -7172,6 +7172,13 @@ app.get('/api/logout', (req, res) => {
 
 
 
+
+
+
+
+
+
+
 /* GC_ASTRO_RUNTIME_PATCH_V3
  * Runtime Hostinger + Astro para Express.
  * V3: separa API, estáticos prerenderizados y SSR.

@@ -1,0 +1,422 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+---
+<AppLayout title="Calculadora FOV | GrassCutters">
+  <div class="gc-page gc-fov-page-v25">
+    <section class="gc-hero gc-hero--compact gc-fov-hero-v25">
+      <div>
+        <span class="gc-kicker">FOV Calculator</span>
+        <h1 class="gc-title">Calculadora FOV.</h1>
+        <p class="gc-subtitle">Elige tu pantalla, distancia y simulador. La calculadora te da el valor recomendado sin obligarte a tocar mil opciones.</p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Simple mode</span>
+          <span class="gc-chip">TV 4K</span>
+          <span class="gc-chip">Ultrawide</span>
+          <span class="gc-chip">Triple monitor</span>
+        </div>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Valor juego</span><strong id="gameValueMini">--°</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Vertical</span><strong id="miniVertical">--°</strong></div>
+          <div class="gc-status-row"><span>Horizontal</span><strong id="miniHorizontal">--°</strong></div>
+          <div class="gc-status-row"><span>Setup</span><strong id="miniSetup">Single</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-fov-top-v25">
+      <article class="gc-section gc-fov-calculator-v25">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Configuración rápida</span>
+            <h2>Tu pantalla</h2>
+            <p>Para la mayoría de casos basta con elegir preset, distancia y juego. La resolución 4K no cambia el FOV: importan tamaño físico y distancia.</p>
+          </div>
+          <button class="gc-btn" id="resetFov" type="button">Reset</button>
+        </div>
+
+        <div class="gc-fov-simple-form-v25">
+          <label class="gc-field">
+            <span>Simulador</span>
+            <select class="gc-select" id="simGame">
+              <option value="ac">Assetto Corsa</option>
+              <option value="acc">Assetto Corsa Competizione</option>
+              <option value="iracing">iRacing</option>
+              <option value="rf2">rFactor 2 / LMU</option>
+              <option value="ams2">Automobilista 2</option>
+              <option value="raceroom">RaceRoom</option>
+              <option value="other">Otro / no seguro</option>
+            </select>
+          </label>
+
+          <label class="gc-field">
+            <span>Pantalla</span>
+            <select class="gc-select" id="monitorPreset">
+              <optgroup label="Monitores 16:9">
+                <option value="24-16-9-flat">24” 16:9</option>
+                <option value="27-16-9-flat" selected>27” 16:9</option>
+                <option value="32-16-9-flat">32” 16:9</option>
+              </optgroup>
+              <optgroup label="TV / pantalla grande 16:9">
+                <option value="40-tv-16-9">40” TV 4K / 16:9</option>
+                <option value="42-tv-16-9">42” TV 4K / OLED</option>
+                <option value="43-tv-16-9">43” TV 4K</option>
+                <option value="48-tv-16-9">48” TV 4K / OLED</option>
+                <option value="50-tv-16-9">50” TV 4K</option>
+                <option value="55-tv-16-9">55” TV 4K</option>
+                <option value="65-tv-16-9">65” TV 4K</option>
+              </optgroup>
+              <optgroup label="Ultrawide / curvos">
+                <option value="34-21-9-1800">34” 21:9 1800R</option>
+                <option value="38-21-9-2300">38” 21:9 2300R</option>
+                <option value="49-32-9-1000">49” 32:9 1000R</option>
+                <option value="49-32-9-1800">49” 32:9 1800R</option>
+                <option value="57-32-9-1000">57” 32:9 1000R</option>
+              </optgroup>
+              <optgroup label="Triple monitor">
+                <option value="triple-24">Triple 24” 16:9</option>
+                <option value="triple-27">Triple 27” 16:9</option>
+                <option value="triple-32">Triple 32” 16:9</option>
+              </optgroup>
+              <option value="custom">Personalizado</option>
+            </select>
+          </label>
+
+          <label class="gc-field">
+            <span>Distancia ojos-pantalla</span>
+            <input class="gc-input" id="distanceCm" type="number" min="20" max="250" step="1" value="60" />
+          </label>
+
+          <label class="gc-field">
+            <span>Tipo</span>
+            <select class="gc-select" id="setupType">
+              <option value="single">Una pantalla</option>
+              <option value="curved">Curvo / ultrawide</option>
+              <option value="triple">Triple monitor</option>
+            </select>
+          </label>
+        </div>
+
+        <p class="gc-fov-quick-note-v26">Distancia en centímetros reales desde tus ojos hasta la pantalla. La resolución 4K no cambia el FOV.</p>
+
+        <details class="gc-fov-advanced-v25">
+          <summary>Ajustes avanzados</summary>
+          <div class="gc-fov-advanced-grid-v25">
+            <label class="gc-field">
+              <span>Diagonal</span>
+              <input class="gc-input" id="diagonalIn" type="number" min="10" max="120" step="0.1" value="27" />
+              <small>Pulgadas</small>
+            </label>
+
+            <label class="gc-field">
+              <span>Formato</span>
+              <select class="gc-select" id="aspectPreset">
+                <option value="16:9" selected>16:9</option>
+                <option value="21:9">21:9</option>
+                <option value="32:9">32:9</option>
+                <option value="16:10">16:10</option>
+                <option value="4:3">4:3</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+
+            <label class="gc-field">
+              <span>Ancho ratio</span>
+              <input class="gc-input" id="aspectW" type="number" min="1" max="64" step="0.1" value="16" />
+            </label>
+
+            <label class="gc-field">
+              <span>Alto ratio</span>
+              <input class="gc-input" id="aspectH" type="number" min="1" max="32" step="0.1" value="9" />
+            </label>
+
+            <label class="gc-field">
+              <span>Curvatura</span>
+              <select class="gc-select" id="curvePreset">
+                <option value="0">Plano</option>
+                <option value="1000">1000R</option>
+                <option value="1500">1500R</option>
+                <option value="1800">1800R</option>
+                <option value="2300">2300R</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+
+            <label class="gc-field">
+              <span>Radio curva</span>
+              <input class="gc-input" id="curveRadiusMm" type="number" min="500" max="5000" step="10" value="1000" />
+            </label>
+
+            <label class="gc-field">
+              <span>Ángulo triple</span>
+              <input class="gc-input" id="sideAngleDeg" type="number" min="10" max="90" step="0.5" value="53" />
+            </label>
+
+            <label class="gc-field">
+              <span>Bezel/gap</span>
+              <input class="gc-input" id="bezelCm" type="number" min="0" max="5" step="0.1" value="0.6" />
+            </label>
+          </div>
+        </details>
+      </article>
+
+      <aside class="gc-fov-result-v25">
+        <span class="gc-kicker">Valor recomendado</span>
+        <strong id="gameFovValue">--°</strong>
+        <p id="gameFovLabel">Selecciona simulador y pantalla.</p>
+
+        <div class="gc-fov-result-grid-v25">
+          <div><span>Vertical</span><strong id="verticalFov">--°</strong></div>
+          <div><span>Horizontal</span><strong id="horizontalFov">--°</strong></div>
+          <div><span>Ancho</span><strong id="screenWidthOut">-- cm</strong></div>
+          <div><span>Alto</span><strong id="screenHeightOut">-- cm</strong></div>
+          <div><span>Triple coverage</span><strong id="tripleCoverage">--°</strong></div>
+          <div><span>Curva/arc</span><strong id="curveArc">--°</strong></div>
+        </div>
+
+        <button class="gc-btn gc-btn--primary" id="copyGameFov" type="button">Copiar valor</button>
+        <small id="copyState">Listo.</small>
+      </aside>
+    </section>
+
+    <section class="gc-section gc-fov-help-v25">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Lectura rápida</span>
+          <h2>Qué debes saber</h2>
+          <p>La calculadora está pensada para ser práctica primero y avanzada solo si la necesitas.</p>
+        </div>
+      </div>
+
+      <div class="gc-fov-help-grid-v25">
+        <article><strong>TV 4K</strong><p>Que sea 4K no cambia el FOV. El cálculo depende del tamaño físico y de la distancia.</p></article>
+        <article><strong>49” 32:9</strong><p>La altura suele ser parecida a un 27” 16:9. Por eso el FOV vertical puede parecer bajo aunque sea correcto.</p></article>
+        <article><strong>Triple monitor</strong><p>Usa el valor como punto de partida y ajusta también ángulo lateral y bezel dentro del juego si tiene soporte triple.</p></article>
+      </div>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-fov-page-v25{display:grid;gap:clamp(18px,2.3vw,28px)}
+    .gc-fov-hero-v25{padding-block:clamp(22px,3vw,34px)!important;margin:0}
+    .gc-fov-hero-v25 .gc-title{font-size:clamp(3rem,7vw,6rem);line-height:.86;letter-spacing:-.075em;margin:8px 0 12px}
+    .gc-fov-hero-v25 .gc-subtitle{max-width:860px}
+    .gc-fov-top-v25{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.38fr);gap:clamp(16px,2vw,24px);align-items:start}
+    .gc-fov-calculator-v25{margin:0}
+    .gc-fov-simple-form-v25{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
+    .gc-fov-simple-form-v25 .gc-field,.gc-fov-advanced-grid-v25 .gc-field{display:grid;grid-template-rows:auto 44px;gap:7px;min-width:0}
+    .gc-fov-simple-form-v25 .gc-field span,.gc-fov-advanced-grid-v25 .gc-field span{color:var(--dim);text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;font-weight:950;min-height:1.2em;display:flex;align-items:flex-end}
+    .gc-fov-simple-form-v25 .gc-field small,.gc-fov-advanced-grid-v25 .gc-field small{color:var(--muted);font-size:.78rem}
+    .gc-fov-simple-form-v25 .gc-input,.gc-fov-simple-form-v25 .gc-select,.gc-fov-advanced-grid-v25 .gc-input,.gc-fov-advanced-grid-v25 .gc-select{width:100%;min-width:0;height:44px;line-height:44px}
+    .gc-fov-simple-form-v25 .gc-select,.gc-fov-advanced-grid-v25 .gc-select{line-height:normal}
+    .gc-fov-quick-note-v26{margin:12px 0 0;color:var(--muted);font-size:.88rem;line-height:1.45}
+    .gc-fov-advanced-v25{margin-top:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.018)}
+    .gc-fov-advanced-v25 summary{cursor:pointer;padding:14px 16px;color:var(--text);font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+    .gc-fov-advanced-grid-v25{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:0 16px 16px}
+    .gc-fov-result-v25{position:sticky;top:18px;display:grid;gap:16px;padding:18px;border:1px solid var(--line);border-top:2px solid var(--accent);background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:0 18px 70px rgba(0,0,0,.16)}
+    .gc-fov-result-v25>strong{display:block;color:var(--accent);font-size:clamp(3.2rem,7vw,6.4rem);line-height:.82;letter-spacing:-.08em}
+    .gc-fov-result-v25 p{margin:0;color:var(--soft);line-height:1.4}
+    .gc-fov-result-grid-v25{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .gc-fov-result-grid-v25 div{padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.12)}
+    .gc-fov-result-grid-v25 span{display:block;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-size:.62rem;font-weight:950}
+    .gc-fov-result-grid-v25 strong{display:block;margin-top:5px;color:var(--text);font-size:1rem}
+    .gc-fov-help-v25{margin:0}
+    .gc-fov-help-grid-v25{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .gc-fov-help-grid-v25 article{padding:16px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02)}
+    .gc-fov-help-grid-v25 strong{display:block;color:var(--text);font-size:1.05rem}
+    .gc-fov-help-grid-v25 p{margin:.45rem 0 0;color:var(--muted);line-height:1.45}
+    @media(max-width:1180px){.gc-fov-top-v25{grid-template-columns:1fr}.gc-fov-result-v25{position:static}.gc-fov-simple-form-v25,.gc-fov-advanced-grid-v25{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-fov-help-grid-v25{grid-template-columns:1fr}}
+    @media(max-width:640px){.gc-fov-simple-form-v25,.gc-fov-advanced-grid-v25,.gc-fov-result-grid-v25{grid-template-columns:1fr}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        game: $('simGame'), setup: $('setupType'), preset: $('monitorPreset'), diagonal: $('diagonalIn'),
+        aspectPreset: $('aspectPreset'), aspectW: $('aspectW'), aspectH: $('aspectH'), distance: $('distanceCm'),
+        curvePreset: $('curvePreset'), curveRadius: $('curveRadiusMm'), sideAngle: $('sideAngleDeg'), bezel: $('bezelCm'),
+        gameValue: $('gameFovValue'), gameLabel: $('gameFovLabel'), vertical: $('verticalFov'), horizontal: $('horizontalFov'),
+        width: $('screenWidthOut'), height: $('screenHeightOut'), triple: $('tripleCoverage'), curveArc: $('curveArc'),
+        miniGame: $('gameValueMini'), miniV: $('miniVertical'), miniH: $('miniHorizontal'), miniSetup: $('miniSetup'),
+        copy: $('copyGameFov'), copyState: $('copyState'), reset: $('resetFov')
+      };
+
+      const presets = {
+        '24-16-9-flat': { setup:'single', diagonal:24, aspect:'16:9', curve:0, distance:58 },
+        '27-16-9-flat': { setup:'single', diagonal:27, aspect:'16:9', curve:0, distance:60 },
+        '32-16-9-flat': { setup:'single', diagonal:32, aspect:'16:9', curve:0, distance:65 },
+        '40-tv-16-9': { setup:'single', diagonal:40, aspect:'16:9', curve:0, distance:90 },
+        '42-tv-16-9': { setup:'single', diagonal:42, aspect:'16:9', curve:0, distance:95 },
+        '43-tv-16-9': { setup:'single', diagonal:43, aspect:'16:9', curve:0, distance:95 },
+        '48-tv-16-9': { setup:'single', diagonal:48, aspect:'16:9', curve:0, distance:105 },
+        '50-tv-16-9': { setup:'single', diagonal:50, aspect:'16:9', curve:0, distance:110 },
+        '55-tv-16-9': { setup:'single', diagonal:55, aspect:'16:9', curve:0, distance:120 },
+        '65-tv-16-9': { setup:'single', diagonal:65, aspect:'16:9', curve:0, distance:145 },
+        '34-21-9-1800': { setup:'curved', diagonal:34, aspect:'21:9', curve:1800, distance:65 },
+        '38-21-9-2300': { setup:'curved', diagonal:38, aspect:'21:9', curve:2300, distance:70 },
+        '49-32-9-1000': { setup:'curved', diagonal:49, aspect:'32:9', curve:1000, distance:65 },
+        '49-32-9-1800': { setup:'curved', diagonal:49, aspect:'32:9', curve:1800, distance:70 },
+        '57-32-9-1000': { setup:'curved', diagonal:57, aspect:'32:9', curve:1000, distance:75 },
+        'triple-24': { setup:'triple', diagonal:24, aspect:'16:9', curve:0, distance:58 },
+        'triple-27': { setup:'triple', diagonal:27, aspect:'16:9', curve:0, distance:60 },
+        'triple-32': { setup:'triple', diagonal:32, aspect:'16:9', curve:0, distance:68 }
+      };
+
+      const gameMap = {
+        ac: { label:'Assetto Corsa: usa normalmente FOV vertical.', type:'vertical' },
+        acc: { label:'ACC: usa normalmente FOV vertical.', type:'vertical' },
+        iracing: { label:'iRacing: usa normalmente FOV horizontal y tiene configuración triple propia.', type:'horizontal' },
+        rf2: { label:'rFactor 2 / LMU: usa el valor vertical como punto de partida.', type:'vertical' },
+        ams2: { label:'Automobilista 2: usa horizontal como referencia práctica y ajusta en cámara si hace falta.', type:'horizontal' },
+        raceroom: { label:'RaceRoom: revisa el menú del juego. Te muestro vertical por defecto.', type:'vertical' },
+        other: { label:'Otro sim: si no sabes si pide vertical u horizontal, prueba primero vertical y compara escala.', type:'vertical' }
+      };
+
+      const deg = (rad) => rad * 180 / Math.PI;
+      const rad = (deg) => deg * Math.PI / 180;
+      const fmt = (n) => Number.isFinite(n) ? `${n.toFixed(1)}°` : '--°';
+      const cm = (n) => Number.isFinite(n) ? `${n.toFixed(1)} cm` : '-- cm';
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, Number(v) || min));
+      let lastGameValue = null;
+
+      function setAspect(value) {
+        if (value !== 'custom') {
+          const [w, h] = value.split(':').map(Number);
+          els.aspectW.value = w;
+          els.aspectH.value = h;
+          els.aspectW.disabled = true;
+          els.aspectH.disabled = true;
+        } else {
+          els.aspectW.disabled = false;
+          els.aspectH.disabled = false;
+        }
+      }
+
+      function setCurve(value) {
+        if (value === 'custom') {
+          els.curveRadius.disabled = false;
+          return;
+        }
+        els.curveRadius.disabled = value === '0';
+        if (value !== '0') els.curveRadius.value = value;
+      }
+
+      function applyPreset(key) {
+        const preset = presets[key];
+        if (!preset) return;
+        els.setup.value = preset.setup;
+        els.diagonal.value = preset.diagonal;
+        els.aspectPreset.value = preset.aspect;
+        els.distance.value = preset.distance;
+        els.curvePreset.value = preset.curve ? String(preset.curve) : '0';
+        els.curveRadius.value = preset.curve || 1000;
+        setAspect(preset.aspect);
+        setCurve(els.curvePreset.value);
+        calculate();
+      }
+
+      function dimensions() {
+        const diagonalCm = clamp(els.diagonal.value, 10, 120) * 2.54;
+        const w = clamp(els.aspectW.value, 1, 64);
+        const h = clamp(els.aspectH.value, 1, 32);
+        const ratio = Math.sqrt(w*w + h*h);
+        return { width: diagonalCm * w / ratio, height: diagonalCm * h / ratio };
+      }
+
+      function tripleCoverage(width, distance, sideAngleDeg, bezel) {
+        const angle = rad(sideAngleDeg);
+        const half = width / 2;
+        const rightOuterX = half + bezel + width * Math.cos(angle);
+        const rightOuterY = distance - width * Math.sin(angle);
+        return deg(Math.atan2(rightOuterX, rightOuterY)) - deg(Math.atan2(-rightOuterX, rightOuterY));
+      }
+
+      function curveArcAngle(width, radiusMm) {
+        const radiusCm = radiusMm / 10;
+        if (!radiusCm || radiusCm <= width / 2) return null;
+        return deg(2 * Math.asin(width / (2 * radiusCm)));
+      }
+
+      function calculate() {
+        setAspect(els.aspectPreset.value);
+        setCurve(els.curvePreset.value);
+
+        const { width, height } = dimensions();
+        const distance = clamp(els.distance.value, 20, 250);
+        const vertical = deg(2 * Math.atan(height / (2 * distance)));
+        const horizontal = deg(2 * Math.atan(width / (2 * distance)));
+        const coverage = els.setup.value === 'triple'
+          ? tripleCoverage(width, distance, clamp(els.sideAngle.value, 10, 90), clamp(els.bezel.value, 0, 5))
+          : null;
+
+        const radius = els.curvePreset.value === '0' ? 0 : clamp(els.curveRadius.value, 500, 5000);
+        const arc = radius ? curveArcAngle(width, radius) : null;
+        const game = gameMap[els.game.value] || gameMap.other;
+        const gameValue = game.type === 'horizontal' ? horizontal : vertical;
+
+        lastGameValue = gameValue;
+
+        els.vertical.textContent = fmt(vertical);
+        els.horizontal.textContent = fmt(horizontal);
+        els.width.textContent = cm(width);
+        els.height.textContent = cm(height);
+        els.triple.textContent = coverage ? fmt(coverage) : '--°';
+        els.curveArc.textContent = arc ? fmt(arc) : '--°';
+
+        els.gameValue.textContent = fmt(gameValue);
+        els.gameLabel.textContent = game.label;
+
+        els.miniGame.textContent = fmt(gameValue);
+        els.miniV.textContent = fmt(vertical);
+        els.miniH.textContent = fmt(horizontal);
+        els.miniSetup.textContent = els.setup.value === 'triple' ? 'Triple' : els.setup.value === 'curved' ? 'Curvo' : 'Single';
+        els.copyState.textContent = `Valor recomendado: ${fmt(gameValue)}`;
+
+        console.info('[GC FOV calculator v2.6]', {
+          game: els.game.value,
+          setup: els.setup.value,
+          preset: els.preset.value,
+          widthCm: Number(width.toFixed(2)),
+          heightCm: Number(height.toFixed(2)),
+          distanceCm: distance,
+          verticalFov: Number(vertical.toFixed(2)),
+          horizontalFov: Number(horizontal.toFixed(2)),
+          tripleCoverage: coverage ? Number(coverage.toFixed(2)) : null,
+          curveArc: arc ? Number(arc.toFixed(2)) : null
+        });
+      }
+
+      els.preset.addEventListener('change', () => {
+        if (els.preset.value !== 'custom') applyPreset(els.preset.value);
+        else calculate();
+      });
+
+      [els.game, els.setup, els.diagonal, els.aspectPreset, els.aspectW, els.aspectH, els.distance, els.curvePreset, els.curveRadius, els.sideAngle, els.bezel].forEach((input) => {
+        input.addEventListener('input', calculate);
+        input.addEventListener('change', calculate);
+      });
+
+      els.copy.addEventListener('click', async () => {
+        if (!Number.isFinite(lastGameValue)) calculate();
+        const value = lastGameValue.toFixed(1);
+        try {
+          await navigator.clipboard.writeText(value);
+          els.copyState.textContent = `Copiado: ${value}`;
+        } catch {
+          els.copyState.textContent = `Valor recomendado: ${value}`;
+        }
+      });
+
+      els.reset.addEventListener('click', () => {
+        els.preset.value = '27-16-9-flat';
+        els.game.value = 'ac';
+        applyPreset('27-16-9-flat');
+      });
+
+      applyPreset('27-16-9-flat');
+    })();
+  </script>
+</AppLayout>
