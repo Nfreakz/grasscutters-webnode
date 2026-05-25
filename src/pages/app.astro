@@ -1,5 +1,9 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+
+const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78';
+const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
+const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
 ---
 <AppLayout title="Panel | GrassCutters">
   <div class="gc-page gc-app-dashboard-v3">
@@ -27,8 +31,8 @@ import AppLayout from '../layouts/AppLayout.astro';
     <section class="gc-metrics gc-app-metrics-v3" aria-label="Métricas rápidas">
       <div class="gc-metric"><span>Pilotos</span><strong id="gcMetricDrivers">...</strong><small>detectados</small></div>
       <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>registradas</small></div>
-      <div class="gc-metric"><span>Coches</span><strong id="gcMetricCars">...</strong><small>en actividad</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong id="gcMetricTracks">...</strong><small>en actividad</small></div>
+      <div class="gc-metric"><span>Combos</span><strong id="gcMetricCombos">...</strong><small>activos</small></div>
+      <div class="gc-metric"><span>Última actividad</span><strong id="gcMetricLastActivity">...</strong><small>vueltas recientes</small></div>
     </section>
 
     <section class="gc-app-top-grid-v3" aria-label="Resumen principal">
@@ -38,7 +42,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             <h2>Combo activo</h2>
             <p id="gcComboHint">Leyendo actividad reciente.</p>
           </div>
-          <a class="gc-feature-link" href="/combos" id="gcComboLink">Abrir combo</a>
+          <a class="gc-btn gc-btn--primary gc-app-combo-open-v5" href="/combos" id="gcComboLink">Abrir combo</a>
         </div>
         <div class="gc-app-combo-body-v3">
           <div>
@@ -55,7 +59,14 @@ import AppLayout from '../layouts/AppLayout.astro';
         <div class="gc-app-mini-stats-v3">
           <div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div>
           <div><span>Pilotos</span><strong id="gcComboDrivers">--</strong></div>
-          <div><span>Fuente</span><strong id="gcComboFamily">--</strong></div>
+          <div><span>Estado</span><strong id="gcComboFamily">--</strong></div>
+        </div>
+
+        <div class="gc-app-pit-actions-v6" aria-label="Acciones rápidas del combo">
+          <a class="gc-btn gc-btn--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Unirse al servidor</a>
+          <a class="gc-btn" href={carsDriveUrl} target="_blank" rel="noreferrer">Coches</a>
+          <a class="gc-btn" href={tracksDriveUrl} target="_blank" rel="noreferrer">Circuito</a>
+          <a class="gc-btn" href="/hotlaps">Hotlaps</a>
         </div>
       </article>
 
@@ -69,8 +80,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         </div>
         <div class="gc-app-readout-grid-v3">
           <div class="gc-app-readout-v3"><span>Vueltas recientes</span><strong id="gcQuickRefs">--</strong><small>cargadas en esta vista</small></div>
-          <div class="gc-app-readout-v3"><span>Mejor tiempo</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
-          <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Referencia rápida</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Último movimiento</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
           <div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
         </div>
       </article>
@@ -124,6 +135,12 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-app-label-v3,.gc-app-best-v3 span,.gc-app-mini-stats-v3 span,.gc-app-readout-v3 span{display:block;color:var(--soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.13em}
     .gc-app-combo-body-v3 h3{margin:8px 0 16px;color:var(--text);font-size:clamp(2.1rem,4.5vw,4rem);line-height:.92;letter-spacing:-.07em}
     .gc-app-chip-list-v3{display:flex;flex-wrap:wrap;gap:8px}
+    .gc-app-combo-open-v5{white-space:nowrap;align-self:flex-start}
+    .gc-app-pit-actions-v6{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+    .gc-app-pit-actions-v6 .gc-btn{min-height:38px;padding-inline:14px}
+    .gc-app-pit-actions-v6 .gc-btn--primary{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 34%,transparent),0 12px 34px rgba(0,0,0,.2)}
+    .gc-app-combo-v3{position:relative;overflow:hidden}
+    .gc-app-combo-v3::after{content:"";position:absolute;right:-70px;top:-70px;width:190px;height:190px;border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);border-radius:50%;opacity:.28;pointer-events:none}
     .gc-app-best-v3{display:grid;align-content:center;gap:8px;padding:18px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.025))}
     .gc-app-best-v3 strong{color:var(--text);font-size:clamp(1.75rem,3vw,2.65rem);line-height:1;letter-spacing:-.05em}
     .gc-app-best-v3 small,.gc-app-readout-v3 small{color:var(--muted);line-height:1.45}
@@ -131,7 +148,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-app-mini-stats-v3 div,.gc-app-readout-v3{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}
     .gc-app-mini-stats-v3 strong{display:block;margin-top:6px;color:var(--text);font-size:1.42rem;line-height:1}
     .gc-app-readout-grid-v3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .gc-app-readout-v3{min-height:126px;display:grid;align-content:space-between;gap:10px}
+    .gc-app-readout-v3{min-height:112px;display:grid;align-content:space-between;gap:10px}
     .gc-app-readout-v3 strong{color:var(--text);font-size:clamp(1.25rem,2.4vw,1.95rem);line-height:1;letter-spacing:-.04em;word-break:break-word}
     .gc-app-table-wrap-v3{max-height:420px;overflow:auto}
     .gc-app-table-v3 td,.gc-app-table-v3 th{white-space:nowrap}
@@ -313,27 +330,15 @@ import AppLayout from '../layouts/AppLayout.astro';
           });
         }
 
-        const cars = new Set();
-        const tracks = new Set();
-        combos.forEach((combo) => {
-          const track = comboTrackName(combo);
-          if (track && track !== 'Combo activo') tracks.add(track);
-          comboCars(combo).forEach((car) => cars.add(car));
-        });
-        lapSource.forEach((lap) => {
-          const c = carName(lap);
-          const t = trackName(lap);
-          if (c && c !== 'Coche') cars.add(c);
-          if (t && t !== 'Circuito') tracks.add(t);
-        });
-
         const lapsFromCombos = combos.reduce((sum, combo) => sum + comboTotalLaps(combo), 0);
         const lapsTotal = recentData?.totalMatchedLaps ?? bestData?.totalMatchedLaps ?? lapsFromCombos ?? lapSource.length;
+        const activeCombos = combos.filter((combo) => comboTotalLaps(combo) > 0).length || combos.length;
+        const lastLap = [...lapSource].sort((a, b) => lapDate(b) - lapDate(a))[0] || null;
 
         setText('gcMetricDrivers', formatNumber(pilotsData?.totalDrivers ?? pilotsData?.total ?? pilotsData?.count ?? driversData?.totalDrivers ?? driversData?.count ?? pilotKeys.size));
         setText('gcMetricLaps', formatNumber(lapsTotal));
-        setText('gcMetricCars', cars.size ? formatNumber(cars.size) : '—');
-        setText('gcMetricTracks', tracks.size ? formatNumber(tracks.size) : '—');
+        setText('gcMetricCombos', activeCombos ? formatNumber(activeCombos) : '—');
+        setText('gcMetricLastActivity', lastLap ? dateText(lapDate(lastLap)).split(',')[0] : '—');
       }
 
       function renderCombo(combosData, recentData, bestData){
@@ -352,12 +357,18 @@ import AppLayout from '../layouts/AppLayout.astro';
 
           setText('gcComboTrack', track);
           setText('gcAppComboChip', track);
-          setText('gcComboHint', comboLastMs(activeCombo) ? `Última actividad · ${dateText(comboLastMs(activeCombo))}` : 'Combo cargado desde /api/combos/stats.');
+          {
+            const recent = items(recentData).filter(Boolean).sort((a, b) => lapDate(b) - lapDate(a))[0];
+            const latestDriver = recent ? driverName(recent) : '';
+            setText('gcComboHint', comboLastMs(activeCombo)
+              ? `Última actividad · ${dateText(comboLastMs(activeCombo))}${latestDriver && latestDriver !== 'Piloto' ? ` · ${latestDriver}` : ''}`
+              : 'Combo cargado desde /api/combos/stats.');
+          }
           setText('gcComboBest', comboBestTime(activeCombo) || '--');
           setText('gcComboBestMeta', [comboBestDriver(activeCombo), cars[0]].filter(Boolean).join(' · ') || 'Mejor vuelta del combo');
           setText('gcComboLaps', formatNumber(comboTotalLaps(activeCombo)));
           setText('gcComboDrivers', formatNumber(comboDrivers(activeCombo)));
-          setText('gcComboFamily', comboFamily(activeCombo) > 1 ? `${comboFamily(activeCombo)} combos` : 'API combos');
+          setText('gcComboFamily', comboFamily(activeCombo) > 1 ? `${comboFamily(activeCombo)} combos` : 'Activo');
           if (link) link.href = comboUrl(activeCombo);
 
           const carsNode = byId('gcComboCars');
@@ -375,7 +386,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           setText('gcComboBestMeta', bestLap ? [driverName(bestLap), carName(bestLap)].join(' · ') : [driverName(latestLap), car].join(' · '));
           setText('gcComboLaps', formatNumber(recentData?.totalMatchedLaps ?? recent.length));
           setText('gcComboDrivers', '--');
-          setText('gcComboFamily', 'laps');
+          setText('gcComboFamily', 'Fallback');
           const carsNode = byId('gcComboCars');
           if (carsNode) carsNode.innerHTML = `<span class="gc-chip">${escapeHtml(car)}</span>`;
           return;
@@ -475,7 +486,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         renderStracker(stracker, recentLaps, bestHotlaps, combosData);
         setText('gcAppStatusChip','Live');
 
-        console.info('[GC /app v1.4]', {
+        console.info('[GC /app v1.6]', {
           pilots: items(pilots).length,
           drivers: items(drivers).length,
           combos: items(combosData).length,

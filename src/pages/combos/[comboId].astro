@@ -1,87 +1,390 @@
 ---
 export const prerender = false;
 import AppLayout from '../../layouts/AppLayout.astro';
+
+const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78';
+const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
+const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
 ---
 <AppLayout title="Combo | GrassCutters">
-  <div class="gc-page gc-combo-detail-page" data-combo-detail>
-    <section class="gc-hero gc-hero--compact gc-combo-detail-hero">
-      <div>
+  <div class="gc-page gc-combo-detail-page gc-combo-detail-v7" data-combo-detail>
+    <section class="gc-combo-hero-v7">
+      <div class="gc-combo-hero-v7__main">
         <span class="gc-kicker">Combo lógico</span>
         <h1 class="gc-title" id="comboTitle">Cargando combo...</h1>
-        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente agrupando combos lógicos compatibles.</p>
-        <div class="gc-hero__meta">
-          <a class="gc-chip" href="/combos">Volver a combos</a>
-          <a class="gc-chip" href="/hotlaps">Ver hotlaps</a>
+        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente agrupando combos compatibles.</p>
+
+        <div class="gc-combo-actions-v7" aria-label="Acciones del combo">
+          <a class="gc-btn" href="/combos">Volver a combos</a>
+          <a class="gc-btn" href="/hotlaps">Ver hotlaps</a>
+          <a class="gc-btn gc-btn--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Unirse al servidor</a>
+          <a class="gc-btn" href={carsDriveUrl} target="_blank" rel="noreferrer">Coches</a>
+          <a class="gc-btn" href={tracksDriveUrl} target="_blank" rel="noreferrer">Circuito</a>
           <span class="gc-chip gc-chip--accent" id="comboKey">Combo lógico</span>
         </div>
       </div>
-      <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Combo</span><strong id="comboStatus">...</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Vueltas</span><strong id="comboLaps">...</strong></div>
-          <div class="gc-status-row"><span>Pilotos</span><strong id="comboDrivers">...</strong></div>
-          <div class="gc-status-row"><span>Coches</span><strong id="comboCars">...</strong></div>
+
+      <aside class="gc-combo-summary-v7" aria-label="Resumen del combo">
+        <div class="gc-combo-summary-v7__title">
+          <span>Estado</span>
+          <strong id="comboStatus">...</strong>
+        </div>
+        <div class="gc-combo-summary-v7__grid">
+          <div><span>Vueltas</span><strong id="comboLaps">...</strong></div>
+          <div><span>Pilotos</span><strong id="comboDrivers">...</strong></div>
+          <div><span>Coches</span><strong id="comboCars">...</strong></div>
         </div>
       </aside>
     </section>
 
-    <section class="gc-combo-car-panel" aria-label="Coches del combo">
-      <div>
-        <span class="gc-kicker">Paquete de coches</span>
-        <h2 id="comboCarsTitle">...</h2>
-        <p id="comboCarsSub">Coches permitidos por los ComboIds agrupados según la regla del 75%.</p>
+    <section class="gc-combo-overview-v7" aria-label="Resumen rápido del combo">
+      <article class="gc-combo-car-panel-v7">
+        <div>
+          <span class="gc-kicker">Paquete de coches</span>
+          <h2 id="comboCarsTitle">...</h2>
+          <p id="comboCarsSub">Coches permitidos por los ComboIds agrupados según la regla del 75%.</p>
+        </div>
+        <div class="gc-combo-car-tags" id="comboCarTags"></div>
+      </article>
+
+      <div class="gc-combo-metrics-v7">
+        <article><span>Mejor vuelta</span><strong id="metricBest">...</strong><small id="metricBestDriver">Piloto</small></article>
+        <article><span>Vmax</span><strong id="metricSpeed">...</strong><small>Máxima registrada</small></article>
+        <article><span>Media Top 10</span><strong id="metricTop10">...</strong><small>Vueltas válidas</small></article>
+        <article><span>Última actividad</span><strong id="metricRecent">...</strong><small>stracker.db3</small></article>
       </div>
-      <div class="gc-combo-car-tags" id="comboCarTags"></div>
     </section>
 
-    <section class="gc-metric-strip gc-combo-metrics">
-      <article><span>Mejor vuelta</span><strong id="metricBest">...</strong><small id="metricBestDriver">Piloto</small></article>
-      <article><span>Vmax</span><strong id="metricSpeed">...</strong><small>Máxima registrada</small></article>
-      <article><span>Media Top 10</span><strong id="metricTop10">...</strong><small>Vueltas válidas</small></article>
-      <article><span>Última actividad</span><strong id="metricRecent">...</strong><small>stracker.db3</small></article>
+    <section class="gc-section-block gc-combo-table-section-v7">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Leaderboard</span>
+          <h2>Mejores pilotos del combo</h2>
+        </div>
+        <span class="gc-chip" id="comboLeaderboardCount">Cargando</span>
+      </div>
+      <div class="gc-table-wrap gc-combo-table-wrap-v7">
+        <table class="gc-table">
+          <thead>
+            <tr><th>#</th><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Delta</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr>
+          </thead>
+          <tbody id="leaderboardRows"><tr><td colspan="8">Cargando...</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <section class="gc-section-block">
-      <div class="gc-section-head"><div><span class="gc-kicker">Leaderboard</span><h2>Mejores pilotos del combo</h2></div></div>
-      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>#</th><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Delta</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="leaderboardRows"><tr><td colspan="8">Cargando...</td></tr></tbody></table></div>
-    </section>
-
-    <section class="gc-section-block">
-      <div class="gc-section-head"><div><span class="gc-kicker">Actividad</span><h2>Últimas vueltas</h2></div></div>
-      <div class="gc-table-wrap"><table class="gc-table"><thead><tr><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Estado</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr></thead><tbody id="recentRows"><tr><td colspan="7">Cargando...</td></tr></tbody></table></div>
+    <section class="gc-section-block gc-combo-table-section-v7">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Actividad</span>
+          <h2>Últimas vueltas</h2>
+        </div>
+        <span class="gc-chip" id="comboRecentCount">Cargando</span>
+      </div>
+      <div class="gc-table-wrap gc-combo-table-wrap-v7">
+        <table class="gc-table">
+          <thead>
+            <tr><th>Piloto</th><th>Coche</th><th>Tiempo</th><th>Estado</th><th>Vmax</th><th>Cortes</th><th>Fecha</th></tr>
+          </thead>
+          <tbody id="recentRows"><tr><td colspan="7">Cargando...</td></tr></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
   <style is:global>
-    .gc-combo-detail-page .gc-metric-strip { margin: 1.2rem 0; }
-    .gc-combo-metrics article { min-height: 118px; }
-    .gc-combo-metrics article span { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; }
-    .gc-combo-metrics article strong { display: block; margin-top: .4rem; font-size: clamp(1.4rem, 2.4vw, 2.4rem); line-height: 1; }
-    .gc-combo-metrics article small { color: var(--muted); }
-    .gc-driver-link { font-weight: 900; }
-    .gc-combo-car-panel { margin: 1.1rem 0; padding: 1.2rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface), transparent 42%); display:grid; grid-template-columns: minmax(260px,.75fr) 1.25fr; gap:1rem; align-items:start; }
-    .gc-combo-car-panel h2 { margin:.25rem 0; font-size: clamp(1.3rem,2.5vw,2.4rem); }
-    .gc-combo-car-panel p { margin:0; color: var(--muted); }
-    .gc-combo-car-tags { display:flex; gap:.45rem; flex-wrap:wrap; justify-content:flex-end; }
-    .gc-combo-car-tag { border:1px solid var(--line); padding:.42rem .62rem; color:var(--text); background: color-mix(in srgb, var(--surface), transparent 22%); font-size:.82rem; font-weight:800; }
-    @media (max-width: 860px) { .gc-combo-car-panel { grid-template-columns: 1fr; } .gc-combo-car-tags { justify-content:flex-start; } }
+    .gc-combo-detail-v7{
+      display:grid;
+      gap:clamp(18px,2.3vw,28px);
+    }
+
+    .gc-combo-hero-v7{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(280px,360px);
+      gap:clamp(16px,2vw,26px);
+      align-items:stretch;
+      padding:clamp(20px,3vw,34px) 0 clamp(18px,2.4vw,26px);
+      border-bottom:1px solid var(--line);
+    }
+
+    .gc-combo-hero-v7 .gc-title{
+      font-size:clamp(3rem,7vw,6.25rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-combo-hero-v7 .gc-subtitle{
+      max-width:920px;
+      margin:0;
+    }
+
+    .gc-combo-actions-v7{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:16px;
+      align-items:center;
+    }
+
+    .gc-combo-actions-v7 .gc-btn,
+    .gc-combo-actions-v7 .gc-chip{
+      min-height:36px;
+    }
+
+    .gc-combo-summary-v7{
+      align-self:stretch;
+      display:grid;
+      align-content:space-between;
+      gap:14px;
+      padding:16px;
+      border:1px solid var(--line);
+      border-top:2px solid var(--accent);
+      background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));
+      box-shadow:0 18px 70px rgba(0,0,0,.18);
+    }
+
+    .gc-combo-summary-v7__title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding-bottom:12px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .gc-combo-summary-v7__title span,
+    .gc-combo-summary-v7__grid span,
+    .gc-combo-metrics-v7 span{
+      color:var(--dim);
+      text-transform:uppercase;
+      letter-spacing:.105em;
+      font-size:.7rem;
+      font-weight:950;
+    }
+
+    .gc-combo-summary-v7__title strong{
+      color:var(--accent);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:.82rem;
+    }
+
+    .gc-combo-summary-v7__grid{
+      display:grid;
+      gap:8px;
+    }
+
+    .gc-combo-summary-v7__grid div{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:10px 0;
+      border-bottom:1px solid color-mix(in srgb,var(--line) 64%,transparent);
+    }
+
+    .gc-combo-summary-v7__grid div:last-child{
+      border-bottom:0;
+    }
+
+    .gc-combo-summary-v7__grid strong{
+      color:var(--text);
+      font-size:1.15rem;
+      line-height:1;
+    }
+
+    .gc-combo-overview-v7{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(340px,.82fr);
+      gap:clamp(14px,2vw,22px);
+      align-items:stretch;
+    }
+
+    .gc-combo-car-panel-v7{
+      min-width:0;
+      display:grid;
+      grid-template-columns:minmax(250px,.72fr) minmax(0,1.28fr);
+      gap:clamp(14px,1.8vw,22px);
+      align-items:start;
+      padding:clamp(16px,2vw,22px);
+      border:1px solid var(--line);
+      background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+    }
+
+    .gc-combo-car-panel-v7 h2{
+      margin:.25rem 0 .45rem;
+      color:var(--text);
+      font-size:clamp(1.8rem,3.2vw,3.1rem);
+      line-height:1;
+      letter-spacing:-.055em;
+    }
+
+    .gc-combo-car-panel-v7 p{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .gc-combo-car-tags{
+      display:flex;
+      gap:.45rem;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-content:flex-start;
+      max-height:132px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .gc-combo-car-tag{
+      border:1px solid var(--line);
+      padding:.42rem .62rem;
+      color:var(--text);
+      background:color-mix(in srgb,var(--surface),transparent 22%);
+      font-size:.82rem;
+      font-weight:850;
+      line-height:1.1;
+    }
+
+    .gc-combo-metrics-v7{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .gc-combo-metrics-v7 article{
+      min-height:112px;
+      display:grid;
+      align-content:space-between;
+      gap:10px;
+      padding:14px;
+      border:1px solid var(--line);
+      background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.016));
+    }
+
+    .gc-combo-metrics-v7 strong{
+      display:block;
+      color:var(--text);
+      font-size:clamp(1.55rem,2.7vw,2.4rem);
+      line-height:.95;
+      letter-spacing:-.04em;
+    }
+
+    .gc-combo-metrics-v7 small{
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .gc-combo-table-section-v7{
+      margin:0;
+    }
+
+    .gc-combo-table-section-v7 .gc-section-head{
+      margin-bottom:12px;
+    }
+
+    .gc-combo-table-wrap-v7{
+      max-height:520px;
+      overflow:auto;
+    }
+
+    .gc-combo-table-wrap-v7 td,
+    .gc-combo-table-wrap-v7 th{
+      white-space:nowrap;
+    }
+
+    .gc-combo-table-wrap-v7 td:nth-child(2),
+    .gc-combo-table-wrap-v7 td:nth-child(3){
+      white-space:normal;
+      min-width:180px;
+    }
+
+    .gc-driver-link{
+      font-weight:950;
+      color:var(--text);
+    }
+
+    .gc-driver-link:hover{
+      color:var(--accent);
+    }
+
+    @media(max-width:1180px){
+      .gc-combo-overview-v7{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combo-metrics-v7{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-combo-hero-v7{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combo-car-panel-v7{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combo-car-tags{
+        justify-content:flex-start;
+      }
+
+      .gc-combo-metrics-v7{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-combo-metrics-v7{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combo-actions-v7 .gc-btn,
+      .gc-combo-actions-v7 .gc-chip{
+        width:100%;
+        justify-content:center;
+      }
+
+      .gc-combo-table-wrap-v7{
+        max-height:none;
+      }
+    }
   </style>
 
   <script>
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
+    const fmtNumber = (value) => Math.max(0, Math.round(Number(value) || 0)).toLocaleString('es-ES');
     const fmtDate = (value) => {
       if (!value) return '--';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '--';
       return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
     };
+
     const els = {
-      title: document.getElementById('comboTitle'), subtitle: document.getElementById('comboSubtitle'), key: document.getElementById('comboKey'), status: document.getElementById('comboStatus'),
-      laps: document.getElementById('comboLaps'), drivers: document.getElementById('comboDrivers'), cars: document.getElementById('comboCars'),
-      carsTitle: document.getElementById('comboCarsTitle'), carsSub: document.getElementById('comboCarsSub'), carTags: document.getElementById('comboCarTags'),
-      best: document.getElementById('metricBest'), bestDriver: document.getElementById('metricBestDriver'), speed: document.getElementById('metricSpeed'), top10: document.getElementById('metricTop10'), recent: document.getElementById('metricRecent'),
-      leaderboard: document.getElementById('leaderboardRows'), recentRows: document.getElementById('recentRows')
+      title: document.getElementById('comboTitle'),
+      subtitle: document.getElementById('comboSubtitle'),
+      key: document.getElementById('comboKey'),
+      status: document.getElementById('comboStatus'),
+      laps: document.getElementById('comboLaps'),
+      drivers: document.getElementById('comboDrivers'),
+      cars: document.getElementById('comboCars'),
+      carsTitle: document.getElementById('comboCarsTitle'),
+      carsSub: document.getElementById('comboCarsSub'),
+      carTags: document.getElementById('comboCarTags'),
+      best: document.getElementById('metricBest'),
+      bestDriver: document.getElementById('metricBestDriver'),
+      speed: document.getElementById('metricSpeed'),
+      top10: document.getElementById('metricTop10'),
+      recent: document.getElementById('metricRecent'),
+      leaderboard: document.getElementById('leaderboardRows'),
+      recentRows: document.getElementById('recentRows'),
+      leaderboardCount: document.getElementById('comboLeaderboardCount'),
+      recentCount: document.getElementById('comboRecentCount')
     };
 
     function pathComboId() {
@@ -90,7 +393,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
     }
 
     function lapStatus(row) {
-      return row.valid === false || row.isValid === false ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>';
+      return row.valid === false || row.isValid === false
+        ? '<span class="gc-chip gc-chip--danger">No válida</span>'
+        : '<span class="gc-chip gc-chip--accent">Válida</span>';
     }
 
     function renderDriver(row) {
@@ -99,48 +404,76 @@ import AppLayout from '../../layouts/AppLayout.astro';
       return id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver;
     }
 
+    function renderCarTags(cars) {
+      if (!cars.length) return '<span class="gc-combo-car-tag">Sin coches</span>';
+      return cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(car.name || car.code || '-')}</span>`).join('');
+    }
+
     async function load() {
       const comboId = pathComboId();
+
       try {
-        const response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`);
+        const response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
         const data = await response.json();
         if (!data.ok || !data.item) throw new Error(data.message || 'Combo no encontrado');
+
         const item = data.item;
         const summary = item.summary || {};
         const track = item.track || summary.track || {};
         const cars = Array.isArray(item.cars || summary.cars) ? (item.cars || summary.cars) : [];
         const carSummary = item.carSummary || summary.carSummary || 'Sin coches detectados';
-        els.title.textContent = track.name || 'Circuito';
         const memberIds = Array.isArray(item.memberComboIds) ? item.memberComboIds : [];
-        const idText = memberIds.length > 1 ? `Familia ${item.comboId} · IDs ${memberIds.join(', ')}` : `Combo ID ${item.comboId}`;
-        els.subtitle.textContent = `${idText}. ${carSummary}. Datos generados desde stracker.db3.`;
-        els.key.textContent = memberIds.length > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
-        els.status.textContent = memberIds.length > 1 ? 'Agrupado' : 'OK';
-        els.laps.textContent = String(summary.totalLaps || 0);
-        els.drivers.textContent = String(summary.driversCount || 0);
-        els.cars.textContent = String(cars.length || summary.usedCarsCount || 0);
+        const memberCount = memberIds.length || 1;
+        const idText = memberCount > 1 ? `Familia ${item.comboId} · IDs ${memberIds.join(', ')}` : `Combo ID ${item.comboId}`;
+        const leaderboard = Array.isArray(item.leaderboard) ? item.leaderboard : [];
+        const recentLaps = Array.isArray(item.recentLaps) ? item.recentLaps : [];
+
+        els.title.textContent = track.name || 'Circuito';
+        els.subtitle.textContent = `${idText}. ${cars.length || summary.usedCarsCount || 0} coches · ${summary.totalLaps || 0} vueltas · datos desde stracker.db3.`;
+        els.key.textContent = memberCount > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
+        els.status.textContent = memberCount > 1 ? 'Agrupado' : 'OK';
+
+        els.laps.textContent = fmtNumber(summary.totalLaps || 0);
+        els.drivers.textContent = fmtNumber(summary.driversCount || 0);
+        els.cars.textContent = fmtNumber(cars.length || summary.usedCarsCount || 0);
+
         els.carsTitle.textContent = carSummary;
-        els.carsSub.textContent = `Circuito ${track.name || '-'} · Track ${item.trackId || '-'} · ${cars.length || 0} coches permitidos · ${memberIds.length || 1} ComboId${(memberIds.length || 1) === 1 ? '' : 's'}.`;
-        els.carTags.innerHTML = cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(car.name || car.code || '-')}</span>`).join('') || '<span class="gc-combo-car-tag">Sin coches</span>';
+        els.carsSub.textContent = `Circuito ${track.name || '-'} · Track ${item.trackId || '-'} · ${cars.length || 0} coches permitidos · ${memberCount} ComboId${memberCount === 1 ? '' : 's'}.`;
+        els.carTags.innerHTML = renderCarTags(cars);
+
         els.best.textContent = summary.bestLapTime || summary.bestLap?.lapTime || '--';
         els.bestDriver.textContent = summary.bestLap?.driverName || summary.bestLap?.playerName || 'Sin piloto';
         els.speed.textContent = fmtSpeed(summary.maxSpeedKmh);
         els.top10.textContent = summary.best10Average || '--';
         els.recent.textContent = fmtDate(summary.lastSeenAt);
 
-        els.leaderboard.innerHTML = (item.leaderboard || []).map((row) => {
+        els.leaderboardCount.textContent = `${leaderboard.length} pilotos`;
+        els.recentCount.textContent = `${recentLaps.length} vueltas`;
+
+        els.leaderboard.innerHTML = leaderboard.map((row) => {
           return `<tr><td>${escapeHtml(row.position)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${escapeHtml(row.delta || '--')}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
         }).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
 
-        els.recentRows.innerHTML = (item.recentLaps || []).map((row) => {
+        els.recentRows.innerHTML = recentLaps.map((row) => {
           return `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
         }).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
+
+        console.info('[GC combo detail v1.7]', {
+          comboId: item.comboId,
+          memberCount,
+          cars: cars.length,
+          leaderboard: leaderboard.length,
+          recentLaps: recentLaps.length
+        });
       } catch (error) {
         els.title.textContent = 'Combo no disponible';
         els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Revisa ComboId o stracker.db3.';
         els.status.textContent = 'Error';
+        els.leaderboardCount.textContent = 'Error';
+        els.recentCount.textContent = 'Error';
         els.leaderboard.innerHTML = '<tr><td colspan="8">No se pudo cargar el combo.</td></tr>';
         els.recentRows.innerHTML = '<tr><td colspan="7">No se pudo cargar actividad reciente.</td></tr>';
+        console.warn('[GC combo detail v1.7] Error', error);
       }
     }
 
