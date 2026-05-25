@@ -19,7 +19,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       <div>
         <span class="gc-section-kicker">Vista mensual</span>
         <h2 id="gcCalendarTitle">Calendario</h2>
-        <p id="gcCalendarMeta">Cargando eventos...</p>
+        <p id="gcCalendarMeta">Cargando calendario...</p>
       </div>
       <div class="gc-calendar-controls">
         <button class="gc-btn" type="button" id="gcCalendarPrev">Mes anterior</button>
@@ -42,7 +42,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     <div class="gc-section-head">
       <span class="gc-section-kicker">Próximos eventos</span>
       <h2 class="gc-section-title">Lo siguiente en el box.</h2>
-      <p class="gc-section-lead">Los eventos se actualizan desde el panel de administración.</p>
+      <p class="gc-section-lead">Eventos, combos y carreras organizados para la comunidad.</p>
     </div>
     <div class="gc-calendar-event-list" id="gcCalendarUpcoming"></div>
   </section>
@@ -86,6 +86,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     @media(max-width:900px){.gc-calendar-top{display:grid}.gc-calendar-controls{justify-content:flex-start}.gc-calendar-grid{grid-template-columns:1fr}.gc-calendar-head{display:none}.gc-calendar-day{min-height:unset}.gc-calendar-day.is-muted{display:none}.gc-calendar-upcoming-card{grid-template-columns:1fr}.gc-calendar-upcoming-date{width:max-content}}
   </style>
 
+  <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline>
     (() => {
       const title = document.getElementById('gcCalendarTitle');
@@ -204,9 +205,9 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         if (event.repeatLabel) marks.push(event.repeatLabel);
         if (event.isRangeDay) marks.push(`${event.rangeDayIndex}/${event.rangeDayTotal}`);
         const meta = marks.length ? `<span class="gc-calendar-event-repeat">${escapeHtml(marks.join(' · '))}</span>` : '';
-        const classes = `gc-calendar-event ${event.isRangeDay ? 'is-range' : ''}`;
+        const classes = `gc-calendar-event gc-track-image-card ${event.isRangeDay ? 'is-range' : ''}`;
         const content = `<strong>${escapeHtml(event.title || 'Evento')}</strong><small>${escapeHtml(fmtEventTime(event))}</small>${meta}`;
-        return event.linkUrl ? `<a class="${classes}" data-type="${escapeHtml(event.type || 'combo')}" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${content}</a>` : `<div class="${classes}" data-type="${escapeHtml(event.type || 'combo')}">${content}</div>`;
+        return event.linkUrl ? `<a class="${classes}" data-track-image data-track-name="${escapeHtml(event.trackName || event.track || '')}" data-type="${escapeHtml(event.type || 'combo')}" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${content}</a>` : `<div class="${classes}" data-track-image data-track-name="${escapeHtml(event.trackName || event.track || '')}" data-type="${escapeHtml(event.type || 'combo')}">${content}</div>`;
       }
 
       function render() {
@@ -237,6 +238,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         }
         grid.innerHTML = head + cells.join('');
         renderUpcoming();
+        window.GCTrackImages?.applyAll(document);
+        console.info('[GC calendar track images v3.5]');
       }
 
       function renderUpcoming() {
@@ -248,7 +251,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           const d = eventDate(event);
           const end = parseDate(event.occurrenceEndDate || event.endDate);
           const rangeText = end && keyOf(end) !== keyOf(d) ? `Del ${keyOf(d)} al ${keyOf(end)}` : keyOf(d);
-          return `<article class="gc-calendar-upcoming-card"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([rangeText, fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : ''}${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-btn" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
+          return `<article class="gc-calendar-upcoming-card gc-track-image-card" data-track-image data-track-name="${escapeHtml(event.trackName || event.track || '')}"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([rangeText, fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : ''}${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-btn" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
         }).join('') : '<div class="gc-panel"><p>No hay próximos eventos visibles todavía.</p></div>';
       }
 
@@ -260,7 +263,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           events = (data.events || data.items || []).filter((event) => ['combo','race_lfm','race_gc'].includes(String(event.type || 'combo')));
         } catch (error) {
           events = [];
-          meta.textContent = 'No se pudo cargar la API de calendario.';
+          meta.textContent = 'No se pudo cargar el calendario.';
         }
         render();
       }

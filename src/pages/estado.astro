@@ -1,40 +1,707 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
-<MarketingLayout title="Estado | GrassCutters Racing" description="Estado de la plataforma GrassCutters Racing.">
-  <section class="gc-page gc-hero gc-hero-compact">
-    <div>
-      <span class="gc-kicker">Estado</span>
-      <h1 class="gc-title">Servicios principales.</h1>
-      <p class="gc-lead">Una comprobación rápida de la web, la API, hotlaps, pilotos y combos.</p>
+<MarketingLayout
+  title="Campeonato ACSR | GrassCutters Racing"
+  description="Campeonato ACSR de GrassCutters Racing: inscripción, próximas rondas, clasificación y pilotos registrados."
+  bodyClass="gc-page-acsr"
+>
+  <section class="gc-hero gc-hero-compact gc-acsr-hero">
+    <div class="gc-page gc-acsr-hero-inner">
+      <div>
+        <span class="gc-kicker">Campeonato ACSR</span>
+        <h1 class="gc-title">Combos semanales con clasificación.</h1>
+        <p class="gc-lead">
+          Inscripción Steam, próxima ronda, calendario, clasificación y pilotos registrados del campeonato.
+        </p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn-primary" href="#" id="acsrSignupHero" target="_blank" rel="noreferrer">Inscribirse con Steam</a>
+          <a class="gc-btn" href="/discord">Discord</a>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="gc-page">
-    <div class="gc-status-grid" data-status-grid>
-      <article class="gc-status-card" data-endpoint="/api/status"><span class="gc-status-pill">Comprobando</span><h3>API base</h3><p>Estado general</p></article>
-      <article class="gc-status-card" data-endpoint="/api/stracker/status"><span class="gc-status-pill">Comprobando</span><h3>Tracker</h3><p>Base de vueltas</p></article>
-      <article class="gc-status-card" data-endpoint="/api/hotlaps"><span class="gc-status-pill">Comprobando</span><h3>Hotlaps</h3><p>Leaderboard</p></article>
-      <article class="gc-status-card" data-endpoint="/api/pilots"><span class="gc-status-pill">Comprobando</span><h3>Pilotos</h3><p>Directorio</p></article>
-      <article class="gc-status-card" data-endpoint="/api/combos/stats"><span class="gc-status-pill">Comprobando</span><h3>Combos</h3><p>Actividad</p></article>
-      <article class="gc-status-card" data-endpoint="/api/auth/status"><span class="gc-status-pill">Comprobando</span><h3>Login</h3><p>Sesión</p></article>
+  <section class="gc-page gc-community-championship" data-acsr-championship>
+    <div class="gc-section-head">
+      <span class="gc-section-kicker">Campeonato</span>
+      <h2 class="gc-section-title">Campeonato de combos semanales.</h2>
+      <p class="gc-section-lead" id="acsrChampionshipLead">
+        Cargando campeonato...
+      </p>
+    </div>
+
+    <div class="gc-acsr-grid">
+      <article class="gc-acsr-main-card">
+        <span class="gc-panel-kicker">Estado</span>
+        <h3 id="acsrChampionshipName">Campeonato ACSR</h3>
+        <p id="acsrChampionshipMeta">Conectando con Assetto Corsa Server Manager.</p>
+
+        <div class="gc-acsr-stats">
+          <div><span>Eventos</span><strong id="acsrStatEvents">--</strong></div>
+          <div><span>Completados</span><strong id="acsrStatCompleted">--</strong></div>
+          <div><span>Clases</span><strong id="acsrStatClasses">--</strong></div>
+          <div><span>Inscritos</span><strong id="acsrStatEntrants">--</strong></div>
+        </div>
+
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn-primary" href="#" id="acsrSignupLink" target="_blank" rel="noreferrer">Inscribirse al campeonato</a>
+          <a class="gc-btn" href="#" id="acsrOfficialLink" target="_blank" rel="noreferrer">Ver campeonato oficial</a>
+          <button class="gc-btn" type="button" id="acsrRefresh">Actualizar</button>
+        </div>
+      </article>
+
+      <article class="gc-acsr-next-card">
+        <span class="gc-panel-kicker">Próxima ronda</span>
+        <h3 id="acsrNextTitle">Por confirmar</h3>
+        <p id="acsrNextMeta">Cuando ACSM tenga la siguiente ronda, aparecerá aquí.</p>
+        <div class="gc-acsr-track" id="acsrNextTrack">Circuito pendiente</div>
+        <figure class="gc-acsr-track-media" id="acsrTrackFigure" hidden>
+          <img id="acsrTrackImage" src="" alt="" loading="lazy" />
+        </figure>
+      </article>
+    </div>
+
+    <div class="gc-acsr-events-shell">
+      <div class="gc-section-head">
+        <span class="gc-section-kicker">Rondas</span>
+        <h2 class="gc-section-title">Calendario del campeonato.</h2>
+      </div>
+      <div class="gc-acsr-events" id="acsrEventsList">
+        <article class="gc-acsr-event"><strong>Cargando rondas...</strong></article>
+      </div>
+    </div>
+
+    <div class="gc-acsr-standings-shell">
+      <div class="gc-section-head">
+        <span class="gc-section-kicker">Clasificación</span>
+        <h2 class="gc-section-title">Clasificación del campeonato.</h2>
+        <p class="gc-section-lead" id="acsrStandingsLead">Posiciones, puntos y pilotos del campeonato.</p>
+      </div>
+
+      <div class="gc-acsr-standings-table-wrap">
+        <table class="gc-acsr-standings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Clase</th>
+              <th>Coche</th>
+              <th>Puntos</th>
+            </tr>
+          </thead>
+          <tbody id="acsrStandingsBody">
+            <tr><td colspan="5">Cargando clasificación...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="gc-acsr-drivers-shell">
+      <div class="gc-section-head">
+        <span class="gc-section-kicker">Inscritos</span>
+        <h2 class="gc-section-title">Pilotos registrados.</h2>
+        <p class="gc-section-lead">Pilotos inscritos actualmente en el campeonato.</p>
+      </div>
+      <div class="gc-acsr-drivers" id="acsrDriversList">
+        <article class="gc-acsr-driver"><strong>Cargando pilotos...</strong></article>
+      </div>
     </div>
   </section>
 
-  <script is:inline>
-    const cards = Array.from(document.querySelectorAll('[data-endpoint]'));
-    cards.forEach(async (card) => {
-      const endpoint = card.getAttribute('data-endpoint');
-      const pill = card.querySelector('.gc-status-pill');
-      try {
-        const res = await fetch(endpoint, { cache: 'no-store' });
-        if (!res.ok) throw new Error(String(res.status));
-        card.setAttribute('data-status', 'ok');
-        if (pill) pill.textContent = 'OK';
-      } catch (error) {
-        card.setAttribute('data-status', 'error');
-        if (pill) pill.textContent = 'Error';
+  <section class="gc-page gc-acsr-note">
+    <div class="gc-grid-3">
+      <article class="gc-card">
+        <code>01</code>
+        <h3>Inscripción</h3>
+        <p>Registro rápido con Steam para participar en el campeonato.</p>
+      </article>
+      <article class="gc-card">
+        <code>02</code>
+        <h3>Clasificación</h3>
+        <p>Seguimiento de pilotos, puntos y próximas rondas.</p>
+      </article>
+      <article class="gc-card">
+        <code>03</code>
+        <h3>Comunidad</h3>
+        <p>El Discord sigue siendo el paddock principal para avisos y comentarios.</p>
+      </article>
+    </div>
+  </section>
+
+  <style is:global>
+    .gc-acsr-hero{
+      position:relative;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 18% 0%, color-mix(in srgb,var(--gc-mk-accent) 18%, transparent), transparent 30rem),
+        linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+      border-bottom:1px solid var(--gc-mk-line);
+    }
+
+    .gc-acsr-hero-inner{
+      padding-top:clamp(42px,6vw,86px);
+      padding-bottom:clamp(34px,5vw,72px);
+    }
+
+    .gc-community-championship{
+      display:grid;
+      gap:clamp(18px,2.5vw,30px);
+    }
+
+    .gc-acsr-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);
+      gap:16px;
+      align-items:stretch;
+    }
+
+    .gc-acsr-main-card,
+    .gc-acsr-next-card,
+    .gc-acsr-event{
+      position:relative;
+      overflow:hidden;
+      padding:clamp(18px,2.2vw,28px);
+      border:1px solid var(--gc-mk-line);
+      border-top:2px solid var(--gc-mk-accent);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 12% 10%, color-mix(in srgb,var(--gc-mk-accent) 12%, transparent), transparent 26rem),
+        linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      box-shadow:0 20px 80px rgba(0,0,0,.18);
+    }
+
+    .gc-acsr-main-card h3,
+    .gc-acsr-next-card h3{
+      margin:.45rem 0;
+      color:var(--gc-mk-text);
+      font-size:clamp(1.8rem,3.8vw,3.6rem);
+      line-height:.9;
+      letter-spacing:-.07em;
+      text-transform:uppercase;
+    }
+
+    .gc-acsr-main-card p,
+    .gc-acsr-next-card p{
+      color:var(--gc-mk-muted);
+      line-height:1.5;
+    }
+
+    .gc-acsr-stats{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+      margin:18px 0;
+    }
+
+    .gc-acsr-stats div{
+      padding:12px;
+      border:1px solid var(--gc-mk-line);
+      border-radius:14px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-acsr-stats span{
+      display:block;
+      color:var(--gc-mk-soft);
+      font-size:.66rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.09em;
+    }
+
+    .gc-acsr-stats strong{
+      display:block;
+      margin-top:6px;
+      color:var(--gc-mk-text);
+      font-size:1.35rem;
+      line-height:1;
+    }
+
+    .gc-acsr-track{
+      margin-top:16px;
+      padding:12px;
+      border:1px solid var(--gc-mk-line);
+      border-radius:14px;
+      color:var(--gc-mk-accent);
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-acsr-track-media{
+      margin:16px 0 0;
+      border:1px solid var(--gc-mk-line);
+      border-radius:18px;
+      overflow:hidden;
+      background:rgba(0,0,0,.18);
+    }
+
+    .gc-acsr-track-media[hidden],
+    .gc-acsr-event-media[hidden]{
+      display:none;
+    }
+
+    .gc-acsr-track-media img{
+      display:block;
+      width:100%;
+      aspect-ratio:16/9;
+      object-fit:cover;
+      background:rgba(0,0,0,.28);
+    }
+
+    .gc-acsr-event-media{
+      margin:calc(clamp(18px,2.2vw,28px) * -1) calc(clamp(18px,2.2vw,28px) * -1) 14px;
+      border-bottom:1px solid var(--gc-mk-line);
+      background:rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+
+    .gc-acsr-event-media img{
+      display:block;
+      width:100%;
+      aspect-ratio:16/7;
+      object-fit:cover;
+      opacity:.92;
+      filter:saturate(1.04) contrast(1.03);
+    }
+
+    .gc-acsr-events-shell,
+    .gc-acsr-standings-shell,
+    .gc-acsr-drivers-shell{
+      display:grid;
+      gap:14px;
+    }
+
+    .gc-acsr-events{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-acsr-event{
+      min-height:170px;
+      display:grid;
+      align-content:space-between;
+      gap:12px;
+      border-top:1px solid var(--gc-mk-line);
+      border-left:3px solid var(--gc-mk-accent);
+      border-radius:18px;
+      box-shadow:none;
+    }
+
+    .gc-acsr-event[data-status="completed"]{
+      border-left-color:#7e8b7c;
+      opacity:.76;
+    }
+
+    .gc-acsr-event[data-status="in_progress"]{
+      border-left-color:#ffc46b;
+    }
+
+    .gc-acsr-event strong{
+      display:block;
+      color:var(--gc-mk-text);
+      font-size:1.15rem;
+      line-height:1.08;
+      letter-spacing:-.03em;
+    }
+
+    .gc-acsr-event span{
+      display:inline-flex;
+      width:max-content;
+      min-height:26px;
+      align-items:center;
+      padding:0 8px;
+      border:1px solid var(--gc-mk-line);
+      color:var(--gc-mk-soft);
+      font-size:.66rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      background:rgba(255,255,255,.028);
+    }
+
+    .gc-acsr-event p{
+      margin:0;
+      color:var(--gc-mk-muted);
+      line-height:1.42;
+    }
+
+    .gc-acsr-standings-table-wrap{
+      overflow:auto;
+      border:1px solid var(--gc-mk-line);
+      border-radius:20px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-acsr-standings-table{
+      width:100%;
+      min-width:860px;
+      border-collapse:collapse;
+    }
+
+    .gc-acsr-standings-table th,
+    .gc-acsr-standings-table td{
+      padding:12px 14px;
+      border-bottom:1px solid var(--gc-mk-line);
+      text-align:left;
+      vertical-align:top;
+    }
+
+    .gc-acsr-standings-table th{
+      color:var(--gc-mk-soft);
+      font-size:.68rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-acsr-standings-table td{
+      color:var(--gc-mk-text);
+    }
+
+    .gc-acsr-standings-table small{
+      display:block;
+      margin-top:3px;
+      color:var(--gc-mk-muted);
+      font-size:.76rem;
+    }
+
+    .gc-acsr-drivers{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .gc-acsr-driver{
+      display:grid;
+      gap:7px;
+      min-height:112px;
+      padding:14px;
+      border:1px solid var(--gc-mk-line);
+      border-radius:18px;
+      background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.016));
+    }
+
+    .gc-acsr-driver strong{
+      color:var(--gc-mk-text);
+      line-height:1.1;
+      letter-spacing:-.025em;
+    }
+
+    .gc-acsr-driver span{
+      color:var(--gc-mk-accent);
+      font-size:.68rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .gc-acsr-driver small{
+      color:var(--gc-mk-muted);
+      line-height:1.35;
+    }
+
+    .gc-acsr-note{
+      padding-top:0;
+    }
+
+    @media(max-width:1050px){
+      .gc-acsr-grid,
+      .gc-acsr-events,
+      .gc-acsr-drivers{
+        grid-template-columns:1fr;
       }
-    });
+
+      .gc-acsr-stats{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-acsr-stats{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
+  <script is:inline src="/js/gc-track-images.js"></script>
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        lead: $('acsrChampionshipLead'),
+        name: $('acsrChampionshipName'),
+        meta: $('acsrChampionshipMeta'),
+        events: $('acsrStatEvents'),
+        completed: $('acsrStatCompleted'),
+        classes: $('acsrStatClasses'),
+        entrants: $('acsrStatEntrants'),
+        official: $('acsrOfficialLink'),
+        signup: $('acsrSignupLink'),
+        signupHero: $('acsrSignupHero'),
+        refresh: $('acsrRefresh'),
+        nextTitle: $('acsrNextTitle'),
+        nextMeta: $('acsrNextMeta'),
+        nextTrack: $('acsrNextTrack'),
+        trackFigure: $('acsrTrackFigure'),
+        trackImage: $('acsrTrackImage'),
+        list: $('acsrEventsList'),
+        drivers: $('acsrDriversList'),
+        standingsBody: $('acsrStandingsBody'),
+        standingsLead: $('acsrStandingsLead')
+      };
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const fmtDate = (value) => {
+        if (!value) return 'Fecha por confirmar';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
+        return date.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+      };
+
+      const statusLabel = {
+        pending: 'Pendiente',
+        scheduled: 'Programada',
+        in_progress: 'En curso',
+        completed: 'Completada',
+        cancelled: 'Cancelada'
+      };
+
+      const cleanTrackText = (value) => {
+        if (value === undefined || value === null) return '';
+        if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+        if (typeof value === 'object') {
+          return cleanTrackText(
+            value.track ||
+            value.Track ||
+            value.trackName ||
+            value.TrackName ||
+            value.name ||
+            value.Name ||
+            value.id ||
+            value.ID ||
+            ''
+          );
+        }
+        return '';
+      };
+
+      const trackImageCandidates = (trackName) => {
+        const clean = cleanTrackText(trackName);
+        const helper = window.GCTrackImages;
+
+        if (helper?.candidates) {
+          return helper.candidates(clean).filter((url) => !url.includes('object_object'));
+        }
+
+        const slug = clean
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+
+        return [
+          `/images/tracks/${slug}.webp`,
+          `/images/tracks/${slug}.jpg`,
+          `/images/tracks/${slug}.png`,
+          `/imagenes/tracks/${slug}.webp`,
+          `/imagenes/tracks/${slug}.jpg`
+        ];
+      };
+
+      const imageErrorHandler = (list) => {
+        const safeList = (Array.isArray(list) ? list : []).filter(Boolean).map((item) => String(item).replace(/"/g, '&quot;')).join('|');
+        return `const list=(this.dataset.fallbacks||'').split('|').filter(Boolean); const i=Number(this.dataset.fallbackIndex||0); if(list[i]){this.dataset.fallbackIndex=String(i+1); this.src=list[i];} else { this.closest('figure')?.setAttribute('hidden',''); this.style.display='none'; }`;
+      };
+
+      const renderTrackFigureHtml = (trackName, className = 'gc-acsr-event-media') => {
+        const clean = cleanTrackText(trackName);
+        const candidates = trackImageCandidates(clean);
+        const primary = candidates[0] || '';
+        const fallbacks = candidates.slice(1).join('|');
+
+        if (!clean || !primary) return '';
+
+        return `
+          <figure class="${className}" data-track-name="${escapeHtml(clean)}">
+            <img
+              src="${escapeHtml(primary)}"
+              alt="${escapeHtml(clean)}"
+              loading="lazy"
+              data-fallbacks="${escapeHtml(fallbacks)}"
+              data-fallback-index="0"
+              onerror="${imageErrorHandler(candidates.slice(1))}"
+            />
+          </figure>
+        `;
+      };
+
+      function renderTrackImage(trackName) {
+        const clean = cleanTrackText(trackName);
+        const candidates = trackImageCandidates(clean);
+
+        if (!clean || !candidates.length || !els.trackImage || !els.trackFigure) {
+          if (els.trackFigure) els.trackFigure.hidden = true;
+          return;
+        }
+
+        els.trackFigure.hidden = false;
+        els.trackImage.style.display = '';
+        els.trackImage.alt = clean;
+        els.trackImage.dataset.fallbacks = candidates.slice(1).join('|');
+        els.trackImage.dataset.fallbackIndex = '0';
+        els.trackImage.onerror = function () {
+          const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+          const index = Number(this.dataset.fallbackIndex || 0);
+          if (list[index]) {
+            this.dataset.fallbackIndex = String(index + 1);
+            this.src = list[index];
+            return;
+          }
+
+          this.closest('figure')?.setAttribute('hidden', '');
+          this.style.display = 'none';
+        };
+        els.trackImage.src = candidates[0];
+      }
+
+      function renderDrivers(rows) {
+        const drivers = Array.isArray(rows) ? rows : [];
+
+        if (!drivers.length) {
+          els.drivers.innerHTML = '<article class="gc-acsr-driver"><strong>Sin pilotos inscritos</strong><small>Cuando haya pilotos registrados, aparecerán aquí.</small></article>';
+          return;
+        }
+
+        els.drivers.innerHTML = drivers.slice(0, 48).map((driver) => {
+          const details = [driver.team, driver.model].filter(Boolean).join(' · ');
+          return `
+            <article class="gc-acsr-driver">
+              <span>${escapeHtml(driver.className || 'General')}</span>
+              <strong>${escapeHtml(driver.name || 'Piloto sin nombre')}</strong>
+              <small>${escapeHtml(details || 'Inscrito')}</small>
+            </article>
+          `;
+        }).join('');
+      }
+
+      function renderStandings(rows) {
+        const standings = Array.isArray(rows) ? rows : [];
+
+        els.standingsLead.textContent = standings.length
+          ? `${standings.length} pilotos en la clasificación.`
+          : 'La clasificación se actualizará cuando haya datos disponibles.';
+
+        els.standingsBody.innerHTML = standings.length ? standings.slice(0, 80).map((driver, index) => `
+          <tr>
+            <td><strong>${escapeHtml(driver.position || index + 1)}</strong></td>
+            <td>
+              <strong>${escapeHtml(driver.name || 'Piloto sin nombre')}</strong>
+            </td>
+            <td>${escapeHtml(driver.className || 'General')}</td>
+            <td>${escapeHtml(driver.model || 'Sin coche')}</td>
+            <td><strong>${escapeHtml(driver.points ?? 0)}</strong></td>
+          </tr>
+        `).join('') : '<tr><td colspan="5">La clasificación se actualizará cuando haya resultados disponibles.</td></tr>';
+      }
+
+      function renderError(data) {
+        els.lead.textContent = data?.message || 'No se pudo cargar el campeonato.';
+        els.meta.textContent = 'No se pudo cargar el campeonato en este momento.';
+        els.list.innerHTML = `<article class="gc-acsr-event"><strong>No se pudo cargar el campeonato</strong><p>${escapeHtml(data?.message || 'Error desconocido')}</p></article>`;
+        renderStandings([]);
+        renderDrivers([]);
+        if (data?.acsm?.championshipUrl) els.official.href = data.acsm.championshipUrl;
+        if (data?.acsm?.signUpUrl) {
+          els.signup.href = data.acsm.signUpUrl;
+          els.signupHero.href = data.acsm.signUpUrl;
+        }
+      }
+
+      function render(data) {
+        if (!data?.ok || !data?.championship) {
+          renderError(data);
+          return;
+        }
+
+        const championship = data.championship;
+        const next = championship.nextEvent;
+        const events = Array.isArray(championship.events) ? championship.events : [];
+        const standings = Array.isArray(championship.standings) ? championship.standings : [];
+        const drivers = Array.isArray(championship.registeredDrivers) ? championship.registeredDrivers : [];
+        const stats = championship.stats || {};
+
+        els.lead.textContent = `Calendario actualizado. Progreso del campeonato: ${championship.progressPercent || 0}%.`;
+        els.name.textContent = championship.name || 'Campeonato ACSR';
+        els.meta.textContent = `ID ${championship.id} · ${championship.acsrEnabled ? 'ACSR activo' : 'ACSR no marcado'} · actualizado ${fmtDate(championship.updatedAt)}`;
+        els.events.textContent = String(stats.events ?? events.length ?? '--');
+        els.completed.textContent = String(stats.completedEvents ?? '--');
+        els.classes.textContent = String(stats.classes ?? '--');
+        els.entrants.textContent = String(stats.entrants ?? drivers.length ?? '--');
+
+        if (data.acsm?.championshipUrl) els.official.href = data.acsm.championshipUrl;
+        if (data.acsm?.signUpUrl) {
+          els.signup.href = data.acsm.signUpUrl;
+          els.signupHero.href = data.acsm.signUpUrl;
+        }
+
+        if (next) {
+          els.nextTitle.textContent = next.name || `Ronda ${next.index}`;
+          els.nextMeta.textContent = `${fmtDate(next.scheduledAt)} · ${statusLabel[next.status] || next.status || 'Pendiente'}`;
+          const nextTrackName = cleanTrackText(next.track || next.trackName);
+          els.nextTrack.textContent = [nextTrackName, next.carSummary].filter(Boolean).join(' · ') || 'Circuito pendiente';
+          renderTrackImage(nextTrackName);
+        } else {
+          els.nextTitle.textContent = 'Sin próxima ronda';
+          els.nextMeta.textContent = 'Todas las rondas parecen completadas o no hay eventos programados.';
+          els.nextTrack.textContent = 'Campeonato sin próxima fecha';
+          renderTrackImage('');
+        }
+
+        els.list.innerHTML = events.slice(0, 12).map((event) => {
+          const eventTrackName = cleanTrackText(event.track || event.trackName);
+          return `
+            <article class="gc-acsr-event" data-status="${escapeHtml(event.status || 'pending')}">
+              ${renderTrackFigureHtml(eventTrackName)}
+              <div>
+                <span>${escapeHtml(statusLabel[event.status] || event.status || 'Pendiente')}</span>
+                <strong>${escapeHtml(event.name || `Ronda ${event.index}`)}</strong>
+              </div>
+              <p>${escapeHtml(fmtDate(event.scheduledAt))}</p>
+              <p>${escapeHtml([eventTrackName, event.carSummary].filter(Boolean).join(' · ') || 'Combo por confirmar')}</p>
+            </article>
+          `;
+        }).join('') || '<article class="gc-acsr-event"><strong>Sin rondas</strong><p>Todavía no hay rondas visibles.</p></article>';
+
+        renderStandings(standings.length ? standings : drivers);
+        renderDrivers(drivers);
+        console.info('[GC estado ACSR public clean v4.9]', {
+          ok: true,
+          events: events.length,
+          standings: standings.length,
+          registeredDrivers: drivers.length
+        });
+      }
+
+      async function load(refresh = false) {
+        els.lead.textContent = refresh ? 'Actualizando campeonato...' : 'Cargando campeonato...';
+
+        try {
+          const response = await fetch(`/api/community/acsr-championship${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' });
+          const data = await response.json();
+          render(data);
+        } catch (error) {
+          renderError({ message: error?.message || String(error) });
+        }
+      }
+
+      els.refresh?.addEventListener('click', () => load(true));
+      load();
+    })();
   </script>
 </MarketingLayout>

@@ -31,28 +31,27 @@ const hudPatreonUrl = 'https://www.patreon.com/c/neorsgarage';
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
+  { href: '/estado', label: 'CAMPEONATO', match: '/estado' },
   { href: '/calendario', label: 'CALENDARIO', match: '/calendario' },
   { href: '/archivo', label: 'ARCHIVO', match: '/archivo' },
   { href: '/app-android', label: 'APP ANDROID', match: '/app-android' },
-  { href: '/estado', label: 'ESTADO', match: '/estado' },
   { href: '/app', label: 'PLATAFORMA', match: '/app' },
 ];
 
 const footerItems = [
   { href: '/comunidad', label: 'Comunidad' },
+  { href: '/estado', label: 'Campeonato' },
   { href: '/calendario', label: 'Calendario' },
-  { href: '/archivo', label: 'Archivo Motorsport' },
-  { href: '/app-android', label: 'Android' },
-  { href: '/estado', label: 'Estado' },
+  { href: '/archivo', label: 'Archivo' },
+  { href: '/app-android', label: 'App Android' },
+  { href: '/app', label: 'Plataforma' },
   { href: '/normas', label: 'Normas' },
   { href: '/privacidad', label: 'Privacidad' },
-  { href: '/datos', label: 'Datos' },
-  { href: '/app', label: 'Plataforma' },
 ];
 
 function isActive(match) {
   if (match === '/') return path === '/';
-  return path.startsWith(match);
+  return path === match || path.startsWith(`${match}/`);
 }
 ---
 <!doctype html>
@@ -116,8 +115,6 @@ function isActive(match) {
       <slot />
     </main>
 
-
-<!-- GC HUD POPUP V8.8.8 START -->
     <aside class="gc-hud-popup" data-hud-popup hidden aria-label="Anuncio GrassCutters HUD">
       <button class="gc-hud-popup__close" type="button" aria-label="Cerrar anuncio" data-hud-popup-close>×</button>
       <div class="gc-hud-popup__media" aria-hidden="true">
@@ -133,14 +130,25 @@ function isActive(match) {
         </div>
       </div>
     </aside>
-<!-- GC HUD POPUP V8.8.8 END -->
 
-    <footer class="gc-public-footer gc-public-footer--compact">
+    <footer class="gc-public-footer gc-public-footer--compact gc-public-footer--v51">
       <div class="gc-public-footer-inner">
         <div class="gc-public-footer-social" aria-label="Redes GrassCutters">
-          <a class="gc-social-icon gc-social-icon--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer" aria-label="WhatsApp GrassCutters"><span>WA</span></a>
-          <a class="gc-social-icon gc-social-icon--discord" href={discordUrl} target="_blank" rel="noreferrer" aria-label="Discord GrassCutters"><span>DC</span></a>
-          <a class="gc-social-icon gc-social-icon--instagram" href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram GrassCutters"><span>IG</span></a>
+          <a class="gc-social-icon gc-social-icon--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer" aria-label="WhatsApp GrassCutters">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12.05 3a8.82 8.82 0 0 0-7.49 13.49L3.7 21l4.6-1.2A8.82 8.82 0 1 0 12.05 3Zm0 1.7a7.12 7.12 0 0 1 6.05 10.87 7.09 7.09 0 0 1-8.85 2.65l-.32-.15-2.72.71.73-2.64-.18-.34A7.12 7.12 0 0 1 12.05 4.7Zm-3.1 3.78c-.2 0-.52.08-.8.38-.27.3-1.05 1.03-1.05 2.52 0 1.48 1.08 2.92 1.23 3.12.15.2 2.1 3.36 5.2 4.57 2.57 1 3.1.8 3.66.75.56-.05 1.8-.74 2.05-1.45.25-.72.25-1.33.18-1.46-.08-.13-.28-.2-.58-.36-.3-.15-1.8-.9-2.08-1-.28-.1-.48-.15-.68.15-.2.3-.78 1-.96 1.2-.18.2-.36.22-.66.07-.3-.15-1.26-.47-2.4-1.5-.88-.78-1.48-1.75-1.65-2.05-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.08-.15-.68-1.64-.94-2.25-.25-.6-.5-.51-.68-.52h-.58Z" />
+            </svg>
+          </a>
+          <a class="gc-social-icon gc-social-icon--discord" href={discordUrl} target="_blank" rel="noreferrer" aria-label="Discord GrassCutters">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19.55 5.45A16.4 16.4 0 0 0 15.45 4l-.2.4a12.6 12.6 0 0 1 3.52 1.77A14.9 14.9 0 0 0 12 4.55a14.9 14.9 0 0 0-6.77 1.62A12.6 12.6 0 0 1 8.75 4.4L8.55 4c-1.43.25-2.8.74-4.1 1.45C1.86 9.3 1.17 13.05 1.53 16.75A16.6 16.6 0 0 0 6.55 19.3l.62-.86a10.6 10.6 0 0 1-1.62-.77l.39-.29A11.55 11.55 0 0 0 12 19a11.55 11.55 0 0 0 6.06-1.62l.39.29a10.6 10.6 0 0 1-1.62.77l.62.86a16.6 16.6 0 0 0 5.02-2.55c.43-4.29-.73-8-2.92-11.3ZM8.32 14.35c-.96 0-1.74-.88-1.74-1.96s.77-1.96 1.74-1.96c.98 0 1.77.88 1.75 1.96 0 1.08-.77 1.96-1.75 1.96Zm7.36 0c-.96 0-1.75-.88-1.75-1.96s.77-1.96 1.75-1.96c.98 0 1.75.88 1.75 1.96s-.77 1.96-1.75 1.96Z" />
+            </svg>
+          </a>
+          <a class="gc-social-icon gc-social-icon--instagram" href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram GrassCutters">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.2 3h9.6A4.2 4.2 0 0 1 21 7.2v9.6a4.2 4.2 0 0 1-4.2 4.2H7.2A4.2 4.2 0 0 1 3 16.8V7.2A4.2 4.2 0 0 1 7.2 3Zm0 1.8a2.4 2.4 0 0 0-2.4 2.4v9.6a2.4 2.4 0 0 0 2.4 2.4h9.6a2.4 2.4 0 0 0 2.4-2.4V7.2a2.4 2.4 0 0 0-2.4-2.4H7.2ZM12 8.15A3.85 3.85 0 1 1 12 15.85 3.85 3.85 0 0 1 12 8.15Zm0 1.8a2.05 2.05 0 1 0 0 4.1 2.05 2.05 0 0 0 0-4.1Zm4.15-2.85a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z" />
+            </svg>
+          </a>
         </div>
 
         <nav class="gc-public-footer-links" aria-label="Enlaces del footer">
@@ -150,11 +158,130 @@ function isActive(match) {
         </nav>
 
         <div class="gc-public-footer-copy">
-          <span>© {new Date().getFullYear()} GrassCutters Racing</span>
-          <small>Sim racing · comunidad · hotlaps</small>
+          <strong>&copy; {new Date().getFullYear()} GrassCutters Racing</strong>
+          <span>Sim racing <em>&middot;</em> comunidad <em>&middot;</em> hotlaps</span>
         </div>
       </div>
     </footer>
+
+    <style is:global>
+      .gc-public-footer--v51{
+        border-top:1px solid rgba(255,255,255,.08);
+        background:
+          radial-gradient(circle at 8% 30%, rgba(121,255,37,.08), transparent 20rem),
+          rgba(2,8,5,.96);
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-inner{
+        display:grid;
+        grid-template-columns:auto minmax(0,1fr) auto;
+        align-items:center;
+        gap:clamp(20px,3vw,48px);
+        padding-block:clamp(22px,3vw,34px);
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-social{
+        display:flex;
+        gap:10px;
+        align-items:center;
+      }
+
+      .gc-public-footer--v51 .gc-social-icon{
+        width:38px;
+        height:38px;
+        display:grid;
+        place-items:center;
+        border-radius:12px;
+        color:#fff;
+        box-shadow:0 10px 30px rgba(0,0,0,.26);
+        transition:transform .18s ease, filter .18s ease;
+      }
+
+      .gc-public-footer--v51 .gc-social-icon:hover{
+        transform:translateY(-2px);
+        filter:brightness(1.08);
+      }
+
+      .gc-public-footer--v51 .gc-social-icon svg{
+        width:21px;
+        height:21px;
+        display:block;
+        fill:currentColor;
+      }
+
+      .gc-public-footer--v51 .gc-social-icon--whatsapp{
+        background:linear-gradient(135deg,#25d366,#5cff7e);
+      }
+
+      .gc-public-footer--v51 .gc-social-icon--discord{
+        background:linear-gradient(135deg,#5865f2,#7c88ff);
+      }
+
+      .gc-public-footer--v51 .gc-social-icon--instagram{
+        background:linear-gradient(135deg,#feda75,#fa7e1e 34%,#d62976 68%,#4f5bd5);
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-links{
+        display:flex;
+        flex-wrap:wrap;
+        justify-content:center;
+        align-items:center;
+        gap:12px 22px;
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-links a{
+        color:rgba(239,247,236,.78);
+        text-decoration:none;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+        font-weight:850;
+        font-size:.78rem;
+        line-height:1;
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-links a:hover{
+        color:var(--accent,#87ff2a);
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-copy{
+        display:grid;
+        gap:6px;
+        justify-items:end;
+        text-align:right;
+        color:rgba(239,247,236,.78);
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-copy strong{
+        color:rgba(239,247,236,.88);
+        font-size:.86rem;
+        font-weight:750;
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-copy span{
+        color:rgba(239,247,236,.56);
+        font-size:.76rem;
+        letter-spacing:.02em;
+      }
+
+      .gc-public-footer--v51 .gc-public-footer-copy em{
+        color:var(--accent,#87ff2a);
+        font-style:normal;
+        margin-inline:.28rem;
+      }
+
+      @media(max-width:980px){
+        .gc-public-footer--v51 .gc-public-footer-inner{
+          grid-template-columns:1fr;
+          justify-items:center;
+          text-align:center;
+        }
+
+        .gc-public-footer--v51 .gc-public-footer-copy{
+          justify-items:center;
+          text-align:center;
+        }
+      }
+    </style>
 
     <script is:inline>
       (() => {
@@ -177,7 +304,6 @@ function isActive(match) {
       })();
     </script>
 
-<!-- GC HUD POPUP SCRIPT V8.8.8 START -->
     <script is:inline>
       (() => {
         const popup = document.querySelector('[data-hud-popup]');
@@ -207,7 +333,6 @@ function isActive(match) {
         window.setTimeout(show, 1400);
       })();
     </script>
-<!-- GC HUD POPUP SCRIPT V8.8.8 END -->
 
     <AuthHeader />
   </body>

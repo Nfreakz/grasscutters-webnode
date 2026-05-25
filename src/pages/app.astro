@@ -36,7 +36,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     </section>
 
     <section class="gc-app-top-grid-v3" aria-label="Resumen principal">
-      <article class="gc-section gc-app-combo-v3">
+      <article class="gc-section gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
         <div class="gc-section-head gc-app-card-head-v3">
           <div>
             <h2>Combo activo</h2>
@@ -76,7 +76,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             <h2>Lectura rápida</h2>
             <p>Estado útil del último refresco.</p>
           </div>
-          <span class="gc-chip" id="gcApiState">API</span>
+          <span class="gc-chip" id="gcApiState">Estado</span>
         </div>
         <div class="gc-app-readout-grid-v3">
           <div class="gc-app-readout-v3"><span>Vueltas recientes</span><strong id="gcQuickRefs">--</strong><small>cargadas en esta vista</small></div>
@@ -91,7 +91,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       <div class="gc-section-head gc-app-card-head-v3">
         <div>
           <h2>Últimas vueltas</h2>
-          <p id="gcRefsMeta">Cargando actividad reciente...</p>
+          <p id="gcRefsMeta">Cargando actividad...</p>
         </div>
         <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
       </div>
@@ -165,6 +165,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     @media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-app-action-card-v3{min-height:78px}.gc-app-table-wrap-v3{max-height:none}}@media(max-width:460px){.gc-app-action-grid-v3{grid-template-columns:1fr}}
   </style>
 
+  <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline>
     (() => {
       const byId = (id) => document.getElementById(id);
@@ -351,6 +352,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           const track = comboTrackName(activeCombo);
           const cars = comboCars(activeCombo).slice(0,8);
           const link = byId('gcComboLink');
+          const comboCard = document.querySelector('.gc-app-combo-v3');
+          if (comboCard) comboCard.dataset.trackName = track;
 
           setText('gcComboTrack', track);
           setText('gcAppComboChip', track);
@@ -359,7 +362,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             const latestDriver = recent ? driverName(recent) : '';
             setText('gcComboHint', comboLastMs(activeCombo)
               ? `Última actividad · ${dateText(comboLastMs(activeCombo))}${latestDriver && latestDriver !== 'Piloto' ? ` · ${latestDriver}` : ''}`
-              : 'Combo cargado desde /api/combos/stats.');
+              : 'Combo activo cargado.');
           }
           setText('gcComboBest', comboBestTime(activeCombo) || '--');
           setText('gcComboBestMeta', [comboBestDriver(activeCombo), cars[0]].filter(Boolean).join(' · ') || 'Mejor vuelta del combo');
@@ -367,6 +370,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           setText('gcComboDrivers', formatNumber(comboDrivers(activeCombo)));
           setText('gcComboFamily', comboFamily(activeCombo) > 1 ? `${comboFamily(activeCombo)} combos` : 'Activo');
           if (link) link.href = comboUrl(activeCombo);
+          window.GCTrackImages?.applyAll(document);
 
           const carsNode = byId('gcComboCars');
           if (carsNode) carsNode.innerHTML = cars.length ? cars.map((name) => `<span class="gc-chip">${escapeHtml(name)}</span>`).join('') : '<span class="gc-chip">Coches por confirmar</span>';
@@ -376,14 +380,17 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (latestLap) {
           const track = trackName(latestLap);
           const car = carName(latestLap);
+          const comboCard = document.querySelector('.gc-app-combo-v3');
+          if (comboCard) comboCard.dataset.trackName = track;
+          window.GCTrackImages?.applyAll(document);
           setText('gcComboTrack', track);
           setText('gcAppComboChip', track);
-          setText('gcComboHint', 'Fallback desde últimas vueltas. /api/combos/stats no devolvió datos útiles.');
+          setText('gcComboHint', 'Mostrando la última actividad disponible.');
           setText('gcComboBest', bestLap ? lapTime(bestLap) : lapTime(latestLap));
           setText('gcComboBestMeta', bestLap ? [driverName(bestLap), carName(bestLap)].join(' · ') : [driverName(latestLap), car].join(' · '));
           setText('gcComboLaps', formatNumber(recentData?.totalMatchedLaps ?? recent.length));
           setText('gcComboDrivers', '--');
-          setText('gcComboFamily', 'Fallback');
+          setText('gcComboFamily', 'Actividad reciente');
           const carsNode = byId('gcComboCars');
           if (carsNode) carsNode.innerHTML = `<span class="gc-chip">${escapeHtml(car)}</span>`;
           return;
@@ -433,20 +440,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if ((exists && valid) || hasLaps || hasCombos) {
           setText('gcQuickDb', 'Activo');
           setText('gcQuickDbMeta', modified ? `datos cargados · ${dateText(modified)}` : 'datos cargados');
-          setText('gcApiState', 'API OK');
+          setText('gcApiState', 'Conectado');
           return;
         }
 
         if (enabled) {
           setText('gcQuickDb', 'Parcial');
-          setText('gcQuickDbMeta', 'API responde, sin vueltas útiles');
-          setText('gcApiState', 'API parcial');
+          setText('gcQuickDbMeta', 'Conectado, sin vueltas recientes');
+          setText('gcApiState', 'Datos parciales');
           return;
         }
 
         setText('gcQuickDb', 'Pendiente');
         setText('gcQuickDbMeta', 'sin lectura');
-        setText('gcApiState', 'Revisar API');
+        setText('gcApiState', 'Revisar datos');
       }
 
       async function loadDashboard(){
@@ -456,7 +463,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           profile,
           auth,
           combos,
-          combosFallback,
+          combosActividad reciente,
           bestHotlaps,
           recentLaps,
           pilots,
@@ -474,7 +481,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           fetchJson('/api/stracker/status').catch(() => null)
         ]);
 
-        const combosData = items(combos).length ? combos : combosFallback;
+        const combosData = items(combos).length ? combos : combosActividad reciente;
 
         renderAuth(profile, auth);
         renderMetrics({ pilotsData: pilots, driversData: drivers, combosData, recentData: recentLaps, bestData: bestHotlaps });
@@ -494,8 +501,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       loadDashboard().catch((error) => {
         console.warn('[GC] Error cargando /app:', error);
-        setText('gcAppStatusChip','API parcial');
-        setText('gcApiState','Revisar API');
+        setText('gcAppStatusChip','Datos parciales');
+        setText('gcApiState','Revisar datos');
       });
     })();
   </script>
