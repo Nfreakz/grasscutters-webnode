@@ -7,7 +7,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div>
         <span class="gc-kicker">GrassCutters Platform</span>
         <h1 class="gc-title">Panel de pista.</h1>
-        <p class="gc-subtitle">Entrada rápida al combo activo, referencias cargadas, estado de sesión y accesos principales de la plataforma.</p>
+        <p class="gc-subtitle">Entrada rápida al combo activo, últimas vueltas, estado de sesión y accesos principales de la plataforma.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent" id="gcAppStatusChip">Panel listo</span>
           <span class="gc-chip" id="gcAppComboChip">Combo activo</span>
@@ -26,29 +26,64 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     <section class="gc-metrics gc-app-metrics-v3" aria-label="Métricas rápidas">
       <div class="gc-metric"><span>Pilotos</span><strong id="gcMetricDrivers">...</strong><small>detectados</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>actividad cargada</small></div>
-      <div class="gc-metric"><span>Coches</span><strong id="gcMetricCars">...</strong><small>en datos</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong id="gcMetricTracks">...</strong><small>en datos</small></div>
+      <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>desde stracker</small></div>
+      <div class="gc-metric"><span>Coches</span><strong id="gcMetricCars">...</strong><small>detectados</small></div>
+      <div class="gc-metric"><span>Circuitos</span><strong id="gcMetricTracks">...</strong><small>detectados</small></div>
     </section>
 
     <section class="gc-app-top-grid-v3" aria-label="Resumen principal">
       <article class="gc-section gc-app-combo-v3">
-        <div class="gc-section-head gc-app-card-head-v3"><div><h2>Combo activo</h2><p id="gcComboHint">Última lectura del servidor.</p></div><a class="gc-feature-link" href="/combos" id="gcComboLink">Abrir combo</a></div>
-        <div class="gc-app-combo-body-v3">
-          <div><span class="gc-app-label-v3">Circuito</span><h3 id="gcComboTrack">Cargando...</h3><div class="gc-app-chip-list-v3" id="gcComboCars"><span class="gc-chip">Leyendo coches</span></div></div>
-          <div class="gc-app-best-v3"><span>Mejor referencia</span><strong id="gcComboBest">--</strong><small id="gcComboBestMeta">Pendiente de datos</small></div>
+        <div class="gc-section-head gc-app-card-head-v3">
+          <div>
+            <h2>Combo activo</h2>
+            <p id="gcComboHint">Leyendo actividad reciente.</p>
+          </div>
+          <a class="gc-feature-link" href="/combos" id="gcComboLink">Abrir combo</a>
         </div>
-        <div class="gc-app-mini-stats-v3"><div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div><div><span>Pilotos</span><strong id="gcComboDrivers">--</strong></div><div><span>Familia</span><strong id="gcComboFamily">--</strong></div></div>
+        <div class="gc-app-combo-body-v3">
+          <div>
+            <span class="gc-app-label-v3">Circuito</span>
+            <h3 id="gcComboTrack">Cargando...</h3>
+            <div class="gc-app-chip-list-v3" id="gcComboCars"><span class="gc-chip">Leyendo coches</span></div>
+          </div>
+          <div class="gc-app-best-v3">
+            <span>Mejor referencia</span>
+            <strong id="gcComboBest">--</strong>
+            <small id="gcComboBestMeta">Pendiente de datos</small>
+          </div>
+        </div>
+        <div class="gc-app-mini-stats-v3">
+          <div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div>
+          <div><span>Pilotos</span><strong id="gcComboDrivers">--</strong></div>
+          <div><span>Fuente</span><strong id="gcComboFamily">--</strong></div>
+        </div>
       </article>
 
       <article class="gc-section gc-app-readout-card-v3">
-        <div class="gc-section-head gc-app-card-head-v3"><div><h2>Lectura rápida</h2><p>Estado útil del último refresco.</p></div><span class="gc-chip" id="gcApiState">API</span></div>
-        <div class="gc-app-readout-grid-v3"><div class="gc-app-readout-v3"><span>Referencias</span><strong id="gcQuickRefs">--</strong><small>cargadas en esta vista</small></div><div class="gc-app-readout-v3"><span>Mejor tiempo</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div><div class="gc-app-readout-v3"><span>Actividad reciente</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div><div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div></div>
+        <div class="gc-section-head gc-app-card-head-v3">
+          <div>
+            <h2>Lectura rápida</h2>
+            <p>Estado útil del último refresco.</p>
+          </div>
+          <span class="gc-chip" id="gcApiState">API</span>
+        </div>
+        <div class="gc-app-readout-grid-v3">
+          <div class="gc-app-readout-v3"><span>Vueltas recientes</span><strong id="gcQuickRefs">--</strong><small>cargadas en esta vista</small></div>
+          <div class="gc-app-readout-v3"><span>Mejor tiempo</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
+        </div>
       </article>
     </section>
 
     <section class="gc-section gc-app-actions-v3">
-      <div class="gc-section-head gc-app-card-head-v3"><div><h2>Accesos rápidos</h2><p>Lo que más se usa cuando entras al panel.</p></div><span class="gc-chip gc-chip--accent">Garage</span></div>
+      <div class="gc-section-head gc-app-card-head-v3">
+        <div>
+          <h2>Accesos rápidos</h2>
+          <p>Lo que más se usa cuando entras al panel.</p>
+        </div>
+        <span class="gc-chip gc-chip--accent">Garage</span>
+      </div>
       <div class="gc-app-action-grid-v3">
         <a class="gc-app-action-card-v3" href="/hotlaps"><span>01</span><div><strong>Hotlaps</strong><p>Tabla de tiempos, filtros por piloto, coche y circuito.</p></div></a>
         <a class="gc-app-action-card-v3" href="/combos"><span>02</span><div><strong>Combos</strong><p>Actividad por combinación y referencia rápida del combo activo.</p></div></a>
@@ -60,13 +95,55 @@ import AppLayout from '../layouts/AppLayout.astro';
     </section>
 
     <section class="gc-section gc-app-references-v3">
-      <div class="gc-section-head gc-app-card-head-v3"><div><h2>Referencias cargadas</h2><p id="gcRefsMeta">Cargando referencias...</p></div><a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a></div>
-      <div class="gc-table-wrap gc-app-table-wrap-v3"><table class="gc-table gc-app-table-v3"><thead><tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead><tbody id="gcRefsTable"><tr><td colspan="5">Leyendo hotlaps...</td></tr></tbody></table></div>
+      <div class="gc-section-head gc-app-card-head-v3">
+        <div>
+          <h2>Últimas vueltas</h2>
+          <p id="gcRefsMeta">Cargando actividad reciente...</p>
+        </div>
+        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
+      </div>
+      <div class="gc-table-wrap gc-app-table-wrap-v3">
+        <table class="gc-table gc-app-table-v3">
+          <thead><tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead>
+          <tbody id="gcRefsTable"><tr><td colspan="5">Leyendo vueltas recientes...</td></tr></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
   <style>
-    .gc-app-dashboard-v3{display:grid;gap:clamp(22px,3vw,34px)}.gc-app-hero-v3,.gc-app-metrics-v3{margin:0}.gc-app-session-v3 .gc-live-panel__title strong{color:var(--accent)}.gc-app-top-grid-v3{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:clamp(18px,2.2vw,30px);align-items:stretch}.gc-app-card-head-v3{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}.gc-app-card-head-v3 h2{margin:0}.gc-app-card-head-v3 p{margin:.35rem 0 0}.gc-app-combo-body-v3{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.36fr);gap:clamp(18px,2vw,28px);align-items:stretch}.gc-app-label-v3,.gc-app-best-v3 span,.gc-app-mini-stats-v3 span,.gc-app-readout-v3 span{display:block;color:var(--soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.13em}.gc-app-combo-body-v3 h3{margin:8px 0 16px;color:var(--text);font-size:clamp(2.1rem,4.5vw,4rem);line-height:.92;letter-spacing:-.07em}.gc-app-chip-list-v3{display:flex;flex-wrap:wrap;gap:8px}.gc-app-best-v3{display:grid;align-content:center;gap:8px;padding:18px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.025))}.gc-app-best-v3 strong{color:var(--text);font-size:clamp(1.75rem,3vw,2.65rem);line-height:1;letter-spacing:-.05em}.gc-app-best-v3 small,.gc-app-readout-v3 small{color:var(--muted);line-height:1.45}.gc-app-mini-stats-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}.gc-app-mini-stats-v3 div,.gc-app-readout-v3{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}.gc-app-mini-stats-v3 strong{display:block;margin-top:6px;color:var(--text);font-size:1.42rem;line-height:1}.gc-app-readout-grid-v3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gc-app-readout-v3{min-height:126px;display:grid;align-content:space-between;gap:10px}.gc-app-readout-v3 strong{color:var(--text);font-size:clamp(1.25rem,2.4vw,1.95rem);line-height:1;letter-spacing:-.04em;word-break:break-word}.gc-app-table-wrap-v3{max-height:420px;overflow:auto}.gc-app-table-v3 td,.gc-app-table-v3 th{white-space:nowrap}.gc-app-table-v3 td:nth-child(2){min-width:250px}.gc-app-table-v3 td:nth-child(3){min-width:180px}.gc-app-action-grid-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gc-app-action-card-v3{display:grid;grid-template-columns:48px minmax(0,1fr);gap:14px;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));transition:transform .16s ease,border-color .16s ease,background .16s ease}.gc-app-action-card-v3:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026))}.gc-app-action-card-v3>span{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:#07110a;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:.72rem;font-weight:1000;letter-spacing:.05em}.gc-app-action-card-v3 strong{display:block;color:var(--text);font-size:1.02rem;line-height:1.2}.gc-app-action-card-v3 p{margin:.35rem 0 0;color:var(--muted);line-height:1.5}@media(max-width:1100px){.gc-app-top-grid-v3,.gc-app-combo-body-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3,.gc-app-action-grid-v3{grid-template-columns:1fr}.gc-app-table-wrap-v3{max-height:none}}
+    .gc-app-dashboard-v3{display:grid;gap:clamp(22px,3vw,34px)}
+    .gc-app-hero-v3,.gc-app-metrics-v3{margin:0}
+    .gc-app-session-v3 .gc-live-panel__title strong{color:var(--accent)}
+    .gc-app-top-grid-v3{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:clamp(18px,2.2vw,30px);align-items:stretch}
+    .gc-app-card-head-v3{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
+    .gc-app-card-head-v3 h2{margin:0}
+    .gc-app-card-head-v3 p{margin:.35rem 0 0}
+    .gc-app-combo-body-v3{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.36fr);gap:clamp(18px,2vw,28px);align-items:stretch}
+    .gc-app-label-v3,.gc-app-best-v3 span,.gc-app-mini-stats-v3 span,.gc-app-readout-v3 span{display:block;color:var(--soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.13em}
+    .gc-app-combo-body-v3 h3{margin:8px 0 16px;color:var(--text);font-size:clamp(2.1rem,4.5vw,4rem);line-height:.92;letter-spacing:-.07em}
+    .gc-app-chip-list-v3{display:flex;flex-wrap:wrap;gap:8px}
+    .gc-app-best-v3{display:grid;align-content:center;gap:8px;padding:18px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.025))}
+    .gc-app-best-v3 strong{color:var(--text);font-size:clamp(1.75rem,3vw,2.65rem);line-height:1;letter-spacing:-.05em}
+    .gc-app-best-v3 small,.gc-app-readout-v3 small{color:var(--muted);line-height:1.45}
+    .gc-app-mini-stats-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+    .gc-app-mini-stats-v3 div,.gc-app-readout-v3{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}
+    .gc-app-mini-stats-v3 strong{display:block;margin-top:6px;color:var(--text);font-size:1.42rem;line-height:1}
+    .gc-app-readout-grid-v3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .gc-app-readout-v3{min-height:126px;display:grid;align-content:space-between;gap:10px}
+    .gc-app-readout-v3 strong{color:var(--text);font-size:clamp(1.25rem,2.4vw,1.95rem);line-height:1;letter-spacing:-.04em;word-break:break-word}
+    .gc-app-table-wrap-v3{max-height:420px;overflow:auto}
+    .gc-app-table-v3 td,.gc-app-table-v3 th{white-space:nowrap}
+    .gc-app-table-v3 td:nth-child(2){min-width:250px}
+    .gc-app-table-v3 td:nth-child(3){min-width:180px}
+    .gc-app-action-grid-v3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .gc-app-action-card-v3{display:grid;grid-template-columns:48px minmax(0,1fr);gap:14px;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));transition:transform .16s ease,border-color .16s ease,background .16s ease}
+    .gc-app-action-card-v3:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.026))}
+    .gc-app-action-card-v3>span{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:#07110a;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:.72rem;font-weight:1000;letter-spacing:.05em}
+    .gc-app-action-card-v3 strong{display:block;color:var(--text);font-size:1.02rem;line-height:1.2}
+    .gc-app-action-card-v3 p{margin:.35rem 0 0;color:var(--muted);line-height:1.5}
+    @media(max-width:1100px){.gc-app-top-grid-v3,.gc-app-combo-body-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3,.gc-app-action-grid-v3{grid-template-columns:1fr}.gc-app-table-wrap-v3{max-height:none}}
   </style>
 
   <script is:inline>
@@ -74,32 +151,339 @@ import AppLayout from '../layouts/AppLayout.astro';
       const byId = (id) => document.getElementById(id);
       const setText = (id, value) => { const node = byId(id); if (node) node.textContent = String(value ?? '--'); };
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-      const asNumber = (value, fallback = 0) => { const number = Number(value); return Number.isFinite(number) ? number : fallback; };
-      const formatNumber = (value) => Math.max(0, Math.round(asNumber(value, 0))).toLocaleString('es-ES');
-      const valueAt = (source, path) => { if (!source || typeof source !== 'object') return undefined; if (Object.prototype.hasOwnProperty.call(source, path)) return source[path]; return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source); };
-      const firstValue = (source, paths) => { for (const path of paths) { const value = valueAt(source, path); if (value !== undefined && value !== null && value !== '') return value; } return ''; };
-      const text = (value, fallback = '') => { if (value == null || value === '') return fallback; if (typeof value === 'object') return text(value.displayName ?? value.visibleName ?? value.cleanName ?? value.display_name ?? value.uiName ?? value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ?? value.driverName ?? value.playerName ?? value.code, fallback); return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback; };
-      const items = (data) => Array.isArray(data) ? data : (data?.items || data?.data || data?.results || data?.hotlaps || data?.laps || data?.combos || []);
-      const dateMs = (value) => { if (!value) return 0; if (typeof value === 'number') return value > 20000000000 ? value : value * 1000; const parsed = Date.parse(String(value)); return Number.isFinite(parsed) ? parsed : 0; };
-      const dateText = (value) => { const ms = dateMs(value); if (!ms) return '--'; return new Date(ms).toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' }); };
-      const timeText = (value) => { const raw = text(value); if (raw && /[:.]/.test(raw) && !/^\d+$/.test(raw)) return raw; const ms = asNumber(value,0); if (!ms) return '--'; const minutes = Math.floor(ms/60000); const seconds = Math.floor((ms%60000)/1000); const millis = Math.floor(ms%1000); return `${minutes}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`; };
-      const fetchJson = async (url) => { const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 8000); try { const response = await fetch(url, { credentials:'include', cache:'no-store', signal:controller.signal }); if (!response.ok) throw new Error(`${url} ${response.status}`); return await response.json(); } finally { window.clearTimeout(timeout); } };
-      const firstUser = (data) => data?.user || data?.currentUser || data?.account || data?.profile?.user || data?.session?.user || data?.auth?.user || null;
-      const isLogged = (data) => Boolean(data?.authenticated === true || data?.loggedIn === true || data?.isAuthenticated === true || firstUser(data));
-      const driverName = (row) => text(firstValue(row, ['driverDisplayName','driverVisibleName','driverName','playerName','pilotName','name','player.displayName','player.name','driver.displayName','driver.name','driver','player']), 'Piloto');
-      const carName = (row) => text(firstValue(row, ['carDisplayName','carVisibleName','carName','uiCarName','car.displayName','car.visibleName','car.uiCarName','car.name','car','Car']), 'Coche');
-      const trackName = (row) => text(firstValue(row, ['trackDisplayName','trackVisibleName','trackName','uiTrackName','track.displayName','track.visibleName','track.uiTrackName','track.name','track','Track']), 'Circuito');
-      const lapDate = (lap) => dateMs(firstValue(lap, ['timestampIso','dateIso','createdAt','updatedAt','timestamp','Timestamp','lastSeenAt']));
-      const lapMs = (lap) => asNumber(firstValue(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']), Number.POSITIVE_INFINITY);
-      const lapTime = (lap) => text(firstValue(lap, ['lapTimeFormatted','timeFormatted','bestLap'])) || timeText(firstValue(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']));
-      function renderClock(){ setText('gcAppClock', new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })); }
-      function renderAuth(profile, auth){ const user = firstUser(profile) || firstUser(auth) || profile?.user || {}; const linked = profile?.linked || profile?.pilot || user?.pilotLink; if (isLogged(profile) || isLogged(auth) || profile?.ok) { setText('gcAppSessionState','Conectado'); setText('gcAppSessionUser', text(user.displayName ?? user.display_name ?? user.name ?? user.email, 'Mi perfil')); setText('gcAppSessionRole', text(user.role, 'pilot')); setText('gcAppSessionPilot', text(profile?.pilot?.displayName ?? profile?.pilot?.name ?? profile?.pilotLink?.strackerName ?? user?.pilotLink?.strackerName, linked ? 'Vinculado' : 'Sin vincular')); } else { setText('gcAppSessionState','Invitado'); setText('gcAppSessionUser','Sin login'); setText('gcAppSessionRole','-'); setText('gcAppSessionPilot','-'); } }
-      function renderMetrics(overview, pilots, hotlaps, combos){ const stats = overview?.stats || overview?.overview || overview || {}; const comboItems = items(combos); const lapItems = items(hotlaps); const cars = new Set(); const tracks = new Set(); comboItems.forEach((combo) => { const t = trackName(combo); if (t && t !== 'Circuito') tracks.add(t); (Array.isArray(combo.cars) ? combo.cars : []).forEach((car) => { const c = text(car); if (c && c !== 'Coche') cars.add(c); }); }); lapItems.forEach((lap) => { const c = carName(lap); const t = trackName(lap); if (c && c !== 'Coche') cars.add(c); if (t && t !== 'Circuito') tracks.add(t); }); setText('gcMetricDrivers', formatNumber(stats.totalDrivers ?? stats.drivers ?? stats.players ?? pilots?.total ?? pilots?.count ?? items(pilots).length)); setText('gcMetricLaps', formatNumber(stats.totalLaps ?? stats.laps ?? stats.lapCount ?? hotlaps?.total ?? hotlaps?.count ?? lapItems.length)); setText('gcMetricCars', stats.totalCars ?? stats.cars ?? stats.carCount ?? overview?.carsCount ?? (cars.size || '—')); setText('gcMetricTracks', stats.totalTracks ?? stats.tracks ?? stats.trackCount ?? overview?.tracksCount ?? (tracks.size || '—')); }
-      function renderCombo(data){ const combos = items(data).filter(Boolean); const combo = combos.find((entry) => asNumber(entry.totalLaps ?? entry.laps ?? entry.lapCount, 0) > 0) || combos[0]; if (!combo) { setText('gcComboTrack','Combo activo'); setText('gcComboHint','Sin datos de combo disponibles.'); return; } const track = trackName(combo); const id = combo.canonicalComboId ?? combo.comboId ?? combo.id ?? combo.ComboId; const rawCars = Array.isArray(combo.cars) ? combo.cars : Array.isArray(combo.carList) ? combo.carList : Array.isArray(combo.carNames) ? combo.carNames : []; const cars = rawCars.map((car) => text(car, '')).filter(Boolean).slice(0,8); const best = combo.bestLap || combo.best || combo.fastestLap || combo.leader || combo.topLap || {}; const bestTime = text(combo.bestLapTimeFormatted) || text(combo.bestTimeFormatted) || text(best.lapTimeFormatted) || timeText(combo.bestLapTimeMs ?? combo.bestTimeMs ?? best.lapTimeMs ?? best.LapTime ?? best.lapTime); const bestDriver = driverName(best); const bestCar = carName(best); setText('gcComboTrack', track); setText('gcAppComboChip', track); setText('gcComboHint','Última lectura del servidor.'); setText('gcComboBest', bestTime || '--'); setText('gcComboBestMeta', [bestDriver, bestCar].filter(Boolean).join(' · ') || 'Mejor vuelta del combo'); setText('gcComboLaps', formatNumber(combo.totalLaps ?? combo.laps ?? combo.lapCount ?? combo.visibleLaps ?? 0)); setText('gcComboDrivers', formatNumber(combo.driversCount ?? combo.pilotsCount ?? combo.playersCount ?? combo.uniqueDrivers ?? combo.totalDrivers ?? 0)); setText('gcComboFamily', asNumber(combo.mergedCombosCount ?? combo.memberComboIds?.length, 1) > 1 ? `${combo.mergedCombosCount ?? combo.memberComboIds?.length} combos` : '1 combo'); const link = byId('gcComboLink'); if (link && id != null) link.href = `/combos/${encodeURIComponent(id)}`; const carsNode = byId('gcComboCars'); if (carsNode) carsNode.innerHTML = cars.length ? cars.map((name) => `<span class="gc-chip">${escapeHtml(name)}</span>`).join('') : '<span class="gc-chip">Coches por confirmar</span>'; }
-      function renderHotlaps(data){ const allLaps = items(data).filter(Boolean); const recentLaps = [...allLaps].sort((a, b) => lapDate(b) - lapDate(a) || lapMs(a) - lapMs(b)); const laps = recentLaps.slice(0,12); setText('gcQuickRefs', formatNumber(data?.total ?? data?.count ?? allLaps.length)); setText('gcRefsMeta', `${formatNumber(data?.total ?? data?.count ?? allLaps.length)} referencias cargadas · mostrando actividad reciente`); const top = [...allLaps].sort((a, b) => lapMs(a) - lapMs(b))[0] || null; const last = laps[0] || null; setText('gcQuickTop', top ? lapTime(top) : '--'); setText('gcQuickTopMeta', top ? [driverName(top), carName(top), trackName(top)].filter(Boolean).join(' · ') : 'sin datos'); setText('gcQuickLast', last ? lapTime(last) : '--'); setText('gcQuickLastMeta', last ? [driverName(last), trackName(last), dateText(lapDate(last))].filter(Boolean).join(' · ') : 'sin datos'); const table = byId('gcRefsTable'); if (table) table.innerHTML = laps.length ? laps.slice(0,8).map((lap) => `<tr><td><strong>${escapeHtml(driverName(lap))}</strong></td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${escapeHtml(dateText(lapDate(lap)))}</td></tr>`).join('') : '<tr><td colspan="5">Sin referencias recientes.</td></tr>'; }
-      function renderStracker(data, hotlaps){ const db = data?.database || data?.stracker || data || {}; const exists = Boolean(db.exists || data?.exists); const valid = Boolean(db.validSQLite || data?.validSQLite); const hasLaps = items(hotlaps).length > 0; const modified = db.modifiedAt || data?.modifiedAt || db.updatedAt || data?.updatedAt; if (exists && valid) { setText('gcQuickDb', 'Activo'); setText('gcQuickDbMeta', modified ? `DB válida · ${dateText(modified)}` : 'SQLite válido'); setText('gcApiState', 'API OK'); return; } if (hasLaps) { setText('gcQuickDb', 'Parcial'); setText('gcQuickDbMeta', 'hay vueltas, revisar estado DB'); setText('gcApiState', 'API parcial'); return; } setText('gcQuickDb', 'Pendiente'); setText('gcQuickDbMeta', 'sin lectura'); setText('gcApiState', 'Revisar API'); }
-      async function loadDashboard(){ renderClock(); const [profile, auth, overview, combos, hotlaps, pilots, stracker] = await Promise.all([fetchJson('/api/profile').catch(() => null), fetchJson('/api/auth/status').catch(() => null), fetchJson('/api/stats/overview').catch(() => null), fetchJson('/api/combos/stats').catch(() => null), fetchJson('/api/hotlaps?limit=12&group=raw').catch(() => fetchJson('/api/hotlaps?limit=12').catch(() => null)), fetchJson('/api/pilots?limit=1').catch(() => null), fetchJson('/api/stracker/status').catch(() => null)]); renderAuth(profile, auth); renderMetrics(overview, pilots, hotlaps, combos); renderCombo(combos); renderHotlaps(hotlaps); renderStracker(stracker, hotlaps); setText('gcAppStatusChip','Live'); }
-      loadDashboard().catch((error) => { console.warn('[GC] Error cargando /app:', error); setText('gcAppStatusChip','API parcial'); setText('gcApiState','Revisar API'); });
+      const number = (value, fallback = 0) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : fallback; };
+      const formatNumber = (value) => Math.max(0, Math.round(number(value, 0))).toLocaleString('es-ES');
+
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const pick = (source, paths) => {
+        for (const path of paths) {
+          const value = valueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return undefined;
+      };
+
+      const text = (value, fallback = '') => {
+        if (value == null || value === '') return fallback;
+        if (Array.isArray(value)) return value.length ? text(value[0], fallback) : fallback;
+        if (typeof value === 'object') {
+          return text(
+            value.displayName ?? value.visibleName ?? value.cleanName ?? value.display_name ??
+            value.uiName ?? value.uiCarName ?? value.uiTrackName ??
+            value.name ?? value.Name ?? value.driverName ?? value.playerName ?? value.code,
+            fallback
+          );
+        }
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+      };
+
+      const items = (data) => {
+        if (Array.isArray(data)) return data;
+        if (!data || typeof data !== 'object') return [];
+        return data.items || data.data || data.results || data.hotlaps || data.laps || data.combos || data.pilots || data.drivers || [];
+      };
+
+      const dateMs = (value) => {
+        if (!value) return 0;
+        if (typeof value === 'number') return value > 20000000000 ? value : value * 1000;
+        const parsed = Date.parse(String(value));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const dateText = (value) => {
+        const ms = dateMs(value);
+        if (!ms) return '--';
+        return new Date(ms).toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' });
+      };
+
+      const timeText = (value) => {
+        const raw = text(value);
+        if (raw && /[:.]/.test(raw) && !/^\d+$/.test(raw)) return raw;
+        const ms = number(value, 0);
+        if (!ms) return '--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const millis = Math.floor(ms % 1000);
+        return `${minutes}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
+      };
+
+      const fetchJson = async (url) => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 8000);
+        try {
+          const response = await fetch(url, { credentials:'include', cache:'no-store', signal:controller.signal });
+          if (!response.ok) throw new Error(`${url} ${response.status}`);
+          return await response.json();
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      };
+
+      const lapDate = (lap) => dateMs(pick(lap, ['timestampIso','dateIso','createdAt','updatedAt','timestamp','Timestamp','lastSeenAt']));
+      const lapMs = (lap) => number(pick(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']), Number.POSITIVE_INFINITY);
+      const lapTime = (lap) => text(pick(lap, ['lapTimeFormatted','timeFormatted','bestLap'])) || timeText(pick(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']));
+      const driverName = (row) => text(pick(row, ['driverDisplayName','driverVisibleName','driverName','playerName','pilotName','name','player.displayName','player.name','driver.displayName','driver.name','driver','player']), 'Piloto');
+      const carName = (row) => text(pick(row, ['carDisplayName','carVisibleName','carName','uiCarName','car.displayName','car.visibleName','car.uiCarName','car.name','car','Car']), 'Coche');
+      const trackName = (row) => text(pick(row, ['trackDisplayName','trackVisibleName','trackName','uiTrackName','track.displayName','track.visibleName','track.uiTrackName','track.name','track','Track']), 'Circuito');
+
+      const comboId = (combo) => pick(combo, ['canonicalComboId','comboId','id','ComboId']);
+      const comboUrl = (combo) => combo?.url || (comboId(combo) != null ? `/combos/${encodeURIComponent(comboId(combo))}` : '/combos');
+      const comboTrackName = (combo) => text(pick(combo, ['track.displayName','track.visibleName','track.cleanName','track.uiName','track.name','trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code','track']), 'Combo activo');
+      const comboTotalLaps = (combo) => number(pick(combo, ['totalLaps','laps','lapCount','visibleLaps']), 0);
+      const comboDrivers = (combo) => number(pick(combo, ['driversCount','pilotsCount','playersCount','uniqueDrivers','totalDrivers']), 0);
+      const comboLastMs = (combo) => dateMs(pick(combo, ['lastActivityIso','lastSeenAt','latestLapAt','updatedAt','lastActivity','timestampIso','timestamp','lastLapAt']));
+      const comboBestTime = (combo) => text(pick(combo, ['bestLapTimeFormatted','bestTimeFormatted','bestLapFormatted','bestLapTime','bestTime','bestLap.lapTimeFormatted','bestLap.lapTime'])) || timeText(pick(combo, ['bestLapTimeMs','bestTimeMs','bestLapMs','bestLap.lapTimeMs','bestLap.LapTime']));
+      const comboBestDriver = (combo) => text(pick(combo, ['bestDriverName','fastestDriverName','leaderName','bestLap.driverName','bestLap.playerName','bestLap.name','bestLap.driver','bestLap.player']), 'Piloto');
+      const comboFamily = (combo) => number(pick(combo, ['mergedCombosCount']), Array.isArray(combo?.memberComboIds) ? combo.memberComboIds.length : 1) || 1;
+
+      const comboCars = (combo) => {
+        const raw = pick(combo, ['cars','carList','carNames','availableCars','comboCars']);
+        let list = [];
+        if (Array.isArray(raw)) list = raw;
+        else if (typeof raw === 'string') list = raw.split(/[,|;]/g);
+        if (!list.length) {
+          const single = pick(combo, ['car','carName','uiCarName','bestLap.car','bestLap.carName']);
+          if (single) list = [single];
+        }
+        const seen = new Set();
+        return list.map((car) => text(car, '')).filter(Boolean).filter((name) => {
+          const key = name.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+
+      function renderClock(){
+        setText('gcAppClock', new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' }));
+      }
+
+      function renderAuth(profile, auth){
+        const firstUser = (data) => data?.user || data?.currentUser || data?.account || data?.profile?.user || data?.session?.user || data?.auth?.user || null;
+        const isLogged = (data) => Boolean(data?.authenticated === true || data?.loggedIn === true || data?.isAuthenticated === true || firstUser(data));
+        const user = firstUser(profile) || firstUser(auth) || profile?.user || {};
+        const linked = profile?.linked || profile?.pilot || profile?.pilotLink || user?.pilotLink;
+        if (isLogged(profile) || isLogged(auth) || profile?.ok) {
+          setText('gcAppSessionState','Conectado');
+          setText('gcAppSessionUser', text(user.displayName ?? user.display_name ?? user.name ?? user.email, 'Mi perfil'));
+          setText('gcAppSessionRole', text(user.role, 'pilot'));
+          setText('gcAppSessionPilot', text(profile?.pilot?.displayName ?? profile?.pilot?.name ?? profile?.pilotLink?.strackerName ?? user?.pilotLink?.strackerName, linked ? 'Vinculado' : 'Sin vincular'));
+        } else {
+          setText('gcAppSessionState','Invitado');
+          setText('gcAppSessionUser','Sin login');
+          setText('gcAppSessionRole','-');
+          setText('gcAppSessionPilot','-');
+        }
+      }
+
+      function renderMetrics({ pilotsData, driversData, combosData, recentData, bestData }){
+        const pilots = items(pilotsData);
+        const drivers = items(driversData);
+        const combos = items(combosData);
+        const recent = items(recentData);
+        const best = items(bestData);
+        const lapSource = recent.length ? recent : best;
+
+        const pilotKeys = new Set();
+        pilots.forEach((pilot) => {
+          const id = pick(pilot, ['id','playerId','driverId','pilotId']);
+          const name = driverName(pilot);
+          if (id || name !== 'Piloto') pilotKeys.add(String(id || name));
+        });
+        drivers.forEach((pilot) => {
+          const id = pick(pilot, ['id','playerId','driverId','pilotId']);
+          const name = driverName(pilot);
+          if (id || name !== 'Piloto') pilotKeys.add(String(id || name));
+        });
+        if (!pilotKeys.size) {
+          lapSource.forEach((lap) => {
+            const id = pick(lap, ['playerId','driverId','driver.id','player.id']);
+            const name = driverName(lap);
+            if (id || name !== 'Piloto') pilotKeys.add(String(id || name));
+          });
+        }
+
+        const cars = new Set();
+        const tracks = new Set();
+        combos.forEach((combo) => {
+          const track = comboTrackName(combo);
+          if (track && track !== 'Combo activo') tracks.add(track);
+          comboCars(combo).forEach((car) => cars.add(car));
+        });
+        lapSource.forEach((lap) => {
+          const c = carName(lap);
+          const t = trackName(lap);
+          if (c && c !== 'Coche') cars.add(c);
+          if (t && t !== 'Circuito') tracks.add(t);
+        });
+
+        const lapsFromCombos = combos.reduce((sum, combo) => sum + comboTotalLaps(combo), 0);
+        const lapsTotal = recentData?.totalMatchedLaps ?? bestData?.totalMatchedLaps ?? lapsFromCombos ?? lapSource.length;
+
+        setText('gcMetricDrivers', formatNumber(pilotsData?.totalDrivers ?? pilotsData?.total ?? pilotsData?.count ?? driversData?.totalDrivers ?? driversData?.count ?? pilotKeys.size));
+        setText('gcMetricLaps', formatNumber(lapsTotal));
+        setText('gcMetricCars', cars.size ? formatNumber(cars.size) : '—');
+        setText('gcMetricTracks', tracks.size ? formatNumber(tracks.size) : '—');
+      }
+
+      function renderCombo(combosData, recentData, bestData){
+        const combos = items(combosData).filter(Boolean);
+        const recent = items(recentData).filter(Boolean).sort((a,b) => lapDate(b) - lapDate(a));
+        const best = items(bestData).filter(Boolean).sort((a,b) => lapMs(a) - lapMs(b));
+
+        const activeCombo = [...combos].sort((a,b) => comboLastMs(b) - comboLastMs(a) || comboTotalLaps(b) - comboTotalLaps(a))[0];
+        const latestLap = recent[0];
+        const bestLap = best[0];
+
+        if (activeCombo) {
+          const track = comboTrackName(activeCombo);
+          const cars = comboCars(activeCombo).slice(0,8);
+          const link = byId('gcComboLink');
+
+          setText('gcComboTrack', track);
+          setText('gcAppComboChip', track);
+          setText('gcComboHint', comboLastMs(activeCombo) ? `Última actividad · ${dateText(comboLastMs(activeCombo))}` : 'Combo cargado desde /api/combos/stats.');
+          setText('gcComboBest', comboBestTime(activeCombo) || '--');
+          setText('gcComboBestMeta', [comboBestDriver(activeCombo), cars[0]].filter(Boolean).join(' · ') || 'Mejor vuelta del combo');
+          setText('gcComboLaps', formatNumber(comboTotalLaps(activeCombo)));
+          setText('gcComboDrivers', formatNumber(comboDrivers(activeCombo)));
+          setText('gcComboFamily', comboFamily(activeCombo) > 1 ? `${comboFamily(activeCombo)} combos` : 'API combos');
+          if (link) link.href = comboUrl(activeCombo);
+
+          const carsNode = byId('gcComboCars');
+          if (carsNode) carsNode.innerHTML = cars.length ? cars.map((name) => `<span class="gc-chip">${escapeHtml(name)}</span>`).join('') : '<span class="gc-chip">Coches por confirmar</span>';
+          return;
+        }
+
+        if (latestLap) {
+          const track = trackName(latestLap);
+          const car = carName(latestLap);
+          setText('gcComboTrack', track);
+          setText('gcAppComboChip', track);
+          setText('gcComboHint', 'Fallback desde últimas vueltas. /api/combos/stats no devolvió datos útiles.');
+          setText('gcComboBest', bestLap ? lapTime(bestLap) : lapTime(latestLap));
+          setText('gcComboBestMeta', bestLap ? [driverName(bestLap), carName(bestLap)].join(' · ') : [driverName(latestLap), car].join(' · '));
+          setText('gcComboLaps', formatNumber(recentData?.totalMatchedLaps ?? recent.length));
+          setText('gcComboDrivers', '--');
+          setText('gcComboFamily', 'laps');
+          const carsNode = byId('gcComboCars');
+          if (carsNode) carsNode.innerHTML = `<span class="gc-chip">${escapeHtml(car)}</span>`;
+          return;
+        }
+
+        setText('gcComboTrack','Sin combo');
+        setText('gcComboHint','No se pudo leer combos ni vueltas recientes.');
+        setText('gcAppComboChip','Sin combo');
+        setText('gcComboLaps','--');
+        setText('gcComboDrivers','--');
+        setText('gcComboFamily','--');
+        const carsNode = byId('gcComboCars');
+        if (carsNode) carsNode.innerHTML = '<span class="gc-chip gc-chip--warn">Sin datos</span>';
+      }
+
+      function renderLapReadout(bestData, recentData){
+        const bestItems = items(bestData).filter(Boolean);
+        const recentItems = items(recentData).filter(Boolean);
+        const recentLaps = [...recentItems].sort((a,b) => lapDate(b) - lapDate(a) || lapMs(a) - lapMs(b));
+        const best = bestItems[0] || [...recentItems].sort((a,b) => lapMs(a) - lapMs(b))[0] || null;
+        const last = recentLaps[0] || null;
+
+        setText('gcQuickRefs', formatNumber(recentData?.count ?? recentLaps.length));
+        setText('gcRefsMeta', `${formatNumber(recentData?.totalMatchedLaps ?? recentData?.count ?? recentLaps.length)} vueltas encontradas · mostrando las más recientes`);
+        setText('gcQuickTop', best ? lapTime(best) : '--');
+        setText('gcQuickTopMeta', best ? [driverName(best), carName(best), trackName(best)].filter(Boolean).join(' · ') : 'sin datos');
+        setText('gcQuickLast', last ? lapTime(last) : '--');
+        setText('gcQuickLastMeta', last ? [driverName(last), trackName(last), dateText(lapDate(last))].filter(Boolean).join(' · ') : 'sin datos');
+
+        const table = byId('gcRefsTable');
+        if (table) {
+          table.innerHTML = recentLaps.length
+            ? recentLaps.slice(0,8).map((lap) => `<tr><td><strong>${escapeHtml(driverName(lap))}</strong></td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${escapeHtml(dateText(lapDate(lap)))}</td></tr>`).join('')
+            : '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
+        }
+      }
+
+      function renderStracker(strackerData, recentData, bestData, combosData){
+        const db = strackerData?.stracker || strackerData?.database || strackerData || {};
+        const exists = Boolean(db.exists || strackerData?.exists);
+        const valid = Boolean(db.validSQLite || strackerData?.validSQLite);
+        const enabled = Boolean(db.enabled || strackerData?.ok);
+        const hasLaps = items(recentData).length > 0 || items(bestData).length > 0;
+        const hasCombos = items(combosData).length > 0;
+        const modified = db.modifiedAt || strackerData?.modifiedAt || db.updatedAt || strackerData?.updatedAt;
+
+        if ((exists && valid) || hasLaps || hasCombos) {
+          setText('gcQuickDb', 'Activo');
+          setText('gcQuickDbMeta', modified ? `datos cargados · ${dateText(modified)}` : 'datos cargados');
+          setText('gcApiState', 'API OK');
+          return;
+        }
+
+        if (enabled) {
+          setText('gcQuickDb', 'Parcial');
+          setText('gcQuickDbMeta', 'API responde, sin vueltas útiles');
+          setText('gcApiState', 'API parcial');
+          return;
+        }
+
+        setText('gcQuickDb', 'Pendiente');
+        setText('gcQuickDbMeta', 'sin lectura');
+        setText('gcApiState', 'Revisar API');
+      }
+
+      async function loadDashboard(){
+        renderClock();
+
+        const [
+          profile,
+          auth,
+          combos,
+          combosFallback,
+          bestHotlaps,
+          recentLaps,
+          pilots,
+          drivers,
+          stracker
+        ] = await Promise.all([
+          fetchJson('/api/profile').catch(() => null),
+          fetchJson('/api/auth/status').catch(() => null),
+          fetchJson('/api/combos/stats?limit=300&sort=recent').catch(() => null),
+          fetchJson('/api/combos?limit=300').catch(() => null),
+          fetchJson('/api/hotlaps?limit=12').catch(() => null),
+          fetchJson('/api/laps?limit=12&sort=recent&valid=all').catch(() => null),
+          fetchJson('/api/pilots?limit=800&valid=all').catch(() => null),
+          fetchJson('/api/drivers?limit=800&valid=all').catch(() => null),
+          fetchJson('/api/stracker/status').catch(() => null)
+        ]);
+
+        const combosData = items(combos).length ? combos : combosFallback;
+
+        renderAuth(profile, auth);
+        renderMetrics({ pilotsData: pilots, driversData: drivers, combosData, recentData: recentLaps, bestData: bestHotlaps });
+        renderCombo(combosData, recentLaps, bestHotlaps);
+        renderLapReadout(bestHotlaps, recentLaps);
+        renderStracker(stracker, recentLaps, bestHotlaps, combosData);
+        setText('gcAppStatusChip','Live');
+
+        console.info('[GC /app v1.3]', {
+          pilots: items(pilots).length,
+          drivers: items(drivers).length,
+          combos: items(combosData).length,
+          recentLaps: items(recentLaps).length,
+          bestHotlaps: items(bestHotlaps).length
+        });
+      }
+
+      loadDashboard().catch((error) => {
+        console.warn('[GC] Error cargando /app:', error);
+        setText('gcAppStatusChip','API parcial');
+        setText('gcApiState','Revisar API');
+      });
     })();
   </script>
 </AppLayout>
