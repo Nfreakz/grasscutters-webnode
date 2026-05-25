@@ -32,6 +32,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       <span data-type="combo">Combo semanal</span>
       <span data-type="race_lfm">Carrera LFM</span>
       <span data-type="race_gc">Carrera GrassCutters</span>
+      <span data-type="range">Evento varios días</span>
     </div>
 
     <div class="gc-calendar-grid" id="gcCalendarGrid" aria-live="polite"></div>
@@ -47,7 +48,42 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   </section>
 
   <style is:global>
-    .gc-calendar-shell{padding-top:0}.gc-calendar-top{display:flex;justify-content:space-between;gap:18px;align-items:end;border-bottom:1px solid var(--gc-mk-line);padding-bottom:18px}.gc-calendar-top h2{margin:6px 0 0;font-size:clamp(2rem,4.5vw,4rem);letter-spacing:-.07em;text-transform:uppercase}.gc-calendar-top p{margin:6px 0 0;color:var(--gc-mk-muted)}.gc-calendar-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.gc-calendar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.gc-calendar-legend span{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:999px;color:var(--gc-mk-muted);background:rgba(255,255,255,.035);font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-legend [data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-legend [data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--gc-mk-line);border-left:1px solid var(--gc-mk-line);background:rgba(255,255,255,.018)}.gc-calendar-head,.gc-calendar-day{border-right:1px solid var(--gc-mk-line);border-bottom:1px solid var(--gc-mk-line)}.gc-calendar-head{padding:12px;color:var(--gc-mk-soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.12em;background:rgba(255,255,255,.04)}.gc-calendar-day{min-height:148px;padding:10px;background:rgba(0,0,0,.08)}.gc-calendar-day.is-muted{opacity:.42}.gc-calendar-day.is-today{box-shadow:inset 0 0 0 2px var(--gc-mk-accent)}.gc-calendar-day-number{display:flex;justify-content:space-between;align-items:center;color:var(--gc-mk-text);font-weight:950}.gc-calendar-day-number small{color:var(--gc-mk-soft);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-events{display:grid;gap:6px;margin-top:8px}.gc-calendar-event{display:grid;gap:2px;padding:8px;border:1px solid var(--gc-mk-line-soft);border-left:3px solid var(--gc-mk-accent);border-radius:12px;background:rgba(255,255,255,.04);text-decoration:none}.gc-calendar-event[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-event[data-type="race_gc"]{border-left-color:#ffc46b}.gc-calendar-event strong{color:var(--gc-mk-text);font-size:.8rem;line-height:1.2}.gc-calendar-event-repeat{color:var(--gc-mk-accent);font-size:.62rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-event small{color:var(--gc-mk-soft);font-size:.7rem}.gc-calendar-event-list{display:grid;gap:12px}.gc-calendar-upcoming-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:16px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.022))}.gc-calendar-upcoming-date{display:grid;place-items:center;min-width:72px;min-height:62px;border:1px solid var(--gc-mk-line);border-radius:16px;color:#07110a;background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));font-weight:950}.gc-calendar-upcoming-date span{font-size:1.4rem;line-height:1}.gc-calendar-upcoming-date small{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-upcoming-card h3{margin:0;color:var(--gc-mk-text);font-size:1.15rem}.gc-calendar-upcoming-repeat{display:inline-flex;margin-top:6px;color:var(--gc-mk-accent);font-size:.68rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}.gc-calendar-upcoming-card p{margin:4px 0 0;color:var(--gc-mk-muted)}.gc-calendar-upcoming-type{color:var(--gc-mk-accent);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.1em}@media(max-width:900px){.gc-calendar-top{display:grid}.gc-calendar-controls{justify-content:flex-start}.gc-calendar-grid{grid-template-columns:1fr}.gc-calendar-head{display:none}.gc-calendar-day{min-height:unset}.gc-calendar-day.is-muted{display:none}.gc-calendar-upcoming-card{grid-template-columns:1fr}.gc-calendar-upcoming-date{width:max-content}}
+    .gc-calendar-shell{padding-top:0}
+    .gc-calendar-top{display:flex;justify-content:space-between;gap:18px;align-items:end;border-bottom:1px solid var(--gc-mk-line);padding-bottom:18px}
+    .gc-calendar-top h2{margin:6px 0 0;font-size:clamp(2rem,4.5vw,4rem);letter-spacing:-.07em;text-transform:uppercase}
+    .gc-calendar-top p{margin:6px 0 0;color:var(--gc-mk-muted)}
+    .gc-calendar-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .gc-calendar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+    .gc-calendar-legend span{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:999px;color:var(--gc-mk-muted);background:rgba(255,255,255,.035);font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+    .gc-calendar-legend [data-type="race_lfm"]{border-left-color:#35d3ff}
+    .gc-calendar-legend [data-type="race_gc"]{border-left-color:#ffc46b}
+    .gc-calendar-legend [data-type="range"]{border-left-color:#b585ff}
+    .gc-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--gc-mk-line);border-left:1px solid var(--gc-mk-line);background:rgba(255,255,255,.018)}
+    .gc-calendar-head,.gc-calendar-day{border-right:1px solid var(--gc-mk-line);border-bottom:1px solid var(--gc-mk-line)}
+    .gc-calendar-head{padding:12px;color:var(--gc-mk-soft);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.12em;background:rgba(255,255,255,.04)}
+    .gc-calendar-day{min-height:148px;padding:10px;background:rgba(0,0,0,.08)}
+    .gc-calendar-day.is-muted{opacity:.42}
+    .gc-calendar-day.is-today{box-shadow:inset 0 0 0 2px var(--gc-mk-accent)}
+    .gc-calendar-day-number{display:flex;justify-content:space-between;align-items:center;color:var(--gc-mk-text);font-weight:950}
+    .gc-calendar-day-number small{color:var(--gc-mk-soft);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
+    .gc-calendar-events{display:grid;gap:6px;margin-top:8px}
+    .gc-calendar-event{display:grid;gap:2px;padding:8px;border:1px solid var(--gc-mk-line-soft);border-left:3px solid var(--gc-mk-accent);border-radius:12px;background:rgba(255,255,255,.04);text-decoration:none}
+    .gc-calendar-event[data-type="race_lfm"]{border-left-color:#35d3ff}
+    .gc-calendar-event[data-type="race_gc"]{border-left-color:#ffc46b}
+    .gc-calendar-event.is-range{background:linear-gradient(135deg,rgba(133,255,85,.09),rgba(255,255,255,.035))}
+    .gc-calendar-event strong{color:var(--gc-mk-text);font-size:.8rem;line-height:1.2}
+    .gc-calendar-event-repeat{color:var(--gc-mk-accent);font-size:.62rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+    .gc-calendar-event small{color:var(--gc-mk-soft);font-size:.7rem}
+    .gc-calendar-event-list{display:grid;gap:12px}
+    .gc-calendar-upcoming-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:16px;border:1px solid var(--gc-mk-line);border-left:3px solid var(--gc-mk-accent);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.022))}
+    .gc-calendar-upcoming-date{display:grid;place-items:center;min-width:72px;min-height:62px;border:1px solid var(--gc-mk-line);border-radius:16px;color:#07110a;background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));font-weight:950}
+    .gc-calendar-upcoming-date span{font-size:1.4rem;line-height:1}
+    .gc-calendar-upcoming-date small{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
+    .gc-calendar-upcoming-card h3{margin:0;color:var(--gc-mk-text);font-size:1.15rem}
+    .gc-calendar-upcoming-repeat{display:inline-flex;margin-top:6px;color:var(--gc-mk-accent);font-size:.68rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+    .gc-calendar-upcoming-card p{margin:4px 0 0;color:var(--gc-mk-muted)}
+    .gc-calendar-upcoming-type{color:var(--gc-mk-accent);font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.1em}
+    @media(max-width:900px){.gc-calendar-top{display:grid}.gc-calendar-controls{justify-content:flex-start}.gc-calendar-grid{grid-template-columns:1fr}.gc-calendar-head{display:none}.gc-calendar-day{min-height:unset}.gc-calendar-day.is-muted{display:none}.gc-calendar-upcoming-card{grid-template-columns:1fr}.gc-calendar-upcoming-date{width:max-content}}
   </style>
 
   <script is:inline>
@@ -68,42 +104,109 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       const pad = (n) => String(n).padStart(2, '0');
       const keyOf = (date) => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-      const parseDate = (value) => { const d = new Date(`${value}T00:00:00`); return Number.isNaN(d.getTime()) ? null : d; };
+      const parseDate = (value) => {
+        const text = String(value || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+        const [y, m, d] = text.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return Number.isNaN(date.getTime()) ? null : date;
+      };
       const addDays = (date, days) => { const next = new Date(date); next.setDate(next.getDate() + days); return next; };
+      const daysBetween = (a, b) => Math.round((rangeStartOfDay(b) - rangeStartOfDay(a)) / 86400000);
       const eventDate = (event) => parseDate(event.startDate || event.date);
+      const eventEndDate = (event) => parseDate(event.endDate) || eventDate(event);
       const isWeeklyRepeat = (event) => Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
       const fmtEventTime = (event) => [event.startTime, event.endTime].filter(Boolean).join(' - ') || 'Horario por confirmar';
       const rangeStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const isRangeEvent = (event) => {
+        const start = eventDate(event);
+        const end = eventEndDate(event);
+        return Boolean(start && end && daysBetween(start, end) > 0);
+      };
 
-      function occurrencesForRange(rangeStart, rangeEnd) {
+      function pushRangeOccurrences(output, event, start, end, rangeStart, rangeEnd, repeatLabel, isOccurrence) {
+        const durationDays = Math.max(0, daysBetween(start, end));
+        for (let offset = 0; offset <= durationDays; offset += 1) {
+          const day = addDays(start, offset);
+          if (day < rangeStart || day > rangeEnd) continue;
+          output.push({
+            ...event,
+            startDate: keyOf(day),
+            occurrenceDate: keyOf(day),
+            occurrenceStartDate: keyOf(start),
+            occurrenceEndDate: keyOf(end),
+            isOccurrence,
+            isRangeDay: durationDays > 0,
+            rangeDayIndex: offset + 1,
+            rangeDayTotal: durationDays + 1,
+            repeatLabel
+          });
+        }
+      }
+
+      function occurrenceStartsForEvent(event, rangeStart, rangeEnd) {
+        const start = rangeStartOfDay(eventDate(event));
+        const end = rangeStartOfDay(eventEndDate(event));
+        const durationDays = Math.max(0, daysBetween(start, end));
+        const starts = [];
+
+        if (!isWeeklyRepeat(event)) return [{ start, end }];
+
+        const untilRaw = parseDate(event.repeatUntil);
+        const until = untilRaw ? rangeStartOfDay(untilRaw) : rangeEnd;
+        const hardEnd = until < rangeEnd ? until : rangeEnd;
+        let current = new Date(start);
+        while (addDays(current, durationDays) < rangeStart) current = addDays(current, 7);
+
+        let guard = 0;
+        while (current <= hardEnd && guard < 370) {
+          starts.push({ start: new Date(current), end: addDays(current, durationDays) });
+          current = addDays(current, 7);
+          guard += 1;
+        }
+
+        return starts;
+      }
+
+      function occurrencesForRange(rangeStart, rangeEnd, mode = 'days') {
         const from = rangeStartOfDay(rangeStart);
         const to = rangeStartOfDay(rangeEnd);
         const output = [];
-        events.filter((event) => event.visible !== false && eventDate(event)).forEach((event) => {
-          const start = rangeStartOfDay(eventDate(event));
-          if (!isWeeklyRepeat(event)) {
-            if (start >= from && start <= to) output.push({ ...event, occurrenceDate: keyOf(start), isOccurrence: false });
-            return;
-          }
 
-          const until = event.repeatUntil ? rangeStartOfDay(parseDate(event.repeatUntil) || to) : to;
-          const hardEnd = until < to ? until : to;
-          let current = new Date(start);
-          while (current < from) current = addDays(current, 7);
-          let guard = 0;
-          while (current <= hardEnd && guard < 370) {
-            output.push({ ...event, startDate: keyOf(current), occurrenceDate: keyOf(current), isOccurrence: current.getTime() !== start.getTime() });
-            current = addDays(current, 7);
-            guard += 1;
-          }
+        events.filter((event) => event.visible !== false && eventDate(event)).forEach((event) => {
+          occurrenceStartsForEvent(event, from, to).forEach(({ start, end }) => {
+            const isOccurrence = keyOf(start) !== keyOf(eventDate(event));
+            const repeatLabel = isWeeklyRepeat(event) ? 'Semanal' : '';
+            if (mode === 'blocks') {
+              if (end < from || start > to) return;
+              output.push({
+                ...event,
+                startDate: keyOf(start),
+                occurrenceDate: keyOf(start),
+                occurrenceStartDate: keyOf(start),
+                occurrenceEndDate: keyOf(end),
+                isOccurrence,
+                isRangeDay: daysBetween(start, end) > 0,
+                rangeDayTotal: daysBetween(start, end) + 1,
+                repeatLabel
+              });
+              return;
+            }
+            pushRangeOccurrences(output, event, start, end, from, to, repeatLabel, isOccurrence);
+          });
         });
-        return output.sort((a, b) => String(a.startDate || '').localeCompare(String(b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
+
+        return output.sort((a, b) => String(a.occurrenceDate || a.startDate || '').localeCompare(String(b.occurrenceDate || b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
       }
 
       function eventHtml(event) {
-        const repeatMark = isWeeklyRepeat(event) ? '<span class="gc-calendar-event-repeat">Semanal</span>' : '';
-        const content = `<strong>${escapeHtml(event.title || 'Evento')}</strong><small>${escapeHtml(fmtEventTime(event))}</small>${repeatMark}`;
-        return event.linkUrl ? `<a class="gc-calendar-event" data-type="${escapeHtml(event.type || 'combo')}" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${content}</a>` : `<div class="gc-calendar-event" data-type="${escapeHtml(event.type || 'combo')}">${content}</div>`;
+        const marks = [];
+        if (event.repeatLabel) marks.push(event.repeatLabel);
+        if (event.isRangeDay) marks.push(`${event.rangeDayIndex}/${event.rangeDayTotal}`);
+        const meta = marks.length ? `<span class="gc-calendar-event-repeat">${escapeHtml(marks.join(' · '))}</span>` : '';
+        const classes = `gc-calendar-event ${event.isRangeDay ? 'is-range' : ''}`;
+        const content = `<strong>${escapeHtml(event.title || 'Evento')}</strong><small>${escapeHtml(fmtEventTime(event))}</small>${meta}`;
+        return event.linkUrl ? `<a class="${classes}" data-type="${escapeHtml(event.type || 'combo')}" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${content}</a>` : `<div class="${classes}" data-type="${escapeHtml(event.type || 'combo')}">${content}</div>`;
       }
 
       function render() {
@@ -115,12 +218,13 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         const start = new Date(year, month, 1 - offset);
         const end = addDays(start, 41);
         const todayKey = keyOf(new Date());
-        const allVisible = occurrencesForRange(start, end);
+        const allVisible = occurrencesForRange(start, end, 'days');
         const monthEvents = allVisible.filter((event) => {
           const d = eventDate(event);
           return d && d.getFullYear() === year && d.getMonth() === month;
         });
-        meta.textContent = `${monthEvents.length} eventos visibles este mes`;
+        const uniqueMonthEvents = new Set(monthEvents.map((event) => `${event.id || event.title}|${event.occurrenceStartDate || event.startDate}`));
+        meta.textContent = `${uniqueMonthEvents.size} eventos · ${monthEvents.length} días ocupados este mes`;
 
         const head = weekDays.map((day) => `<div class="gc-calendar-head">${day}</div>`).join('');
         const cells = [];
@@ -139,10 +243,12 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         const now = new Date();
         const from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const to = addDays(from, 120);
-        const list = occurrencesForRange(from, to).slice(0, 8);
+        const list = occurrencesForRange(from, to, 'blocks').slice(0, 8);
         upcoming.innerHTML = list.length ? list.map((event) => {
           const d = eventDate(event);
-          return `<article class="gc-calendar-upcoming-card"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${isWeeklyRepeat(event) ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : ''}${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-btn" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
+          const end = parseDate(event.occurrenceEndDate || event.endDate);
+          const rangeText = end && keyOf(end) !== keyOf(d) ? `Del ${keyOf(d)} al ${keyOf(end)}` : keyOf(d);
+          return `<article class="gc-calendar-upcoming-card"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([rangeText, fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : ''}${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-btn" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
         }).join('') : '<div class="gc-panel"><p>No hay próximos eventos visibles todavía.</p></div>';
       }
 

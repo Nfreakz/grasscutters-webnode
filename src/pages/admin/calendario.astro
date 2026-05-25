@@ -3,16 +3,16 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
 <AppLayout title="Admin calendario | GrassCutters">
-  <div class="gc-page gc-admin-calendar-page gc-admin-calendar-v3">
+  <div class="gc-page gc-admin-calendar-page gc-admin-calendar-v30">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Administración</span>
         <h1 class="gc-title">Calendario.</h1>
-        <p class="gc-subtitle">Gestiona el combo semanal, las carreras LFM y las carreras GrassCutters. La lectura usa fallback público si alguna ruta admin se pone tonta.</p>
+        <p class="gc-subtitle">Gestiona combos de varios días, carreras puntuales y repeticiones semanales sin duplicar eventos a mano.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Eventos</span>
-          <span class="gc-chip">ACSM</span>
-          <span class="gc-chip">MySQL</span>
+          <span class="gc-chip">Rangos</span>
+          <span class="gc-chip">Repetición semanal</span>
         </div>
       </div>
       <aside class="gc-live-panel">
@@ -44,29 +44,39 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         <div class="gc-section-head">
           <div>
             <h2 id="calendarFormTitle">Crear evento</h2>
-            <p>Eventos visibles en la página pública.</p>
+            <p>Para un combo de toda la semana: pon fecha inicio lunes y usa “Combo toda la semana”.</p>
           </div>
         </div>
+
         <input type="hidden" name="id" />
+
         <div class="gc-form-grid">
           <label class="gc-field"><span>Tipo</span><select class="gc-select" name="type"><option value="combo">Combo semanal</option><option value="race_lfm">Carrera LFM</option><option value="race_gc">Carrera GrassCutters</option></select></label>
-          <label class="gc-field"><span>Título</span><input class="gc-input" name="title" required placeholder="Carrera GrassCutters en Suzuka" /></label>
+          <label class="gc-field"><span>Título</span><input class="gc-input" name="title" required placeholder="Combo semanal · Mugello" /></label>
           <label class="gc-field"><span>Fecha inicio</span><input class="gc-input" name="startDate" type="date" required /></label>
-          <label class="gc-field"><span>Hora inicio</span><input class="gc-input" name="startTime" type="time" /></label>
           <label class="gc-field"><span>Fecha fin</span><input class="gc-input" name="endDate" type="date" /></label>
+          <label class="gc-field"><span>Hora inicio</span><input class="gc-input" name="startTime" type="time" /></label>
           <label class="gc-field"><span>Hora fin</span><input class="gc-input" name="endTime" type="time" /></label>
+          <label class="gc-field"><span>Repetición</span><select class="gc-select" name="repeatFrequency"><option value="none">No repetir</option><option value="weekly">Repetir semanalmente</option></select></label>
           <label class="gc-field"><span>Repetir hasta</span><input class="gc-input" name="repeatUntil" type="date" /></label>
-          <label class="gc-field"><span>Circuito</span><input class="gc-input" name="trackName" placeholder="Suzuka" /></label>
-          <label class="gc-field"><span>Coches</span><input class="gc-input" name="carNames" placeholder="Toyota Supra JGTC 2000" /></label>
+          <label class="gc-field"><span>Circuito</span><input class="gc-input" name="trackName" placeholder="Mugello" /></label>
+          <label class="gc-field"><span>Coches</span><input class="gc-input" name="carNames" placeholder="GT3, Touring, etc." /></label>
           <label class="gc-field" style="grid-column:1 / -1"><span>Enlace opcional</span><input class="gc-input" name="linkUrl" placeholder="https://..." /></label>
           <label class="gc-field" style="grid-column:1 / -1"><span>Descripción</span><textarea class="gc-input gc-calendar-textarea" name="description" rows="4" placeholder="Briefing, formato, notas o indicaciones."></textarea></label>
         </div>
+
         <div class="gc-calendar-checks">
           <label><input type="checkbox" name="visible" checked /> Visible</label>
           <label><input type="checkbox" name="featured" /> Destacado</label>
-          <label><input type="checkbox" name="repeatEnabled" /> Repetir cada semana</label>
         </div>
-        <p class="gc-calendar-repeat-note">La repetición semanal usa el mismo día y hora del evento inicial.</p>
+
+        <div class="gc-calendar-quick-actions">
+          <button class="gc-btn" type="button" id="calendarSetWeek">Combo toda la semana</button>
+          <button class="gc-btn" type="button" id="calendarSetToday">Evento de hoy</button>
+        </div>
+
+        <p class="gc-calendar-repeat-note" id="calendarRepeatHint">Los eventos con fecha fin aparecen en todos los días del rango.</p>
+
         <div class="gc-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Guardar evento</button>
           <button class="gc-btn" type="button" id="calendarReset">Limpiar</button>
@@ -110,18 +120,25 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
   </div>
 
   <style is:global>
-    .gc-admin-calendar-v3{display:grid;gap:clamp(22px,3vw,34px)}
-    .gc-admin-calendar-v3 [hidden]{display:none!important}
+    .gc-admin-calendar-v30{display:grid;gap:clamp(22px,3vw,34px)}
+    .gc-admin-calendar-v30 [hidden]{display:none!important}
     .gc-calendar-admin-form,.gc-calendar-acsm-panel{align-self:start}
     .gc-calendar-textarea{height:auto;min-height:110px;padding-top:10px;resize:vertical}
-    .gc-calendar-checks{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft);margin-top:14px}
+    .gc-calendar-checks,.gc-calendar-quick-actions{display:flex;flex-wrap:wrap;gap:12px;color:var(--soft);margin-top:14px}
     .gc-calendar-checks label{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:9px 12px;background:rgba(255,255,255,.018)}
-    .gc-calendar-repeat-note{margin:10px 0 0;color:var(--dim);font-size:.86rem}
+    .gc-calendar-repeat-note{margin:10px 0 0;color:var(--dim);font-size:.86rem;line-height:1.45}
     .gc-calendar-admin-list{display:grid;gap:10px}
     .gc-calendar-admin-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-left:3px solid var(--accent);background:rgba(255,255,255,.018)}
-    .gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}.gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}
-    .gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}.gc-calendar-admin-card p{margin:0;color:var(--soft)}.gc-calendar-admin-card small{color:var(--dim)}.gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-calendar-admin-card.is-hidden{opacity:.55}
-    @media(max-width:900px){.gc-admin-calendar-v3 .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
+    .gc-calendar-admin-card[data-type="race_lfm"]{border-left-color:#35d3ff}
+    .gc-calendar-admin-card[data-type="race_gc"]{border-left-color:#ffc46b}
+    .gc-calendar-admin-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .gc-calendar-admin-card h3{margin:0;color:var(--text);font-size:1.1rem}
+    .gc-calendar-admin-card p{margin:0;color:var(--soft)}
+    .gc-calendar-admin-card small{color:var(--dim)}
+    .gc-calendar-admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .gc-calendar-admin-card.is-hidden{opacity:.55}
+    .gc-calendar-admin-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    @media(max-width:900px){.gc-admin-calendar-v30 .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
   </style>
 
   <script is:inline>
@@ -145,16 +162,35 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       const title = $('calendarFormTitle');
       const acsmRows = $('acsmRows');
       const acsmMessage = $('acsmMessage');
+      const repeatHint = $('calendarRepeatHint');
       const typeLabels = { combo:'Combo semanal', race_lfm:'Carrera LFM', race_gc:'Carrera GrassCutters' };
       let events = [];
       let adminAuthorized = false;
       let adminReadOnly = false;
 
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>\'\"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
       const setMessage = (text, ok = false) => { message.textContent = text || ''; message.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
       const setAcsmMessage = (text, ok = false) => { acsmMessage.textContent = text || ''; acsmMessage.style.color = ok ? 'var(--accent)' : 'var(--soft)'; };
       const dateText = (event) => [event.startDate, event.startTime].filter(Boolean).join(' · ') || '-';
-      const repeatText = (event) => (event.repeatEnabled || event.repeatFrequency === 'weekly') ? (event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal') : '';
+      const parseDate = (value) => { const d = new Date(`${String(value || '').slice(0, 10)}T00:00:00`); return Number.isNaN(d.getTime()) ? null : d; };
+      const pad = (n) => String(n).padStart(2, '0');
+      const keyOf = (date) => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+      const addDays = (date, days) => { const next = new Date(date); next.setDate(next.getDate() + days); return next; };
+      const rangeText = (event) => event.endDate && event.endDate !== event.startDate ? `${event.startDate} → ${event.endDate}` : event.startDate;
+      const repeatText = (event) => {
+        const isWeekly = Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+        if (!isWeekly) return '';
+        return event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal';
+      };
+
+      function updateRepeatHint() {
+        const repeat = form.elements.repeatFrequency.value;
+        const start = form.elements.startDate.value;
+        const end = form.elements.endDate.value;
+        const range = end && start && end !== start ? `Aparecerá todos los días del ${start} al ${end}.` : 'Aparecerá solo el día de inicio.';
+        const rep = repeat === 'weekly' ? ' Además, ese rango se repetirá cada semana hasta la fecha indicada.' : '';
+        repeatHint.textContent = `${range}${rep}`;
+      }
 
       async function fetchJson(url, options = {}) {
         const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' }, ...options });
@@ -197,6 +233,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
       function serializeForm() {
         const data = Object.fromEntries(new FormData(form));
+        const repeatFrequency = String(data.repeatFrequency || 'none');
         return {
           id: data.id || undefined,
           type: ['combo','race_lfm','race_gc'].includes(String(data.type)) ? data.type : 'combo',
@@ -209,9 +246,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           carNames: String(data.carNames || '').trim(),
           linkUrl: String(data.linkUrl || '').trim(),
           description: String(data.description || '').trim(),
-          repeatEnabled: form.elements.repeatEnabled.checked,
-          repeatFrequency: form.elements.repeatEnabled.checked ? 'weekly' : 'none',
-          repeatUntil: data.repeatUntil || '',
+          repeatEnabled: repeatFrequency === 'weekly',
+          repeatFrequency,
+          repeatUntil: repeatFrequency === 'weekly' ? (data.repeatUntil || '') : '',
           visible: form.elements.visible.checked,
           featured: form.elements.featured.checked
         };
@@ -222,8 +259,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         form.elements.id.value = '';
         form.elements.visible.checked = true;
         form.elements.featured.checked = false;
-        form.elements.repeatEnabled.checked = false;
+        form.elements.repeatFrequency.value = 'none';
         title.textContent = 'Crear evento';
+        updateRepeatHint();
         setMessage('');
       }
 
@@ -239,12 +277,31 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         form.elements.carNames.value = event.carNames || '';
         form.elements.linkUrl.value = event.linkUrl || '';
         form.elements.description.value = event.description || '';
-        form.elements.repeatEnabled.checked = Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+        form.elements.repeatFrequency.value = (event.repeatEnabled || event.repeatFrequency === 'weekly') ? 'weekly' : 'none';
         form.elements.repeatUntil.value = event.repeatUntil || '';
         form.elements.visible.checked = event.visible !== false;
         form.elements.featured.checked = Boolean(event.featured);
         title.textContent = 'Editar evento';
+        updateRepeatHint();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function setComboWeek() {
+        const startRaw = form.elements.startDate.value;
+        const start = parseDate(startRaw) || new Date();
+        const end = addDays(start, 6);
+        form.elements.type.value = 'combo';
+        form.elements.startDate.value = keyOf(start);
+        form.elements.endDate.value = keyOf(end);
+        if (!form.elements.title.value.trim()) form.elements.title.value = 'Combo semanal';
+        updateRepeatHint();
+      }
+
+      function setToday() {
+        const today = new Date();
+        form.elements.startDate.value = keyOf(today);
+        form.elements.endDate.value = '';
+        updateRepeatHint();
       }
 
       function filteredEvents() {
@@ -252,7 +309,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const type = typeFilter.value;
         return events.filter((event) => {
           if (type !== 'all' && event.type !== type) return false;
-          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate, event.repeatEnabled ? 'repetición semanal repetir' : ''].join(' ').toLowerCase();
+          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate, event.endDate, event.repeatEnabled ? 'repetición semanal repetir' : ''].join(' ').toLowerCase();
           return !query || haystack.includes(query);
         }).sort((a,b) => String(a.startDate || '').localeCompare(String(b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
       }
@@ -266,7 +323,15 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>';
           return;
         }
-        list.innerHTML = rows.map((event) => `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><small>${event.visible === false ? 'Oculto' : 'Visible'}${event.featured ? ' · Destacado' : ''}${repeatText(event) ? ' · ' + escapeHtml(repeatText(event)) : ''}</small></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}" ${adminReadOnly ? 'disabled' : ''}>${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}" ${adminReadOnly ? 'disabled' : ''}>Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`).join('');
+        list.innerHTML = rows.map((event) => {
+          const badges = [
+            event.endDate && event.endDate !== event.startDate ? `<span class="gc-chip">Rango ${escapeHtml(rangeText(event))}</span>` : '',
+            repeatText(event) ? `<span class="gc-chip gc-chip--accent">${escapeHtml(repeatText(event))}</span>` : '',
+            event.visible === false ? '<span class="gc-chip">Oculto</span>' : '<span class="gc-chip">Visible</span>',
+            event.featured ? '<span class="gc-chip gc-chip--accent">Destacado</span>' : ''
+          ].filter(Boolean).join('');
+          return `<article class="gc-calendar-admin-card ${event.visible === false ? 'is-hidden' : ''}" data-type="${escapeHtml(event.type || 'combo')}"><div class="gc-calendar-admin-card-head"><div><span class="gc-chip ${event.featured ? 'gc-chip--accent' : ''}">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([dateText(event), event.endDate && event.endDate !== event.startDate ? 'fin ' + event.endDate : '', event.trackName, event.carNames].filter(Boolean).join(' · '))}</p><div class="gc-calendar-admin-badges">${badges}</div></div><div class="gc-calendar-admin-actions"><button class="gc-btn gc-btn--mini" data-action="edit" data-id="${escapeHtml(event.id)}">Editar</button><button class="gc-btn gc-btn--mini" data-action="toggle" data-id="${escapeHtml(event.id)}" ${adminReadOnly ? 'disabled' : ''}>${event.visible === false ? 'Mostrar' : 'Ocultar'}</button><button class="gc-btn gc-btn--mini" data-action="delete" data-id="${escapeHtml(event.id)}" ${adminReadOnly ? 'disabled' : ''}>Borrar</button></div></div>${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</article>`;
+        }).join('');
       }
 
       function normalizeEventsPayload(data) {
@@ -321,6 +386,8 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         event.preventDefault();
         const payload = serializeForm();
         if (!payload.title || !payload.startDate) { setMessage('Título y fecha inicio son obligatorios.'); return; }
+        if (payload.endDate && payload.endDate < payload.startDate) { setMessage('La fecha fin no puede ser anterior a la fecha inicio.'); return; }
+        if (payload.repeatEnabled && !payload.repeatUntil) { setMessage('Para repetir semanalmente, indica una fecha “Repetir hasta”.'); return; }
         try {
           const id = form.elements.id.value;
           setMessage('Guardando evento...');
@@ -355,11 +422,15 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       });
 
       [search, typeFilter].forEach((node) => node?.addEventListener('input', render));
+      ['startDate','endDate','repeatFrequency','repeatUntil'].forEach((name) => form.elements[name]?.addEventListener('input', updateRepeatHint));
       reload.addEventListener('click', () => loadEvents());
       reset.addEventListener('click', resetForm);
+      $('calendarSetWeek')?.addEventListener('click', setComboWeek);
+      $('calendarSetToday')?.addEventListener('click', setToday);
       $('calRetryAuth')?.addEventListener('click', checkAdmin);
       $('checkAcsmBtn')?.addEventListener('click', checkAcsm);
       $('syncAcsmBtn')?.addEventListener('click', syncAcsm);
+      updateRepeatHint();
       checkAdmin();
     })();
   </script>
