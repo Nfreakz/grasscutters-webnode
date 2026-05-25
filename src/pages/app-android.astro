@@ -1,6 +1,8 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
-const apkUrl = import.meta.env.PUBLIC_ANDROID_APK_URL || '/downloads/grasscutters-android.apk';
+
+const apkUrl = '/downloads/grasscutters-android.apk';
+const apkFileName = 'grasscutters-android.apk';
 ---
 <MarketingLayout title="App Android | GrassCutters Racing" description="App Android de GrassCutters Racing para acceder a la comunidad desde el móvil.">
   <section class="gc-page gc-hero">
@@ -9,9 +11,10 @@ const apkUrl = import.meta.env.PUBLIC_ANDROID_APK_URL || '/downloads/grasscutter
       <h1 class="gc-title">GrassCutters en el bolsillo.</h1>
       <p class="gc-lead">Acceso móvil a la comunidad, la plataforma y las secciones principales sin tener que pasar siempre por el navegador de escritorio.</p>
       <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href={apkUrl}>Descargar APK</a>
+        <a class="gc-btn gc-btn-primary" href={apkUrl} download={apkFileName}>Descargar APK</a>
         <a class="gc-btn" href="/app">Abrir plataforma</a>
       </div>
+      <p class="gc-apk-route-note">Descarga servida desde <code>{apkUrl}</code>. El archivo debe estar en <code>public/downloads/{apkFileName}</code>.</p>
     </div>
 
     <aside class="gc-phone-card">
@@ -32,4 +35,20 @@ const apkUrl = import.meta.env.PUBLIC_ANDROID_APK_URL || '/downloads/grasscutter
       <article class="gc-card"><code>03</code><h3>Comunidad</h3><p>Discord, avisos y actividad siempre cerca.</p></article>
     </div>
   </section>
+
+  <style is:global>
+    .gc-apk-route-note{
+      margin:14px 0 0;
+      color:var(--muted);
+      font-size:.88rem;
+      line-height:1.45;
+    }
+
+    .gc-apk-route-note code{
+      color:var(--text);
+      border:1px solid var(--line);
+      padding:.12rem .35rem;
+      background:rgba(255,255,255,.04);
+    }
+  </style>
 </MarketingLayout>
