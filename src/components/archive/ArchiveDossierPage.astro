@@ -120,6 +120,8 @@ const license = value(['licencia', 'license'], 'Texto editorial propio con fuent
 const lastReview = value(['ultima_revision', '√∫ltima_revisi√≥n', 'last_review'], '');
 const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
 
+const adminFactBlacklist = new Set(['fuente', 'fuente url', 'autor', 'licencia', 'sources', 'source', 'source url', 'license', 'author']);
+
 const factsFromAdmin = Array.isArray(entry.facts)
   ? entry.facts
       .map((fact) => {
@@ -127,11 +129,11 @@ const factsFromAdmin = Array.isArray(entry.facts)
         const factValue = normalizeFactValue(label, fact?.value || '', type);
         return [label, factValue] as [string, string];
       })
-      .filter(([label, fact]) => label && fact)
+      .filter(([label, fact]) => label && fact && !adminFactBlacklist.has(normalizeLabel(label)))
   : [];
 
+const introText = value(['introduccion', 'descripcion_larga', 'description_long', 'body']);
 const commonSections = [
-  ['Introducci√≥n', value(['introduccion', 'descripcion_larga', 'description_long', 'body'])],
   ['Contexto hist√≥rico', value(['contexto_historico', 'historia', 'historical_context'])],
   ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
   ['Nota de identificaci√≥n', value(['nota_identificacion', 'identificacion', 'identification_note'])],
@@ -213,6 +215,8 @@ const mergeFacts = (baseFacts: [string, string][], extraFacts: [string, string][
 };
 
 const quickFacts = mergeFacts(factsByType[type] || fallbackFacts, factsFromAdmin);
+const heroFacts = quickFacts.slice(0, 4);
+const detailFacts = quickFacts.slice(4);
 
 const typeSections: Record<string, { title: string; text?: string; items?: PairItem[]; variant?: string }[]> = {
   circuitos: [
@@ -281,16 +285,40 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     </aside>
   </header>
 
-  {quickFacts.length > 0 && (
-    <section class="gc-archive-dossier__quickfacts" aria-label="Datos r√°pidos">
-      {quickFacts.map(([label, fact]) => (
-        <div>
-          <span>{label}</span>
-          <strong>{fact}</strong>
+  <section class="gc-archive-dossier__overview">
+    <div class="gc-archive-dossier__overview-main gc-archive-dossier__panel">
+      <div class="gc-archive-dossier__section-head">
+        <span>Visi√≥n general</span>
+        <h2>Resumen</h2>
+      </div>
+      <p class="gc-archive-dossier__overview-copy">{introText || subtitle}</p>
+      {heroFacts.length > 0 && (
+        <div class="gc-archive-dossier__hero-facts" aria-label="Datos clave de apertura">
+          {heroFacts.map(([label, fact]) => (
+            <article>
+              <span>{label}</span>
+              <strong>{fact}</strong>
+            </article>
+          ))}
         </div>
-      ))}
-    </section>
-  )}
+      )}
+    </div>
+
+    <aside class="gc-archive-dossier__overview-side gc-archive-dossier__panel">
+      <div class="gc-archive-dossier__section-head">
+        <span>Ficha r√°pida</span>
+        <h2>Claves</h2>
+      </div>
+      <div class="gc-archive-dossier__detail-facts">
+        {(detailFacts.length ? detailFacts : heroFacts).map(([label, fact]) => (
+          <div>
+            <span>{label}</span>
+            <strong>{fact}</strong>
+          </div>
+        ))}
+      </div>
+    </aside>
+  </section>
 
   {gallery.length > 1 && (
     <section class="gc-archive-dossier__panel gc-archive-dossier__gallery">
@@ -313,6 +341,16 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
 
   <div class="gc-archive-dossier__grid">
     <main class="gc-archive-dossier__content">
+      {introText && (
+        <section class="gc-archive-dossier__panel gc-archive-dossier__editorial gc-archive-dossier__editorial--lead">
+          <div class="gc-archive-dossier__section-head">
+            <span>Apertura</span>
+            <h2>Introducci√≥n</h2>
+          </div>
+          <p class="gc-archive-dossier__lead-copy">{introText}</p>
+        </section>
+      )}
+
       {commonSections.length > 0 && (
         <section class="gc-archive-dossier__panel gc-archive-dossier__editorial">
           {commonSections.map(([heading, text]) => (
@@ -377,7 +415,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
             {related.map((item) => (
               <a href={archiveItemHref(item)}>
                 <strong>{item.nombre || item.title}</strong>
-                <span>{prettifyArchiveType(item.tipo || item.category)}</span>
+                <span>{singularArchiveType(normalizeArchiveType(item.tipo || item.category || 'general'))}</span>
               </a>
             ))}
           </div>
@@ -405,7 +443,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier{
       --archive-line:rgba(202,255,188,.13);
       --archive-accent:var(--accent,#9cff3f);
-      width:min(100%,1380px);
+      width:min(100%,1460px);
       margin:0 auto;
       padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(70px,8vw,118px);
       color:var(--text,#f2f7ef);
@@ -419,10 +457,10 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
 
     .gc-archive-dossier__hero{
       display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(330px,.44fr);
+      grid-template-columns:minmax(0,1.1fr) minmax(320px,.52fr);
       gap:clamp(18px,3vw,36px);
       align-items:stretch;
-      min-height:clamp(520px,68vh,720px);
+      min-height:clamp(420px,58vh,620px);
       padding:clamp(22px,4vw,46px);
       border:1px solid var(--archive-line);
       border-radius:38px;
@@ -464,13 +502,13 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier h1{
       max-width:960px;
       margin:.35rem 0 .9rem;
-      font-size:clamp(3.8rem,8.4vw,9.4rem);
+      font-size:clamp(3.2rem,7.2vw,7.4rem);
       line-height:.79;
       letter-spacing:-.1em;
     }
 
     .gc-archive-dossier__lead{
-      max-width:760px;
+      max-width:720px;
       margin:0;
       color:var(--soft,#b6c5b8);
       font-size:clamp(1.05rem,1.45vw,1.32rem);
@@ -516,7 +554,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier__media-card img{
       width:100%;
       height:100%;
-      min-height:420px;
+      min-height:360px;
       object-fit:cover;
       display:block;
     }
@@ -549,22 +587,41 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
       color:var(--soft,#b6c5b8);
     }
 
-    .gc-archive-dossier__quickfacts{
+    .gc-archive-dossier__overview{
       display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:12px;
+      grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);
+      gap:16px;
       margin:18px 0 clamp(26px,4vw,54px);
+      align-items:start;
     }
 
-    .gc-archive-dossier__quickfacts div{
-      min-height:104px;
+    .gc-archive-dossier__overview-copy,
+    .gc-archive-dossier__lead-copy{
+      margin:0;
+      color:var(--text,#f2f7ef);
+      font-size:clamp(1.06rem,1.35vw,1.2rem);
+      line-height:1.78;
+      max-width:none;
+    }
+
+    .gc-archive-dossier__hero-facts{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      margin-top:20px;
+    }
+
+    .gc-archive-dossier__hero-facts article,
+    .gc-archive-dossier__detail-facts div{
+      min-height:96px;
       padding:16px;
-      border:1px solid var(--archive-line);
-      border-radius:22px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      background:rgba(0,0,0,.16);
     }
 
-    .gc-archive-dossier__quickfacts span{
+    .gc-archive-dossier__hero-facts span,
+    .gc-archive-dossier__detail-facts span{
       display:block;
       color:var(--muted,#7f9184);
       font-size:.72rem;
@@ -573,18 +630,25 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
       text-transform:uppercase;
     }
 
-    .gc-archive-dossier__quickfacts strong{
+    .gc-archive-dossier__hero-facts strong,
+    .gc-archive-dossier__detail-facts strong{
       display:block;
       margin-top:8px;
-      font-size:clamp(1.05rem,1.8vw,1.6rem);
-      line-height:1.08;
+      font-size:clamp(1.02rem,1.45vw,1.42rem);
+      line-height:1.14;
       letter-spacing:-.035em;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-dossier__detail-facts{
+      display:grid;
+      gap:10px;
     }
 
     .gc-archive-dossier__grid{
       display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(280px,.34fr);
-      gap:16px;
+      grid-template-columns:minmax(0,1fr) minmax(300px,.32fr);
+      gap:18px;
       align-items:start;
     }
 
@@ -617,9 +681,15 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
       margin-bottom:14px;
     }
 
+    .gc-archive-dossier__editorial--lead{
+      background:
+        radial-gradient(circle at 10% 0%, rgba(156,255,63,.10), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+    }
+
     .gc-archive-dossier h2{
       margin:.25rem 0 .65rem;
-      font-size:clamp(2rem,4vw,4.6rem);
+      font-size:clamp(2rem,3.4vw,3.8rem);
       line-height:.88;
       letter-spacing:-.08em;
     }
@@ -633,7 +703,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
 
     .gc-archive-dossier p{
       color:var(--soft,#b6c5b8);
-      line-height:1.72;
+      line-height:1.78;
     }
 
     .gc-archive-dossier__cards{
@@ -684,7 +754,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier__gallery > div{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
+      gap:14px;
     }
 
     .gc-archive-dossier__gallery figure{
@@ -710,7 +780,13 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     }
 
     .gc-archive-dossier__side-panel h2{
-      font-size:clamp(1.7rem,2.8vw,2.8rem);
+      font-size:clamp(1.7rem,2.2vw,2.5rem);
+      line-height:.92;
+      letter-spacing:-.05em;
+    }
+
+    .gc-archive-dossier__side-panel p{
+      margin:.35rem 0 0;
     }
 
     .gc-archive-dossier__meta-list{
@@ -725,7 +801,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier__related-list a{
       display:grid;
       gap:4px;
-      padding:12px;
+      padding:14px;
       border:1px solid rgba(255,255,255,.08);
       border-radius:16px;
       background:rgba(0,0,0,.14);
@@ -752,6 +828,16 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
     .gc-archive-dossier__related-list span{
       color:var(--muted,#7f9184);
       font-size:.82rem;
+      text-transform:capitalize;
+    }
+
+    .gc-archive-dossier__sources p strong{
+      color:var(--text,#f2f7ef);
+    }
+
+    .gc-archive-dossier__sources ul{
+      padding-left:18px;
+      overflow-wrap:anywhere;
     }
 
     .gc-archive-dossier__sources ul{
@@ -772,7 +858,11 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
         position:static;
       }
 
-      .gc-archive-dossier__quickfacts{
+      .gc-archive-dossier__overview{
+        grid-template-columns:1fr;
+      }
+
+      .gc-archive-dossier__hero-facts{
         grid-template-columns:repeat(2,minmax(0,1fr));
       }
 
@@ -800,7 +890,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' ¬
         min-height:260px;
       }
 
-      .gc-archive-dossier__quickfacts,
+      .gc-archive-dossier__hero-facts,
       .gc-archive-dossier__cards,
       .gc-archive-dossier__cards--zones,
       .gc-archive-dossier__gallery > div{
