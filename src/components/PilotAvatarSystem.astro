@@ -1,0 +1,449 @@
+---
+/*
+  GrassCutters Pilot Avatar System v13.0
+  - Default avatar for every pilot.
+  - Upload/reset UI on /perfil for linked users.
+  - Adds avatars to /pilotos and /pilotos/:id without changing their data logic.
+*/
+---
+
+<style is:global>
+  :root{
+    --gc-avatar-size-card:56px;
+    --gc-avatar-size-row:42px;
+    --gc-avatar-size-detail:128px;
+  }
+
+  .gc-pilot-avatar-img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:999px;
+    background:#050805;
+  }
+
+  .gc-pilot-avatar-frame{
+    position:relative;
+    flex:0 0 auto;
+    border-radius:999px;
+    padding:2px;
+    background:
+      linear-gradient(135deg,
+        color-mix(in srgb,var(--accent,#9dff00) 74%,transparent),
+        color-mix(in srgb,var(--accent2,#35d3ff) 58%,transparent)
+      );
+    box-shadow:
+      0 12px 34px rgba(0,0,0,.34),
+      0 0 26px color-mix(in srgb,var(--accent,#9dff00) 22%,transparent);
+  }
+
+  .gc-pilot-avatar-frame::after{
+    content:"";
+    position:absolute;
+    inset:-7px;
+    border-radius:inherit;
+    background:radial-gradient(circle, color-mix(in srgb,var(--accent,#9dff00) 18%,transparent), transparent 68%);
+    opacity:.8;
+    filter:blur(10px);
+    z-index:-1;
+    pointer-events:none;
+  }
+
+  .gc-pilot-avatar-card{
+    width:var(--gc-avatar-size-card);
+    height:var(--gc-avatar-size-card);
+  }
+
+  .gc-pilot-avatar-row{
+    width:var(--gc-avatar-size-row);
+    height:var(--gc-avatar-size-row);
+  }
+
+  .gc-pilot-avatar-detail{
+    width:var(--gc-avatar-size-detail);
+    height:var(--gc-avatar-size-detail);
+    margin-bottom:16px;
+  }
+
+  .gc-pilot-card-v9__top{
+    align-items:center!important;
+  }
+
+  .gc-pilot-card-v9__top .gc-pilot-card-v9__name{
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  .gc-pilot-row-avatar-wrap{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+  }
+
+  .gc-pilot-row-avatar-wrap > span{
+    min-width:0;
+  }
+
+  .gc-pilot-detail-avatar-block{
+    display:grid;
+    justify-items:start;
+    gap:8px;
+  }
+
+  .gc-pilot-detail-avatar-block small{
+    color:var(--dim);
+    font-size:.68rem;
+    font-weight:950;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+
+  .gc-profile-avatar-card-v13{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    gap:16px;
+    align-items:center;
+    padding:16px;
+    border:1px solid var(--line);
+    border-top:2px solid var(--accent);
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 0 0, color-mix(in srgb,var(--accent,#9dff00) 10%,transparent), transparent 18rem),
+      linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+    box-shadow:0 18px 60px rgba(0,0,0,.18);
+  }
+
+  .gc-profile-avatar-card-v13__preview{
+    width:96px;
+    height:96px;
+  }
+
+  .gc-profile-avatar-card-v13 h3{
+    margin:0;
+    color:var(--text);
+    font-size:1.12rem;
+    line-height:1;
+    text-transform:uppercase;
+    letter-spacing:-.035em;
+  }
+
+  .gc-profile-avatar-card-v13 p{
+    margin:8px 0 0;
+    color:var(--soft);
+    line-height:1.45;
+  }
+
+  .gc-profile-avatar-card-v13__actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+  }
+
+  .gc-profile-avatar-card-v13__status{
+    margin-top:10px;
+    color:var(--dim);
+    font-size:.82rem;
+    line-height:1.35;
+  }
+
+  .gc-profile-avatar-card-v13 input[type="file"]{
+    display:none;
+  }
+
+  .gc-profile-avatar-card-v13.is-disabled{
+    opacity:.72;
+  }
+
+  @media(max-width:720px){
+    .gc-profile-avatar-card-v13{
+      grid-template-columns:1fr;
+      justify-items:center;
+      text-align:center;
+    }
+
+    .gc-profile-avatar-card-v13__actions{
+      width:100%;
+    }
+
+    .gc-profile-avatar-card-v13__actions .gc-btn{
+      width:100%;
+    }
+
+    .gc-pilot-detail-avatar-block{
+      justify-items:center;
+    }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+    const cache = new Map();
+    const isPilotSystemPage = () => /^\/perfil\/?$/.test(location.pathname) || /^\/pilotos(?:\/|$)/.test(location.pathname);
+    if (!isPilotSystemPage()) return;
+
+    const avatarUrl = (playerId, bust = '') => {
+      const id = String(playerId || '').trim();
+      if (!id) return DEFAULT_AVATAR;
+      return `/api/pilot-avatar/${encodeURIComponent(id)}${bust ? `?v=${encodeURIComponent(bust)}` : ''}`;
+    };
+
+    const cleanText = (value, fallback = '') => String(value ?? fallback).trim().replace(/\s+/g, ' ');
+    const escapeHtml = (value) => cleanText(value).replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+
+    const playerIdFromHref = (href) => {
+      try {
+        const url = new URL(href, window.location.origin);
+        const match = url.pathname.match(/^\/pilotos\/([^/]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+      } catch {
+        const match = String(href || '').match(/\/pilotos\/([^/?#]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+      }
+    };
+
+    const makeAvatar = (playerId, sizeClass, alt = 'Avatar piloto', bust = '') => {
+      const frame = document.createElement('span');
+      frame.className = `gc-pilot-avatar-frame ${sizeClass}`;
+      frame.dataset.gcAvatarFor = String(playerId || 'default');
+      const img = document.createElement('img');
+      img.className = 'gc-pilot-avatar-img';
+      img.src = avatarUrl(playerId, bust);
+      img.alt = alt;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
+      frame.appendChild(img);
+      return frame;
+    };
+
+    function enhancePilotCards() {
+      document.querySelectorAll('.gc-pilot-card-v9').forEach((card) => {
+        if (card.dataset.gcAvatarEnhanced === 'true') return;
+        const link = card.querySelector('a[href*="/pilotos/"]');
+        const playerId = playerIdFromHref(link?.getAttribute('href') || '');
+        if (!playerId) return;
+        const top = card.querySelector('.gc-pilot-card-v9__top');
+        const name = card.querySelector('.gc-pilot-card-v9__name')?.textContent || 'Piloto';
+        if (!top) return;
+        top.insertBefore(makeAvatar(playerId, 'gc-pilot-avatar-card', `Avatar de ${name}`), top.firstChild);
+        card.dataset.gcAvatarEnhanced = 'true';
+      });
+    }
+
+    function enhancePilotRows() {
+      document.querySelectorAll('.gc-pilotos-table-v9 tbody tr').forEach((row) => {
+        if (row.dataset.gcAvatarEnhanced === 'true') return;
+        const link = row.querySelector('a[href*="/pilotos/"]');
+        const playerId = playerIdFromHref(link?.getAttribute('href') || '');
+        if (!playerId) return;
+        const nameCell = row.querySelector('td:nth-child(2)');
+        const nameBlock = nameCell?.querySelector('.gc-piloto-name-v9');
+        const subBlock = nameCell?.querySelector('.gc-piloto-sub-v9');
+        if (!nameCell || !nameBlock) return;
+
+        const textWrap = document.createElement('span');
+        textWrap.appendChild(nameBlock);
+        if (subBlock) textWrap.appendChild(subBlock);
+
+        const wrap = document.createElement('span');
+        wrap.className = 'gc-pilot-row-avatar-wrap';
+        wrap.appendChild(makeAvatar(playerId, 'gc-pilot-avatar-row', `Avatar de ${nameBlock.textContent || 'piloto'}`));
+        wrap.appendChild(textWrap);
+
+        nameCell.innerHTML = '';
+        nameCell.appendChild(wrap);
+        row.dataset.gcAvatarEnhanced = 'true';
+      });
+    }
+
+    function enhancePilotDetail() {
+      const match = location.pathname.match(/^\/pilotos\/([^/]+)/);
+      if (!match) return;
+      const playerId = decodeURIComponent(match[1]);
+      const main = document.querySelector('.gc-pilot-hero-v20__main');
+      if (!main || main.dataset.gcAvatarEnhanced === 'true') return;
+      const title = document.getElementById('pilotTitle')?.textContent || `Piloto ${playerId}`;
+      const block = document.createElement('div');
+      block.className = 'gc-pilot-detail-avatar-block';
+      block.appendChild(makeAvatar(playerId, 'gc-pilot-avatar-detail', `Avatar de ${title}`));
+      const label = document.createElement('small');
+      label.textContent = 'Avatar de piloto';
+      block.appendChild(label);
+      main.insertBefore(block, main.firstChild);
+      main.dataset.gcAvatarEnhanced = 'true';
+    }
+
+    async function resizeImageToDataUrl(file) {
+      if (!file || !file.type.startsWith('image/')) throw new Error('Selecciona una imagen válida.');
+      const maxInputBytes = 8 * 1024 * 1024;
+      if (file.size > maxInputBytes) throw new Error('La imagen pesa demasiado. Prueba con una imagen menor de 8 MB.');
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+        reader.readAsDataURL(file);
+      });
+
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen.'));
+        img.src = dataUrl;
+      });
+
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#050805';
+      ctx.fillRect(0, 0, size, size);
+
+      const sourceSize = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height);
+      const sx = ((image.naturalWidth || image.width) - sourceSize) / 2;
+      const sy = ((image.naturalHeight || image.height) - sourceSize) / 2;
+      ctx.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size);
+      return canvas.toDataURL('image/jpeg', 0.9);
+    }
+
+    function setAvatarStatus(card, text, tone = '') {
+      const status = card.querySelector('[data-avatar-status]');
+      if (!status) return;
+      status.textContent = text || '';
+      status.style.color = tone === 'ok' ? 'var(--accent)' : tone === 'error' ? 'var(--danger,var(--warn))' : 'var(--dim)';
+    }
+
+    function setAvatarBusy(card, busy) {
+      card.querySelectorAll('button, label.gc-btn, input').forEach((el) => {
+        if (el.tagName === 'LABEL') el.style.pointerEvents = busy ? 'none' : '';
+        else el.disabled = Boolean(busy);
+      });
+    }
+
+    async function loadMyAvatar() {
+      if (cache.has('me')) return cache.get('me');
+      const response = await fetch('/api/pilot-avatar/me', { credentials:'include', cache:'no-store' });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error(data?.message || 'No se pudo cargar el avatar.');
+      cache.set('me', data);
+      return data;
+    }
+
+    function setupProfileAvatar() {
+      if (!/^\/perfil\/?$/.test(location.pathname)) return;
+      const target = document.querySelector('.gc-profile-link-card-v1');
+      if (!target || document.querySelector('[data-gc-profile-avatar-card]')) return;
+
+      const card = document.createElement('div');
+      card.className = 'gc-profile-avatar-card-v13';
+      card.dataset.gcProfileAvatarCard = 'true';
+      card.innerHTML = `
+        <span class="gc-pilot-avatar-frame gc-profile-avatar-card-v13__preview">
+          <img class="gc-pilot-avatar-img" src="${DEFAULT_AVATAR}" alt="Avatar del piloto" loading="lazy" />
+        </span>
+        <div>
+          <h3>Avatar de piloto</h3>
+          <p>Imagen pública para tu ficha de piloto. Si no subes nada, se usará el avatar base de GrassCutters.</p>
+          <div class="gc-profile-avatar-card-v13__actions">
+            <label class="gc-btn gc-btn--primary" for="gcPilotAvatarInput">Subir avatar</label>
+            <input id="gcPilotAvatarInput" type="file" accept="image/png,image/jpeg,image/webp" />
+            <button class="gc-btn" type="button" data-avatar-reset>Usar base GC</button>
+          </div>
+          <div class="gc-profile-avatar-card-v13__status" data-avatar-status>Cargando avatar...</div>
+        </div>
+      `;
+
+      target.insertBefore(card, target.querySelector('#linkedPilot') || target.firstChild);
+
+      const img = card.querySelector('img');
+      const input = card.querySelector('input[type="file"]');
+      const reset = card.querySelector('[data-avatar-reset]');
+
+      loadMyAvatar().then((data) => {
+        img.src = data.avatarUrl || DEFAULT_AVATAR;
+        const disabled = !data.linked;
+        card.classList.toggle('is-disabled', disabled);
+        input.disabled = disabled;
+        reset.disabled = disabled;
+        setAvatarStatus(card, disabled ? 'Primero vincula tu cuenta con un piloto para subir avatar.' : (data.isDefault ? 'Usando avatar base GC.' : 'Avatar personalizado activo.'), disabled ? 'error' : '');
+      }).catch((error) => {
+        card.classList.add('is-disabled');
+        input.disabled = true;
+        reset.disabled = true;
+        setAvatarStatus(card, error.message || 'No se pudo cargar el sistema de avatar.', 'error');
+      });
+
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        setAvatarBusy(card, true);
+        setAvatarStatus(card, 'Preparando imagen...');
+        try {
+          const imageData = await resizeImageToDataUrl(file);
+          img.src = imageData;
+          setAvatarStatus(card, 'Subiendo avatar...');
+          const response = await fetch('/api/pilot-avatar/me', {
+            method:'POST',
+            credentials:'include',
+            cache:'no-store',
+            headers:{ 'Content-Type':'application/json' },
+            body:JSON.stringify({ imageData, fileName:file.name })
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.ok) throw new Error(data?.message || 'No se pudo subir el avatar.');
+          cache.delete('me');
+          const bust = Date.now();
+          img.src = `${data.avatarUrl || DEFAULT_AVATAR}${String(data.avatarUrl || '').includes('?') ? '&' : '?'}local=${bust}`;
+          refreshAvatars(data.playerId, bust);
+          setAvatarStatus(card, 'Avatar actualizado.', 'ok');
+        } catch (error) {
+          setAvatarStatus(card, error.message || 'No se pudo subir el avatar.', 'error');
+        } finally {
+          setAvatarBusy(card, false);
+          input.value = '';
+        }
+      });
+
+      reset.addEventListener('click', async () => {
+        setAvatarBusy(card, true);
+        setAvatarStatus(card, 'Restableciendo avatar base...');
+        try {
+          const response = await fetch('/api/pilot-avatar/me', { method:'DELETE', credentials:'include', cache:'no-store' });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.ok) throw new Error(data?.message || 'No se pudo restablecer el avatar.');
+          cache.delete('me');
+          img.src = DEFAULT_AVATAR;
+          refreshAvatars(data.playerId, Date.now());
+          setAvatarStatus(card, 'Avatar base GC activo.', 'ok');
+        } catch (error) {
+          setAvatarStatus(card, error.message || 'No se pudo restablecer el avatar.', 'error');
+        } finally {
+          setAvatarBusy(card, false);
+        }
+      });
+    }
+
+    function refreshAvatars(playerId, bust) {
+      if (!playerId) return;
+      document.querySelectorAll(`[data-gc-avatar-for="${CSS.escape(String(playerId))}"] img`).forEach((img) => {
+        img.src = avatarUrl(playerId, bust);
+      });
+    }
+
+    function enhanceAll() {
+      enhancePilotCards();
+      enhancePilotRows();
+      enhancePilotDetail();
+      setupProfileAvatar();
+    }
+
+    enhanceAll();
+    const observer = new MutationObserver(() => enhanceAll());
+    observer.observe(document.body, { childList:true, subtree:true });
+  })();
+</script>
