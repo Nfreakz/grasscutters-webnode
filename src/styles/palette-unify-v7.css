@@ -1,113 +1,96 @@
-/* GrassCutters palette unification v7.5
-   Single source for app sidebar, tool nav dropdown, cursor hooks and scroll-to-top.
-   Keep AppLayout.astro focused on structure. */
+/* GrassCutters palette unification v7.6
+   Single source for app sidebar, palette-aware cursor and scroll-to-top positioning.
+   It intentionally relies on --bg, --bg2, --accent and --accent2 because ThemeSwitcher updates those variables directly. */
 
-/* Theme variables */
-html[data-theme="grasscutters"]{
-  --gc-sidebar-palette-bg:#061008;
-  --gc-sidebar-palette-bg2:#0a170c;
-  --gc-sidebar-palette-edge:#9dff00;
-  --gc-sidebar-palette-edge2:#35d3ff;
-  --gc-mouse-palette:#9dff00;
-  --gc-mouse-palette-2:#35d3ff;
+html[data-gc-scope="app"]{
+  --gc-rail-glow: color-mix(in srgb, var(--accent, #9dff00) 28%, transparent);
+  --gc-rail-glow-soft: color-mix(in srgb, var(--accent, #9dff00) 12%, transparent);
+  --gc-rail-edge: color-mix(in srgb, var(--accent, #9dff00) 54%, transparent);
+  --gc-rail-bg-a: color-mix(in srgb, var(--bg, #061008) 88%, #000);
+  --gc-rail-bg-b: color-mix(in srgb, var(--bg2, #0a170c) 72%, #000);
+  --gc-cursor-size: 38px;
 }
 
-html[data-theme="ocean"]{
-  --gc-sidebar-palette-bg:#041014;
-  --gc-sidebar-palette-bg2:#071923;
-  --gc-sidebar-palette-edge:#31d8ff;
-  --gc-sidebar-palette-edge2:#00ffb3;
-  --gc-mouse-palette:#31d8ff;
-  --gc-mouse-palette-2:#00ffb3;
+html[data-gc-scope="app"] body{
+  --gc-sidebar-palette-bg: var(--bg, #061008);
+  --gc-sidebar-palette-bg2: var(--bg2, #0a170c);
+  --gc-sidebar-palette-edge: var(--accent, #9dff00);
+  --gc-mouse-palette: var(--accent, #9dff00);
+  --gc-mouse-palette-2: var(--accent2, #35d3ff);
 }
 
-html[data-theme="violet"]{
-  --gc-sidebar-palette-bg:#0c0816;
-  --gc-sidebar-palette-bg2:#141024;
-  --gc-sidebar-palette-edge:#ad7cff;
-  --gc-sidebar-palette-edge2:#72d2ff;
-  --gc-mouse-palette:#ad7cff;
-  --gc-mouse-palette-2:#72d2ff;
-}
-
-html[data-theme="amber"]{
-  --gc-sidebar-palette-bg:#100b05;
-  --gc-sidebar-palette-bg2:#171006;
-  --gc-sidebar-palette-edge:#ffb23e;
-  --gc-sidebar-palette-edge2:#ffe066;
-  --gc-mouse-palette:#ffb23e;
-  --gc-mouse-palette-2:#ffe066;
-}
-
-html[data-theme="crimson"]{
-  --gc-sidebar-palette-bg:#12070b;
-  --gc-sidebar-palette-bg2:#1a0c11;
-  --gc-sidebar-palette-edge:#ff5872;
-  --gc-sidebar-palette-edge2:#ffb84d;
-  --gc-mouse-palette:#ff5872;
-  --gc-mouse-palette-2:#ffb84d;
-}
-
-html[data-theme="mono"]{
-  --gc-sidebar-palette-bg:#080908;
-  --gc-sidebar-palette-bg2:#111312;
-  --gc-sidebar-palette-edge:#d7dad5;
-  --gc-sidebar-palette-edge2:#8c948e;
-  --gc-mouse-palette:#d7dad5;
-  --gc-mouse-palette-2:#8c948e;
-}
-
-/* App rail / sidebar */
-.gc-rail{
+/* App sidebar: stronger selectors than global.css, driven by the active ThemeSwitcher variables. */
+html[data-gc-scope="app"] .gc-rail{
   background:
-    radial-gradient(
-      circle at 50% 0%,
-      color-mix(in srgb, var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) 15%, transparent),
-      transparent 24rem
-    ),
-    radial-gradient(
-      circle at 8% 72%,
-      color-mix(in srgb, var(--gc-sidebar-palette-edge2,var(--accent2,#35d3ff)) 7%, transparent),
-      transparent 18rem
-    ),
-    linear-gradient(
-      180deg,
-      var(--gc-sidebar-palette-bg,var(--bg,#061008)),
-      var(--gc-sidebar-palette-bg2,var(--bg2,#0a170c))
-    ) !important;
-  border-right-color:color-mix(in srgb, var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) 32%, transparent) !important;
-}
-
-.gc-rail::before{
-  background:
-    linear-gradient(
-      180deg,
-      var(--gc-sidebar-palette-edge,var(--accent,#9dff00)),
-      color-mix(in srgb, var(--gc-sidebar-palette-edge2,var(--accent2,#35d3ff)) 55%, transparent),
-      transparent
-    ) !important;
-  opacity:.42;
-}
-
-.gc-rail a[aria-current="page"],
-.gc-railnav__child[aria-current="page"],
-.gc-railnav__group.is-open .gc-railnav__parent{
-  border-left-color:var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) !important;
-}
-
-.gc-railnav a[aria-current="page"],
-.gc-railnav__child[aria-current="page"]{
+    radial-gradient(circle at 50% 0%, var(--gc-rail-glow), transparent 19rem),
+    radial-gradient(circle at 0% 26%, color-mix(in srgb, var(--accent2, #35d3ff) 10%, transparent), transparent 17rem),
+    linear-gradient(180deg, var(--gc-rail-bg-a), var(--gc-rail-bg-b)) !important;
+  border-right-color: var(--gc-rail-edge) !important;
   box-shadow:
-    inset 4px 0 0 var(--gc-sidebar-palette-edge,var(--accent,#9dff00)),
-    0 0 28px color-mix(in srgb, var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) 10%, transparent) !important;
+    24px 0 80px rgba(0,0,0,.28),
+    inset -1px 0 0 color-mix(in srgb, var(--accent, #9dff00) 18%, transparent) !important;
 }
 
-.gc-live-dot{
-  background:var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) !important;
-  box-shadow:0 0 18px color-mix(in srgb, var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) 55%, transparent) !important;
+html[data-gc-scope="app"] .gc-rail::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:220px;
+  pointer-events:none;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--accent, #9dff00) 16%, transparent), transparent);
+  opacity:.82;
 }
 
-/* App rail dropdown: Herramientas */
+html[data-gc-scope="app"] .gc-shell::before{
+  background:linear-gradient(180deg, transparent, var(--accent, #9dff00), transparent) !important;
+  box-shadow:0 0 24px color-mix(in srgb, var(--accent, #9dff00) 48%, transparent);
+}
+
+html[data-gc-scope="app"] .gc-brand{
+  position:relative;
+  z-index:1;
+  border-bottom-color:color-mix(in srgb, var(--accent, #9dff00) 20%, var(--line, rgba(255,255,255,.12))) !important;
+}
+
+html[data-gc-scope="app"] .gc-brand__mark--logo{
+  background:transparent !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent, #9dff00) 22%, transparent),
+    0 0 34px color-mix(in srgb, var(--accent, #9dff00) 20%, transparent) !important;
+  border-radius:16px;
+}
+
+html[data-gc-scope="app"] .gc-railnav{
+  position:relative;
+  z-index:1;
+}
+
+html[data-gc-scope="app"] .gc-railnav a,
+html[data-gc-scope="app"] .gc-railnav__parent{
+  border-radius:14px;
+}
+
+html[data-gc-scope="app"] .gc-railnav a:hover,
+html[data-gc-scope="app"] .gc-railnav a[aria-current="page"],
+html[data-gc-scope="app"] .gc-railnav__child[aria-current="page"],
+html[data-gc-scope="app"] .gc-railnav__group.is-open .gc-railnav__parent{
+  background:color-mix(in srgb, var(--accent, #9dff00) 10%, transparent) !important;
+  border-left-color:var(--accent, #9dff00) !important;
+  color:var(--text, #f4fff1) !important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent, #9dff00) 10%, transparent);
+}
+
+html[data-gc-scope="app"] .gc-railnav a[aria-current="page"] span,
+html[data-gc-scope="app"] .gc-railnav__child[aria-current="page"] span{
+  color:var(--accent, #9dff00) !important;
+}
+
+html[data-gc-scope="app"] .gc-live-dot{
+  background:var(--accent, #9dff00) !important;
+  box-shadow:0 0 18px color-mix(in srgb, var(--accent, #9dff00) 65%, transparent) !important;
+}
+
+/* Sidebar dropdown. Kept here so AppLayout stays structural. */
 .gc-railnav__group{
   display:grid;
   gap:4px;
@@ -118,54 +101,55 @@ html[data-theme="mono"]{
   appearance:none;
   -webkit-appearance:none;
   display:grid;
-  grid-template-columns:36px minmax(0,1fr) auto;
+  grid-template-columns:34px minmax(0,1fr) auto;
   align-items:center;
-  gap:12px;
+  gap:10px;
   min-height:48px;
-  padding:0 14px;
+  padding:12px 11px;
   border:1px solid transparent;
+  border-left:2px solid transparent;
   background:transparent !important;
-  color:var(--text);
+  color:var(--soft);
   text-align:left;
   font:inherit;
   cursor:pointer;
   text-transform:uppercase;
   letter-spacing:.08em;
+  font-size:.82rem;
+  font-weight:850;
+  transition:background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
 }
 
 .gc-railnav__parent:hover{
-  border-color:color-mix(in srgb, var(--gc-sidebar-palette-edge,var(--accent,#9dff00)) 22%, transparent);
-  background:rgba(255,255,255,.018) !important;
+  background:rgba(255,255,255,.052) !important;
+  color:var(--text);
+  border-left-color:var(--accent);
+  transform:translateX(3px);
 }
 
 .gc-railnav__parent span{
-  color:var(--muted);
+  color:var(--dim);
   font-size:.72rem;
-  font-weight:950;
-  letter-spacing:.06em;
+  font-weight:900;
+  letter-spacing:.04em;
 }
 
 .gc-railnav__parent strong{
-  color:var(--text);
-  font-size:.94rem;
-  font-weight:950;
+  color:inherit;
+  font-size:.82rem;
+  font-weight:850;
   min-width:0;
 }
 
 .gc-railnav__parent em{
   color:var(--muted);
   font-style:normal;
-  transition:transform .16s ease,color .16s ease;
-}
-
-.gc-railnav__group.is-open .gc-railnav__parent{
-  background:transparent !important;
-  border-color:transparent;
+  transition:transform .16s ease, color .16s ease;
 }
 
 .gc-railnav__group.is-open .gc-railnav__parent em{
   transform:rotate(180deg);
-  color:var(--gc-sidebar-palette-edge,var(--accent,#9dff00));
+  color:var(--accent);
 }
 
 .gc-railnav__children{
@@ -198,56 +182,70 @@ html[data-theme="mono"]{
   opacity:1;
 }
 
-/* Cursor / pointer hooks.
-   These are deliberately broad enough to catch current or future custom cursor class names. */
-.gc-cursor,
-.gc-custom-cursor,
-.custom-cursor,
-.cursor-dot,
-.cursor-ring,
-.mouse-cursor,
-.mouse-dot,
-.gc-pointer,
-.gc-pointer-dot,
-.gc-pointer-ring,
-[data-cursor],
-[data-cursor-dot],
-[data-custom-cursor],
-[data-gc-cursor],
-[data-gc-pointer]{
-  border-color:var(--gc-mouse-palette,var(--accent,#9dff00)) !important;
-  color:var(--gc-mouse-palette,var(--accent,#9dff00)) !important;
+/* Palette-aware custom app cursor. The native cursor remains visible; this adds the coloured GC tracking halo. */
+.gc-app-cursor{
+  position:fixed;
+  left:0;
+  top:0;
+  width:var(--gc-cursor-size);
+  height:var(--gc-cursor-size);
+  pointer-events:none;
+  z-index:2147483647;
+  border:1px solid color-mix(in srgb, var(--accent, #9dff00) 78%, transparent);
+  border-radius:999px;
+  opacity:0;
+  transform:translate3d(-100px, -100px, 0) translate(-50%, -50%);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--gc-mouse-palette,var(--accent,#9dff00)) 32%, transparent),
-    0 0 22px color-mix(in srgb, var(--gc-mouse-palette,var(--accent,#9dff00)) 38%, transparent) !important;
+    0 0 0 1px color-mix(in srgb, var(--accent, #9dff00) 22%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent, #9dff00) 42%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--accent2, #35d3ff) 14%, transparent);
+  mix-blend-mode:screen;
+  transition:
+    opacity .16s ease,
+    width .16s ease,
+    height .16s ease,
+    border-color .16s ease,
+    box-shadow .16s ease;
 }
 
-.gc-cursor-core,
-.cursor-core,
-.gc-pointer-core,
-[data-cursor-core],
-[data-gc-cursor-core],
-[data-gc-pointer-core]{
-  background:
-    linear-gradient(
-      135deg,
-      var(--gc-mouse-palette,var(--accent,#9dff00)),
-      var(--gc-mouse-palette-2,var(--accent2,#35d3ff))
-    ) !important;
+.gc-app-cursor__dot{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:linear-gradient(135deg, var(--accent, #9dff00), var(--accent2, #35d3ff));
+  box-shadow:0 0 18px color-mix(in srgb, var(--accent, #9dff00) 70%, transparent);
+  transform:translate(-50%, -50%);
 }
 
-/* Selection and focus details pick up the active palette too. */
-::selection{
-  background:color-mix(in srgb, var(--gc-mouse-palette,var(--accent,#9dff00)) 34%, transparent);
-  color:var(--text,#ffffff);
+html[data-gc-scope="app"].gc-app-cursor-ready .gc-app-cursor{
+  opacity:.95;
 }
 
-:focus-visible{
-  outline-color:var(--gc-sidebar-palette-edge,var(--accent,#9dff00));
+html[data-gc-scope="app"].gc-app-cursor-hover .gc-app-cursor{
+  width:54px;
+  height:54px;
+  border-color:color-mix(in srgb, var(--accent2, #35d3ff) 84%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent2, #35d3ff) 25%, transparent),
+    0 0 30px color-mix(in srgb, var(--accent, #9dff00) 45%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--accent2, #35d3ff) 18%, transparent);
 }
 
-/* Scroll-to-top.
-   ThemeSwitcher creates .gc-floating-scrolltop, so this stays focused and avoids catching random buttons. */
+html[data-gc-scope="app"].gc-app-cursor-down .gc-app-cursor{
+  width:30px;
+  height:30px;
+}
+
+@media (pointer:coarse), (prefers-reduced-motion:reduce){
+  .gc-app-cursor{
+    display:none !important;
+  }
+}
+
+/* Keep the scroll-to-top away from the footer and consistent in marketing/app. */
 .gc-floating-scrolltop,
 .gc-backtop,
 .gc-back-top,
@@ -258,13 +256,12 @@ html[data-theme="mono"]{
 [data-backtop],
 [data-back-top],
 [data-back-to-top],
-[data-scroll-top]{
-  position:fixed !important;
-  top:auto !important;
-  left:auto !important;
-  right:max(18px, env(safe-area-inset-right)) !important;
+[data-scroll-top],
+[aria-label*="Volver"],
+[aria-label*="volver"],
+[title*="Volver"],
+[title*="volver"]{
   bottom:clamp(126px, 13vh, 190px) !important;
-  z-index:80 !important;
 }
 
 @media(max-width:720px){
@@ -278,8 +275,161 @@ html[data-theme="mono"]{
   [data-backtop],
   [data-back-top],
   [data-back-to-top],
-  [data-scroll-top]{
+  [data-scroll-top],
+  [aria-label*="Volver"],
+  [aria-label*="volver"],
+  [title*="Volver"],
+  [title*="volver"]{
     right:14px !important;
-    bottom:max(82px, env(safe-area-inset-bottom)) !important;
+    bottom:clamp(92px, 12vh, 150px) !important;
   }
 }
+
+
+/* GC native SVG cursor v9.7 - START */
+/*
+  Loaded from palette-unify-v7.css on purpose. Both MarketingLayout and AppLayout
+  already import this stylesheet, so DevTools should no longer show only
+  the user-agent cursor on links. No DOM cursor and no JS.
+*/
+
+html[data-theme="grasscutters"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-grasscutters.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-grasscutters-hover.svg') 4 2, auto;
+}
+
+html[data-theme="ocean"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-ocean.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-ocean-hover.svg') 4 2, auto;
+}
+
+html[data-theme="violet"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-violet.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-violet-hover.svg') 4 2, auto;
+}
+
+html[data-theme="amber"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-amber.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-amber-hover.svg') 4 2, auto;
+}
+
+html[data-theme="crimson"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-crimson.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-crimson-hover.svg') 4 2, auto;
+}
+
+html[data-theme="mono"]{
+  --gc-native-cursor:url('/cursors/gc-cursor-v97-mono.svg') 3 2, auto;
+  --gc-native-cursor-link:url('/cursors/gc-cursor-v97-mono-hover.svg') 4 2, auto;
+}
+
+html,
+body,
+.gc-public-body,
+.gc-shell,
+.gc-app,
+.gc-public-main{
+  cursor:var(--gc-native-cursor, auto) !important;
+}
+
+a,
+a *,
+button,
+button *,
+summary,
+summary *,
+label,
+label *,
+.gc-btn,
+.gc-btn *,
+.gc-home-cta,
+.gc-home-cta *,
+.gc-public-brand,
+.gc-public-brand *,
+.gc-public-nav a,
+.gc-public-nav a *,
+.gc-public-link,
+.gc-public-link *,
+.gc-feature-link,
+.gc-feature-link *,
+.gc-row,
+.gc-row *,
+.gc-row-link,
+.gc-row-link *,
+.gc-card[href],
+.gc-card[href] *,
+.gc-app-action-card-v3,
+.gc-app-action-card-v3 *,
+.gc-home-floating-logo-absolute[data-gc-hero-logo],
+.gc-home-floating-logo-absolute[data-gc-hero-logo] *,
+.gc-theme__trigger,
+.gc-theme__trigger *,
+.gc-theme__option,
+.gc-theme__option *,
+.gc-auth-logout,
+.gc-auth-logout *,
+[role="button"],
+[role="button"] *,
+[role="link"],
+[role="link"] *,
+[tabindex]:not([tabindex="-1"]),
+[tabindex]:not([tabindex="-1"]) *{
+  cursor:var(--gc-native-cursor-link, var(--gc-native-cursor, auto)) !important;
+}
+
+a:hover,
+a:hover *,
+a:active,
+a:active *,
+a:focus,
+a:focus *,
+a:focus-visible,
+a:focus-visible *,
+button:hover,
+button:hover *,
+button:active,
+button:active *,
+button:focus,
+button:focus *,
+button:focus-visible,
+button:focus-visible *,
+.gc-btn:hover,
+.gc-btn:hover *,
+.gc-btn:active,
+.gc-btn:active *,
+.gc-home-cta:hover,
+.gc-home-cta:hover *,
+.gc-home-cta:active,
+.gc-home-cta:active *,
+.gc-public-brand:hover,
+.gc-public-brand:hover *,
+.gc-public-brand:active,
+.gc-public-brand:active *,
+.gc-home-floating-logo-absolute[data-gc-hero-logo]:hover,
+.gc-home-floating-logo-absolute[data-gc-hero-logo]:hover *,
+.gc-home-floating-logo-absolute[data-gc-hero-logo]:active,
+.gc-home-floating-logo-absolute[data-gc-hero-logo]:active *,
+.gc-app-action-card-v3:hover,
+.gc-app-action-card-v3:hover *,
+.gc-app-action-card-v3:active,
+.gc-app-action-card-v3:active *{
+  cursor:var(--gc-native-cursor-link, var(--gc-native-cursor, auto)) !important;
+}
+
+input,
+input *,
+textarea,
+textarea *,
+[contenteditable="true"],
+[contenteditable="true"] *,
+[contenteditable="plaintext-only"],
+[contenteditable="plaintext-only"] *{
+  cursor:text !important;
+}
+
+select,
+select *,
+option{
+  cursor:auto !important;
+}
+/* GC native SVG cursor v9.7 - END */
