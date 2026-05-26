@@ -213,6 +213,29 @@ async function loadLogoDataUri(): Promise<string | null> {
   }
 }
 
+
+async function loadFontCss(): Promise<string> {
+  const candidates = [
+    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-700-normal.woff2'),
+    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-600-normal.woff2'),
+    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-500-normal.woff2'),
+  ];
+
+  const fonts: string[] = [];
+  for (const fontPath of candidates) {
+    try {
+      const file = await fs.readFile(fontPath);
+      const weightMatch = fontPath.match(/-(\d+)-normal\.woff2$/);
+      const weight = weightMatch?.[1] || '700';
+      fonts.push(`@font-face{font-family:GCRajdhani;src:url(data:font/woff2;base64,${file.toString('base64')}) format('woff2');font-weight:${weight};font-style:normal;font-display:block;}`);
+    } catch {
+      // optional fallback
+    }
+  }
+
+  return fonts.join('\n');
+}
+
 function uniqueStrings(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -424,8 +447,8 @@ function resolveActiveContext(combos: GenericRecord[], hotlaps: GenericRecord[],
   };
 }
 
-function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDataUri: string | null; error?: string }) {
-  const { context, totalHotlaps, logoDataUri, error } = params;
+function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDataUri: string | null; fontCss: string; error?: string }) {
+  const { context, totalHotlaps, logoDataUri, fontCss, error } = params;
   const updated = new Date().toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
   const trackText = truncate(context.track || 'Track por detectar', 22);
   const carsText = context.cars.length ? truncate(context.cars.join(' + '), 36) : 'Coche por detectar';
@@ -447,15 +470,15 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
     const timeFill = index === 0 ? '#b8ff5f' : '#eaf4ea';
     return `
       <rect x="18" y="${y - 23}" width="374" height="36" rx="10" fill="${bg}" />
-      <text x="30" y="${y}" fill="#9cff3f" font-size="13" font-weight="800" font-family="Inter, Arial, sans-serif">${esc(row.pos)}</text>
-      <text x="68" y="${y}" fill="#ffffff" font-size="13" font-weight="700" font-family="Inter, Arial, sans-serif">${esc(row.driver)}</text>
-      <text x="166" y="${y}" fill="#8fa598" font-size="12" font-family="Inter, Arial, sans-serif">${esc(row.car)}</text>
-      <text x="374" y="${y}" text-anchor="end" fill="${timeFill}" font-size="13" font-weight="800" font-family="'JetBrains Mono', 'Courier New', monospace">${esc(row.time)}</text>`;
+      <text x="30" y="${y}" fill="#9cff3f" font-size="13" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">${esc(row.pos)}</text>
+      <text x="68" y="${y}" fill="#ffffff" font-size="13" font-weight="700" font-family="GCRajdhani, Arial, sans-serif">${esc(row.driver)}</text>
+      <text x="166" y="${y}" fill="#8fa598" font-size="12" font-family="GCRajdhani, Arial, sans-serif">${esc(row.car)}</text>
+      <text x="374" y="${y}" text-anchor="end" fill="${timeFill}" font-size="13" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">${esc(row.time)}</text>`;
   }).join('');
 
   const logoMarkup = logoDataUri
     ? `<image href="${logoDataUri}" x="22" y="18" width="78" height="78" preserveAspectRatio="xMidYMid meet" />`
-    : `<text x="26" y="56" fill="#9cff3f" font-size="22" font-weight="900" font-family="Inter, Arial, sans-serif">GC</text>`;
+    : `<text x="26" y="56" fill="#9cff3f" font-size="22" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">GC</text>`;
 
   const footerInfo = error
     ? `API: ${error}`
@@ -480,6 +503,10 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
         <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
+    <style>
+      ${fontCss}
+      text{font-family:GCRajdhani,Arial,sans-serif;paint-order:stroke fill;stroke:transparent;stroke-width:0;}
+    </style>
 
     <rect width="420" height="940" fill="url(#bg)" />
     <circle cx="20" cy="44" r="120" fill="#76ff03" opacity="0.12" filter="url(#glowGreen)" />
@@ -488,38 +515,38 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
     <rect x="10" y="10" width="400" height="4" rx="2" fill="url(#heroLine)" />
 
     ${logoMarkup}
-    <text x="110" y="42" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="Inter, Arial, sans-serif">GRASSCUTTERS AC SERVER</text>
-    <text x="110" y="72" fill="#ffffff" font-size="27" font-weight="900" letter-spacing="-0.8" font-family="Inter, Arial, sans-serif">Paddock live</text>
-    <text x="110" y="94" fill="#c5d2c8" font-size="12.5" font-family="Inter, Arial, sans-serif">Combo actual y tiempos reales.</text>
+    <text x="110" y="42" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">GRASSCUTTERS AC SERVER</text>
+    <text x="110" y="72" fill="#ffffff" font-size="27" font-weight="900" letter-spacing="-0.8" font-family="GCRajdhani, Arial, sans-serif">Paddock live</text>
+    <text x="110" y="94" fill="#c5d2c8" font-size="12.5" font-family="GCRajdhani, Arial, sans-serif">Combo actual y tiempos reales.</text>
 
     <rect x="18" y="122" width="384" height="128" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(134,255,93,0.12)" />
-    <text x="30" y="152" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="Inter, Arial, sans-serif">COMBO ACTUAL</text>
-    <text x="30" y="189" fill="#ffffff" font-size="20" font-weight="900" letter-spacing="-0.6" font-family="Inter, Arial, sans-serif">${esc(trackText || 'Track por detectar')}</text>
-    <text x="30" y="217" fill="#d4e1d6" font-size="10.5" font-family="Inter, Arial, sans-serif">${esc(carsText)}</text>
+    <text x="30" y="152" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">COMBO ACTUAL</text>
+    <text x="30" y="189" fill="#ffffff" font-size="20" font-weight="900" letter-spacing="-0.6" font-family="GCRajdhani, Arial, sans-serif">${esc(trackText || 'Track por detectar')}</text>
+    <text x="30" y="217" fill="#d4e1d6" font-size="10.5" font-family="GCRajdhani, Arial, sans-serif">${esc(carsText)}</text>
 
     <rect x="264" y="144" width="1" height="76" fill="rgba(255,255,255,0.08)" />
-    <text x="282" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="Inter, Arial, sans-serif">VUELTAS</text>
-    <text x="282" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="Inter, Arial, sans-serif">${esc(context.totalLaps || '--')}</text>
-    <text x="342" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="Inter, Arial, sans-serif">PIL.</text>
-    <text x="342" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="Inter, Arial, sans-serif">${esc(context.drivers || '--')}</text>
-    <text x="282" y="216" fill="#9ab0a0" font-size="8.5" font-family="Inter, Arial, sans-serif">Act.: ${esc(updated)}</text>
+    <text x="282" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="GCRajdhani, Arial, sans-serif">VUELTAS</text>
+    <text x="282" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">${esc(context.totalLaps || '--')}</text>
+    <text x="342" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="GCRajdhani, Arial, sans-serif">PIL.</text>
+    <text x="342" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">${esc(context.drivers || '--')}</text>
+    <text x="282" y="216" fill="#9ab0a0" font-size="8.5" font-family="GCRajdhani, Arial, sans-serif">Act.: ${esc(updated)}</text>
 
     <rect x="18" y="274" width="384" height="500" rx="16" fill="rgba(5,11,8,0.88)" stroke="rgba(43,206,228,0.18)" />
-    <text x="30" y="306" fill="#25d6e6" font-size="10" font-weight="800" letter-spacing="2" font-family="Inter, Arial, sans-serif">TOP HOTLAPS</text>
-    <text x="30" y="336" fill="#ffffff" font-size="18" font-weight="900" letter-spacing="-0.5" font-family="Inter, Arial, sans-serif">Solo del combo actual</text>
-    <text x="30" y="360" fill="#93a79a" font-size="9.5" font-family="Inter, Arial, sans-serif">${esc(HOTLAPS_URL.replace('https://',''))}</text>
+    <text x="30" y="306" fill="#25d6e6" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">TOP HOTLAPS</text>
+    <text x="30" y="336" fill="#ffffff" font-size="18" font-weight="900" letter-spacing="-0.5" font-family="GCRajdhani, Arial, sans-serif">Solo del combo actual</text>
+    <text x="30" y="360" fill="#93a79a" font-size="9.5" font-family="GCRajdhani, Arial, sans-serif">${esc(HOTLAPS_URL.replace('https://',''))}</text>
 
-    <text x="30" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="Inter, Arial, sans-serif">#</text>
-    <text x="68" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="Inter, Arial, sans-serif">PILOTO</text>
-    <text x="166" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="Inter, Arial, sans-serif">COCHE</text>
-    <text x="374" y="386" text-anchor="end" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="Inter, Arial, sans-serif">TIEMPO</text>
+    <text x="30" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">#</text>
+    <text x="68" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">PILOTO</text>
+    <text x="166" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">COCHE</text>
+    <text x="374" y="386" text-anchor="end" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">TIEMPO</text>
 
     ${rowSvgs}
 
     <rect x="18" y="796" width="384" height="116" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(161,255,95,0.12)" />
-    <text x="30" y="825" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="1.8" font-family="Inter, Arial, sans-serif">COMUNIDAD</text>
-    <text x="30" y="860" fill="#ffffff" font-size="12" font-weight="800" font-family="Inter, Arial, sans-serif">grasscuttersracing.com</text>
-    <text x="30" y="914" fill="#97ae9f" font-size="8.2" font-family="Inter, Arial, sans-serif">${esc(truncate(footerInfo, 72))}</text>
+    <text x="30" y="825" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="1.8" font-family="GCRajdhani, Arial, sans-serif">COMUNIDAD</text>
+    <text x="30" y="860" fill="#ffffff" font-size="12" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">grasscuttersracing.com</text>
+    <text x="30" y="914" fill="#97ae9f" font-size="8.2" font-family="GCRajdhani, Arial, sans-serif">${esc(truncate(footerInfo, 72))}</text>
   </svg>`;
 }
 
@@ -563,8 +590,8 @@ export async function GET({ request }: { request: Request }) {
     error = err?.message || String(err);
   }
 
-  const logoDataUri = await loadLogoDataUri();
-  const svg = buildSvg({ context, totalHotlaps, logoDataUri, error });
+  const [logoDataUri, fontCss] = await Promise.all([loadLogoDataUri(), loadFontCss()]);
+  const svg = buildSvg({ context, totalHotlaps, logoDataUri, fontCss, error });
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
