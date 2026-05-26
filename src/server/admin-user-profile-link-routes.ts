@@ -1,7 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import express from 'express';
+import {
+  DEFAULT_PILOT_AVATAR_URL,
+  deleteAvatarForAuth,
+  getAvatarMeta,
+  readAvatarImage,
+  saveAvatarForAuth,
+  type AvatarAuthContext,
+} from '../lib/pilot-avatars';
 
 type PilotPayload = {
   playerId?: unknown;
@@ -233,8 +242,192 @@ async function unlinkMysql(userId: string) {
 }
 
 const linkPilotJsonBody = express.json({ limit: '64kb' });
+const avatarJsonBody = express.json({ limit: '4mb' });
+
+function parseCookies(header: string | undefined) {
+  const cookies: Record<string, string> = {};
+  if (!header) return cookies;
+
+  header.split(';').forEach((part) => {
+    const index = part.indexOf('=');
+    if (index === -1) return;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (key) cookies[key] = decodeURIComponent(value);
+  });
+
+  return cookies;
+}
+
+function readSessionToken(req: Request) {
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies.gc_session) return cookies.gc_session;
+
+  const auth = String(req.headers.authorization || '');
+  if (auth.startsWith('Bearer ')) return auth.slice('Bearer '.length).trim();
+
+  return '';
+}
+
+function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function compactText(value: unknown) {
+  const text = String(value ?? '').trim().replace(/\s+/g, ' ');
+  return text || null;
+}
+
+function mysqlDate(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(value);
+}
+
+function avatarAuthUserFromRow(row: any) {
+  return {
+    id: String(row.id),
+    email: String(row.email || ''),
+    displayName: String(row.display_name || row.displayName || row.email || 'Piloto'),
+    role: String(row.role || 'pilot'),
+    pilotLink: row.pilot_player_id == null && row.pilotPlayerId == null && row.pilotLink?.playerId == null ? null : {
+      playerId: Number(row.pilot_player_id ?? row.pilotPlayerId ?? row.pilotLink?.playerId),
+      steamGuid: compactText(row.pilot_steam_guid ?? row.pilotSteamGuid ?? row.pilotLink?.steamGuid),
+      strackerName: compactText(row.pilot_stracker_name ?? row.pilotStrackerName ?? row.pilotLink?.strackerName) || 'Piloto vinculado',
+      linkedAt: mysqlDate(row.pilot_linked_at ?? row.pilotLinkedAt ?? row.pilotLink?.linkedAt ?? row.updated_at ?? row.updatedAt) || new Date().toISOString(),
+    },
+  };
+}
+
+async function getAvatarAuthMysql(req: Request): Promise<AvatarAuthContext | null> {
+  const token = readSessionToken(req);
+  if (!token) return null;
+
+  const connection = await getMysqlConnection();
+  try {
+    const [rows]: any = await connection.execute(
+      `SELECT u.*
+       FROM gc_sessions s
+       INNER JOIN gc_users u ON u.id = s.user_id
+       WHERE s.token_hash = ? AND s.expires_at > UTC_TIMESTAMP(3)
+       LIMIT 1`,
+      [hashToken(token)],
+    );
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) return null;
+    return { user: avatarAuthUserFromRow(row), source: 'mysql' };
+  } finally {
+    await connection.end();
+  }
+}
+
+function getAvatarAuthJson(rootDir: string, req: Request): AvatarAuthContext | null {
+  const token = readSessionToken(req);
+  if (!token) return null;
+
+  const { store } = readUsersStore(rootDir);
+  const session = store.sessions.find((item: any) => item?.tokenHash === hashToken(token) && Date.parse(String(item?.expiresAt || '')) > Date.now());
+  if (!session) return null;
+
+  const user = store.users.find((item: any) => String(item?.id || '') === String(session.userId || ''));
+  if (!user) return null;
+
+  return { user: avatarAuthUserFromRow(user), source: 'json' };
+}
+
+async function getAvatarAuth(rootDir: string, req: Request): Promise<AvatarAuthContext | null> {
+  const driver = getDriver();
+  if (driver === 'mysql' || driver === 'mariadb') return getAvatarAuthMysql(req);
+  return getAvatarAuthJson(rootDir, req);
+}
+
+function sendAvatarMeta(res: Response, auth: AvatarAuthContext) {
+  const playerId = auth.user.pilotLink?.playerId ?? null;
+  const avatar = playerId ? getAvatarMeta(playerId) : {
+    playerId: null,
+    avatarUrl: DEFAULT_PILOT_AVATAR_URL,
+    isDefault: true,
+    uploadedAt: null,
+  };
+
+  return res.json({
+    ok: true,
+    authenticated: true,
+    linked: Boolean(playerId),
+    user: auth.user,
+    playerId,
+    defaultAvatarUrl: DEFAULT_PILOT_AVATAR_URL,
+    ...avatar,
+  });
+}
+
+function registerPilotAvatarRoutes(app: Express, rootDir: string) {
+  app.get('/api/pilot-avatar/me', async (req: Request, res: Response) => {
+    try {
+      const auth = await getAvatarAuth(rootDir, req);
+      if (!auth) return res.status(401).json({ ok: false, authenticated: false, message: 'Login requerido.' });
+      return sendAvatarMeta(res, auth);
+    } catch (error: any) {
+      console.error('[GC] Error cargando avatar propio:', error);
+      return res.status(500).json({ ok: false, message: error?.message || 'No se pudo cargar el avatar.' });
+    }
+  });
+
+  app.post('/api/pilot-avatar/me', avatarJsonBody, async (req: Request, res: Response) => {
+    try {
+      const auth = await getAvatarAuth(rootDir, req);
+      if (!auth) return res.status(401).json({ ok: false, authenticated: false, message: 'Login requerido.' });
+      if (!auth.user.pilotLink?.playerId) {
+        return res.status(400).json({ ok: false, authenticated: true, linked: false, message: 'Primero vincula tu cuenta con un piloto.' });
+      }
+
+      const result = await saveAvatarForAuth(auth, req.body?.imageData, req.body?.fileName);
+      return res.json({ ok: true, authenticated: true, linked: true, ...result });
+    } catch (error: any) {
+      console.error('[GC] Error subiendo avatar:', error);
+      return res.status(400).json({ ok: false, message: error?.message || 'No se pudo subir el avatar.' });
+    }
+  });
+
+  app.delete('/api/pilot-avatar/me', async (req: Request, res: Response) => {
+    try {
+      const auth = await getAvatarAuth(rootDir, req);
+      if (!auth) return res.status(401).json({ ok: false, authenticated: false, message: 'Login requerido.' });
+      if (!auth.user.pilotLink?.playerId) {
+        return res.status(400).json({ ok: false, authenticated: true, linked: false, message: 'Primero vincula tu cuenta con un piloto.' });
+      }
+
+      const result = await deleteAvatarForAuth(auth);
+      return res.json({ ok: true, authenticated: true, linked: true, ...result });
+    } catch (error: any) {
+      console.error('[GC] Error restableciendo avatar:', error);
+      return res.status(400).json({ ok: false, message: error?.message || 'No se pudo restablecer el avatar.' });
+    }
+  });
+
+  app.get('/api/pilot-avatar/:playerId', (req: Request, res: Response) => {
+    try {
+      const image = readAvatarImage(req.params.playerId);
+      if (!image) {
+        res.redirect(302, DEFAULT_PILOT_AVATAR_URL);
+        return;
+      }
+
+      res.setHeader('Content-Type', image.contentType || 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('X-GC-Avatar-Uploaded-At', image.uploadedAt);
+      res.send(image.buffer);
+    } catch (error) {
+      console.error('[GC] Error sirviendo avatar:', error);
+      res.redirect(302, DEFAULT_PILOT_AVATAR_URL);
+    }
+  });
+}
 
 export function registerAdminUserProfileLinkRoutes(app: Express, { rootDir }: { rootDir: string }) {
+  registerPilotAvatarRoutes(app, rootDir);
+
   app.post('/api/admin/users/:id/link-pilot', linkPilotJsonBody, async (req: Request, res: Response) => {
     try {
       const userId = String(req.params.id || '').trim();

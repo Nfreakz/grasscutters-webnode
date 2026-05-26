@@ -477,6 +477,95 @@
   }
 
 
+
+  /*
+    GC Home combo reference avatar v13.4
+    Adds the best-reference pilot avatar to the home Combo de la semana summary.
+    App/panel avatar was removed from the avatar system because this belongs on Home.
+  */
+  .gc-week-combo__summary-v61{
+    grid-template-columns:minmax(0,1.34fr) minmax(84px,.36fr) minmax(150px,.55fr) minmax(150px,.55fr)!important;
+  }
+
+  .gc-week-combo__avatar-v134{
+    position:relative;
+    display:grid;
+    place-items:center;
+    min-height:104px;
+    padding:14px 16px;
+    border-right:1px solid rgba(255,255,255,.1);
+    text-decoration:none!important;
+    background:
+      radial-gradient(circle at 50% 50%, color-mix(in srgb,var(--gc-mk-accent,var(--accent,#9dff00)) 8%, transparent), transparent 72%),
+      linear-gradient(135deg,rgba(255,255,255,.025),rgba(255,255,255,.012));
+  }
+
+  .gc-week-combo__avatar-frame-v134{
+    position:relative;
+    width:70px;
+    height:70px;
+    display:block;
+    border-radius:999px;
+    padding:2px;
+    background:
+      linear-gradient(135deg,
+        color-mix(in srgb,var(--gc-mk-accent,var(--accent,#9dff00)) 76%,transparent),
+        color-mix(in srgb,var(--gc-mk-accent-2,var(--accent2,#35d3ff)) 58%,transparent)
+      );
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.35),
+      0 0 24px color-mix(in srgb,var(--gc-mk-accent,var(--accent,#9dff00)) 22%,transparent);
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+
+  .gc-week-combo__avatar-frame-v134::after{
+    content:"";
+    position:absolute;
+    inset:-7px;
+    border-radius:inherit;
+    background:radial-gradient(circle, color-mix(in srgb,var(--gc-mk-accent,var(--accent,#9dff00)) 18%,transparent), transparent 68%);
+    filter:blur(10px);
+    opacity:.78;
+    z-index:-1;
+    pointer-events:none;
+  }
+
+  .gc-week-combo__avatar-img-v134{
+    display:block;
+    width:100%;
+    height:100%;
+    border-radius:999px;
+    object-fit:cover;
+    background:#050805;
+  }
+
+  .gc-week-combo__avatar-v134:hover .gc-week-combo__avatar-frame-v134{
+    transform:translateY(-1px) scale(1.025);
+    filter:saturate(1.06);
+    box-shadow:
+      0 18px 42px rgba(0,0,0,.40),
+      0 0 34px color-mix(in srgb,var(--gc-mk-accent,var(--accent,#9dff00)) 30%,transparent);
+  }
+
+  @media(max-width:980px){
+    .gc-week-combo__summary-v61{
+      grid-template-columns:1fr!important;
+    }
+
+    .gc-week-combo__avatar-v134{
+      min-height:94px;
+      border-right:0;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      padding:12px 16px;
+    }
+
+    .gc-week-combo__avatar-frame-v134{
+      width:68px;
+      height:68px;
+    }
+  }
+
+
 </style>
 
 <script is:inline>
@@ -513,3 +602,163 @@
   })();
 </script>
 
+
+
+<script is:inline>
+  (() => {
+    if (window.location.pathname.replace(/\/$/, '') !== '') return;
+
+    const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+    const shellId = 'gcWeekComboAvatarV134';
+
+    const clean = (value, fallback = '') => String(value ?? fallback).trim().replace(/\s+/g, ' ');
+    const normalize = (value) => clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+    const getValueAt = (source, path) => {
+      if (!source || typeof source !== 'object') return undefined;
+      if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+      return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+    };
+
+    const first = (source, paths) => {
+      for (const path of paths) {
+        const value = getValueAt(source, path);
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return '';
+    };
+
+    const items = (data) => {
+      if (Array.isArray(data)) return data;
+      if (!data || typeof data !== 'object') return [];
+      return data.items || data.data || data.results || data.hotlaps || data.laps || data.combos || data.pilots || data.drivers || [];
+    };
+
+    const playerIdFromAny = (row) => first(row, [
+      'playerId','PlayerId','driverId','pilotId','id',
+      'driver.id','player.id','pilot.id',
+      'bestPlayerId','bestDriverId','leaderPlayerId','fastestPlayerId',
+      'bestLap.playerId','bestLap.PlayerId','bestLap.driverId','bestLap.driver.id','bestLap.player.id','bestLap.pilot.id'
+    ]);
+
+    const pilotNameFromAny = (row) => clean(first(row, [
+      'displayName','visibleName','cleanName','driverName','playerName','pilotName','name','Name',
+      'driver.displayName','driver.visibleName','driver.name','player.displayName','player.name',
+      'bestDriverName','fastestDriverName','leaderName',
+      'bestLap.driverName','bestLap.playerName','bestLap.name','bestLap.driver','bestLap.player','bestLap.driver.name','bestLap.player.name'
+    ]), 'Referencia');
+
+    async function fetchMaybeJson(url) {
+      try {
+        const response = await fetch(url, { credentials:'include', cache:'no-store' });
+        if (!response.ok) return null;
+        return await response.json().catch(() => null);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function ensureShell() {
+      const summary = document.querySelector('.gc-week-combo__summary-v61');
+      if (!summary) return null;
+
+      let shell = document.getElementById(shellId);
+      if (shell) return shell;
+
+      shell = document.createElement('a');
+      shell.id = shellId;
+      shell.className = 'gc-week-combo__avatar-v134';
+      shell.href = '/pilotos';
+      shell.setAttribute('aria-label', 'Avatar del piloto con mejor referencia');
+      shell.innerHTML = `
+        <span class="gc-week-combo__avatar-frame-v134" data-gc-home-combo-avatar-frame>
+          <img class="gc-week-combo__avatar-img-v134" src="${DEFAULT_AVATAR}" alt="Avatar del piloto de referencia" loading="lazy" decoding="async" />
+        </span>
+      `;
+
+      const secondCell = summary.children[1] || null;
+      summary.insertBefore(shell, secondCell);
+      return shell;
+    }
+
+    async function resolveHomeReferencePilot() {
+      const domName = clean(document.getElementById('gcWeekComboBestDriver')?.textContent || '');
+      let playerId = '';
+      let name = domName || 'Referencia';
+
+      const [combosData, bestData, recentData, pilotsData] = await Promise.all([
+        fetchMaybeJson('/api/combos/stats?limit=300&sort=recent'),
+        fetchMaybeJson('/api/hotlaps?limit=12'),
+        fetchMaybeJson('/api/laps?limit=12&sort=recent&valid=all'),
+        fetchMaybeJson('/api/pilots?limit=800&valid=all')
+      ]);
+
+      const combos = items(combosData).filter(Boolean).sort((a, b) => {
+        const aLaps = Number(first(a, ['totalLaps','laps','lapCount','visibleLaps']) || 0);
+        const bLaps = Number(first(b, ['totalLaps','laps','lapCount','visibleLaps']) || 0);
+        const aDate = Date.parse(first(a, ['lastActivityIso','lastSeenAt','latestLapAt','updatedAt','lastActivity','timestampIso']) || '') || 0;
+        const bDate = Date.parse(first(b, ['lastActivityIso','lastSeenAt','latestLapAt','updatedAt','lastActivity','timestampIso']) || '') || 0;
+        return bDate - aDate || bLaps - aLaps;
+      });
+
+      const source = combos[0] || items(bestData)[0] || items(recentData)[0] || null;
+      if (source) {
+        playerId = clean(playerIdFromAny(source));
+        name = clean(pilotNameFromAny(source), name);
+      }
+
+      if ((!playerId || name === 'Referencia') && domName && domName !== 'Pendiente') {
+        name = domName;
+      }
+
+      const pilots = items(pilotsData);
+      if (!playerId && name && pilots.length) {
+        const needle = normalize(name);
+        const match = pilots.find((pilot) => normalize(pilotNameFromAny(pilot)) === needle)
+          || pilots.find((pilot) => {
+            const candidate = normalize(pilotNameFromAny(pilot));
+            return candidate && needle && (candidate.includes(needle) || needle.includes(candidate));
+          });
+        if (match) {
+          playerId = clean(playerIdFromAny(match));
+          name = clean(pilotNameFromAny(match), name);
+        }
+      }
+
+      return { playerId, name: name || 'Referencia' };
+    }
+
+    async function updateHomeAvatar() {
+      const shell = ensureShell();
+      if (!shell) return;
+      const img = shell.querySelector('img');
+      const frame = shell.querySelector('[data-gc-home-combo-avatar-frame]');
+      try {
+        const pilot = await resolveHomeReferencePilot();
+        if (pilot.playerId) {
+          const url = `/api/pilot-avatar/${encodeURIComponent(pilot.playerId)}?v=${Date.now()}`;
+          if (img) {
+            img.src = url;
+            img.alt = `Avatar de ${pilot.name}`;
+            img.onerror = () => { img.onerror = null; img.src = DEFAULT_AVATAR; };
+          }
+          if (frame) frame.dataset.gcAvatarFor = String(pilot.playerId);
+          shell.href = `/pilotos/${encodeURIComponent(pilot.playerId)}`;
+          shell.setAttribute('aria-label', `Abrir ficha de ${pilot.name}`);
+          shell.title = pilot.name;
+        } else {
+          if (img) img.src = DEFAULT_AVATAR;
+          shell.href = '/pilotos';
+          shell.title = 'Pilotos GrassCutters';
+        }
+      } catch (_) {
+        if (img) img.src = DEFAULT_AVATAR;
+      }
+    }
+
+    ensureShell();
+    window.setTimeout(updateHomeAvatar, 500);
+    window.setTimeout(updateHomeAvatar, 1500);
+    window.setTimeout(updateHomeAvatar, 3200);
+  })();
+</script>
