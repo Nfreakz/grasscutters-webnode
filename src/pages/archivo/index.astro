@@ -16,25 +16,22 @@ import {
 
 const stats = await getArchiveStats();
 const items = stats.items || [];
-const types = stats.types || [];
+const types = (stats.types || []).filter((type) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(type.tipo));
 
-const featured = items
-  .filter((item) => getArchiveImage(item) || getArchiveSummary(item))
-  .slice(0, 1)[0] || items[0] || null;
+const itemsWithImage = items.filter((item) => getArchiveImage(item));
+const featured = itemsWithImage[0] || items[0] || null;
+const secondaryFeatured = items.filter((item) => item.slug !== featured?.slug).slice(0, 3);
+const latest = items.slice(0, 12);
 
-const latest = items.slice(0, 9);
-const highlighted = items.filter((item) => item.slug !== featured?.slug).slice(0, 4);
+const heroImage = featured ? getArchiveImage(featured) : '';
+const heroStyle = heroImage ? `--archive-hero-image:url('${String(heroImage).replace(/'/g, '%27')}');` : '';
 
-const searchPayload = items.map((item) => ({
-  title: item.nombre,
-  type: item.tipo,
-  typeLabel: prettifyArchiveType(item.tipo),
-  href: archiveItemHref(item),
-  summary: getArchiveSummary(item),
-  country: getArchiveCountry(item),
-  period: getArchivePeriod(item),
-  image: getArchiveImage(item),
-}));
+const typeIntros = {
+  circuitos: 'Trazados, datos técnicos, zonas clave y contexto de conducción.',
+  coches: 'Modelos, versiones de competición, mecánica e historial deportivo.',
+  pilotos: 'Trayectorias, palmarés, estilo de pilotaje y etapas clave.',
+  glosario: 'Conceptos de pilotaje, técnica, competición y cultura motorsport.',
+};
 
 const pageTitle = 'Archivo GrassCutters | Circuitos, coches, pilotos y glosario';
 const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas de circuitos, coches, pilotos y conceptos técnicos del motorsport.';
@@ -42,19 +39,25 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
 
 <MarketingLayout bodyClass="gc-archive-public" title={pageTitle} description={pageDescription} canonicalPath="/archivo/">
   <main class="gc-archive-home" data-archive-home>
-    <section class="gc-archive-home__hero">
+    <section class={`gc-archive-home__hero ${heroImage ? 'has-image' : ''}`} style={heroStyle}>
       <div class="gc-archive-home__hero-copy">
         <span class="gc-archive-home__eyebrow">Archivo GrassCutters</span>
-        <h1>La biblioteca viva del motorsport.</h1>
+        <h1>Un archivo para leer el motorsport con calma.</h1>
         <p>
-          Circuitos, coches, pilotos y conceptos ordenados como dossiers visuales: datos técnicos,
-          contexto, historia, imágenes y relaciones entre fichas.
+          Circuitos, coches, pilotos y conceptos conectados como dossiers: datos útiles, contexto,
+          imágenes, referencias y relaciones entre fichas.
         </p>
 
         <form class="gc-archive-home__search" role="search" aria-label="Buscar en el archivo">
           <label for="archiveHomeSearch">Buscar en el archivo</label>
           <div>
-            <input id="archiveHomeSearch" type="search" placeholder="Busca Mugello, GT2, piloto, motor, trazado..." data-archive-search-input autocomplete="off" />
+            <input
+              id="archiveHomeSearch"
+              type="search"
+              placeholder="Busca Mugello, GT2, piloto, motor, trazado..."
+              data-archive-search-input
+              autocomplete="off"
+            />
             <button type="button" data-archive-clear>Limpiar</button>
           </div>
           <small><span data-archive-result-count>{items.length}</span> fichas visibles</small>
@@ -62,17 +65,18 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
 
         <div class="gc-archive-home__actions">
           <a href="#archivo-catalogo">Explorar catálogo</a>
-          <a href="/archivo/circuitos/">Ver circuitos</a>
+          <a href={featured ? archiveItemHref(featured) : '/archivo/circuitos/'}>{featured ? 'Abrir destacado' : 'Ver circuitos'}</a>
         </div>
       </div>
 
-      <aside class="gc-archive-home__index-card">
+      <aside class="gc-archive-home__command-card" aria-label="Resumen del archivo">
         <span>Índice actual</span>
         <strong>{items.length}</strong>
         <p>fichas publicadas</p>
+
         <div>
           {types.map((type) => (
-            <a href={archiveTypeHref(type.tipo)} data-archive-type-link={type.tipo}>
+            <a href={archiveTypeHref(type.tipo)}>
               <span>{type.label}</span>
               <strong>{type.count}</strong>
             </a>
@@ -81,27 +85,28 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       </aside>
     </section>
 
-    <section class="gc-archive-home__type-strip" aria-label="Categorías principales">
+    <section class="gc-archive-home__types" aria-label="Categorías principales">
       {types.map((type) => (
-        <a href={archiveTypeHref(type.tipo)} data-archive-type={type.tipo} aria-pressed="false">
-          <small>{type.singular}</small>
+        <a href={archiveTypeHref(type.tipo)} data-home-type-card={type.tipo}>
+          <span>{type.singular}</span>
           <strong>{type.label}</strong>
-          <span>{type.count} ficha{type.count === 1 ? '' : 's'}</span>
+          <p>{typeIntros[type.tipo] || 'Fichas del archivo.'}</p>
+          <small>{type.count} ficha{type.count === 1 ? '' : 's'}</small>
         </a>
       ))}
     </section>
 
     {featured && (
-      <section class="gc-archive-home__featured">
+      <section class="gc-archive-home__spotlight">
         <article>
-          <div>
+          <div class="gc-archive-home__spotlight-copy">
             <span class="gc-archive-home__eyebrow">Dossier destacado</span>
             <h2>{featured.nombre}</h2>
             <p>{getArchiveSummary(featured) || 'Ficha destacada del archivo.'}</p>
 
             <dl>
               <div>
-                <dt>Tipo</dt>
+                <dt>Ficha</dt>
                 <dd>{singularArchiveType(featured.tipo)}</dd>
               </div>
               {getArchiveCountry(featured) && (
@@ -122,7 +127,9 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
           </div>
 
           {getArchiveImage(featured) ? (
-            <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="eager" />
+            <figure>
+              <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="eager" />
+            </figure>
           ) : (
             <div class="gc-archive-home__visual-mark">
               <span>{singularArchiveType(featured.tipo)}</span>
@@ -133,22 +140,32 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       </section>
     )}
 
-    {highlighted.length > 0 && (
-      <section class="gc-archive-home__editorial">
+    {secondaryFeatured.length > 0 && (
+      <section class="gc-archive-home__routes">
         <div class="gc-archive-home__section-head">
           <div>
-            <span class="gc-archive-home__eyebrow">Conexiones</span>
-            <h2>Fichas para navegar sin perder el hilo.</h2>
+            <span class="gc-archive-home__eyebrow">Rutas de lectura</span>
+            <h2>Entra por una ficha y sigue el hilo.</h2>
           </div>
-          <p>El archivo no funciona como una lista plana: cada ficha puede conectar con coches, circuitos, pilotos y conceptos relacionados.</p>
+          <p>
+            El archivo está pensado para saltar entre trazados, coches, pilotos y conceptos sin perder el contexto.
+          </p>
         </div>
 
-        <div class="gc-archive-home__editorial-grid">
-          {highlighted.map((item) => (
+        <div class="gc-archive-home__routes-grid">
+          {secondaryFeatured.map((item) => (
             <a href={archiveItemHref(item)}>
-              <small>{prettifyArchiveType(item.tipo)}</small>
-              <strong>{item.nombre}</strong>
-              <p>{getArchiveSummary(item) || getArchiveCountry(item) || getArchivePeriod(item)}</p>
+              {getArchiveImage(item) ? (
+                <img src={getArchiveImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />
+              ) : (
+                <span class="gc-archive-home__route-mark">{singularArchiveType(item.tipo)}</span>
+              )}
+
+              <div>
+                <small>{prettifyArchiveType(item.tipo)}</small>
+                <strong>{item.nombre}</strong>
+                <p>{getArchiveSummary(item) || getArchiveCountry(item) || getArchivePeriod(item) || 'Ficha del archivo.'}</p>
+              </div>
             </a>
           ))}
         </div>
@@ -159,7 +176,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       <div class="gc-archive-home__section-head">
         <div>
           <span class="gc-archive-home__eyebrow">Catálogo</span>
-          <h2>Explorar archivo.</h2>
+          <h2>Todas las fichas.</h2>
         </div>
         <p>Filtra por categoría o busca por título, país, época, motor, equipo, trazado o concepto.</p>
       </div>
@@ -179,13 +196,14 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
               href={archiveItemHref(item)}
               data-archive-card
               data-type={item.tipo}
-              data-search={`${item.nombre} ${item.slug} ${item.tipo} ${prettifyArchiveType(item.tipo)} ${getArchiveSummary(item)} ${getArchiveCountry(item)} ${getArchivePeriod(item)} ${item.tags || ''} ${item.fabricante || ''} ${item.motor || ''}`}
+              data-search={`${item.nombre} ${item.slug} ${item.tipo} ${prettifyArchiveType(item.tipo)} ${getArchiveSummary(item)} ${getArchiveCountry(item)} ${getArchivePeriod(item)} ${item.tags || ''} ${item.fabricante || ''} ${item.motor || ''} ${item.disciplina || ''}`}
             >
               {getArchiveImage(item) ? (
                 <img src={getArchiveImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />
               ) : (
                 <span class="gc-archive-home__card-mark">{singularArchiveType(item.tipo)}</span>
               )}
+
               <div>
                 <small>{prettifyArchiveType(item.tipo)}</small>
                 <strong>{item.nombre}</strong>
@@ -213,7 +231,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     </section>
   </main>
 
-  <script define:vars={{ searchPayload }}>
+  <script>
     const root = document.querySelector('[data-archive-home]');
     const input = root?.querySelector('[data-archive-search-input]');
     const clearBtn = root?.querySelector('[data-archive-clear]');
@@ -277,7 +295,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       --archive-line:rgba(202,255,188,.13);
       --archive-line-strong:rgba(156,255,63,.28);
       --archive-accent:var(--accent,#9cff3f);
-      width:min(100%,1420px);
+      width:min(100%,1460px);
       margin:0 auto;
       padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(72px,8vw,124px);
       color:var(--text,#f2f7ef);
@@ -292,10 +310,10 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     .gc-archive-home__hero{
       position:relative;
       display:grid;
-      grid-template-columns:minmax(0,1.08fr) minmax(300px,.42fr);
+      grid-template-columns:minmax(0,1.05fr) minmax(300px,.43fr);
       gap:clamp(18px,3vw,36px);
       align-items:stretch;
-      min-height:clamp(520px,70vh,760px);
+      min-height:clamp(500px,64vh,700px);
       padding:clamp(24px,4.5vw,56px);
       border:1px solid var(--archive-line);
       border-radius:38px;
@@ -308,7 +326,21 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       box-shadow:0 40px 130px rgba(0,0,0,.32);
     }
 
-    .gc-archive-home__hero::before{
+    .gc-archive-home__hero.has-image::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background:
+        linear-gradient(90deg, rgba(0,9,4,.93) 0%, rgba(0,9,4,.78) 50%, rgba(0,9,4,.38) 100%),
+        var(--archive-hero-image);
+      background-size:cover;
+      background-position:center;
+      opacity:.26;
+      filter:saturate(.9) contrast(1.08);
+      pointer-events:none;
+    }
+
+    .gc-archive-home__hero::after{
       content:"";
       position:absolute;
       inset:0;
@@ -321,11 +353,15 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     }
 
     .gc-archive-home__hero-copy,
-    .gc-archive-home__index-card{position:relative;z-index:1}
+    .gc-archive-home__command-card{
+      position:relative;
+      z-index:1;
+    }
 
     .gc-archive-home__hero-copy{
       display:grid;
       align-content:center;
+      min-width:0;
     }
 
     .gc-archive-home__eyebrow{
@@ -338,9 +374,9 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     }
 
     .gc-archive-home h1{
-      max-width:950px;
+      max-width:1020px;
       margin:.35rem 0 .9rem;
-      font-size:clamp(4rem,9vw,10.2rem);
+      font-size:clamp(3.8rem,8.2vw,8.9rem);
       line-height:.79;
       letter-spacing:-.1em;
     }
@@ -350,16 +386,16 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       margin:0;
       color:var(--soft,#b6c5b8);
       font-size:clamp(1.05rem,1.45vw,1.34rem);
-      line-height:1.56;
+      line-height:1.58;
     }
 
     .gc-archive-home__search{
-      width:min(100%,820px);
+      width:min(100%,840px);
       margin-top:clamp(24px,3.4vw,42px);
       padding:12px;
       border:1px solid var(--archive-line);
       border-radius:24px;
-      background:rgba(0,0,0,.28);
+      background:rgba(0,0,0,.30);
       backdrop-filter:blur(14px);
     }
 
@@ -419,7 +455,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     }
 
     .gc-archive-home__actions a,
-    .gc-archive-home__featured a{
+    .gc-archive-home__spotlight a{
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -438,18 +474,18 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       border:1px solid rgba(255,255,255,.13);
     }
 
-    .gc-archive-home__index-card{
+    .gc-archive-home__command-card{
       display:grid;
       align-content:end;
       gap:16px;
       padding:clamp(20px,2.5vw,30px);
       border:1px solid rgba(255,255,255,.10);
       border-radius:30px;
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.018));
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.020));
       backdrop-filter:blur(16px);
     }
 
-    .gc-archive-home__index-card > span{
+    .gc-archive-home__command-card > span{
       color:var(--archive-accent);
       font-size:.74rem;
       font-weight:950;
@@ -457,25 +493,25 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       text-transform:uppercase;
     }
 
-    .gc-archive-home__index-card > strong{
-      font-size:clamp(5rem,9vw,8rem);
+    .gc-archive-home__command-card > strong{
+      font-size:clamp(4.4rem,8vw,7.4rem);
       line-height:.78;
       letter-spacing:-.09em;
     }
 
-    .gc-archive-home__index-card > p{
-      margin:-12px 0 8px;
+    .gc-archive-home__command-card > p{
+      margin:-10px 0 8px;
       color:var(--soft,#b6c5b8);
     }
 
-    .gc-archive-home__index-card div{
+    .gc-archive-home__command-card div{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:10px;
     }
 
-    .gc-archive-home__index-card a{
-      min-height:86px;
+    .gc-archive-home__command-card a{
+      min-height:82px;
       display:grid;
       gap:8px;
       padding:13px;
@@ -483,9 +519,16 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       border-radius:18px;
       background:rgba(0,0,0,.18);
       text-decoration:none;
+      transition:border-color .16s ease, background .16s ease, transform .16s ease;
     }
 
-    .gc-archive-home__index-card a span{
+    .gc-archive-home__command-card a:hover{
+      transform:translateY(-1px);
+      border-color:var(--archive-line-strong);
+      background:rgba(255,255,255,.034);
+    }
+
+    .gc-archive-home__command-card a span{
       color:var(--muted,#7f9184);
       font-size:.72rem;
       font-weight:900;
@@ -493,35 +536,45 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       text-transform:uppercase;
     }
 
-    .gc-archive-home__index-card a strong{
+    .gc-archive-home__command-card a strong{
       font-size:2rem;
       line-height:1;
     }
 
-    .gc-archive-home__type-strip{
+    .gc-archive-home__types{
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
       gap:12px;
-      margin:18px 0 clamp(28px,4vw,54px);
+      margin:18px 0 clamp(30px,4vw,58px);
     }
 
-    .gc-archive-home__type-strip a{
-      min-height:160px;
+    .gc-archive-home__types a{
+      min-height:210px;
       display:grid;
       align-content:end;
-      gap:8px;
+      gap:9px;
       padding:20px;
       border:1px solid var(--archive-line);
-      border-radius:24px;
+      border-radius:26px;
       background:
         radial-gradient(circle at 90% 15%, rgba(156,255,63,.10), transparent 38%),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
       text-decoration:none;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
     }
 
-    .gc-archive-home__type-strip small,
+    .gc-archive-home__types a:hover{
+      transform:translateY(-2px);
+      border-color:var(--archive-line-strong);
+      background:
+        radial-gradient(circle at 90% 15%, rgba(156,255,63,.15), transparent 38%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.018));
+    }
+
+    .gc-archive-home__types span,
     .gc-archive-home__card small,
-    .gc-archive-home__editorial-grid small{
+    .gc-archive-home__routes-grid small,
+    .gc-archive-home__route-mark{
       color:var(--archive-accent);
       font-size:.72rem;
       font-weight:950;
@@ -529,66 +582,74 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       text-transform:uppercase;
     }
 
-    .gc-archive-home__type-strip strong{
-      font-size:clamp(1.55rem,2.6vw,2.35rem);
+    .gc-archive-home__types strong{
+      font-size:clamp(1.55rem,2.5vw,2.25rem);
       line-height:.96;
       letter-spacing:-.055em;
     }
 
-    .gc-archive-home__type-strip span{
+    .gc-archive-home__types p,
+    .gc-archive-home__types small{
       color:var(--soft,#b6c5b8);
+      line-height:1.45;
     }
 
-    .gc-archive-home__featured,
-    .gc-archive-home__editorial,
+    .gc-archive-home__types p{
+      margin:0;
+    }
+
+    .gc-archive-home__spotlight,
+    .gc-archive-home__routes,
     .gc-archive-home__catalogue{
-      margin-top:clamp(26px,4vw,58px);
+      margin-top:clamp(28px,4vw,62px);
     }
 
-    .gc-archive-home__featured article{
+    .gc-archive-home__spotlight article{
       display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(320px,.43fr);
+      grid-template-columns:minmax(0,1fr) minmax(320px,.46fr);
       overflow:hidden;
       border:1px solid var(--archive-line);
-      border-radius:32px;
-      background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+      border-radius:34px;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(156,255,63,.10), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
     }
 
-    .gc-archive-home__featured article > div{
+    .gc-archive-home__spotlight-copy{
       padding:clamp(26px,4vw,48px);
     }
 
-    .gc-archive-home__featured h2,
+    .gc-archive-home__spotlight h2,
     .gc-archive-home__section-head h2{
       margin:.35rem 0 .8rem;
-      font-size:clamp(2.7rem,5.6vw,6.4rem);
+      font-size:clamp(2.6rem,5.2vw,5.9rem);
       line-height:.84;
       letter-spacing:-.09em;
     }
 
-    .gc-archive-home__featured p,
+    .gc-archive-home__spotlight p,
     .gc-archive-home__section-head p,
     .gc-archive-home__card p,
-    .gc-archive-home__editorial-grid p{
+    .gc-archive-home__routes-grid p{
       color:var(--soft,#b6c5b8);
       line-height:1.6;
     }
 
-    .gc-archive-home__featured dl{
+    .gc-archive-home__spotlight dl{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
       gap:10px;
       margin:24px 0;
     }
 
-    .gc-archive-home__featured dl div{
+    .gc-archive-home__spotlight dl div{
       padding:12px;
       border:1px solid rgba(255,255,255,.08);
       border-radius:15px;
       background:rgba(0,0,0,.16);
     }
 
-    .gc-archive-home__featured dt{
+    .gc-archive-home__spotlight dt{
       color:var(--muted,#7f9184);
       font-size:.72rem;
       font-weight:900;
@@ -596,15 +657,21 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       text-transform:uppercase;
     }
 
-    .gc-archive-home__featured dd{
+    .gc-archive-home__spotlight dd{
       margin:6px 0 0;
     }
 
-    .gc-archive-home__featured img{
+    .gc-archive-home__spotlight figure{
+      margin:0;
+      min-height:100%;
+    }
+
+    .gc-archive-home__spotlight img{
       width:100%;
       height:100%;
       min-height:340px;
       object-fit:cover;
+      display:block;
     }
 
     .gc-archive-home__visual-mark{
@@ -620,8 +687,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       background-size:42px 42px;
     }
 
-    .gc-archive-home__visual-mark span,
-    .gc-archive-home__card-mark{
+    .gc-archive-home__visual-mark span{
       color:var(--archive-accent);
       font-size:.78rem;
       font-weight:950;
@@ -648,25 +714,48 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       margin:0;
     }
 
-    .gc-archive-home__editorial-grid{
+    .gc-archive-home__routes-grid{
       display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:12px;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
     }
 
-    .gc-archive-home__editorial-grid a{
-      min-height:220px;
+    .gc-archive-home__routes-grid a{
+      display:grid;
+      grid-template-rows:auto 1fr;
+      overflow:hidden;
+      min-height:360px;
+      border:1px solid var(--archive-line);
+      border-radius:26px;
+      background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+      text-decoration:none;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
+    }
+
+    .gc-archive-home__routes-grid a:hover{
+      transform:translateY(-2px);
+      border-color:var(--archive-line-strong);
+      background:rgba(255,255,255,.032);
+    }
+
+    .gc-archive-home__routes-grid img,
+    .gc-archive-home__route-mark{
+      width:100%;
+      aspect-ratio:16/9;
+      object-fit:cover;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-archive-home__routes-grid div{
       display:grid;
       align-content:end;
-      gap:10px;
-      padding:20px;
-      border:1px solid var(--archive-line);
-      border-radius:24px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
-      text-decoration:none;
+      gap:8px;
+      padding:18px;
     }
 
-    .gc-archive-home__editorial-grid strong{
+    .gc-archive-home__routes-grid strong{
       font-size:1.35rem;
       line-height:1.05;
       letter-spacing:-.04em;
@@ -775,16 +864,16 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
 
     @media(max-width:1120px){
       .gc-archive-home__hero,
-      .gc-archive-home__featured article{
+      .gc-archive-home__spotlight article{
         grid-template-columns:1fr;
         min-height:auto;
       }
 
-      .gc-archive-home__type-strip,
-      .gc-archive-home__editorial-grid{
+      .gc-archive-home__types{
         grid-template-columns:repeat(2,minmax(0,1fr));
       }
 
+      .gc-archive-home__routes-grid,
       .gc-archive-home__grid{
         grid-template-columns:repeat(2,minmax(0,1fr));
       }
@@ -801,14 +890,14 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       }
 
       .gc-archive-home h1{
-        font-size:clamp(3.6rem,18vw,5.8rem);
+        font-size:clamp(3.4rem,17vw,5.7rem);
       }
 
       .gc-archive-home__search div,
-      .gc-archive-home__index-card div,
-      .gc-archive-home__featured dl,
-      .gc-archive-home__type-strip,
-      .gc-archive-home__editorial-grid,
+      .gc-archive-home__command-card div,
+      .gc-archive-home__spotlight dl,
+      .gc-archive-home__types,
+      .gc-archive-home__routes-grid,
       .gc-archive-home__grid{
         grid-template-columns:1fr;
       }
