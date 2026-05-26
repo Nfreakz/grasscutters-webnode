@@ -1,8 +1,6 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
-const currentUrl = new URL(Astro.request.url);
-const origin = currentUrl.origin;
-const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
+const imagePath = '/acsm/loading-card.svg?v=1';
 ---
 
 <AppLayout title="ACSM Loading Card | GrassCutters">
@@ -24,10 +22,10 @@ const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
 
       <aside class="gc-live-panel gc-acsm-card-info">
         <div class="gc-live-panel__title"><span>URL para ACSM</span><strong>Lista</strong></div>
-        <div class="gc-acsm-url-box">{imageUrl}</div>
+        <div class="gc-acsm-url-box" id="acsmImageUrlBox">https://grasscuttersracing.com{imagePath}</div>
         <div class="gc-acsm-actions">
-          <button class="gc-btn gc-btn--primary" type="button" id="copyAcsmCardUrl" data-url={imageUrl}>Copiar URL</button>
-          <a class="gc-btn" href={imageUrl} target="_blank" rel="noreferrer">Abrir imagen</a>
+          <button class="gc-btn gc-btn--primary" type="button" id="copyAcsmCardUrl" data-path={imagePath}>Copiar URL</button>
+          <a class="gc-btn" href={imagePath} target="_blank" rel="noreferrer">Abrir imagen</a>
         </div>
       </aside>
     </section>
@@ -42,7 +40,7 @@ const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
       </div>
 
       <div class="gc-acsm-preview-frame">
-        <img src={imageUrl} alt="GrassCutters ACSM loading card" loading="eager" />
+        <img src={imagePath} alt="GrassCutters ACSM loading card" loading="eager" />
       </div>
     </section>
 
@@ -67,7 +65,7 @@ const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
         <h2>Actualización</h2>
         <p>
           La imagen se recalcula desde la API de la web y se cachea solo 60 segundos. Si quieres forzar refresco rápido, cambia la URL a
-          <code>{`${origin}/acsm/loading-card.svg?v=2`}</code>.
+          <code>https://grasscuttersracing.com/acsm/loading-card.svg?v=2</code>.
         </p>
       </article>
     </section>
@@ -172,9 +170,24 @@ const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
 
   <script>
     const btn = document.getElementById('copyAcsmCardUrl');
+    const box = document.getElementById('acsmImageUrlBox');
+
+    const getPublicImageUrl = () => {
+      const path = btn instanceof HTMLElement ? btn.dataset.path || '/acsm/loading-card.svg?v=1' : '/acsm/loading-card.svg?v=1';
+      return `${window.location.origin}${path}`;
+    };
+
+    const updateDisplayedUrl = () => {
+      const url = getPublicImageUrl();
+      if (box) box.textContent = url;
+      return url;
+    };
+
+    updateDisplayedUrl();
+
     if (btn) {
       btn.addEventListener('click', async () => {
-        const url = btn instanceof HTMLElement ? btn.dataset.url || '' : '';
+        const url = updateDisplayedUrl();
         try {
           await navigator.clipboard.writeText(url);
           btn.textContent = 'URL copiada';

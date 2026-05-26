@@ -134,6 +134,38 @@ function esc(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
+function getHeaderValue(request: Request, names: string[]): string {
+  for (const name of names) {
+    const value = request.headers.get(name);
+    if (value && value.trim()) return value.split(',')[0].trim();
+  }
+  return '';
+}
+
+function getRequestOrigin(request: Request): string {
+  const url = new URL(request.url);
+  const forwardedHost = getHeaderValue(request, ['x-forwarded-host', 'x-original-host']);
+  const host = forwardedHost || getHeaderValue(request, ['host']);
+  const forwardedProto = getHeaderValue(request, ['x-forwarded-proto', 'x-forwarded-scheme']) || url.protocol.replace(':', '') || 'https';
+
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${forwardedProto}://${host}`;
+  }
+
+  const envOrigin =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.PUBLIC_API_BASE_URL) ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.FRONTEND_URL) ||
+    process.env.PUBLIC_API_BASE_URL ||
+    process.env.FRONTEND_URL ||
+    '';
+
+  if (envOrigin && !String(envOrigin).includes('localhost')) {
+    return String(envOrigin).replace(/\/$/, '');
+  }
+
+  return url.origin;
+}
+
 async function fetchJson(origin: string, route: string): Promise<any> {
   const url = new URL(route, origin).toString();
   const response = await fetch(url, { headers: { accept: 'application/json' } });
@@ -285,8 +317,7 @@ function buildSvg(params: {
 }
 
 export async function GET({ request }: { request: Request }) {
-  const requestUrl = new URL(request.url);
-  const origin = requestUrl.origin;
+  const origin = getRequestOrigin(request);
   let combo: any | null = null;
   let topRows: any[] = [];
   let totalHotlaps = 0;
