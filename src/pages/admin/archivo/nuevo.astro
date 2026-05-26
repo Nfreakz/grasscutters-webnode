@@ -209,6 +209,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         tabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.editorTab === groupName));
       }
 
+      function shouldCollectField(field) {
+        const group = field.closest('[data-category-group]');
+        return !group || group.hidden === false;
+      }
+
       function collectPayload() {
         let base = {};
         const advanced = $('advancedJson').value.trim();
@@ -218,8 +223,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         }
 
         const payload = { ...base };
-        fields.forEach((field) => {
+        fields.filter(shouldCollectField).forEach((field) => {
           const name = field.dataset.field;
+          if (!name) return;
           payload[name] = field.value.trim();
         });
 

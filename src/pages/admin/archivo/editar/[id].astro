@@ -278,17 +278,23 @@ const itemId = Astro.params.id;
       }
 
       function getItemValue(item, name) {
-        const aliases = {
-          title: ['title','nombre','name','titulo'],
-          summary: ['summary','descripcion_corta','resumen'],
-          body: ['body','descripcion_larga','texto','content'],
-          category: ['category','categoria_tipo','tipo'],
-        }[name] || [name];
+        const aliasMap = Object.create(null);
+        aliasMap.title = ['title','nombre','name','titulo'];
+        aliasMap.summary = ['summary','descripcion_corta','resumen'];
+        aliasMap.body = ['body','descripcion_larga','texto','content'];
+        aliasMap.category = ['category','categoria_tipo','tipo'];
+
+        const aliases = Array.isArray(aliasMap[name]) ? aliasMap[name] : [name];
         for (const key of aliases) {
           const value = item?.[key];
           if (value !== undefined && value !== null) return value;
         }
         return '';
+      }
+
+      function shouldCollectField(field) {
+        const group = field.closest('[data-category-group]');
+        return !group || group.hidden === false;
       }
 
       function fillForm(item) {
@@ -352,8 +358,9 @@ const itemId = Astro.params.id;
         }
 
         const payload = { ...base };
-        fields.forEach((field) => {
+        fields.filter(shouldCollectField).forEach((field) => {
           const name = field.dataset.field;
+          if (!name) return;
           payload[name] = field.value.trim();
         });
 
