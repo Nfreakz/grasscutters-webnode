@@ -1,0 +1,19 @@
+---
+import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import ArchiveDossierPage from '../../../components/archive/ArchiveDossierPage.astro';
+import { getArchiveItems, getRelatedArchiveItems, normalizeArchiveType } from '../../../lib/archive/archiveData';
+
+export function getStaticPaths() {
+  return getArchiveItems().map((entry) => ({
+    params: { tipo: normalizeArchiveType(entry.tipo), slug: entry.slug },
+    props: { entry, related: getRelatedArchiveItems(entry) },
+  }));
+}
+
+const { entry, related } = Astro.props;
+const description = entry.descripcion_corta || entry.subtitulo || entry.introduccion || `Ficha de ${entry.nombre} en el Archivo.`;
+---
+
+<MarketingLayout bodyClass="gc-archive-public" title={`${entry.nombre} | Archivo`} description={description}>
+  <ArchiveDossierPage entry={entry} related={related} />
+</MarketingLayout>

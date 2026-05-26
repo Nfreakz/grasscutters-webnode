@@ -1,0 +1,33 @@
+---
+import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import '../../../styles/archive-dossier.css';
+import { getArchiveItemsByType, getArchiveTypes, prettifyArchiveType } from '../../../lib/archive/archiveData';
+
+export function getStaticPaths() {
+  return getArchiveTypes().map((type) => ({ params: { tipo: type.tipo }, props: { type } }));
+}
+
+const { type } = Astro.props;
+const items = getArchiveItemsByType(type.tipo);
+const label = prettifyArchiveType(type.tipo);
+---
+
+<MarketingLayout bodyClass="gc-archive-public" title={`${label} | Archivo`} description={`Fichas de ${label.toLowerCase()} en el Archivo.`}>
+  <main class="gc-archive-index">
+    <header class="gc-archive-index__hero">
+      <span>Archivo</span>
+      <h1>{label}</h1>
+      <p>{items.length} fichas disponibles en esta categoría.</p>
+    </header>
+
+    <section class="gc-archive-index__grid">
+      {items.map((item) => (
+        <a class="gc-archive-index__card" href={`/archivo/${item.tipo}/${item.slug}/`}>
+          <small>{item.pais || item.periodo || item.categoria}</small>
+          <strong>{item.nombre}</strong>
+          <p>{item.descripcion_corta || item.subtitulo || item.introduccion}</p>
+        </a>
+      ))}
+    </section>
+  </main>
+</MarketingLayout>

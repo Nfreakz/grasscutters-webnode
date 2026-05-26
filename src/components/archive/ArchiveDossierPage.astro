@@ -1,9 +1,10 @@
 ---
 import '../../styles/archive-dossier.css';
+import { normalizeArchiveType, prettifyArchiveType } from '../../lib/archive/archiveData';
 
 const { entry = {}, related = [] } = Astro.props;
 
-type AnyEntry = Record<string, any>;
+type PairItem = { title: string; text: string; parts: string[] };
 
 const value = (keys: string[], fallback = '') => {
   for (const key of keys) {
@@ -18,7 +19,7 @@ const splitList = (raw: any) => String(raw || '')
   .map((item) => item.trim())
   .filter(Boolean);
 
-const parsePairs = (raw: any) => splitList(raw).map((item) => {
+const parsePairs = (raw: any): PairItem[] => splitList(raw).map((item) => {
   const parts = item.split('::').map((part) => part.trim());
   return {
     title: parts[0] || '',
@@ -34,12 +35,14 @@ const parseSources = (raw: any) => splitList(raw).map((item) => {
 });
 
 const title = value(['nombre', 'name', 'titulo', 'title'], 'Ficha sin título');
-const type = value(['tipo_importacion', 'tipo', 'collection', 'categoria_tipo'], 'Archivo Motorsport');
-const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha del archivo motorsport GrassCutters.');
-const category = value(['categoria', 'category'], 'Ficha motorsport');
+const rawType = value(['tipo', 'tipo_importacion', 'collection', 'categoria_tipo'], 'archivo');
+const type = normalizeArchiveType(rawType);
+const typeLabel = prettifyArchiveType(type);
+const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha del archivo motorsport.');
+const category = value(['categoria', 'category', 'categoria_competicion'], 'Ficha motorsport');
 const country = value(['pais', 'país', 'country'], '');
 const region = value(['region', 'región', 'ciudad', 'ubicacion', 'ubicación'], '');
-const era = value(['epoca', 'época', 'years', 'periodo'], '');
+const period = value(['periodo', 'epoca', 'época', 'years'], '');
 const discipline = value(['disciplina', 'discipline'], '');
 const tags = splitList(value(['tags', 'etiquetas'], ''));
 const imageUrl = value(['imagen_url', 'image_url', 'image', 'foto_url'], '');
@@ -50,53 +53,104 @@ const author = value(['autor', 'author'], 'GrassCutters Racing');
 const license = value(['licencia', 'license'], 'Texto editorial propio con fuentes indicadas.');
 const lastReview = value(['ultima_revision', 'última_revisión', 'last_review'], '');
 
-const quickFacts = [
-  ['Longitud', value(['longitud_km', 'length_km']) ? `${value(['longitud_km', 'length_km'])} km` : ''],
-  ['Curvas', value(['curvas', 'corners'])],
-  ['Recta principal', value(['recta_principal_km', 'main_straight_km']) ? `${value(['recta_principal_km', 'main_straight_km'])} km` : ''],
-  ['Sentido', value(['sentido', 'direction'])],
-  ['Apertura', value(['fecha_apertura', 'apertura', 'opened'])],
-  ['Tipo', value(['tipo_trazado', 'tipo_circuito', 'track_type'], category)],
-  ['País', country],
-  ['Zona', region],
-  ['Época', era],
-  ['Disciplina', discipline],
-].filter(([, v]) => v);
-
-const mainSections = [
-  ['Qué es', value(['que_es', 'qué_es', 'what_is'])],
-  ['Por qué importa', value(['por_que_importa', 'por_qué_importa', 'why_matters'])],
-  ['Cómo se conduce', value(['como_se_conduce', 'cómo_se_conduce', 'driving_notes'])],
+const commonSections = [
+  ['Introducción', value(['introduccion', 'descripcion_larga', 'description_long', 'body'])],
+  ['Contexto histórico', value(['contexto_historico', 'historia', 'historical_context'])],
+  ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
 ].filter(([, text]) => text);
 
-const fallbackLong = value(['descripcion_larga', 'description_long', 'body'], '');
-const keyZones = parsePairs(value(['zonas_clave', 'puntos_clave', 'key_zones'], ''));
-const records = parsePairs(value(['records_destacados', 'records', 'referencias_tiempos'], ''));
-const simTips = parsePairs(value(['consejos_simracing', 'consejos', 'simracing_tips'], ''));
-const anecdotes = parsePairs(value(['anecdotas', 'anécdotas', 'stories'], ''));
-const commonErrors = parsePairs(value(['errores_comunes', 'common_errors'], ''));
-const comboGc = value(['combo_gc', 'combo', 'combo_relacionado'], '');
-const comboCars = splitList(value(['coches_combo', 'combo_cars'], ''));
-const gcReference = value(['referencia_gc', 'gc_reference'], '');
-const gcDifficulty = value(['dificultad_gc', 'gc_difficulty'], '');
-const gcNote = value(['nota_gc', 'gc_note'], '');
-const setupNote = value(['setup_recomendado', 'setup_note'], '');
-const sourceUrl = value(['fuente_url', 'source_url'], '');
-const sources = parseSources(value(['fuentes', 'sources'], sourceUrl));
+const factsByType: Record<string, [string, string][]> = {
+  circuitos: [
+    ['Ubicación', value(['ubicacion', 'ubicación', 'region'])],
+    ['Longitud', value(['longitud_km', 'length_km']) ? `${value(['longitud_km', 'length_km'])} km` : ''],
+    ['Curvas', value(['curvas', 'corners'])],
+    ['Sentido', value(['sentido', 'direction'])],
+    ['Recta principal', value(['recta_principal_km', 'main_straight_km']) ? `${value(['recta_principal_km', 'main_straight_km'])} km` : value(['recta_principal'])],
+    ['Apertura', value(['fecha_apertura', 'apertura', 'opened'])],
+    ['Diseño', value(['diseniador', 'diseñador', 'designer'])],
+    ['Propietario', value(['propietario', 'owner'])],
+    ['Tipo', value(['tipo_trazado', 'tipo_circuito', 'track_type'], category)],
+    ['País', country],
+  ],
+  coches: [
+    ['Fabricante', value(['fabricante', 'manufacturer'])],
+    ['Modelo base', value(['modelo_base', 'base_model'])],
+    ['Constructor', value(['constructor', 'built_by'])],
+    ['Categoría', value(['categoria_competicion', 'categoria', 'category'])],
+    ['Años', value(['anos_actividad', 'años_actividad', 'periodo'])],
+    ['Motor', value(['motor', 'engine'])],
+    ['Cilindrada', value(['cilindrada', 'displacement'])],
+    ['Potencia', value(['potencia', 'power'])],
+    ['Peso', value(['peso', 'weight'])],
+    ['Tracción', value(['traccion', 'tracción', 'drivetrain'])],
+  ],
+  pilotos: [
+    ['Nombre completo', value(['nombre_completo', 'full_name'], title)],
+    ['Nacimiento', value(['fecha_nacimiento', 'birth_date'])],
+    ['Lugar', value(['lugar_nacimiento', 'birth_place'])],
+    ['Nacionalidad', value(['nacionalidad', 'nationality'], country)],
+    ['Años activo', value(['anos_activo', 'años_activo', 'periodo'])],
+    ['Disciplinas', value(['disciplinas', 'disciplina'])],
+    ['Equipos', value(['equipos', 'teams'])],
+    ['Títulos', value(['titulos', 'títulos', 'titles'])],
+    ['Victorias', value(['victorias', 'wins'])],
+    ['Podios', value(['podios', 'podiums'])],
+  ],
+};
 
+const fallbackFacts = [
+  ['Categoría', category],
+  ['País', country],
+  ['Región', region],
+  ['Periodo', period],
+  ['Disciplina', discipline],
+];
+
+const quickFacts = (factsByType[type] || fallbackFacts).filter(([, v]) => v);
+
+const typeSections: Record<string, { title: string; text?: string; items?: PairItem[]; variant?: string }[]> = {
+  circuitos: [
+    { title: 'Características del trazado', text: value(['caracteristicas_trazado', 'caracteristicas_conduccion', 'como_se_conduce']) },
+    { title: 'Zonas clave', items: parsePairs(value(['zonas_clave', 'puntos_clave', 'key_zones'])) },
+    { title: 'Eventos destacados', items: parsePairs(value(['eventos_destacados', 'eventos', 'major_events'])) },
+    { title: 'Récords y referencias oficiales', items: parsePairs(value(['records_destacados', 'records', 'referencias_tiempos'])) },
+    { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
+  ],
+  coches: [
+    { title: 'Ficha técnica', items: parsePairs(value(['ficha_tecnica', 'caracteristicas_tecnicas'])) },
+    { title: 'Desarrollo y versión de competición', text: value(['desarrollo', 'version_competicion', 'caracteristicas_tecnicas']) },
+    { title: 'Historial deportivo', text: value(['historial_competicion', 'competition_history']) },
+    { title: 'Campeonatos y equipos', items: parsePairs(value(['campeonatos', 'equipos_destacados', 'equipos'])) },
+    { title: 'Victorias o resultados destacados', items: parsePairs(value(['victorias_destacadas', 'resultados_destacados'])) },
+    { title: 'Variantes', items: parsePairs(value(['variantes', 'versions'])) },
+    { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
+  ],
+  pilotos: [
+    { title: 'Biografía', text: value(['biografia', 'biografía', 'trayectoria']) },
+    { title: 'Trayectoria', items: parsePairs(value(['hitos_trayectoria', 'momentos_clave'])) },
+    { title: 'Palmarés', items: parsePairs(value(['palmares', 'palmarés', 'titulos', 'victorias_destacadas'])) },
+    { title: 'Estilo de pilotaje', text: value(['estilo_conduccion', 'estilo_pilotaje']) },
+    { title: 'Coches y circuitos asociados', items: parsePairs(value(['coches_asociados', 'circuitos_asociados'])) },
+    { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
+  ],
+};
+
+const sections = (typeSections[type] || [])
+  .filter((section) => section.text || (section.items && section.items.length));
+
+const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
 const hasImage = Boolean(imageUrl);
-const hasAnyDeepSection = mainSections.length || keyZones.length || records.length || simTips.length || anecdotes.length || commonErrors.length || comboGc || comboCars.length || gcReference || setupNote;
 ---
 
-<article class="gc-archive-dossier">
+<article class={`gc-archive-dossier gc-archive-dossier--${type}`}>
   <header class="gc-archive-dossier__hero">
     <div class="gc-archive-dossier__hero-main">
-      <p class="gc-archive-dossier__breadcrumb">Archivo Motorsport / {type} / <strong>{title}</strong></p>
-      <span class="gc-archive-dossier__kicker">Archivo Motorsport</span>
+      <p class="gc-archive-dossier__breadcrumb"><a href="/archivo/">Archivo</a> / <a href={`/archivo/${type}/`}>{typeLabel}</a> / <strong>{title}</strong></p>
+      <span class="gc-archive-dossier__kicker">Archivo Motorsport · {typeLabel}</span>
       <h1>{title}</h1>
       <p class="gc-archive-dossier__lead">{subtitle}</p>
       <div class="gc-archive-dossier__tags">
-        {[category, country, era, discipline, ...tags].filter(Boolean).slice(0, 8).map((tag) => (
+        {[category, country, period, discipline, ...tags].filter(Boolean).slice(0, 8).map((tag) => (
           <span>{tag}</span>
         ))}
       </div>
@@ -113,7 +167,7 @@ const hasAnyDeepSection = mainSections.length || keyZones.length || records.leng
       ) : (
         <div class="gc-archive-dossier__media-empty">
           <span>Imagen pendiente</span>
-          <small>Añadir captura, mapa, render o foto cuando esté revisada.</small>
+          <small>Añadir foto, mapa, render o material visual cuando esté revisado.</small>
         </div>
       )}
     </aside>
@@ -132,167 +186,91 @@ const hasAnyDeepSection = mainSections.length || keyZones.length || records.leng
 
   <div class="gc-archive-dossier__grid">
     <main class="gc-archive-dossier__content">
-      {mainSections.length > 0 ? (
+      {commonSections.length > 0 && (
         <section class="gc-archive-dossier__panel gc-archive-dossier__editorial">
-          {mainSections.map(([heading, text]) => (
+          {commonSections.map(([heading, text]) => (
             <div class="gc-archive-dossier__text-section">
               <h2>{heading}</h2>
               <p>{text}</p>
             </div>
           ))}
         </section>
-      ) : fallbackLong ? (
-        <section class="gc-archive-dossier__panel gc-archive-dossier__editorial">
-          <div class="gc-archive-dossier__text-section">
-            <h2>Ficha</h2>
-            <p>{fallbackLong}</p>
-          </div>
-        </section>
-      ) : null}
-
-      {keyZones.length > 0 && (
-        <section class="gc-archive-dossier__panel">
-          <div class="gc-archive-dossier__section-head">
-            <span>Trazado</span>
-            <h2>Zonas clave</h2>
-          </div>
-          <div class="gc-archive-dossier__cards gc-archive-dossier__cards--zones">
-            {keyZones.map((zone) => (
-              <article>
-                <h3>{zone.title}</h3>
-                {zone.text && <p>{zone.text}</p>}
-              </article>
-            ))}
-          </div>
-        </section>
       )}
 
-      {records.length > 0 && (
+      {sections.map((section) => (
         <section class="gc-archive-dossier__panel">
           <div class="gc-archive-dossier__section-head">
-            <span>Referencias</span>
-            <h2>Tiempos y récords</h2>
+            <span>{typeLabel}</span>
+            <h2>{section.title}</h2>
           </div>
-          <div class="gc-archive-dossier__records">
-            {records.map((record) => (
-              <article>
-                <strong>{record.title}</strong>
-                {record.parts.slice(1).map((part) => <span>{part}</span>)}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(simTips.length > 0 || setupNote || commonErrors.length > 0) && (
-        <section class="gc-archive-dossier__panel">
-          <div class="gc-archive-dossier__section-head">
-            <span>Sim racing</span>
-            <h2>Cómo sacarle partido</h2>
-          </div>
-
-          {setupNote && (
-            <div class="gc-archive-dossier__highlight">
-              <strong>Setup / enfoque</strong>
-              <p>{setupNote}</p>
+          {section.text && <p>{section.text}</p>}
+          {section.items && section.items.length > 0 && (
+            <div class={`gc-archive-dossier__cards ${section.title.toLowerCase().includes('zona') ? 'gc-archive-dossier__cards--zones' : ''}`}>
+              {section.items.map((item) => (
+                <article>
+                  <h3>{item.title}</h3>
+                  {item.text && <p>{item.text}</p>}
+                  {item.parts.length > 2 && (
+                    <dl>
+                      {item.parts.slice(1).map((part, index) => (
+                        <div>
+                          <dt>{index === 0 ? 'Dato' : `Ref. ${index + 1}`}</dt>
+                          <dd>{part}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </article>
+              ))}
             </div>
           )}
-
-          <div class="gc-archive-dossier__cards">
-            {simTips.map((tip) => (
-              <article>
-                <h3>{tip.title}</h3>
-                {tip.text && <p>{tip.text}</p>}
-              </article>
-            ))}
-            {commonErrors.map((error) => (
-              <article class="gc-archive-dossier__card-warning">
-                <h3>{error.title}</h3>
-                {error.text && <p>{error.text}</p>}
-              </article>
-            ))}
-          </div>
         </section>
-      )}
-
-      {anecdotes.length > 0 && (
-        <section class="gc-archive-dossier__panel">
-          <div class="gc-archive-dossier__section-head">
-            <span>Contexto</span>
-            <h2>Anécdotas y notas</h2>
-          </div>
-          <div class="gc-archive-dossier__timeline">
-            {anecdotes.map((item) => (
-              <article>
-                <h3>{item.title}</h3>
-                {item.text && <p>{item.text}</p>}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+      ))}
     </main>
 
     <aside class="gc-archive-dossier__sidebar">
-      {(comboGc || comboCars.length || gcReference || gcDifficulty || gcNote) && (
-        <section class="gc-archive-dossier__side-panel gc-archive-dossier__combo">
-          <span class="gc-archive-dossier__side-kicker">GrassCutters</span>
-          <h2>Combo relacionado</h2>
-          {comboGc && <strong class="gc-archive-dossier__combo-title">{comboGc}</strong>}
-          {gcDifficulty && <p><b>Dificultad:</b> {gcDifficulty}</p>}
-          {gcReference && <p>{gcReference}</p>}
-          {gcNote && <p>{gcNote}</p>}
-          {comboCars.length > 0 && (
-            <ul>
-              {comboCars.map((car) => <li>{car}</li>)}
-            </ul>
-          )}
+      <section class="gc-archive-dossier__side-panel">
+        <span class="gc-archive-dossier__side-kicker">Clasificación</span>
+        <h2>{typeLabel}</h2>
+        <p>{category}</p>
+        {(country || region || period) && (
+          <ul class="gc-archive-dossier__meta-list">
+            {country && <li><strong>País</strong><span>{country}</span></li>}
+            {region && <li><strong>Zona</strong><span>{region}</span></li>}
+            {period && <li><strong>Periodo</strong><span>{period}</span></li>}
+          </ul>
+        )}
+      </section>
+
+      {related.length > 0 && (
+        <section class="gc-archive-dossier__side-panel">
+          <span class="gc-archive-dossier__side-kicker">Relacionados</span>
+          <h2>Más fichas</h2>
+          <div class="gc-archive-dossier__related-list">
+            {related.map((item) => (
+              <a href={`/archivo/${normalizeArchiveType(item.tipo)}/${item.slug}/`}>
+                <strong>{item.nombre}</strong>
+                <span>{prettifyArchiveType(item.tipo)}</span>
+              </a>
+            ))}
+          </div>
         </section>
       )}
 
-      <section class="gc-archive-dossier__side-panel">
-        <span class="gc-archive-dossier__side-kicker">Ficha</span>
-        <h2>Datos editoriales</h2>
-        <dl>
-          {author && <><dt>Autor</dt><dd>{author}</dd></>}
-          {license && <><dt>Licencia</dt><dd>{license}</dd></>}
-          {lastReview && <><dt>Última revisión</dt><dd>{lastReview}</dd></>}
-          {imageCredit && <><dt>Imagen</dt><dd>{imageCredit}</dd></>}
-          {imageLicense && <><dt>Licencia imagen</dt><dd>{imageLicense}</dd></>}
-        </dl>
-      </section>
-
-      {sources.length > 0 && (
-        <section class="gc-archive-dossier__side-panel">
-          <span class="gc-archive-dossier__side-kicker">Fuentes</span>
-          <h2>Referencias</h2>
-          <ul class="gc-archive-dossier__sources">
+      <section class="gc-archive-dossier__side-panel gc-archive-dossier__sources">
+        <span class="gc-archive-dossier__side-kicker">Fuentes</span>
+        <h2>Créditos</h2>
+        <p><strong>Texto:</strong> {author}</p>
+        <p><strong>Licencia:</strong> {license}</p>
+        {lastReview && <p><strong>Última revisión:</strong> {lastReview}</p>}
+        {sources.length > 0 && (
+          <ul>
             {sources.map((source) => (
               <li>{source.url ? <a href={source.url} target="_blank" rel="noreferrer">{source.label}</a> : source.label}</li>
             ))}
           </ul>
-        </section>
-      )}
-
-      {related.length > 0 && (
-        <section class="gc-archive-dossier__side-panel">
-          <span class="gc-archive-dossier__side-kicker">Relacionado</span>
-          <h2>Más fichas</h2>
-          <ul class="gc-archive-dossier__related">
-            {related.map((item: AnyEntry) => <li><a href={item.href}>{item.label || item.nombre}</a></li>)}
-          </ul>
-        </section>
-      )}
+        )}
+      </section>
     </aside>
   </div>
-
-  {!hasAnyDeepSection && !fallbackLong && (
-    <section class="gc-archive-dossier__panel">
-      <div class="gc-archive-dossier__section-head">
-        <span>Pendiente</span>
-        <h2>Ficha por completar</h2>
-      </div>
-      <p class="gc-archive-dossier__empty-note">Esta entrada ya existe, pero todavía necesita contenido editorial ampliado.</p>
-    </section>
-  )}
 </article>

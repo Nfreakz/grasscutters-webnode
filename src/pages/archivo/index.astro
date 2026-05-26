@@ -1,0 +1,315 @@
+---
+export const prerender = false;
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import '../../styles/archive-dossier.css';
+import { getArchiveStats, prettifyArchiveType } from '../../lib/archive/archiveRuntime';
+
+const stats = await getArchiveStats();
+const items = stats.items;
+const types = stats.types;
+
+const typeOrder = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario'];
+const orderedTypes = [...types].sort((a, b) => {
+  const ai = typeOrder.indexOf(a.tipo);
+  const bi = typeOrder.indexOf(b.tipo);
+  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+});
+
+const featured = items.find((item) => item.tipo === 'circuitos') || items[0];
+const secondaryFeatured = items.filter((item) => item.slug !== featured?.slug).slice(0, 2);
+const totalSources = items.reduce((sum, item) => {
+  const sources = Array.isArray(item.fuentes) ? item.fuentes : [];
+  const factSources = Array.isArray(item.facts) ? item.facts.filter((fact) => String(fact.label || '').toLowerCase().includes('fuente')) : [];
+  return sum + sources.length + factSources.length;
+}, 0);
+
+const getSummary = (item) => item.descripcion_corta || item.summary || item.subtitulo || item.body || '';
+const getPeriod = (item) => item.periodo || item.epoca || item.años_actividad || item.fecha_apertura || '';
+const getCountry = (item) => item.pais || item.nacionalidad || item.ubicacion || '';
+const getImage = (item) => item.coverUrl || item.imagen_url || item.media?.find?.((media) => media.isMain || media.isPrimary)?.url || item.media?.[0]?.url || '';
+const itemHref = (item) => `/archivo/${item.tipo}/${item.slug}/`;
+
+const alphaLetters = Array.from(new Set(items
+  .map((item) => String(item.nombre || item.title || '').trim().charAt(0).toUpperCase())
+  .filter((letter) => /^[A-ZÁÉÍÓÚÑ0-9]$/.test(letter))
+)).sort((a, b) => a.localeCompare(b, 'es'));
+
+const searchPayload = items.map((item) => ({
+  title: item.nombre,
+  type: prettifyArchiveType(item.tipo),
+  tipo: item.tipo,
+  summary: getSummary(item),
+  href: itemHref(item),
+  period: getPeriod(item),
+  country: getCountry(item),
+  image: getImage(item),
+  letter: String(item.nombre || item.title || '').trim().charAt(0).toUpperCase(),
+  searchText: [
+    item.nombre,
+    item.title,
+    item.slug,
+    item.tipo,
+    prettifyArchiveType(item.tipo),
+    getSummary(item),
+    getPeriod(item),
+    getCountry(item),
+    item.tags,
+    item.disciplina,
+    item.categoria,
+    item.fabricante,
+    item.motor,
+    item.equipos,
+    item.eventos_destacados,
+    item.zonas_clave,
+  ].flat().join(' ').toLowerCase(),
+}));
+---
+
+<MarketingLayout
+  bodyClass="gc-archive-public"
+  title="Archivo | GrassCutters"
+  description="Archivo editorial de circuitos, coches y pilotos con fichas técnicas e históricas completas."
+>
+  <main class="gc-archive-catalogue" data-archive-home>
+    <section class="gc-archive-catalogue__hero">
+      <div class="gc-archive-catalogue__hero-copy">
+        <span class="gc-archive-catalogue__eyebrow">Archivo</span>
+        <h1>Una biblioteca de pista, metal e historia.</h1>
+        <p>
+          Fichas técnicas e históricas de circuitos, coches y pilotos. Datos clave, contexto,
+          cronología, referencias y fuentes agrupadas para consultar sin saltar de una página a otra.
+        </p>
+
+        <form class="gc-archive-catalogue__search" role="search" aria-label="Buscar en el archivo" data-archive-search-form>
+          <label for="archiveSearchInput">Buscar en el archivo</label>
+          <div class="gc-archive-catalogue__search-row">
+            <input
+              id="archiveSearchInput"
+              type="search"
+              placeholder="Buscar Mugello, Ferrari, Porsche, piloto..."
+              autocomplete="off"
+              data-archive-search-input
+            />
+            <button type="button" data-archive-clear>Limpiar</button>
+          </div>
+          <small><span data-archive-result-count>{items.length}</span> fichas disponibles</small>
+        </form>
+
+        <div class="gc-archive-catalogue__quick-filters" aria-label="Filtros rápidos">
+          <button type="button" class="is-active" data-archive-type="all">Todo</button>
+          {orderedTypes.map((type) => (
+            <button type="button" data-archive-type={type.tipo}>{type.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <aside class="gc-archive-catalogue__index-card" aria-label="Resumen del archivo">
+        <div class="gc-archive-catalogue__index-top">
+          <span>Índice general</span>
+          <strong>{stats.total}</strong>
+        </div>
+        <div class="gc-archive-catalogue__index-grid">
+          <div><span>Circuitos</span><strong>{stats.circuits}</strong></div>
+          <div><span>Coches</span><strong>{stats.cars}</strong></div>
+          <div><span>Pilotos</span><strong>{stats.pilots}</strong></div>
+          <div><span>Fuentes</span><strong>{totalSources || '—'}</strong></div>
+        </div>
+        <div class="gc-archive-catalogue__shelf-lines" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-archive-catalogue__strip" aria-label="Accesos principales">
+      {orderedTypes.map((type) => (
+        <a href={`/archivo/${type.tipo}/`}>
+          <span>{type.count} fichas</span>
+          <strong>{type.label}</strong>
+        </a>
+      ))}
+    </section>
+
+    {featured && (
+      <section class="gc-archive-catalogue__featured" aria-label="Ficha destacada">
+        <article class="gc-archive-catalogue__featured-main">
+          <div class="gc-archive-catalogue__featured-copy">
+            <span class="gc-archive-catalogue__eyebrow">Ficha destacada</span>
+            <h2>{featured.nombre}</h2>
+            <p>{getSummary(featured)}</p>
+            <dl>
+              <div><dt>Tipo</dt><dd>{prettifyArchiveType(featured.tipo)}</dd></div>
+              {getCountry(featured) && <div><dt>País / origen</dt><dd>{getCountry(featured)}</dd></div>}
+              {getPeriod(featured) && <div><dt>Periodo</dt><dd>{getPeriod(featured)}</dd></div>}
+            </dl>
+            <a class="gc-archive-catalogue__cta" href={itemHref(featured)}>Abrir dossier</a>
+          </div>
+          <div class="gc-archive-catalogue__featured-visual">
+            {getImage(featured) ? (
+              <img src={getImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="lazy" />
+            ) : (
+              <div class="gc-archive-catalogue__archive-mark">
+                <span>{prettifyArchiveType(featured.tipo)}</span>
+                <strong>{featured.nombre}</strong>
+              </div>
+            )}
+          </div>
+        </article>
+
+        {secondaryFeatured.length > 0 && (
+          <div class="gc-archive-catalogue__featured-side">
+            {secondaryFeatured.map((item) => (
+              <a href={itemHref(item)}>
+                <span>{prettifyArchiveType(item.tipo)}</span>
+                <strong>{item.nombre}</strong>
+                <small>{getSummary(item)}</small>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+    )}
+
+    <section class="gc-archive-catalogue__az" aria-label="Filtro alfabético">
+      <span>Índice A-Z</span>
+      <div>
+        <button type="button" class="is-active" data-archive-letter="all">Todos</button>
+        {alphaLetters.map((letter) => (
+          <button type="button" data-archive-letter={letter}>{letter}</button>
+        ))}
+      </div>
+    </section>
+
+    <section class="gc-archive-catalogue__library" aria-labelledby="archiveResultsTitle">
+      <div class="gc-archive-catalogue__library-head">
+        <div>
+          <span class="gc-archive-catalogue__eyebrow">Catálogo</span>
+          <h2 id="archiveResultsTitle">Todas las fichas</h2>
+        </div>
+        <p>
+          Usa el buscador y los filtros para moverte por el archivo. Cada tarjeta abre una ficha
+          completa con datos técnicos, contexto y fuentes.
+        </p>
+      </div>
+
+      <div class="gc-archive-catalogue__results" data-archive-results>
+        {items.map((item) => (
+          <a
+            class="gc-archive-catalogue__item"
+            href={itemHref(item)}
+            data-archive-card
+            data-type={item.tipo}
+            data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()}
+            data-search={[
+              item.nombre,
+              item.title,
+              item.slug,
+              item.tipo,
+              prettifyArchiveType(item.tipo),
+              getSummary(item),
+              getPeriod(item),
+              getCountry(item),
+              item.tags,
+              item.disciplina,
+              item.categoria,
+              item.fabricante,
+              item.motor,
+              item.equipos,
+              item.eventos_destacados,
+              item.zonas_clave,
+            ].flat().join(' ').toLowerCase()}
+          >
+            <span>{prettifyArchiveType(item.tipo)}</span>
+            <strong>{item.nombre}</strong>
+            <p>{getSummary(item)}</p>
+            <footer>
+              {getCountry(item) && <small>{getCountry(item)}</small>}
+              {getPeriod(item) && <small>{getPeriod(item)}</small>}
+              <em>Abrir</em>
+            </footer>
+          </a>
+        ))}
+      </div>
+
+      <div class="gc-archive-catalogue__empty" data-archive-empty hidden>
+        <strong>No hay resultados con ese filtro.</strong>
+        <p>Prueba con otro nombre, categoría o término técnico.</p>
+      </div>
+    </section>
+  </main>
+
+  <script define:vars={{ searchPayload }}>
+    const root = document.querySelector('[data-archive-home]');
+    const input = root?.querySelector('[data-archive-search-input]');
+    const clearBtn = root?.querySelector('[data-archive-clear]');
+    const cards = [...root?.querySelectorAll('[data-archive-card]') || []];
+    const count = root?.querySelector('[data-archive-result-count]');
+    const empty = root?.querySelector('[data-archive-empty]');
+    const typeButtons = [...root?.querySelectorAll('[data-archive-type]') || []];
+    const letterButtons = [...root?.querySelectorAll('[data-archive-letter]') || []];
+
+    let activeType = 'all';
+    let activeLetter = 'all';
+
+    function normalize(value) {
+      return String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function setActive(buttons, attr, value) {
+      buttons.forEach((button) => {
+        const selected = button.getAttribute(attr) === value;
+        button.classList.toggle('is-active', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    }
+
+    function applyFilters() {
+      const query = normalize(input?.value || '');
+      let visible = 0;
+
+      cards.forEach((card) => {
+        const typeOk = activeType === 'all' || card.dataset.type === activeType;
+        const letterOk = activeLetter === 'all' || card.dataset.letter === activeLetter;
+        const textOk = !query || normalize(card.dataset.search).includes(query);
+        const show = typeOk && letterOk && textOk;
+
+        card.hidden = !show;
+        if (show) visible += 1;
+      });
+
+      if (count) count.textContent = String(visible);
+      if (empty) empty.hidden = visible !== 0;
+    }
+
+    typeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        activeType = button.dataset.archiveType || 'all';
+        setActive(typeButtons, 'data-archive-type', activeType);
+        applyFilters();
+      });
+    });
+
+    letterButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        activeLetter = button.dataset.archiveLetter || 'all';
+        setActive(letterButtons, 'data-archive-letter', activeLetter);
+        applyFilters();
+      });
+    });
+
+    input?.addEventListener('input', applyFilters);
+    clearBtn?.addEventListener('click', () => {
+      if (input) input.value = '';
+      activeType = 'all';
+      activeLetter = 'all';
+      setActive(typeButtons, 'data-archive-type', activeType);
+      setActive(letterButtons, 'data-archive-letter', activeLetter);
+      applyFilters();
+      input?.focus();
+    });
+
+    applyFilters();
+  </script>
+</MarketingLayout>
