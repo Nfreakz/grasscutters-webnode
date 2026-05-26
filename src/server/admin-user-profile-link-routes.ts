@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Express, Request, Response } from 'express';
+import express from 'express';
 
 type PilotPayload = {
   playerId?: unknown;
@@ -231,8 +232,10 @@ async function unlinkMysql(userId: string) {
   }
 }
 
+const linkPilotJsonBody = express.json({ limit: '64kb' });
+
 export function registerAdminUserProfileLinkRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.post('/api/admin/users/:id/link-pilot', async (req: Request, res: Response) => {
+  app.post('/api/admin/users/:id/link-pilot', linkPilotJsonBody, async (req: Request, res: Response) => {
     try {
       const userId = String(req.params.id || '').trim();
       if (!userId) return res.status(400).json({ ok: false, message: 'Falta usuario.' });
