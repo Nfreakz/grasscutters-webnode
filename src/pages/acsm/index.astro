@@ -10,21 +10,21 @@ const imagePath = '/acsm/loading-card.svg?v=1';
         <span class="gc-kicker">ACSM · Content Manager</span>
         <h1 class="gc-title">Imagen dinámica para el loading screen.</h1>
         <p class="gc-subtitle">
-          Esta URL genera una tarjeta visual con combo actual, top hotlaps reales y enlaces de comunidad para pegar en
+          Esta URL genera una tarjeta visual compacta con combo actual, top hotlaps reales y enlaces de comunidad para pegar en
           <strong>Loading Image URL</strong> dentro de ACSM.
         </p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Wrapper activo</span>
           <span class="gc-chip">SVG dinámico</span>
-          <span class="gc-chip">Top hotlaps reales</span>
+          <span class="gc-chip">Formato estrecho</span>
         </div>
       </div>
 
       <aside class="gc-live-panel gc-acsm-card-info">
         <div class="gc-live-panel__title"><span>URL para ACSM</span><strong>Lista</strong></div>
-        <div class="gc-acsm-url-box" id="acsmImageUrlBox">https://grasscuttersracing.com{imagePath}</div>
+        <div class="gc-acsm-url-box" id="acsmUrlBox">https://grasscuttersracing.com{imagePath}</div>
         <div class="gc-acsm-actions">
-          <button class="gc-btn gc-btn--primary" type="button" id="copyAcsmCardUrl" data-path={imagePath}>Copiar URL</button>
+          <button class="gc-btn gc-btn--primary" type="button" id="copyAcsmCardUrl">Copiar URL</button>
           <a class="gc-btn" href={imagePath} target="_blank" rel="noreferrer">Abrir imagen</a>
         </div>
       </aside>
@@ -35,7 +35,7 @@ const imagePath = '/acsm/loading-card.svg?v=1';
         <div>
           <span class="gc-kicker">Preview</span>
           <h2>Vista previa actual</h2>
-          <p>Si aquí carga bien, pruébala en el campo <strong>Loading Image URL</strong> de ACSM.</p>
+          <p>Ahora la tarjeta está pensada para entrar mejor en la columna estrecha del wrapper de Content Manager.</p>
         </div>
       </div>
 
@@ -54,18 +54,18 @@ const imagePath = '/acsm/loading-card.svg?v=1';
 
       <article class="gc-section gc-acsm-step-card">
         <span class="gc-kicker">Paso 2</span>
-        <h2>Deja BBCode activado</h2>
+        <h2>Wrapper activado</h2>
         <p>
-          Mantén también el <strong>Content Manager Wrapper</strong> y el renderizado en <strong>BBCode</strong> para que el resto del mensaje siga viéndose bien.
+          Mantén activo <strong>Content Manager Wrapper</strong>. El wrapper es lo que hace que ACSM cargue esta imagen externa.
         </p>
       </article>
 
       <article class="gc-section gc-acsm-step-card">
         <span class="gc-kicker">Paso 3</span>
-        <h2>Actualización</h2>
+        <h2>Refresco</h2>
         <p>
-          La imagen se recalcula desde la API de la web y se cachea solo 60 segundos. Si quieres forzar refresco rápido, cambia la URL a
-          <code>https://grasscuttersracing.com/acsm/loading-card.svg?v=2</code>.
+          La tarjeta se cachea 60 segundos. Si quieres forzar un refresco rápido, cambia la versión final de la URL, por ejemplo a
+          <code>/acsm/loading-card.svg?v=2</code>.
         </p>
       </article>
     </section>
@@ -117,6 +117,8 @@ const imagePath = '/acsm/loading-card.svg?v=1';
     }
 
     .gc-acsm-preview-frame{
+      display:flex;
+      justify-content:center;
       padding:18px;
       border:1px solid var(--line);
       border-radius:24px;
@@ -126,7 +128,8 @@ const imagePath = '/acsm/loading-card.svg?v=1';
 
     .gc-acsm-preview-frame img{
       display:block;
-      width:100%;
+      width:min(100%, 720px);
+      max-width:720px;
       height:auto;
       border-radius:18px;
       border:1px solid rgba(255,255,255,.08);
@@ -170,30 +173,17 @@ const imagePath = '/acsm/loading-card.svg?v=1';
 
   <script>
     const btn = document.getElementById('copyAcsmCardUrl');
-    const box = document.getElementById('acsmImageUrlBox');
-
-    const getPublicImageUrl = () => {
-      const path = btn instanceof HTMLElement ? btn.dataset.path || '/acsm/loading-card.svg?v=1' : '/acsm/loading-card.svg?v=1';
-      return `${window.location.origin}${path}`;
-    };
-
-    const updateDisplayedUrl = () => {
-      const url = getPublicImageUrl();
-      if (box) box.textContent = url;
-      return url;
-    };
-
-    updateDisplayedUrl();
-
+    const urlBox = document.getElementById('acsmUrlBox');
+    const runtimeUrl = `${window.location.origin}/acsm/loading-card.svg?v=1`;
+    if (urlBox) urlBox.textContent = runtimeUrl;
     if (btn) {
       btn.addEventListener('click', async () => {
-        const url = updateDisplayedUrl();
         try {
-          await navigator.clipboard.writeText(url);
+          await navigator.clipboard.writeText(runtimeUrl);
           btn.textContent = 'URL copiada';
           window.setTimeout(() => { btn.textContent = 'Copiar URL'; }, 1400);
         } catch {
-          window.prompt('Copia esta URL para ACSM', url);
+          window.prompt('Copia esta URL para ACSM', runtimeUrl);
         }
       });
     }
