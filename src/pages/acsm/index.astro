@@ -1,0 +1,188 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+const currentUrl = new URL(Astro.request.url);
+const origin = currentUrl.origin;
+const imageUrl = `${origin}/acsm/loading-card.svg?v=1`;
+---
+
+<AppLayout title="ACSM Loading Card | GrassCutters">
+  <div class="gc-page gc-acsm-card-page">
+    <section class="gc-hero gc-hero--compact gc-acsm-card-hero">
+      <div>
+        <span class="gc-kicker">ACSM · Content Manager</span>
+        <h1 class="gc-title">Imagen dinámica para el loading screen.</h1>
+        <p class="gc-subtitle">
+          Esta URL genera una tarjeta visual con combo actual, top hotlaps reales y enlaces de comunidad para pegar en
+          <strong>Loading Image URL</strong> dentro de ACSM.
+        </p>
+        <div class="gc-hero__meta">
+          <span class="gc-chip gc-chip--accent">Wrapper activo</span>
+          <span class="gc-chip">SVG dinámico</span>
+          <span class="gc-chip">Top hotlaps reales</span>
+        </div>
+      </div>
+
+      <aside class="gc-live-panel gc-acsm-card-info">
+        <div class="gc-live-panel__title"><span>URL para ACSM</span><strong>Lista</strong></div>
+        <div class="gc-acsm-url-box">{imageUrl}</div>
+        <div class="gc-acsm-actions">
+          <button class="gc-btn gc-btn--primary" type="button" id="copyAcsmCardUrl" data-url={imageUrl}>Copiar URL</button>
+          <a class="gc-btn" href={imageUrl} target="_blank" rel="noreferrer">Abrir imagen</a>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gc-section gc-acsm-preview-section">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Preview</span>
+          <h2>Vista previa actual</h2>
+          <p>Si aquí carga bien, pruébala en el campo <strong>Loading Image URL</strong> de ACSM.</p>
+        </div>
+      </div>
+
+      <div class="gc-acsm-preview-frame">
+        <img src={imageUrl} alt="GrassCutters ACSM loading card" loading="eager" />
+      </div>
+    </section>
+
+    <section class="gc-acsm-steps-grid">
+      <article class="gc-section gc-acsm-step-card">
+        <span class="gc-kicker">Paso 1</span>
+        <h2>Pégala en ACSM</h2>
+        <p>Copia la URL y pégala aquí:</p>
+        <code>Server → Content Manager Integration → Loading Image URL</code>
+      </article>
+
+      <article class="gc-section gc-acsm-step-card">
+        <span class="gc-kicker">Paso 2</span>
+        <h2>Deja BBCode activado</h2>
+        <p>
+          Mantén también el <strong>Content Manager Wrapper</strong> y el renderizado en <strong>BBCode</strong> para que el resto del mensaje siga viéndose bien.
+        </p>
+      </article>
+
+      <article class="gc-section gc-acsm-step-card">
+        <span class="gc-kicker">Paso 3</span>
+        <h2>Actualización</h2>
+        <p>
+          La imagen se recalcula desde la API de la web y se cachea solo 60 segundos. Si quieres forzar refresco rápido, cambia la URL a
+          <code>{`${origin}/acsm/loading-card.svg?v=2`}</code>.
+        </p>
+      </article>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-acsm-card-page{
+      display:grid;
+      gap:clamp(18px,2.4vw,28px);
+    }
+
+    .gc-acsm-card-hero{
+      padding-block:clamp(22px,3vw,34px)!important;
+      margin:0;
+    }
+
+    .gc-acsm-card-hero .gc-title{
+      font-size:clamp(2.9rem,6vw,5.8rem);
+      line-height:.9;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-acsm-card-info,
+    .gc-acsm-preview-section,
+    .gc-acsm-step-card{
+      margin:0;
+      min-width:0;
+    }
+
+    .gc-acsm-url-box{
+      margin-top:10px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.014));
+      color:var(--text);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:.92rem;
+      line-height:1.45;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-acsm-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .gc-acsm-preview-frame{
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:radial-gradient(circle at top left, rgba(157,255,63,.08), transparent 42%), linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      box-shadow:0 22px 90px rgba(0,0,0,.18);
+    }
+
+    .gc-acsm-preview-frame img{
+      display:block;
+      width:100%;
+      height:auto;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.08);
+      background:#020403;
+    }
+
+    .gc-acsm-steps-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:clamp(16px,2vw,24px);
+    }
+
+    .gc-acsm-step-card h2{
+      margin:.35rem 0 .7rem;
+      color:var(--text);
+      font-size:clamp(1.65rem,2.9vw,2.35rem);
+      letter-spacing:-.05em;
+      line-height:.98;
+    }
+
+    .gc-acsm-step-card p{
+      color:var(--soft);
+      line-height:1.55;
+      margin:0 0 .85rem;
+    }
+
+    .gc-acsm-step-card code{
+      display:inline-block;
+      padding:.55rem .7rem;
+      border-radius:12px;
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      overflow-wrap:anywhere;
+    }
+
+    @media (max-width: 960px){
+      .gc-acsm-steps-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+
+  <script>
+    const btn = document.getElementById('copyAcsmCardUrl');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        const url = btn instanceof HTMLElement ? btn.dataset.url || '' : '';
+        try {
+          await navigator.clipboard.writeText(url);
+          btn.textContent = 'URL copiada';
+          window.setTimeout(() => { btn.textContent = 'Copiar URL'; }, 1400);
+        } catch {
+          window.prompt('Copia esta URL para ACSM', url);
+        }
+      });
+    }
+  </script>
+</AppLayout>
