@@ -7,7 +7,19 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   bodyClass="gc-page-acsr"
   canonicalPath="/campeonato"
 >
-  <section class="gc-hero gc-hero-compact gc-acsr-hero">
+  <section class="gc-hero gc-hero-compact gc-acsr-hero gc-acsr-hero-video">
+    <video
+      class="gc-acsr-hero-bg-video"
+      src="/videos/campeonato.mp4"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+      aria-hidden="true"
+    ></video>
+    <div class="gc-acsr-hero-scrim" aria-hidden="true"></div>
+
     <div class="gc-page gc-acsr-hero-inner">
       <div>
         <span class="gc-kicker">Campeonato ACSR</span>
@@ -132,22 +144,103 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
   <style is:global>
     .gc-acsr-hero{
-      position:relative;
-      overflow:hidden;
+      position:relative!important;
+      display:block!important;
+      overflow:hidden!important;
+      isolation:isolate!important;
+      min-height:0!important;
+      padding-top:clamp(72px,8vw,120px)!important;
+      padding-bottom:clamp(72px,8vw,118px)!important;
+      margin-bottom:0!important;
+      background:var(--gc-mk-bg,#070a08)!important;
+      border-bottom:0!important;
+    }
+
+    .gc-acsr-hero-bg-video{
+      position:absolute!important;
+      inset:0!important;
+      width:100%!important;
+      height:100%!important;
+      min-height:100%!important;
+      object-fit:cover!important;
+      z-index:0!important;
+      opacity:.50!important;
+      filter:saturate(1.05) contrast(1.04) brightness(.78)!important;
+      transform:none!important;
+      pointer-events:none!important;
+    }
+
+    .gc-acsr-hero-scrim{
+      position:absolute!important;
+      inset:0!important;
+      z-index:1!important;
+      pointer-events:none!important;
       background:
-        radial-gradient(circle at 18% 0%, color-mix(in srgb,var(--gc-mk-accent) 18%, transparent), transparent 30rem),
-        linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
-      border-bottom:1px solid var(--gc-mk-line);
+        radial-gradient(circle at 70% 18%, color-mix(in srgb,var(--gc-mk-accent) 22%, transparent), transparent 28rem),
+        radial-gradient(circle at 28% 74%, color-mix(in srgb,var(--gc-mk-accent-2) 12%, transparent), transparent 30rem),
+        linear-gradient(90deg, rgba(1,7,4,.96) 0%, rgba(1,7,4,.68) 44%, rgba(1,7,4,.93) 100%),
+        linear-gradient(180deg, rgba(1,7,4,.14) 0%, rgba(1,7,4,.38) 58%, var(--gc-mk-bg,#070a08) 100%)!important;
+    }
+
+    .gc-acsr-hero::before{
+      content:""!important;
+      position:absolute!important;
+      inset:auto 0 0 0!important;
+      height:clamp(250px,29vw,440px)!important;
+      z-index:2!important;
+      pointer-events:none!important;
+      background:
+        linear-gradient(180deg,
+          rgba(7,10,8,0) 0%,
+          rgba(7,10,8,.44) 36%,
+          rgba(7,10,8,.84) 72%,
+          var(--gc-mk-bg,#070a08) 100%
+        )!important;
+    }
+
+    .gc-acsr-hero::after{
+      content:""!important;
+      position:absolute!important;
+      left:50%!important;
+      bottom:clamp(44px,5vw,82px)!important;
+      width:min(1060px,90vw)!important;
+      height:230px!important;
+      transform:translateX(-50%)!important;
+      z-index:2!important;
+      pointer-events:none!important;
+      background:radial-gradient(ellipse at center, color-mix(in srgb,var(--gc-mk-accent) 13%, transparent), transparent 68%)!important;
+      filter:blur(48px)!important;
+      opacity:.46!important;
     }
 
     .gc-acsr-hero-inner{
-      padding-top:clamp(42px,6vw,86px);
-      padding-bottom:clamp(34px,5vw,72px);
+      position:relative!important;
+      z-index:4!important;
+      display:grid!important;
+      align-items:center!important;
+      min-height:clamp(420px,56vh,640px)!important;
+      padding-top:clamp(42px,6vw,86px)!important;
+      padding-bottom:clamp(54px,6vw,94px)!important;
+    }
+
+    .gc-acsr-hero-inner > div{
+      max-width:760px!important;
+    }
+
+    .gc-acsr-hero .gc-title{
+      text-shadow:0 18px 62px rgba(0,0,0,.50);
+    }
+
+    .gc-acsr-hero .gc-lead{
+      text-shadow:0 10px 34px rgba(0,0,0,.42);
     }
 
     .gc-community-championship{
+      position:relative;
+      z-index:5;
       display:grid;
       gap:clamp(18px,2.5vw,30px);
+      padding-top:clamp(34px,5vw,70px);
     }
 
     .gc-acsr-grid{
@@ -422,6 +515,23 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       }
     }
 
+    @media(max-width:860px){
+      .gc-acsr-hero{
+        padding-top:clamp(54px,12vw,82px)!important;
+        padding-bottom:clamp(54px,12vw,88px)!important;
+      }
+
+      .gc-acsr-hero-inner{
+        min-height:clamp(430px,78vh,620px)!important;
+        padding-top:clamp(28px,7vw,48px)!important;
+        padding-bottom:clamp(44px,10vw,72px)!important;
+      }
+
+      .gc-acsr-hero::before{
+        height:clamp(220px,45vw,360px)!important;
+      }
+    }
+
     @media(max-width:640px){
       .gc-acsr-stats{
         grid-template-columns:1fr;
@@ -681,7 +791,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
         renderStandings(standings.length ? standings : drivers);
         renderDrivers(drivers);
-        console.info('[GC campeonato ACSR v5.3]', {
+        console.info('[GC campeonato ACSR v5.4 hero video]', {
           ok: true,
           events: events.length,
           standings: standings.length,

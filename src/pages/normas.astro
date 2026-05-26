@@ -1,54 +1,243 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const discordUrl = 'https://discord.gg/jA4yuuH5T';
+
+const ruleCards = [
+  ['01', 'Respeto primero', 'Cero insultos, ataques personales, acoso, discriminación o toxicidad. Se puede bromear y competir fuerte, pero sin cruzar líneas raras.'],
+  ['02', 'Cada canal en su sitio', 'Usa los canales para lo que toca: anuncios, info, mods, setups, servidor, campeonatos, clips, votaciones o dudas de LFM. Así nadie tiene que perseguir mensajes por todo el paddock.'],
+  ['03', 'Sin spam ni ruido', 'Evita flood, mayúsculas excesivas, enlaces maliciosos, NSFW o autopromoción sin permiso. Si algo necesita contexto, mejor explicarlo bien que soltarlo al aire.'],
+  ['04', 'Nick reconocible', 'Intenta usar un nombre claro o reconocible. Ayuda a vincular perfiles, tiempos, Discord, servidor y web sin jugar a detectives con casco.'],
+  ['05', 'Pista limpia', 'Nada de choques intencionados, zigzag absurdo, reincorporaciones peligrosas, exploits o abuso de bugs. El ritmo importa menos que saber compartir pista.'],
+  ['06', 'Incidentes en frío', 'Lo que pasa en pista no se discute en caliente. Primero enfriar. Luego hablar con datos, repetición, captura o contexto.'],
+  ['07', 'Temas que no suman', 'Evita política, religión y discusiones de equipos deportivos cuando solo van a prender fuego al chat. Aquí venimos a correr y desconectar.'],
+  ['08', 'Actitud antes que ritmo', 'No hace falta ser el más rápido. Hace falta respetar, aprender, aportar y no convertir cada vuelta mala en un drama de box.'],
+];
+
+const textChannels = [
+  'normas',
+  'general · chat',
+  'info',
+  'anuncios',
+  'mods · ac',
+  'setups-ac',
+  'servidor · ac',
+  'campeonatos',
+  'servidor · raceroom',
+  'grasscutters-hud-ac',
+  'lowfuelmotorsport-ac',
+  'clips · highlights',
+  'datos-curiosos',
+  'donaciones',
+  'votaciones',
+];
+
+const voiceChannels = ['Lobby', 'Lobby AC'];
 ---
-<MarketingLayout title="Normas | GrassCutters Racing" description="Normas básicas de convivencia, pista, Discord y uso de la plataforma GrassCutters Racing.">
-  <section class="gc-page gc-hero gc-hero-compact">
+<MarketingLayout
+  title="Normas | GrassCutters Racing"
+  description="Normas de convivencia, Discord, pista limpia y fair play para la comunidad GrassCutters Racing."
+  bodyClass="gc-page-normas-v121"
+>
+  <section class="gc-page gc-hero gc-hero-compact gc-normas-hero-v121">
     <div>
       <span class="gc-kicker">Normas GC</span>
-      <h1 class="gc-title">Pocas reglas, mucho sentido común.</h1>
-      <p class="gc-lead">La idea es simple: correr limpio, hablar claro y cuidar el ambiente. La plataforma mide tiempos; la comunidad se cuida entre todos.</p>
+      <h1 class="gc-title">Pocas normas. Buen ambiente. Pista limpia.</h1>
+      <p class="gc-lead">
+        GrassCutters es una comunidad para correr, desconectar y compartir pista sin toxicidad. No buscamos llenar el servidor de sanciones:
+        buscamos sentido común, respeto y ganas de sumar.
+      </p>
       <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href="/discord">Entrar al Discord</a>
+        <a class="gc-btn gc-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Entrar al Discord</a>
         <a class="gc-btn" href="/comunidad">Ver comunidad</a>
       </div>
     </div>
   </section>
 
-  <section class="gc-page">
-    <div class="gc-grid-2">
-      <article class="gc-policy-card">
-        <span>01</span>
-        <h2>Convivencia</h2>
-        <p>Respeto entre pilotos, cero ataques personales y conversaciones con buen tono incluso cuando una carrera se complica.</p>
-      </article>
-      <article class="gc-policy-card">
-        <span>02</span>
-        <h2>Pista</h2>
-        <p>Conducción limpia, reincorporaciones seguras, paciencia en salida y responsabilidad si hay contacto.</p>
-      </article>
-      <article class="gc-policy-card">
-        <span>03</span>
-        <h2>Eventos</h2>
-        <p>Los combos, horarios y formatos se anuncian por Discord. Antes de correr, revisa briefing, coche y circuito.</p>
-      </article>
-      <article class="gc-policy-card">
-        <span>04</span>
-        <h2>Plataforma</h2>
-        <p>Los perfiles, hotlaps y rankings salen de stracker. Si hay datos duplicados o nombres raros, se corrigen desde administración.</p>
-      </article>
+  <section class="gc-page gc-normas-intro-v121">
+    <div class="gc-section-head">
+      <span class="gc-section-kicker">Regla de oro</span>
+      <h2 class="gc-section-title">Primero enfriar. Luego hablar.</h2>
+      <p class="gc-section-lead">
+        Si hay un incidente en pista, no se convierte el chat en dirección de carrera con gasolina en el suelo.
+        Se revisa con calma, con contexto y sin ataques personales.
+      </p>
     </div>
   </section>
 
-  <section class="gc-page gc-page-narrow">
-    <div class="gc-cta-box">
+  <section class="gc-page">
+    <div class="gc-normas-grid-v121">
+      {ruleCards.map(([number, title, text]) => (
+        <article class="gc-normas-card-v121">
+          <span>{number}</span>
+          <h2>{title}</h2>
+          <p>{text}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="gc-page gc-normas-discord-v121">
+    <div class="gc-normas-discord-card-v121">
       <div>
-        <h2>¿Dudas con una norma?</h2>
-        <p>Lo mejor es resolverlo en Discord con contexto, captura o repetición. Sin ruido, con datos.</p>
+        <span class="gc-section-kicker">Discord</span>
+        <h2>Un canal para cada cosa.</h2>
+        <p>
+          El Discord está para organizar la comunidad sin perderse: avisos importantes, combos, setups, mods, clips, votaciones,
+          dudas del servidor y charlas del día a día. Cuanto mejor usemos los canales, menos ruido y más pista.
+        </p>
       </div>
-      <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href="/discord">Ir a Discord</a>
-        <a class="gc-btn" href="/estado">Ver estado</a>
+
+      <div class="gc-normas-channel-block-v121">
+        <h3>Texto</h3>
+        <div class="gc-normas-channel-list-v121">
+          {textChannels.map((channel) => <span># {channel}</span>)}
+        </div>
+      </div>
+
+      <div class="gc-normas-channel-block-v121">
+        <h3>Voz</h3>
+        <div class="gc-normas-channel-list-v121 gc-normas-channel-list-v121--voice">
+          {voiceChannels.map((channel) => <span>{channel}</span>)}
+        </div>
       </div>
     </div>
   </section>
+
+  <section class="gc-page gc-page-narrow gc-normas-cta-v121">
+    <div class="gc-cta-box">
+      <div>
+        <h2>¿Dudas con una norma?</h2>
+        <p>
+          Pregunta en Discord con calma. Si hay una carrera, un incidente o un problema de convivencia, mejor resolverlo con contexto que en caliente.
+        </p>
+      </div>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Ir a Discord</a>
+        <a class="gc-btn" href="/apoyo-servidor">Apoyar servidor</a>
+      </div>
+    </div>
+  </section>
+
+  <style is:global>
+    .gc-page-normas-v121 .gc-normas-hero-v121{
+      padding-bottom:clamp(28px,5vw,66px);
+    }
+
+    .gc-page-normas-v121 .gc-normas-intro-v121{
+      padding-top:clamp(12px,2vw,24px);
+    }
+
+    .gc-normas-grid-v121{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .gc-normas-card-v121,
+    .gc-normas-discord-card-v121{
+      border:1px solid var(--gc-mk-line);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 10% 0%, color-mix(in srgb,var(--gc-mk-accent) 8%, transparent), transparent 20rem),
+        linear-gradient(180deg,rgba(255,255,255,.066),rgba(255,255,255,.026));
+      box-shadow:0 22px 70px rgba(0,0,0,.22);
+    }
+
+    .gc-normas-card-v121{
+      padding:22px;
+    }
+
+    .gc-normas-card-v121 > span{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:38px;
+      height:38px;
+      border-radius:14px;
+      color:#07110a;
+      background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));
+      font-weight:1000;
+    }
+
+    .gc-normas-card-v121 h2{
+      margin:18px 0 8px;
+      color:var(--gc-mk-text);
+      font-size:1.18rem;
+      letter-spacing:-.035em;
+    }
+
+    .gc-normas-card-v121 p,
+    .gc-normas-discord-card-v121 p{
+      margin:0;
+      color:var(--gc-mk-muted);
+      line-height:1.62;
+    }
+
+    .gc-normas-discord-card-v121{
+      display:grid;
+      grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr) minmax(220px,.45fr);
+      gap:clamp(18px,3vw,34px);
+      padding:clamp(24px,4vw,42px);
+      align-items:start;
+    }
+
+    .gc-normas-discord-card-v121 h2{
+      margin:12px 0 12px;
+      font-size:clamp(2.1rem,4vw,4.2rem);
+      line-height:.94;
+      letter-spacing:-.075em;
+    }
+
+    .gc-normas-channel-block-v121 h3{
+      margin:0 0 12px;
+      color:var(--gc-mk-text);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:.84rem;
+    }
+
+    .gc-normas-channel-list-v121{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .gc-normas-channel-list-v121 span{
+      display:inline-flex;
+      align-items:center;
+      min-height:34px;
+      padding:8px 11px;
+      border:1px solid var(--gc-mk-line-soft);
+      border-radius:999px;
+      color:var(--gc-mk-muted);
+      background:rgba(255,255,255,.032);
+      font-size:.86rem;
+    }
+
+    .gc-normas-channel-list-v121--voice span{
+      color:var(--gc-mk-text);
+      border-color:color-mix(in srgb,var(--gc-mk-accent) 24%, var(--gc-mk-line));
+    }
+
+    .gc-normas-cta-v121 .gc-cta-box{
+      text-align:left;
+    }
+
+    @media(max-width:1080px){
+      .gc-normas-grid-v121{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-normas-discord-card-v121{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:620px){
+      .gc-normas-grid-v121{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </MarketingLayout>

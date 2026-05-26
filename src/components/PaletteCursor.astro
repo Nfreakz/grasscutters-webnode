@@ -478,3 +478,38 @@
 
 
 </style>
+
+<script is:inline>
+  (() => {
+    const iconVersion = 'gc-v12-2';
+    const ensureIcon = (rel, href, type) => {
+      let link = document.head.querySelector(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', rel);
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', `${href}?v=${iconVersion}`);
+      if (type) link.setAttribute('type', type);
+    };
+
+    ensureIcon('icon', '/favicon.svg', 'image/svg+xml');
+    ensureIcon('shortcut icon', '/favicon.ico', 'image/x-icon');
+    ensureIcon('apple-touch-icon', '/icon-192.png', 'image/png');
+
+    const footer = document.querySelector('.gc-public-footer-links');
+    if (footer && footer.dataset.gcFooterClean !== 'true') {
+      const links = [
+        { href: '/normas', label: 'Normas' },
+        { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
+        { href: '/privacidad', label: 'Privacidad' },
+      ];
+
+      footer.dataset.gcFooterClean = 'true';
+      footer.innerHTML = links
+        .map((item) => `<a href="${item.href}">${item.label}</a>`)
+        .join('');
+    }
+  })();
+</script>
+
