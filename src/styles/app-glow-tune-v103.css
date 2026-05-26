@@ -1,0 +1,50 @@
+/* GrassCutters app glow tune v10.3
+   Goal: soften the overly strong top-left sidebar glow and make the separator line subtler,
+   without changing the theme switcher palette colours. */
+
+html[data-theme][data-gc-scope="app"]{
+  --gc-rail-bg-a-tuned: color-mix(in srgb, var(--bg, #061008) 94%, #000);
+  --gc-rail-bg-b-tuned: color-mix(in srgb, var(--bg2, #0a170c) 84%, #000);
+  --gc-rail-accent-soft: color-mix(in srgb, var(--accent, #9dff00) 12%, transparent);
+  --gc-rail-accent-soft-2: color-mix(in srgb, var(--accent2, #35d3ff) 5%, transparent);
+  --gc-rail-edge-soft: color-mix(in srgb, var(--accent, #9dff00) 18%, rgba(255,255,255,.08));
+}
+
+html[data-theme][data-gc-scope="app"] .gc-rail{
+  background:
+    radial-gradient(circle at 42% 2%, var(--gc-rail-accent-soft), transparent 15rem),
+    radial-gradient(circle at 0% 24%, var(--gc-rail-accent-soft-2), transparent 13rem),
+    linear-gradient(180deg, var(--gc-rail-bg-a-tuned), var(--gc-rail-bg-b-tuned)) !important;
+  border-right-color: var(--gc-rail-edge-soft) !important;
+  box-shadow:
+    20px 0 58px rgba(0,0,0,.22),
+    inset -1px 0 0 color-mix(in srgb, var(--accent, #9dff00) 8%, transparent) !important;
+}
+
+html[data-theme][data-gc-scope="app"] .gc-rail::before{
+  height:165px;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--accent, #9dff00) 7%, transparent), transparent);
+  opacity:.46;
+}
+
+html[data-theme][data-gc-scope="app"] .gc-shell::before{
+  background:linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--accent, #9dff00) 20%, rgba(255,255,255,.06)),
+    transparent
+  ) !important;
+  box-shadow:0 0 10px color-mix(in srgb, var(--accent, #9dff00) 18%, transparent) !important;
+  opacity:.58;
+}
+
+/* Slightly calmer brand block so the upper-left area doesn't flare up so much */
+html[data-theme][data-gc-scope="app"] .gc-brand__mark--logo{
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent, #9dff00) 14%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent, #9dff00) 12%, transparent) !important;
+}
+
+html[data-theme][data-gc-scope="app"] .gc-brand{
+  border-bottom-color: color-mix(in srgb, var(--accent, #9dff00) 12%, var(--line, rgba(255,255,255,.10))) !important;
+}
