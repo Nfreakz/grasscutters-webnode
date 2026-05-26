@@ -1,9 +1,10 @@
 ---
 /*
-  GrassCutters Pilot Avatar System v13.3
+  GrassCutters Pilot Avatar System v13.6
   - Default avatar for every pilot.
   - Upload/reset UI on /perfil for linked users.
-  - Adds avatars to /pilotos and /pilotos/:id without changing their data logic.
+  - Display avatars in /pilotos and /pilotos/:id are handled by PaletteCursor late UI layer.
+    This component no longer injects roster/detail avatars to avoid duplicated avatars.
 */
 ---
 
@@ -183,7 +184,7 @@
   (() => {
     const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
     const cache = new Map();
-    const isPilotSystemPage = () => /^\/perfil\/?$/.test(location.pathname) || /^\/pilotos(?:\/|$)/.test(location.pathname);
+    const isPilotSystemPage = () => /^\/perfil\/?$/.test(location.pathname);
     if (!isPilotSystemPage()) return;
 
     const avatarUrl = (playerId, bust = '') => {
@@ -438,9 +439,8 @@
     }
 
     function enhanceAll() {
-      enhancePilotCards();
-      enhancePilotRows();
-      enhancePilotDetail();
+      // v13.6: only mount the upload/reset card in /perfil.
+      // Roster/detail avatar display is handled once by PaletteCursor to avoid duplicates.
       setupProfileAvatar();
     }
 

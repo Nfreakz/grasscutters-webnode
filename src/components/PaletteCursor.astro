@@ -762,3 +762,257 @@
     window.setTimeout(updateHomeAvatar, 3200);
   })();
 </script>
+
+<style is:global>
+  /* GC Pilot roster avatars v13.5
+     Adds the avatar language to /pilotos and /pilotos/:id without touching the data logic. */
+
+  .gc-pilot-card-v9__top{
+    display:grid!important;
+    grid-template-columns:54px minmax(0,1fr) auto;
+    align-items:center!important;
+    gap:12px!important;
+  }
+
+  .gc-pilot-card-v9__avatar{
+    position:relative;
+    width:54px;
+    height:54px;
+    display:block;
+    border-radius:50%;
+    overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 46%,rgba(255,255,255,.12));
+    background:
+      radial-gradient(circle at 50% 35%, color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 22%,transparent), transparent 62%),
+      rgba(0,0,0,.42);
+    box-shadow:
+      0 0 0 5px color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 7%,transparent),
+      0 10px 28px rgba(0,0,0,.34),
+      0 0 26px color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 18%,transparent);
+    flex:0 0 auto;
+    z-index:1;
+  }
+
+  .gc-pilot-card-v9__avatar img,
+  .gc-piloto-table-avatar img,
+  .gc-pilot-public-avatar-v135__frame img{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+  }
+
+  .gc-pilot-card-v9__avatar:hover{
+    transform:translateY(-1px);
+    border-color:color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 66%,rgba(255,255,255,.14));
+  }
+
+  .gc-piloto-table-name-v135{
+    display:grid;
+    grid-template-columns:38px minmax(0,1fr);
+    align-items:center;
+    gap:10px;
+  }
+
+  .gc-piloto-table-avatar{
+    width:38px;
+    height:38px;
+    display:block;
+    border-radius:50%;
+    overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 36%,rgba(255,255,255,.12));
+    background:rgba(0,0,0,.38);
+    box-shadow:0 0 18px color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 12%,transparent);
+  }
+
+  .gc-pilot-public-avatar-v135{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin:0 0 18px;
+  }
+
+  .gc-pilot-public-avatar-v135__frame{
+    position:relative;
+    width:clamp(86px,9vw,118px);
+    height:clamp(86px,9vw,118px);
+    display:block;
+    border-radius:50%;
+    overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 54%,rgba(255,255,255,.12));
+    background:
+      radial-gradient(circle at 50% 35%, color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 24%,transparent), transparent 62%),
+      rgba(0,0,0,.45);
+    box-shadow:
+      0 0 0 8px color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 7%,transparent),
+      0 18px 48px rgba(0,0,0,.42),
+      0 0 34px color-mix(in srgb,var(--accent,var(--gc-mk-accent,#9dff00)) 22%,transparent);
+    flex:0 0 auto;
+  }
+
+  .gc-pilot-public-avatar-v135__copy{
+    display:grid;
+    gap:6px;
+    min-width:0;
+  }
+
+  .gc-pilot-public-avatar-v135__copy span{
+    color:var(--dim);
+    text-transform:uppercase;
+    letter-spacing:.13em;
+    font-size:.68rem;
+    font-weight:950;
+  }
+
+  .gc-pilot-public-avatar-v135__copy strong{
+    color:var(--text);
+    font-size:clamp(1rem,1.8vw,1.28rem);
+    line-height:1.05;
+    letter-spacing:-.035em;
+    overflow-wrap:anywhere;
+  }
+
+  .gc-pilot-identity-v20 .gc-pilot-public-avatar-v135{
+    display:none!important;
+  }
+
+  @media(max-width:720px){
+    .gc-pilot-card-v9__top{
+      grid-template-columns:50px minmax(0,1fr);
+    }
+
+    .gc-pilot-card-v9__state{
+      grid-column:1 / -1;
+      justify-self:start;
+    }
+
+    .gc-pilot-card-v9__avatar{
+      width:50px;
+      height:50px;
+    }
+
+    .gc-pilot-public-avatar-v135{
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      flex-direction:column;
+    }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const path = window.location.pathname.replace(/\/$/, '') || '/';
+    if (path !== '/pilotos' && !path.startsWith('/pilotos/')) return;
+
+    const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+    const avatarSrc = (playerId) => playerId ? `/api/pilot-avatar/${encodeURIComponent(playerId)}` : DEFAULT_AVATAR;
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+    }[char]));
+
+    const playerIdFromHref = (href) => {
+      const raw = String(href || '');
+      const match = raw.match(/\/pilotos\/(\d+)/);
+      return match ? match[1] : '';
+    };
+
+    const makeImg = (playerId, name) => {
+      const img = document.createElement('img');
+      img.src = avatarSrc(playerId);
+      img.alt = name ? `Avatar de ${name}` : 'Avatar de piloto';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.onerror = () => {
+        img.onerror = null;
+        img.src = DEFAULT_AVATAR;
+      };
+      return img;
+    };
+
+    function decoratePilotCards() {
+      document.querySelectorAll('.gc-pilot-card-v9:not([data-gc-avatar-ready])').forEach((card) => {
+        const link = card.querySelector('a[href*="/pilotos/"]');
+        const playerId = playerIdFromHref(link?.getAttribute('href') || link?.href || '');
+        const top = card.querySelector('.gc-pilot-card-v9__top');
+        const nameEl = card.querySelector('.gc-pilot-card-v9__name');
+        if (!top || !playerId || !nameEl) return;
+
+        card.dataset.gcAvatarReady = 'true';
+        const avatar = document.createElement('a');
+        avatar.className = 'gc-pilot-card-v9__avatar';
+        avatar.href = `/pilotos/${encodeURIComponent(playerId)}`;
+        avatar.setAttribute('aria-label', `Abrir ficha de ${nameEl.textContent?.trim() || 'piloto'}`);
+        avatar.appendChild(makeImg(playerId, nameEl.textContent?.trim() || 'Piloto'));
+        top.insertBefore(avatar, top.firstChild);
+      });
+    }
+
+    function decoratePilotTable() {
+      document.querySelectorAll('#pilotRows tr:not([data-gc-avatar-ready])').forEach((row) => {
+        const link = row.querySelector('a[href*="/pilotos/"]');
+        const playerId = playerIdFromHref(link?.getAttribute('href') || link?.href || '');
+        const nameCell = row.children?.[1];
+        const nameEl = nameCell?.querySelector('.gc-piloto-name-v9');
+        if (!nameCell || !playerId || !nameEl) return;
+
+        row.dataset.gcAvatarReady = 'true';
+        const original = nameCell.innerHTML;
+        const name = nameEl.textContent?.trim() || 'Piloto';
+        nameCell.innerHTML = `
+          <div class="gc-piloto-table-name-v135">
+            <a class="gc-piloto-table-avatar" href="/pilotos/${escapeHtml(playerId)}" aria-label="Abrir ficha de ${escapeHtml(name)}"></a>
+            <div>${original}</div>
+          </div>
+        `;
+        const avatar = nameCell.querySelector('.gc-piloto-table-avatar');
+        avatar?.appendChild(makeImg(playerId, name));
+      });
+    }
+
+    function decoratePilotDetail() {
+      const root = document.querySelector('[data-pilot-page]');
+      if (!root || root.dataset.gcAvatarReady === 'true') return;
+      const playerId = root.dataset.playerId || playerIdFromHref(window.location.pathname);
+      const main = root.querySelector('.gc-pilot-hero-v20__main');
+      if (!main || !playerId) return;
+
+      root.dataset.gcAvatarReady = 'true';
+      const shell = document.createElement('div');
+      shell.className = 'gc-pilot-public-avatar-v135';
+      shell.innerHTML = `
+        <span class="gc-pilot-public-avatar-v135__frame"></span>
+        <span class="gc-pilot-public-avatar-v135__copy">
+          <span>Avatar de piloto</span>
+          <strong data-gc-pilot-avatar-name>Piloto #${escapeHtml(playerId)}</strong>
+        </span>
+      `;
+      shell.querySelector('.gc-pilot-public-avatar-v135__frame')?.appendChild(makeImg(playerId, `Piloto ${playerId}`));
+      main.insertBefore(shell, main.firstChild);
+
+      const title = document.getElementById('pilotTitle');
+      const nameNode = shell.querySelector('[data-gc-pilot-avatar-name]');
+      const syncName = () => {
+        const text = title?.textContent?.trim();
+        if (text && nameNode && !/^Piloto #/.test(text)) nameNode.textContent = text;
+      };
+      syncName();
+      if (title) new MutationObserver(syncName).observe(title, { childList:true, subtree:true, characterData:true });
+    }
+
+    function runDecorators() {
+      decoratePilotCards();
+      decoratePilotTable();
+      decoratePilotDetail();
+    }
+
+    runDecorators();
+    window.setTimeout(runDecorators, 350);
+    window.setTimeout(runDecorators, 1000);
+    window.setTimeout(runDecorators, 2500);
+
+    const observer = new MutationObserver(() => runDecorators());
+    observer.observe(document.body, { childList:true, subtree:true });
+  })();
+</script>
