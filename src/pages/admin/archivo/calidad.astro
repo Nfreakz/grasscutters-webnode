@@ -1,17 +1,829 @@
 ---
 export const prerender = false;
+
 import AppLayout from '../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
-<AppLayout title="Calidad Archivo Motorsport | GrassCutters">
-  <div class="gc-page gc-admin-page-clean">
-    <section class="gc-hero gc-hero--compact"><div><span class="gc-kicker">Archivo Motorsport</span><h1 class="gc-title">Calidad y publicación.</h1><p class="gc-subtitle">Checklist calculado desde la API unificada.</p></div></section>
+
+<AppLayout title="Calidad del Archivo | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-archive-quality-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo</span>
+        <h1 class="gc-title">Calidad editorial.</h1>
+        <p class="gc-subtitle">
+          Revisión rápida de fichas incompletas, borradores, imágenes, fuentes y campos técnicos antes de publicar.
+        </p>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Estado</span>
+          <strong id="qualityStatusLabel">Cargando</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Total</span><strong id="qualityTotal">...</strong></div>
+          <div class="gc-status-row"><span>Listas</span><strong id="qualityReady">...</strong></div>
+          <div class="gc-status-row"><span>Revisar</span><strong id="qualityReview">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
     <AdminSubnav />
-    <section class="gc-metrics" id="qualityMetrics"></section>
-    <section class="gc-section"><div class="gc-section-head"><h2>Checklist de fichas</h2><p>Portada, resumen, texto, datos y publicación.</p></div><div class="archive-quality-table" id="qualityRows"><div class="gc-admin-empty">Cargando...</div></div></section>
+
+    <section class="gc-archive-quality-summary" aria-label="Resumen de calidad">
+      <article>
+        <span>Total</span>
+        <strong id="qualityMetricTotal">0</strong>
+        <small>fichas analizadas</small>
+      </article>
+      <article>
+        <span>Listas</span>
+        <strong id="qualityMetricReady">0</strong>
+        <small>80 puntos o más</small>
+      </article>
+      <article>
+        <span>Revisar</span>
+        <strong id="qualityMetricReview">0</strong>
+        <small>50 a 79 puntos</small>
+      </article>
+      <article>
+        <span>Críticas</span>
+        <strong id="qualityMetricCritical">0</strong>
+        <small>menos de 50 puntos</small>
+      </article>
+    </section>
+
+    <section class="gc-section gc-archive-quality-tools">
+      <div class="gc-section-head">
+        <div>
+          <h2>Filtro de revisión</h2>
+          <p>Localiza rápido qué fichas necesitan texto, imagen, fuentes o datos técnicos.</p>
+        </div>
+        <div class="gc-admin-actions">
+          <button class="gc-btn" type="button" id="qualityRefreshButton">Recargar</button>
+          <a class="gc-btn gc-btn--primary" href="/admin/archivo/nuevo">Nueva ficha</a>
+        </div>
+      </div>
+
+      <div class="gc-archive-quality-filters">
+        <label>
+          <span>Buscar</span>
+          <input id="qualitySearchInput" type="search" placeholder="Título, slug, categoría, problema..." autocomplete="off" />
+        </label>
+
+        <label>
+          <span>Categoría</span>
+          <select id="qualityTypeFilter">
+            <option value="all">Todas</option>
+            <option value="circuitos">Circuitos</option>
+            <option value="vehiculos">Vehículos / coches</option>
+            <option value="coches">Coches</option>
+            <option value="pilotos">Pilotos</option>
+            <option value="campeonatos">Campeonatos</option>
+            <option value="records">Récords</option>
+            <option value="glosario">Glosario</option>
+            <option value="general">General</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Estado</span>
+          <select id="qualityStatusFilter">
+            <option value="all">Todos</option>
+            <option value="published">Publicadas</option>
+            <option value="draft">Borradores</option>
+            <option value="hidden">Ocultas</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Calidad</span>
+          <select id="qualityLevelFilter">
+            <option value="all">Todas</option>
+            <option value="ready">Listas</option>
+            <option value="review">Revisar</option>
+            <option value="critical">Críticas</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <h2>Checklist de fichas</h2>
+          <p><span id="qualityVisibleCount">0</span> fichas visibles con los filtros actuales.</p>
+        </div>
+      </div>
+
+      <div class="gc-archive-quality-table" id="qualityRows">
+        <div class="gc-admin-empty">Cargando fichas...</div>
+      </div>
+
+      <div class="gc-admin-empty" id="qualityEmpty" hidden>
+        No hay fichas que coincidan con estos filtros.
+      </div>
+    </section>
   </div>
-  <style is:global>.archive-quality-table{display:grid;gap:8px}.archive-quality-row{display:grid;grid-template-columns:1.3fr .6fr .6fr .55fr 1.6fr auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);background:rgba(255,255,255,.018)}.archive-quality-row--head{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}.archive-quality-row small{display:block;color:var(--dim)}@media(max-width:980px){.archive-quality-row{grid-template-columns:1fr}.archive-quality-row--head{display:none}}</style>
+
+  <style is:global>
+    .gc-archive-quality-page [hidden]{
+      display:none!important;
+    }
+
+    .gc-archive-quality-summary{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:0 0 clamp(18px,2vw,26px);
+    }
+
+    .gc-archive-quality-summary article{
+      min-height:116px;
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(122,255,144,.11), transparent 36%),
+        rgba(255,255,255,.025);
+    }
+
+    .gc-archive-quality-summary span,
+    .gc-archive-quality-filters span,
+    .gc-archive-quality-row__meta small,
+    .gc-archive-quality-issues strong{
+      color:var(--dim);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.11em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-quality-summary strong{
+      display:block;
+      margin:.35rem 0 .1rem;
+      color:var(--text);
+      font-size:clamp(2rem,4vw,3.4rem);
+      line-height:1;
+      letter-spacing:-.06em;
+    }
+
+    .gc-archive-quality-summary small{
+      color:var(--soft);
+    }
+
+    .gc-archive-quality-tools{
+      overflow:visible;
+    }
+
+    .gc-archive-quality-filters{
+      display:grid;
+      grid-template-columns:minmax(260px,1.4fr) repeat(3,minmax(170px,.7fr));
+      gap:12px;
+    }
+
+    .gc-archive-quality-filters label{
+      display:grid;
+      gap:7px;
+    }
+
+    .gc-archive-quality-filters input,
+    .gc-archive-quality-filters select{
+      width:100%;
+      min-height:44px;
+      padding:0 13px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(5,10,8,.62);
+      color:var(--text);
+      font:inherit;
+      outline:none;
+    }
+
+    .gc-archive-quality-filters input:focus,
+    .gc-archive-quality-filters select:focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 4px rgba(122,255,144,.08);
+    }
+
+    .gc-archive-quality-table{
+      display:grid;
+      gap:10px;
+    }
+
+    .gc-archive-quality-row{
+      display:grid;
+      grid-template-columns:minmax(220px,1.25fr) minmax(120px,.45fr) minmax(100px,.38fr) minmax(150px,.55fr) minmax(240px,1.25fr) auto;
+      gap:12px;
+      align-items:center;
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-archive-quality-row--head{
+      min-height:42px;
+      padding-block:10px;
+      color:var(--dim);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+      background:rgba(255,255,255,.03);
+    }
+
+    .gc-archive-quality-row:not(.gc-archive-quality-row--head){
+      transition:border-color .16s ease, background .16s ease, transform .16s ease;
+    }
+
+    .gc-archive-quality-row:not(.gc-archive-quality-row--head):hover{
+      transform:translateY(-1px);
+      border-color:rgba(122,255,144,.32);
+      background:rgba(255,255,255,.03);
+    }
+
+    .gc-archive-quality-row.is-ready{
+      border-color:rgba(122,255,144,.22);
+    }
+
+    .gc-archive-quality-row.is-review{
+      border-color:rgba(255,194,87,.24);
+    }
+
+    .gc-archive-quality-row.is-critical{
+      border-color:rgba(255,90,90,.28);
+    }
+
+    .gc-archive-quality-title{
+      display:grid;
+      gap:4px;
+      min-width:0;
+    }
+
+    .gc-archive-quality-title strong{
+      color:var(--text);
+      line-height:1.2;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-quality-title small{
+      color:var(--dim);
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-quality-pill{
+      display:inline-flex;
+      width:max-content;
+      max-width:100%;
+      align-items:center;
+      justify-content:center;
+      min-height:30px;
+      padding:0 10px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      color:var(--soft);
+      font-size:.78rem;
+      font-weight:850;
+    }
+
+    .gc-archive-quality-status--published{
+      color:#bdfacb;
+      border-color:rgba(122,255,144,.28);
+      background:rgba(122,255,144,.08);
+    }
+
+    .gc-archive-quality-status--draft{
+      color:#ffe0a3;
+      border-color:rgba(255,194,87,.28);
+      background:rgba(255,194,87,.08);
+    }
+
+    .gc-archive-quality-status--hidden{
+      color:#ffd0d0;
+      border-color:rgba(255,90,90,.28);
+      background:rgba(255,90,90,.08);
+    }
+
+    .gc-archive-quality-score{
+      display:grid;
+      gap:7px;
+      min-width:130px;
+    }
+
+    .gc-archive-quality-score strong{
+      font-size:1.05rem;
+    }
+
+    .gc-archive-quality-bar{
+      height:8px;
+      overflow:hidden;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+    }
+
+    .gc-archive-quality-bar span{
+      display:block;
+      height:100%;
+      width:var(--score-width,0%);
+      border-radius:inherit;
+      background:linear-gradient(90deg,#ff5a5a,#ffc257,#7aff90);
+    }
+
+    .gc-archive-quality-issues{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+    }
+
+    .gc-archive-quality-issues span{
+      display:inline-flex;
+      align-items:center;
+      min-height:28px;
+      padding:0 9px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:999px;
+      background:rgba(0,0,0,.16);
+      color:var(--soft);
+      font-size:.78rem;
+    }
+
+    .gc-archive-quality-issues .is-ok{
+      color:#bdfacb;
+      border-color:rgba(122,255,144,.24);
+      background:rgba(122,255,144,.07);
+    }
+
+    .gc-archive-quality-actions{
+      display:flex;
+      gap:7px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .gc-btn--small{
+      min-height:34px;
+      padding:0 12px;
+      font-size:.78rem;
+    }
+
+    @media(max-width:1180px){
+      .gc-archive-quality-summary{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-archive-quality-filters{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-archive-quality-row{
+        grid-template-columns:1fr;
+        align-items:start;
+      }
+
+      .gc-archive-quality-row--head{
+        display:none;
+      }
+
+      .gc-archive-quality-actions{
+        justify-content:flex-start;
+      }
+    }
+
+    @media(max-width:680px){
+      .gc-archive-quality-summary,
+      .gc-archive-quality-filters{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
   <script is:inline>
-    (()=>{const API='/api/admin/archive/unified';const $=(id)=>document.getElementById(id);const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));async function json(url){const r=await fetch(url,{credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw new Error(d.message||`HTTP ${r.status}`);return d;}function score(i){let s=0,issues=[];if(i.status==='published')s+=20;else issues.push('No publicada');if(String(i.summary||'').length>=80)s+=20;else issues.push('Resumen corto');if(String(i.body||'').length>=250)s+=25;else issues.push('Texto corto');const media=Array.isArray(i.media)?i.media:[];if(media.some(m=>m.isMain&&(m.url||m.localUrl)))s+=20;else if(media.length){s+=10;issues.push('Sin portada marcada');}else issues.push('Sin imagen');const facts=Array.isArray(i.facts)?i.facts.length:0;if(facts>=4)s+=15;else issues.push('Pocos datos');return {s,level:s>=80?'lista':s>=50?'revisar':'pobre',issues};}async function load(){try{const d=await json(`${API}/items`);const items=d.items||[];const stats={total:items.length,published:items.filter(i=>i.status==='published').length,draft:items.filter(i=>i.status!=='published').length};$('qualityMetrics').innerHTML=`<div class="gc-metric"><span>Total</span><strong>${stats.total}</strong><small>fichas</small></div><div class="gc-metric"><span>Publicadas</span><strong>${stats.published}</strong><small>visibles</small></div><div class="gc-metric"><span>Borradores</span><strong>${stats.draft}</strong><small>revisión</small></div>`;$('qualityRows').innerHTML='<div class="archive-quality-row archive-quality-row--head"><span>Ficha</span><span>Tipo</span><span>Estado</span><span>Calidad</span><span>Problemas</span><span></span></div>'+items.map(i=>{const q=score(i);return`<div class="archive-quality-row is-${q.level}"><span><strong>${esc(i.title||'Sin título')}</strong><small>${esc(i.slug||i.id)}</small></span><span>${esc(i.category||i.type)}</span><span>${esc(i.status||'draft')}</span><span><strong>${q.s}/100</strong><small>${q.level}</small></span><span>${esc(q.issues.join(' · ')||'OK')}</span><span><a class="gc-btn gc-btn--small" href="/admin/archivo/editar/${encodeURIComponent(i.id)}">Editar</a></span></div>`}).join('');}catch(e){$('qualityRows').innerHTML=`<div class="gc-admin-empty">${esc(e.message)}</div>`;}}load();})();
+    (() => {
+      const API = '/api/admin/archive/unified';
+
+      const $ = (id) => document.getElementById(id);
+
+      const els = {
+        status: $('qualityStatusLabel'),
+        total: $('qualityTotal'),
+        ready: $('qualityReady'),
+        review: $('qualityReview'),
+        metricTotal: $('qualityMetricTotal'),
+        metricReady: $('qualityMetricReady'),
+        metricReview: $('qualityMetricReview'),
+        metricCritical: $('qualityMetricCritical'),
+        rows: $('qualityRows'),
+        empty: $('qualityEmpty'),
+        visible: $('qualityVisibleCount'),
+        search: $('qualitySearchInput'),
+        type: $('qualityTypeFilter'),
+        statusFilter: $('qualityStatusFilter'),
+        level: $('qualityLevelFilter'),
+        refresh: $('qualityRefreshButton'),
+      };
+
+      let allRows = [];
+
+      function esc(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        }[char]));
+      }
+
+      function normalizeText(value) {
+        return String(value || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
+      }
+
+      function normalizeCategory(value) {
+        const raw = normalizeText(value);
+        if (['vehicle', 'vehicles', 'car', 'cars', 'coche', 'coches', 'vehiculo', 'vehiculos'].includes(raw)) return 'vehiculos';
+        if (['circuit', 'track', 'circuito', 'circuitos'].includes(raw)) return 'circuitos';
+        if (['pilot', 'driver', 'piloto', 'pilotos'].includes(raw)) return 'pilotos';
+        if (['championship', 'campeonato', 'campeonatos'].includes(raw)) return 'campeonatos';
+        if (['record', 'records', 'récord', 'récords'].includes(raw)) return 'records';
+        if (['glossary', 'glosario', 'concepto', 'conceptos'].includes(raw)) return 'glosario';
+        return raw || 'general';
+      }
+
+      function publicCategory(value) {
+        const category = normalizeCategory(value);
+        return category === 'vehiculos' ? 'coches' : category;
+      }
+
+      function categoryLabel(value) {
+        const category = normalizeCategory(value);
+        return ({
+          circuitos: 'Circuito',
+          vehiculos: 'Coche',
+          pilotos: 'Piloto',
+          campeonatos: 'Campeonato',
+          records: 'Récord',
+          glosario: 'Glosario',
+          general: 'General',
+        })[category] || category;
+      }
+
+      function statusLabel(value) {
+        const status = String(value || 'draft').toLowerCase();
+        if (status === 'published') return 'Publicado';
+        if (status === 'hidden') return 'Oculto';
+        return 'Borrador';
+      }
+
+      function getTitle(item) {
+        return String(item.title || item.nombre || item.titulo || 'Sin título').trim();
+      }
+
+      function getSlug(item) {
+        return String(item.slug || item.id || '').trim();
+      }
+
+      function getCategory(item) {
+        return normalizeCategory(item.category || item.tipo || item.type || item.categoria_tipo || 'general');
+      }
+
+      function getStatus(item) {
+        return String(item.status || item.estado || 'draft').toLowerCase();
+      }
+
+      function textLen(...values) {
+        return values.map((value) => String(value || '').trim()).join(' ').trim().length;
+      }
+
+      function hasField(item, keys) {
+        return keys.some((key) => String(item[key] ?? '').trim().length > 0);
+      }
+
+      function countPairs(raw) {
+        return String(raw || '')
+          .split(/\|\||\n|;/g)
+          .map((entry) => entry.trim())
+          .filter(Boolean).length;
+      }
+
+      function mediaInfo(item) {
+        const media = Array.isArray(item.media) ? item.media : [];
+        const hasAny = media.some((entry) => entry?.url || entry?.localUrl);
+        const hasMain = media.some((entry) => (entry?.isMain || entry?.isPrimary) && (entry?.url || entry?.localUrl));
+        return { media, hasAny, hasMain };
+      }
+
+      function sourceInfo(item) {
+        const sourceText = [
+          item.fuentes,
+          item.sources,
+          item.fuente_url,
+          item.source_url,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+
+        const facts = Array.isArray(item.facts) ? item.facts : [];
+        const sourceFacts = facts.filter((fact) => normalizeText(fact?.label).includes('fuente') && String(fact?.value || '').trim());
+
+        return sourceText.length + sourceFacts.length;
+      }
+
+      function factsCount(item) {
+        const facts = Array.isArray(item.facts) ? item.facts.filter((fact) => String(fact?.label || '').trim() && String(fact?.value || '').trim()) : [];
+        return facts.length;
+      }
+
+      function scoreItem(item) {
+        const category = getCategory(item);
+        const status = getStatus(item);
+        const media = mediaInfo(item);
+        const sources = sourceInfo(item);
+        const facts = factsCount(item);
+        const summaryLength = textLen(item.summary, item.resumen, item.descripcion_corta, item.subtitulo);
+        const editorialLength = textLen(item.body, item.descripcion_larga, item.introduccion, item.contexto_historico, item.importancia);
+        const issues = [];
+        let score = 0;
+
+        if (status === 'published') score += 10;
+        else issues.push('No publicada');
+
+        if (getTitle(item).length >= 4) score += 5;
+        else issues.push('Título débil');
+
+        if (getSlug(item).length >= 3) score += 5;
+        else issues.push('Sin slug');
+
+        if (summaryLength >= 80) score += 15;
+        else if (summaryLength >= 35) {
+          score += 8;
+          issues.push('Resumen corto');
+        } else {
+          issues.push('Sin resumen suficiente');
+        }
+
+        if (editorialLength >= 650) score += 20;
+        else if (editorialLength >= 250) {
+          score += 12;
+          issues.push('Texto ampliable');
+        } else {
+          issues.push('Texto corto');
+        }
+
+        if (media.hasMain) score += 15;
+        else if (media.hasAny) {
+          score += 8;
+          issues.push('Sin portada marcada');
+        } else {
+          issues.push('Sin imagen');
+        }
+
+        if (sources >= 2) score += 15;
+        else if (sources === 1) {
+          score += 8;
+          issues.push('Pocas fuentes');
+        } else {
+          issues.push('Sin fuentes');
+        }
+
+        if (facts >= 4) score += 10;
+        else if (facts >= 2) {
+          score += 5;
+          issues.push('Pocos datos rápidos');
+        } else {
+          issues.push('Faltan datos rápidos');
+        }
+
+        let typeScore = 0;
+
+        if (category === 'circuitos') {
+          if (hasField(item, ['ubicacion', 'ubicación', 'region', 'pais'])) typeScore += 4;
+          else issues.push('Falta ubicación');
+          if (hasField(item, ['longitud_km', 'curvas', 'sentido', 'recta_principal_km'])) typeScore += 4;
+          else issues.push('Faltan datos de trazado');
+          if (countPairs(item.zonas_clave || item.puntos_clave) >= 2) typeScore += 4;
+          else issues.push('Faltan zonas clave');
+          if (hasField(item, ['eventos_destacados', 'records_destacados', 'records'])) typeScore += 2;
+          else issues.push('Sin eventos/récords');
+          if (hasField(item, ['caracteristicas_conduccion', 'caracteristicas_trazado', 'como_se_conduce'])) typeScore += 1;
+        } else if (category === 'vehiculos') {
+          if (hasField(item, ['fabricante', 'manufacturer'])) typeScore += 3;
+          else issues.push('Falta fabricante');
+          if (hasField(item, ['motor', 'engine'])) typeScore += 4;
+          else issues.push('Falta motor');
+          if (hasField(item, ['categoria_competicion', 'categoria', 'periodo', 'anos_actividad', 'años_actividad'])) typeScore += 3;
+          else issues.push('Falta categoría/periodo');
+          if (hasField(item, ['historial_competicion', 'competition_history', 'desarrollo'])) typeScore += 3;
+          else issues.push('Falta historial');
+          if (countPairs(item.caracteristicas_tecnicas || item.ficha_tecnica) >= 2) typeScore += 2;
+        } else if (category === 'pilotos') {
+          if (hasField(item, ['nacionalidad', 'pais', 'país'])) typeScore += 3;
+          else issues.push('Falta nacionalidad');
+          if (hasField(item, ['fecha_nacimiento', 'lugar_nacimiento', 'periodo', 'anos_activo', 'años_activo'])) typeScore += 3;
+          else issues.push('Faltan datos biográficos');
+          if (hasField(item, ['biografia', 'biografía', 'trayectoria'])) typeScore += 4;
+          else issues.push('Falta biografía');
+          if (hasField(item, ['palmares', 'palmarés', 'titulos', 'victorias_destacadas'])) typeScore += 3;
+          else issues.push('Falta palmarés');
+          if (hasField(item, ['estilo_conduccion', 'estilo_pilotaje'])) typeScore += 2;
+        } else {
+          if (facts >= 3) typeScore += 6;
+          if (editorialLength >= 450) typeScore += 6;
+          if (sources >= 1) typeScore += 3;
+        }
+
+        score += Math.min(15, typeScore);
+
+        const finalScore = Math.max(0, Math.min(100, score));
+        const level = finalScore >= 80 ? 'ready' : finalScore >= 50 ? 'review' : 'critical';
+
+        return {
+          score: finalScore,
+          level,
+          issues: [...new Set(issues)].slice(0, 8),
+        };
+      }
+
+      async function fetchJson(url) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function publicHref(item) {
+        const category = publicCategory(getCategory(item));
+        return `/archivo/${encodeURIComponent(category)}/${encodeURIComponent(getSlug(item))}/`;
+      }
+
+      function editHref(item) {
+        return `/admin/archivo/editar/${encodeURIComponent(item.id || item.slug || getSlug(item))}`;
+      }
+
+      function rowSearchText(row) {
+        const item = row.item;
+        return normalizeText([
+          getTitle(item),
+          getSlug(item),
+          getCategory(item),
+          publicCategory(getCategory(item)),
+          getStatus(item),
+          row.quality.level,
+          row.quality.issues.join(' '),
+          item.summary,
+          item.descripcion_corta,
+          item.subtitulo,
+          item.tags,
+        ].join(' '));
+      }
+
+      function enrichItems(items) {
+        return items.map((item) => {
+          const quality = scoreItem(item);
+          return {
+            item,
+            quality,
+            search: '',
+          };
+        }).map((row) => ({
+          ...row,
+          search: rowSearchText(row),
+        }));
+      }
+
+      function renderMetrics(rows) {
+        const total = rows.length;
+        const ready = rows.filter((row) => row.quality.level === 'ready').length;
+        const review = rows.filter((row) => row.quality.level === 'review').length;
+        const critical = rows.filter((row) => row.quality.level === 'critical').length;
+
+        els.status.textContent = 'Operativo';
+        els.total.textContent = String(total);
+        els.ready.textContent = String(ready);
+        els.review.textContent = String(review);
+
+        els.metricTotal.textContent = String(total);
+        els.metricReady.textContent = String(ready);
+        els.metricReview.textContent = String(review);
+        els.metricCritical.textContent = String(critical);
+      }
+
+      function renderRows(rows) {
+        if (!rows.length) {
+          els.rows.innerHTML = '';
+          els.empty.hidden = false;
+          els.visible.textContent = '0';
+          return;
+        }
+
+        els.empty.hidden = true;
+        els.visible.textContent = String(rows.length);
+
+        els.rows.innerHTML = `
+          <div class="gc-archive-quality-row gc-archive-quality-row--head">
+            <span>Ficha</span>
+            <span>Tipo</span>
+            <span>Estado</span>
+            <span>Calidad</span>
+            <span>Problemas</span>
+            <span></span>
+          </div>
+          ${rows.map((row) => {
+            const item = row.item;
+            const quality = row.quality;
+            const category = getCategory(item);
+            const status = getStatus(item);
+            const issues = quality.issues.length
+              ? quality.issues.map((issue) => `<span>${esc(issue)}</span>`).join('')
+              : '<span class="is-ok">OK</span>';
+
+            return `
+              <article class="gc-archive-quality-row is-${quality.level}">
+                <div class="gc-archive-quality-title">
+                  <strong>${esc(getTitle(item))}</strong>
+                  <small>${esc(getSlug(item))}</small>
+                </div>
+
+                <span class="gc-archive-quality-pill">${esc(categoryLabel(category))}</span>
+
+                <span class="gc-archive-quality-pill gc-archive-quality-status--${esc(status)}">${esc(statusLabel(status))}</span>
+
+                <div class="gc-archive-quality-score">
+                  <strong>${quality.score}/100</strong>
+                  <div class="gc-archive-quality-bar" aria-hidden="true" style="--score-width:${quality.score}%"><span></span></div>
+                </div>
+
+                <div class="gc-archive-quality-issues">${issues}</div>
+
+                <div class="gc-archive-quality-actions">
+                  <a class="gc-btn gc-btn--small" href="${esc(editHref(item))}">Editar</a>
+                  <a class="gc-btn gc-btn--small" href="${esc(publicHref(item))}" target="_blank" rel="noreferrer">Ver</a>
+                </div>
+              </article>
+            `;
+          }).join('')}
+        `;
+      }
+
+      function applyFilters() {
+        const query = normalizeText(els.search.value);
+        const type = String(els.type.value || 'all');
+        const status = String(els.statusFilter.value || 'all');
+        const level = String(els.level.value || 'all');
+
+        const visibleRows = allRows.filter((row) => {
+          const item = row.item;
+          const itemCategory = getCategory(item);
+          const publicCat = publicCategory(itemCategory);
+          const itemStatus = getStatus(item);
+
+          const queryOk = !query || row.search.includes(query);
+          const typeOk = type === 'all' || itemCategory === normalizeCategory(type) || publicCat === type;
+          const statusOk = status === 'all' || itemStatus === status || (status === 'draft' && itemStatus !== 'published' && itemStatus !== 'hidden');
+          const levelOk = level === 'all' || row.quality.level === level;
+
+          return queryOk && typeOk && statusOk && levelOk;
+        });
+
+        renderRows(visibleRows);
+      }
+
+      async function load() {
+        els.status.textContent = 'Cargando';
+        els.rows.innerHTML = '<div class="gc-admin-empty">Cargando fichas...</div>';
+        els.empty.hidden = true;
+
+        try {
+          const data = await fetchJson(`${API}/items`);
+          const items = Array.isArray(data.items) ? data.items : [];
+          allRows = enrichItems(items).sort((a, b) => a.quality.score - b.quality.score || getTitle(a.item).localeCompare(getTitle(b.item), 'es'));
+
+          renderMetrics(allRows);
+          applyFilters();
+        } catch (error) {
+          els.status.textContent = 'API error';
+          els.rows.innerHTML = `<div class="gc-admin-empty">${esc(error.message || 'No se pudieron cargar fichas.')}</div>`;
+          els.empty.hidden = true;
+        }
+      }
+
+      els.search.addEventListener('input', applyFilters);
+      els.type.addEventListener('change', applyFilters);
+      els.statusFilter.addEventListener('change', applyFilters);
+      els.level.addEventListener('change', applyFilters);
+      els.refresh.addEventListener('click', load);
+
+      load();
+    })();
   </script>
 </AppLayout>

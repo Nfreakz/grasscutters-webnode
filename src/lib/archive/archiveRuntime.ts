@@ -1,115 +1,44 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import staticArchiveItems from '../../data/archive/items.json';
 
 export type ArchiveItem = Record<string, any> & {
+  id?: string;
   tipo: string;
+  category?: string;
   slug: string;
   nombre: string;
-  title?: string;
-  category?: string;
+  title: string;
   status?: string;
 };
 
-export type ArchiveTypeSummary = {
+type ArchiveTypeSummary = {
   tipo: string;
   label: string;
+  singular: string;
+  href: string;
   count: number;
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = process.env.GC_RUNTIME_ROOT
-  ? path.resolve(process.env.GC_RUNTIME_ROOT)
-  : path.resolve(__dirname, '../../..');
+const PUBLIC_TYPE_ORDER = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario'];
 
-const KNOWN_PUBLIC_TYPES = new Set(['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario', 'general']);
+const TYPE_LABELS: Record<string, { label: string; singular: string }> = {
+  circuitos: { label: 'Circuitos', singular: 'Circuito' },
+  coches: { label: 'Coches', singular: 'Coche' },
+  pilotos: { label: 'Pilotos', singular: 'Piloto' },
+  campeonatos: { label: 'Campeonatos', singular: 'Campeonato' },
+  records: { label: 'Récords', singular: 'Récord' },
+  glosario: { label: 'Glosario', singular: 'Concepto' },
+  general: { label: 'Archivo', singular: 'Ficha' },
+};
 
-const TYPE_ORDER = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario', 'general'];
-
-function stripAccents(value = '') {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+function appRootDir() {
+  return process.env.GC_RUNTIME_ROOT?.trim()
+    ? path.resolve(process.env.GC_RUNTIME_ROOT.trim())
+    : process.cwd();
 }
 
-function slugify(value: unknown, fallback = 'archivo') {
-  return stripAccents(String(value || ''))
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-')
-    .slice(0, 140) || fallback;
-}
-
-function normalizeKey(value = '') {
-  return slugify(value, '')
-    .replace(/-/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-export function normalizeArchiveType(value = ''): string {
-  const clean = slugify(value, 'general');
-
-  if (['circuit', 'track', 'circuito', 'circuitos'].includes(clean)) return 'circuitos';
-  if (['car', 'cars', 'coche', 'coches', 'vehiculo', 'vehiculos', 'vehicle', 'vehicles'].includes(clean)) return 'coches';
-  if (['pilot', 'driver', 'piloto', 'pilotos', 'drivers'].includes(clean)) return 'pilotos';
-  if (['championship', 'championships', 'campeonato', 'campeonatos'].includes(clean)) return 'campeonatos';
-  if (['record', 'records'].includes(clean)) return 'records';
-  if (['glossary', 'glosario'].includes(clean)) return 'glosario';
-
-  return clean || 'general';
-}
-
-function storageCategoryForPublicType(value = '') {
-  const type = normalizeArchiveType(value);
-  if (type === 'coches') return 'vehiculos';
-  return type;
-}
-
-export function prettifyArchiveType(value = ''): string {
-  const type = normalizeArchiveType(value);
-  const labels: Record<string, string> = {
-    circuitos: 'Circuitos',
-    coches: 'Coches',
-    pilotos: 'Pilotos',
-    campeonatos: 'Campeonatos',
-    records: 'Récords',
-    glosario: 'Glosario',
-    general: 'Archivo',
-  };
-  return labels[type] || type.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-export function singularArchiveType(value = ''): string {
-  const type = normalizeArchiveType(value);
-  const labels: Record<string, string> = {
-    circuitos: 'Circuito',
-    coches: 'Coche',
-    pilotos: 'Piloto',
-    campeonatos: 'Campeonato',
-    records: 'Récord',
-    glosario: 'Entrada de glosario',
-    general: 'Ficha',
-  };
-  return labels[type] || 'Ficha';
-}
-
-export function archiveTypeHref(value = ''): string {
-  return `/archivo/${normalizeArchiveType(value)}/`;
-}
-
-export function archiveItemHref(item: Pick<ArchiveItem, 'tipo' | 'slug'>): string {
-  return `/archivo/${normalizeArchiveType(item?.tipo || 'general')}/${String(item?.slug || '').trim()}/`;
-}
-
-function isVisiblePublicItem(item: any) {
-  const status = String(item?.status || item?.estado || '').trim().toLowerCase();
-  return !status || status === 'published' || status === 'publicado' || status === 'public';
-}
-
-function useMysqlArchiveStorage() {
+function mysqlEnabled() {
   const driver = String(process.env.ARCHIVE_STORAGE_DRIVER || process.env.APP_STORAGE_DRIVER || 'json').trim().toLowerCase();
   return driver === 'mysql' || driver === 'mariadb';
 }
@@ -126,272 +55,351 @@ async function getMysqlConnection() {
   const password = process.env.MYSQL_PASSWORD ?? '';
   const port = Number(process.env.MYSQL_PORT || 3306);
 
-  if (!host || !database || !user) throw new Error('Faltan variables MySQL para Archivo.');
+  if (!host || !database || !user) {
+    throw new Error('Faltan variables MySQL para leer el Archivo.');
+  }
 
   const mysql = await importMysql2();
-  return mysql.createConnection({
-    host,
-    port,
-    database,
-    user,
-    password,
-    charset: 'utf8mb4',
-    timezone: 'Z',
-  });
+  return mysql.createConnection({ host, port, database, user, password, charset: 'utf8mb4', timezone: 'Z' });
 }
 
-function archiveJsonPath() {
+function runtimeJsonPath() {
   const configured = process.env.ARCHIVE_DATA_PATH?.trim() || process.env.MOTORSPORT_ARCHIVE_PATH?.trim();
-  if (configured) return path.isAbsolute(configured) ? configured : path.resolve(rootDir, configured);
-  return path.join(rootDir, 'data', 'app', 'motorsport-archive.json');
+  if (configured) return path.isAbsolute(configured) ? configured : path.resolve(appRootDir(), configured);
+  return path.join(appRootDir(), 'data', 'app', 'motorsport-archive.json');
 }
 
-function safeJsonParse(value: string, fallback: any) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
+function publicTypeFromValue(value: unknown): string {
+  const raw = String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  if (['circuit', 'track', 'circuito', 'circuitos'].includes(raw)) return 'circuitos';
+  if (['vehicle', 'vehicles', 'car', 'cars', 'coche', 'coches', 'vehiculo', 'vehiculos'].includes(raw)) return 'coches';
+  if (['pilot', 'driver', 'piloto', 'pilotos'].includes(raw)) return 'pilotos';
+  if (['championship', 'campeonato', 'campeonatos'].includes(raw)) return 'campeonatos';
+  if (['record', 'records', 'récord', 'récords'].includes(raw)) return 'records';
+  if (['glossary', 'glosario', 'concepto', 'conceptos'].includes(raw)) return 'glosario';
+
+  const slug = raw
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || 'general';
 }
 
-function listFromDelimited(value: any) {
-  if (Array.isArray(value)) return value.filter(Boolean);
-  return String(value || '')
-    .split(/\|\||\n|;/g)
-    .map((item) => item.trim())
-    .filter(Boolean);
+function internalCategoryFromPublicType(value: unknown): string {
+  const type = publicTypeFromValue(value);
+  if (type === 'coches') return 'vehiculos';
+  return type;
 }
 
-function getMedia(item: any) {
+function itemRawType(item: any): string {
+  return String(
+    item?.tipo ||
+    item?.category ||
+    item?.categoria_tipo ||
+    item?.tipo_importacion ||
+    item?.collection ||
+    item?.type ||
+    ''
+  );
+}
+
+function isPublicStatus(item: any) {
+  const status = String(item?.status || item?.estado || '').trim().toLowerCase();
+  if (!status) return true;
+  return ['published', 'publicado', 'visible'].includes(status);
+}
+
+export function normalizeArchiveType(value = ''): string {
+  return publicTypeFromValue(value);
+}
+
+export function prettifyArchiveType(value = ''): string {
+  const type = normalizeArchiveType(value);
+  if (TYPE_LABELS[type]) return TYPE_LABELS[type].label;
+
+  const clean = String(value || '').replace(/-/g, ' ').trim();
+  if (!clean) return 'Archivo';
+  return clean.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function singularArchiveType(value = ''): string {
+  const type = normalizeArchiveType(value);
+  return TYPE_LABELS[type]?.singular || 'Ficha';
+}
+
+export function archiveTypeHref(value = ''): string {
+  return `/archivo/${normalizeArchiveType(value)}/`;
+}
+
+export function archiveItemHref(item: any): string {
+  const type = normalizeArchiveType(item?.tipo || item?.category || item?.type || 'general');
+  const slug = String(item?.slug || '').trim();
+  return `/archivo/${type}/${slug}/`;
+}
+
+export function getArchiveSummary(item: any): string {
+  return String(item?.descripcion_corta || item?.summary || item?.subtitulo || item?.excerpt || item?.body || '').trim();
+}
+
+export function getArchivePeriod(item: any): string {
+  return String(item?.periodo || item?.epoca || item?.años_actividad || item?.anos_actividad || item?.fecha_apertura || '').trim();
+}
+
+export function getArchiveCountry(item: any): string {
+  return String(item?.pais || item?.país || item?.nacionalidad || item?.ubicacion || item?.ubicación || '').trim();
+}
+
+export function getArchiveImage(item: any): string {
   const media = Array.isArray(item?.media) ? item.media : [];
-  return media
-    .map((entry: any) => ({
-      ...entry,
-      url: String(entry?.url || entry?.localUrl || '').trim(),
-      localUrl: String(entry?.localUrl || entry?.url || '').trim(),
-    }))
-    .filter((entry: any) => entry.url || entry.localUrl);
+  const main = media.find((entry: any) => entry?.isMain || entry?.isPrimary) || media[0];
+  return String(item?.coverUrl || item?.imagen_url || item?.image_url || main?.url || main?.localUrl || '').trim();
 }
 
-function getMainMedia(item: any) {
-  const media = getMedia(item);
-  return media.find((entry: any) => entry.isMain || entry.isPrimary) || media[0] || null;
-}
-
-function mergeFactFields(raw: any) {
-  const output: Record<string, any> = { ...(raw || {}) };
-  const facts = Array.isArray(raw?.facts) ? raw.facts : [];
-
-  const aliases: Record<string, string> = {
-    pais: 'pais',
-    pais_origen: 'pais',
-    country: 'pais',
-    region: 'region',
-    ubicacion: 'ubicacion',
-    localizacion: 'ubicacion',
-    categoria: 'categoria',
-    categoria_competicion: 'categoria_competicion',
-    periodo: 'periodo',
-    epoca: 'epoca',
-    disciplina: 'disciplina',
-    longitud: 'longitud_km',
-    longitud_km: 'longitud_km',
-    length_km: 'longitud_km',
-    curvas: 'curvas',
-    corners: 'curvas',
-    sentido: 'sentido',
-    apertura: 'fecha_apertura',
-    fecha_apertura: 'fecha_apertura',
-    fabricante: 'fabricante',
-    modelo_base: 'modelo_base',
-    constructor: 'constructor',
-    motor: 'motor',
-    cilindrada: 'cilindrada',
-    potencia: 'potencia',
-    peso: 'peso',
-    traccion: 'traccion',
-    transmision: 'transmision',
-    nacionalidad: 'nacionalidad',
-    nacimiento: 'fecha_nacimiento',
-    fecha_nacimiento: 'fecha_nacimiento',
-    lugar_nacimiento: 'lugar_nacimiento',
-    equipos: 'equipos',
-    titulos: 'titulos',
-    victorias: 'victorias',
-    podios: 'podios',
-  };
-
-  for (const fact of facts) {
-    const label = String(fact?.label || fact?.title || fact?.name || '').trim();
-    const value = String(fact?.value || fact?.text || fact?.content || '').trim();
-    if (!label || !value) continue;
-
-    const key = normalizeKey(label);
-    const target = aliases[key] || key;
-    if (target && output[target] === undefined) output[target] = value;
+function normalizeFacts(value: any) {
+  if (Array.isArray(value)) {
+    return value
+      .map((fact) => ({
+        label: String(fact?.label || fact?.name || '').trim(),
+        value: String(fact?.value || fact?.text || '').trim(),
+      }))
+      .filter((fact) => fact.label && fact.value);
   }
 
-  return output;
+  if (!value || typeof value !== 'object') return [];
+
+  return Object.entries(value)
+    .map(([label, factValue]) => ({
+      label: String(label || '').replace(/_/g, ' ').trim(),
+      value: String(factValue ?? '').trim(),
+    }))
+    .filter((fact) => fact.label && fact.value);
 }
 
-function normalizeSources(item: any) {
-  const explicit = item.fuentes || item.sources;
-  if (explicit) return explicit;
-
-  const facts = Array.isArray(item.facts) ? item.facts : [];
-  const sourceFacts = facts
-    .filter((fact: any) => {
-      const label = String(fact?.label || fact?.title || '').toLowerCase();
-      return label.includes('fuente') || label.includes('source');
-    })
-    .map((fact: any) => {
-      const label = String(fact?.label || 'Fuente').trim();
-      const value = String(fact?.value || fact?.text || '').trim();
-      return value ? `${label}::${value}` : '';
-    })
-    .filter(Boolean);
-
-  return sourceFacts.join('||');
+function normalizeMedia(value: any) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((media) => ({
+      ...media,
+      url: String(media?.url || media?.localUrl || '').trim(),
+      localUrl: String(media?.localUrl || media?.url || '').trim(),
+      alt: String(media?.alt || '').trim(),
+      source: String(media?.source || '').trim(),
+      sourceUrl: String(media?.sourceUrl || media?.originalUrl || media?.url || '').trim(),
+      author: String(media?.author || '').trim(),
+      license: String(media?.license || '').trim(),
+      isMain: Boolean(media?.isMain || media?.isPrimary),
+      isPrimary: Boolean(media?.isPrimary || media?.isMain),
+    }))
+    .filter((media) => media.url || media.localUrl);
 }
 
-export function normalizeArchiveItem(rawItem: any): ArchiveItem {
-  const raw = mergeFactFields(rawItem || {});
-  const rawType = raw.tipo || raw.tipo_importacion || raw.category || raw.type || raw.categoria_tipo || raw.collection || 'general';
-  const tipo = normalizeArchiveType(rawType);
-  const title = String(raw.nombre || raw.title || raw.titulo || raw.name || 'Ficha sin título').trim();
-  const slug = slugify(raw.slug || title);
-  const media = getMedia(raw);
-  const mainMedia = getMainMedia(raw);
-  const summary = String(raw.descripcion_corta || raw.summary || raw.resumen || raw.subtitulo || raw.excerpt || raw.body || '').trim();
-  const body = String(raw.introduccion || raw.body || raw.descripcion_larga || raw.description_long || raw.descripcion || raw.texto || '').trim();
-  const rawCategoryType = normalizeArchiveType(raw.category || raw.type || raw.tipo || '');
-  const rawDetailType = normalizeArchiveType(raw.categoria || '');
-  const semanticCategory =
-    raw.categoria && !KNOWN_PUBLIC_TYPES.has(rawDetailType)
-      ? raw.categoria
-      : raw.categoria_competicion || raw.categoryLabel || raw.detailCategory || (rawCategoryType && rawCategoryType !== tipo ? raw.category : '') || '';
+function displayCategoryFor(item: any, publicType: string) {
+  const specific = String(item?.categoria || item?.categoria_competicion || item?.tipo_trazado || '').trim();
+  if (specific) return specific;
+  return singularArchiveType(publicType);
+}
 
-  return {
-    ...raw,
-    tipo,
-    publicTipo: tipo,
-    storageCategory: raw.category || storageCategoryForPublicType(tipo),
+function normalizeArchiveItem(input: any): ArchiveItem | null {
+  if (!input || typeof input !== 'object') return null;
+
+  const publicType = normalizeArchiveType(itemRawType(input));
+  const title = String(input.nombre || input.title || input.titulo || input.name || '').trim();
+  const slug = String(input.slug || '').trim();
+
+  if (!title || !slug) return null;
+
+  const media = normalizeMedia(input.media);
+  const cover = getArchiveImage({ ...input, media });
+
+  const item: ArchiveItem = {
+    ...input,
+    id: String(input.id || `${publicType}-${slug}`),
+    tipo: publicType,
+    publicType,
+    sourceCategory: String(input.category || input.type || input.tipo || ''),
+    category: internalCategoryFromPublicType(publicType),
+    categoria: displayCategoryFor(input, publicType),
     slug,
     nombre: title,
     title,
-    status: raw.status || raw.estado || '',
-    descripcion_corta: summary,
-    summary,
-    subtitulo: raw.subtitulo || summary,
-    introduccion: body || raw.introduccion || '',
-    body: raw.body || body,
-    categoria: raw.categoria || semanticCategory || '',
+    status: String(input.status || input.estado || ''),
+    summary: String(input.summary || input.descripcion_corta || input.subtitulo || '').trim(),
+    descripcion_corta: String(input.descripcion_corta || input.summary || input.subtitulo || '').trim(),
+    subtitulo: String(input.subtitulo || input.summary || input.descripcion_corta || '').trim(),
+    body: String(input.body || input.descripcion_larga || input.introduccion || '').trim(),
+    facts: normalizeFacts(input.facts),
     media,
-    imagen_url: raw.imagen_url || raw.image_url || raw.coverUrl || mainMedia?.url || mainMedia?.localUrl || '',
-    imagen_alt: raw.imagen_alt || raw.image_alt || raw.coverAlt || mainMedia?.alt || title,
-    imagen_credito: raw.imagen_credito || raw.image_credit || mainMedia?.source || '',
-    imagen_licencia: raw.imagen_licencia || raw.image_license || mainMedia?.license || '',
-    coverUrl: raw.coverUrl || raw.imagen_url || mainMedia?.url || mainMedia?.localUrl || '',
-    coverAlt: raw.coverAlt || raw.imagen_alt || mainMedia?.alt || title,
-    fuentes: normalizeSources(raw),
+    coverUrl: String(input.coverUrl || cover || '').trim(),
+    coverAlt: String(input.coverAlt || input.imagen_alt || title).trim(),
   };
+
+  return item;
 }
 
-async function readMysqlArchiveItems() {
+async function readMysqlItems(): Promise<ArchiveItem[]> {
   const connection = await getMysqlConnection();
+
   try {
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS gc_archive_items (
+        id VARCHAR(120) NOT NULL PRIMARY KEY,
+        category VARCHAR(60) NOT NULL,
+        slug VARCHAR(160) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        status VARCHAR(30) NOT NULL DEFAULT 'draft',
+        item_json LONGTEXT NOT NULL,
+        created_at DATETIME(3) NOT NULL,
+        updated_at DATETIME(3) NOT NULL,
+        UNIQUE KEY uniq_gc_archive_category_slug (category, slug),
+        INDEX idx_gc_archive_status (status),
+        INDEX idx_gc_archive_category (category)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     const [rows] = await connection.execute(
-      `SELECT id, category, slug, title, status, item_json, updated_at
-       FROM gc_archive_items
-       ORDER BY updated_at DESC`
+      'SELECT id, category, slug, title, status, item_json, updated_at FROM gc_archive_items ORDER BY updated_at DESC'
     );
 
-    return (Array.isArray(rows) ? rows : []).map((row: any) => {
-      const parsed = safeJsonParse(String(row.item_json || '{}'), {});
-      return normalizeArchiveItem({
-        ...parsed,
-        id: parsed.id || row.id,
-        category: parsed.category || row.category,
-        slug: parsed.slug || row.slug,
-        title: parsed.title || row.title,
-        status: parsed.status || row.status,
-        updatedAt: parsed.updatedAt || row.updated_at,
-      });
-    });
+    return (Array.isArray(rows) ? rows : [])
+      .map((row: any) => {
+        try {
+          const parsed = JSON.parse(row.item_json || '{}');
+          return normalizeArchiveItem({
+            ...parsed,
+            id: parsed.id || row.id,
+            category: parsed.category || row.category,
+            slug: parsed.slug || row.slug,
+            title: parsed.title || row.title,
+            status: parsed.status || row.status,
+          });
+        } catch {
+          return normalizeArchiveItem({
+            id: row.id,
+            category: row.category,
+            slug: row.slug,
+            title: row.title,
+            status: row.status,
+          });
+        }
+      })
+      .filter(Boolean) as ArchiveItem[];
   } finally {
     await connection.end();
   }
 }
 
-function readJsonArchiveItems() {
-  const filePath = archiveJsonPath();
+function readRuntimeJsonItems(): ArchiveItem[] {
+  const filePath = runtimeJsonPath();
   if (!fs.existsSync(filePath)) return [];
 
-  const parsed = safeJsonParse(fs.readFileSync(filePath, 'utf8'), null);
-  const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
-  return items.map(normalizeArchiveItem);
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const rawItems = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+    return rawItems.map(normalizeArchiveItem).filter(Boolean) as ArchiveItem[];
+  } catch {
+    return [];
+  }
 }
 
-function readStaticArchiveItems() {
-  return (staticArchiveItems as ArchiveItem[]).map(normalizeArchiveItem);
+function readStaticItems(): ArchiveItem[] {
+  return (Array.isArray(staticArchiveItems) ? staticArchiveItems : [])
+    .map(normalizeArchiveItem)
+    .filter(Boolean) as ArchiveItem[];
 }
 
-async function readArchiveItemsRaw() {
-  if (useMysqlArchiveStorage()) {
+let cache: { at: number; items: ArchiveItem[] } | null = null;
+
+export async function getArchiveItems(options: { includeDrafts?: boolean; fresh?: boolean } = {}): Promise<ArchiveItem[]> {
+  const includeDrafts = Boolean(options.includeDrafts);
+  const now = Date.now();
+
+  if (!options.fresh && cache && now - cache.at < 10_000) {
+    return includeDrafts ? cache.items : cache.items.filter(isPublicStatus);
+  }
+
+  let items: ArchiveItem[] = [];
+
+  if (mysqlEnabled()) {
     try {
-      const mysqlItems = await readMysqlArchiveItems();
-      if (mysqlItems.length) return mysqlItems;
+      items = await readMysqlItems();
     } catch (error) {
-      console.warn('[GC Archivo] No se pudo leer MySQL. Se usará JSON/estático como fallback.', error);
+      console.warn('[GC Archive] No se pudo leer MySQL, usando fallback JSON/estático:', error instanceof Error ? error.message : String(error));
     }
   }
 
-  const jsonItems = readJsonArchiveItems();
-  if (jsonItems.length) return jsonItems;
+  if (!items.length) items = readRuntimeJsonItems();
+  if (!items.length) items = readStaticItems();
 
-  return readStaticArchiveItems();
-}
-
-export async function getArchiveItems(options: { includeDrafts?: boolean } = {}): Promise<ArchiveItem[]> {
-  const items = await readArchiveItemsRaw();
-  return items
-    .filter((item) => options.includeDrafts || isVisiblePublicItem(item))
+  items = items
     .filter((item) => item.slug && item.nombre)
     .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+
+  cache = { at: now, items };
+
+  return includeDrafts ? items : items.filter(isPublicStatus);
 }
 
 export async function getArchiveTypes(): Promise<ArchiveTypeSummary[]> {
   const items = await getArchiveItems();
-  const map = new Map<string, ArchiveTypeSummary>();
+  const counts = new Map<string, number>();
 
   for (const item of items) {
-    const tipo = normalizeArchiveType(item.tipo);
-    const current = map.get(tipo) || { tipo, label: prettifyArchiveType(tipo), count: 0 };
-    current.count += 1;
-    map.set(tipo, current);
+    const type = normalizeArchiveType(item.tipo || item.category);
+    counts.set(type, (counts.get(type) || 0) + 1);
   }
 
-  return [...map.values()].sort((a, b) => {
-    const ai = TYPE_ORDER.indexOf(a.tipo);
-    const bi = TYPE_ORDER.indexOf(b.tipo);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.label.localeCompare(b.label, 'es');
-  });
+  const known = PUBLIC_TYPE_ORDER.map((tipo) => ({
+    tipo,
+    label: prettifyArchiveType(tipo),
+    singular: singularArchiveType(tipo),
+    href: archiveTypeHref(tipo),
+    count: counts.get(tipo) || 0,
+  }));
+
+  const unknown = [...counts.keys()]
+    .filter((tipo) => !PUBLIC_TYPE_ORDER.includes(tipo))
+    .map((tipo) => ({
+      tipo,
+      label: prettifyArchiveType(tipo),
+      singular: singularArchiveType(tipo),
+      href: archiveTypeHref(tipo),
+      count: counts.get(tipo) || 0,
+    }));
+
+  return [...known, ...unknown];
 }
 
 export async function getArchiveItemsByType(tipo: string): Promise<ArchiveItem[]> {
   const normalized = normalizeArchiveType(tipo);
-  return (await getArchiveItems()).filter((item) => normalizeArchiveType(item.tipo) === normalized);
+  const items = await getArchiveItems();
+  return items.filter((item) => normalizeArchiveType(item.tipo || item.category) === normalized);
 }
 
 export async function getArchiveItem(tipo: string, slug: string): Promise<ArchiveItem | undefined> {
   const normalized = normalizeArchiveType(tipo);
   const cleanSlug = String(slug || '').trim();
-  return (await getArchiveItems()).find((item) => normalizeArchiveType(item.tipo) === normalized && item.slug === cleanSlug);
+  const items = await getArchiveItems();
+  return items.find((item) => normalizeArchiveType(item.tipo || item.category) === normalized && item.slug === cleanSlug);
+}
+
+export async function findArchiveItem(tipo: string, slug: string): Promise<ArchiveItem | undefined> {
+  return getArchiveItem(tipo, slug);
+}
+
+export async function getArchiveItemBySlug(tipo: string, slug: string): Promise<ArchiveItem | undefined> {
+  return getArchiveItem(tipo, slug);
 }
 
 export async function getRelatedArchiveItems(entry: ArchiveItem, limit = 6): Promise<ArchiveItem[]> {
-  const tags = listFromDelimited(entry.tags)
-    .map((tag) => String(tag).trim().toLowerCase())
+  const entryType = normalizeArchiveType(entry.tipo || entry.category);
+  const tags = String(entry.tags || '')
+    .split(/\|\||;|,/g)
+    .map((tag) => tag.trim().toLowerCase())
     .filter(Boolean);
 
   const items = await getArchiveItems();
@@ -400,12 +408,10 @@ export async function getRelatedArchiveItems(entry: ArchiveItem, limit = 6): Pro
     .filter((item) => item.slug !== entry.slug)
     .map((item) => {
       let score = 0;
-      if (normalizeArchiveType(item.tipo) === normalizeArchiveType(entry.tipo)) score += 4;
+      if (normalizeArchiveType(item.tipo || item.category) === entryType) score += 4;
       if (item.pais && entry.pais && String(item.pais).toLowerCase() === String(entry.pais).toLowerCase()) score += 2;
-
       const itemTags = String(item.tags || '').toLowerCase();
       for (const tag of tags) if (itemTags.includes(tag)) score += 1;
-
       return { item, score };
     })
     .filter(({ score }) => score > 0)
@@ -420,10 +426,58 @@ export async function getArchiveStats() {
 
   return {
     total: items.length,
+    items,
+    types,
+    categories: types,
     circuits: items.filter((item) => normalizeArchiveType(item.tipo) === 'circuitos').length,
     cars: items.filter((item) => normalizeArchiveType(item.tipo) === 'coches').length,
     pilots: items.filter((item) => normalizeArchiveType(item.tipo) === 'pilotos').length,
-    items,
-    types,
   };
+}
+
+export async function searchArchiveItems(query = ''): Promise<ArchiveItem[]> {
+  const q = String(query || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const items = await getArchiveItems();
+  if (!q) return items;
+
+  return items.filter((item) => {
+    const haystack = [
+      item.nombre,
+      item.title,
+      item.slug,
+      item.tipo,
+      prettifyArchiveType(item.tipo),
+      getArchiveSummary(item),
+      getArchiveCountry(item),
+      getArchivePeriod(item),
+      item.tags,
+      item.disciplina,
+      item.categoria,
+      item.fabricante,
+      item.motor,
+      item.equipos,
+      item.eventos_destacados,
+      item.zonas_clave,
+    ].flat().join(' ')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    return haystack.includes(q);
+  });
+}
+
+export async function getPublishedArchiveItems(): Promise<ArchiveItem[]> {
+  return getArchiveItems();
+}
+
+export async function getArchivePageData(tipo: string, slug: string) {
+  const entry = await getArchiveItem(tipo, slug);
+  const related = entry ? await getRelatedArchiveItems(entry) : [];
+  return { entry, related };
 }

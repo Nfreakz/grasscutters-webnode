@@ -11,6 +11,16 @@ import {
 const { entry = {}, related = [] } = Astro.props;
 
 type PairItem = { title: string; text: string; parts: string[] };
+type MediaItem = {
+  url: string;
+  alt: string;
+  source?: string;
+  sourceUrl?: string;
+  author?: string;
+  license?: string;
+  isMain?: boolean;
+  isPrimary?: boolean;
+};
 
 const value = (keys: string[], fallback = '') => {
   for (const key of keys) {
@@ -47,6 +57,22 @@ const normalizeLabelKey = (label: any) => String(label || '')
   .replace(/[^a-z0-9]+/g, '_')
   .replace(/^_+|_+$/g, '');
 
+const normalizeMedia = (media: any): MediaItem[] => {
+  if (!Array.isArray(media)) return [];
+  return media
+    .map((item: any) => ({
+      url: String(item?.url || item?.localUrl || '').trim(),
+      alt: String(item?.alt || item?.title || '').trim(),
+      source: String(item?.source || '').trim(),
+      sourceUrl: String(item?.sourceUrl || item?.originalUrl || item?.url || '').trim(),
+      author: String(item?.author || '').trim(),
+      license: String(item?.license || '').trim(),
+      isMain: Boolean(item?.isMain || item?.isPrimary),
+      isPrimary: Boolean(item?.isPrimary || item?.isMain),
+    }))
+    .filter((item: MediaItem) => item.url);
+};
+
 const title = value(['nombre', 'name', 'titulo', 'title'], 'Ficha sin título');
 const rawType = value(['tipo', 'publicTipo', 'tipo_importacion', 'collection', 'categoria_tipo', 'category', 'type'], 'archivo');
 const type = normalizeArchiveType(rawType);
@@ -54,19 +80,30 @@ const typeLabel = prettifyArchiveType(type);
 const typeSingular = singularArchiveType(type);
 const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha técnica e histórica del archivo.');
 const category = value(['categoria', 'categoryLabel', 'detailCategory', 'categoria_competicion'], typeSingular);
+const detailCategoryLabel = type === 'circuitos' ? 'Tipo de trazado' : 'Categoría';
 const country = value(['pais', 'país', 'country'], '');
 const region = value(['region', 'región', 'ciudad', 'ubicacion', 'ubicación'], '');
 const period = value(['periodo', 'epoca', 'época', 'years'], '');
 const discipline = value(['disciplina', 'discipline'], '');
 const tags = splitList(value(['tags', 'etiquetas'], ''));
-const imageUrl = value(['imagen_url', 'coverUrl', 'image_url', 'image', 'foto_url'], '');
-const imageAlt = value(['imagen_alt', 'coverAlt', 'image_alt'], title);
+const explicitImageUrl = value(['imagen_url', 'coverUrl', 'image_url', 'image', 'foto_url'], '');
+const explicitImageAlt = value(['imagen_alt', 'coverAlt', 'image_alt'], title);
 const imageCredit = value(['imagen_credito', 'image_credit', 'credito_imagen'], '');
 const imageLicense = value(['imagen_licencia', 'image_license', 'licencia_imagen'], '');
 const author = value(['autor', 'author', 'redaccion'], 'Redacción del archivo');
 const license = value(['licencia', 'license'], 'Texto editorial propio con fuentes indicadas.');
 const lastReview = value(['ultima_revision', 'última_revisión', 'last_review'], '');
 const identificationNote = value(['nota_identificacion', 'nota_de_identificacion', 'identification_note', 'nota_revision'], '');
+
+const entryMedia = normalizeMedia(entry.media);
+const fallbackMedia = explicitImageUrl
+  ? [{ url: explicitImageUrl, alt: explicitImageAlt, source: imageCredit, license: imageLicense, isMain: true, isPrimary: true }]
+  : [];
+const mediaItems = entryMedia.length ? entryMedia : fallbackMedia;
+const heroMedia = mediaItems.find((item) => item.isMain || item.isPrimary) || mediaItems[0] || null;
+const imageUrl = heroMedia?.url || explicitImageUrl;
+const imageAlt = heroMedia?.alt || explicitImageAlt || title;
+const hasImage = Boolean(imageUrl);
 
 const commonSections = [
   ['Introducción', value(['introduccion', 'descripcion_larga', 'description_long', 'body'])],
@@ -85,7 +122,7 @@ const factsByType: Record<string, [string, string][]> = {
     ['Apertura', value(['fecha_apertura', 'apertura', 'opened'])],
     ['Diseño', value(['diseniador', 'diseñador', 'designer'])],
     ['Propietario', value(['propietario', 'owner'])],
-    ['Tipo', value(['tipo_trazado', 'tipo_circuito', 'track_type'], category)],
+    ['Tipo de trazado', value(['tipo_trazado', 'tipo_circuito', 'track_type'], category)],
     ['País', country],
   ],
   coches: [
@@ -163,7 +200,7 @@ const sections = (typeSections[type] || [])
   .filter((section) => section.text || (section.items && section.items.length));
 
 const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
-const hasImage = Boolean(imageUrl);
+const mediaCredits = mediaItems.filter((item) => item.source || item.author || item.license || item.sourceUrl);
 ---
 
 <article class={`gc-archive-dossier gc-archive-dossier--${type}`}>
@@ -184,8 +221,8 @@ const hasImage = Boolean(imageUrl);
       {hasImage ? (
         <figure>
           <img src={imageUrl} alt={imageAlt} loading="eager" />
-          {(imageCredit || imageLicense) && (
-            <figcaption>{imageCredit}{imageCredit && imageLicense ? ' · ' : ''}{imageLicense}</figcaption>
+          {(heroMedia?.source || heroMedia?.author || heroMedia?.license || imageCredit || imageLicense) && (
+            <figcaption>{[heroMedia?.source || imageCredit, heroMedia?.author, heroMedia?.license || imageLicense].filter(Boolean).join(' · ')}</figcaption>
           )}
         </figure>
       ) : (
@@ -218,6 +255,25 @@ const hasImage = Boolean(imageUrl);
               <p>{text}</p>
             </div>
           ))}
+        </section>
+      )}
+
+      {mediaItems.length > 1 && (
+        <section class="gc-archive-dossier__panel gc-archive-dossier__gallery-panel">
+          <div class="gc-archive-dossier__section-head">
+            <span>Material visual</span>
+            <h2>Galería</h2>
+          </div>
+          <div class="gc-archive-dossier__gallery">
+            {mediaItems.map((media, index) => (
+              <figure>
+                <img src={media.url} alt={media.alt || `${title} · imagen ${index + 1}`} loading="lazy" />
+                {(media.alt || media.source || media.author || media.license) && (
+                  <figcaption>{[media.alt, media.source, media.author, media.license].filter(Boolean).join(' · ')}</figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
         </section>
       )}
 
@@ -254,9 +310,9 @@ const hasImage = Boolean(imageUrl);
 
     <aside class="gc-archive-dossier__sidebar">
       <section class="gc-archive-dossier__side-panel">
-        <span class="gc-archive-dossier__side-kicker">Clasificación</span>
+        <span class="gc-archive-dossier__side-kicker">Ficha</span>
         <h2>{typeSingular}</h2>
-        <p>{category}</p>
+        <p><strong>{detailCategoryLabel}:</strong> {category}</p>
         {(country || region || period) && (
           <ul class="gc-archive-dossier__meta-list">
             {country && <li><strong>País</strong><span>{country}</span></li>}
@@ -295,6 +351,55 @@ const hasImage = Boolean(imageUrl);
           </ul>
         )}
       </section>
+
+      {mediaCredits.length > 0 && (
+        <section class="gc-archive-dossier__side-panel gc-archive-dossier__sources">
+          <span class="gc-archive-dossier__side-kicker">Imágenes</span>
+          <h2>Créditos visuales</h2>
+          <ul>
+            {mediaCredits.map((media, index) => (
+              <li>
+                {media.sourceUrl ? (
+                  <a href={media.sourceUrl} target="_blank" rel="noreferrer">{media.source || media.alt || `Imagen ${index + 1}`}</a>
+                ) : (
+                  media.source || media.alt || `Imagen ${index + 1}`
+                )}
+                {[media.author, media.license].filter(Boolean).length ? ` · ${[media.author, media.license].filter(Boolean).join(' · ')}` : ''}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </aside>
   </div>
 </article>
+
+<style is:global>
+  .gc-archive-dossier__gallery{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+  }
+  .gc-archive-dossier__gallery figure{
+    margin:0;
+    border:1px solid rgba(255,255,255,.075);
+    border-radius:18px;
+    background:rgba(0,0,0,.14);
+    overflow:hidden;
+  }
+  .gc-archive-dossier__gallery img{
+    display:block;
+    width:100%;
+    aspect-ratio:16/10;
+    object-fit:cover;
+  }
+  .gc-archive-dossier__gallery figcaption{
+    padding:10px 12px;
+    color:var(--gc-archive-muted, #7f9184);
+    font-size:.78rem;
+    line-height:1.42;
+  }
+  @media(max-width:720px){
+    .gc-archive-dossier__gallery{grid-template-columns:1fr;}
+  }
+</style>
