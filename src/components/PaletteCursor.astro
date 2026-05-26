@@ -1,3 +1,185 @@
 ---
 // Native SVG cursor is loaded from palette-unify-v7.css.
+// This component is rendered by the public and app layouts, so it is also used
+// for tiny global visual guards that must load after the main styles.
 ---
+
+<style is:global>
+  /* GC home mobile hero guard v9.8
+     Scope: home hero only. No cursor, palette, sidebar or app changes. */
+
+  @media (max-width: 860px){
+    html[data-gc-scope="marketing"] .gc-home-hero-video{
+      min-height:0 !important;
+      padding-top:clamp(112px, 24vw, 154px) !important;
+      padding-bottom:clamp(42px, 11vw, 72px) !important;
+      margin-bottom:0 !important;
+      overflow:hidden !important;
+      background:var(--gc-mk-bg, #070a08) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-bg-video{
+      opacity:.34 !important;
+      object-position:center top !important;
+      filter:saturate(.96) contrast(1.02) brightness(.78) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-scrim{
+      background:
+        radial-gradient(circle at 24% 22%, color-mix(in srgb, var(--accent, #9dff00) 18%, transparent), transparent 18rem),
+        radial-gradient(circle at 74% 72%, color-mix(in srgb, var(--accent2, #35d3ff) 8%, transparent), transparent 22rem),
+        linear-gradient(90deg, rgba(1,7,4,.93) 0%, rgba(1,7,4,.68) 58%, rgba(1,7,4,.94) 100%),
+        linear-gradient(180deg, rgba(1,7,4,.28) 0%, rgba(1,7,4,.62) 54%, var(--gc-mk-bg, #070a08) 100%) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-video::before{
+      height:clamp(150px, 38vw, 260px) !important;
+      background:linear-gradient(180deg, rgba(7,10,8,0), var(--gc-mk-bg, #070a08) 88%) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-video::after{
+      bottom:clamp(18px, 6vw, 38px) !important;
+      width:min(620px, 96vw) !important;
+      height:160px !important;
+      opacity:.34 !important;
+      filter:blur(38px) !important;
+      background:radial-gradient(ellipse at center, color-mix(in srgb, var(--accent, #9dff00) 16%, transparent), transparent 68%) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner{
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      min-height:0 !important;
+      gap:clamp(22px, 7vw, 38px) !important;
+      align-items:start !important;
+      justify-content:start !important;
+      transform:none !important;
+      padding-top:0 !important;
+      text-align:left !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner > div:first-child{
+      grid-column:1 !important;
+      grid-row:1 !important;
+      max-width:min(100%, 33rem) !important;
+      justify-self:start !important;
+      align-self:start !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-kicker{
+      font-size:.68rem !important;
+      letter-spacing:.16em !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-title{
+      font-size:clamp(2.55rem, 12vw, 4.05rem) !important;
+      line-height:.94 !important;
+      letter-spacing:-.075em !important;
+      margin:10px 0 14px !important;
+      max-width:11.5ch !important;
+      text-wrap:balance;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-lead{
+      max-width:30ch !important;
+      font-size:clamp(.96rem, 4vw, 1.12rem) !important;
+      line-height:1.7 !important;
+      color:color-mix(in srgb, var(--text, #f4fff1) 78%, transparent) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-secondary-actions--hero{
+      width:100% !important;
+      max-width:18rem !important;
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      gap:10px !important;
+      margin-top:22px !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-secondary-actions--hero .gc-home-cta{
+      width:100% !important;
+      min-height:46px !important;
+      height:46px !important;
+      justify-content:flex-start !important;
+      padding-inline:18px !important;
+      border-radius:999px !important;
+      font-size:.78rem !important;
+      letter-spacing:.07em !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]{
+      grid-column:1 !important;
+      grid-row:2 !important;
+      width:min(220px, 62vw) !important;
+      min-width:0 !important;
+      max-width:220px !important;
+      justify-self:center !important;
+      align-self:start !important;
+      margin:clamp(4px, 2vw, 12px) auto 0 !important;
+      transform:none !important;
+      filter:
+        drop-shadow(0 18px 42px rgba(0,0,0,.48))
+        drop-shadow(0 0 24px color-mix(in srgb, var(--accent, #9dff00) 20%, transparent)) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__img,
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] img{
+      width:100% !important;
+      height:auto !important;
+      transform:none !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]::before,
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]::after,
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__glow,
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__orbit{
+      opacity:.28 !important;
+      animation:none !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68{
+      width:calc(100% - 32px) !important;
+      margin:clamp(32px, 9vw, 54px) auto 0 !important;
+      display:grid !important;
+      grid-template-columns:1fr !important;
+      border-radius:0 !important;
+      overflow:hidden !important;
+      background:rgba(3, 10, 6, .52) !important;
+      border-color:rgba(255,255,255,.12) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68 .gc-metric{
+      padding:20px 22px !important;
+      border-right:0 !important;
+      border-bottom:1px solid rgba(255,255,255,.10) !important;
+      background:rgba(255,255,255,.025) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68 .gc-metric:last-child{
+      border-bottom:0 !important;
+    }
+  }
+
+  @media (max-width: 520px){
+    html[data-gc-scope="marketing"] .gc-home-hero-video{
+      padding-top:clamp(104px, 28vw, 136px) !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-title{
+      font-size:clamp(2.25rem, 13vw, 3.35rem) !important;
+      max-width:10.8ch !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-lead{
+      max-width:27ch !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-secondary-actions--hero{
+      max-width:16rem !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]{
+      width:min(190px, 58vw) !important;
+    }
+  }
+</style>
