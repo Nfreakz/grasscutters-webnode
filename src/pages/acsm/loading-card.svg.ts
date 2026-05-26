@@ -5,8 +5,6 @@ export const prerender = false;
 
 const WEB_URL = 'https://grasscuttersracing.com';
 const HOTLAPS_URL = `${WEB_URL}/hotlaps`;
-
-// ACSM Content Manager Wrapper actual del servidor. Es la fuente buena para saber el combo activo.
 const ACSM_DETAILS_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.ACSM_DETAILS_URL) ||
   process.env.ACSM_DETAILS_URL ||
@@ -22,6 +20,58 @@ type ActiveContext = {
   drivers: number;
   topRows: GenericRecord[];
   source: 'acsm-wrapper' | 'query-param' | 'combo-api' | 'hotlaps-recent' | 'hotlaps-fallback';
+};
+
+const FONT: Record<string, string[]> = {
+  'A': ['01110','10001','10001','11111','10001','10001','10001'],
+  'B': ['11110','10001','10001','11110','10001','10001','11110'],
+  'C': ['01111','10000','10000','10000','10000','10000','01111'],
+  'D': ['11110','10001','10001','10001','10001','10001','11110'],
+  'E': ['11111','10000','10000','11110','10000','10000','11111'],
+  'F': ['11111','10000','10000','11110','10000','10000','10000'],
+  'G': ['01111','10000','10000','10011','10001','10001','01111'],
+  'H': ['10001','10001','10001','11111','10001','10001','10001'],
+  'I': ['11111','00100','00100','00100','00100','00100','11111'],
+  'J': ['00111','00010','00010','00010','10010','10010','01100'],
+  'K': ['10001','10010','10100','11000','10100','10010','10001'],
+  'L': ['10000','10000','10000','10000','10000','10000','11111'],
+  'M': ['10001','11011','10101','10101','10001','10001','10001'],
+  'N': ['10001','11001','10101','10011','10001','10001','10001'],
+  'O': ['01110','10001','10001','10001','10001','10001','01110'],
+  'P': ['11110','10001','10001','11110','10000','10000','10000'],
+  'Q': ['01110','10001','10001','10001','10101','10010','01101'],
+  'R': ['11110','10001','10001','11110','10100','10010','10001'],
+  'S': ['01111','10000','10000','01110','00001','00001','11110'],
+  'T': ['11111','00100','00100','00100','00100','00100','00100'],
+  'U': ['10001','10001','10001','10001','10001','10001','01110'],
+  'V': ['10001','10001','10001','10001','10001','01010','00100'],
+  'W': ['10001','10001','10001','10101','10101','10101','01010'],
+  'X': ['10001','10001','01010','00100','01010','10001','10001'],
+  'Y': ['10001','10001','01010','00100','00100','00100','00100'],
+  'Z': ['11111','00001','00010','00100','01000','10000','11111'],
+  '0': ['01110','10001','10011','10101','11001','10001','01110'],
+  '1': ['00100','01100','00100','00100','00100','00100','01110'],
+  '2': ['01110','10001','00001','00010','00100','01000','11111'],
+  '3': ['11110','00001','00001','01110','00001','00001','11110'],
+  '4': ['00010','00110','01010','10010','11111','00010','00010'],
+  '5': ['11111','10000','10000','11110','00001','00001','11110'],
+  '6': ['01111','10000','10000','11110','10001','10001','01110'],
+  '7': ['11111','00001','00010','00100','01000','01000','01000'],
+  '8': ['01110','10001','10001','01110','10001','10001','01110'],
+  '9': ['01110','10001','10001','01111','00001','00001','11110'],
+  '.': ['00000','00000','00000','00000','00000','01100','01100'],
+  ':': ['00000','01100','01100','00000','01100','01100','00000'],
+  '/': ['00001','00010','00010','00100','01000','01000','10000'],
+  '-': ['00000','00000','00000','11111','00000','00000','00000'],
+  '_': ['00000','00000','00000','00000','00000','00000','11111'],
+  '+': ['00000','00100','00100','11111','00100','00100','00000'],
+  '&': ['01100','10010','10100','01000','10101','10010','01101'],
+  "'": ['01100','01100','00100','01000','00000','00000','00000'],
+  '!': ['00100','00100','00100','00100','00100','00000','00100'],
+  '?': ['01110','10001','00001','00010','00100','00000','00100'],
+  '(': ['00010','00100','01000','01000','01000','00100','00010'],
+  ')': ['01000','00100','00010','00010','00010','00100','01000'],
+  '#': ['01010','01010','11111','01010','11111','01010','01010'],
 };
 
 function items(data: any): any[] {
@@ -68,9 +118,7 @@ function carList(source: any): string[] {
     }
   }
   const joined = firstString(source, ['carsText', 'cars', 'comboCarsText'], '');
-  if (joined) {
-    return joined.split(/\s*[+,|/]\s*/g).map((item) => item.trim()).filter(Boolean);
-  }
+  if (joined) return joined.split(/\s*[+,|/]\s*/g).map((item) => item.trim()).filter(Boolean);
   const single = carName(source);
   return single ? [single] : [];
 }
@@ -102,30 +150,39 @@ function dateMs(source: any): number {
   return 0;
 }
 
-function normalize(value: string): string {
+function stripAccents(value: string): string {
   return String(value || '')
-    .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/Ñ/g, 'N');
+}
+
+function normalize(value: string): string {
+  return stripAccents(value)
+    .toLowerCase()
     .replace(/ks_/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
 function prettyName(value: string, fallback = 'Por detectar'): string {
-  const clean = String(value || '').trim();
+  const clean = stripAccents(String(value || '').trim());
   if (!clean) return fallback;
   return clean
     .replace(/^ks_/, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .replace(/\bGp\b/g, 'GP')
-    .replace(/\bGt\b/g, 'GT');
+    .replace(/\bGt\b/g, 'GT')
+    .replace(/\bBmw\b/g, 'BMW');
 }
 
-function truncate(text: string, max = 28): string {
-  const clean = String(text || '').trim();
-  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+function cleanForPixelText(value: string): string {
+  return stripAccents(value)
+    .replace(/[^a-zA-Z0-9 .:\/_+&'!?#()-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function esc(value: string | number): string {
@@ -146,6 +203,58 @@ function msToText(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
+function measureText(text: string, scale: number, letterSpacing = scale): number {
+  const clean = cleanForPixelText(text).toUpperCase();
+  let width = 0;
+  for (const char of clean) {
+    if (char === ' ') width += 3 * scale + letterSpacing;
+    else width += 5 * scale + letterSpacing;
+  }
+  return Math.max(0, width - letterSpacing);
+}
+
+function fitText(text: string, maxWidth: number, scale: number, letterSpacing = scale): string {
+  const clean = cleanForPixelText(text);
+  if (measureText(clean, scale, letterSpacing) <= maxWidth) return clean;
+  let result = clean;
+  while (result.length > 1 && measureText(`${result}...`, scale, letterSpacing) > maxWidth) {
+    result = result.slice(0, -1).trimEnd();
+  }
+  return `${result}...`;
+}
+
+function pixelText(text: string, x: number, y: number, scale: number, fill: string, options: { letterSpacing?: number; opacity?: number; maxWidth?: number } = {}): string {
+  const letterSpacing = options.letterSpacing ?? scale;
+  const opacity = options.opacity ?? 1;
+  const value = options.maxWidth ? fitText(text, options.maxWidth, scale, letterSpacing) : cleanForPixelText(text);
+  const clean = value.toUpperCase();
+  let cursor = x;
+  const rects: string[] = [];
+
+  for (const char of clean) {
+    if (char === ' ') {
+      cursor += 3 * scale + letterSpacing;
+      continue;
+    }
+    const glyph = FONT[char] || FONT['?'];
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col] !== '1') continue;
+        rects.push(`<rect x="${(cursor + col * scale).toFixed(2)}" y="${(y + row * scale).toFixed(2)}" width="${scale.toFixed(2)}" height="${scale.toFixed(2)}" fill="${fill}" opacity="${opacity}" />`);
+      }
+    }
+    cursor += 5 * scale + letterSpacing;
+  }
+  return `<g shape-rendering="crispEdges">${rects.join('')}</g>`;
+}
+
+function pixelTextRight(text: string, rightX: number, y: number, scale: number, fill: string, options: { letterSpacing?: number; opacity?: number; maxWidth?: number } = {}): string {
+  const letterSpacing = options.letterSpacing ?? scale;
+  const value = options.maxWidth ? fitText(text, options.maxWidth, scale, letterSpacing) : cleanForPixelText(text);
+  const width = measureText(value, scale, letterSpacing);
+  return pixelText(value, rightX - width, y, scale, fill, { ...options, maxWidth: undefined });
+}
+
 function getHeaderValue(request: Request, names: string[]): string {
   for (const name of names) {
     const value = request.headers.get(name);
@@ -159,10 +268,7 @@ function getRequestOrigin(request: Request): string {
   const forwardedHost = getHeaderValue(request, ['x-forwarded-host', 'x-original-host']);
   const host = forwardedHost || getHeaderValue(request, ['host']);
   const forwardedProto = getHeaderValue(request, ['x-forwarded-proto', 'x-forwarded-scheme']) || url.protocol.replace(':', '') || 'https';
-
-  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-    return `${forwardedProto}://${host}`;
-  }
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) return `${forwardedProto}://${host}`;
 
   const envOrigin =
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.PUBLIC_API_BASE_URL) ||
@@ -170,11 +276,7 @@ function getRequestOrigin(request: Request): string {
     process.env.PUBLIC_API_BASE_URL ||
     process.env.FRONTEND_URL ||
     '';
-
-  if (envOrigin && !String(envOrigin).includes('localhost')) {
-    return String(envOrigin).replace(/\/$/, '');
-  }
-
+  if (envOrigin && !String(envOrigin).includes('localhost')) return String(envOrigin).replace(/\/$/, '');
   return url.origin;
 }
 
@@ -188,12 +290,8 @@ async function fetchJson(origin: string, route: string): Promise<any> {
 async function fetchExternalJson(url: string, timeoutMs = 1800): Promise<any | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    const response = await fetch(url, {
-      headers: { accept: 'application/json' },
-      signal: controller.signal,
-    });
+    const response = await fetch(url, { headers: { accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -211,29 +309,6 @@ async function loadLogoDataUri(): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-
-async function loadFontCss(): Promise<string> {
-  const candidates = [
-    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-700-normal.woff2'),
-    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-600-normal.woff2'),
-    path.join(process.cwd(), 'node_modules', '@fontsource', 'rajdhani', 'files', 'rajdhani-latin-500-normal.woff2'),
-  ];
-
-  const fonts: string[] = [];
-  for (const fontPath of candidates) {
-    try {
-      const file = await fs.readFile(fontPath);
-      const weightMatch = fontPath.match(/-(\d+)-normal\.woff2$/);
-      const weight = weightMatch?.[1] || '700';
-      fonts.push(`@font-face{font-family:GCRajdhani;src:url(data:font/woff2;base64,${file.toString('base64')}) format('woff2');font-weight:${weight};font-style:normal;font-display:block;}`);
-    } catch {
-      // optional fallback
-    }
-  }
-
-  return fonts.join('\n');
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -257,7 +332,6 @@ function extractServerContext(details: any): { track: string; cars: string[]; so
     ? details.players.Cars.map((car: any) => firstString(car, ['Model', 'model'], '')).filter(Boolean)
     : [];
   const cars = uniqueStrings([...detailCars, ...playerCars]);
-
   if (!track && !cars.length) return null;
   return { track, cars, source: 'acsm-wrapper' };
 }
@@ -283,69 +357,43 @@ function topRowsForTrack(hotlaps: GenericRecord[], track: string, allowedCars: s
   return base.sort((a, b) => lapMs(a) - lapMs(b)).slice(0, 8);
 }
 
-function carOverlapScore(comboCars: string[], serverCars: string[]): number {
-  if (!comboCars.length || !serverCars.length) return 0;
-  const comboNorms = comboCars.map(normalize).filter(Boolean);
-  const serverNorms = serverCars.map(normalize).filter(Boolean);
-  let score = 0;
-
-  for (const comboCar of comboNorms) {
-    if (serverNorms.some((serverCar) => comboCar === serverCar || comboCar.includes(serverCar) || serverCar.includes(comboCar))) {
-      score += 1;
-    }
+function metricsFromCombos(combos: GenericRecord[], track: string, fallbackRows: GenericRecord[]) {
+  const match = combos.find((combo) => trackMatches(trackName(combo), track));
+  if (match) {
+    return {
+      totalLaps: comboTotalLaps(match) || fallbackRows.length,
+      drivers: comboDrivers(match) || new Set(fallbackRows.map((lap) => normalize(driverName(lap)))).size,
+    };
   }
-
-  return score;
+  return {
+    totalLaps: fallbackRows.length,
+    drivers: new Set(fallbackRows.map((lap) => normalize(driverName(lap)))).size,
+  };
 }
 
-function findComboStatsForServer(combos: GenericRecord[], track: string, cars: string[]): GenericRecord | null {
-  const matches = combos
-    .filter(Boolean)
-    .filter((combo) => trackMatches(trackName(combo), track))
-    .map((combo) => {
-      const comboCars = uniqueStrings(carList(combo));
-      const overlap = carOverlapScore(comboCars, cars);
-      const laps = comboTotalLaps(combo);
-      const drivers = comboDrivers(combo);
-      const ts = dateMs(combo);
-      return {
-        combo,
-        score: overlap * 1_000_000 + laps * 1_000 + drivers * 10 + ts / 1_000_000_000,
-      };
-    });
-
-  matches.sort((a, b) => b.score - a.score);
-  return matches[0]?.combo || null;
-}
-
-function activeContextFromServer(serverContext: { track: string; cars: string[]; source: ActiveContext['source'] }, hotlaps: GenericRecord[], combos: GenericRecord[] = []): ActiveContext {
+function activeContextFromServer(serverContext: { track: string; cars: string[]; source: ActiveContext['source'] }, hotlaps: GenericRecord[], combos: GenericRecord[]): ActiveContext {
   const topRows = topRowsForTrack(hotlaps, serverContext.track, serverContext.cars);
   const trackRows = hotlaps.filter((lap) => trackMatches(trackName(lap), serverContext.track));
+  const metrics = metricsFromCombos(combos, serverContext.track, trackRows);
   const carCounts = new Map<string, number>();
-  const drivers = new Set<string>();
 
   for (const lap of trackRows) {
     const car = carName(lap);
     const carKey = normalize(car);
     if (carKey) carCounts.set(car, (carCounts.get(car) || 0) + 1);
-    drivers.add(normalize(driverName(lap)) || driverName(lap));
   }
 
-  const comboStats = findComboStatsForServer(combos, serverContext.track, serverContext.cars);
   const carsFromRows = [...carCounts.entries()].sort((a, b) => b[1] - a[1]).map(([car]) => car);
-  const carsFromStats = comboStats ? uniqueStrings(carList(comboStats)) : [];
-  const cars = serverContext.cars.length ? serverContext.cars : (carsFromStats.length ? carsFromStats : carsFromRows);
-  const statsLaps = comboStats ? comboTotalLaps(comboStats) : 0;
-  const statsDrivers = comboStats ? comboDrivers(comboStats) : 0;
+  const cars = serverContext.cars.length ? serverContext.cars : carsFromRows;
 
   return {
     track: prettyName(serverContext.track, 'Track por detectar'),
     rawTrack: serverContext.track,
     cars: uniqueStrings(cars.map((car) => prettyName(car, car))).slice(0, 5),
-    totalLaps: statsLaps || trackRows.length,
-    drivers: statsDrivers || drivers.size,
+    totalLaps: metrics.totalLaps,
+    drivers: metrics.drivers,
     topRows,
-    source: comboStats ? 'combo-api' : serverContext.source,
+    source: serverContext.source,
   };
 }
 
@@ -366,7 +414,7 @@ function chooseActiveComboFromApi(combos: GenericRecord[]): GenericRecord | null
   return scored[0]?.combo || null;
 }
 
-function detectContextFromHotlaps(hotlaps: GenericRecord[]): ActiveContext | null {
+function detectContextFromHotlaps(hotlaps: GenericRecord[], combos: GenericRecord[]): ActiveContext | null {
   if (!hotlaps.length) return null;
   const sorted = [...hotlaps].sort((a, b) => dateMs(b) - dateMs(a) || lapMs(a) - lapMs(b));
   const newestTs = dateMs(sorted[0]);
@@ -377,21 +425,18 @@ function detectContextFromHotlaps(hotlaps: GenericRecord[]): ActiveContext | nul
     if (recentByDate.length) recentScope = recentByDate.slice(0, 600);
   }
 
-  const groups = new Map<string, { track: string; laps: GenericRecord[]; latest: number; cars: Map<string, number>; drivers: Set<string> }>();
+  const groups = new Map<string, { track: string; laps: GenericRecord[]; latest: number; cars: Map<string, number> }>();
   for (const lap of recentScope) {
     const track = trackName(lap);
     const trackNorm = normalize(track);
     if (!trackNorm) continue;
-    if (!groups.has(trackNorm)) {
-      groups.set(trackNorm, { track, laps: [], latest: 0, cars: new Map(), drivers: new Set() });
-    }
+    if (!groups.has(trackNorm)) groups.set(trackNorm, { track, laps: [], latest: 0, cars: new Map() });
     const group = groups.get(trackNorm)!;
     group.laps.push(lap);
     group.latest = Math.max(group.latest, dateMs(lap));
     const car = carName(lap);
     const carNorm = normalize(car);
     if (carNorm) group.cars.set(car, (group.cars.get(car) || 0) + 1);
-    group.drivers.add(normalize(driverName(lap)) || driverName(lap));
   }
 
   const ranked = [...groups.values()].sort((a, b) => b.latest - a.latest || b.laps.length - a.laps.length);
@@ -400,22 +445,21 @@ function detectContextFromHotlaps(hotlaps: GenericRecord[]): ActiveContext | nul
 
   const cars = [...best.cars.entries()].sort((a, b) => b[1] - a[1]).map(([car]) => car);
   const topRows = topRowsForTrack(sorted, best.track, cars);
+  const metrics = metricsFromCombos(combos, best.track, best.laps);
 
   return {
     track: prettyName(best.track, 'Track por detectar'),
     rawTrack: best.track,
     cars: uniqueStrings(cars).slice(0, 5),
-    totalLaps: best.laps.length,
-    drivers: best.drivers.size,
+    totalLaps: metrics.totalLaps,
+    drivers: metrics.drivers,
     topRows,
     source: newestTs > 0 ? 'hotlaps-recent' : 'hotlaps-fallback',
   };
 }
 
 function resolveActiveContext(combos: GenericRecord[], hotlaps: GenericRecord[], serverContext: { track: string; cars: string[]; source: ActiveContext['source'] } | null): ActiveContext {
-  if (serverContext && (serverContext.track || serverContext.cars.length)) {
-    return activeContextFromServer(serverContext, hotlaps, combos);
-  }
+  if (serverContext && (serverContext.track || serverContext.cars.length)) return activeContextFromServer(serverContext, hotlaps, combos);
 
   const combo = chooseActiveComboFromApi(combos);
   if (combo) {
@@ -436,7 +480,7 @@ function resolveActiveContext(combos: GenericRecord[], hotlaps: GenericRecord[],
     }
   }
 
-  return detectContextFromHotlaps(hotlaps) || {
+  return detectContextFromHotlaps(hotlaps, combos) || {
     track: combo ? prettyName(trackName(combo), 'Track por detectar') : 'Track por detectar',
     rawTrack: combo ? trackName(combo) : '',
     cars: combo ? uniqueStrings(carList(combo)) : [],
@@ -447,42 +491,41 @@ function resolveActiveContext(combos: GenericRecord[], hotlaps: GenericRecord[],
   };
 }
 
-function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDataUri: string | null; fontCss: string; error?: string }) {
-  const { context, totalHotlaps, logoDataUri, fontCss, error } = params;
+function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDataUri: string | null; error?: string }) {
+  const { context, totalHotlaps, logoDataUri, error } = params;
   const updated = new Date().toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-  const trackText = truncate(context.track || 'Track por detectar', 22);
-  const carsText = context.cars.length ? truncate(context.cars.join(' + '), 36) : 'Coche por detectar';
+  const trackText = context.track || 'Track por detectar';
+  const carsText = context.cars.length ? context.cars.join(' + ') : 'Coche por detectar';
   const rows = context.topRows.length
     ? context.topRows.map((lap, index) => ({
         pos: String(index + 1).padStart(2, '0'),
-        driver: truncate(driverName(lap), 10),
-        car: truncate(prettyName(carName(lap), carName(lap)), 15),
+        driver: driverName(lap),
+        car: prettyName(carName(lap), carName(lap)),
         time: msToText(lapMs(lap)),
       }))
     : [{ pos: '--', driver: 'Sin datos', car: 'Sin vueltas', time: '--:--.---' }];
 
   const rowStartY = 410;
   const rowStep = 45;
-
   const rowSvgs = rows.slice(0, 8).map((row, index) => {
     const y = rowStartY + index * rowStep;
     const bg = index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
     const timeFill = index === 0 ? '#b8ff5f' : '#eaf4ea';
     return `
       <rect x="18" y="${y - 23}" width="374" height="36" rx="10" fill="${bg}" />
-      <text x="30" y="${y}" fill="#9cff3f" font-size="13" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">${esc(row.pos)}</text>
-      <text x="68" y="${y}" fill="#ffffff" font-size="13" font-weight="700" font-family="GCRajdhani, Arial, sans-serif">${esc(row.driver)}</text>
-      <text x="166" y="${y}" fill="#8fa598" font-size="12" font-family="GCRajdhani, Arial, sans-serif">${esc(row.car)}</text>
-      <text x="374" y="${y}" text-anchor="end" fill="${timeFill}" font-size="13" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">${esc(row.time)}</text>`;
+      ${pixelText(row.pos, 30, y - 10, 1.65, '#9cff3f', { maxWidth: 24 })}
+      ${pixelText(row.driver, 68, y - 10, 1.65, '#ffffff', { maxWidth: 82 })}
+      ${pixelText(row.car, 166, y - 10, 1.35, '#8fa598', { maxWidth: 130 })}
+      ${pixelTextRight(row.time, 374, y - 10, 1.55, timeFill, { maxWidth: 84 })}`;
   }).join('');
 
   const logoMarkup = logoDataUri
     ? `<image href="${logoDataUri}" x="22" y="18" width="78" height="78" preserveAspectRatio="xMidYMid meet" />`
-    : `<text x="26" y="56" fill="#9cff3f" font-size="22" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">GC</text>`;
+    : pixelText('GC', 26, 44, 3, '#9cff3f');
 
   const footerInfo = error
     ? `API: ${error}`
-    : `${totalHotlaps.toLocaleString('es-ES')} hotlaps · ${context.source === 'acsm-wrapper' ? 'ACSM wrapper' : 'hotlaps'}`;
+    : `${totalHotlaps.toLocaleString('es-ES')} hotlaps - ${context.source === 'acsm-wrapper' ? 'ACSM wrapper' : 'hotlaps'}`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
   <svg xmlns="http://www.w3.org/2000/svg" width="420" height="940" viewBox="0 0 420 940" role="img" aria-labelledby="title desc">
@@ -503,10 +546,6 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
         <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
-    <style>
-      ${fontCss}
-      text{font-family:GCRajdhani,Arial,sans-serif;paint-order:stroke fill;stroke:transparent;stroke-width:0;}
-    </style>
 
     <rect width="420" height="940" fill="url(#bg)" />
     <circle cx="20" cy="44" r="120" fill="#76ff03" opacity="0.12" filter="url(#glowGreen)" />
@@ -515,38 +554,38 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
     <rect x="10" y="10" width="400" height="4" rx="2" fill="url(#heroLine)" />
 
     ${logoMarkup}
-    <text x="110" y="42" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">GRASSCUTTERS AC SERVER</text>
-    <text x="110" y="72" fill="#ffffff" font-size="27" font-weight="900" letter-spacing="-0.8" font-family="GCRajdhani, Arial, sans-serif">Paddock live</text>
-    <text x="110" y="94" fill="#c5d2c8" font-size="12.5" font-family="GCRajdhani, Arial, sans-serif">Combo actual y tiempos reales.</text>
+    ${pixelText('GRASSCUTTERS AC SERVER', 110, 38, 1.55, '#9cff3f', { maxWidth: 282 })}
+    ${pixelText('Paddock live', 110, 66, 3.0, '#ffffff', { maxWidth: 282 })}
+    ${pixelText('Combo actual y tiempos reales', 110, 98, 1.45, '#c5d2c8', { maxWidth: 282 })}
 
     <rect x="18" y="122" width="384" height="128" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(134,255,93,0.12)" />
-    <text x="30" y="152" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">COMBO ACTUAL</text>
-    <text x="30" y="189" fill="#ffffff" font-size="20" font-weight="900" letter-spacing="-0.6" font-family="GCRajdhani, Arial, sans-serif">${esc(trackText || 'Track por detectar')}</text>
-    <text x="30" y="217" fill="#d4e1d6" font-size="10.5" font-family="GCRajdhani, Arial, sans-serif">${esc(carsText)}</text>
+    ${pixelText('COMBO ACTUAL', 30, 150, 1.35, '#9cff3f', { maxWidth: 200 })}
+    ${pixelText(trackText, 30, 182, 2.55, '#ffffff', { maxWidth: 215 })}
+    ${pixelText(carsText, 30, 218, 1.25, '#d4e1d6', { maxWidth: 220 })}
 
     <rect x="264" y="144" width="1" height="76" fill="rgba(255,255,255,0.08)" />
-    <text x="282" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="GCRajdhani, Arial, sans-serif">VUELTAS</text>
-    <text x="282" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">${esc(context.totalLaps || '--')}</text>
-    <text x="342" y="164" fill="#86a193" font-size="8.5" font-weight="700" letter-spacing="1.5" font-family="GCRajdhani, Arial, sans-serif">PIL.</text>
-    <text x="342" y="194" fill="#ffffff" font-size="24" font-weight="900" font-family="GCRajdhani, Arial, sans-serif">${esc(context.drivers || '--')}</text>
-    <text x="282" y="216" fill="#9ab0a0" font-size="8.5" font-family="GCRajdhani, Arial, sans-serif">Act.: ${esc(updated)}</text>
+    ${pixelText('VUELTAS', 282, 158, 1.0, '#86a193', { maxWidth: 55 })}
+    ${pixelText(String(context.totalLaps || '--'), 282, 181, 3.0, '#ffffff', { maxWidth: 58 })}
+    ${pixelText('PIL', 342, 158, 1.0, '#86a193', { maxWidth: 42 })}
+    ${pixelText(String(context.drivers || '--'), 342, 181, 3.0, '#ffffff', { maxWidth: 42 })}
+    ${pixelText(`ACT ${updated}`, 282, 218, 0.82, '#9ab0a0', { maxWidth: 108 })}
 
     <rect x="18" y="274" width="384" height="500" rx="16" fill="rgba(5,11,8,0.88)" stroke="rgba(43,206,228,0.18)" />
-    <text x="30" y="306" fill="#25d6e6" font-size="10" font-weight="800" letter-spacing="2" font-family="GCRajdhani, Arial, sans-serif">TOP HOTLAPS</text>
-    <text x="30" y="336" fill="#ffffff" font-size="18" font-weight="900" letter-spacing="-0.5" font-family="GCRajdhani, Arial, sans-serif">Solo del combo actual</text>
-    <text x="30" y="360" fill="#93a79a" font-size="9.5" font-family="GCRajdhani, Arial, sans-serif">${esc(HOTLAPS_URL.replace('https://',''))}</text>
+    ${pixelText('TOP HOTLAPS', 30, 304, 1.35, '#25d6e6', { maxWidth: 170 })}
+    ${pixelText('Solo del combo actual', 30, 334, 2.0, '#ffffff', { maxWidth: 340 })}
+    ${pixelText(HOTLAPS_URL.replace('https://',''), 30, 363, 1.05, '#93a79a', { maxWidth: 310 })}
 
-    <text x="30" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">#</text>
-    <text x="68" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">PILOTO</text>
-    <text x="166" y="386" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">COCHE</text>
-    <text x="374" y="386" text-anchor="end" fill="#25d6e6" font-size="9.2" font-weight="800" letter-spacing="1.4" font-family="GCRajdhani, Arial, sans-serif">TIEMPO</text>
+    ${pixelText('#', 30, 384, 1.1, '#25d6e6', { maxWidth: 24 })}
+    ${pixelText('PILOTO', 68, 384, 1.1, '#25d6e6', { maxWidth: 80 })}
+    ${pixelText('COCHE', 166, 384, 1.1, '#25d6e6', { maxWidth: 80 })}
+    ${pixelTextRight('TIEMPO', 374, 384, 1.1, '#25d6e6', { maxWidth: 80 })}
 
     ${rowSvgs}
 
     <rect x="18" y="796" width="384" height="116" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(161,255,95,0.12)" />
-    <text x="30" y="825" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="1.8" font-family="GCRajdhani, Arial, sans-serif">COMUNIDAD</text>
-    <text x="30" y="860" fill="#ffffff" font-size="12" font-weight="800" font-family="GCRajdhani, Arial, sans-serif">grasscuttersracing.com</text>
-    <text x="30" y="914" fill="#97ae9f" font-size="8.2" font-family="GCRajdhani, Arial, sans-serif">${esc(truncate(footerInfo, 72))}</text>
+    ${pixelText('COMUNIDAD', 30, 826, 1.35, '#9cff3f', { maxWidth: 160 })}
+    ${pixelText('grasscuttersracing.com', 30, 862, 2.15, '#ffffff', { maxWidth: 330 })}
+    ${pixelText(footerInfo, 30, 904, 0.85, '#97ae9f', { maxWidth: 330 })}
   </svg>`;
 }
 
@@ -590,8 +629,8 @@ export async function GET({ request }: { request: Request }) {
     error = err?.message || String(err);
   }
 
-  const [logoDataUri, fontCss] = await Promise.all([loadLogoDataUri(), loadFontCss()]);
-  const svg = buildSvg({ context, totalHotlaps, logoDataUri, fontCss, error });
+  const logoDataUri = await loadLogoDataUri();
+  const svg = buildSvg({ context, totalHotlaps, logoDataUri, error });
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
