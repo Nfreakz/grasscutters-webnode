@@ -1,184 +1,237 @@
 ---
-// PaletteCursor disabled: using the browser native cursor across the whole site.
-// This component is still rendered by layouts and keeps only the home mobile hero guard.
+/*
+  PaletteCursor remains intentionally DOM-free.
+  Native browser cursor is used site-wide.
+  This component is still rendered by MarketingLayout and AppLayout, so it is a safe place
+  for small global UI guards that must affect both public and app pages.
+*/
 ---
 
 <style is:global>
-  /* GC home mobile hero guard v9.8
-     Scope: home hero only. No cursor, palette, sidebar or app changes. */
+  /*
+    GC button system v10.9
+    Scope:
+    - unify non-corporate buttons across public + app pages;
+    - keep Discord / WhatsApp / Instagram corporate buttons untouched;
+    - keep native cursor;
+    - center the server support CTA in /comunidad.
+  */
 
-  @media (max-width: 860px){
-    html[data-gc-scope="marketing"] .gc-home-hero-video{
-      min-height:0 !important;
-      padding-top:clamp(112px, 24vw, 154px) !important;
-      padding-bottom:clamp(42px, 11vw, 72px) !important;
-      margin-bottom:0 !important;
-      overflow:hidden !important;
-      background:var(--gc-mk-bg, #070a08) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-bg-video{
-      opacity:.34 !important;
-      object-position:center top !important;
-      filter:saturate(.96) contrast(1.02) brightness(.78) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-scrim{
-      background:
-        radial-gradient(circle at 24% 22%, color-mix(in srgb, var(--accent, #9dff00) 18%, transparent), transparent 18rem),
-        radial-gradient(circle at 74% 72%, color-mix(in srgb, var(--accent2, #35d3ff) 8%, transparent), transparent 22rem),
-        linear-gradient(90deg, rgba(1,7,4,.93) 0%, rgba(1,7,4,.68) 58%, rgba(1,7,4,.94) 100%),
-        linear-gradient(180deg, rgba(1,7,4,.28) 0%, rgba(1,7,4,.62) 54%, var(--gc-mk-bg, #070a08) 100%) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-video::before{
-      height:clamp(150px, 38vw, 260px) !important;
-      background:linear-gradient(180deg, rgba(7,10,8,0), var(--gc-mk-bg, #070a08) 88%) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-video::after{
-      bottom:clamp(18px, 6vw, 38px) !important;
-      width:min(620px, 96vw) !important;
-      height:160px !important;
-      opacity:.34 !important;
-      filter:blur(38px) !important;
-      background:radial-gradient(ellipse at center, color-mix(in srgb, var(--accent, #9dff00) 16%, transparent), transparent 68%) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-inner{
-      display:grid !important;
-      grid-template-columns:1fr !important;
-      min-height:0 !important;
-      gap:clamp(22px, 7vw, 38px) !important;
-      align-items:start !important;
-      justify-content:start !important;
-      transform:none !important;
-      padding-top:0 !important;
-      text-align:left !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-inner > div:first-child{
-      grid-column:1 !important;
-      grid-row:1 !important;
-      max-width:min(100%, 33rem) !important;
-      justify-self:start !important;
-      align-self:start !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-kicker{
-      font-size:.68rem !important;
-      letter-spacing:.16em !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-title{
-      font-size:clamp(2.55rem, 12vw, 4.05rem) !important;
-      line-height:.94 !important;
-      letter-spacing:-.075em !important;
-      margin:10px 0 14px !important;
-      max-width:11.5ch !important;
-      text-wrap:balance;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-lead{
-      max-width:30ch !important;
-      font-size:clamp(.96rem, 4vw, 1.12rem) !important;
-      line-height:1.7 !important;
-      color:color-mix(in srgb, var(--text, #f4fff1) 78%, transparent) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-secondary-actions--hero{
-      width:100% !important;
-      max-width:18rem !important;
-      display:grid !important;
-      grid-template-columns:1fr !important;
-      gap:10px !important;
-      margin-top:22px !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-secondary-actions--hero .gc-home-cta{
-      width:100% !important;
-      min-height:46px !important;
-      height:46px !important;
-      justify-content:flex-start !important;
-      padding-inline:18px !important;
-      border-radius:999px !important;
-      font-size:.78rem !important;
-      letter-spacing:.07em !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]{
-      grid-column:1 !important;
-      grid-row:2 !important;
-      width:min(220px, 62vw) !important;
-      min-width:0 !important;
-      max-width:220px !important;
-      justify-self:center !important;
-      align-self:start !important;
-      margin:clamp(4px, 2vw, 12px) auto 0 !important;
-      transform:none !important;
-      filter:
-        drop-shadow(0 18px 42px rgba(0,0,0,.48))
-        drop-shadow(0 0 24px color-mix(in srgb, var(--accent, #9dff00) 20%, transparent)) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__img,
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] img{
-      width:100% !important;
-      height:auto !important;
-      transform:none !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]::before,
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]::after,
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__glow,
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo] .gc-home-floating-logo-absolute__orbit{
-      opacity:.28 !important;
-      animation:none !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68{
-      width:calc(100% - 32px) !important;
-      margin:clamp(32px, 9vw, 54px) auto 0 !important;
-      display:grid !important;
-      grid-template-columns:1fr !important;
-      border-radius:0 !important;
-      overflow:hidden !important;
-      background:rgba(3, 10, 6, .52) !important;
-      border-color:rgba(255,255,255,.12) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68 .gc-metric{
-      padding:20px 22px !important;
-      border-right:0 !important;
-      border-bottom:1px solid rgba(255,255,255,.10) !important;
-      background:rgba(255,255,255,.025) !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-hero-video .gc-metrics--home-v68 .gc-metric:last-child{
-      border-bottom:0 !important;
-    }
+  :root{
+    --gc-btn-h: 46px;
+    --gc-btn-pad-x: 18px;
+    --gc-btn-radius: 999px;
+    --gc-btn-letter: .075em;
+    --gc-btn-font: .76rem;
+    --gc-btn-shadow: 0 14px 38px rgba(0,0,0,.22);
+    --gc-btn-shadow-primary: 0 16px 44px color-mix(in srgb, var(--accent, var(--gc-mk-accent, #9dff00)) 20%, transparent);
   }
 
-  @media (max-width: 520px){
-    html[data-gc-scope="marketing"] .gc-home-hero-video{
-      padding-top:clamp(104px, 28vw, 136px) !important;
+  /* Keep native browser cursor everywhere. */
+  html,
+  body,
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  summary,
+  label,
+  [role="button"],
+  [role="link"]{
+    cursor: auto;
+  }
+
+  a,
+  button,
+  summary,
+  label,
+  [role="button"],
+  [role="link"],
+  .gc-btn,
+  .gc-public-link,
+  .gc-login-link,
+  .gc-auth-logout,
+  .gc-theme__trigger,
+  .gc-theme__option{
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable="plaintext-only"]{
+    cursor: text;
+  }
+
+  /*
+    Shared non-corporate button base.
+    Important exclusions:
+    - gc-community-social-btn = hero Discord / WhatsApp / Instagram
+    - gc-social-btn / gc-social-icon = older social buttons + footer icons
+    - direct href exclusions preserve corporate social CTAs even if they use gc-btn.
+  */
+  .gc-btn:not(.gc-community-social-btn):not(.gc-social-btn):not(.gc-social-icon):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
+  .gc-public-link,
+  .gc-login-link,
+  .gc-auth-profile-link,
+  .gc-auth-logout{
+    min-height: var(--gc-btn-h) !important;
+    height: auto;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 0 var(--gc-btn-pad-x) !important;
+    border-radius: var(--gc-btn-radius) !important;
+    font-size: var(--gc-btn-font) !important;
+    font-weight: 950 !important;
+    letter-spacing: var(--gc-btn-letter) !important;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    border: 1px solid var(--line, var(--gc-mk-line, rgba(255,255,255,.14))) !important;
+    color: var(--text, var(--gc-mk-text, #f4fff1)) !important;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.066), rgba(255,255,255,.026)) !important;
+    box-shadow: none !important;
+    transition:
+      transform .16s ease,
+      filter .16s ease,
+      background .16s ease,
+      border-color .16s ease,
+      box-shadow .16s ease,
+      color .16s ease !important;
+  }
+
+  .gc-btn:not(.gc-community-social-btn):not(.gc-social-btn):not(.gc-social-icon):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):hover,
+  .gc-public-link:hover,
+  .gc-login-link:hover,
+  .gc-auth-profile-link:hover{
+    transform: translateY(-1px) !important;
+    border-color: color-mix(in srgb, var(--accent, var(--gc-mk-accent, #9dff00)) 34%, rgba(255,255,255,.14)) !important;
+    background:
+      radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent, var(--gc-mk-accent, #9dff00)) 10%, transparent), transparent 120%),
+      linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.034)) !important;
+    box-shadow: 0 12px 34px rgba(0,0,0,.18) !important;
+  }
+
+  .gc-btn:not(.gc-community-social-btn):not(.gc-social-btn):not(.gc-social-icon):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):active,
+  .gc-public-link:active,
+  .gc-login-link:active,
+  .gc-auth-profile-link:active{
+    transform: translateY(0) scale(.985) !important;
+  }
+
+  /*
+    Primary actions.
+    Supports both public .gc-btn-primary and app .gc-btn--primary.
+  */
+  .gc-btn-primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
+  .gc-btn--primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
+  .gc-public-cta{
+    color: #07110a !important;
+    border-color: transparent !important;
+    background:
+      linear-gradient(135deg,
+        var(--accent, var(--gc-mk-accent, #9dff00)),
+        var(--accent2, var(--gc-mk-accent-2, #35d3ff))
+      ) !important;
+    box-shadow: var(--gc-btn-shadow-primary) !important;
+  }
+
+  .gc-btn-primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):hover,
+  .gc-btn--primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):hover,
+  .gc-public-cta:hover{
+    color: #07110a !important;
+    filter: brightness(1.06) saturate(1.04);
+    border-color: transparent !important;
+    box-shadow:
+      var(--gc-btn-shadow-primary),
+      0 0 0 1px color-mix(in srgb, var(--accent, var(--gc-mk-accent, #9dff00)) 18%, transparent) !important;
+  }
+
+  /*
+    Login/auth buttons should match sizing but keep their meaning.
+  */
+  .gc-auth-logout{
+    border-color: color-mix(in srgb, #ff6b6b 50%, transparent) !important;
+    color: #ffd6d6 !important;
+    background:
+      linear-gradient(135deg, rgba(255,79,96,.17), rgba(255,157,72,.08)) !important;
+  }
+
+  .gc-auth-logout:hover{
+    color:#07110a !important;
+    border-color:transparent !important;
+    background:linear-gradient(135deg,#ff6b6b,#ffb15e) !important;
+  }
+
+  /*
+    Keep corporate buttons fully corporate.
+  */
+  .gc-community-social-btn,
+  .gc-community-social-btn *,
+  .gc-social-btn,
+  .gc-social-btn *,
+  .gc-social-icon,
+  .gc-social-icon *,
+  .gc-btn[href*="discord.gg"],
+  .gc-btn[href*="discord.gg"] *,
+  .gc-btn[href*="whatsapp.com"],
+  .gc-btn[href*="whatsapp.com"] *,
+  .gc-btn[href*="instagram.com"],
+  .gc-btn[href*="instagram.com"] *{
+    text-transform: uppercase;
+  }
+
+  /*
+    /comunidad: center the single support button.
+  */
+  .gc-community-support-v104 .gc-actions,
+  .gc-community-support-grid-v104 article .gc-actions{
+    justify-content: center !important;
+  }
+
+  .gc-community-support-v104 .gc-actions .gc-btn,
+  .gc-community-support-grid-v104 article .gc-actions .gc-btn{
+    min-width: min(100%, 240px);
+  }
+
+  /*
+    Final CTA: keep the three actions visually aligned.
+  */
+  .gc-community-final-v104 .gc-actions .gc-btn{
+    min-width: min(100%, 180px);
+  }
+
+  /*
+    Small mobile guard from the previous cursor reset: keep home hero from exploding
+    if this component is the only global guard loaded late.
+  */
+  @media(max-width:760px){
+    .gc-btn:not(.gc-community-social-btn):not(.gc-social-btn):not(.gc-social-icon):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
+    .gc-public-link,
+    .gc-login-link,
+    .gc-auth-profile-link,
+    .gc-auth-logout{
+      min-height: 44px !important;
+      padding-inline: 14px !important;
+      font-size: .72rem !important;
     }
 
-    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-title{
-      font-size:clamp(2.25rem, 13vw, 3.35rem) !important;
-      max-width:10.8ch !important;
+    .gc-community-support-v104 .gc-actions,
+    .gc-community-support-grid-v104 article .gc-actions,
+    .gc-community-final-v104 .gc-actions{
+      width:100%;
     }
 
-    html[data-gc-scope="marketing"] .gc-home-hero-inner .gc-lead{
-      max-width:27ch !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-secondary-actions--hero{
-      max-width:16rem !important;
-    }
-
-    html[data-gc-scope="marketing"] .gc-home-floating-logo-absolute[data-gc-hero-logo]{
-      width:min(190px, 58vw) !important;
+    .gc-community-support-v104 .gc-actions .gc-btn,
+    .gc-community-support-grid-v104 article .gc-actions .gc-btn,
+    .gc-community-final-v104 .gc-actions .gc-btn{
+      width:100%;
     }
   }
 </style>

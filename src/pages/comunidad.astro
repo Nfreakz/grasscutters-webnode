@@ -4,15 +4,51 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 const discordUrl = 'https://discord.gg/jA4yuuH5T';
 const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
 const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
+const gtxSupportUrl = 'https://www.gtxgaming.co.uk/clientarea/index.php?m=public_pay&hash_id=mW1QWBg9XVJn';
+
+const textChannels = [
+  ['💬', 'general · chat', 'Charla diaria, dudas rápidas, avisos entre pilotos y conversación sin tener que abrir veinte hilos.'],
+  ['📋', 'info', 'Información básica del servidor, accesos y cosas que conviene tener localizadas.'],
+  ['📢', 'anuncios', 'Avisos importantes, cambios de combo, eventos y novedades de la comunidad.'],
+  ['🚀', 'mods · ac', 'Mods de Assetto Corsa, packs, enlaces y material para tener el garaje al día.'],
+  ['💯', 'setups-ac', 'Ajustes de coche, volante, sensaciones y pruebas compartidas por la gente.'],
+  ['🖥️', 'servidor · ac', 'Estado y detalles del servidor de Assetto Corsa.'],
+  ['🏁', 'campeonatos', 'Organización de carreras, rondas y seguimiento cuando se monta algo más serio.'],
+  ['🚗', 'servidor · raceroom', 'Espacio para RaceRoom cuando toca salir del garaje habitual.'],
+  ['💯', 'grasscutters-hud-ac', 'Feedback, dudas y versiones del HUD de GrassCutters para Assetto Corsa.'],
+  ['🛡️', 'lowfuelmotorsport-ac', 'Charla y dudas sobre LFM dentro del grupo.'],
+  ['🎥', 'clips · highlights', 'Vueltas buenas, adelantamientos, fails y momentos para enseñar al paddock.'],
+  ['🤓', 'datos-curiosos', 'Cosas raras, detalles técnicos y pequeñas joyas del sim racing.'],
+  ['🏛️', 'donaciones', 'Apoyo voluntario para mantener el servidor y sus costes.'],
+  ['🗳️', 'votaciones', 'Donde se decide qué se prueba, qué se corre y qué toca mover después.']
+];
+
+const voiceChannels = [
+  ['🎙️', 'Lobby', 'Para entrar, hablar y organizarse sin complicarse.'],
+  ['🎙️', 'Lobby AC', 'Voz rápida cuando se está rodando en Assetto Corsa.']
+];
+
+const principles = [
+  ['01', 'Actitud antes que ritmo', 'No hace falta ser el más rápido. Hace falta sumar buen ambiente, respetar y querer mejorar.'],
+  ['02', 'Pista limpia', 'Se puede competir fuerte, pero sin choques intencionados, sin zigzag y dejando espacio cuando toca.'],
+  ['03', 'Sin dramas en caliente', 'Si hay incidente, se enfría primero y se habla después. El chat no es dirección de carrera con fuego en el casco.']
+];
+
+const dailyRacers = [
+  'Participar regularmente en carreras o hotlaps.',
+  'Estar activo en Discord: chat, feedback, dudas, ambiente.',
+  'Implicarse en eventos, votaciones o pruebas del servidor.',
+  'Mantener una actitud positiva y respetuosa.'
+];
 ---
 <MarketingLayout
   title="Comunidad | GrassCutters Racing"
-  description="Comunidad GrassCutters Racing: Discord, WhatsApp, Instagram, eventos, campeonato, pilotos y buen ambiente sim racing."
-  bodyClass="gc-page-comunidad"
+  description="Comunidad GrassCutters Racing: Discord, hotlaps semanales, setups, mods, votaciones, fair play y buen ambiente en Assetto Corsa."
+  bodyClass="gc-page-comunidad gc-community-rework-v104"
 >
-  <section class="gc-hero gc-hero-compact gc-community-hero gc-community-hero-video">
+  <section class="gc-hero gc-hero-compact gc-community-hero gc-community-hero-video gc-home-hero-video">
     <video
-      class="gc-community-hero-bg-video"
+      class="gc-community-hero-bg-video gc-home-hero-bg-video"
       src="/videos/comunidad-hero.mp4"
       autoplay
       muted
@@ -21,9 +57,9 @@ const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
       preload="metadata"
       aria-hidden="true"
     ></video>
-    <div class="gc-community-hero-scrim"></div>
+    <div class="gc-community-hero-scrim gc-home-hero-scrim"></div>
 
-    <div class="gc-page gc-community-hero-inner">
+    <div class="gc-page gc-community-hero-inner gc-home-hero-inner gc-community-home-inner-v113">
       <div>
         <span class="gc-kicker">Comunidad GC</span>
         <h1 class="gc-title">Un paddock para correr, mejorar y volver.</h1>
@@ -49,80 +85,210 @@ const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
     </div>
   </section>
 
-  <section class="gc-page gc-community-intro">
-    <div class="gc-grid-2">
-      <div class="gc-panel">
-        <span class="gc-panel-kicker">Cómo funciona</span>
-        <ul class="gc-feature-list">
-          <li>
-            <strong>Discord activo</strong>
-            <span>Charlas, anuncios, eventos y avisos rápidos sin ruido innecesario.</span>
-          </li>
-          <li>
-            <strong>Combos votados</strong>
-            <span>Circuitos y coches elegidos con participación de la comunidad.</span>
-          </li>
-          <li>
-            <strong>Actividad de pista</strong>
-            <span>Hotlaps, perfiles, ranking y actividad de la comunidad.</span>
-          </li>
-          <li>
-            <strong>Campeonato</strong>
-            <span>Rondas, inscritos y próximas carreras del campeonato.</span>
-          </li>
+  <section class="gc-page gc-community-manifest-v104 gc-week-combo-section gc-community-first-after-hero-v113">
+    <div class="gc-community-manifest-grid-v104">
+      <article class="gc-community-copy-v104">
+        <span class="gc-section-kicker">Qué es GrassCutters</span>
+        <h2>Un servidor para correr sin postureo.</h2>
+        <p>
+          Aquí se viene a desconectar, probar coches, compartir setups, votar combos y hacer vueltas sin convertir cada tarde en una reunión de comisarios.
+          Si hablas español, perfecto. Si no, pero te adaptas al ambiente del grupo, también tienes sitio.
+        </p>
+        <p>
+          Nos gusta correr limpio y apretar cuando toca, pero valoramos más la actitud que el ritmo. Puedes entrar siendo nuevo, rápido, lento o irregular:
+          lo importante es respetar, aprender y no traer toxicidad al box.
+        </p>
+      </article>
+
+      <aside class="gc-community-pitwall-v104" aria-label="Resumen de comunidad">
+        <div class="gc-community-pitwall-top-v105">
+          <img src="/images/comunidad-card-bg3.webp" alt="" loading="lazy" aria-hidden="true" />
+        </div>
+        <ul>
+          <li><strong>Hotlaps</strong><span>Semanales con Stracker</span></li>
+          <li><strong>Combos</strong><span>Votados por la comunidad</span></li>
+          <li><strong>Setups</strong><span>Coche, volante y sensaciones</span></li>
+          <li><strong>Clips</strong><span>Highlights, fails y momentos buenos</span></li>
+          <li><strong>Eventos</strong><span>Carreras semanales, LFM y otros sims de vez en cuando</span></li>
         </ul>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gc-page gc-community-how-v104">
+    <div class="gc-section-head">
+      <span class="gc-section-kicker">Cómo funciona</span>
+      <h2 class="gc-section-title">Discord pone el ruido bueno. La web ordena la pista.</h2>
+      <p class="gc-section-lead">
+        Todo gira alrededor de probar, votar, correr y comentar. Sin hacerlo más complicado de lo necesario.
+      </p>
+    </div>
+
+    <div class="gc-community-steps-v104">
+      <article>
+        <span>01</span>
+        <h3>Entras al Discord</h3>
+        <p>Saludas, miras anuncios, preguntas lo que haga falta y te pones al día con el combo o el evento activo.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <h3>Pruebas el combo</h3>
+        <p>El servidor va rotando. Hay coches, circuitos, hotlaps y referencias para saber dónde estás.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <h3>Compartes lo que aprendes</h3>
+        <p>Setups, clips, dudas, errores, mejoras y feedback. Nadie nace sabiendo frenar tarde en todos los circuitos.</p>
+      </article>
+      <article>
+        <span>04</span>
+        <h3>Votas lo siguiente</h3>
+        <p>La comunidad decide qué apetece probar. Coches, tracks, eventos y pruebas salen del propio grupo.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="gc-page gc-community-rules-v104">
+    <div class="gc-community-rules-grid-v104">
+      <div>
+        <span class="gc-section-kicker">Filosofía GC</span>
+        <h2>Pocas normas. Buen ambiente. Pista limpia.</h2>
+        <p>
+          No buscamos un servidor lleno de sanciones absurdas. Tampoco un sitio donde valga todo.
+          La línea es sencilla: respeto en el chat, respeto en pista y cero dramas cuando algo sale mal.
+        </p>
       </div>
 
-      <div class="gc-panel gc-community-for gc-community-for-image">
-        <img
-          class="gc-community-card-bg"
-          src="/images/comunidad-hero-poster.webp"
-          alt=""
-          loading="lazy"
-          aria-hidden="true"
-        />
-
-        <span class="gc-panel-kicker">Para quién es</span>
-
-        <p>
-          Para pilotos que quieren correr, mejorar y encontrar gente con ritmo parecido. Hay rankings, datos y herramientas,
-          pero la prioridad es que apetezca volver.
-        </p>
-        <div class="gc-actions">
-          <a class="gc-btn gc-btn-primary" href="/login">Crear acceso</a>
-          <a class="gc-btn" href="/app">Ver plataforma</a>
-        </div>
+      <div class="gc-community-principles-v104">
+        {principles.map(([number, title, text]) => (
+          <article>
+            <span>{number}</span>
+            <div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   </section>
 
-  <section class="gc-page gc-community-philosophy">
+  <section class="gc-page gc-community-discord-v104">
     <div class="gc-section-head">
-      <span class="gc-section-kicker">Filosofía GC</span>
-      <h2 class="gc-section-title">Correr limpio, volver mejor.</h2>
+      <span class="gc-section-kicker">Canales del Discord</span>
+      <h2 class="gc-section-title">Cada cosa en su sitio.</h2>
       <p class="gc-section-lead">
-        Ritmo, respeto y datos claros. Carreras cercanas, decisiones simples y una comunidad que no necesita ruido para pasarlo bien.
+        El Discord no está para perderse. Hay canales para hablar, votar, compartir mods, subir clips y organizar carreras.
       </p>
     </div>
 
-    <div class="gc-lanes">
-      <article class="gc-lane">
-        <span>01</span>
-        <h3>Carreras cercanas</h3>
-        <p>Entrar, rodar y encontrar gente con ganas de mejorar sin complicarlo todo.</p>
+    <div class="gc-community-discord-layout-v104">
+      <article class="gc-community-channel-panel-v104">
+        <div class="gc-community-channel-head-v104">
+          <h3>Canales de texto</h3>
+          <span>{textChannels.length} canales</span>
+        </div>
+
+        <div class="gc-community-channel-list-v104">
+          {textChannels.map(([icon, name, text]) => (
+            <div class="gc-community-channel-v104">
+              <span aria-hidden="true">{icon}</span>
+              <div>
+                <strong># {name}</strong>
+                <p>{text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </article>
 
-      <article class="gc-lane">
-        <span>02</span>
-        <h3>Datos entendibles</h3>
-        <p>Rankings, actividad, combos y perfiles útiles para saber dónde estás y qué probar después.</p>
+      <aside class="gc-community-side-stack-v104">
+        <article class="gc-community-channel-panel-v104 gc-community-voice-v104">
+          <div class="gc-community-channel-head-v104">
+            <h3>Canales de voz</h3>
+            <span>Lobby</span>
+          </div>
+
+          <div class="gc-community-channel-list-v104">
+            {voiceChannels.map(([icon, name, text]) => (
+              <div class="gc-community-channel-v104">
+                <span aria-hidden="true">{icon}</span>
+                <div>
+                  <strong>{name}</strong>
+                  <p>{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article class="gc-community-note-v104">
+          <span>Regla de oro</span>
+          <h3>Lo que pase en pista no se discute en caliente.</h3>
+          <p>
+            Si hay incidente, se revisa con calma después. Primero enfriar. Luego hablar.
+          </p>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gc-page gc-community-daily-v104">
+    <div class="gc-community-daily-card-v104">
+      <div>
+        <span class="gc-section-kicker">Daily Racers</span>
+        <h2>No se pide. Se gana.</h2>
+        <p>
+          Daily Racers es para quienes están de verdad en el día a día de la comunidad.
+          No va de ser el más rápido, va de aparecer, participar y mantener vivo el servidor.
+        </p>
+      </div>
+
+      <ul>
+        {dailyRacers.map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="gc-page gc-community-support-v104">
+    <div class="gc-community-support-grid-v104">
+      <article>
+        <span class="gc-section-kicker">Apoyo al servidor</span>
+        <h2>El servidor se mantiene entre todos.</h2>
+        <p>
+          Las donaciones voluntarias se usan únicamente para pagar el proveedor de hosting GTX:
+          mantenimiento, slots y servidor. Nada de compras externas ni historias raras.
+        </p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn-primary" href={gtxSupportUrl} target="_blank" rel="noreferrer">Apoyar servidor GTX</a>
+        </div>
       </article>
 
-      <article class="gc-lane">
-        <span>03</span>
-        <h3>Comunidad primero</h3>
-        <p>Discord pone la charla y la plataforma ordena el garaje: perfiles, eventos, combos y resultados.</p>
-      </article>
+      <aside>
+        <h3>Otras formas de ayudar</h3>
+        <p>
+          Participar, votar, compartir clips, pasar setups, reportar problemas y asignar boosts al Discord si te sobra alguno.
+          Todo suma más de lo que parece.
+        </p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gc-page gc-community-final-v104">
+    <div class="gc-community-final-card-v104">
+      <span class="gc-section-kicker">Entrada al paddock</span>
+      <h2>Entra, saluda y prueba el combo.</h2>
+      <p>
+        Si quieres rodar en Assetto Corsa, compartir setups, mirar hotlaps y correr con gente sin convertirlo en un drama,
+        GrassCutters te queda cerca.
+      </p>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn-primary" href="/pilotos">Ver pilotos</a>
+        <a class="gc-btn" href="/hotlaps">Ver hotlaps</a>
+        <a class="gc-btn" href="/app">Ver plataforma</a>
+      </div>
     </div>
   </section>
 
@@ -187,12 +353,429 @@ const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
       box-shadow:none!important;
     }
 
+    .gc-community-rework-v104 .gc-page{
+      position:relative;
+    }
+
+
+
+    .gc-community-manifest-v104{
+      padding-top:clamp(26px,5vw,64px);
+    }
+
+    .gc-page-comunidad .gc-community-home-inner-v113{
+      display:block!important;
+      grid-template-columns:1fr!important;
+    }
+
+    .gc-page-comunidad .gc-community-first-after-hero-v113{
+      position:relative;
+      z-index:6;
+    }
+
+    .gc-community-manifest-grid-v104,
+    .gc-community-rules-grid-v104,
+    .gc-community-support-grid-v104{
+      display:grid;
+      grid-template-columns:minmax(0,1.04fr) minmax(320px,.72fr);
+      gap:clamp(20px,4vw,54px);
+      align-items:stretch;
+    }
+
+    .gc-community-copy-v104,
+    .gc-community-pitwall-v104,
+    .gc-community-steps-v104 article,
+    .gc-community-channel-panel-v104,
+    .gc-community-note-v104,
+    .gc-community-daily-card-v104,
+    .gc-community-support-grid-v104 article,
+    .gc-community-support-grid-v104 aside,
+    .gc-community-final-card-v104{
+      border:1px solid var(--gc-mk-line);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 10% 0%, color-mix(in srgb,var(--gc-mk-accent) 9%, transparent), transparent 22rem),
+        linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+      box-shadow:0 22px 70px rgba(0,0,0,.24);
+    }
+
+    .gc-community-copy-v104{
+      padding:clamp(24px,4vw,42px);
+    }
+
+    .gc-community-copy-v104 h2,
+    .gc-community-rules-v104 h2,
+    .gc-community-daily-card-v104 h2,
+    .gc-community-support-grid-v104 h2,
+    .gc-community-final-card-v104 h2{
+      margin:12px 0 0;
+      font-size:clamp(2.15rem,4.8vw,4.7rem);
+      line-height:.93;
+      letter-spacing:-.075em;
+    }
+
+    .gc-community-copy-v104 p,
+    .gc-community-rules-v104 p,
+    .gc-community-daily-card-v104 p,
+    .gc-community-support-grid-v104 p,
+    .gc-community-final-card-v104 p{
+      max-width:760px;
+      color:var(--gc-mk-muted);
+      font-size:1.02rem;
+      line-height:1.72;
+    }
+
+    .gc-community-pitwall-v104{
+      padding:24px;
+      display:grid;
+      align-content:space-between;
+      gap:22px;
+    }
+
+    .gc-community-pitwall-top-v105{
+      position:relative;
+      display:grid;
+      place-items:center;
+      min-height:clamp(120px,16vw,210px);
+      padding-top:4px;
+    }
+
+    .gc-community-pitwall-top-v105 img{
+      width:clamp(150px,15vw,230px);
+      max-height:clamp(112px,13vw,190px);
+      height:auto;
+      object-fit:contain;
+      opacity:.94;
+      margin:0 auto;
+      filter:
+        drop-shadow(0 18px 34px rgba(0,0,0,.42))
+        drop-shadow(0 0 24px color-mix(in srgb,var(--gc-mk-accent) 24%, transparent));
+    }
+
+    .gc-community-pitwall-tag-v104{
+      color:var(--gc-mk-accent);
+      text-transform:uppercase;
+      letter-spacing:.13em;
+      font-weight:950;
+      font-size:.72rem;
+    }
+
+    .gc-community-pitwall-v104 ul{
+      list-style:none;
+      margin:0;
+      padding:0;
+      display:grid;
+      border-top:1px solid var(--gc-mk-line);
+      border-bottom:1px solid var(--gc-mk-line);
+    }
+
+    .gc-community-pitwall-v104 li{
+      display:grid;
+      grid-template-columns:minmax(110px,.34fr) 1fr;
+      gap:12px;
+      padding:15px 0;
+      border-bottom:1px solid var(--gc-mk-line-soft);
+    }
+
+    .gc-community-pitwall-v104 li:last-child{
+      border-bottom:0;
+    }
+
+    .gc-community-pitwall-v104 strong{
+      color:var(--gc-mk-text);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:.8rem;
+    }
+
+    .gc-community-pitwall-v104 span{
+      color:var(--gc-mk-muted);
+    }
+
+    .gc-community-steps-v104{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .gc-community-steps-v104 article{
+      padding:22px;
+      box-shadow:none;
+    }
+
+    .gc-community-steps-v104 article > span,
+    .gc-community-principles-v104 article > span{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:38px;
+      height:38px;
+      border-radius:14px;
+      color:#07110a;
+      background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));
+      font-weight:1000;
+    }
+
+    .gc-community-steps-v104 h3,
+    .gc-community-principles-v104 h3,
+    .gc-community-channel-head-v104 h3,
+    .gc-community-note-v104 h3,
+    .gc-community-support-grid-v104 h3{
+      margin:16px 0 8px;
+      color:var(--gc-mk-text);
+      font-size:1.18rem;
+      letter-spacing:-.035em;
+    }
+
+    .gc-community-steps-v104 p,
+    .gc-community-principles-v104 p,
+    .gc-community-channel-v104 p,
+    .gc-community-note-v104 p{
+      margin:0;
+      color:var(--gc-mk-muted);
+    }
+
+    .gc-community-rules-grid-v104{
+      align-items:start;
+    }
+
+    .gc-community-principles-v104{
+      display:grid;
+      gap:12px;
+    }
+
+    .gc-community-principles-v104 article{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:16px;
+      padding:18px;
+      border:1px solid var(--gc-mk-line);
+      border-radius:20px;
+      background:rgba(255,255,255,.038);
+    }
+
+    .gc-community-principles-v104 h3{
+      margin:0 0 6px;
+    }
+
+    .gc-community-discord-layout-v104{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(300px,.38fr);
+      gap:16px;
+      align-items:start;
+    }
+
+    .gc-community-channel-panel-v104{
+      padding:20px;
+      box-shadow:none;
+    }
+
+    .gc-community-channel-head-v104{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:center;
+      padding-bottom:14px;
+      margin-bottom:8px;
+      border-bottom:1px solid var(--gc-mk-line);
+    }
+
+    .gc-community-channel-head-v104 h3{
+      margin:0;
+    }
+
+    .gc-community-channel-head-v104 span{
+      color:var(--gc-mk-accent);
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      font-weight:950;
+      font-size:.72rem;
+      white-space:nowrap;
+    }
+
+    .gc-community-channel-list-v104{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+    }
+
+    .gc-community-voice-v104 .gc-community-channel-list-v104,
+    .gc-community-side-stack-v104 .gc-community-channel-list-v104{
+      grid-template-columns:1fr;
+    }
+
+    .gc-community-channel-v104{
+      display:grid;
+      grid-template-columns:32px 1fr;
+      gap:10px;
+      padding:12px;
+      border:1px solid var(--gc-mk-line-soft);
+      border-radius:16px;
+      background:rgba(255,255,255,.027);
+    }
+
+    .gc-community-channel-v104 > span{
+      width:32px;
+      height:32px;
+      display:grid;
+      place-items:center;
+      border-radius:12px;
+      background:rgba(255,255,255,.055);
+    }
+
+    .gc-community-channel-v104 strong{
+      color:var(--gc-mk-text);
+      font-size:.92rem;
+    }
+
+    .gc-community-channel-v104 p{
+      margin-top:4px;
+      font-size:.9rem;
+      line-height:1.45;
+    }
+
+    .gc-community-side-stack-v104{
+      display:grid;
+      gap:16px;
+    }
+
+    .gc-community-note-v104{
+      padding:24px;
+      border-left:3px solid var(--gc-mk-accent);
+    }
+
+    .gc-community-note-v104 > span{
+      color:var(--gc-mk-accent);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-size:.72rem;
+      font-weight:950;
+    }
+
+    .gc-community-note-v104 h3{
+      margin-top:10px;
+      font-size:clamp(1.4rem,2.4vw,2rem);
+      line-height:1;
+    }
+
+    .gc-community-daily-card-v104{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(300px,.62fr);
+      gap:clamp(20px,4vw,46px);
+      padding:clamp(24px,4vw,42px);
+      align-items:center;
+    }
+
+    .gc-community-daily-card-v104 ul{
+      list-style:none;
+      margin:0;
+      padding:0;
+      display:grid;
+      gap:10px;
+    }
+
+    .gc-community-daily-card-v104 li{
+      position:relative;
+      padding:14px 14px 14px 42px;
+      border:1px solid var(--gc-mk-line-soft);
+      border-radius:16px;
+      color:var(--gc-mk-muted);
+      background:rgba(255,255,255,.028);
+    }
+
+    .gc-community-daily-card-v104 li::before{
+      content:"";
+      position:absolute;
+      left:16px;
+      top:50%;
+      width:9px;
+      height:9px;
+      border-radius:999px;
+      background:var(--gc-mk-accent);
+      box-shadow:0 0 16px color-mix(in srgb,var(--gc-mk-accent) 48%, transparent);
+      transform:translateY(-50%);
+    }
+
+    .gc-community-support-grid-v104 article,
+    .gc-community-support-grid-v104 aside{
+      padding:clamp(22px,3vw,34px);
+    }
+
+    .gc-community-support-grid-v104 aside{
+      align-self:stretch;
+      display:grid;
+      align-content:center;
+      box-shadow:none;
+    }
+
+    .gc-community-final-card-v104{
+      padding:clamp(26px,5vw,52px);
+      text-align:center;
+      display:grid;
+      justify-items:center;
+    }
+
+    .gc-community-final-card-v104 .gc-actions{
+      justify-content:center;
+    }
+
+    @media(max-width:1080px){
+      .gc-community-steps-v104,
+      .gc-community-channel-list-v104{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:900px){
+      .gc-community-manifest-grid-v104,
+      .gc-community-rules-grid-v104,
+      .gc-community-discord-layout-v104,
+      .gc-community-daily-card-v104,
+      .gc-community-support-grid-v104{
+        grid-template-columns:1fr;
+      }
+    }
+
     @media(max-width:760px){
+      .gc-community-pitwall-top-v105{
+        min-height:104px;
+      }
+
+      .gc-community-pitwall-top-v105 img{
+        width:140px;
+        max-height:108px;
+        margin-top:0;
+      }
+
       .gc-community-social-btn,
       .gc-community-pilots-btn{
         min-height:48px;
         padding-inline:16px!important;
         font-size:.82rem;
+      }
+
+      .gc-community-steps-v104,
+      .gc-community-channel-list-v104{
+        grid-template-columns:1fr;
+      }
+
+      .gc-community-copy-v104 h2,
+      .gc-community-rules-v104 h2,
+      .gc-community-daily-card-v104 h2,
+      .gc-community-support-grid-v104 h2,
+      .gc-community-final-card-v104 h2{
+        font-size:clamp(2rem,12vw,3.3rem);
+      }
+    }
+
+    @media(max-width:520px){
+      .gc-community-pitwall-v104 li,
+      .gc-community-principles-v104 article{
+        grid-template-columns:1fr;
+      }
+
+      .gc-community-channel-v104{
+        grid-template-columns:1fr;
       }
     }
   </style>
