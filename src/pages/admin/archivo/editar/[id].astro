@@ -2,65 +2,480 @@
 export const prerender = false;
 import AppLayout from '../../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../../components/AdminSubnav.astro';
+
 const itemId = Astro.params.id;
 ---
-<AppLayout title="Editar ficha | Archivo Motorsport">
+
+<AppLayout title="Editar ficha | Archivo">
   <link rel="stylesheet" href="/gc-archivo-media-manager-v842.css" />
-  <div class="gc-page gc-admin-page-clean gc-archive-editor" data-item-id={itemId}>
+
+  <div class="gc-page gc-admin-page-clean gc-archive-editor-v153" data-item-id={itemId}>
     <section class="gc-hero gc-hero--compact">
-      <div><span class="gc-kicker">Archivo Motorsport</span><h1 class="gc-title">Editar ficha.</h1><p class="gc-subtitle">Editor unificado MySQL/local.</p></div>
-      <aside class="gc-live-panel"><div class="gc-live-panel__title"><span>Estado</span><strong id="archiveEditorState">Cargando</strong></div><div class="gc-status-list"><div class="gc-status-row"><span>ID</span><strong>{itemId}</strong></div></div></aside>
+      <div>
+        <span class="gc-kicker">Archivo</span>
+        <h1 class="gc-title">Editar dossier.</h1>
+        <p class="gc-subtitle">Editor completo para fichas técnicas e históricas: contenido, datos específicos, fuentes, SEO y galería.</p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Estado</span><strong id="archiveEditorState">Cargando</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>ID</span><strong>{itemId}</strong></div>
+        </div>
+      </aside>
     </section>
+
     <AdminSubnav />
-    <section class="gc-section" id="archiveEditorError" hidden><div class="gc-slab"><h3>No se pudo cargar la ficha</h3><p id="archiveEditorErrorText">Error desconocido.</p><div class="gc-actions"><a class="gc-btn" href="/admin/archivo">Volver</a></div></div></section>
+
+    <section class="gc-section" id="archiveEditorError" hidden>
+      <div class="gc-slab">
+        <h3>No se pudo cargar la ficha</h3>
+        <p id="archiveEditorErrorText">Error desconocido.</p>
+        <div class="gc-actions"><a class="gc-btn" href="/admin/archivo">Volver</a></div>
+      </div>
+    </section>
+
     <section id="archiveEditorContent" hidden>
-      <section class="gc-grid-2">
-        <form class="gc-section gc-form" id="archiveMainForm">
-          <div class="gc-section-head"><h2>Contenido</h2><p>Datos editoriales de la ficha.</p></div>
-          <div class="gc-field"><label>Título</label><input name="title" id="fieldTitle" required /></div>
-          <div class="gc-field"><label>Slug</label><input name="slug" id="fieldSlug" required /></div>
-          <div class="gc-field"><label>Categoría</label><select name="category" id="fieldCategory"><option value="circuitos">Circuito</option><option value="pilotos">Piloto</option><option value="vehiculos">Vehículo</option><option value="campeonatos">Campeonato</option><option value="records">Récord</option><option value="glosario">Glosario</option></select></div>
-          <div class="gc-field"><label>Estado</label><select name="status" id="fieldStatus"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></div>
-          <div class="gc-field"><label>Resumen</label><textarea name="summary" id="fieldSummary" rows="4"></textarea></div>
-          <div class="gc-field"><label>Texto largo</label><textarea name="body" id="fieldBody" rows="10"></textarea></div>
-          <div class="gc-actions"><button class="gc-btn gc-btn--primary" type="submit">Guardar ficha</button><a class="gc-btn" href="/admin/archivo">Volver</a><button type="button" class="gc-admin-danger-button gc-archive-delete-inline" id="deleteArchiveItemButton">Borrar ficha</button></div>
-          <p class="gc-message" id="archiveSaveMsg"></p>
+      <div class="gc-archive-editor-grid">
+        <form class="gc-archive-editor-stack" id="archiveMainForm">
+          <section class="gc-archive-editor-panel">
+            <div class="gc-section-head">
+              <div>
+                <h2>Base editorial</h2>
+                <p>Campos comunes que comparten todas las fichas del Archivo.</p>
+              </div>
+            </div>
+
+            <div class="gc-archive-editor-form-grid">
+              <label class="gc-field gc-field--full"><span>Título</span><input data-field="title" id="fieldTitle" required /></label>
+              <label class="gc-field"><span>Slug</span><input data-field="slug" id="fieldSlug" required /></label>
+              <label class="gc-field"><span>Estado</span><select data-field="status" id="fieldStatus"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></label>
+              <label class="gc-field"><span>Categoría</span><select data-field="category" id="fieldCategory"><option value="circuitos">Circuito</option><option value="vehiculos">Coche / vehículo</option><option value="pilotos">Piloto</option><option value="campeonatos">Campeonato</option><option value="records">Récord</option><option value="glosario">Glosario</option></select></label>
+              <label class="gc-field"><span>Periodo / época</span><input data-field="periodo" /></label>
+              <label class="gc-field"><span>País</span><input data-field="pais" /></label>
+              <label class="gc-field"><span>Región / ciudad</span><input data-field="region" /></label>
+              <label class="gc-field"><span>Disciplina</span><input data-field="disciplina" /></label>
+              <label class="gc-field gc-field--full"><span>Subtítulo</span><input data-field="subtitulo" /></label>
+              <label class="gc-field gc-field--full"><span>Resumen</span><textarea data-field="summary" id="fieldSummary" rows="4"></textarea></label>
+              <label class="gc-field gc-field--full"><span>Introducción</span><textarea data-field="introduccion" rows="5"></textarea></label>
+              <label class="gc-field gc-field--full"><span>Contexto histórico</span><textarea data-field="contexto_historico" rows="5"></textarea></label>
+              <label class="gc-field gc-field--full"><span>Importancia</span><textarea data-field="importancia" rows="4"></textarea></label>
+              <label class="gc-field gc-field--full"><span>Texto largo / cuerpo</span><textarea data-field="body" id="fieldBody" rows="8"></textarea></label>
+              <label class="gc-field gc-field--full"><span>Tags</span><input data-field="tags" placeholder="Italia||Ferrari||GT2||Endurance" /></label>
+            </div>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <div class="gc-section-head">
+              <div>
+                <h2>Datos específicos</h2>
+                <p>Cambia según el tipo de ficha. Usa <code>Nombre::Dato||Nombre::Dato</code> para listas estructuradas.</p>
+              </div>
+            </div>
+
+            <div class="gc-archive-editor-tabs" aria-label="Secciones de edición">
+              <button class="gc-archive-editor-tab" type="button" data-editor-tab="circuitos">Circuito</button>
+              <button class="gc-archive-editor-tab" type="button" data-editor-tab="vehiculos">Coche</button>
+              <button class="gc-archive-editor-tab" type="button" data-editor-tab="pilotos">Piloto</button>
+              <button class="gc-archive-editor-tab" type="button" data-editor-tab="general">General</button>
+            </div>
+
+            <div class="gc-archive-editor-group" data-category-group="circuitos">
+              <p class="gc-archive-editor-hint">Campos para circuitos y trazados.</p>
+              <div class="gc-archive-editor-form-grid">
+                <label class="gc-field"><span>Ubicación</span><input data-field="ubicacion" /></label>
+                <label class="gc-field"><span>Longitud km</span><input data-field="longitud_km" /></label>
+                <label class="gc-field"><span>Curvas</span><input data-field="curvas" /></label>
+                <label class="gc-field"><span>Sentido</span><input data-field="sentido" /></label>
+                <label class="gc-field"><span>Recta principal km</span><input data-field="recta_principal_km" /></label>
+                <label class="gc-field"><span>Fecha apertura</span><input data-field="fecha_apertura" /></label>
+                <label class="gc-field"><span>Diseñador</span><input data-field="diseniador" /></label>
+                <label class="gc-field"><span>Propietario</span><input data-field="propietario" /></label>
+                <label class="gc-field gc-field--full"><span>Tipo de trazado</span><input data-field="tipo_trazado" /></label>
+                <label class="gc-field gc-field--full"><span>Características de conducción</span><textarea data-field="caracteristicas_conduccion" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Zonas clave</span><textarea data-field="zonas_clave" rows="5" placeholder="San Donato::Frenada principal||Arrabbiata 1 y 2::Curvas rápidas"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Eventos destacados</span><textarea data-field="eventos_destacados" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Récords destacados</span><textarea data-field="records_destacados" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Anécdotas</span><textarea data-field="anecdotas" rows="4"></textarea></label>
+              </div>
+            </div>
+
+            <div class="gc-archive-editor-group" data-category-group="vehiculos">
+              <p class="gc-archive-editor-hint">Campos para coches, vehículos de competición y variantes técnicas.</p>
+              <div class="gc-archive-editor-form-grid">
+                <label class="gc-field"><span>Fabricante</span><input data-field="fabricante" /></label>
+                <label class="gc-field"><span>Modelo base</span><input data-field="modelo_base" /></label>
+                <label class="gc-field"><span>Constructor</span><input data-field="constructor" /></label>
+                <label class="gc-field"><span>Categoría competición</span><input data-field="categoria_competicion" /></label>
+                <label class="gc-field"><span>Años actividad</span><input data-field="anos_actividad" /></label>
+                <label class="gc-field"><span>Motor</span><input data-field="motor" /></label>
+                <label class="gc-field"><span>Cilindrada</span><input data-field="cilindrada" /></label>
+                <label class="gc-field"><span>Potencia</span><input data-field="potencia" /></label>
+                <label class="gc-field"><span>Peso</span><input data-field="peso" /></label>
+                <label class="gc-field"><span>Tracción</span><input data-field="traccion" /></label>
+                <label class="gc-field"><span>Transmisión</span><input data-field="transmision" /></label>
+                <label class="gc-field gc-field--full"><span>Chasis</span><textarea data-field="chasis" rows="3"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Aerodinámica</span><textarea data-field="aerodinamica" rows="3"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Características técnicas</span><textarea data-field="caracteristicas_tecnicas" rows="5" placeholder="Motor::V8 atmosférico||Arquitectura::Motor central"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Historial deportivo</span><textarea data-field="historial_competicion" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Campeonatos</span><textarea data-field="campeonatos" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Equipos destacados</span><textarea data-field="equipos_destacados" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Victorias / resultados destacados</span><textarea data-field="victorias_destacadas" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Variantes</span><textarea data-field="variantes" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Nota de identificación</span><textarea data-field="nota_identificacion" rows="3"></textarea></label>
+              </div>
+            </div>
+
+            <div class="gc-archive-editor-group" data-category-group="pilotos">
+              <p class="gc-archive-editor-hint">Campos para biografía, trayectoria y palmarés.</p>
+              <div class="gc-archive-editor-form-grid">
+                <label class="gc-field"><span>Nombre completo</span><input data-field="nombre_completo" /></label>
+                <label class="gc-field"><span>Fecha nacimiento</span><input data-field="fecha_nacimiento" /></label>
+                <label class="gc-field"><span>Lugar nacimiento</span><input data-field="lugar_nacimiento" /></label>
+                <label class="gc-field"><span>Nacionalidad</span><input data-field="nacionalidad" /></label>
+                <label class="gc-field"><span>Años activo</span><input data-field="anos_activo" /></label>
+                <label class="gc-field"><span>Disciplinas</span><input data-field="disciplinas" /></label>
+                <label class="gc-field"><span>Victorias</span><input data-field="victorias" /></label>
+                <label class="gc-field"><span>Podios</span><input data-field="podios" /></label>
+                <label class="gc-field"><span>Poles</span><input data-field="poles" /></label>
+                <label class="gc-field"><span>Títulos</span><input data-field="titulos" /></label>
+                <label class="gc-field gc-field--full"><span>Biografía</span><textarea data-field="biografia" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Trayectoria</span><textarea data-field="trayectoria" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Momentos clave</span><textarea data-field="momentos_clave" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Equipos</span><textarea data-field="equipos" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Campeonatos</span><textarea data-field="campeonatos" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Estilo de conducción</span><textarea data-field="estilo_conduccion" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Coches asociados</span><textarea data-field="coches_asociados" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Circuitos asociados</span><textarea data-field="circuitos_asociados" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Anécdotas</span><textarea data-field="anecdotas" rows="4"></textarea></label>
+              </div>
+            </div>
+
+            <div class="gc-archive-editor-group" data-category-group="general">
+              <p class="gc-archive-editor-hint">Campos genéricos para campeonatos, récords, glosario u otras fichas.</p>
+              <div class="gc-archive-editor-form-grid">
+                <label class="gc-field gc-field--full"><span>Categoría visible</span><input data-field="categoria" /></label>
+                <label class="gc-field gc-field--full"><span>Datos destacados</span><textarea data-field="datos_destacados" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Cronología</span><textarea data-field="cronologia" rows="5"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Referencias</span><textarea data-field="referencias" rows="4"></textarea></label>
+                <label class="gc-field gc-field--full"><span>Anécdotas</span><textarea data-field="anecdotas" rows="4"></textarea></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <div class="gc-section-head">
+              <div>
+                <h2>Fuentes, créditos y SEO</h2>
+                <p>Separar fuentes con <code>||</code>. Formato recomendado: <code>Etiqueta::https://...</code></p>
+              </div>
+            </div>
+            <div class="gc-archive-editor-form-grid">
+              <label class="gc-field gc-field--full"><span>Fuentes</span><textarea data-field="fuentes" rows="5"></textarea></label>
+              <label class="gc-field"><span>Autor texto</span><input data-field="autor" /></label>
+              <label class="gc-field"><span>Licencia texto</span><input data-field="licencia" /></label>
+              <label class="gc-field"><span>Última revisión</span><input data-field="ultima_revision" placeholder="2026-05-26" /></label>
+              <label class="gc-field"><span>Imagen URL manual</span><input data-field="imagen_url" /></label>
+              <label class="gc-field gc-field--full"><span>Alt imagen manual</span><input data-field="imagen_alt" /></label>
+              <label class="gc-field gc-field--full"><span>SEO title</span><input data-field="seoTitle" /></label>
+              <label class="gc-field gc-field--full"><span>SEO description</span><textarea data-field="seoDescription" rows="3"></textarea></label>
+            </div>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <div class="gc-section-head">
+              <div>
+                <h2>JSON avanzado</h2>
+                <p>Opcional. Se mezcla con el formulario, pero los campos visibles tienen prioridad.</p>
+              </div>
+            </div>
+            <label class="gc-field">
+              <span>Datos completos</span>
+              <textarea class="gc-archive-editor-json" id="advancedJson" spellcheck="false"></textarea>
+            </label>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <div class="gc-archive-editor-actions">
+              <button class="gc-btn gc-btn--primary" type="submit">Guardar dossier</button>
+              <a class="gc-btn" id="publicPreviewLink" href="/archivo/" target="_blank" rel="noreferrer">Ver público</a>
+              <a class="gc-btn" href="/admin/archivo">Volver</a>
+              <button type="button" class="gc-btn gc-archive-editor-danger" id="deleteArchiveItemButton">Borrar ficha</button>
+            </div>
+            <p class="gc-archive-editor-status" id="archiveSaveMsg"></p>
+          </section>
         </form>
-        <section class="gc-section">
-          <div class="gc-section-head"><h2>Portada y galería</h2><p>Media asociada a la ficha.</p></div>
-          <div class="gc-slab gc-archive-cover-preview"><img id="archiveCoverPreview" src="/og/grasscutters-og.svg" alt="Portada" /><div><strong id="archiveCoverTitle">Sin portada</strong><p id="archiveCoverText">Añade una imagen desde URL o importación.</p></div></div>
-          <div class="gc-slab"><p>Para añadir imagen nueva usa <a href="/admin/archivo/imagen-url">Añadir imagen desde URL</a>.</p></div>
-        </section>
-      </section>
-      <section class="gc-section"><div class="gc-section-head"><h2>Media de la ficha</h2><p>Imágenes asociadas.</p></div><div class="gc-archive-media-grid" id="archiveMediaGrid"></div></section>
+
+        <aside class="gc-archive-editor-stack gc-archive-editor-side">
+          <section class="gc-archive-editor-panel">
+            <h2>Portada</h2>
+            <div class="gc-archive-editor-cover">
+              <img id="archiveCoverPreview" src="/og/grasscutters-og.svg" alt="Portada" />
+              <div>
+                <strong id="archiveCoverTitle">Sin portada</strong>
+                <p id="archiveCoverText">Añade una imagen desde URL o desde tu PC.</p>
+              </div>
+            </div>
+            <div class="gc-archive-editor-actions">
+              <a class="gc-btn" href="/admin/archivo/imagen-url">Añadir imagen</a>
+            </div>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <h2>Guía rápida</h2>
+            <div class="gc-archive-editor-mini-list">
+              <p><code>||</code> separa elementos.</p>
+              <p><code>::</code> separa título y descripción.</p>
+              <p>Ejemplo: <code>San Donato::Frenada principal||Bucine::Salida clave</code></p>
+              <p>Publica solo cuando la ficha tenga fuentes mínimas y revisión.</p>
+            </div>
+          </section>
+
+          <section class="gc-archive-editor-panel">
+            <h2>Media de la ficha</h2>
+            <div class="gc-archive-media-grid" id="archiveMediaGrid"></div>
+          </section>
+        </aside>
+      </div>
     </section>
   </div>
+
   <script is:inline>
     (() => {
       const API = '/api/admin/archive/unified';
-      const root = document.querySelector('.gc-archive-editor');
+      const root = document.querySelector('.gc-archive-editor-v153');
       const itemId = root?.dataset?.itemId;
+      const fields = [...document.querySelectorAll('[data-field]')];
+      const groups = [...document.querySelectorAll('[data-category-group]')];
+      const tabs = [...document.querySelectorAll('[data-editor-tab]')];
       const $ = (id) => document.getElementById(id);
       const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const normalizeCategoryForEditor = (value) => {
+        const raw = String(value || '').toLowerCase();
+        if (['coches','coche','vehiculo','vehículo','vehiculos','vehículos','vehicle','car'].includes(raw)) return 'vehiculos';
+        if (['circuito','circuit','track'].includes(raw)) return 'circuitos';
+        if (['piloto','driver','pilot'].includes(raw)) return 'pilotos';
+        return raw || 'general';
+      };
+      const publicType = (category) => normalizeCategoryForEditor(category) === 'vehiculos' ? 'coches' : normalizeCategoryForEditor(category);
+      const slugify = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'');
+      const setMsg = (text, kind = '') => { const el = $('archiveSaveMsg'); el.textContent = text || ''; el.className = `gc-archive-editor-status ${kind}`.trim(); };
+
       let currentItem = null;
-      async function fetchJson(url, options={}) { const r = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options }); const d = await r.json().catch(()=>({})); if(!r.ok || d.ok===false) throw new Error(d.message || `HTTP ${r.status}`); return d; }
-      function showError(message) { $('archiveEditorContent').hidden = true; $('archiveEditorError').hidden = false; $('archiveEditorErrorText').textContent = message; $('archiveEditorState').textContent = 'Error'; }
-      function fillForm(item) { $('fieldTitle').value=item.title||''; $('fieldSlug').value=item.slug||''; $('fieldCategory').value=item.category||'circuitos'; $('fieldStatus').value=item.status||'draft'; $('fieldSummary').value=item.summary||''; $('fieldBody').value=item.body||''; renderMedia(item); $('archiveEditorContent').hidden=false; $('archiveEditorError').hidden=true; $('archiveEditorState').textContent=item.status||'OK'; }
-      function renderMedia(item) {
-        const media = Array.isArray(item.media) ? item.media : [];
-        const main = media.find((m)=>m.isMain||m.isPrimary) || media[0];
-        if (main?.url || main?.localUrl) { $('archiveCoverPreview').src = main.url || main.localUrl; $('archiveCoverTitle').textContent = main.alt || item.title || 'Portada'; $('archiveCoverText').textContent = `${main.source || 'Fuente no indicada'} · ${main.license || 'Licencia no indicada'}`; }
-        const grid = $('archiveMediaGrid');
-        if (!media.length) { grid.innerHTML='<div class="gc-admin-empty">Todavía no hay imágenes asociadas.</div>'; return; }
-        grid.innerHTML = media.map((m)=>`<article class="gc-archive-media-card"><img src="${esc(m.url||m.localUrl)}" alt="${esc(m.alt||'')}" /><div><strong>${m.isMain?'Portada':'Imagen'}</strong><p>${esc(m.alt||'Sin alt')}</p><small>${esc(m.license||'Licencia no indicada')}</small></div></article>`).join('');
+      let titleTouched = false;
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
       }
-      async function loadItem() { try { const d = await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`); currentItem = d.item; fillForm(currentItem); } catch(e) { showError(e.message || 'No se pudo cargar.'); } }
-      $('archiveMainForm').addEventListener('submit', async (event)=>{ event.preventDefault(); $('archiveSaveMsg').textContent='Guardando...'; const payload={ title:$('fieldTitle').value, slug:$('fieldSlug').value, category:$('fieldCategory').value, status:$('fieldStatus').value, summary:$('fieldSummary').value, body:$('fieldBody').value }; try{ const d=await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`, {method:'PUT', body:JSON.stringify(payload)}); currentItem=d.item; fillForm(currentItem); $('archiveSaveMsg').textContent='Ficha guardada.'; } catch(e){ $('archiveSaveMsg').textContent=e.message||'No se pudo guardar.'; }});
-      $('deleteArchiveItemButton').addEventListener('click', async ()=>{ if(!confirm('¿Borrar esta ficha?')) return; if(!confirm('Última confirmación.')) return; try { await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`, {method:'DELETE'}); window.location.href='/admin/archivo'; } catch(e) { alert(e.message || 'No se pudo borrar.'); }});
+
+      function showGroup(value) {
+        const category = normalizeCategoryForEditor(value);
+        const groupName = ['circuitos','vehiculos','pilotos'].includes(category) ? category : 'general';
+        groups.forEach((group) => { group.hidden = group.dataset.categoryGroup !== groupName; });
+        tabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.editorTab === groupName));
+      }
+
+      function getItemValue(item, name) {
+        const aliases = {
+          title: ['title','nombre','name','titulo'],
+          summary: ['summary','descripcion_corta','resumen'],
+          body: ['body','descripcion_larga','texto','content'],
+          category: ['category','categoria_tipo','tipo'],
+        }[name] || [name];
+        for (const key of aliases) {
+          const value = item?.[key];
+          if (value !== undefined && value !== null) return value;
+        }
+        return '';
+      }
+
+      function fillForm(item) {
+        currentItem = item || {};
+        fields.forEach((field) => {
+          const name = field.dataset.field;
+          let value = getItemValue(currentItem, name);
+          if (name === 'category') value = normalizeCategoryForEditor(value || currentItem.category || currentItem.tipo);
+          field.value = String(value ?? '');
+        });
+
+        if (!$('fieldCategory').value) $('fieldCategory').value = 'circuitos';
+        showGroup($('fieldCategory').value);
+        $('advancedJson').value = JSON.stringify(currentItem, null, 2);
+        $('archiveEditorContent').hidden = false;
+        $('archiveEditorError').hidden = true;
+        $('archiveEditorState').textContent = currentItem.status || 'OK';
+        renderMedia(currentItem);
+        updatePreviewLink();
+      }
+
+      function renderMedia(item) {
+        const media = Array.isArray(item?.media) ? item.media : [];
+        const main = media.find((m) => m.isMain || m.isPrimary) || media[0];
+        if (main?.url || main?.localUrl || item?.coverUrl || item?.imagen_url) {
+          const image = main?.url || main?.localUrl || item.coverUrl || item.imagen_url;
+          $('archiveCoverPreview').src = image;
+          $('archiveCoverTitle').textContent = main?.alt || item.coverAlt || item.imagen_alt || item.title || item.nombre || 'Portada';
+          $('archiveCoverText').textContent = [main?.source, main?.author, main?.license].filter(Boolean).join(' · ') || 'Créditos no indicados.';
+        }
+
+        const grid = $('archiveMediaGrid');
+        if (!media.length) {
+          grid.innerHTML = '<div class="gc-admin-empty">Todavía no hay imágenes asociadas.</div>';
+          return;
+        }
+        grid.innerHTML = media.map((m) => `
+          <article class="gc-archive-media-card">
+            <img src="${esc(m.url || m.localUrl)}" alt="${esc(m.alt || '')}" />
+            <div>
+              <strong>${m.isMain || m.isPrimary ? 'Portada' : 'Imagen'}</strong>
+              <p>${esc(m.alt || 'Sin alt')}</p>
+              <small>${esc([m.source, m.author, m.license].filter(Boolean).join(' · ') || 'Créditos no indicados')}</small>
+            </div>
+          </article>
+        `).join('');
+      }
+
+      function updatePreviewLink() {
+        const category = publicType($('fieldCategory').value);
+        const slug = slugify($('fieldSlug').value || $('fieldTitle').value);
+        $('publicPreviewLink').href = slug ? `/archivo/${category}/${slug}/` : '/archivo/';
+      }
+
+      function collectPayload() {
+        let base = {};
+        const advanced = $('advancedJson').value.trim();
+        if (advanced) {
+          try { base = JSON.parse(advanced); }
+          catch (error) { throw new Error('El JSON avanzado no es válido. Corrígelo o vacíalo antes de guardar.'); }
+        }
+
+        const payload = { ...base };
+        fields.forEach((field) => {
+          const name = field.dataset.field;
+          payload[name] = field.value.trim();
+        });
+
+        payload.title = $('fieldTitle').value.trim();
+        payload.nombre = payload.title;
+        payload.slug = slugify($('fieldSlug').value || payload.title);
+        payload.category = normalizeCategoryForEditor($('fieldCategory').value);
+        payload.tipo = publicType(payload.category);
+        payload.status = $('fieldStatus').value || 'draft';
+        payload.summary = $('fieldSummary').value.trim();
+        payload.descripcion_corta = payload.summary;
+        payload.body = $('fieldBody').value.trim();
+        payload.descripcion_larga = payload.body;
+        payload.updatedAt = new Date().toISOString();
+        return payload;
+      }
+
+      async function loadItem() {
+        try {
+          const data = await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`);
+          fillForm(data.item);
+        } catch (error) {
+          $('archiveEditorContent').hidden = true;
+          $('archiveEditorError').hidden = false;
+          $('archiveEditorErrorText').textContent = error.message || 'No se pudo cargar.';
+          $('archiveEditorState').textContent = 'Error';
+        }
+      }
+
+      $('fieldCategory').addEventListener('change', () => { showGroup($('fieldCategory').value); updatePreviewLink(); });
+      tabs.forEach((tab) => tab.addEventListener('click', () => {
+        const target = tab.dataset.editorTab;
+        if (target === 'vehiculos') $('fieldCategory').value = 'vehiculos';
+        else if (target === 'circuitos') $('fieldCategory').value = 'circuitos';
+        else if (target === 'pilotos') $('fieldCategory').value = 'pilotos';
+        showGroup($('fieldCategory').value);
+        updatePreviewLink();
+      }));
+
+      $('fieldTitle').addEventListener('input', () => {
+        if (!titleTouched) $('fieldSlug').value = slugify($('fieldTitle').value);
+        updatePreviewLink();
+      });
+      $('fieldSlug').addEventListener('input', () => { titleTouched = true; updatePreviewLink(); });
+
+      $('archiveMainForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setMsg('Guardando dossier...');
+        try {
+          const payload = collectPayload();
+          const data = await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`, { method:'PUT', body: JSON.stringify(payload) });
+          fillForm(data.item);
+          setMsg('Dossier guardado.', 'ok');
+        } catch (error) {
+          setMsg(error.message || 'No se pudo guardar.', 'error');
+        }
+      });
+
+      $('deleteArchiveItemButton').addEventListener('click', async () => {
+        if (!confirm('¿Borrar esta ficha?')) return;
+        if (!confirm('Última confirmación. Esta acción no se puede deshacer desde el editor.')) return;
+        try {
+          await fetchJson(`${API}/items/${encodeURIComponent(itemId)}`, { method:'DELETE' });
+          window.location.href = '/admin/archivo';
+        } catch (error) {
+          alert(error.message || 'No se pudo borrar.');
+        }
+      });
+
       loadItem();
     })();
   </script>
-  <style is:global>.gc-archive-cover-preview{display:grid;grid-template-columns:180px 1fr;gap:14px;align-items:center}.gc-archive-cover-preview img{width:100%;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line)}.gc-archive-media-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.gc-archive-media-card{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.018)}.gc-archive-media-card img{width:100%;aspect-ratio:1/1;object-fit:cover}.gc-archive-delete-inline{border:1px solid rgba(255,90,90,.45);background:rgba(255,90,90,.1);color:#ffd7d7;padding:12px 18px;font-weight:900}</style>
+
+
+  <style is:global>
+    .gc-archive-editor-v153{max-width:1440px;margin:0 auto}
+    .gc-archive-editor-v153 .gc-section-head{align-items:flex-start}
+    .gc-archive-editor-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:18px;align-items:start}
+    .gc-archive-editor-stack{display:grid;gap:18px}
+    .gc-archive-editor-panel{padding:18px;border:1px solid var(--line,rgba(255,255,255,.12));border-radius:24px;background:rgba(255,255,255,.035)}
+    .gc-archive-editor-panel h2{margin:0 0 6px;font-size:1.35rem}
+    .gc-archive-editor-panel p{margin:0;color:var(--soft,rgba(255,255,255,.72))}
+    .gc-archive-editor-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+    .gc-archive-editor-form-grid .gc-field--full{grid-column:1/-1}
+    .gc-archive-editor-v153 .gc-field{display:grid;gap:7px}
+    .gc-archive-editor-v153 .gc-field label,
+    .gc-archive-editor-v153 .gc-field span{font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--soft,rgba(255,255,255,.72))}
+    .gc-archive-editor-v153 input,
+    .gc-archive-editor-v153 select,
+    .gc-archive-editor-v153 textarea{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(4,9,6,.62);color:inherit;padding:12px 13px;font:inherit;outline:none}
+    .gc-archive-editor-v153 textarea{resize:vertical;min-height:96px;line-height:1.55}
+    .gc-archive-editor-v153 input:focus,
+    .gc-archive-editor-v153 select:focus,
+    .gc-archive-editor-v153 textarea:focus{border-color:rgba(156,255,63,.36);box-shadow:0 0 0 4px rgba(156,255,63,.08)}
+    .gc-archive-editor-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+    .gc-archive-editor-tab{border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.045);color:inherit;padding:10px 13px;font-weight:900;cursor:pointer}
+    .gc-archive-editor-tab.is-active{background:linear-gradient(135deg,var(--accent,#9cff3f),#45f1db);color:#061006;border-color:transparent}
+    .gc-archive-editor-group[hidden]{display:none!important}
+    .gc-archive-editor-hint{margin-top:10px!important;font-size:.92rem;color:var(--muted,rgba(255,255,255,.56))!important}
+    .gc-archive-editor-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    .gc-archive-editor-status{margin-top:12px;min-height:22px;color:var(--soft,rgba(255,255,255,.72))}
+    .gc-archive-editor-status.ok{color:#c8ffd0}
+    .gc-archive-editor-status.error{color:#ffd0d0}
+    .gc-archive-editor-danger{border:1px solid rgba(255,90,90,.45)!important;background:rgba(255,90,90,.1)!important;color:#ffd7d7!important}
+    .gc-archive-editor-side-card{padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:22px;background:rgba(0,0,0,.16)}
+    .gc-archive-editor-cover{display:grid;gap:12px}
+    .gc-archive-editor-cover img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:#071009}
+    .gc-archive-editor-cover strong{display:block}
+    .gc-archive-editor-cover p{margin:3px 0 0;color:var(--soft,rgba(255,255,255,.72));font-size:.94rem}
+    .gc-archive-media-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .gc-archive-media-card{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(255,255,255,.03)}
+    .gc-archive-media-card img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#071009}
+    .gc-archive-media-card strong{display:block;margin-bottom:4px}
+    .gc-archive-media-card p{margin:0;color:var(--soft,rgba(255,255,255,.72));font-size:.9rem}
+    .gc-archive-media-card small{display:block;margin-top:6px;color:var(--muted,rgba(255,255,255,.54));line-height:1.3}
+    .gc-archive-editor-json{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.88rem;min-height:260px}
+    .gc-archive-editor-mini-list{display:grid;gap:8px;margin-top:12px;color:var(--soft,rgba(255,255,255,.72))}
+    .gc-archive-editor-mini-list code{color:#d8ffd6}
+    @media(max-width:1100px){.gc-archive-editor-grid{grid-template-columns:1fr}.gc-archive-editor-side{order:-1}}
+    @media(max-width:680px){.gc-archive-editor-form-grid{grid-template-columns:1fr}.gc-archive-editor-actions{display:grid}.gc-archive-editor-actions .gc-btn{width:100%;justify-content:center}.gc-archive-media-card{grid-template-columns:1fr}}
+  </style>
+
 
   <script src="/gc-archivo-media-manager-v842.js" is:inline></script>
 </AppLayout>

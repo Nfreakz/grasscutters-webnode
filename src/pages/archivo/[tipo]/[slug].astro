@@ -1,19 +1,47 @@
 ---
+export const prerender = false;
+
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
 import ArchiveDossierPage from '../../../components/archive/ArchiveDossierPage.astro';
-import { getArchiveItems, getRelatedArchiveItems, normalizeArchiveType } from '../../../lib/archive/archiveData';
+import {
+  getArchiveItem,
+  getRelatedArchiveItems,
+  normalizeArchiveType,
+  prettifyArchiveType,
+} from '../../../lib/archive/archiveRuntime';
 
-export function getStaticPaths() {
-  return getArchiveItems().map((entry) => ({
-    params: { tipo: normalizeArchiveType(entry.tipo), slug: entry.slug },
-    props: { entry, related: getRelatedArchiveItems(entry) },
-  }));
+const requestedType = String(Astro.params.tipo || '');
+const slug = String(Astro.params.slug || '');
+const type = normalizeArchiveType(requestedType);
+
+if (requestedType && requestedType !== type) {
+  return Astro.redirect(`/archivo/${type}/${slug}/`);
 }
 
-const { entry, related } = Astro.props;
-const description = entry.descripcion_corta || entry.subtitulo || entry.introduccion || `Ficha de ${entry.nombre} en el Archivo.`;
+const entry = await getArchiveItem(type, slug);
+const related = entry ? await getRelatedArchiveItems(entry) : [];
+const label = prettifyArchiveType(type);
+const description = entry?.descripcion_corta || entry?.subtitulo || entry?.introduccion || `Ficha de ${label.toLowerCase()} en el Archivo.`;
+
+if (!entry) {
+  Astro.response.status = 404;
+}
 ---
 
-<MarketingLayout bodyClass="gc-archive-public" title={`${entry.nombre} | Archivo`} description={description}>
-  <ArchiveDossierPage entry={entry} related={related} />
+<MarketingLayout bodyClass="gc-archive-public" title={entry ? `${entry.nombre} | Archivo` : `Ficha no encontrada | Archivo`} description={description}>
+  {entry ? (
+    <ArchiveDossierPage entry={entry} related={related} />
+  ) : (
+    <main class="gc-archive-index">
+      <header class="gc-archive-index__hero">
+        <span>Archivo</span>
+        <h1>Ficha no encontrada.</h1>
+        <p>No existe una ficha publicada para esta ruta o todavía no se ha publicado desde el panel de administración.</p>
+        <div class="gc-archive-catalogue__actions">
+          <a class="gc-archive-catalogue__cta" href="/archivo/">Volver al Archivo</a>
+          <a class="gc-archive-catalogue__cta" href={`/archivo/${type}/`}>Ver {label}</a>
+        </div>
+      </header>
+    </main>
+  )}
 </MarketingLayout>

@@ -1,6 +1,12 @@
 ---
 import '../../styles/archive-dossier.css';
-import { normalizeArchiveType, prettifyArchiveType } from '../../lib/archive/archiveData';
+import {
+  archiveItemHref,
+  archiveTypeHref,
+  normalizeArchiveType,
+  prettifyArchiveType,
+  singularArchiveType,
+} from '../../lib/archive/archiveRuntime';
 
 const { entry = {}, related = [] } = Astro.props;
 
@@ -34,29 +40,39 @@ const parseSources = (raw: any) => splitList(raw).map((item) => {
   return { label: label || url || item, url: url || '' };
 });
 
+const normalizeLabelKey = (label: any) => String(label || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '');
+
 const title = value(['nombre', 'name', 'titulo', 'title'], 'Ficha sin título');
-const rawType = value(['tipo', 'tipo_importacion', 'collection', 'categoria_tipo'], 'archivo');
+const rawType = value(['tipo', 'publicTipo', 'tipo_importacion', 'collection', 'categoria_tipo', 'category', 'type'], 'archivo');
 const type = normalizeArchiveType(rawType);
 const typeLabel = prettifyArchiveType(type);
-const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha del archivo motorsport.');
-const category = value(['categoria', 'category', 'categoria_competicion'], 'Ficha motorsport');
+const typeSingular = singularArchiveType(type);
+const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha técnica e histórica del archivo.');
+const category = value(['categoria', 'categoryLabel', 'detailCategory', 'categoria_competicion'], typeSingular);
 const country = value(['pais', 'país', 'country'], '');
 const region = value(['region', 'región', 'ciudad', 'ubicacion', 'ubicación'], '');
 const period = value(['periodo', 'epoca', 'época', 'years'], '');
 const discipline = value(['disciplina', 'discipline'], '');
 const tags = splitList(value(['tags', 'etiquetas'], ''));
-const imageUrl = value(['imagen_url', 'image_url', 'image', 'foto_url'], '');
-const imageAlt = value(['imagen_alt', 'image_alt'], title);
+const imageUrl = value(['imagen_url', 'coverUrl', 'image_url', 'image', 'foto_url'], '');
+const imageAlt = value(['imagen_alt', 'coverAlt', 'image_alt'], title);
 const imageCredit = value(['imagen_credito', 'image_credit', 'credito_imagen'], '');
 const imageLicense = value(['imagen_licencia', 'image_license', 'licencia_imagen'], '');
-const author = value(['autor', 'author'], 'GrassCutters Racing');
+const author = value(['autor', 'author', 'redaccion'], 'Redacción del archivo');
 const license = value(['licencia', 'license'], 'Texto editorial propio con fuentes indicadas.');
 const lastReview = value(['ultima_revision', 'última_revisión', 'last_review'], '');
+const identificationNote = value(['nota_identificacion', 'nota_de_identificacion', 'identification_note', 'nota_revision'], '');
 
 const commonSections = [
   ['Introducción', value(['introduccion', 'descripcion_larga', 'description_long', 'body'])],
   ['Contexto histórico', value(['contexto_historico', 'historia', 'historical_context'])],
   ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
+  ['Nota de identificación', identificationNote],
 ].filter(([, text]) => text);
 
 const factsByType: Record<string, [string, string][]> = {
@@ -76,7 +92,7 @@ const factsByType: Record<string, [string, string][]> = {
     ['Fabricante', value(['fabricante', 'manufacturer'])],
     ['Modelo base', value(['modelo_base', 'base_model'])],
     ['Constructor', value(['constructor', 'built_by'])],
-    ['Categoría', value(['categoria_competicion', 'categoria', 'category'])],
+    ['Categoría', value(['categoria_competicion', 'categoria', 'categoryLabel'], category)],
     ['Años', value(['anos_actividad', 'años_actividad', 'periodo'])],
     ['Motor', value(['motor', 'engine'])],
     ['Cilindrada', value(['cilindrada', 'displacement'])],
@@ -106,7 +122,15 @@ const fallbackFacts = [
   ['Disciplina', discipline],
 ];
 
-const quickFacts = (factsByType[type] || fallbackFacts).filter(([, v]) => v);
+const baseQuickFacts = (factsByType[type] || fallbackFacts).filter(([, v]) => v);
+const usedFactKeys = new Set(baseQuickFacts.map(([label]) => normalizeLabelKey(label)));
+const extraFacts = Array.isArray(entry.facts)
+  ? entry.facts
+      .map((fact: any) => [String(fact?.label || fact?.title || '').trim(), String(fact?.value || fact?.text || '').trim()] as [string, string])
+      .filter(([label, fact]) => label && fact && !usedFactKeys.has(normalizeLabelKey(label)))
+      .slice(0, Math.max(0, 10 - baseQuickFacts.length))
+  : [];
+const quickFacts = [...baseQuickFacts, ...extraFacts];
 
 const typeSections: Record<string, { title: string; text?: string; items?: PairItem[]; variant?: string }[]> = {
   circuitos: [
@@ -145,8 +169,8 @@ const hasImage = Boolean(imageUrl);
 <article class={`gc-archive-dossier gc-archive-dossier--${type}`}>
   <header class="gc-archive-dossier__hero">
     <div class="gc-archive-dossier__hero-main">
-      <p class="gc-archive-dossier__breadcrumb"><a href="/archivo/">Archivo</a> / <a href={`/archivo/${type}/`}>{typeLabel}</a> / <strong>{title}</strong></p>
-      <span class="gc-archive-dossier__kicker">Archivo Motorsport · {typeLabel}</span>
+      <p class="gc-archive-dossier__breadcrumb"><a href="/archivo/">Archivo</a> / <a href={archiveTypeHref(type)}>{typeLabel}</a> / <strong>{title}</strong></p>
+      <span class="gc-archive-dossier__kicker">Archivo · {typeLabel}</span>
       <h1>{title}</h1>
       <p class="gc-archive-dossier__lead">{subtitle}</p>
       <div class="gc-archive-dossier__tags">
@@ -231,7 +255,7 @@ const hasImage = Boolean(imageUrl);
     <aside class="gc-archive-dossier__sidebar">
       <section class="gc-archive-dossier__side-panel">
         <span class="gc-archive-dossier__side-kicker">Clasificación</span>
-        <h2>{typeLabel}</h2>
+        <h2>{typeSingular}</h2>
         <p>{category}</p>
         {(country || region || period) && (
           <ul class="gc-archive-dossier__meta-list">
@@ -248,9 +272,9 @@ const hasImage = Boolean(imageUrl);
           <h2>Más fichas</h2>
           <div class="gc-archive-dossier__related-list">
             {related.map((item) => (
-              <a href={`/archivo/${normalizeArchiveType(item.tipo)}/${item.slug}/`}>
-                <strong>{item.nombre}</strong>
-                <span>{prettifyArchiveType(item.tipo)}</span>
+              <a href={archiveItemHref(item)}>
+                <strong>{item.nombre || item.title}</strong>
+                <span>{prettifyArchiveType(item.tipo || item.publicTipo || item.category)}</span>
               </a>
             ))}
           </div>

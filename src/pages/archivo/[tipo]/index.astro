@@ -1,33 +1,74 @@
 ---
+export const prerender = false;
+
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
 import '../../../styles/archive-dossier.css';
-import { getArchiveItemsByType, getArchiveTypes, prettifyArchiveType } from '../../../lib/archive/archiveData';
+import {
+  getArchiveItemsByType,
+  getArchiveTypes,
+  normalizeArchiveType,
+  prettifyArchiveType,
+} from '../../../lib/archive/archiveRuntime';
 
-export function getStaticPaths() {
-  return getArchiveTypes().map((type) => ({ params: { tipo: type.tipo }, props: { type } }));
+const requestedType = String(Astro.params.tipo || '');
+const type = normalizeArchiveType(requestedType);
+
+if (requestedType && requestedType !== type) {
+  return Astro.redirect(`/archivo/${type}/`);
 }
 
-const { type } = Astro.props;
-const items = getArchiveItemsByType(type.tipo);
-const label = prettifyArchiveType(type.tipo);
+const items = await getArchiveItemsByType(type);
+const allTypes = await getArchiveTypes();
+const label = prettifyArchiveType(type);
+
+const getSummary = (item) => item.descripcion_corta || item.summary || item.subtitulo || item.introduccion || item.body || '';
+const getPeriod = (item) => item.periodo || item.epoca || item.anos_actividad || item.años_actividad || item.fecha_apertura || '';
+const getCountry = (item) => item.pais || item.nacionalidad || item.ubicacion || '';
+const getImage = (item) => item.coverUrl || item.imagen_url || item.media?.find?.((media) => media.isMain || media.isPrimary)?.url || item.media?.[0]?.url || '';
+const itemHref = (item) => `/archivo/${normalizeArchiveType(item.tipo)}/${item.slug}/`;
+
+const description = `${items.length} fichas de ${label.toLowerCase()} en el Archivo.`;
 ---
 
-<MarketingLayout bodyClass="gc-archive-public" title={`${label} | Archivo`} description={`Fichas de ${label.toLowerCase()} en el Archivo.`}>
+<MarketingLayout bodyClass="gc-archive-public" title={`${label} | Archivo`} description={description}>
   <main class="gc-archive-index">
     <header class="gc-archive-index__hero">
       <span>Archivo</span>
       <h1>{label}</h1>
       <p>{items.length} fichas disponibles en esta categoría.</p>
+
+      {allTypes.length > 1 && (
+        <nav class="gc-archive-catalogue__quick-filters" aria-label="Categorías del archivo">
+          <a class="gc-archive-catalogue__cta" href="/archivo/">Todo el archivo</a>
+          {allTypes.map((archiveType) => (
+            <a
+              class={archiveType.tipo === type ? 'gc-archive-catalogue__cta is-active' : 'gc-archive-catalogue__cta'}
+              href={`/archivo/${archiveType.tipo}/`}
+            >
+              {archiveType.label}
+            </a>
+          ))}
+        </nav>
+      )}
     </header>
 
-    <section class="gc-archive-index__grid">
-      {items.map((item) => (
-        <a class="gc-archive-index__card" href={`/archivo/${item.tipo}/${item.slug}/`}>
-          <small>{item.pais || item.periodo || item.categoria}</small>
-          <strong>{item.nombre}</strong>
-          <p>{item.descripcion_corta || item.subtitulo || item.introduccion}</p>
-        </a>
-      ))}
-    </section>
+    {items.length > 0 ? (
+      <section class="gc-archive-index__grid">
+        {items.map((item) => (
+          <a class="gc-archive-index__card" href={itemHref(item)}>
+            {getImage(item) && <img src={getImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />}
+            <small>{[getCountry(item), getPeriod(item)].filter(Boolean).join(' · ') || label}</small>
+            <strong>{item.nombre}</strong>
+            <p>{getSummary(item)}</p>
+          </a>
+        ))}
+      </section>
+    ) : (
+      <section class="gc-archive-catalogue__empty">
+        <strong>No hay fichas publicadas en esta categoría.</strong>
+        <p>Cuando se importen o publiquen desde el panel de administración, aparecerán aquí.</p>
+        <a class="gc-archive-catalogue__cta" href="/archivo/">Volver al Archivo</a>
+      </section>
+    )}
   </main>
 </MarketingLayout>
