@@ -422,6 +422,139 @@ function parseCsv(content: string) {
     .map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ''])));
 }
 
+
+function cleanCsvKey(key: string) {
+  return String(key || '')
+    .trim()
+    .replace(/^\uFEFF/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+const CSV_TOP_LEVEL_FIELDS = new Set([
+  'pais',
+  'país',
+  'ubicacion',
+  'ubicación',
+  'region',
+  'disciplina',
+  'periodo',
+  'epoca',
+  'tipo_trazado',
+  'tipo_circuito',
+  'longitud_km',
+  'longitud',
+  'curvas',
+  'sentido',
+  'recta_principal_km',
+  'recta_principal',
+  'fecha_apertura',
+  'apertura',
+  'ano',
+  'año',
+  'arquitecto',
+  'desnivel_m',
+  'altura_max_m',
+  'altura_min_m',
+  'cambios_elevacion',
+  'categoria',
+  'caracteristicas_trazado',
+  'caracteristicas_conduccion',
+  'como_se_conduce',
+  'zonas_clave',
+  'puntos_clave',
+  'eventos_destacados',
+  'eventos',
+  'records_destacados',
+  'records',
+  'referencias_tiempos',
+  'anecdotas',
+  'anécdotas',
+  'contexto_historico',
+  'historia',
+  'importancia',
+  'por_que_importa',
+  'nota_identificacion',
+  'fabricante',
+  'manufacturer',
+  'modelo_base',
+  'constructor',
+  'categoria_competicion',
+  'anos_actividad',
+  'años_actividad',
+  'motor',
+  'potencia',
+  'peso',
+  'traccion',
+  'tracción',
+  'ficha_tecnica',
+  'caracteristicas_tecnicas',
+  'desarrollo',
+  'version_competicion',
+  'historial_competicion',
+  'campeonatos',
+  'equipos_destacados',
+  'equipos',
+  'victorias_destacadas',
+  'resultados_destacados',
+  'variantes',
+  'nombre_completo',
+  'fecha_nacimiento',
+  'lugar_nacimiento',
+  'nacionalidad',
+  'anos_activo',
+  'años_activo',
+  'disciplinas',
+  'titulos',
+  'títulos',
+  'biografia',
+  'biografía',
+  'trayectoria',
+  'hitos_trayectoria',
+  'momentos_clave',
+  'palmares',
+  'palmarés',
+  'estilo_conduccion',
+  'estilo_pilotaje',
+  'coches_asociados',
+  'circuitos_asociados',
+  'area',
+  'área',
+  'definicion',
+  'definición',
+  'uso',
+  'aplicacion',
+  'aplicación',
+  'aplicacion_practica',
+  'relacionado_con',
+  'ejemplos',
+  'relacionados',
+  'tags',
+  'etiquetas',
+  'fuentes',
+  'sources',
+  'fuente_url',
+  'source_url',
+  'autor',
+  'author',
+  'licencia',
+  'license',
+]);
+
+function topLevelFieldsFromCsvRow(row: any) {
+  const output: Record<string, string> = {};
+  for (const [rawKey, rawValue] of Object.entries(row || {})) {
+    const key = cleanCsvKey(String(rawKey));
+    const value = String(rawValue ?? '').trim();
+    if (!key || !value) continue;
+    if (CSV_TOP_LEVEL_FIELDS.has(key)) output[key] = value;
+  }
+  return output;
+}
+
 function first(row: any, keys: string[]) {
   for (const key of keys) {
     const direct = String(row[key] ?? '').trim();
@@ -530,13 +663,15 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
   const rawDetailCategory = first(row, ['categoria', 'category']);
   const normalizedDetailCategory = normalizeCategory(rawDetailCategory);
   const detailCategoryIsArchiveCategory = rawDetailCategory && isKnownArchiveCategory(normalizedDetailCategory);
+  const topLevel = topLevelFieldsFromCsvRow(row);
 
   const skip = new Set([
     'id','slug','title','titulo','nombre','name',
     'summary','resumen','descripcion_corta','description',
     'body','descripcion','descripcion_larga','texto','content',
     'archive_category','archivecategory','tipo_ficha','tipo_archivo',
-    'type','tipo','status','estado','published','publicado'
+    'type','tipo','status','estado','published','publicado',
+    ...Array.from(CSV_TOP_LEVEL_FIELDS),
   ]);
 
   if (detailCategoryIsArchiveCategory) {
@@ -546,14 +681,14 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
 
   const facts = Object.entries(row)
     .filter(([k, v]) => {
-      const key = String(k || '').toLowerCase();
+      const key = cleanCsvKey(String(k || ''));
       if (skip.has(key)) return false;
       if (key.startsWith('imagen_') || key.startsWith('image_') || key.startsWith('media_') || key.startsWith('svg_')) return false;
       return String(v ?? '').trim();
     })
-    .map(([label, value]) => ({ label: label.replace(/_/g, ' '), value: String(value ?? '').trim() }));
+    .map(([label, value]) => ({ label: String(label).replace(/_/g, ' '), value: String(value ?? '').trim() }));
 
-  if (rawDetailCategory && !detailCategoryIsArchiveCategory && !facts.some((fact) => String(fact.label).toLowerCase() === 'categoria')) {
+  if (rawDetailCategory && !detailCategoryIsArchiveCategory && !facts.some((fact) => cleanCsvKey(fact.label) === 'categoria')) {
     facts.unshift({ label: 'Categoría', value: rawDetailCategory });
   }
 
@@ -563,6 +698,7 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
 
   return normalizeItem({
     ...(existing || {}),
+    ...topLevel,
     id: safeId || existing?.id,
     category,
     title,
@@ -579,7 +715,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   app.get('/api/admin/archive/unified/items', async (_req: Request, res: Response) => {
     try {
       const result = await storageList(rootDir);
-      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error listando Archivo.' });
     }
@@ -589,7 +725,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageFind(rootDir, String(req.params.id || ''));
       if (!result.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error cargando ficha.' });
     }
@@ -598,7 +734,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   async function save(req: Request, res: Response) {
     try {
       const result = await storageSave(rootDir, req.body || {}, req.params.id ? String(req.params.id) : undefined);
-      return res.json({ ok: true, ...result, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error guardando ficha.' });
     }
@@ -612,7 +748,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageDelete(rootDir, String(req.params.id || ''));
       if (!result.deleted) return res.status(404).json({ ok: false, deleted: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, deleted: false, message: error?.message || 'Error borrando ficha.' });
     }
@@ -627,7 +763,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         await storageSave(rootDir, item);
         created += 1;
       }
-      return res.json({ ok: true, created, skipped, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, created, skipped, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error creando demo.' });
     }
@@ -689,7 +825,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         skipped,
         details,
         samples,
-        api: 'unified-v15.10.3',
+        api: 'unified-v15.15',
       });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error importando CSV.' });
@@ -730,7 +866,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
       media.unshift(itemMedia);
       const item = normalizeItem({ ...found.item, media }, found.item);
       await storageSave(rootDir, item, item.id);
-      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.10.3' });
+      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.15' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error añadiendo imagen.' });
     }
