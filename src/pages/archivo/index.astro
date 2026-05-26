@@ -1,238 +1,214 @@
 ---
 export const prerender = false;
+
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
-import '../../styles/archive-dossier.css';
-import { getArchiveStats, prettifyArchiveType } from '../../lib/archive/archiveRuntime';
+import {
+  archiveItemHref,
+  archiveTypeHref,
+  getArchiveCountry,
+  getArchiveImage,
+  getArchivePeriod,
+  getArchiveStats,
+  getArchiveSummary,
+  prettifyArchiveType,
+  singularArchiveType,
+} from '../../lib/archive/archiveRuntime';
 
 const stats = await getArchiveStats();
-const items = stats.items;
-const types = stats.types;
+const items = stats.items || [];
+const types = stats.types || [];
 
-const typeOrder = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario'];
-const orderedTypes = [...types].sort((a, b) => {
-  const ai = typeOrder.indexOf(a.tipo);
-  const bi = typeOrder.indexOf(b.tipo);
-  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-});
+const featured = items
+  .filter((item) => getArchiveImage(item) || getArchiveSummary(item))
+  .slice(0, 1)[0] || items[0] || null;
 
-const featured = items.find((item) => item.tipo === 'circuitos') || items[0];
-const secondaryFeatured = items.filter((item) => item.slug !== featured?.slug).slice(0, 2);
-const totalSources = items.reduce((sum, item) => {
-  const sources = Array.isArray(item.fuentes) ? item.fuentes : [];
-  const factSources = Array.isArray(item.facts) ? item.facts.filter((fact) => String(fact.label || '').toLowerCase().includes('fuente')) : [];
-  return sum + sources.length + factSources.length;
-}, 0);
-
-const getSummary = (item) => item.descripcion_corta || item.summary || item.subtitulo || item.body || '';
-const getPeriod = (item) => item.periodo || item.epoca || item.años_actividad || item.fecha_apertura || '';
-const getCountry = (item) => item.pais || item.nacionalidad || item.ubicacion || '';
-const getImage = (item) => item.coverUrl || item.imagen_url || item.media?.find?.((media) => media.isMain || media.isPrimary)?.url || item.media?.[0]?.url || '';
-const itemHref = (item) => `/archivo/${item.tipo}/${item.slug}/`;
-
-const alphaLetters = Array.from(new Set(items
-  .map((item) => String(item.nombre || item.title || '').trim().charAt(0).toUpperCase())
-  .filter((letter) => /^[A-ZÁÉÍÓÚÑ0-9]$/.test(letter))
-)).sort((a, b) => a.localeCompare(b, 'es'));
+const latest = items.slice(0, 9);
+const highlighted = items.filter((item) => item.slug !== featured?.slug).slice(0, 4);
 
 const searchPayload = items.map((item) => ({
   title: item.nombre,
-  type: prettifyArchiveType(item.tipo),
-  tipo: item.tipo,
-  summary: getSummary(item),
-  href: itemHref(item),
-  period: getPeriod(item),
-  country: getCountry(item),
-  image: getImage(item),
-  letter: String(item.nombre || item.title || '').trim().charAt(0).toUpperCase(),
-  searchText: [
-    item.nombre,
-    item.title,
-    item.slug,
-    item.tipo,
-    prettifyArchiveType(item.tipo),
-    getSummary(item),
-    getPeriod(item),
-    getCountry(item),
-    item.tags,
-    item.disciplina,
-    item.categoria,
-    item.fabricante,
-    item.motor,
-    item.equipos,
-    item.eventos_destacados,
-    item.zonas_clave,
-  ].flat().join(' ').toLowerCase(),
+  type: item.tipo,
+  typeLabel: prettifyArchiveType(item.tipo),
+  href: archiveItemHref(item),
+  summary: getArchiveSummary(item),
+  country: getArchiveCountry(item),
+  period: getArchivePeriod(item),
+  image: getArchiveImage(item),
 }));
+
+const pageTitle = 'Archivo GrassCutters | Circuitos, coches, pilotos y glosario';
+const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas de circuitos, coches, pilotos y conceptos técnicos del motorsport.';
 ---
 
-<MarketingLayout
-  bodyClass="gc-archive-public"
-  title="Archivo | GrassCutters"
-  description="Archivo editorial de circuitos, coches y pilotos con fichas técnicas e históricas completas."
->
-  <main class="gc-archive-catalogue" data-archive-home>
-    <section class="gc-archive-catalogue__hero">
-      <div class="gc-archive-catalogue__hero-copy">
-        <span class="gc-archive-catalogue__eyebrow">Archivo</span>
-        <h1>Una biblioteca de pista, metal e historia.</h1>
+<MarketingLayout bodyClass="gc-archive-public" title={pageTitle} description={pageDescription} canonicalPath="/archivo/">
+  <main class="gc-archive-home" data-archive-home>
+    <section class="gc-archive-home__hero">
+      <div class="gc-archive-home__hero-copy">
+        <span class="gc-archive-home__eyebrow">Archivo GrassCutters</span>
+        <h1>La biblioteca viva del motorsport.</h1>
         <p>
-          Fichas técnicas e históricas de circuitos, coches y pilotos. Datos clave, contexto,
-          cronología, referencias y fuentes agrupadas para consultar sin saltar de una página a otra.
+          Circuitos, coches, pilotos y conceptos ordenados como dossiers visuales: datos técnicos,
+          contexto, historia, imágenes y relaciones entre fichas.
         </p>
 
-        <form class="gc-archive-catalogue__search" role="search" aria-label="Buscar en el archivo" data-archive-search-form>
-          <label for="archiveSearchInput">Buscar en el archivo</label>
-          <div class="gc-archive-catalogue__search-row">
-            <input
-              id="archiveSearchInput"
-              type="search"
-              placeholder="Buscar Mugello, Ferrari, Porsche, piloto..."
-              autocomplete="off"
-              data-archive-search-input
-            />
+        <form class="gc-archive-home__search" role="search" aria-label="Buscar en el archivo">
+          <label for="archiveHomeSearch">Buscar en el archivo</label>
+          <div>
+            <input id="archiveHomeSearch" type="search" placeholder="Busca Mugello, GT2, piloto, motor, trazado..." data-archive-search-input autocomplete="off" />
             <button type="button" data-archive-clear>Limpiar</button>
           </div>
-          <small><span data-archive-result-count>{items.length}</span> fichas disponibles</small>
+          <small><span data-archive-result-count>{items.length}</span> fichas visibles</small>
         </form>
 
-        <div class="gc-archive-catalogue__quick-filters" aria-label="Filtros rápidos">
-          <button type="button" class="is-active" data-archive-type="all">Todo</button>
-          {orderedTypes.map((type) => (
-            <button type="button" data-archive-type={type.tipo}>{type.label}</button>
-          ))}
+        <div class="gc-archive-home__actions">
+          <a href="#archivo-catalogo">Explorar catálogo</a>
+          <a href="/archivo/circuitos/">Ver circuitos</a>
         </div>
       </div>
 
-      <aside class="gc-archive-catalogue__index-card" aria-label="Resumen del archivo">
-        <div class="gc-archive-catalogue__index-top">
-          <span>Índice general</span>
-          <strong>{stats.total}</strong>
-        </div>
-        <div class="gc-archive-catalogue__index-grid">
-          <div><span>Circuitos</span><strong>{stats.circuits}</strong></div>
-          <div><span>Coches</span><strong>{stats.cars}</strong></div>
-          <div><span>Pilotos</span><strong>{stats.pilots}</strong></div>
-          <div><span>Fuentes</span><strong>{totalSources || '—'}</strong></div>
-        </div>
-        <div class="gc-archive-catalogue__shelf-lines" aria-hidden="true">
-          <i></i><i></i><i></i><i></i><i></i>
+      <aside class="gc-archive-home__index-card">
+        <span>Índice actual</span>
+        <strong>{items.length}</strong>
+        <p>fichas publicadas</p>
+        <div>
+          {types.map((type) => (
+            <a href={archiveTypeHref(type.tipo)} data-archive-type-link={type.tipo}>
+              <span>{type.label}</span>
+              <strong>{type.count}</strong>
+            </a>
+          ))}
         </div>
       </aside>
     </section>
 
-    <section class="gc-archive-catalogue__strip" aria-label="Accesos principales">
-      {orderedTypes.map((type) => (
-        <a href={`/archivo/${type.tipo}/`}>
-          <span>{type.count} fichas</span>
+    <section class="gc-archive-home__type-strip" aria-label="Categorías principales">
+      {types.map((type) => (
+        <a href={archiveTypeHref(type.tipo)} data-archive-type={type.tipo} aria-pressed="false">
+          <small>{type.singular}</small>
           <strong>{type.label}</strong>
+          <span>{type.count} ficha{type.count === 1 ? '' : 's'}</span>
         </a>
       ))}
     </section>
 
     {featured && (
-      <section class="gc-archive-catalogue__featured" aria-label="Ficha destacada">
-        <article class="gc-archive-catalogue__featured-main">
-          <div class="gc-archive-catalogue__featured-copy">
-            <span class="gc-archive-catalogue__eyebrow">Ficha destacada</span>
+      <section class="gc-archive-home__featured">
+        <article>
+          <div>
+            <span class="gc-archive-home__eyebrow">Dossier destacado</span>
             <h2>{featured.nombre}</h2>
-            <p>{getSummary(featured)}</p>
-            <dl>
-              <div><dt>Tipo</dt><dd>{prettifyArchiveType(featured.tipo)}</dd></div>
-              {getCountry(featured) && <div><dt>País / origen</dt><dd>{getCountry(featured)}</dd></div>}
-              {getPeriod(featured) && <div><dt>Periodo</dt><dd>{getPeriod(featured)}</dd></div>}
-            </dl>
-            <a class="gc-archive-catalogue__cta" href={itemHref(featured)}>Abrir dossier</a>
-          </div>
-          <div class="gc-archive-catalogue__featured-visual">
-            {getImage(featured) ? (
-              <img src={getImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="lazy" />
-            ) : (
-              <div class="gc-archive-catalogue__archive-mark">
-                <span>{prettifyArchiveType(featured.tipo)}</span>
-                <strong>{featured.nombre}</strong>
-              </div>
-            )}
-          </div>
-        </article>
+            <p>{getArchiveSummary(featured) || 'Ficha destacada del archivo.'}</p>
 
-        {secondaryFeatured.length > 0 && (
-          <div class="gc-archive-catalogue__featured-side">
-            {secondaryFeatured.map((item) => (
-              <a href={itemHref(item)}>
-                <span>{prettifyArchiveType(item.tipo)}</span>
-                <strong>{item.nombre}</strong>
-                <small>{getSummary(item)}</small>
-              </a>
-            ))}
+            <dl>
+              <div>
+                <dt>Tipo</dt>
+                <dd>{singularArchiveType(featured.tipo)}</dd>
+              </div>
+              {getArchiveCountry(featured) && (
+                <div>
+                  <dt>Origen</dt>
+                  <dd>{getArchiveCountry(featured)}</dd>
+                </div>
+              )}
+              {getArchivePeriod(featured) && (
+                <div>
+                  <dt>Periodo</dt>
+                  <dd>{getArchivePeriod(featured)}</dd>
+                </div>
+              )}
+            </dl>
+
+            <a href={archiveItemHref(featured)}>Abrir dossier</a>
           </div>
-        )}
+
+          {getArchiveImage(featured) ? (
+            <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="eager" />
+          ) : (
+            <div class="gc-archive-home__visual-mark">
+              <span>{singularArchiveType(featured.tipo)}</span>
+              <strong>{featured.nombre}</strong>
+            </div>
+          )}
+        </article>
       </section>
     )}
 
-    <section class="gc-archive-catalogue__az" aria-label="Filtro alfabético">
-      <span>Índice A-Z</span>
-      <div>
-        <button type="button" class="is-active" data-archive-letter="all">Todos</button>
-        {alphaLetters.map((letter) => (
-          <button type="button" data-archive-letter={letter}>{letter}</button>
-        ))}
-      </div>
-    </section>
-
-    <section class="gc-archive-catalogue__library" aria-labelledby="archiveResultsTitle">
-      <div class="gc-archive-catalogue__library-head">
-        <div>
-          <span class="gc-archive-catalogue__eyebrow">Catálogo</span>
-          <h2 id="archiveResultsTitle">Todas las fichas</h2>
+    {highlighted.length > 0 && (
+      <section class="gc-archive-home__editorial">
+        <div class="gc-archive-home__section-head">
+          <div>
+            <span class="gc-archive-home__eyebrow">Conexiones</span>
+            <h2>Fichas para navegar sin perder el hilo.</h2>
+          </div>
+          <p>El archivo no funciona como una lista plana: cada ficha puede conectar con coches, circuitos, pilotos y conceptos relacionados.</p>
         </div>
-        <p>
-          Usa el buscador y los filtros para moverte por el archivo. Cada tarjeta abre una ficha
-          completa con datos técnicos, contexto y fuentes.
-        </p>
+
+        <div class="gc-archive-home__editorial-grid">
+          {highlighted.map((item) => (
+            <a href={archiveItemHref(item)}>
+              <small>{prettifyArchiveType(item.tipo)}</small>
+              <strong>{item.nombre}</strong>
+              <p>{getArchiveSummary(item) || getArchiveCountry(item) || getArchivePeriod(item)}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="gc-archive-home__catalogue" id="archivo-catalogo">
+      <div class="gc-archive-home__section-head">
+        <div>
+          <span class="gc-archive-home__eyebrow">Catálogo</span>
+          <h2>Explorar archivo.</h2>
+        </div>
+        <p>Filtra por categoría o busca por título, país, época, motor, equipo, trazado o concepto.</p>
       </div>
 
-      <div class="gc-archive-catalogue__results" data-archive-results>
-        {items.map((item) => (
-          <a
-            class="gc-archive-catalogue__item"
-            href={itemHref(item)}
-            data-archive-card
-            data-type={item.tipo}
-            data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()}
-            data-search={[
-              item.nombre,
-              item.title,
-              item.slug,
-              item.tipo,
-              prettifyArchiveType(item.tipo),
-              getSummary(item),
-              getPeriod(item),
-              getCountry(item),
-              item.tags,
-              item.disciplina,
-              item.categoria,
-              item.fabricante,
-              item.motor,
-              item.equipos,
-              item.eventos_destacados,
-              item.zonas_clave,
-            ].flat().join(' ').toLowerCase()}
-          >
-            <span>{prettifyArchiveType(item.tipo)}</span>
-            <strong>{item.nombre}</strong>
-            <p>{getSummary(item)}</p>
-            <footer>
-              {getCountry(item) && <small>{getCountry(item)}</small>}
-              {getPeriod(item) && <small>{getPeriod(item)}</small>}
-              <em>Abrir</em>
-            </footer>
-          </a>
+      <div class="gc-archive-home__filters" aria-label="Filtros del archivo">
+        <button type="button" class="is-active" data-archive-type="all">Todo</button>
+        {types.map((type) => (
+          <button type="button" data-archive-type={type.tipo}>{type.label}</button>
         ))}
       </div>
 
-      <div class="gc-archive-catalogue__empty" data-archive-empty hidden>
-        <strong>No hay resultados con ese filtro.</strong>
-        <p>Prueba con otro nombre, categoría o término técnico.</p>
+      {latest.length ? (
+        <div class="gc-archive-home__grid" data-archive-results>
+          {items.map((item) => (
+            <a
+              class="gc-archive-home__card"
+              href={archiveItemHref(item)}
+              data-archive-card
+              data-type={item.tipo}
+              data-search={`${item.nombre} ${item.slug} ${item.tipo} ${prettifyArchiveType(item.tipo)} ${getArchiveSummary(item)} ${getArchiveCountry(item)} ${getArchivePeriod(item)} ${item.tags || ''} ${item.fabricante || ''} ${item.motor || ''}`}
+            >
+              {getArchiveImage(item) ? (
+                <img src={getArchiveImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />
+              ) : (
+                <span class="gc-archive-home__card-mark">{singularArchiveType(item.tipo)}</span>
+              )}
+              <div>
+                <small>{prettifyArchiveType(item.tipo)}</small>
+                <strong>{item.nombre}</strong>
+                <p>{getArchiveSummary(item) || 'Ficha del archivo.'}</p>
+                <footer>
+                  {getArchiveCountry(item) && <em>{getArchiveCountry(item)}</em>}
+                  {getArchivePeriod(item) && <em>{getArchivePeriod(item)}</em>}
+                  <b>Abrir</b>
+                </footer>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="gc-archive-home__empty">
+          <strong>Aún no hay fichas publicadas.</strong>
+          <p>Cuando publiques fichas desde el admin aparecerán aquí automáticamente.</p>
+        </div>
+      )}
+
+      <div class="gc-archive-home__empty" data-archive-empty hidden>
+        <strong>No hay resultados.</strong>
+        <p>Prueba con otro término o limpia los filtros.</p>
       </div>
     </section>
   </main>
@@ -244,22 +220,18 @@ const searchPayload = items.map((item) => ({
     const cards = [...root?.querySelectorAll('[data-archive-card]') || []];
     const count = root?.querySelector('[data-archive-result-count]');
     const empty = root?.querySelector('[data-archive-empty]');
-    const typeButtons = [...root?.querySelectorAll('[data-archive-type]') || []];
-    const letterButtons = [...root?.querySelectorAll('[data-archive-letter]') || []];
+    const typeButtons = [...root?.querySelectorAll('button[data-archive-type]') || []];
 
     let activeType = 'all';
-    let activeLetter = 'all';
 
     function normalize(value) {
-      return String(value || '')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+      return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
 
-    function setActive(buttons, attr, value) {
-      buttons.forEach((button) => {
-        const selected = button.getAttribute(attr) === value;
+    function setActiveType(value) {
+      activeType = value;
+      typeButtons.forEach((button) => {
+        const selected = button.dataset.archiveType === value;
         button.classList.toggle('is-active', selected);
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
       });
@@ -271,10 +243,8 @@ const searchPayload = items.map((item) => ({
 
       cards.forEach((card) => {
         const typeOk = activeType === 'all' || card.dataset.type === activeType;
-        const letterOk = activeLetter === 'all' || card.dataset.letter === activeLetter;
         const textOk = !query || normalize(card.dataset.search).includes(query);
-        const show = typeOk && letterOk && textOk;
-
+        const show = typeOk && textOk;
         card.hidden = !show;
         if (show) visible += 1;
       });
@@ -285,31 +255,575 @@ const searchPayload = items.map((item) => ({
 
     typeButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        activeType = button.dataset.archiveType || 'all';
-        setActive(typeButtons, 'data-archive-type', activeType);
-        applyFilters();
-      });
-    });
-
-    letterButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        activeLetter = button.dataset.archiveLetter || 'all';
-        setActive(letterButtons, 'data-archive-letter', activeLetter);
+        setActiveType(button.dataset.archiveType || 'all');
         applyFilters();
       });
     });
 
     input?.addEventListener('input', applyFilters);
+
     clearBtn?.addEventListener('click', () => {
       if (input) input.value = '';
-      activeType = 'all';
-      activeLetter = 'all';
-      setActive(typeButtons, 'data-archive-type', activeType);
-      setActive(letterButtons, 'data-archive-letter', activeLetter);
+      setActiveType('all');
       applyFilters();
       input?.focus();
     });
 
     applyFilters();
   </script>
+
+  <style is:global>
+    .gc-archive-home{
+      --archive-line:rgba(202,255,188,.13);
+      --archive-line-strong:rgba(156,255,63,.28);
+      --archive-accent:var(--accent,#9cff3f);
+      width:min(100%,1420px);
+      margin:0 auto;
+      padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(72px,8vw,124px);
+      color:var(--text,#f2f7ef);
+    }
+
+    .gc-archive-home *,
+    .gc-archive-home *::before,
+    .gc-archive-home *::after{box-sizing:border-box}
+
+    .gc-archive-home a{color:inherit}
+
+    .gc-archive-home__hero{
+      position:relative;
+      display:grid;
+      grid-template-columns:minmax(0,1.08fr) minmax(300px,.42fr);
+      gap:clamp(18px,3vw,36px);
+      align-items:stretch;
+      min-height:clamp(520px,70vh,760px);
+      padding:clamp(24px,4.5vw,56px);
+      border:1px solid var(--archive-line);
+      border-radius:38px;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 16% 6%, rgba(156,255,63,.18), transparent 34%),
+        radial-gradient(circle at 86% 10%, rgba(37,214,230,.10), transparent 34%),
+        radial-gradient(circle at 50% 100%, rgba(255,255,255,.06), transparent 48%),
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+      box-shadow:0 40px 130px rgba(0,0,0,.32);
+    }
+
+    .gc-archive-home__hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        linear-gradient(rgba(255,255,255,.033) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+      background-size:56px 56px;
+      mask-image:linear-gradient(90deg, rgba(0,0,0,.82), transparent 86%);
+      pointer-events:none;
+    }
+
+    .gc-archive-home__hero-copy,
+    .gc-archive-home__index-card{position:relative;z-index:1}
+
+    .gc-archive-home__hero-copy{
+      display:grid;
+      align-content:center;
+    }
+
+    .gc-archive-home__eyebrow{
+      display:inline-flex;
+      color:var(--archive-accent);
+      font-size:.75rem;
+      font-weight:950;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home h1{
+      max-width:950px;
+      margin:.35rem 0 .9rem;
+      font-size:clamp(4rem,9vw,10.2rem);
+      line-height:.79;
+      letter-spacing:-.1em;
+    }
+
+    .gc-archive-home__hero-copy > p{
+      max-width:760px;
+      margin:0;
+      color:var(--soft,#b6c5b8);
+      font-size:clamp(1.05rem,1.45vw,1.34rem);
+      line-height:1.56;
+    }
+
+    .gc-archive-home__search{
+      width:min(100%,820px);
+      margin-top:clamp(24px,3.4vw,42px);
+      padding:12px;
+      border:1px solid var(--archive-line);
+      border-radius:24px;
+      background:rgba(0,0,0,.28);
+      backdrop-filter:blur(14px);
+    }
+
+    .gc-archive-home__search label{
+      display:block;
+      margin:2px 0 9px 4px;
+      color:var(--archive-accent);
+      font-size:.72rem;
+      font-weight:950;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__search div{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+    }
+
+    .gc-archive-home__search input{
+      width:100%;
+      min-height:58px;
+      padding:0 18px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:17px;
+      background:rgba(2,6,4,.78);
+      color:#fff;
+      font:inherit;
+      outline:none;
+    }
+
+    .gc-archive-home__search button,
+    .gc-archive-home__filters button{
+      min-height:42px;
+      padding:0 16px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      background:rgba(255,255,255,.045);
+      color:var(--text,#f2f7ef);
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+    }
+
+    .gc-archive-home__search small{
+      display:block;
+      margin:10px 0 0 4px;
+      color:var(--muted,#7f9184);
+    }
+
+    .gc-archive-home__actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:18px;
+    }
+
+    .gc-archive-home__actions a,
+    .gc-archive-home__featured a{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:46px;
+      padding:0 18px;
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
+      color:#061006;
+      text-decoration:none;
+      font-weight:950;
+    }
+
+    .gc-archive-home__actions a + a{
+      color:#fff;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.13);
+    }
+
+    .gc-archive-home__index-card{
+      display:grid;
+      align-content:end;
+      gap:16px;
+      padding:clamp(20px,2.5vw,30px);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:30px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.018));
+      backdrop-filter:blur(16px);
+    }
+
+    .gc-archive-home__index-card > span{
+      color:var(--archive-accent);
+      font-size:.74rem;
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__index-card > strong{
+      font-size:clamp(5rem,9vw,8rem);
+      line-height:.78;
+      letter-spacing:-.09em;
+    }
+
+    .gc-archive-home__index-card > p{
+      margin:-12px 0 8px;
+      color:var(--soft,#b6c5b8);
+    }
+
+    .gc-archive-home__index-card div{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .gc-archive-home__index-card a{
+      min-height:86px;
+      display:grid;
+      gap:8px;
+      padding:13px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      background:rgba(0,0,0,.18);
+      text-decoration:none;
+    }
+
+    .gc-archive-home__index-card a span{
+      color:var(--muted,#7f9184);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__index-card a strong{
+      font-size:2rem;
+      line-height:1;
+    }
+
+    .gc-archive-home__type-strip{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:18px 0 clamp(28px,4vw,54px);
+    }
+
+    .gc-archive-home__type-strip a{
+      min-height:160px;
+      display:grid;
+      align-content:end;
+      gap:8px;
+      padding:20px;
+      border:1px solid var(--archive-line);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 90% 15%, rgba(156,255,63,.10), transparent 38%),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+      text-decoration:none;
+    }
+
+    .gc-archive-home__type-strip small,
+    .gc-archive-home__card small,
+    .gc-archive-home__editorial-grid small{
+      color:var(--archive-accent);
+      font-size:.72rem;
+      font-weight:950;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__type-strip strong{
+      font-size:clamp(1.55rem,2.6vw,2.35rem);
+      line-height:.96;
+      letter-spacing:-.055em;
+    }
+
+    .gc-archive-home__type-strip span{
+      color:var(--soft,#b6c5b8);
+    }
+
+    .gc-archive-home__featured,
+    .gc-archive-home__editorial,
+    .gc-archive-home__catalogue{
+      margin-top:clamp(26px,4vw,58px);
+    }
+
+    .gc-archive-home__featured article{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(320px,.43fr);
+      overflow:hidden;
+      border:1px solid var(--archive-line);
+      border-radius:32px;
+      background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+    }
+
+    .gc-archive-home__featured article > div{
+      padding:clamp(26px,4vw,48px);
+    }
+
+    .gc-archive-home__featured h2,
+    .gc-archive-home__section-head h2{
+      margin:.35rem 0 .8rem;
+      font-size:clamp(2.7rem,5.6vw,6.4rem);
+      line-height:.84;
+      letter-spacing:-.09em;
+    }
+
+    .gc-archive-home__featured p,
+    .gc-archive-home__section-head p,
+    .gc-archive-home__card p,
+    .gc-archive-home__editorial-grid p{
+      color:var(--soft,#b6c5b8);
+      line-height:1.6;
+    }
+
+    .gc-archive-home__featured dl{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin:24px 0;
+    }
+
+    .gc-archive-home__featured dl div{
+      padding:12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:15px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-home__featured dt{
+      color:var(--muted,#7f9184);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__featured dd{
+      margin:6px 0 0;
+    }
+
+    .gc-archive-home__featured img{
+      width:100%;
+      height:100%;
+      min-height:340px;
+      object-fit:cover;
+    }
+
+    .gc-archive-home__visual-mark{
+      min-height:340px;
+      display:grid;
+      place-content:center;
+      gap:10px;
+      text-align:center;
+      padding:24px;
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size:42px 42px;
+    }
+
+    .gc-archive-home__visual-mark span,
+    .gc-archive-home__card-mark{
+      color:var(--archive-accent);
+      font-size:.78rem;
+      font-weight:950;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-home__visual-mark strong{
+      font-size:clamp(1.8rem,3vw,3rem);
+      line-height:.95;
+      letter-spacing:-.06em;
+    }
+
+    .gc-archive-home__section-head{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:end;
+      margin-bottom:18px;
+    }
+
+    .gc-archive-home__section-head p{
+      max-width:560px;
+      margin:0;
+    }
+
+    .gc-archive-home__editorial-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-archive-home__editorial-grid a{
+      min-height:220px;
+      display:grid;
+      align-content:end;
+      gap:10px;
+      padding:20px;
+      border:1px solid var(--archive-line);
+      border-radius:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+      text-decoration:none;
+    }
+
+    .gc-archive-home__editorial-grid strong{
+      font-size:1.35rem;
+      line-height:1.05;
+      letter-spacing:-.04em;
+    }
+
+    .gc-archive-home__catalogue{
+      padding:clamp(20px,3vw,30px);
+      border:1px solid var(--archive-line);
+      border-radius:32px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+    }
+
+    .gc-archive-home__filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:16px;
+    }
+
+    .gc-archive-home__filters button.is-active{
+      color:#061006;
+      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
+      border-color:transparent;
+    }
+
+    .gc-archive-home__grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .gc-archive-home__card{
+      display:grid;
+      grid-template-rows:auto 1fr;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      background:rgba(0,0,0,.15);
+      text-decoration:none;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
+    }
+
+    .gc-archive-home__card:hover{
+      transform:translateY(-2px);
+      border-color:var(--archive-line-strong);
+      background:rgba(255,255,255,.032);
+    }
+
+    .gc-archive-home__card img,
+    .gc-archive-home__card-mark{
+      width:100%;
+      aspect-ratio:16/10;
+      object-fit:cover;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-archive-home__card > div{
+      display:grid;
+      gap:8px;
+      padding:16px;
+    }
+
+    .gc-archive-home__card strong{
+      font-size:1.26rem;
+      line-height:1.06;
+      letter-spacing:-.04em;
+    }
+
+    .gc-archive-home__card p{
+      margin:0;
+    }
+
+    .gc-archive-home__card footer{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+      margin-top:auto;
+    }
+
+    .gc-archive-home__card em{
+      color:var(--muted,#7f9184);
+      font-style:normal;
+      font-size:.82rem;
+    }
+
+    .gc-archive-home__card b{
+      margin-left:auto;
+      color:#fff;
+      font-size:.82rem;
+    }
+
+    .gc-archive-home__empty{
+      padding:22px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-home__empty strong{
+      display:block;
+      font-size:1.25rem;
+    }
+
+    @media(max-width:1120px){
+      .gc-archive-home__hero,
+      .gc-archive-home__featured article{
+        grid-template-columns:1fr;
+        min-height:auto;
+      }
+
+      .gc-archive-home__type-strip,
+      .gc-archive-home__editorial-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-archive-home__grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-archive-home{
+        padding-inline:12px;
+      }
+
+      .gc-archive-home__hero{
+        padding:20px;
+        border-radius:26px;
+      }
+
+      .gc-archive-home h1{
+        font-size:clamp(3.6rem,18vw,5.8rem);
+      }
+
+      .gc-archive-home__search div,
+      .gc-archive-home__index-card div,
+      .gc-archive-home__featured dl,
+      .gc-archive-home__type-strip,
+      .gc-archive-home__editorial-grid,
+      .gc-archive-home__grid{
+        grid-template-columns:1fr;
+      }
+
+      .gc-archive-home__section-head{
+        display:grid;
+      }
+
+      .gc-archive-home__actions{
+        display:grid;
+      }
+
+      .gc-archive-home__actions a{
+        width:100%;
+      }
+    }
+  </style>
 </MarketingLayout>

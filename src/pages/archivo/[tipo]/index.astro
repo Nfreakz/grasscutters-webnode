@@ -2,10 +2,10 @@
 export const prerender = false;
 
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
-import '../../../styles/archive-dossier.css';
 import {
   archiveItemHref,
   archiveTypeHref,
+  archiveTypeLead,
   getArchiveCountry,
   getArchiveImage,
   getArchiveItemsByType,
@@ -18,7 +18,7 @@ import {
 } from '../../../lib/archive/archiveRuntime';
 
 const typeParam = normalizeArchiveType(String(Astro.params.tipo || ''));
-const allowedTypes = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario', 'general'];
+const allowedTypes = ['circuitos', 'coches', 'pilotos', 'glosario'];
 
 if (!allowedTypes.includes(typeParam)) {
   return Astro.redirect('/archivo/');
@@ -26,59 +26,10 @@ if (!allowedTypes.includes(typeParam)) {
 
 const items = await getArchiveItemsByType(typeParam);
 const types = await getArchiveTypes();
-
 const label = prettifyArchiveType(typeParam);
 const singular = singularArchiveType(typeParam);
-const featured = items[0] || null;
-
-const categoryCopy = {
-  circuitos: {
-    title: 'Circuitos',
-    lead: 'Trazados permanentes, urbanos, históricos y técnicos organizados en fichas con datos clave, zonas importantes y contexto deportivo.',
-    empty: 'Todavía no hay circuitos publicados.',
-  },
-  coches: {
-    title: 'Coches',
-    lead: 'Modelos de competición, variantes técnicas y coches relevantes con origen, desarrollo, datos mecánicos e historial deportivo.',
-    empty: 'Todavía no hay coches publicados.',
-  },
-  pilotos: {
-    title: 'Pilotos',
-    lead: 'Trayectorias, palmarés, estilo de pilotaje y momentos clave de pilotos destacados.',
-    empty: 'Todavía no hay pilotos publicados.',
-  },
-  campeonatos: {
-    title: 'Campeonatos',
-    lead: 'Series, reglamentos, épocas y contextos competitivos explicados con estructura de archivo.',
-    empty: 'Todavía no hay campeonatos publicados.',
-  },
-  records: {
-    title: 'Récords',
-    lead: 'Marcas, vueltas, hitos y referencias temporales organizadas con fuentes y contexto.',
-    empty: 'Todavía no hay récords publicados.',
-  },
-  glosario: {
-    title: 'Glosario',
-    lead: 'Conceptos técnicos e históricos explicados de forma clara para consultar rápidamente.',
-    empty: 'Todavía no hay conceptos publicados.',
-  },
-  general: {
-    title: 'Archivo',
-    lead: 'Fichas técnicas e históricas organizadas por categoría.',
-    empty: 'Todavía no hay fichas publicadas.',
-  },
-};
-
-const copy = categoryCopy[typeParam] || {
-  title: label,
-  lead: `Fichas de ${label.toLowerCase()} dentro del archivo.`,
-  empty: 'Todavía no hay fichas publicadas.',
-};
-
-const alphaLetters = Array.from(new Set(items
-  .map((item) => String(item.nombre || item.title || '').trim().charAt(0).toUpperCase())
-  .filter((letter) => /^[A-ZÁÉÍÓÚÑ0-9]$/.test(letter))
-)).sort((a, b) => a.localeCompare(b, 'es'));
+const featured = items.find((item) => getArchiveImage(item)) || items[0] || null;
+const alphaLetters = Array.from(new Set(items.map((item) => String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
 
 const searchTerms = (item) => [
   item.nombre,
@@ -97,43 +48,39 @@ const searchTerms = (item) => [
   item.equipos,
   item.eventos_destacados,
   item.zonas_clave,
+  item.campeonatos,
+  item.records_destacados,
 ].flat().join(' ').toLowerCase();
 
-const title = `${copy.title} | Archivo`;
-const description = copy.lead;
+const title = `${label} | Archivo GrassCutters`;
+const description = archiveTypeLead(typeParam);
 ---
 
-<MarketingLayout bodyClass="gc-archive-public" title={title} description={description}>
+<MarketingLayout bodyClass="gc-archive-public" title={title} description={description} canonicalPath={`/archivo/${typeParam}/`}>
   <main class="gc-archive-category" data-archive-category-page>
     <header class="gc-archive-category__hero">
       <div class="gc-archive-category__hero-copy">
-        <p class="gc-archive-dossier__breadcrumb">
-          <a href="/archivo/">Archivo</a> / <strong>{copy.title}</strong>
+        <p class="gc-archive-category__breadcrumb">
+          <a href="/archivo/">Archivo</a> / <strong>{label}</strong>
         </p>
-        <span class="gc-archive-catalogue__eyebrow">{singular}</span>
-        <h1>{copy.title}</h1>
-        <p>{copy.lead}</p>
+        <span class="gc-archive-category__eyebrow">{singular}</span>
+        <h1>{label}</h1>
+        <p>{archiveTypeLead(typeParam)}</p>
 
-        <form class="gc-archive-category__search" role="search" aria-label={`Buscar en ${copy.title}`}>
-          <label for="archiveCategorySearch">Buscar dentro de esta categoría</label>
+        <form class="gc-archive-category__search" role="search" aria-label={`Buscar en ${label}`}>
+          <label for="archiveCategorySearch">Buscar dentro de {label.toLowerCase()}</label>
           <div>
-            <input
-              id="archiveCategorySearch"
-              type="search"
-              placeholder={`Buscar ${singular.toLowerCase()}, marca, país, época...`}
-              autocomplete="off"
-              data-category-search-input
-            />
+            <input id="archiveCategorySearch" type="search" placeholder={`Buscar ${singular.toLowerCase()}, marca, país, época...`} autocomplete="off" data-category-search-input />
             <button type="button" data-category-clear>Limpiar</button>
           </div>
           <small><span data-category-count>{items.length}</span> fichas visibles</small>
         </form>
       </div>
 
-      <aside class="gc-archive-category__side-index" aria-label="Categorías del archivo">
+      <aside class="gc-archive-category__side-index">
         <span>Índice</span>
         <strong>{items.length}</strong>
-        <p>{items.length === 1 ? 'ficha publicada' : 'fichas publicadas'} en {copy.title.toLowerCase()}.</p>
+        <p>{items.length === 1 ? 'ficha publicada' : 'fichas publicadas'} en {label.toLowerCase()}.</p>
         <nav>
           {types.map((type) => (
             <a href={archiveTypeHref(type.tipo)} class={type.tipo === typeParam ? 'is-active' : ''}>
@@ -146,24 +93,22 @@ const description = copy.lead;
     </header>
 
     {items.length > 0 && (
-      <section class="gc-archive-category__az" aria-label="Filtro alfabético">
+      <section class="gc-archive-category__az">
         <span>Índice A-Z</span>
         <div>
           <button type="button" class="is-active" data-category-letter="all">Todos</button>
-          {alphaLetters.map((letter) => (
-            <button type="button" data-category-letter={letter}>{letter}</button>
-          ))}
+          {alphaLetters.map((letter) => <button type="button" data-category-letter={letter}>{letter}</button>)}
         </div>
       </section>
     )}
 
     {featured && (
-      <section class="gc-archive-category__featured" aria-label="Dossier destacado">
+      <section class="gc-archive-category__featured">
         <article>
           <div>
-            <span class="gc-archive-catalogue__eyebrow">Dossier destacado</span>
+            <span class="gc-archive-category__eyebrow">Dossier destacado</span>
             <h2>{featured.nombre}</h2>
-            <p>{getArchiveSummary(featured)}</p>
+            <p>{getArchiveSummary(featured) || `Ficha destacada de ${label.toLowerCase()}.`}</p>
             <dl>
               {getArchiveCountry(featured) && <div><dt>Origen</dt><dd>{getArchiveCountry(featured)}</dd></div>}
               {getArchivePeriod(featured) && <div><dt>Periodo</dt><dd>{getArchivePeriod(featured)}</dd></div>}
@@ -184,25 +129,19 @@ const description = copy.lead;
       </section>
     )}
 
-    <section class="gc-archive-category__library" aria-labelledby="categoryArchiveTitle">
+    <section class="gc-archive-category__library">
       <div class="gc-archive-category__library-head">
         <div>
-          <span class="gc-archive-catalogue__eyebrow">Catálogo</span>
-          <h2 id="categoryArchiveTitle">Todas las fichas</h2>
+          <span class="gc-archive-category__eyebrow">Catálogo</span>
+          <h2>Todas las fichas</h2>
         </div>
-        <p>Listado de {copy.title.toLowerCase()} publicados en el archivo.</p>
+        <p>Listado de {label.toLowerCase()} publicados en el archivo.</p>
       </div>
 
       {items.length ? (
         <div class="gc-archive-category__grid" data-category-results>
           {items.map((item) => (
-            <a
-              class="gc-archive-category__card"
-              href={archiveItemHref(item)}
-              data-category-card
-              data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()}
-              data-search={searchTerms(item)}
-            >
+            <a class="gc-archive-category__card" href={archiveItemHref(item)} data-category-card data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()} data-search={searchTerms(item)}>
               {getArchiveImage(item) ? (
                 <img src={getArchiveImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />
               ) : (
@@ -212,7 +151,7 @@ const description = copy.lead;
               <div>
                 <small>{singular}</small>
                 <strong>{item.nombre}</strong>
-                <p>{getArchiveSummary(item)}</p>
+                <p>{getArchiveSummary(item) || `Ficha de ${label.toLowerCase()}.`}</p>
                 <footer>
                   {getArchiveCountry(item) && <em>{getArchiveCountry(item)}</em>}
                   {getArchivePeriod(item) && <em>{getArchivePeriod(item)}</em>}
@@ -224,7 +163,7 @@ const description = copy.lead;
         </div>
       ) : (
         <div class="gc-archive-category__empty">
-          <strong>{copy.empty}</strong>
+          <strong>Aún no hay fichas publicadas en esta categoría.</strong>
           <p>Cuando publiques una ficha desde el admin aparecerá aquí automáticamente.</p>
           <a href="/admin/archivo/nuevo">Crear ficha</a>
         </div>
@@ -245,14 +184,10 @@ const description = copy.lead;
     const letterButtons = [...root?.querySelectorAll('[data-category-letter]') || []];
     const count = root?.querySelector('[data-category-count]');
     const empty = root?.querySelector('[data-category-empty]');
-
     let activeLetter = 'all';
 
     function normalize(value) {
-      return String(value || '')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+      return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
 
     function setActiveLetter(value) {
@@ -288,7 +223,6 @@ const description = copy.lead;
     });
 
     input?.addEventListener('input', applyFilters);
-
     clearBtn?.addEventListener('click', () => {
       if (input) input.value = '';
       setActiveLetter('all');
@@ -301,7 +235,9 @@ const description = copy.lead;
 
   <style is:global>
     .gc-archive-category{
-      width:min(100%,1360px);
+      --archive-line:rgba(202,255,188,.13);
+      --archive-accent:var(--accent,#9cff3f);
+      width:min(100%,1380px);
       margin:0 auto;
       padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(70px,8vw,118px);
       color:var(--text,#f2f7ef);
@@ -319,8 +255,8 @@ const description = copy.lead;
       gap:clamp(18px,3vw,34px);
       align-items:stretch;
       padding:clamp(22px,4vw,46px);
-      border:1px solid rgba(202,255,188,.13);
-      border-radius:34px;
+      border:1px solid var(--archive-line);
+      border-radius:36px;
       background:
         radial-gradient(circle at 12% 4%, rgba(156,255,63,.15), transparent 36%),
         radial-gradient(circle at 86% 10%, rgba(37,214,230,.08), transparent 34%),
@@ -328,12 +264,33 @@ const description = copy.lead;
       box-shadow:0 36px 110px rgba(0,0,0,.24);
     }
 
+    .gc-archive-category__breadcrumb{
+      display:flex;
+      gap:.5rem;
+      flex-wrap:wrap;
+      margin:0 0 1rem;
+      color:var(--muted,#7f9184);
+    }
+
+    .gc-archive-category__breadcrumb a{
+      text-decoration:none;
+    }
+
+    .gc-archive-category__eyebrow{
+      display:inline-flex;
+      color:var(--archive-accent);
+      font-size:.74rem;
+      font-weight:950;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+    }
+
     .gc-archive-category__hero h1{
       max-width:900px;
       margin:.35rem 0 .9rem;
-      font-size:clamp(3.4rem,8vw,8rem);
-      line-height:.83;
-      letter-spacing:-.088em;
+      font-size:clamp(3.8rem,8vw,8.8rem);
+      line-height:.8;
+      letter-spacing:-.095em;
     }
 
     .gc-archive-category__hero p{
@@ -348,7 +305,7 @@ const description = copy.lead;
       width:min(100%,760px);
       margin-top:clamp(20px,3vw,34px);
       padding:12px;
-      border:1px solid rgba(202,255,188,.13);
+      border:1px solid var(--archive-line);
       border-radius:22px;
       background:rgba(0,0,0,.24);
       backdrop-filter:blur(14px);
@@ -357,7 +314,7 @@ const description = copy.lead;
     .gc-archive-category__search label{
       display:block;
       margin:2px 0 9px 4px;
-      color:var(--accent,#9cff3f);
+      color:var(--archive-accent);
       font-size:.72rem;
       font-weight:950;
       letter-spacing:.18em;
@@ -407,13 +364,13 @@ const description = copy.lead;
       align-content:start;
       gap:14px;
       padding:22px;
-      border:1px solid rgba(202,255,188,.13);
+      border:1px solid var(--archive-line);
       border-radius:28px;
       background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.018));
     }
 
     .gc-archive-category__side-index > span{
-      color:var(--accent,#9cff3f);
+      color:var(--archive-accent);
       font-size:.74rem;
       font-weight:950;
       letter-spacing:.16em;
@@ -443,9 +400,10 @@ const description = copy.lead;
       text-decoration:none;
     }
 
-    .gc-archive-category__side-index nav a.is-active{
+    .gc-archive-category__side-index nav a.is-active,
+    .gc-archive-category__az button.is-active{
       color:#061006;
-      background:linear-gradient(135deg,var(--accent,#9cff3f),#45f1db);
+      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
       border-color:transparent;
     }
 
@@ -456,13 +414,13 @@ const description = copy.lead;
       align-items:center;
       margin:18px 0;
       padding:16px;
-      border:1px solid rgba(202,255,188,.13);
+      border:1px solid var(--archive-line);
       border-radius:22px;
       background:rgba(255,255,255,.025);
     }
 
     .gc-archive-category__az span{
-      color:var(--accent,#9cff3f);
+      color:var(--archive-accent);
       font-weight:950;
       letter-spacing:.16em;
       text-transform:uppercase;
@@ -476,22 +434,16 @@ const description = copy.lead;
       justify-content:flex-end;
     }
 
-    .gc-archive-category__az button.is-active{
-      color:#061006;
-      background:linear-gradient(135deg,var(--accent,#9cff3f),#45f1db);
-      border-color:transparent;
-    }
-
     .gc-archive-category__featured{
       margin:0 0 24px;
     }
 
     .gc-archive-category__featured article{
       display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(260px,.38fr);
+      grid-template-columns:minmax(0,1fr) minmax(300px,.38fr);
       overflow:hidden;
-      border:1px solid rgba(202,255,188,.13);
-      border-radius:26px;
+      border:1px solid var(--archive-line);
+      border-radius:30px;
       background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
     }
 
@@ -499,10 +451,11 @@ const description = copy.lead;
       padding:clamp(22px,3vw,34px);
     }
 
-    .gc-archive-category__featured h2{
+    .gc-archive-category__featured h2,
+    .gc-archive-category__library-head h2{
       margin:.4rem 0 .7rem;
       font-size:clamp(2.4rem,5vw,5rem);
-      line-height:.88;
+      line-height:.86;
       letter-spacing:-.08em;
     }
 
@@ -548,7 +501,7 @@ const description = copy.lead;
       min-height:44px;
       padding:0 18px;
       border-radius:999px;
-      background:linear-gradient(135deg,var(--accent,#9cff3f),#45f1db);
+      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
       color:#061006;
       text-decoration:none;
       font-weight:950;
@@ -557,12 +510,12 @@ const description = copy.lead;
     .gc-archive-category__featured img{
       width:100%;
       height:100%;
-      min-height:260px;
+      min-height:280px;
       object-fit:cover;
     }
 
     .gc-archive-category__mark{
-      min-height:260px;
+      min-height:280px;
       display:grid;
       place-content:center;
       gap:10px;
@@ -576,7 +529,7 @@ const description = copy.lead;
 
     .gc-archive-category__mark span,
     .gc-archive-category__card-mark{
-      color:var(--accent,#9cff3f);
+      color:var(--archive-accent);
       font-size:.78rem;
       font-weight:950;
       letter-spacing:.18em;
@@ -591,8 +544,8 @@ const description = copy.lead;
 
     .gc-archive-category__library{
       padding:clamp(20px,3vw,30px);
-      border:1px solid rgba(202,255,188,.13);
-      border-radius:26px;
+      border:1px solid var(--archive-line);
+      border-radius:30px;
       background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
     }
 
@@ -602,13 +555,6 @@ const description = copy.lead;
       gap:18px;
       align-items:end;
       margin-bottom:18px;
-    }
-
-    .gc-archive-category__library-head h2{
-      margin:.25rem 0 0;
-      font-size:clamp(2.2rem,4.4vw,4.4rem);
-      line-height:.88;
-      letter-spacing:-.08em;
     }
 
     .gc-archive-category__grid{
@@ -622,9 +568,16 @@ const description = copy.lead;
       grid-template-rows:auto 1fr;
       overflow:hidden;
       border:1px solid rgba(255,255,255,.08);
-      border-radius:20px;
+      border-radius:22px;
       background:rgba(0,0,0,.15);
       text-decoration:none;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
+    }
+
+    .gc-archive-category__card:hover{
+      transform:translateY(-2px);
+      border-color:rgba(156,255,63,.28);
+      background:rgba(255,255,255,.032);
     }
 
     .gc-archive-category__card img,
@@ -644,7 +597,7 @@ const description = copy.lead;
     }
 
     .gc-archive-category__card small{
-      color:var(--accent,#9cff3f);
+      color:var(--archive-accent);
       font-weight:950;
       letter-spacing:.14em;
       text-transform:uppercase;
@@ -692,7 +645,7 @@ const description = copy.lead;
       font-size:1.25rem;
     }
 
-    @media (max-width: 1080px){
+    @media(max-width:1080px){
       .gc-archive-category__hero,
       .gc-archive-category__featured article{
         grid-template-columns:1fr;
@@ -703,7 +656,7 @@ const description = copy.lead;
       }
     }
 
-    @media (max-width: 720px){
+    @media(max-width:720px){
       .gc-archive-category{
         padding-inline:12px;
       }
@@ -714,7 +667,7 @@ const description = copy.lead;
       }
 
       .gc-archive-category__hero h1{
-        font-size:clamp(3rem,16vw,5rem);
+        font-size:clamp(3.4rem,17vw,5.6rem);
       }
 
       .gc-archive-category__search div,

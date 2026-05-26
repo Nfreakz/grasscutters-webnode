@@ -29,7 +29,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           <label class="gc-field gc-field--full"><span>Título</span><input data-field="title" id="fieldTitle" required /></label>
           <label class="gc-field"><span>Slug</span><input data-field="slug" id="fieldSlug" /></label>
           <label class="gc-field"><span>Estado</span><select data-field="status" id="fieldStatus"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></label>
-          <label class="gc-field"><span>Categoría</span><select data-field="category" id="fieldCategory"><option value="circuitos">Circuito</option><option value="vehiculos">Coche / vehículo</option><option value="pilotos">Piloto</option><option value="campeonatos">Campeonato</option><option value="records">Récord</option><option value="glosario">Glosario</option></select></label>
+          <label class="gc-field"><span>Categoría</span><select data-field="category" id="fieldCategory"><option value="circuitos">Circuito</option><option value="vehiculos">Coche / vehículo</option><option value="pilotos">Piloto</option><option value="glosario">Glosario / concepto</option></select><small>Récords y campeonatos se documentan dentro de circuitos, coches o pilotos.</small></label>
           <label class="gc-field"><span>Periodo / época</span><input data-field="periodo" /></label>
           <label class="gc-field"><span>País</span><input data-field="pais" /></label>
           <label class="gc-field"><span>Región / ciudad</span><input data-field="region" /></label>
@@ -174,6 +174,21 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         </label>
       </section>
 
+
+      <section class="gc-archive-editor-panel gc-archive-editor-check-panel">
+        <div class="gc-section-head">
+          <div>
+            <h2>Datos mínimos</h2>
+            <p>Checklist rápida para crear fichas con estructura suficiente desde el primer guardado.</p>
+          </div>
+          <div class="gc-archive-editor-check-score">
+            <strong id="archiveCompletenessScore">0/0</strong>
+            <span id="archiveCompletenessLabel">Sin revisar</span>
+          </div>
+        </div>
+        <div class="gc-archive-editor-checklist" id="archiveCompletenessChecklist"></div>
+      </section>
+
       <section class="gc-archive-editor-panel">
         <div class="gc-archive-editor-actions">
           <button class="gc-btn gc-btn--primary" type="submit">Crear ficha</button>
@@ -202,11 +217,117 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       const slugify = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'');
       const setMsg = (text, kind = '') => { const el = $('archiveSaveMsg'); el.textContent = text || ''; el.className = `gc-archive-editor-status ${kind}`.trim(); };
 
+
+      function fieldValue(name) {
+        const field = document.querySelector(`[data-field="${name}"]`);
+        return String(field?.value || '').trim();
+      }
+
+      function anyField(...names) {
+        return names.some((name) => fieldValue(name).length > 0);
+      }
+
+      function textMin(name, min) {
+        return fieldValue(name).length >= min;
+      }
+
+      function mediaReady() {
+        const item = typeof currentItem !== 'undefined' ? currentItem : {};
+        const media = Array.isArray(item?.media) ? item.media : [];
+        return media.some((entry) => entry?.url || entry?.localUrl) || anyField('imagen_url');
+      }
+
+      function rule(label, ok, hint = '') {
+        return { label, ok: Boolean(ok), hint };
+      }
+
+      function completionRulesFor(category) {
+        const normalized = normalizeCategoryForEditor(category);
+        const base = [
+          rule('Título claro', fieldValue('title').length >= 4, 'Nombre reconocible de la ficha.'),
+          rule('Resumen', textMin('summary', 70), 'Mínimo 70 caracteres para la entradilla.'),
+          rule('Texto principal', textMin('body', 250) || textMin('introduccion', 180), 'Introducción o cuerpo con contexto real.'),
+          rule('Fuentes', anyField('fuentes'), 'Añade al menos una fuente o referencia.'),
+          rule('Portada o imagen', mediaReady(), 'Añade imagen desde URL, media local o portada manual.'),
+        ];
+
+        if (normalized === 'circuitos') {
+          return [
+            ...base,
+            rule('País o ubicación', anyField('pais', 'ubicacion', 'region'), 'Ej. Italia, Toscana, Mugello.'),
+            rule('Tipo de trazado', anyField('tipo_trazado'), 'Ej. Circuito permanente, urbano, temporal.'),
+            rule('Longitud', anyField('longitud_km'), 'Dato visible en la ficha pública.'),
+            rule('Curvas o sentido', anyField('curvas', 'sentido'), 'Ayuda a que la ficha no parezca vacía.'),
+            rule('Zonas clave', anyField('zonas_clave'), 'Formato recomendado: Nombre::Descripción.'),
+            rule('Eventos o récords', anyField('eventos_destacados', 'records_destacados'), 'Los récords viven dentro del circuito.'),
+          ];
+        }
+
+        if (normalized === 'vehiculos') {
+          return [
+            ...base,
+            rule('Fabricante', anyField('fabricante'), 'Marca o constructor principal.'),
+            rule('Categoría / periodo', anyField('categoria_competicion', 'anos_actividad', 'periodo'), 'Ej. GT2, 2009-2011.'),
+            rule('Motor', anyField('motor'), 'Dato técnico básico.'),
+            rule('Potencia o peso', anyField('potencia', 'peso'), 'Al menos una referencia técnica.'),
+            rule('Historial deportivo', anyField('historial_competicion'), 'Dónde corrió, qué logró o por qué importa.'),
+            rule('Campeonatos/resultados', anyField('campeonatos', 'victorias_destacadas', 'equipos_destacados'), 'Los campeonatos viven dentro del coche.'),
+          ];
+        }
+
+        if (normalized === 'pilotos') {
+          return [
+            ...base,
+            rule('Nacionalidad', anyField('nacionalidad', 'pais'), 'Dato básico de identificación.'),
+            rule('Periodo activo', anyField('anos_activo', 'periodo'), 'Época o años de actividad.'),
+            rule('Biografía o trayectoria', anyField('biografia', 'trayectoria'), 'Bloque principal de la ficha.'),
+            rule('Palmarés', anyField('titulos', 'victorias', 'palmares', 'campeonatos'), 'Títulos, victorias o resultados destacados.'),
+            rule('Estilo o rasgo diferencial', anyField('estilo_conduccion', 'momentos_clave'), 'Para que no sea solo una ficha de datos.'),
+          ];
+        }
+
+        return [
+          ...base,
+          rule('Categoría visible', anyField('categoria', 'disciplina'), 'Área o familia del concepto.'),
+          rule('Datos destacados', anyField('datos_destacados', 'referencias', 'cronologia'), 'Completa el concepto con datos consultables.'),
+        ];
+      }
+
+      function renderCompletenessChecklist() {
+        const target = $('archiveCompletenessChecklist');
+        if (!target) return;
+
+        const rules = completionRulesFor($('fieldCategory')?.value || 'general');
+        const done = rules.filter((item) => item.ok).length;
+        const total = rules.length;
+        const percent = total ? Math.round((done / total) * 100) : 0;
+
+        const score = $('archiveCompletenessScore');
+        const label = $('archiveCompletenessLabel');
+
+        if (score) score.textContent = `${done}/${total}`;
+        if (label) {
+          label.textContent = percent >= 85 ? 'Lista para revisar' : percent >= 55 ? 'Le falta contenido' : 'Muy incompleta';
+          label.dataset.state = percent >= 85 ? 'ready' : percent >= 55 ? 'review' : 'critical';
+        }
+
+        target.innerHTML = rules.map((item) => `
+          <article class="${item.ok ? 'is-ok' : 'is-missing'}">
+            <span>${item.ok ? 'OK' : 'Falta'}</span>
+            <div>
+              <strong>${esc(item.label)}</strong>
+              ${item.hint ? `<small>${esc(item.hint)}</small>` : ''}
+            </div>
+          </article>
+        `).join('');
+      }
+
       function showGroup(value) {
         const category = normalizeCategoryForEditor(value);
         const groupName = ['circuitos','vehiculos','pilotos'].includes(category) ? category : 'general';
         groups.forEach((group) => { group.hidden = group.dataset.categoryGroup !== groupName; });
         tabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.editorTab === groupName));
+        renderCompletenessChecklist();
       }
 
       function shouldCollectField(field) {
@@ -255,6 +376,12 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         if (!$('fieldSlug').dataset.touched) $('fieldSlug').value = slugify($('fieldTitle').value);
       });
       $('fieldSlug').addEventListener('input', () => { $('fieldSlug').dataset.touched = '1'; });
+
+      fields.forEach((field) => {
+        field.addEventListener('input', renderCompletenessChecklist);
+        field.addEventListener('change', renderCompletenessChecklist);
+      });
+
       $('fieldCategory').addEventListener('change', () => showGroup($('fieldCategory').value));
 
       tabs.forEach((tab) => tab.addEventListener('click', () => {
@@ -327,8 +454,107 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     .gc-archive-editor-json{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.88rem;min-height:260px}
     .gc-archive-editor-mini-list{display:grid;gap:8px;margin-top:12px;color:var(--soft,rgba(255,255,255,.72))}
     .gc-archive-editor-mini-list code{color:#d8ffd6}
+
+    .gc-archive-editor-check-panel{
+      background:
+        radial-gradient(circle at 12% 0%, rgba(156,255,63,.10), transparent 38%),
+        rgba(255,255,255,.035);
+    }
+
+    .gc-archive-editor-check-score{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:12px 0;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-editor-check-score strong{
+      font-size:1.45rem;
+      letter-spacing:-.04em;
+      line-height:1;
+    }
+
+    .gc-archive-editor-check-score span{
+      color:var(--soft,rgba(255,255,255,.72));
+      font-size:.82rem;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-editor-check-score span[data-state="ready"]{color:#c8ffd0}
+    .gc-archive-editor-check-score span[data-state="review"]{color:#ffe0a3}
+    .gc-archive-editor-check-score span[data-state="critical"]{color:#ffd0d0}
+
+    .gc-archive-editor-checklist{
+      display:grid;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .gc-archive-editor-checklist article{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:10px;
+      align-items:start;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:14px;
+      background:rgba(0,0,0,.13);
+    }
+
+    .gc-archive-editor-checklist article > span{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:48px;
+      min-height:26px;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-editor-checklist article.is-ok > span{
+      color:#071007;
+      background:#9cff3f;
+    }
+
+    .gc-archive-editor-checklist article.is-missing > span{
+      color:#ffd0d0;
+      border:1px solid rgba(255,90,90,.28);
+      background:rgba(255,90,90,.09);
+    }
+
+    .gc-archive-editor-checklist strong{
+      display:block;
+      line-height:1.15;
+    }
+
+    .gc-archive-editor-checklist small{
+      display:block;
+      margin-top:3px;
+      color:var(--dim,rgba(255,255,255,.52));
+      line-height:1.35;
+    }
+
     @media(max-width:1100px){.gc-archive-editor-grid{grid-template-columns:1fr}.gc-archive-editor-side{order:-1}}
     @media(max-width:680px){.gc-archive-editor-form-grid{grid-template-columns:1fr}.gc-archive-editor-actions{display:grid}.gc-archive-editor-actions .gc-btn{width:100%;justify-content:center}.gc-archive-media-card{grid-template-columns:1fr}}
+  
+    .gc-archive-editor-v153 .gc-field small{
+      color:var(--dim);
+      font-size:.72rem;
+      line-height:1.35;
+      margin-top:4px;
+    }
+
   </style>
 
 </AppLayout>

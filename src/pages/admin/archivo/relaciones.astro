@@ -1,19 +1,970 @@
 ---
 export const prerender = false;
+
 import AppLayout from '../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
-<AppLayout title="Relaciones | Archivo Motorsport">
-  <div class="gc-page gc-admin-page-clean">
-    <section class="gc-hero gc-hero--compact"><div><span class="gc-kicker">Archivo Motorsport</span><h1 class="gc-title">Relaciones.</h1><p class="gc-subtitle">Relaciones manuales guardadas con API unificada.</p></div></section>
+
+<AppLayout title="Relaciones del Archivo | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-archive-relations-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo</span>
+        <h1 class="gc-title">Relaciones entre fichas.</h1>
+        <p class="gc-subtitle">
+          Conecta circuitos, coches, pilotos y conceptos para que el archivo funcione como una red editorial.
+        </p>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Relaciones</span>
+          <strong id="relationsStatusLabel">Cargando</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Fichas</span><strong id="relationsTotal">...</strong></div>
+          <div class="gc-status-row"><span>Manual</span><strong id="relationsManual">...</strong></div>
+          <div class="gc-status-row"><span>Sin enlaces</span><strong id="relationsEmpty">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
     <AdminSubnav />
-    <section class="gc-grid-2 archive-relations-shell">
-      <aside class="gc-section"><div class="gc-section-head"><h2>Fichas</h2><p>Selecciona una ficha.</p></div><input class="gc-input" id="relationSearch" placeholder="Buscar..." /><div class="archive-relations-list" id="relationItems"></div></aside>
-      <section class="gc-section"><div class="gc-section-head"><h2 id="selectedTitle">Relaciones</h2><p id="selectedSubtitle">Elige una ficha.</p></div><div class="gc-slab" id="emptySelection"><h3>Sin ficha seleccionada</h3></div><div id="relationEditor" hidden><div class="gc-slab"><h3>Manual</h3><div class="archive-manual-form"><select class="gc-input" id="manualRelationTarget"></select><input class="gc-input" id="manualRelationLabel" placeholder="Etiqueta" /><button class="gc-btn" id="addManualRelation" type="button">Añadir</button></div><div class="archive-relation-stack" id="manualRelations"></div></div><div class="gc-actions"><button class="gc-btn gc-btn--primary" id="saveRelations" type="button">Guardar relaciones</button><a class="gc-btn" id="editItemLink" href="#">Editar ficha</a></div><p class="gc-message" id="relationMessage"></p></div></section>
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <h2>Mapa de relaciones</h2>
+          <p>Selecciona una ficha a la izquierda y añade enlaces editoriales a otras fichas.</p>
+        </div>
+        <div class="gc-admin-actions">
+          <button class="gc-btn" type="button" id="relationsRefreshButton">Recargar</button>
+          <a class="gc-btn gc-btn--primary" href="/admin/archivo/nuevo">Nueva ficha</a>
+        </div>
+      </div>
+
+      <div class="gc-archive-relations-shell">
+        <aside class="gc-archive-relations-picker">
+          <div class="gc-archive-relations-search">
+            <label>
+              <span>Buscar ficha</span>
+              <input id="relationSearch" type="search" placeholder="Mugello, Ferrari, piloto..." autocomplete="off" />
+            </label>
+
+            <label>
+              <span>Tipo</span>
+              <select id="relationTypeFilter">
+                <option value="all">Todos</option>
+                <option value="circuitos">Circuitos</option>
+                <option value="vehiculos">Vehículos / coches</option>
+                <option value="coches">Coches</option>
+                <option value="pilotos">Pilotos</option>
+                <option value="glosario">Glosario</option>
+                <option value="general">General</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="gc-archive-relations-list" id="relationItems">
+            <div class="gc-admin-empty">Cargando fichas...</div>
+          </div>
+        </aside>
+
+        <section class="gc-archive-relations-editor">
+          <div class="gc-archive-relations-empty" id="emptySelection">
+            <h3>Selecciona una ficha</h3>
+            <p>El panel mostrará relaciones manuales, candidatas y accesos rápidos de edición.</p>
+          </div>
+
+          <div id="relationEditor" hidden>
+            <header class="gc-archive-relations-selected">
+              <div>
+                <span id="selectedType">Ficha</span>
+                <h2 id="selectedTitle">Relaciones</h2>
+                <p id="selectedSubtitle">Selecciona una ficha.</p>
+              </div>
+
+              <div class="gc-archive-relations-actions">
+                <a class="gc-btn gc-btn--small" id="editItemLink" href="#">Editar</a>
+                <a class="gc-btn gc-btn--small" id="viewItemLink" href="#" target="_blank" rel="noreferrer">Ver pública</a>
+              </div>
+            </header>
+
+            <div class="gc-archive-relations-metrics">
+              <article><span>Manual</span><strong id="selectedManualCount">0</strong></article>
+              <article><span>Candidatas</span><strong id="selectedCandidateCount">0</strong></article>
+              <article><span>Ocultas</span><strong id="selectedHiddenCount">0</strong></article>
+            </div>
+
+            <section class="gc-archive-relations-panel">
+              <div class="gc-section-head">
+                <div>
+                  <h3>Añadir relación manual</h3>
+                  <p>Estas relaciones tendrán prioridad en el bloque “Más fichas” del dossier público.</p>
+                </div>
+              </div>
+
+              <div class="gc-archive-manual-form">
+                <label>
+                  <span>Ficha relacionada</span>
+                  <select id="manualRelationTarget"></select>
+                </label>
+
+                <label>
+                  <span>Etiqueta</span>
+                  <input id="manualRelationLabel" type="text" placeholder="Ej. Coche asociado, circuito relacionado..." />
+                </label>
+
+                <button class="gc-btn gc-btn--primary" id="addManualRelation" type="button">Añadir</button>
+              </div>
+            </section>
+
+            <section class="gc-archive-relations-panel">
+              <div class="gc-section-head">
+                <div>
+                  <h3>Relaciones manuales</h3>
+                  <p>Arriba aparecerán las relaciones que has decidido editorialmente.</p>
+                </div>
+              </div>
+
+              <div class="gc-archive-relation-stack" id="manualRelations"></div>
+            </section>
+
+            <section class="gc-archive-relations-panel">
+              <div class="gc-section-head">
+                <div>
+                  <h3>Candidatas sugeridas</h3>
+                  <p>Relaciones detectadas por tipo, país, tags o texto. Puedes convertirlas en manuales.</p>
+                </div>
+              </div>
+
+              <div class="gc-archive-relation-stack" id="candidateRelations"></div>
+            </section>
+
+            <footer class="gc-archive-relations-footer">
+              <div class="gc-admin-actions">
+                <button class="gc-btn gc-btn--primary" id="saveRelations" type="button">Guardar relaciones</button>
+                <button class="gc-btn" id="discardRelations" type="button">Descartar cambios</button>
+              </div>
+              <p class="gc-message" id="relationMessage"></p>
+            </footer>
+          </div>
+        </section>
+      </div>
     </section>
   </div>
-  <style is:global>.archive-relations-list{display:grid;gap:8px;max-height:62vh;overflow:auto}.archive-relations-item{width:100%;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.018);color:var(--text);padding:11px 12px;cursor:pointer}.archive-relations-item.is-active{border-color:var(--accent)}.archive-manual-form{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px}.archive-relation-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);padding:10px 12px;background:rgba(255,255,255,.018);margin-top:8px}@media(max-width:900px){.archive-manual-form,.archive-relation-row{grid-template-columns:1fr}}</style>
+
+  <style is:global>
+    .gc-archive-relations-page [hidden]{
+      display:none!important;
+    }
+
+    .gc-archive-relations-shell{
+      display:grid;
+      grid-template-columns:minmax(280px,.42fr) minmax(0,1fr);
+      gap:14px;
+      align-items:start;
+    }
+
+    .gc-archive-relations-picker,
+    .gc-archive-relations-editor{
+      min-width:0;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-archive-relations-picker{
+      position:sticky;
+      top:14px;
+      padding:14px;
+    }
+
+    .gc-archive-relations-editor{
+      padding:16px;
+    }
+
+    .gc-archive-relations-search{
+      display:grid;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .gc-archive-relations-search label,
+    .gc-archive-manual-form label{
+      display:grid;
+      gap:7px;
+    }
+
+    .gc-archive-relations-search span,
+    .gc-archive-manual-form span,
+    .gc-archive-relations-selected > div > span,
+    .gc-archive-relations-metrics span,
+    .gc-archive-relation-card small{
+      color:var(--dim);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-relations-search input,
+    .gc-archive-relations-search select,
+    .gc-archive-manual-form input,
+    .gc-archive-manual-form select{
+      width:100%;
+      min-height:42px;
+      padding:0 12px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(5,10,8,.62);
+      color:var(--text);
+      font:inherit;
+      outline:none;
+    }
+
+    .gc-archive-relations-search input:focus,
+    .gc-archive-relations-search select:focus,
+    .gc-archive-manual-form input:focus,
+    .gc-archive-manual-form select:focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 4px rgba(122,255,144,.08);
+    }
+
+    .gc-archive-relations-list{
+      display:grid;
+      gap:8px;
+      max-height:68vh;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .gc-archive-relations-item{
+      width:100%;
+      display:grid;
+      gap:5px;
+      text-align:left;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(255,255,255,.018);
+      color:var(--text);
+      padding:12px;
+      cursor:pointer;
+      transition:border-color .16s ease, background .16s ease, transform .16s ease;
+    }
+
+    .gc-archive-relations-item:hover,
+    .gc-archive-relations-item.is-active{
+      transform:translateY(-1px);
+      border-color:var(--accent);
+      background:rgba(122,255,144,.075);
+    }
+
+    .gc-archive-relations-item strong{
+      line-height:1.2;
+    }
+
+    .gc-archive-relations-item small{
+      color:var(--dim);
+      line-height:1.35;
+    }
+
+    .gc-archive-relations-empty{
+      min-height:320px;
+      display:grid;
+      place-content:center;
+      gap:8px;
+      text-align:center;
+      padding:24px;
+      border:1px dashed rgba(255,255,255,.14);
+      border-radius:20px;
+      color:var(--soft);
+    }
+
+    .gc-archive-relations-empty h3{
+      margin:0;
+      color:var(--text);
+      font-size:clamp(1.6rem,3vw,2.6rem);
+      letter-spacing:-.05em;
+    }
+
+    .gc-archive-relations-empty p{
+      max-width:430px;
+      margin:0 auto;
+      line-height:1.6;
+    }
+
+    .gc-archive-relations-selected{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:start;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(122,255,144,.10), transparent 34%),
+        rgba(255,255,255,.025);
+    }
+
+    .gc-archive-relations-selected h2{
+      margin:.2rem 0 .35rem;
+      font-size:clamp(1.7rem,3.4vw,3.2rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+    }
+
+    .gc-archive-relations-selected p{
+      margin:0;
+      color:var(--soft);
+      line-height:1.5;
+    }
+
+    .gc-archive-relations-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .gc-archive-relations-metrics{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin:12px 0;
+    }
+
+    .gc-archive-relations-metrics article{
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-archive-relations-metrics strong{
+      display:block;
+      margin:.25rem 0 0;
+      font-size:1.6rem;
+      line-height:1;
+      letter-spacing:-.05em;
+    }
+
+    .gc-archive-relations-panel{
+      display:grid;
+      gap:12px;
+      margin-top:12px;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-archive-relations-panel .gc-section-head{
+      margin:0;
+    }
+
+    .gc-archive-relations-panel h3{
+      margin:0;
+    }
+
+    .gc-archive-manual-form{
+      display:grid;
+      grid-template-columns:minmax(220px,1.1fr) minmax(200px,.8fr) auto;
+      gap:10px;
+      align-items:end;
+    }
+
+    .gc-archive-relation-stack{
+      display:grid;
+      gap:8px;
+    }
+
+    .gc-archive-relation-card{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:12px;
+      align-items:center;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-archive-relation-card strong{
+      display:block;
+      margin:.15rem 0 .2rem;
+      line-height:1.2;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-relation-card p{
+      margin:.3rem 0 0;
+      color:var(--soft);
+      line-height:1.45;
+      font-size:.92rem;
+    }
+
+    .gc-archive-relation-card__actions{
+      display:flex;
+      gap:7px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .gc-archive-relation-card.is-hidden{
+      opacity:.62;
+    }
+
+    .gc-archive-relations-footer{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      margin-top:14px;
+      padding-top:14px;
+      border-top:1px solid var(--line);
+    }
+
+    .gc-btn--small{
+      min-height:34px;
+      padding:0 12px;
+      font-size:.78rem;
+    }
+
+    @media(max-width:1080px){
+      .gc-archive-relations-shell{
+        grid-template-columns:1fr;
+      }
+
+      .gc-archive-relations-picker{
+        position:static;
+      }
+
+      .gc-archive-relations-list{
+        max-height:420px;
+      }
+
+      .gc-archive-manual-form{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-archive-relations-selected,
+      .gc-archive-relations-footer{
+        display:grid;
+      }
+
+      .gc-archive-relations-actions,
+      .gc-archive-relation-card__actions{
+        justify-content:flex-start;
+      }
+
+      .gc-archive-relations-metrics,
+      .gc-archive-relation-card{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
   <script is:inline>
-    (()=>{const API='/api/admin/archive/unified';const $=(id)=>document.getElementById(id);const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));let items=[],selected=null,draft={auto:[],manual:[],hidden:[],pinned:[]};async function json(url,opt={}){const r=await fetch(url,{credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},...opt});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw new Error(d.message||`HTTP ${r.status}`);return d;}function relId(r){return r.id||r.targetId||r.target||'';}function renderList(){const q=$('relationSearch').value.toLowerCase();const list=items.filter(i=>(`${i.title} ${i.slug}`).toLowerCase().includes(q));$('relationItems').innerHTML=list.map(i=>`<button class="archive-relations-item ${selected?.id===i.id?'is-active':''}" data-id="${esc(i.id)}"><strong>${esc(i.title)}</strong><br><small>${esc(i.category)} · ${(i.relations?.manual||[]).length} manuales</small></button>`).join('')||'<div class="gc-admin-empty">No hay fichas.</div>';$('relationItems').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.id)));}function select(id){selected=items.find(i=>i.id===id);draft=JSON.parse(JSON.stringify(selected.relations||{auto:[],manual:[],hidden:[],pinned:[]}));draft.manual ||= [];$('emptySelection').hidden=true;$('relationEditor').hidden=false;$('selectedTitle').textContent=selected.title;$('selectedSubtitle').textContent=selected.slug||selected.id;$('editItemLink').href=`/admin/archivo/editar/${encodeURIComponent(selected.id)}`;renderRelations();renderList();}function renderRelations(){$('manualRelationTarget').innerHTML=items.filter(i=>i.id!==selected.id).map(i=>`<option value="${esc(i.id)}">${esc(i.title)}</option>`).join('');$('manualRelations').innerHTML=draft.manual.length?draft.manual.map(r=>`<div class="archive-relation-row"><span><strong>${esc(r.title||r.targetId)}</strong><small>${esc(r.label||'manual')}</small></span><button class="gc-btn" data-remove="${esc(relId(r))}">Quitar</button></div>`).join(''):'<div class="gc-admin-empty">Sin relaciones manuales.</div>';$('manualRelations').querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click',()=>{draft.manual=draft.manual.filter(r=>relId(r)!==b.dataset.remove);renderRelations();}));}$('addManualRelation').addEventListener('click',()=>{const id=$('manualRelationTarget').value;const target=items.find(i=>i.id===id);if(!target||draft.manual.some(r=>relId(r)===id))return;draft.manual.push({id,targetId:id,title:target.title,label:$('manualRelationLabel').value||'relación manual',source:'manual'});$('manualRelationLabel').value='';renderRelations();});$('saveRelations').addEventListener('click',async()=>{if(!selected)return;$('relationMessage').textContent='Guardando...';try{const d=await json(`${API}/items/${encodeURIComponent(selected.id)}`,{method:'PATCH',body:JSON.stringify({...selected,relations:draft})});items=items.map(i=>i.id===d.item.id?d.item:i);selected=d.item;$('relationMessage').textContent='Relaciones guardadas.';renderList();}catch(e){$('relationMessage').textContent=e.message||'No se pudo guardar.';}});$('relationSearch').addEventListener('input',renderList);async function load(){try{const d=await json(`${API}/items`);items=d.items||[];renderList();}catch(e){$('relationItems').innerHTML=`<div class="gc-admin-empty">${esc(e.message)}</div>`;}}load();})();
+    (() => {
+      const API = '/api/admin/archive/unified';
+
+      const $ = (id) => document.getElementById(id);
+
+      const els = {
+        status: $('relationsStatusLabel'),
+        total: $('relationsTotal'),
+        manual: $('relationsManual'),
+        empty: $('relationsEmpty'),
+        search: $('relationSearch'),
+        type: $('relationTypeFilter'),
+        items: $('relationItems'),
+        emptySelection: $('emptySelection'),
+        editor: $('relationEditor'),
+        selectedType: $('selectedType'),
+        selectedTitle: $('selectedTitle'),
+        selectedSubtitle: $('selectedSubtitle'),
+        selectedManualCount: $('selectedManualCount'),
+        selectedCandidateCount: $('selectedCandidateCount'),
+        selectedHiddenCount: $('selectedHiddenCount'),
+        manualTarget: $('manualRelationTarget'),
+        manualLabel: $('manualRelationLabel'),
+        addManual: $('addManualRelation'),
+        manualRelations: $('manualRelations'),
+        candidateRelations: $('candidateRelations'),
+        save: $('saveRelations'),
+        discard: $('discardRelations'),
+        message: $('relationMessage'),
+        refresh: $('relationsRefreshButton'),
+        editLink: $('editItemLink'),
+        viewLink: $('viewItemLink'),
+      };
+
+      let items = [];
+      let selected = null;
+      let draft = emptyRelations();
+
+      function emptyRelations() {
+        return { auto: [], manual: [], hidden: [], pinned: [] };
+      }
+
+      function esc(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        }[char]));
+      }
+
+      function normalizeText(value) {
+        return String(value || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
+      }
+
+      function normalizeCategory(value) {
+        const raw = normalizeText(value);
+        if (['vehicle', 'vehicles', 'car', 'cars', 'coche', 'coches', 'vehiculo', 'vehiculos'].includes(raw)) return 'vehiculos';
+        if (['circuit', 'track', 'circuito', 'circuitos'].includes(raw)) return 'circuitos';
+        if (['pilot', 'driver', 'piloto', 'pilotos'].includes(raw)) return 'pilotos';
+        if (['championship', 'campeonato', 'campeonatos', 'record', 'records', 'récord', 'récords'].includes(raw)) return 'general';
+        if (['glossary', 'glosario', 'concepto', 'conceptos'].includes(raw)) return 'glosario';
+        return raw || 'general';
+      }
+
+      function publicCategory(value) {
+        const category = normalizeCategory(value);
+        return category === 'vehiculos' ? 'coches' : category;
+      }
+
+      function categoryLabel(value) {
+        const category = normalizeCategory(value);
+        return ({
+          circuitos: 'Circuito',
+          vehiculos: 'Coche',
+          pilotos: 'Piloto',
+          glosario: 'Glosario',
+          general: 'General',
+        })[category] || category;
+      }
+
+      function getTitle(item) {
+        return String(item?.title || item?.nombre || item?.titulo || 'Sin título').trim();
+      }
+
+      function getSummary(item) {
+        return String(item?.summary || item?.descripcion_corta || item?.subtitulo || item?.body || '').trim();
+      }
+
+      function getSlug(item) {
+        return String(item?.slug || '').trim();
+      }
+
+      function getId(item) {
+        return String(item?.id || item?.slug || '').trim();
+      }
+
+      function getCategory(item) {
+        return normalizeCategory(item?.category || item?.tipo || item?.type || item?.categoria_tipo || 'general');
+      }
+
+      function publicHref(item) {
+        return `/archivo/${encodeURIComponent(publicCategory(getCategory(item)))}/${encodeURIComponent(getSlug(item))}/`;
+      }
+
+      function editHref(item) {
+        return `/admin/archivo/editar/${encodeURIComponent(getId(item))}`;
+      }
+
+      function relationId(relation) {
+        return String(relation?.id || relation?.targetId || relation?.target || relation?.slug || '').trim();
+      }
+
+      function relationTarget(relation) {
+        const id = relationId(relation);
+        return items.find((item) => getId(item) === id || getSlug(item) === id);
+      }
+
+      function cloneRelations(value) {
+        const input = value && typeof value === 'object' ? value : {};
+        return {
+          auto: Array.isArray(input.auto) ? [...input.auto] : [],
+          manual: Array.isArray(input.manual) ? [...input.manual] : [],
+          hidden: Array.isArray(input.hidden) ? [...input.hidden] : [],
+          pinned: Array.isArray(input.pinned) ? [...input.pinned] : [],
+        };
+      }
+
+      function getRelations(item) {
+        return cloneRelations(item?.relations);
+      }
+
+      function getManualCount(item) {
+        return getRelations(item).manual.length;
+      }
+
+      function isHidden(id) {
+        return draft.hidden.some((entry) => relationId(entry) === id || String(entry) === id);
+      }
+
+      function isManual(id) {
+        return draft.manual.some((entry) => relationId(entry) === id);
+      }
+
+      function setMessage(text, kind = '') {
+        els.message.textContent = text || '';
+        els.message.dataset.kind = kind;
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function scoreCandidate(base, target) {
+        if (!base || !target || getId(base) === getId(target)) return 0;
+
+        let score = 0;
+
+        if (getCategory(base) === getCategory(target)) score += 4;
+
+        const baseCountry = normalizeText(base.pais || base.nacionalidad || base.ubicacion || '');
+        const targetCountry = normalizeText(target.pais || target.nacionalidad || target.ubicacion || '');
+        if (baseCountry && targetCountry && baseCountry === targetCountry) score += 2;
+
+        const baseTags = normalizeText(base.tags || '').split(/\s+|\|\||;|,/).filter(Boolean);
+        const targetTags = normalizeText(target.tags || '');
+        for (const tag of baseTags) {
+          if (tag.length > 2 && targetTags.includes(tag)) score += 1;
+        }
+
+        const textA = normalizeText([
+          base.fabricante,
+          base.motor,
+          base.equipos,
+          base.eventos_destacados,
+          base.zonas_clave,
+          base.campeonatos,
+          base.coches_asociados,
+          base.circuitos_asociados,
+        ].join(' '));
+
+        const titleB = normalizeText(getTitle(target));
+        const slugB = normalizeText(getSlug(target).replace(/-/g, ' '));
+        if (titleB && textA.includes(titleB)) score += 3;
+        if (slugB && textA.includes(slugB)) score += 2;
+
+        return score;
+      }
+
+      function getCandidates() {
+        if (!selected) return [];
+
+        return items
+          .filter((item) => getId(item) !== getId(selected))
+          .map((item) => ({ item, score: scoreCandidate(selected, item) }))
+          .filter((entry) => entry.score > 0)
+          .sort((a, b) => b.score - a.score || getTitle(a.item).localeCompare(getTitle(b.item), 'es'))
+          .slice(0, 12);
+      }
+
+      function renderMetrics() {
+        const total = items.length;
+        const manual = items.reduce((sum, item) => sum + getManualCount(item), 0);
+        const empty = items.filter((item) => getManualCount(item) === 0).length;
+
+        els.status.textContent = 'Operativo';
+        els.total.textContent = String(total);
+        els.manual.textContent = String(manual);
+        els.empty.textContent = String(empty);
+      }
+
+      function renderList() {
+        const q = normalizeText(els.search.value);
+        const type = String(els.type.value || 'all');
+
+        const filtered = items.filter((item) => {
+          const haystack = normalizeText([getTitle(item), getSlug(item), getCategory(item), publicCategory(getCategory(item)), getSummary(item)].join(' '));
+          const category = getCategory(item);
+          const publicCat = publicCategory(category);
+          const searchOk = !q || haystack.includes(q);
+          const typeOk = type === 'all' || category === normalizeCategory(type) || publicCat === type;
+          return searchOk && typeOk;
+        });
+
+        if (!filtered.length) {
+          els.items.innerHTML = '<div class="gc-admin-empty">No hay fichas con estos filtros.</div>';
+          return;
+        }
+
+        els.items.innerHTML = filtered.map((item) => {
+          const active = selected && getId(selected) === getId(item);
+          const rels = getRelations(item);
+          const count = rels.manual.length;
+          return `
+            <button class="gc-archive-relations-item ${active ? 'is-active' : ''}" type="button" data-id="${esc(getId(item))}">
+              <strong>${esc(getTitle(item))}</strong>
+              <small>${esc(categoryLabel(getCategory(item)))} · ${count} manual${count === 1 ? '' : 'es'} · ${esc(getSlug(item))}</small>
+            </button>
+          `;
+        }).join('');
+
+        els.items.querySelectorAll('[data-id]').forEach((button) => {
+          button.addEventListener('click', () => selectItem(button.dataset.id));
+        });
+      }
+
+      function renderTargetSelect() {
+        const currentManualIds = new Set(draft.manual.map(relationId));
+        const options = items
+          .filter((item) => getId(item) !== getId(selected))
+          .filter((item) => !currentManualIds.has(getId(item)))
+          .sort((a, b) => getTitle(a).localeCompare(getTitle(b), 'es'))
+          .map((item) => `<option value="${esc(getId(item))}">${esc(getTitle(item))} · ${esc(categoryLabel(getCategory(item)))}</option>`)
+          .join('');
+
+        els.manualTarget.innerHTML = options || '<option value="">No hay fichas disponibles</option>';
+      }
+
+      function relationCard(target, relation, options = {}) {
+        const id = getId(target);
+        const label = String(relation?.label || options.label || categoryLabel(getCategory(target)) || 'Relación').trim();
+        const score = options.score ? `<p>Coincidencia sugerida: ${esc(options.score)}</p>` : '';
+        const hidden = isHidden(id);
+
+        const addButton = options.canAdd
+          ? `<button class="gc-btn gc-btn--small" type="button" data-add-candidate="${esc(id)}">Añadir</button>`
+          : '';
+
+        const hideButton = options.canHide
+          ? `<button class="gc-btn gc-btn--small" type="button" data-toggle-hidden="${esc(id)}">${hidden ? 'Mostrar' : 'Ocultar'}</button>`
+          : '';
+
+        const removeButton = options.canRemove
+          ? `<button class="gc-btn gc-btn--small" type="button" data-remove-manual="${esc(id)}">Quitar</button>`
+          : '';
+
+        return `
+          <article class="gc-archive-relation-card ${hidden ? 'is-hidden' : ''}">
+            <div>
+              <small>${esc(label)}</small>
+              <strong>${esc(getTitle(target))}</strong>
+              <p>${esc(getSummary(target) || getSlug(target))}</p>
+              ${score}
+            </div>
+            <div class="gc-archive-relation-card__actions">
+              <a class="gc-btn gc-btn--small" href="${esc(editHref(target))}">Editar</a>
+              <a class="gc-btn gc-btn--small" href="${esc(publicHref(target))}" target="_blank" rel="noreferrer">Ver</a>
+              ${addButton}
+              ${hideButton}
+              ${removeButton}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderManualRelations() {
+        renderTargetSelect();
+
+        const manual = draft.manual
+          .map((relation) => ({ relation, target: relationTarget(relation) }))
+          .filter((entry) => entry.target);
+
+        els.selectedManualCount.textContent = String(manual.length);
+        els.selectedHiddenCount.textContent = String(draft.hidden.length);
+
+        if (!manual.length) {
+          els.manualRelations.innerHTML = '<div class="gc-admin-empty">Sin relaciones manuales todavía.</div>';
+          return;
+        }
+
+        els.manualRelations.innerHTML = manual
+          .map(({ relation, target }) => relationCard(target, relation, { canRemove: true, canHide: true }))
+          .join('');
+
+        els.manualRelations.querySelectorAll('[data-remove-manual]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const id = String(button.dataset.removeManual || '');
+            draft.manual = draft.manual.filter((relation) => relationId(relation) !== id);
+            renderEditor();
+            setMessage('Relación quitada. Guarda para aplicar cambios.');
+          });
+        });
+
+        els.manualRelations.querySelectorAll('[data-toggle-hidden]').forEach((button) => {
+          button.addEventListener('click', () => toggleHidden(button.dataset.toggleHidden));
+        });
+      }
+
+      function toggleHidden(id) {
+        const clean = String(id || '');
+        if (!clean) return;
+
+        if (isHidden(clean)) {
+          draft.hidden = draft.hidden.filter((entry) => relationId(entry) !== clean && String(entry) !== clean);
+        } else {
+          draft.hidden.push({ id: clean, targetId: clean, source: 'manual-hidden' });
+        }
+
+        renderEditor();
+        setMessage('Visibilidad de relación actualizada. Guarda para aplicar cambios.');
+      }
+
+      function renderCandidates() {
+        const candidates = getCandidates()
+          .filter(({ item }) => !isManual(getId(item)));
+
+        els.selectedCandidateCount.textContent = String(candidates.length);
+
+        if (!candidates.length) {
+          els.candidateRelations.innerHTML = '<div class="gc-admin-empty">No hay candidatas claras para esta ficha.</div>';
+          return;
+        }
+
+        els.candidateRelations.innerHTML = candidates
+          .map(({ item, score }) => relationCard(item, { label: 'Sugerida' }, { canAdd: true, canHide: true, score }))
+          .join('');
+
+        els.candidateRelations.querySelectorAll('[data-add-candidate]').forEach((button) => {
+          button.addEventListener('click', () => {
+            addManualRelation(button.dataset.addCandidate, 'Relación sugerida');
+          });
+        });
+
+        els.candidateRelations.querySelectorAll('[data-toggle-hidden]').forEach((button) => {
+          button.addEventListener('click', () => toggleHidden(button.dataset.toggleHidden));
+        });
+      }
+
+      function renderEditor() {
+        if (!selected) return;
+
+        els.emptySelection.hidden = true;
+        els.editor.hidden = false;
+
+        els.selectedType.textContent = categoryLabel(getCategory(selected));
+        els.selectedTitle.textContent = getTitle(selected);
+        els.selectedSubtitle.textContent = getSummary(selected) || getSlug(selected);
+        els.editLink.href = editHref(selected);
+        els.viewLink.href = publicHref(selected);
+
+        renderManualRelations();
+        renderCandidates();
+        renderList();
+      }
+
+      function selectItem(id) {
+        selected = items.find((item) => getId(item) === id || getSlug(item) === id) || null;
+        if (!selected) return;
+
+        draft = getRelations(selected);
+        setMessage('');
+        renderEditor();
+      }
+
+      function addManualRelation(id, forcedLabel = '') {
+        if (!selected) return;
+
+        const target = items.find((item) => getId(item) === id || getSlug(item) === id);
+        if (!target) return;
+
+        const targetId = getId(target);
+        if (!targetId || isManual(targetId)) return;
+
+        draft.manual.push({
+          id: targetId,
+          targetId,
+          slug: getSlug(target),
+          title: getTitle(target),
+          category: getCategory(target),
+          label: forcedLabel || els.manualLabel.value.trim() || 'Relación manual',
+          source: 'manual',
+          createdAt: new Date().toISOString(),
+        });
+
+        draft.hidden = draft.hidden.filter((entry) => relationId(entry) !== targetId && String(entry) !== targetId);
+        els.manualLabel.value = '';
+        renderEditor();
+        setMessage('Relación añadida. Guarda para aplicar cambios.');
+      }
+
+      async function saveRelations() {
+        if (!selected) return;
+
+        setMessage('Guardando relaciones...');
+
+        try {
+          const payload = {
+            ...selected,
+            relations: draft,
+          };
+
+          const data = await fetchJson(`${API}/items/${encodeURIComponent(getId(selected))}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          });
+
+          const updated = data.item;
+          items = items.map((item) => getId(item) === getId(updated) ? updated : item);
+          selected = updated;
+          draft = getRelations(updated);
+          renderMetrics();
+          renderEditor();
+          setMessage('Relaciones guardadas.', 'ok');
+        } catch (error) {
+          setMessage(error.message || 'No se pudieron guardar relaciones.', 'error');
+        }
+      }
+
+      function discardRelations() {
+        if (!selected) return;
+        draft = getRelations(selected);
+        renderEditor();
+        setMessage('Cambios descartados.');
+      }
+
+      async function load() {
+        els.status.textContent = 'Cargando';
+        els.items.innerHTML = '<div class="gc-admin-empty">Cargando fichas...</div>';
+        els.emptySelection.hidden = false;
+        els.editor.hidden = true;
+
+        try {
+          const data = await fetchJson(`${API}/items`);
+          items = Array.isArray(data.items) ? data.items : [];
+          selected = null;
+          draft = emptyRelations();
+          renderMetrics();
+          renderList();
+          els.status.textContent = 'Operativo';
+        } catch (error) {
+          els.status.textContent = 'API error';
+          els.items.innerHTML = `<div class="gc-admin-empty">${esc(error.message || 'No se pudieron cargar fichas.')}</div>`;
+        }
+      }
+
+      els.search.addEventListener('input', renderList);
+      els.type.addEventListener('change', renderList);
+      els.addManual.addEventListener('click', () => addManualRelation(els.manualTarget.value));
+      els.save.addEventListener('click', saveRelations);
+      els.discard.addEventListener('click', discardRelations);
+      els.refresh.addEventListener('click', load);
+
+      load();
+    })();
   </script>
 </AppLayout>

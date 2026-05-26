@@ -20,16 +20,34 @@ type ArchiveTypeSummary = {
   count: number;
 };
 
-const PUBLIC_TYPE_ORDER = ['circuitos', 'coches', 'pilotos', 'campeonatos', 'records', 'glosario'];
+const PUBLIC_TYPE_ORDER = ['circuitos', 'coches', 'pilotos', 'glosario'];
 
-const TYPE_LABELS: Record<string, { label: string; singular: string }> = {
-  circuitos: { label: 'Circuitos', singular: 'Circuito' },
-  coches: { label: 'Coches', singular: 'Coche' },
-  pilotos: { label: 'Pilotos', singular: 'Piloto' },
-  campeonatos: { label: 'Campeonatos', singular: 'Campeonato' },
-  records: { label: 'Récords', singular: 'Récord' },
-  glosario: { label: 'Glosario', singular: 'Concepto' },
-  general: { label: 'Archivo', singular: 'Ficha' },
+const TYPE_LABELS: Record<string, { label: string; singular: string; lead: string }> = {
+  circuitos: {
+    label: 'Circuitos',
+    singular: 'Circuito',
+    lead: 'Trazados, zonas clave, carácter de conducción, historia y referencias técnicas.',
+  },
+  coches: {
+    label: 'Coches',
+    singular: 'Coche',
+    lead: 'Modelos, versiones de competición, mecánica, historial deportivo y contexto.',
+  },
+  pilotos: {
+    label: 'Pilotos',
+    singular: 'Piloto',
+    lead: 'Trayectorias, estilo, palmarés, coches asociados y momentos importantes.',
+  },
+  glosario: {
+    label: 'Glosario',
+    singular: 'Concepto',
+    lead: 'Conceptos técnicos, históricos y de pilotaje explicados de forma clara.',
+  },
+  general: {
+    label: 'Archivo',
+    singular: 'Ficha',
+    lead: 'Fichas técnicas e históricas organizadas por categorías.',
+  },
 };
 
 function appRootDir() {
@@ -55,9 +73,7 @@ async function getMysqlConnection() {
   const password = process.env.MYSQL_PASSWORD ?? '';
   const port = Number(process.env.MYSQL_PORT || 3306);
 
-  if (!host || !database || !user) {
-    throw new Error('Faltan variables MySQL para leer el Archivo.');
-  }
+  if (!host || !database || !user) throw new Error('Faltan variables MySQL para leer el Archivo.');
 
   const mysql = await importMysql2();
   return mysql.createConnection({ host, port, database, user, password, charset: 'utf8mb4', timezone: 'Z' });
@@ -69,24 +85,29 @@ function runtimeJsonPath() {
   return path.join(appRootDir(), 'data', 'app', 'motorsport-archive.json');
 }
 
-function publicTypeFromValue(value: unknown): string {
-  const raw = String(value || '')
+function normalizeBase(value: unknown): string {
+  return String(value || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function publicTypeFromValue(value: unknown): string {
+  const raw = normalizeBase(value);
 
   if (['circuit', 'track', 'circuito', 'circuitos'].includes(raw)) return 'circuitos';
   if (['vehicle', 'vehicles', 'car', 'cars', 'coche', 'coches', 'vehiculo', 'vehiculos'].includes(raw)) return 'coches';
   if (['pilot', 'driver', 'piloto', 'pilotos'].includes(raw)) return 'pilotos';
-  if (['championship', 'campeonato', 'campeonatos'].includes(raw)) return 'campeonatos';
-  if (['record', 'records', 'récord', 'récords'].includes(raw)) return 'records';
   if (['glossary', 'glosario', 'concepto', 'conceptos'].includes(raw)) return 'glosario';
 
-  const slug = raw
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  /*
+    Desde v15.10, campeonatos y récords dejan de ser categorías públicas propias.
+    Se integran como información dentro de circuitos, coches o pilotos.
+  */
+  if (['championship', 'campeonato', 'campeonatos', 'record', 'records', 'récord', 'récords'].includes(raw)) return 'general';
 
+  const slug = raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return slug || 'general';
 }
 
@@ -97,15 +118,7 @@ function internalCategoryFromPublicType(value: unknown): string {
 }
 
 function itemRawType(item: any): string {
-  return String(
-    item?.tipo ||
-    item?.category ||
-    item?.categoria_tipo ||
-    item?.tipo_importacion ||
-    item?.collection ||
-    item?.type ||
-    ''
-  );
+  return String(item?.tipo || item?.category || item?.categoria_tipo || item?.tipo_importacion || item?.collection || item?.type || '');
 }
 
 function isPublicStatus(item: any) {
@@ -130,6 +143,11 @@ export function prettifyArchiveType(value = ''): string {
 export function singularArchiveType(value = ''): string {
   const type = normalizeArchiveType(value);
   return TYPE_LABELS[type]?.singular || 'Ficha';
+}
+
+export function archiveTypeLead(value = ''): string {
+  const type = normalizeArchiveType(value);
+  return TYPE_LABELS[type]?.lead || TYPE_LABELS.general.lead;
 }
 
 export function archiveTypeHref(value = ''): string {
@@ -163,20 +181,14 @@ export function getArchiveImage(item: any): string {
 function normalizeFacts(value: any) {
   if (Array.isArray(value)) {
     return value
-      .map((fact) => ({
-        label: String(fact?.label || fact?.name || '').trim(),
-        value: String(fact?.value || fact?.text || '').trim(),
-      }))
+      .map((fact) => ({ label: String(fact?.label || fact?.name || '').trim(), value: String(fact?.value || fact?.text || '').trim() }))
       .filter((fact) => fact.label && fact.value);
   }
 
   if (!value || typeof value !== 'object') return [];
 
   return Object.entries(value)
-    .map(([label, factValue]) => ({
-      label: String(label || '').replace(/_/g, ' ').trim(),
-      value: String(factValue ?? '').trim(),
-    }))
+    .map(([label, factValue]) => ({ label: String(label || '').replace(/_/g, ' ').trim(), value: String(factValue ?? '').trim() }))
     .filter((fact) => fact.label && fact.value);
 }
 
@@ -198,16 +210,56 @@ function normalizeMedia(value: any) {
     .filter((media) => media.url || media.localUrl);
 }
 
+function normalizeRelations(value: any) {
+  if (!value || typeof value !== 'object') return { auto: [], manual: [], hidden: [], pinned: [] };
+  return {
+    auto: Array.isArray(value.auto) ? value.auto : [],
+    manual: Array.isArray(value.manual) ? value.manual : [],
+    hidden: Array.isArray(value.hidden) ? value.hidden : [],
+    pinned: Array.isArray(value.pinned) ? value.pinned : [],
+  };
+}
+
 function displayCategoryFor(item: any, publicType: string) {
   const specific = String(item?.categoria || item?.categoria_competicion || item?.tipo_trazado || '').trim();
   if (specific) return specific;
   return singularArchiveType(publicType);
 }
 
+function inferTypeForLegacyEntry(input: any, publicType: string) {
+  /*
+    Si una ficha antigua venía marcada como records/campeonatos, no se publica
+    como categoría propia. Se intenta recolocar por contenido.
+  */
+  const raw = normalizeBase(itemRawType(input));
+  if (!['record', 'records', 'campeonato', 'campeonatos', 'championship'].includes(raw)) return publicType;
+
+  const haystack = normalizeBase([
+    input.fabricante,
+    input.motor,
+    input.modelo_base,
+    input.coches_asociados,
+    input.equipos,
+    input.circuitos_asociados,
+    input.zonas_clave,
+    input.longitud_km,
+    input.curvas,
+    input.pilotos_asociados,
+    input.trayectoria,
+    input.palmares,
+  ].join(' '));
+
+  if (input.fabricante || input.motor || input.modelo_base || haystack.includes('coche')) return 'coches';
+  if (input.longitud_km || input.curvas || input.zonas_clave || haystack.includes('circuit')) return 'circuitos';
+  if (input.palmares || input.trayectoria || input.nacionalidad || haystack.includes('piloto')) return 'pilotos';
+  return 'general';
+}
+
 function normalizeArchiveItem(input: any): ArchiveItem | null {
   if (!input || typeof input !== 'object') return null;
 
-  const publicType = normalizeArchiveType(itemRawType(input));
+  const initialType = normalizeArchiveType(itemRawType(input));
+  const publicType = inferTypeForLegacyEntry(input, initialType);
   const title = String(input.nombre || input.title || input.titulo || input.name || '').trim();
   const slug = String(input.slug || '').trim();
 
@@ -234,6 +286,7 @@ function normalizeArchiveItem(input: any): ArchiveItem | null {
     body: String(input.body || input.descripcion_larga || input.introduccion || '').trim(),
     facts: normalizeFacts(input.facts),
     media,
+    relations: normalizeRelations(input.relations),
     coverUrl: String(input.coverUrl || cover || '').trim(),
     coverAlt: String(input.coverAlt || input.imagen_alt || title).trim(),
   };
@@ -261,30 +314,15 @@ async function readMysqlItems(): Promise<ArchiveItem[]> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    const [rows] = await connection.execute(
-      'SELECT id, category, slug, title, status, item_json, updated_at FROM gc_archive_items ORDER BY updated_at DESC'
-    );
+    const [rows] = await connection.execute('SELECT id, category, slug, title, status, item_json, updated_at FROM gc_archive_items ORDER BY updated_at DESC');
 
     return (Array.isArray(rows) ? rows : [])
       .map((row: any) => {
         try {
           const parsed = JSON.parse(row.item_json || '{}');
-          return normalizeArchiveItem({
-            ...parsed,
-            id: parsed.id || row.id,
-            category: parsed.category || row.category,
-            slug: parsed.slug || row.slug,
-            title: parsed.title || row.title,
-            status: parsed.status || row.status,
-          });
+          return normalizeArchiveItem({ ...parsed, id: parsed.id || row.id, category: parsed.category || row.category, slug: parsed.slug || row.slug, title: parsed.title || row.title, status: parsed.status || row.status });
         } catch {
-          return normalizeArchiveItem({
-            id: row.id,
-            category: row.category,
-            slug: row.slug,
-            title: row.title,
-            status: row.status,
-          });
+          return normalizeArchiveItem({ id: row.id, category: row.category, slug: row.slug, title: row.title, status: row.status });
         }
       })
       .filter(Boolean) as ArchiveItem[];
@@ -337,10 +375,10 @@ export async function getArchiveItems(options: { includeDrafts?: boolean; fresh?
 
   items = items
     .filter((item) => item.slug && item.nombre)
+    .filter((item) => PUBLIC_TYPE_ORDER.includes(normalizeArchiveType(item.tipo)) || normalizeArchiveType(item.tipo) === 'general')
     .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
 
   cache = { at: now, items };
-
   return includeDrafts ? items : items.filter(isPublicStatus);
 }
 
@@ -350,28 +388,17 @@ export async function getArchiveTypes(): Promise<ArchiveTypeSummary[]> {
 
   for (const item of items) {
     const type = normalizeArchiveType(item.tipo || item.category);
+    if (!PUBLIC_TYPE_ORDER.includes(type)) continue;
     counts.set(type, (counts.get(type) || 0) + 1);
   }
 
-  const known = PUBLIC_TYPE_ORDER.map((tipo) => ({
+  return PUBLIC_TYPE_ORDER.map((tipo) => ({
     tipo,
     label: prettifyArchiveType(tipo),
     singular: singularArchiveType(tipo),
     href: archiveTypeHref(tipo),
     count: counts.get(tipo) || 0,
   }));
-
-  const unknown = [...counts.keys()]
-    .filter((tipo) => !PUBLIC_TYPE_ORDER.includes(tipo))
-    .map((tipo) => ({
-      tipo,
-      label: prettifyArchiveType(tipo),
-      singular: singularArchiveType(tipo),
-      href: archiveTypeHref(tipo),
-      count: counts.get(tipo) || 0,
-    }));
-
-  return [...known, ...unknown];
 }
 
 export async function getArchiveItemsByType(tipo: string): Promise<ArchiveItem[]> {
@@ -395,29 +422,66 @@ export async function getArchiveItemBySlug(tipo: string, slug: string): Promise<
   return getArchiveItem(tipo, slug);
 }
 
+function relationKey(value: any): string {
+  return String(value?.id || value?.targetId || value?.target || value?.slug || value || '').trim();
+}
+
+function relationTargets(entry: ArchiveItem, allItems: ArchiveItem[]): ArchiveItem[] {
+  const relations = normalizeRelations(entry.relations);
+  const hidden = new Set(relations.hidden.map(relationKey).filter(Boolean));
+
+  const byId = new Map<string, ArchiveItem>();
+  const bySlug = new Map<string, ArchiveItem>();
+
+  for (const item of allItems) {
+    if (item.id) byId.set(String(item.id), item);
+    if (item.slug) bySlug.set(String(item.slug), item);
+  }
+
+  const output: ArchiveItem[] = [];
+  const seen = new Set<string>();
+
+  const pushByKey = (key: string) => {
+    if (!key || hidden.has(key) || seen.has(key)) return;
+    const item = byId.get(key) || bySlug.get(key);
+    if (!item || item.slug === entry.slug) return;
+    seen.add(key);
+    if (item.id) seen.add(String(item.id));
+    if (item.slug) seen.add(String(item.slug));
+    output.push(item);
+  };
+
+  for (const relation of relations.pinned) pushByKey(relationKey(relation));
+  for (const relation of relations.manual) pushByKey(relationKey(relation));
+
+  return output;
+}
+
 export async function getRelatedArchiveItems(entry: ArchiveItem, limit = 6): Promise<ArchiveItem[]> {
   const entryType = normalizeArchiveType(entry.tipo || entry.category);
-  const tags = String(entry.tags || '')
-    .split(/\|\||;|,/g)
-    .map((tag) => tag.trim().toLowerCase())
-    .filter(Boolean);
-
+  const tags = String(entry.tags || '').split(/\|\||;|,/g).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
   const items = await getArchiveItems();
+  const manual = relationTargets(entry, items);
+  const manualIds = new Set(manual.flatMap((item) => [String(item.id || ''), String(item.slug || '')]).filter(Boolean));
+  const hidden = new Set(normalizeRelations(entry.relations).hidden.map(relationKey).filter(Boolean));
 
-  return items
+  const auto = items
     .filter((item) => item.slug !== entry.slug)
+    .filter((item) => !manualIds.has(String(item.id || '')) && !manualIds.has(String(item.slug || '')))
+    .filter((item) => !hidden.has(String(item.id || '')) && !hidden.has(String(item.slug || '')))
     .map((item) => {
       let score = 0;
       if (normalizeArchiveType(item.tipo || item.category) === entryType) score += 4;
-      if (item.pais && entry.pais && String(item.pais).toLowerCase() === String(entry.pais).toLowerCase()) score += 2;
+      if (getArchiveCountry(item) && getArchiveCountry(entry) && normalizeBase(getArchiveCountry(item)) === normalizeBase(getArchiveCountry(entry))) score += 2;
       const itemTags = String(item.tags || '').toLowerCase();
       for (const tag of tags) if (itemTags.includes(tag)) score += 1;
       return { item, score };
     })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || String(a.item.nombre).localeCompare(String(b.item.nombre), 'es'))
-    .slice(0, limit)
     .map(({ item }) => item);
+
+  return [...manual, ...auto].slice(0, limit);
 }
 
 export async function getArchiveStats() {
@@ -432,16 +496,12 @@ export async function getArchiveStats() {
     circuits: items.filter((item) => normalizeArchiveType(item.tipo) === 'circuitos').length,
     cars: items.filter((item) => normalizeArchiveType(item.tipo) === 'coches').length,
     pilots: items.filter((item) => normalizeArchiveType(item.tipo) === 'pilotos').length,
+    glossary: items.filter((item) => normalizeArchiveType(item.tipo) === 'glosario').length,
   };
 }
 
 export async function searchArchiveItems(query = ''): Promise<ArchiveItem[]> {
-  const q = String(query || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
-
+  const q = normalizeBase(query);
   const items = await getArchiveItems();
   if (!q) return items;
 
@@ -463,12 +523,12 @@ export async function searchArchiveItems(query = ''): Promise<ArchiveItem[]> {
       item.equipos,
       item.eventos_destacados,
       item.zonas_clave,
-    ].flat().join(' ')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+      item.campeonatos,
+      item.records_destacados,
+      item.palmares,
+    ].flat().join(' ');
 
-    return haystack.includes(q);
+    return normalizeBase(haystack).includes(q);
   });
 }
 

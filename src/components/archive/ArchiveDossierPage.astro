@@ -1,8 +1,11 @@
 ---
-import '../../styles/archive-dossier.css';
 import {
   archiveItemHref,
   archiveTypeHref,
+  getArchiveCountry,
+  getArchiveImage,
+  getArchivePeriod,
+  getArchiveSummary,
   normalizeArchiveType,
   prettifyArchiveType,
   singularArchiveType,
@@ -11,16 +14,6 @@ import {
 const { entry = {}, related = [] } = Astro.props;
 
 type PairItem = { title: string; text: string; parts: string[] };
-type MediaItem = {
-  url: string;
-  alt: string;
-  source?: string;
-  sourceUrl?: string;
-  author?: string;
-  license?: string;
-  isMain?: boolean;
-  isPrimary?: boolean;
-};
 
 const value = (keys: string[], fallback = '') => {
   for (const key of keys) {
@@ -37,11 +30,7 @@ const splitList = (raw: any) => String(raw || '')
 
 const parsePairs = (raw: any): PairItem[] => splitList(raw).map((item) => {
   const parts = item.split('::').map((part) => part.trim());
-  return {
-    title: parts[0] || '',
-    text: parts.slice(1).join(' · ') || '',
-    parts,
-  };
+  return { title: parts[0] || '', text: parts.slice(1).join(' · ') || '', parts };
 }).filter((item) => item.title || item.text);
 
 const parseSources = (raw: any) => splitList(raw).map((item) => {
@@ -50,94 +39,135 @@ const parseSources = (raw: any) => splitList(raw).map((item) => {
   return { label: label || url || item, url: url || '' };
 });
 
-const normalizeLabelKey = (label: any) => String(label || '')
-  .toLowerCase()
+const cleanText = (raw: any) => String(raw || '').trim();
+
+const normalizeLabel = (raw: any) => cleanText(raw)
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '');
+  .toLowerCase();
 
-const normalizeMedia = (media: any): MediaItem[] => {
-  if (!Array.isArray(media)) return [];
-  return media
-    .map((item: any) => ({
-      url: String(item?.url || item?.localUrl || '').trim(),
-      alt: String(item?.alt || item?.title || '').trim(),
-      source: String(item?.source || '').trim(),
-      sourceUrl: String(item?.sourceUrl || item?.originalUrl || item?.url || '').trim(),
-      author: String(item?.author || '').trim(),
-      license: String(item?.license || '').trim(),
-      isMain: Boolean(item?.isMain || item?.isPrimary),
-      isPrimary: Boolean(item?.isPrimary || item?.isMain),
-    }))
-    .filter((item: MediaItem) => item.url);
+const titleCase = (raw: any) => cleanText(raw).replace(/\b\w/g, (char) => char.toUpperCase());
+
+const prettyTrackType = (raw: any) => {
+  const value = cleanText(raw);
+  const normalized = normalizeLabel(value);
+
+  if (!value) return '';
+  if (normalized === 'permanente') return 'Circuito permanente';
+  if (normalized === 'urbano') return 'Circuito urbano';
+  if (normalized === 'temporal') return 'Trazado temporal';
+  if (normalized === 'oval' || normalized === 'ovalo') return 'Óvalo';
+  if (normalized.includes('circuito') || normalized.includes('trazado')) return value;
+
+  return titleCase(value);
+};
+
+const normalizeFactLabel = (label: any, currentType: string) => {
+  const clean = cleanText(label);
+  const normalized = normalizeLabel(clean);
+
+  if (currentType === 'circuitos') {
+    if (['tipo', 'tipo circuito', 'track type'].includes(normalized)) return 'Tipo de trazado';
+    if (['ano', 'año', 'apertura', 'opened'].includes(normalized)) return 'Apertura';
+    if (['pais', 'país', 'country'].includes(normalized)) return 'País';
+    if (['longitud', 'longitud km', 'length', 'length km'].includes(normalized)) return 'Longitud';
+  }
+
+  if (currentType === 'coches') {
+    if (['tipo'].includes(normalized)) return 'Tipo de coche';
+    if (['ano', 'año'].includes(normalized)) return 'Años';
+  }
+
+  return clean;
+};
+
+const normalizeFactValue = (label: string, fact: any, currentType: string) => {
+  const value = cleanText(fact);
+  const normalizedLabel = normalizeLabel(label);
+
+  if (!value) return '';
+
+  if (currentType === 'circuitos' && normalizedLabel === 'tipo de trazado') return prettyTrackType(value);
+
+  if (currentType === 'circuitos' && normalizedLabel === 'longitud') {
+    const normalizedValue = normalizeLabel(value);
+    if (normalizedValue.includes('km')) return value;
+    return `${value} km`;
+  }
+
+  return value;
 };
 
 const title = value(['nombre', 'name', 'titulo', 'title'], 'Ficha sin título');
-const rawType = value(['tipo', 'publicTipo', 'tipo_importacion', 'collection', 'categoria_tipo', 'category', 'type'], 'archivo');
-const type = normalizeArchiveType(rawType);
+const type = normalizeArchiveType(value(['tipo', 'tipo_importacion', 'collection', 'categoria_tipo', 'category'], 'general'));
 const typeLabel = prettifyArchiveType(type);
 const typeSingular = singularArchiveType(type);
-const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha técnica e histórica del archivo.');
-const category = value(['categoria', 'categoryLabel', 'detailCategory', 'categoria_competicion'], typeSingular);
-const detailCategoryLabel = type === 'circuitos' ? 'Tipo de trazado' : 'Categoría';
-const country = value(['pais', 'país', 'country'], '');
-const region = value(['region', 'región', 'ciudad', 'ubicacion', 'ubicación'], '');
-const period = value(['periodo', 'epoca', 'época', 'years'], '');
+const subtitle = value(['subtitulo', 'descripcion_corta', 'summary', 'excerpt'], 'Ficha del archivo.');
+const rawCategory = value(['categoria', 'category', 'categoria_competicion'], '');
+const category = rawCategory || typeSingular;
+const country = getArchiveCountry(entry);
+const period = getArchivePeriod(entry);
 const discipline = value(['disciplina', 'discipline'], '');
 const tags = splitList(value(['tags', 'etiquetas'], ''));
-const explicitImageUrl = value(['imagen_url', 'coverUrl', 'image_url', 'image', 'foto_url'], '');
-const explicitImageAlt = value(['imagen_alt', 'coverAlt', 'image_alt'], title);
-const imageCredit = value(['imagen_credito', 'image_credit', 'credito_imagen'], '');
-const imageLicense = value(['imagen_licencia', 'image_license', 'licencia_imagen'], '');
-const author = value(['autor', 'author', 'redaccion'], 'Redacción del archivo');
+const media = Array.isArray(entry.media) ? entry.media : [];
+const mainMedia = media.find((item) => item?.isMain || item?.isPrimary) || media[0];
+const imageUrl = getArchiveImage(entry);
+const imageAlt = value(['imagen_alt', 'image_alt', 'coverAlt'], title);
+const imageCredit = value(['imagen_credito', 'image_credit', 'credito_imagen'], mainMedia?.source || '');
+const imageLicense = value(['imagen_licencia', 'image_license', 'licencia_imagen'], mainMedia?.license || '');
+const author = value(['autor', 'author'], 'Redacción del archivo');
 const license = value(['licencia', 'license'], 'Texto editorial propio con fuentes indicadas.');
 const lastReview = value(['ultima_revision', 'última_revisión', 'last_review'], '');
-const identificationNote = value(['nota_identificacion', 'nota_de_identificacion', 'identification_note', 'nota_revision'], '');
+const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
 
-const entryMedia = normalizeMedia(entry.media);
-const fallbackMedia = explicitImageUrl
-  ? [{ url: explicitImageUrl, alt: explicitImageAlt, source: imageCredit, license: imageLicense, isMain: true, isPrimary: true }]
+const factsFromAdmin = Array.isArray(entry.facts)
+  ? entry.facts
+      .map((fact) => {
+        const label = normalizeFactLabel(fact?.label || '', type);
+        const factValue = normalizeFactValue(label, fact?.value || '', type);
+        return [label, factValue] as [string, string];
+      })
+      .filter(([label, fact]) => label && fact)
   : [];
-const mediaItems = entryMedia.length ? entryMedia : fallbackMedia;
-const heroMedia = mediaItems.find((item) => item.isMain || item.isPrimary) || mediaItems[0] || null;
-const imageUrl = heroMedia?.url || explicitImageUrl;
-const imageAlt = heroMedia?.alt || explicitImageAlt || title;
-const hasImage = Boolean(imageUrl);
 
 const commonSections = [
   ['Introducción', value(['introduccion', 'descripcion_larga', 'description_long', 'body'])],
   ['Contexto histórico', value(['contexto_historico', 'historia', 'historical_context'])],
   ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
-  ['Nota de identificación', identificationNote],
+  ['Nota de identificación', value(['nota_identificacion', 'identificacion', 'identification_note'])],
 ].filter(([, text]) => text);
+
+const trackType = prettyTrackType(value(['tipo_trazado', 'tipo_circuito', 'track_type']));
+const lengthValue = value(['longitud_km', 'length_km'])
+  ? `${value(['longitud_km', 'length_km'])}${normalizeLabel(value(['longitud_km', 'length_km'])).includes('km') ? '' : ' km'}`
+  : value(['longitud', 'length']);
 
 const factsByType: Record<string, [string, string][]> = {
   circuitos: [
+    ['Tipo de ficha', typeSingular],
+    ['Tipo de trazado', trackType],
+    ['País', country],
     ['Ubicación', value(['ubicacion', 'ubicación', 'region'])],
-    ['Longitud', value(['longitud_km', 'length_km']) ? `${value(['longitud_km', 'length_km'])} km` : ''],
+    ['Longitud', lengthValue],
     ['Curvas', value(['curvas', 'corners'])],
     ['Sentido', value(['sentido', 'direction'])],
     ['Recta principal', value(['recta_principal_km', 'main_straight_km']) ? `${value(['recta_principal_km', 'main_straight_km'])} km` : value(['recta_principal'])],
-    ['Apertura', value(['fecha_apertura', 'apertura', 'opened'])],
-    ['Diseño', value(['diseniador', 'diseñador', 'designer'])],
-    ['Propietario', value(['propietario', 'owner'])],
-    ['Tipo de trazado', value(['tipo_trazado', 'tipo_circuito', 'track_type'], category)],
-    ['País', country],
+    ['Apertura', value(['fecha_apertura', 'apertura', 'opened', 'ano', 'año'])],
   ],
   coches: [
+    ['Tipo de ficha', typeSingular],
     ['Fabricante', value(['fabricante', 'manufacturer'])],
     ['Modelo base', value(['modelo_base', 'base_model'])],
     ['Constructor', value(['constructor', 'built_by'])],
-    ['Categoría', value(['categoria_competicion', 'categoria', 'categoryLabel'], category)],
+    ['Categoría', value(['categoria_competicion', 'categoria', 'category'])],
     ['Años', value(['anos_actividad', 'años_actividad', 'periodo'])],
     ['Motor', value(['motor', 'engine'])],
-    ['Cilindrada', value(['cilindrada', 'displacement'])],
     ['Potencia', value(['potencia', 'power'])],
     ['Peso', value(['peso', 'weight'])],
     ['Tracción', value(['traccion', 'tracción', 'drivetrain'])],
   ],
   pilotos: [
+    ['Tipo de ficha', typeSingular],
     ['Nombre completo', value(['nombre_completo', 'full_name'], title)],
     ['Nacimiento', value(['fecha_nacimiento', 'birth_date'])],
     ['Lugar', value(['lugar_nacimiento', 'birth_place'])],
@@ -146,74 +176,93 @@ const factsByType: Record<string, [string, string][]> = {
     ['Disciplinas', value(['disciplinas', 'disciplina'])],
     ['Equipos', value(['equipos', 'teams'])],
     ['Títulos', value(['titulos', 'títulos', 'titles'])],
-    ['Victorias', value(['victorias', 'wins'])],
-    ['Podios', value(['podios', 'podiums'])],
+  ],
+  glosario: [
+    ['Tipo de ficha', typeSingular],
+    ['Área', value(['area', 'área', 'disciplina', 'category'])],
+    ['Uso', value(['uso', 'aplicacion', 'aplicación'])],
+    ['Relacionado con', value(['relacionado_con', 'related_to'])],
   ],
 };
 
 const fallbackFacts = [
+  ['Tipo de ficha', typeSingular],
   ['Categoría', category],
   ['País', country],
-  ['Región', region],
   ['Periodo', period],
   ['Disciplina', discipline],
 ];
 
-const baseQuickFacts = (factsByType[type] || fallbackFacts).filter(([, v]) => v);
-const usedFactKeys = new Set(baseQuickFacts.map(([label]) => normalizeLabelKey(label)));
-const extraFacts = Array.isArray(entry.facts)
-  ? entry.facts
-      .map((fact: any) => [String(fact?.label || fact?.title || '').trim(), String(fact?.value || fact?.text || '').trim()] as [string, string])
-      .filter(([label, fact]) => label && fact && !usedFactKeys.has(normalizeLabelKey(label)))
-      .slice(0, Math.max(0, 10 - baseQuickFacts.length))
-  : [];
-const quickFacts = [...baseQuickFacts, ...extraFacts];
+const mergeFacts = (baseFacts: [string, string][], extraFacts: [string, string][]) => {
+  const map = new Map<string, [string, string]>();
+
+  for (const [rawLabel, rawFact] of [...baseFacts, ...extraFacts]) {
+    const label = normalizeFactLabel(rawLabel, type);
+    const fact = normalizeFactValue(label, rawFact, type);
+    const key = normalizeLabel(label);
+
+    if (!label || !fact) continue;
+
+    const previous = map.get(key);
+    if (!previous || fact.length > previous[1].length || previous[1] === typeSingular) {
+      map.set(key, [label, fact]);
+    }
+  }
+
+  return [...map.values()].slice(0, 12);
+};
+
+const quickFacts = mergeFacts(factsByType[type] || fallbackFacts, factsFromAdmin);
 
 const typeSections: Record<string, { title: string; text?: string; items?: PairItem[]; variant?: string }[]> = {
   circuitos: [
     { title: 'Características del trazado', text: value(['caracteristicas_trazado', 'caracteristicas_conduccion', 'como_se_conduce']) },
     { title: 'Zonas clave', items: parsePairs(value(['zonas_clave', 'puntos_clave', 'key_zones'])) },
     { title: 'Eventos destacados', items: parsePairs(value(['eventos_destacados', 'eventos', 'major_events'])) },
-    { title: 'Récords y referencias oficiales', items: parsePairs(value(['records_destacados', 'records', 'referencias_tiempos'])) },
+    { title: 'Récords y referencias', items: parsePairs(value(['records_destacados', 'records', 'referencias_tiempos'])) },
     { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
   ],
   coches: [
     { title: 'Ficha técnica', items: parsePairs(value(['ficha_tecnica', 'caracteristicas_tecnicas'])) },
     { title: 'Desarrollo y versión de competición', text: value(['desarrollo', 'version_competicion', 'caracteristicas_tecnicas']) },
     { title: 'Historial deportivo', text: value(['historial_competicion', 'competition_history']) },
-    { title: 'Campeonatos y equipos', items: parsePairs(value(['campeonatos', 'equipos_destacados', 'equipos'])) },
-    { title: 'Victorias o resultados destacados', items: parsePairs(value(['victorias_destacadas', 'resultados_destacados'])) },
+    { title: 'Campeonatos, equipos y resultados', items: parsePairs(value(['campeonatos', 'equipos_destacados', 'equipos', 'victorias_destacadas', 'resultados_destacados'])) },
     { title: 'Variantes', items: parsePairs(value(['variantes', 'versions'])) },
     { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
   ],
   pilotos: [
     { title: 'Biografía', text: value(['biografia', 'biografía', 'trayectoria']) },
     { title: 'Trayectoria', items: parsePairs(value(['hitos_trayectoria', 'momentos_clave'])) },
-    { title: 'Palmarés', items: parsePairs(value(['palmares', 'palmarés', 'titulos', 'victorias_destacadas'])) },
+    { title: 'Palmarés y resultados', items: parsePairs(value(['palmares', 'palmarés', 'titulos', 'victorias_destacadas', 'records_destacados'])) },
     { title: 'Estilo de pilotaje', text: value(['estilo_conduccion', 'estilo_pilotaje']) },
     { title: 'Coches y circuitos asociados', items: parsePairs(value(['coches_asociados', 'circuitos_asociados'])) },
     { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])) },
   ],
+  glosario: [
+    { title: 'Definición', text: value(['definicion', 'definición', 'descripcion_larga', 'body']) },
+    { title: 'Aplicación práctica', text: value(['aplicacion_practica', 'uso', 'aplicacion']) },
+    { title: 'Ejemplos', items: parsePairs(value(['ejemplos', 'examples'])) },
+    { title: 'Conceptos relacionados', items: parsePairs(value(['relacionados', 'related'])) },
+  ],
 };
 
-const sections = (typeSections[type] || [])
-  .filter((section) => section.text || (section.items && section.items.length));
-
-const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
-const mediaCredits = mediaItems.filter((item) => item.source || item.author || item.license || item.sourceUrl);
+const sections = (typeSections[type] || []).filter((section) => section.text || (section.items && section.items.length));
+const gallery = media.filter((item) => item?.url || item?.localUrl);
+const hasImage = Boolean(imageUrl);
+const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' · ');
 ---
 
 <article class={`gc-archive-dossier gc-archive-dossier--${type}`}>
   <header class="gc-archive-dossier__hero">
     <div class="gc-archive-dossier__hero-main">
-      <p class="gc-archive-dossier__breadcrumb"><a href="/archivo/">Archivo</a> / <a href={archiveTypeHref(type)}>{typeLabel}</a> / <strong>{title}</strong></p>
-      <span class="gc-archive-dossier__kicker">Archivo · {typeLabel}</span>
+      <p class="gc-archive-dossier__breadcrumb">
+        <a href="/archivo/">Archivo</a> / <a href={archiveTypeHref(type)}>{typeLabel}</a> / <strong>{title}</strong>
+      </p>
+      <span class="gc-archive-dossier__kicker">{typeSingular}</span>
       <h1>{title}</h1>
       <p class="gc-archive-dossier__lead">{subtitle}</p>
       <div class="gc-archive-dossier__tags">
-        {[category, country, period, discipline, ...tags].filter(Boolean).slice(0, 8).map((tag) => (
-          <span>{tag}</span>
-        ))}
+        {[category !== typeSingular ? category : '', country, period, discipline, ...tags].filter(Boolean).slice(0, 8).map((tag) => <span>{tag}</span>)}
       </div>
     </div>
 
@@ -221,9 +270,7 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
       {hasImage ? (
         <figure>
           <img src={imageUrl} alt={imageAlt} loading="eager" />
-          {(heroMedia?.source || heroMedia?.author || heroMedia?.license || imageCredit || imageLicense) && (
-            <figcaption>{[heroMedia?.source || imageCredit, heroMedia?.author, heroMedia?.license || imageLicense].filter(Boolean).join(' · ')}</figcaption>
-          )}
+          {(imageCredit || imageLicense) && <figcaption>{imageCredit}{imageCredit && imageLicense ? ' · ' : ''}{imageLicense}</figcaption>}
         </figure>
       ) : (
         <div class="gc-archive-dossier__media-empty">
@@ -236,12 +283,31 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
 
   {quickFacts.length > 0 && (
     <section class="gc-archive-dossier__quickfacts" aria-label="Datos rápidos">
-      {quickFacts.slice(0, 10).map(([label, fact]) => (
+      {quickFacts.map(([label, fact]) => (
         <div>
           <span>{label}</span>
           <strong>{fact}</strong>
         </div>
       ))}
+    </section>
+  )}
+
+  {gallery.length > 1 && (
+    <section class="gc-archive-dossier__panel gc-archive-dossier__gallery">
+      <div class="gc-archive-dossier__section-head">
+        <span>Material visual</span>
+        <h2>Galería</h2>
+      </div>
+      <div>
+        {gallery.map((image) => (
+          <figure>
+            <img src={image.url || image.localUrl} alt={image.alt || title} loading="lazy" />
+            {(image.source || image.author || image.license) && (
+              <figcaption>{[image.source, image.author, image.license].filter(Boolean).join(' · ')}</figcaption>
+            )}
+          </figure>
+        ))}
+      </div>
     </section>
   )}
 
@@ -258,29 +324,10 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
         </section>
       )}
 
-      {mediaItems.length > 1 && (
-        <section class="gc-archive-dossier__panel gc-archive-dossier__gallery-panel">
-          <div class="gc-archive-dossier__section-head">
-            <span>Material visual</span>
-            <h2>Galería</h2>
-          </div>
-          <div class="gc-archive-dossier__gallery">
-            {mediaItems.map((media, index) => (
-              <figure>
-                <img src={media.url} alt={media.alt || `${title} · imagen ${index + 1}`} loading="lazy" />
-                {(media.alt || media.source || media.author || media.license) && (
-                  <figcaption>{[media.alt, media.source, media.author, media.license].filter(Boolean).join(' · ')}</figcaption>
-                )}
-              </figure>
-            ))}
-          </div>
-        </section>
-      )}
-
       {sections.map((section) => (
         <section class="gc-archive-dossier__panel">
           <div class="gc-archive-dossier__section-head">
-            <span>{typeLabel}</span>
+            <span>{typeSingular}</span>
             <h2>{section.title}</h2>
           </div>
           {section.text && <p>{section.text}</p>}
@@ -312,12 +359,12 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
       <section class="gc-archive-dossier__side-panel">
         <span class="gc-archive-dossier__side-kicker">Ficha</span>
         <h2>{typeSingular}</h2>
-        <p><strong>{detailCategoryLabel}:</strong> {category}</p>
-        {(country || region || period) && (
+        <p>{sidebarSubtitle || category}</p>
+        {(country || period || discipline) && (
           <ul class="gc-archive-dossier__meta-list">
-            {country && <li><strong>País</strong><span>{country}</span></li>}
-            {region && <li><strong>Zona</strong><span>{region}</span></li>}
+            {country && <li><strong>Origen</strong><span>{country}</span></li>}
             {period && <li><strong>Periodo</strong><span>{period}</span></li>}
+            {discipline && <li><strong>Disciplina</strong><span>{discipline}</span></li>}
           </ul>
         )}
       </section>
@@ -330,7 +377,7 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
             {related.map((item) => (
               <a href={archiveItemHref(item)}>
                 <strong>{item.nombre || item.title}</strong>
-                <span>{prettifyArchiveType(item.tipo || item.publicTipo || item.category)}</span>
+                <span>{prettifyArchiveType(item.tipo || item.category)}</span>
               </a>
             ))}
           </div>
@@ -351,55 +398,414 @@ const mediaCredits = mediaItems.filter((item) => item.source || item.author || i
           </ul>
         )}
       </section>
-
-      {mediaCredits.length > 0 && (
-        <section class="gc-archive-dossier__side-panel gc-archive-dossier__sources">
-          <span class="gc-archive-dossier__side-kicker">Imágenes</span>
-          <h2>Créditos visuales</h2>
-          <ul>
-            {mediaCredits.map((media, index) => (
-              <li>
-                {media.sourceUrl ? (
-                  <a href={media.sourceUrl} target="_blank" rel="noreferrer">{media.source || media.alt || `Imagen ${index + 1}`}</a>
-                ) : (
-                  media.source || media.alt || `Imagen ${index + 1}`
-                )}
-                {[media.author, media.license].filter(Boolean).length ? ` · ${[media.author, media.license].filter(Boolean).join(' · ')}` : ''}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </aside>
   </div>
-</article>
 
-<style is:global>
-  .gc-archive-dossier__gallery{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px;
-  }
-  .gc-archive-dossier__gallery figure{
-    margin:0;
-    border:1px solid rgba(255,255,255,.075);
-    border-radius:18px;
-    background:rgba(0,0,0,.14);
-    overflow:hidden;
-  }
-  .gc-archive-dossier__gallery img{
-    display:block;
-    width:100%;
-    aspect-ratio:16/10;
-    object-fit:cover;
-  }
-  .gc-archive-dossier__gallery figcaption{
-    padding:10px 12px;
-    color:var(--gc-archive-muted, #7f9184);
-    font-size:.78rem;
-    line-height:1.42;
-  }
-  @media(max-width:720px){
-    .gc-archive-dossier__gallery{grid-template-columns:1fr;}
-  }
-</style>
+  <style is:global>
+    .gc-archive-dossier{
+      --archive-line:rgba(202,255,188,.13);
+      --archive-accent:var(--accent,#9cff3f);
+      width:min(100%,1380px);
+      margin:0 auto;
+      padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(70px,8vw,118px);
+      color:var(--text,#f2f7ef);
+    }
+
+    .gc-archive-dossier *,
+    .gc-archive-dossier *::before,
+    .gc-archive-dossier *::after{box-sizing:border-box}
+
+    .gc-archive-dossier a{color:inherit}
+
+    .gc-archive-dossier__hero{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(330px,.44fr);
+      gap:clamp(18px,3vw,36px);
+      align-items:stretch;
+      min-height:clamp(520px,68vh,720px);
+      padding:clamp(22px,4vw,46px);
+      border:1px solid var(--archive-line);
+      border-radius:38px;
+      background:
+        radial-gradient(circle at 12% 4%, rgba(156,255,63,.14), transparent 36%),
+        radial-gradient(circle at 88% 12%, rgba(37,214,230,.10), transparent 35%),
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+      box-shadow:0 40px 130px rgba(0,0,0,.30);
+      overflow:hidden;
+    }
+
+    .gc-archive-dossier__hero-main{
+      display:grid;
+      align-content:center;
+    }
+
+    .gc-archive-dossier__breadcrumb{
+      display:flex;
+      flex-wrap:wrap;
+      gap:.5rem;
+      margin:0 0 1rem;
+      color:var(--muted,#7f9184);
+    }
+
+    .gc-archive-dossier__breadcrumb a{
+      text-decoration:none;
+    }
+
+    .gc-archive-dossier__kicker,
+    .gc-archive-dossier__side-kicker,
+    .gc-archive-dossier__section-head span{
+      color:var(--archive-accent);
+      font-size:.74rem;
+      font-weight:950;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-dossier h1{
+      max-width:960px;
+      margin:.35rem 0 .9rem;
+      font-size:clamp(3.8rem,8.4vw,9.4rem);
+      line-height:.79;
+      letter-spacing:-.1em;
+    }
+
+    .gc-archive-dossier__lead{
+      max-width:760px;
+      margin:0;
+      color:var(--soft,#b6c5b8);
+      font-size:clamp(1.05rem,1.45vw,1.32rem);
+      line-height:1.56;
+    }
+
+    .gc-archive-dossier__tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:22px;
+    }
+
+    .gc-archive-dossier__tags span{
+      display:inline-flex;
+      align-items:center;
+      min-height:34px;
+      padding:0 12px;
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:999px;
+      background:rgba(255,255,255,.045);
+      color:#fff;
+      font-size:.86rem;
+      font-weight:800;
+    }
+
+    .gc-archive-dossier__media-card{
+      min-width:0;
+      display:grid;
+      align-items:stretch;
+    }
+
+    .gc-archive-dossier__media-card figure,
+    .gc-archive-dossier__media-empty{
+      min-height:100%;
+      margin:0;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:30px;
+      background:rgba(0,0,0,.18);
+    }
+
+    .gc-archive-dossier__media-card img{
+      width:100%;
+      height:100%;
+      min-height:420px;
+      object-fit:cover;
+      display:block;
+    }
+
+    .gc-archive-dossier__media-card figcaption{
+      padding:12px 14px;
+      color:var(--soft,#b6c5b8);
+      font-size:.88rem;
+      line-height:1.4;
+      border-top:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.24);
+    }
+
+    .gc-archive-dossier__media-empty{
+      display:grid;
+      place-content:center;
+      gap:8px;
+      text-align:center;
+      padding:24px;
+    }
+
+    .gc-archive-dossier__media-empty span{
+      color:var(--archive-accent);
+      font-weight:950;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-dossier__media-empty small{
+      color:var(--soft,#b6c5b8);
+    }
+
+    .gc-archive-dossier__quickfacts{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:18px 0 clamp(26px,4vw,54px);
+    }
+
+    .gc-archive-dossier__quickfacts div{
+      min-height:104px;
+      padding:16px;
+      border:1px solid var(--archive-line);
+      border-radius:22px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+    }
+
+    .gc-archive-dossier__quickfacts span{
+      display:block;
+      color:var(--muted,#7f9184);
+      font-size:.72rem;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-dossier__quickfacts strong{
+      display:block;
+      margin-top:8px;
+      font-size:clamp(1.05rem,1.8vw,1.6rem);
+      line-height:1.08;
+      letter-spacing:-.035em;
+    }
+
+    .gc-archive-dossier__grid{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(280px,.34fr);
+      gap:16px;
+      align-items:start;
+    }
+
+    .gc-archive-dossier__content,
+    .gc-archive-dossier__sidebar{
+      display:grid;
+      gap:16px;
+    }
+
+    .gc-archive-dossier__sidebar{
+      position:sticky;
+      top:14px;
+    }
+
+    .gc-archive-dossier__panel,
+    .gc-archive-dossier__side-panel{
+      padding:clamp(20px,3vw,30px);
+      border:1px solid var(--archive-line);
+      border-radius:28px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
+    }
+
+    .gc-archive-dossier__text-section + .gc-archive-dossier__text-section{
+      margin-top:24px;
+      padding-top:24px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-archive-dossier__section-head{
+      margin-bottom:14px;
+    }
+
+    .gc-archive-dossier h2{
+      margin:.25rem 0 .65rem;
+      font-size:clamp(2rem,4vw,4.6rem);
+      line-height:.88;
+      letter-spacing:-.08em;
+    }
+
+    .gc-archive-dossier h3{
+      margin:0 0 .5rem;
+      font-size:1.18rem;
+      line-height:1.1;
+      letter-spacing:-.035em;
+    }
+
+    .gc-archive-dossier p{
+      color:var(--soft,#b6c5b8);
+      line-height:1.72;
+    }
+
+    .gc-archive-dossier__cards{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-archive-dossier__cards article{
+      padding:16px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-dossier__cards--zones{
+      grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+
+    .gc-archive-dossier__cards dl{
+      display:grid;
+      gap:7px;
+      margin:12px 0 0;
+    }
+
+    .gc-archive-dossier__cards dl div{
+      padding:10px;
+      border-radius:12px;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-archive-dossier__cards dt{
+      color:var(--muted,#7f9184);
+      font-size:.72rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .gc-archive-dossier__cards dd{
+      margin:4px 0 0;
+    }
+
+    .gc-archive-dossier__gallery{
+      margin:18px 0;
+    }
+
+    .gc-archive-dossier__gallery > div{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-archive-dossier__gallery figure{
+      margin:0;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-dossier__gallery img{
+      width:100%;
+      aspect-ratio:16/10;
+      object-fit:cover;
+      display:block;
+    }
+
+    .gc-archive-dossier__gallery figcaption{
+      padding:10px 12px;
+      color:var(--soft,#b6c5b8);
+      font-size:.82rem;
+      line-height:1.35;
+    }
+
+    .gc-archive-dossier__side-panel h2{
+      font-size:clamp(1.7rem,2.8vw,2.8rem);
+    }
+
+    .gc-archive-dossier__meta-list{
+      display:grid;
+      gap:8px;
+      padding:0;
+      margin:16px 0 0;
+      list-style:none;
+    }
+
+    .gc-archive-dossier__meta-list li,
+    .gc-archive-dossier__related-list a{
+      display:grid;
+      gap:4px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-archive-dossier__meta-list strong{
+      color:var(--muted,#7f9184);
+      font-size:.72rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .gc-archive-dossier__related-list{
+      display:grid;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .gc-archive-dossier__related-list a{
+      text-decoration:none;
+    }
+
+    .gc-archive-dossier__related-list span{
+      color:var(--muted,#7f9184);
+      font-size:.82rem;
+    }
+
+    .gc-archive-dossier__sources ul{
+      display:grid;
+      gap:8px;
+      padding-left:18px;
+      color:var(--soft,#b6c5b8);
+    }
+
+    @media(max-width:1080px){
+      .gc-archive-dossier__hero,
+      .gc-archive-dossier__grid{
+        grid-template-columns:1fr;
+        min-height:auto;
+      }
+
+      .gc-archive-dossier__sidebar{
+        position:static;
+      }
+
+      .gc-archive-dossier__quickfacts{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-archive-dossier__cards--zones,
+      .gc-archive-dossier__gallery > div{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-archive-dossier{
+        padding-inline:12px;
+      }
+
+      .gc-archive-dossier__hero{
+        padding:20px;
+        border-radius:26px;
+      }
+
+      .gc-archive-dossier h1{
+        font-size:clamp(3.4rem,17vw,5.8rem);
+      }
+
+      .gc-archive-dossier__media-card img{
+        min-height:260px;
+      }
+
+      .gc-archive-dossier__quickfacts,
+      .gc-archive-dossier__cards,
+      .gc-archive-dossier__cards--zones,
+      .gc-archive-dossier__gallery > div{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</article>
