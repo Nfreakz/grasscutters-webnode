@@ -1,22 +1,585 @@
 ---
 export const prerender = false;
+
 import AppLayout from '../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
-<AppLayout title="Importar Archivo Motorsport | GrassCutters">
-  <div class="gc-page gc-admin-page-clean">
-    <section class="gc-hero gc-hero--compact"><div><span class="gc-kicker">Archivo Motorsport</span><h1 class="gc-title">Importar CSV.</h1><p class="gc-subtitle">Subida web con API unificada. Prueba primero, importa después.</p></div></section>
+
+<AppLayout title="Importar Archivo | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-archive-import-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Archivo</span>
+        <h1 class="gc-title">Importar CSV.</h1>
+        <p class="gc-subtitle">
+          Importa fichas por lotes con plantillas limpias para circuitos, coches, pilotos y glosario.
+          Primero prueba, después escribe.
+        </p>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Modo seguro</span>
+          <strong>Dry-run</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Taxonomía</span><strong>4 tipos</strong></div>
+          <div class="gc-status-row"><span>Récords</span><strong>Internos</strong></div>
+          <div class="gc-status-row"><span>Campeonatos</span><strong>Internos</strong></div>
+        </div>
+      </aside>
+    </section>
+
     <AdminSubnav />
-    <section class="gc-section"><div class="gc-slab gc-import-box">
-      <label class="gc-field"><span>CSV</span><input class="gc-input" id="archivoCsvFiles" type="file" accept=".csv,text/csv" multiple /></label>
-      <div class="gc-admin-actions"><label class="gc-check"><input id="archivoDryRun" type="checkbox" checked /> Solo probar, no escribir</label><label class="gc-check"><input id="archivoPublish" type="checkbox" /> Publicar directamente</label><label class="gc-check"><input id="archivoForce" type="checkbox" /> Actualizar existentes</label></div>
-      <div class="gc-admin-actions"><button class="gc-btn gc-btn--primary" id="archivoImportBtn" type="button">Importar CSV</button><a class="gc-btn" href="/admin/archivo">Volver</a></div>
-      <p class="gc-message" id="archivoImportMsg"></p>
-    </div></section>
-    <section class="gc-section" id="archivoImportResultSection" hidden><pre class="gc-import-result" id="archivoImportResult"></pre></section>
+
+    <section class="gc-section gc-archive-import-templates">
+      <div class="gc-section-head">
+        <div>
+          <h2>Plantillas recomendadas</h2>
+          <p>
+            Descarga una plantilla según el tipo de ficha. Récords y campeonatos no son categorías:
+            van dentro de circuitos, coches o pilotos.
+          </p>
+        </div>
+      </div>
+
+      <div class="gc-archive-import-template-grid">
+        <article>
+          <span>Circuitos</span>
+          <h3>Datos de trazado</h3>
+          <p>Incluye longitud, curvas, sentido, zonas clave, eventos y récords internos.</p>
+          <button class="gc-btn gc-btn--primary" type="button" data-template-download="circuitos">Descargar CSV</button>
+        </article>
+
+        <article>
+          <span>Coches</span>
+          <h3>Ficha técnica</h3>
+          <p>Incluye fabricante, motor, potencia, peso, historial, campeonatos y resultados.</p>
+          <button class="gc-btn gc-btn--primary" type="button" data-template-download="vehiculos">Descargar CSV</button>
+        </article>
+
+        <article>
+          <span>Pilotos</span>
+          <h3>Trayectoria</h3>
+          <p>Incluye nacionalidad, periodo activo, biografía, palmarés y estilo de pilotaje.</p>
+          <button class="gc-btn gc-btn--primary" type="button" data-template-download="pilotos">Descargar CSV</button>
+        </article>
+
+        <article>
+          <span>Glosario</span>
+          <h3>Conceptos</h3>
+          <p>Incluye definición, uso práctico, ejemplos y conceptos relacionados.</p>
+          <button class="gc-btn gc-btn--primary" type="button" data-template-download="glosario">Descargar CSV</button>
+        </article>
+      </div>
+    </section>
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <h2>Subir CSV</h2>
+          <p>
+            Sube uno o varios archivos. Mantén activado “solo probar” hasta que el resumen sea correcto.
+          </p>
+        </div>
+      </div>
+
+      <div class="gc-slab gc-import-box">
+        <label class="gc-field">
+          <span>CSV</span>
+          <input class="gc-input" id="archivoCsvFiles" type="file" accept=".csv,text/csv" multiple />
+          <small>Admite varios CSV a la vez. Separador recomendado: punto y coma.</small>
+        </label>
+
+        <div class="gc-archive-import-options">
+          <label class="gc-check"><input id="archivoDryRun" type="checkbox" checked /> Solo probar, no escribir</label>
+          <label class="gc-check"><input id="archivoPublish" type="checkbox" /> Publicar directamente</label>
+          <label class="gc-check"><input id="archivoForce" type="checkbox" /> Actualizar existentes</label>
+        </div>
+
+        <div class="gc-archive-import-warning">
+          <strong>Regla actual</strong>
+          <p>
+            Si un CSV trae <code>records</code> o <code>campeonatos</code> como categoría, el backend lo convertirá en
+            <code>general</code>. Usa los campos internos <code>records_destacados</code>, <code>campeonatos</code>,
+            <code>palmares</code> o <code>eventos_destacados</code>.
+          </p>
+        </div>
+
+        <div class="gc-admin-actions">
+          <button class="gc-btn gc-btn--primary" id="archivoImportBtn" type="button">Importar CSV</button>
+          <a class="gc-btn" href="/admin/archivo">Volver</a>
+        </div>
+
+        <p class="gc-message" id="archivoImportMsg"></p>
+      </div>
+    </section>
+
+    <section class="gc-section" id="archivoImportSummarySection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <h2>Resumen</h2>
+          <p>Resultado legible de la prueba o importación.</p>
+        </div>
+      </div>
+
+      <div class="gc-archive-import-summary" id="archivoImportSummary"></div>
+    </section>
+
+    <section class="gc-section" id="archivoImportResultSection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <h2>Respuesta técnica</h2>
+          <p>JSON completo devuelto por la API.</p>
+        </div>
+      </div>
+      <pre class="gc-import-result" id="archivoImportResult"></pre>
+    </section>
   </div>
-  <style>.gc-import-box{display:grid;gap:16px}.gc-check{display:flex;gap:8px;align-items:center;color:var(--soft)}.gc-import-result{white-space:pre-wrap;word-break:break-word;padding:16px;border:1px solid var(--line);background:rgba(0,0,0,.24);color:var(--soft);max-height:520px;overflow:auto}</style>
+
+  <style is:global>
+    .gc-archive-import-page code{
+      padding:.12rem .32rem;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:7px;
+      background:rgba(0,0,0,.22);
+      color:var(--accent,#9cff3f);
+      font-size:.9em;
+    }
+
+    .gc-archive-import-templates{
+      overflow:visible;
+    }
+
+    .gc-archive-import-template-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .gc-archive-import-template-grid article{
+      display:grid;
+      align-content:start;
+      gap:10px;
+      min-height:230px;
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:
+        radial-gradient(circle at 90% 12%, rgba(156,255,63,.10), transparent 36%),
+        rgba(255,255,255,.025);
+    }
+
+    .gc-archive-import-template-grid span,
+    .gc-field small,
+    .gc-archive-import-summary-card span{
+      color:var(--dim);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.11em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-import-template-grid h3{
+      margin:0;
+      color:var(--text);
+      font-size:1.35rem;
+      line-height:1.05;
+      letter-spacing:-.04em;
+    }
+
+    .gc-archive-import-template-grid p,
+    .gc-archive-import-warning p{
+      margin:0;
+      color:var(--soft);
+      line-height:1.55;
+    }
+
+    .gc-import-box{
+      display:grid;
+      gap:16px;
+    }
+
+    .gc-field{
+      display:grid;
+      gap:7px;
+    }
+
+    .gc-field small{
+      display:block;
+      margin-top:2px;
+      line-height:1.35;
+    }
+
+    .gc-archive-import-options{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+    }
+
+    .gc-check{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      color:var(--soft);
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-archive-import-warning{
+      padding:14px;
+      border:1px solid rgba(255,194,87,.22);
+      border-radius:18px;
+      background:rgba(255,194,87,.065);
+    }
+
+    .gc-archive-import-warning strong{
+      display:block;
+      margin-bottom:6px;
+      color:#ffe0a3;
+      font-size:.75rem;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-import-summary{
+      display:grid;
+      gap:12px;
+    }
+
+    .gc-archive-import-summary-grid{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .gc-archive-import-summary-card{
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-archive-import-summary-card strong{
+      display:block;
+      margin-top:6px;
+      color:var(--text);
+      font-size:clamp(1.6rem,3vw,2.8rem);
+      line-height:1;
+      letter-spacing:-.06em;
+    }
+
+    .gc-archive-import-samples{
+      display:grid;
+      gap:8px;
+    }
+
+    .gc-archive-import-sample{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto auto auto;
+      gap:10px;
+      align-items:center;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-archive-import-sample strong{
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-import-sample span{
+      display:inline-flex;
+      align-items:center;
+      min-height:28px;
+      padding:0 9px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      color:var(--soft);
+      font-size:.78rem;
+    }
+
+    .gc-import-result{
+      white-space:pre-wrap;
+      word-break:break-word;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(0,0,0,.24);
+      color:var(--soft);
+      max-height:520px;
+      overflow:auto;
+    }
+
+    @media(max-width:1180px){
+      .gc-archive-import-template-grid,
+      .gc-archive-import-summary-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-archive-import-template-grid,
+      .gc-archive-import-summary-grid,
+      .gc-archive-import-sample{
+        grid-template-columns:1fr;
+      }
+
+      .gc-archive-import-options{
+        display:grid;
+      }
+    }
+  </style>
+
   <script is:inline>
-    (()=>{const API='/api/admin/archive/unified'; const $=(id)=>document.getElementById(id); async function readFile(file){return {name:file.name,content:await file.text()};} async function post(payload){const r=await fetch(`${API}/import-csv`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const d=await r.json().catch(()=>({})); if(!r.ok||d.ok===false) throw new Error(d.message||`HTTP ${r.status}`); return d;} $('archivoImportBtn').addEventListener('click',async()=>{const files=Array.from($('archivoCsvFiles').files||[]); if(!files.length){$('archivoImportMsg').textContent='Selecciona al menos un CSV.';return;} $('archivoImportBtn').disabled=true; $('archivoImportMsg').textContent='Leyendo CSV...'; try{const payload={files:await Promise.all(files.map(readFile)),dryRun:$('archivoDryRun').checked,publish:$('archivoPublish').checked,force:$('archivoForce').checked}; const data=await post(payload); $('archivoImportMsg').textContent=data.dryRun?`Prueba completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`:`Importación completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`; $('archivoImportResult').textContent=JSON.stringify(data,null,2); $('archivoImportResultSection').hidden=false;}catch(e){$('archivoImportMsg').textContent=e.message||'Error importando.';}finally{$('archivoImportBtn').disabled=false;}});})();
+    (() => {
+      const API = '/api/admin/archive/unified';
+      const $ = (id) => document.getElementById(id);
+
+      const templates = {
+        circuitos: {
+          filename: 'plantilla-archivo-circuitos.csv',
+          rows: [
+            {
+              archive_category: 'circuitos',
+              title: 'Autodromo Nazionale Monza',
+              slug: 'autodromo-nazionale-monza',
+              summary: 'Circuito histórico italiano conocido por su velocidad, largas rectas y fuertes frenadas.',
+              body: 'Texto editorial de introducción con contexto histórico y deportivo del trazado.',
+              pais: 'Italia',
+              ubicacion: 'Monza',
+              tipo_trazado: 'Circuito permanente',
+              longitud_km: '5.793',
+              curvas: '11',
+              sentido: 'Horario',
+              recta_principal_km: '1.12',
+              fecha_apertura: '1922',
+              zonas_clave: 'Rettifilo::Frenada muy fuerte al final de recta||Ascari::Secuencia rápida clave para el tiempo de vuelta',
+              eventos_destacados: 'Formula 1::Gran Premio de Italia||GT World Challenge::Eventos de resistencia y GT',
+              records_destacados: 'F1::Añadir récord verificado con fuente',
+              caracteristicas_conduccion: 'Trazado de baja carga aerodinámica, velocidad alta y frenadas decisivas.',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Monza_Circuit',
+              imagen_url: '',
+              imagen_alt: 'Autodromo Nazionale Monza',
+              tags: 'Italia||F1||GT||alta velocidad',
+            },
+          ],
+        },
+        vehiculos: {
+          filename: 'plantilla-archivo-coches.csv',
+          rows: [
+            {
+              archive_category: 'vehiculos',
+              title: 'BMW M3 GT2',
+              slug: 'bmw-m3-gt2',
+              summary: 'Versión de competición del BMW M3 desarrollada para carreras GT de alto nivel.',
+              body: 'Texto editorial de introducción sobre origen, desarrollo e importancia del coche.',
+              fabricante: 'BMW',
+              modelo_base: 'BMW M3 E92',
+              constructor: 'BMW Motorsport',
+              categoria_competicion: 'GT2',
+              anos_actividad: '2009-2012',
+              motor: 'V8 atmosférico',
+              potencia: 'Aproximadamente 485 hp',
+              peso: 'Aproximadamente 1245 kg',
+              traccion: 'Trasera',
+              ficha_tecnica: 'Motor::V8 atmosférico||Tracción::Trasera||Categoría::GT2',
+              historial_competicion: 'Participó en competiciones GT y pruebas de resistencia internacionales.',
+              campeonatos: 'ALMS::Participación en GT2||Le Mans::Presencia en carreras de resistencia',
+              victorias_destacadas: 'Añadir victoria::Añadir dato verificado',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/BMW_M3',
+              imagen_url: '',
+              imagen_alt: 'BMW M3 GT2',
+              tags: 'BMW||GT2||resistencia',
+            },
+          ],
+        },
+        pilotos: {
+          filename: 'plantilla-archivo-pilotos.csv',
+          rows: [
+            {
+              archive_category: 'pilotos',
+              title: 'Fernando Alonso',
+              slug: 'fernando-alonso',
+              summary: 'Piloto español bicampeón del mundo de Fórmula 1 y referente internacional del automovilismo.',
+              body: 'Texto editorial de introducción con trayectoria, etapas clave y contexto deportivo.',
+              nacionalidad: 'España',
+              fecha_nacimiento: '1981-07-29',
+              lugar_nacimiento: 'Oviedo',
+              anos_activo: '2001-presente',
+              disciplinas: 'Fórmula 1||Resistencia||IndyCar',
+              equipos: 'Renault||McLaren||Ferrari||Alpine||Aston Martin',
+              titulos: 'Fórmula 1::2005 y 2006',
+              biografia: 'Resumen biográfico revisado.',
+              trayectoria: 'Renault::Títulos mundiales||Ferrari::Lucha por campeonatos||Aston Martin::Nueva etapa competitiva',
+              palmares: 'F1::2 campeonatos mundiales||Le Mans::Victorias en resistencia',
+              estilo_pilotaje: 'Piloto completo, fuerte en ritmo de carrera, lectura estratégica y adaptación.',
+              momentos_clave: '2005::Primer título mundial||2006::Segundo título mundial',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Fernando_Alonso',
+              imagen_url: '',
+              imagen_alt: 'Fernando Alonso',
+              tags: 'España||F1||Le Mans',
+            },
+          ],
+        },
+        glosario: {
+          filename: 'plantilla-archivo-glosario.csv',
+          rows: [
+            {
+              archive_category: 'glosario',
+              title: 'Apex',
+              slug: 'apex',
+              summary: 'Punto interior de una curva que sirve como referencia para optimizar la trazada.',
+              body: 'Explicación editorial del concepto y su importancia en conducción deportiva.',
+              area: 'Técnica de pilotaje',
+              definicion: 'El apex es el punto de la curva donde el coche pasa más cerca del interior.',
+              uso: 'Sirve para entender cuándo cerrar la dirección y cuándo abrir gas.',
+              ejemplos: 'Curva lenta::Apex tardío para mejorar salida||Curva rápida::Apex más fluido para mantener velocidad',
+              relacionados: 'Trazada||Frenada||Salida de curva',
+              fuentes: 'DrivingFast::https://drivingfast.net/racing-line/',
+              imagen_url: '',
+              imagen_alt: 'Concepto de apex',
+              tags: 'pilotaje||técnica||trazada',
+            },
+          ],
+        },
+      };
+
+      function csvEscape(value) {
+        const raw = String(value ?? '');
+        if (/[;"\n\r]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
+        return raw;
+      }
+
+      function toCsv(rows) {
+        const headers = Object.keys(rows[0] || {});
+        return [
+          headers.join(';'),
+          ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(';')),
+        ].join('\n');
+      }
+
+      function downloadText(filename, content) {
+        const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      async function readFile(file) {
+        return { name: file.name, content: await file.text() };
+      }
+
+      async function post(payload) {
+        const response = await fetch(`${API}/import-csv`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function renderSummary(data) {
+        const section = $('archivoImportSummarySection');
+        const box = $('archivoImportSummary');
+
+        const samples = Array.isArray(data.samples) ? data.samples : [];
+        const sampleHtml = samples.length
+          ? `<div class="gc-archive-import-samples">
+              ${samples.map((sample) => `
+                <article class="gc-archive-import-sample">
+                  <strong>${escapeHtml(sample.title || 'Sin título')}</strong>
+                  <span>${escapeHtml(sample.category || 'general')}</span>
+                  <span>${escapeHtml(sample.status || '')}</span>
+                  <span>${escapeHtml(sample.action || '')}</span>
+                </article>
+              `).join('')}
+            </div>`
+          : '<p class="gc-message">No hay muestras para mostrar.</p>';
+
+        box.innerHTML = `
+          <div class="gc-archive-import-summary-grid">
+            <article class="gc-archive-import-summary-card"><span>Leídas</span><strong>${Number(data.readRows || 0)}</strong></article>
+            <article class="gc-archive-import-summary-card"><span>Crear</span><strong>${Number(data.created || 0)}</strong></article>
+            <article class="gc-archive-import-summary-card"><span>Actualizar</span><strong>${Number(data.updated || 0)}</strong></article>
+            <article class="gc-archive-import-summary-card"><span>Omitidas</span><strong>${Number(data.skipped || 0)}</strong></article>
+            <article class="gc-archive-import-summary-card"><span>Modo</span><strong>${data.dryRun ? 'Test' : 'Write'}</strong></article>
+          </div>
+          <div>
+            <h3>Muestras</h3>
+            ${sampleHtml}
+          </div>
+        `;
+
+        section.hidden = false;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        }[char]));
+      }
+
+      document.querySelectorAll('[data-template-download]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.getAttribute('data-template-download');
+          const template = templates[key];
+          if (!template) return;
+          downloadText(template.filename, toCsv(template.rows));
+        });
+      });
+
+      $('archivoImportBtn').addEventListener('click', async () => {
+        const files = Array.from($('archivoCsvFiles').files || []);
+
+        if (!files.length) {
+          $('archivoImportMsg').textContent = 'Selecciona al menos un CSV.';
+          return;
+        }
+
+        $('archivoImportBtn').disabled = true;
+        $('archivoImportMsg').textContent = 'Leyendo CSV...';
+
+        try {
+          const payload = {
+            files: await Promise.all(files.map(readFile)),
+            dryRun: $('archivoDryRun').checked,
+            publish: $('archivoPublish').checked,
+            force: $('archivoForce').checked,
+          };
+
+          const data = await post(payload);
+          $('archivoImportMsg').textContent = data.dryRun
+            ? `Prueba completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`
+            : `Importación completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`;
+
+          renderSummary(data);
+          $('archivoImportResult').textContent = JSON.stringify(data, null, 2);
+          $('archivoImportResultSection').hidden = false;
+        } catch (error) {
+          $('archivoImportMsg').textContent = error.message || 'Error importando.';
+        } finally {
+          $('archivoImportBtn').disabled = false;
+        }
+      });
+    })();
   </script>
 </AppLayout>
