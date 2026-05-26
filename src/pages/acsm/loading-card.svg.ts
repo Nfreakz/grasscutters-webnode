@@ -4,10 +4,6 @@ import path from 'node:path';
 export const prerender = false;
 
 const WEB_URL = 'https://grasscuttersracing.com';
-const DISCORD_URL = 'discord.gg/jA4yuuH5T';
-const WHATSAPP_URL = 'chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
-const INSTAGRAM_URL = 'instagram.com/grasscutters_ac';
-const NORMS_URL = `${WEB_URL}/normas`;
 const HOTLAPS_URL = `${WEB_URL}/hotlaps`;
 
 // ACSM Content Manager Wrapper actual del servidor. Es la fuente buena para saber el combo activo.
@@ -264,7 +260,42 @@ function topRowsForTrack(hotlaps: GenericRecord[], track: string, allowedCars: s
   return base.sort((a, b) => lapMs(a) - lapMs(b)).slice(0, 8);
 }
 
-function activeContextFromServer(serverContext: { track: string; cars: string[]; source: ActiveContext['source'] }, hotlaps: GenericRecord[]): ActiveContext {
+function carOverlapScore(comboCars: string[], serverCars: string[]): number {
+  if (!comboCars.length || !serverCars.length) return 0;
+  const comboNorms = comboCars.map(normalize).filter(Boolean);
+  const serverNorms = serverCars.map(normalize).filter(Boolean);
+  let score = 0;
+
+  for (const comboCar of comboNorms) {
+    if (serverNorms.some((serverCar) => comboCar === serverCar || comboCar.includes(serverCar) || serverCar.includes(comboCar))) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
+
+function findComboStatsForServer(combos: GenericRecord[], track: string, cars: string[]): GenericRecord | null {
+  const matches = combos
+    .filter(Boolean)
+    .filter((combo) => trackMatches(trackName(combo), track))
+    .map((combo) => {
+      const comboCars = uniqueStrings(carList(combo));
+      const overlap = carOverlapScore(comboCars, cars);
+      const laps = comboTotalLaps(combo);
+      const drivers = comboDrivers(combo);
+      const ts = dateMs(combo);
+      return {
+        combo,
+        score: overlap * 1_000_000 + laps * 1_000 + drivers * 10 + ts / 1_000_000_000,
+      };
+    });
+
+  matches.sort((a, b) => b.score - a.score);
+  return matches[0]?.combo || null;
+}
+
+function activeContextFromServer(serverContext: { track: string; cars: string[]; source: ActiveContext['source'] }, hotlaps: GenericRecord[], combos: GenericRecord[] = []): ActiveContext {
   const topRows = topRowsForTrack(hotlaps, serverContext.track, serverContext.cars);
   const trackRows = hotlaps.filter((lap) => trackMatches(trackName(lap), serverContext.track));
   const carCounts = new Map<string, number>();
@@ -277,17 +308,21 @@ function activeContextFromServer(serverContext: { track: string; cars: string[];
     drivers.add(normalize(driverName(lap)) || driverName(lap));
   }
 
+  const comboStats = findComboStatsForServer(combos, serverContext.track, serverContext.cars);
   const carsFromRows = [...carCounts.entries()].sort((a, b) => b[1] - a[1]).map(([car]) => car);
-  const cars = serverContext.cars.length ? serverContext.cars : carsFromRows;
+  const carsFromStats = comboStats ? uniqueStrings(carList(comboStats)) : [];
+  const cars = serverContext.cars.length ? serverContext.cars : (carsFromStats.length ? carsFromStats : carsFromRows);
+  const statsLaps = comboStats ? comboTotalLaps(comboStats) : 0;
+  const statsDrivers = comboStats ? comboDrivers(comboStats) : 0;
 
   return {
     track: prettyName(serverContext.track, 'Track por detectar'),
     rawTrack: serverContext.track,
     cars: uniqueStrings(cars.map((car) => prettyName(car, car))).slice(0, 5),
-    totalLaps: trackRows.length,
-    drivers: drivers.size,
+    totalLaps: statsLaps || trackRows.length,
+    drivers: statsDrivers || drivers.size,
     topRows,
-    source: serverContext.source,
+    source: comboStats ? 'combo-api' : serverContext.source,
   };
 }
 
@@ -356,7 +391,7 @@ function detectContextFromHotlaps(hotlaps: GenericRecord[]): ActiveContext | nul
 
 function resolveActiveContext(combos: GenericRecord[], hotlaps: GenericRecord[], serverContext: { track: string; cars: string[]; source: ActiveContext['source'] } | null): ActiveContext {
   if (serverContext && (serverContext.track || serverContext.cars.length)) {
-    return activeContextFromServer(serverContext, hotlaps);
+    return activeContextFromServer(serverContext, hotlaps, combos);
   }
 
   const combo = chooseActiveComboFromApi(combos);
@@ -483,17 +518,7 @@ function buildSvg(params: { context: ActiveContext; totalHotlaps: number; logoDa
 
     <rect x="18" y="796" width="384" height="116" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(161,255,95,0.12)" />
     <text x="30" y="825" fill="#9cff3f" font-size="10" font-weight="800" letter-spacing="1.8" font-family="Inter, Arial, sans-serif">COMUNIDAD</text>
-
-    <text x="30" y="850" fill="#ffffff" font-size="10" font-weight="800" font-family="Inter, Arial, sans-serif">WEB</text>
-    <text x="96" y="850" fill="#d6e3d8" font-size="9.6" font-family="Inter, Arial, sans-serif">grasscuttersracing.com</text>
-    <text x="30" y="872" fill="#ffffff" font-size="10" font-weight="800" font-family="Inter, Arial, sans-serif">HOTLAPS</text>
-    <text x="96" y="872" fill="#d6e3d8" font-size="9.6" font-family="Inter, Arial, sans-serif">/hotlaps</text>
-    <text x="30" y="894" fill="#ffffff" font-size="10" font-weight="800" font-family="Inter, Arial, sans-serif">DISCORD</text>
-    <text x="96" y="894" fill="#d6e3d8" font-size="9.6" font-family="Inter, Arial, sans-serif">discord.gg/jA4yuuH5T</text>
-    <text x="246" y="850" fill="#ffffff" font-size="10" font-weight="800" font-family="Inter, Arial, sans-serif">IG</text>
-    <text x="278" y="850" fill="#d6e3d8" font-size="9.6" font-family="Inter, Arial, sans-serif">grasscutters_ac</text>
-    <text x="246" y="872" fill="#ffffff" font-size="10" font-weight="800" font-family="Inter, Arial, sans-serif">NORMAS</text>
-    <text x="318" y="872" fill="#d6e3d8" font-size="9.6" font-family="Inter, Arial, sans-serif">/normas</text>
+    <text x="30" y="860" fill="#ffffff" font-size="12" font-weight="800" font-family="Inter, Arial, sans-serif">grasscuttersracing.com</text>
     <text x="30" y="914" fill="#97ae9f" font-size="8.2" font-family="Inter, Arial, sans-serif">${esc(truncate(footerInfo, 72))}</text>
   </svg>`;
 }
