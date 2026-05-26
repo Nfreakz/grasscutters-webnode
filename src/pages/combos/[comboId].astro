@@ -12,7 +12,11 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       <div class="gc-combo-hero-v7__main">
         <span class="gc-kicker">Combo lógico</span>
         <h1 class="gc-title" id="comboTitle">Cargando combo...</h1>
-        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente agrupando combos compatibles.</p>
+        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente del combo.</p>
+
+        <figure class="gc-combo-track-figure-v52" id="comboTrackFigure" hidden>
+          <img id="comboTrackImage" src="" alt="" loading="lazy" />
+        </figure>
 
         <div class="gc-combo-actions-v7" aria-label="Acciones del combo">
           <a class="gc-btn" href="/combos">Volver a combos</a>
@@ -24,10 +28,15 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         </div>
       </div>
 
-      <aside class="gc-combo-summary-v7" aria-label="Resumen del combo">
+      <aside class="gc-combo-summary-v7 gc-combo-summary-v53" aria-label="Resumen del combo">
         <div class="gc-combo-summary-v7__title">
-          <span>Estado</span>
+          <span>Resumen</span>
           <strong id="comboStatus">...</strong>
+        </div>
+        <div class="gc-combo-reference-v53">
+          <span>Mejor referencia</span>
+          <strong id="comboQuickBest">...</strong>
+          <small id="comboQuickBestMeta">...</small>
         </div>
         <div class="gc-combo-summary-v7__grid">
           <div><span>Vueltas</span><strong id="comboLaps">...</strong></div>
@@ -37,21 +46,37 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       </aside>
     </section>
 
-    <section class="gc-combo-overview-v7" aria-label="Resumen rápido del combo">
-      <article class="gc-combo-car-panel-v7">
+    <section class="gc-combo-garage-panel-v54" aria-label="Garaje y referencia del combo">
+      <div class="gc-combo-garage-head-v54">
         <div>
           <span class="gc-kicker">Paquete de coches</span>
           <h2 id="comboCarsTitle">...</h2>
-          <p id="comboCarsSub">Coches permitidos por los ComboIds agrupados según la regla del 75%.</p>
+          <p id="comboCarsSub">Referencia principal del combo.</p>
         </div>
-        <div class="gc-combo-car-tags" id="comboCarTags"></div>
-      </article>
+        <div class="gc-combo-car-tags gc-combo-car-tags-v54" id="comboCarTags"></div>
+      </div>
 
-      <div class="gc-combo-metrics-v7">
-        <article><span>Mejor vuelta</span><strong id="metricBest">...</strong><small id="metricBestDriver">Piloto</small></article>
-        <article><span>Vmax</span><strong id="metricSpeed">...</strong><small>Máxima registrada</small></article>
-        <article><span>Media Top 10</span><strong id="metricTop10">...</strong><small>Vueltas válidas</small></article>
-        <article><span>Última actividad</span><strong id="metricRecent">...</strong><small>stracker.db3</small></article>
+      <div class="gc-combo-garage-stats-v54">
+        <article>
+          <span>Mejor vuelta</span>
+          <strong id="metricBest">...</strong>
+          <small id="metricBestDriver">Piloto</small>
+        </article>
+        <article>
+          <span>Velocidad máxima</span>
+          <strong id="metricSpeed">...</strong>
+          <small>Máxima registrada</small>
+        </article>
+        <article>
+          <span>Media Top 10</span>
+          <strong id="metricTop10">...</strong>
+          <small>Vueltas válidas</small>
+        </article>
+        <article>
+          <span>Última actividad</span>
+          <strong id="metricRecent">...</strong>
+          <small>Última vuelta registrada</small>
+        </article>
       </div>
     </section>
 
@@ -102,7 +127,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       display:grid;
       grid-template-columns:minmax(0,1fr) minmax(280px,360px);
       gap:clamp(16px,2vw,26px);
-      align-items:stretch;
+      align-items:start;
       padding:clamp(20px,3vw,34px) 0 clamp(18px,2.4vw,26px);
       border-bottom:1px solid var(--line);
     }
@@ -119,6 +144,148 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       margin:0;
     }
 
+
+    .gc-combo-track-figure-v52{
+      margin:16px 0 0;
+      border:1px solid var(--line);
+      border-radius:20px;
+      overflow:hidden;
+      background:rgba(0,0,0,.2);
+      box-shadow:0 18px 60px rgba(0,0,0,.18);
+    }
+
+    .gc-combo-track-figure-v52[hidden]{
+      display:none;
+    }
+
+    .gc-combo-track-figure-v52 img{
+      display:block;
+      width:100%;
+      aspect-ratio:16/6;
+      object-fit:cover;
+      opacity:.95;
+      filter:saturate(1.04) contrast(1.03);
+    }
+
+    @media(min-width:981px){
+      .gc-combo-summary-v53{
+        margin-top:clamp(158px,13vw,212px);
+      }
+    }
+
+    .gc-combo-garage-panel-v54{
+      display:grid;
+      gap:18px;
+      padding:clamp(18px,2.2vw,26px);
+      border:1px solid var(--line);
+      border-top:2px solid var(--accent);
+      background:
+        radial-gradient(circle at 5% 0%,rgba(133,255,85,.085),transparent 26rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.014));
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
+    }
+
+    .gc-combo-garage-head-v54{
+      display:grid;
+      grid-template-columns:minmax(250px,.58fr) minmax(0,1.42fr);
+      gap:clamp(16px,2.2vw,28px);
+      align-items:start;
+    }
+
+    .gc-combo-garage-head-v54 h2{
+      margin:.28rem 0 .5rem;
+      color:var(--text);
+      font-size:clamp(2.1rem,4.4vw,4.7rem);
+      line-height:.9;
+      letter-spacing:-.065em;
+      max-width:520px;
+    }
+
+    .gc-combo-garage-head-v54 p{
+      margin:0;
+      max-width:560px;
+      color:var(--muted);
+      line-height:1.48;
+    }
+
+    .gc-combo-car-tags-v54{
+      justify-content:flex-end;
+      align-content:flex-start;
+      max-height:none;
+      overflow:visible;
+      padding:0;
+    }
+
+    .gc-combo-garage-stats-v54{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:0;
+      border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-combo-garage-stats-v54 article{
+      min-height:112px;
+      display:grid;
+      align-content:start;
+      gap:9px;
+      padding:15px;
+      border-right:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+    }
+
+    .gc-combo-garage-stats-v54 article:last-child{
+      border-right:0;
+    }
+
+    .gc-combo-garage-stats-v54 span{
+      color:var(--dim);
+      text-transform:uppercase;
+      letter-spacing:.105em;
+      font-size:.7rem;
+      font-weight:950;
+    }
+
+    .gc-combo-garage-stats-v54 strong{
+      display:block;
+      color:var(--text);
+      font-size:clamp(1.55rem,2.55vw,2.35rem);
+      line-height:.95;
+      letter-spacing:-.04em;
+    }
+
+    .gc-combo-garage-stats-v54 small{
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .gc-combo-package-note-v54{
+      display:grid;
+      gap:6px;
+      margin-top:10px;
+      padding-top:10px;
+      border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+    }
+
+    .gc-combo-package-note-v54 span{
+      color:var(--accent);
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+    }
+
+    .gc-combo-package-note-v54 strong{
+      color:var(--text);
+      font-size:.98rem;
+      line-height:1.28;
+    }
+
+    .gc-combo-car-panel-v7 h2{
+      font-size:clamp(2rem,4.4vw,4.6rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+    }
+
     .gc-combo-actions-v7{
       display:flex;
       flex-wrap:wrap;
@@ -133,9 +300,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     }
 
     .gc-combo-summary-v7{
-      align-self:stretch;
+      align-self:start;
       display:grid;
-      align-content:space-between;
+      align-content:start;
       gap:14px;
       padding:16px;
       border:1px solid var(--line);
@@ -256,7 +423,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     .gc-combo-metrics-v7 article{
       min-height:112px;
       display:grid;
-      align-content:space-between;
+      align-content:start;
       gap:10px;
       padding:14px;
       border:1px solid var(--line);
@@ -309,6 +476,63 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       color:var(--accent);
     }
 
+
+    .gc-combo-summary-v53{
+      align-self:start;
+      align-content:start;
+      min-height:auto;
+    }
+
+    .gc-combo-reference-v53{
+      display:grid;
+      gap:5px;
+      padding:14px;
+      border:1px solid color-mix(in srgb,var(--line) 78%,transparent);
+      background:rgba(255,255,255,.026);
+    }
+
+    .gc-combo-reference-v53 span{
+      color:var(--accent);
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      font-size:.68rem;
+      font-weight:950;
+    }
+
+    .gc-combo-reference-v53 strong{
+      color:var(--text);
+      font-size:1.08rem;
+      line-height:1.16;
+      letter-spacing:-.02em;
+    }
+
+    .gc-combo-reference-v53 small{
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .gc-combo-package-note-v53{
+      display:grid;
+      gap:6px;
+      margin-top:10px;
+      padding-top:10px;
+      border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+    }
+
+    .gc-combo-package-note-v53 span{
+      color:var(--accent);
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+    }
+
+    .gc-combo-package-note-v53 strong{
+      color:var(--text);
+      font-size:.96rem;
+      line-height:1.28;
+    }
+
     @media(max-width:1180px){
       .gc-combo-overview-v7{
         grid-template-columns:1fr;
@@ -324,22 +548,44 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         grid-template-columns:1fr;
       }
 
-      .gc-combo-car-panel-v7{
+      .gc-combo-car-panel-v7,
+      .gc-combo-garage-head-v54{
         grid-template-columns:1fr;
       }
 
-      .gc-combo-car-tags{
+      .gc-combo-car-tags,
+      .gc-combo-car-tags-v54{
         justify-content:flex-start;
       }
 
-      .gc-combo-metrics-v7{
+      .gc-combo-metrics-v7,
+      .gc-combo-garage-stats-v54{
         grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-combo-garage-stats-v54 article:nth-child(2){
+        border-right:0;
+      }
+
+      .gc-combo-garage-stats-v54 article:nth-child(1),
+      .gc-combo-garage-stats-v54 article:nth-child(2){
+        border-bottom:1px solid color-mix(in srgb,var(--line) 82%,transparent);
       }
     }
 
     @media(max-width:640px){
-      .gc-combo-metrics-v7{
+      .gc-combo-metrics-v7,
+      .gc-combo-garage-stats-v54{
         grid-template-columns:1fr;
+      }
+
+      .gc-combo-garage-stats-v54 article{
+        border-right:0;
+        border-bottom:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+      }
+
+      .gc-combo-garage-stats-v54 article:last-child{
+        border-bottom:0;
       }
 
       .gc-combo-actions-v7 .gc-btn,
@@ -354,6 +600,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     }
   </style>
 
+  <script is:inline src="/js/gc-track-images.js"></script>
   <script>
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
@@ -373,6 +620,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       laps: document.getElementById('comboLaps'),
       drivers: document.getElementById('comboDrivers'),
       cars: document.getElementById('comboCars'),
+      quickBest: document.getElementById('comboQuickBest'),
+      quickBestMeta: document.getElementById('comboQuickBestMeta'),
       carsTitle: document.getElementById('comboCarsTitle'),
       carsSub: document.getElementById('comboCarsSub'),
       carTags: document.getElementById('comboCarTags'),
@@ -384,7 +633,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       leaderboard: document.getElementById('leaderboardRows'),
       recentRows: document.getElementById('recentRows'),
       leaderboardCount: document.getElementById('comboLeaderboardCount'),
-      recentCount: document.getElementById('comboRecentCount')
+      recentCount: document.getElementById('comboRecentCount'),
+      trackFigure: document.getElementById('comboTrackFigure'),
+      trackImage: document.getElementById('comboTrackImage')
     };
 
     function pathComboId() {
@@ -404,9 +655,68 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       return id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver;
     }
 
+
+    function cleanTrackText(value) {
+      if (value === undefined || value === null) return '';
+      if (typeof value === 'string' || typeof value === 'number') {
+        const text = String(value).trim();
+        return text === '[object Object]' ? '' : text;
+      }
+      if (typeof value === 'object') {
+        return cleanTrackText(value.name || value.Name || value.trackName || value.TrackName || value.track || value.Track || value.id || value.ID || '');
+      }
+      return '';
+    }
+
+    function renderTrackImage(trackName) {
+      const clean = cleanTrackText(trackName);
+      const candidates = window.GCTrackImages?.candidates
+        ? window.GCTrackImages.candidates(clean).filter((url) => !url.includes('object_object'))
+        : [`/images/tracks/${clean.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.webp`, `/images/tracks/${clean.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.jpg`];
+
+      if (!clean || !candidates.length || !els.trackImage || !els.trackFigure) {
+        if (els.trackFigure) els.trackFigure.hidden = true;
+        return;
+      }
+
+      els.trackFigure.hidden = false;
+      els.trackImage.style.display = '';
+      els.trackImage.alt = clean;
+      els.trackImage.dataset.fallbacks = candidates.slice(1).join('|');
+      els.trackImage.dataset.fallbackIndex = '0';
+      els.trackImage.onerror = function () {
+        const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+        const index = Number(this.dataset.fallbackIndex || 0);
+        if (list[index]) {
+          this.dataset.fallbackIndex = String(index + 1);
+          this.src = list[index];
+          return;
+        }
+        this.closest('figure')?.setAttribute('hidden', '');
+        this.style.display = 'none';
+      };
+      els.trackImage.src = candidates[0];
+    }
+
+    function cleanCarName(car) {
+      if (!car) return '';
+      if (typeof car === 'string') return car;
+      return car.name || car.Name || car.code || car.Code || car.model || car.Model || '';
+    }
+
+    function bestLapCarName(summary, leaderboard) {
+      const best = summary.bestLap || {};
+      return best.carName || best.car?.name || best.car || best.carModel || best.model || leaderboard?.[0]?.carName || leaderboard?.[0]?.car?.name || '';
+    }
+
     function renderCarTags(cars) {
       if (!cars.length) return '<span class="gc-combo-car-tag">Sin coches</span>';
-      return cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(car.name || car.code || '-')}</span>`).join('');
+      return cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(cleanCarName(car) || '-')}</span>`).join('');
+    }
+
+    function carPackageCountLine(cars, summary) {
+      const count = cars.length || summary.usedCarsCount || 0;
+      return `${count} ${count === 1 ? 'coche permitido' : 'coches permitidos'}`;
     }
 
     async function load() {
@@ -428,17 +738,26 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         const leaderboard = Array.isArray(item.leaderboard) ? item.leaderboard : [];
         const recentLaps = Array.isArray(item.recentLaps) ? item.recentLaps : [];
 
-        els.title.textContent = track.name || 'Circuito';
-        els.subtitle.textContent = `${idText}. ${cars.length || summary.usedCarsCount || 0} coches · ${summary.totalLaps || 0} vueltas · datos desde stracker.db3.`;
+        const trackName = cleanTrackText(track.name || track.id || track || summary.track || item.trackName || item.trackId) || 'Circuito';
+        const fastestDriver = summary.bestLap?.driverName || summary.bestLap?.playerName || leaderboard[0]?.driverName || leaderboard[0]?.playerName || '';
+        const fastestCar = bestLapCarName(summary, leaderboard);
+        const fastestTime = summary.bestLapTime || summary.bestLap?.lapTime || leaderboard[0]?.lapTime || '--';
+
+        els.title.textContent = trackName;
+        els.subtitle.textContent = `${cars.length || summary.usedCarsCount || 0} coches - ${summary.totalLaps || 0} vueltas - mejor referencia: ${fastestDriver || 'sin piloto'}${fastestCar ? ` - ${fastestCar}` : ''} - ${fastestTime}`;
+        renderTrackImage(trackName);
+
         els.key.textContent = memberCount > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
-        els.status.textContent = memberCount > 1 ? 'Agrupado' : 'OK';
+        els.status.textContent = memberCount > 1 ? 'Agrupado' : 'Activo';
+        if (els.quickBest) els.quickBest.textContent = `${fastestDriver || 'Sin piloto'} - ${fastestTime}`;
+        if (els.quickBestMeta) els.quickBestMeta.textContent = fastestCar || 'Coche sin identificar';
 
         els.laps.textContent = fmtNumber(summary.totalLaps || 0);
         els.drivers.textContent = fmtNumber(summary.driversCount || 0);
         els.cars.textContent = fmtNumber(cars.length || summary.usedCarsCount || 0);
 
-        els.carsTitle.textContent = carSummary;
-        els.carsSub.textContent = `Circuito ${track.name || '-'} · Track ${item.trackId || '-'} · ${cars.length || 0} coches permitidos · ${memberCount} ComboId${memberCount === 1 ? '' : 's'}.`;
+        els.carsTitle.textContent = carPackageCountLine(cars, summary);
+        els.carsSub.innerHTML = `<span class="gc-combo-package-note-v54"><span>Mejor referencia</span><strong>${escapeHtml(fastestDriver || 'Sin piloto')}${fastestCar ? ` · ${escapeHtml(fastestCar)}` : ''} · ${escapeHtml(fastestTime)}</strong></span>`;
         els.carTags.innerHTML = renderCarTags(cars);
 
         els.best.textContent = summary.bestLapTime || summary.bestLap?.lapTime || '--';
@@ -458,7 +777,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           return `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
         }).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
 
-        console.info('[GC combo detail v1.7]', {
+        console.info('[GC combo detail layout v5.4]', {
           comboId: item.comboId,
           memberCount,
           cars: cars.length,
@@ -467,13 +786,13 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         });
       } catch (error) {
         els.title.textContent = 'Combo no disponible';
-        els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Revisa ComboId o stracker.db3.';
+        els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Vuelve a intentarlo en unos segundos.';
         els.status.textContent = 'Error';
         els.leaderboardCount.textContent = 'Error';
         els.recentCount.textContent = 'Error';
         els.leaderboard.innerHTML = '<tr><td colspan="8">No se pudo cargar el combo.</td></tr>';
         els.recentRows.innerHTML = '<tr><td colspan="7">No se pudo cargar actividad reciente.</td></tr>';
-        console.warn('[GC combo detail v1.7] Error', error);
+        console.warn('[GC combo detail layout v5.4] Error', error);
       }
     }
 

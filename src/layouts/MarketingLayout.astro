@@ -3,13 +3,14 @@ import '../styles/marketing.css';
 
 import '../styles/landing-final.css';
 import '../styles/auth-header-status.css';
+import '../styles/palette-unify-v7.css';
 import '../styles/ui-cleanup-v85.css';
 import ThemeSwitcher from '../components/ThemeSwitcher.astro';
 import AuthHeader from '../components/AuthHeader.astro';
 
 const {
   title = 'GrassCutters Racing',
-  description = 'Comunidad de sim racing con calendario, app Android, hotlaps reales y plataforma para pilotos.',
+  description = 'Comunidad de sim racing con calendario, app Android, hotlaps y plataforma para pilotos.',
   bodyClass = '',
   canonicalPath,
   ogImage = '/og/grasscutters-og.svg',
@@ -31,7 +32,7 @@ const hudPatreonUrl = 'https://www.patreon.com/c/neorsgarage';
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
-  { href: '/estado', label: 'CAMPEONATO', match: '/estado' },
+  { href: '/campeonato', label: 'CAMPEONATO', match: '/campeonato' },
   { href: '/calendario', label: 'CALENDARIO', match: '/calendario' },
   { href: '/archivo', label: 'ARCHIVO', match: '/archivo' },
   { href: '/app-android', label: 'APP ANDROID', match: '/app-android' },
@@ -40,7 +41,7 @@ const navItems = [
 
 const footerItems = [
   { href: '/comunidad', label: 'Comunidad' },
-  { href: '/estado', label: 'Campeonato' },
+  { href: '/campeonato', label: 'Campeonato' },
   { href: '/calendario', label: 'Calendario' },
   { href: '/archivo', label: 'Archivo' },
   { href: '/app-android', label: 'App Android' },
@@ -281,7 +282,116 @@ function isActive(match) {
           text-align:center;
         }
       }
-    </style>
+    
+      /* v6.9 footer/back-to-top cleanup */
+      .gc-public-footer,
+      .gc-public-footer--v51{
+        background:var(--gc-mk-bg,#070a08)!important;
+        border-top:1px solid rgba(255,255,255,.075)!important;
+        box-shadow:none!important;
+      }
+
+      .gc-public-footer--v51::before,
+      .gc-public-footer--v51::after{
+        display:none!important;
+        content:none!important;
+      }
+
+      /* catch existing back-to-top variants without depending on exact class name */
+      .gc-back-to-top,
+      .gc-scroll-top,
+      .gc-to-top,
+      .back-to-top,
+      .scroll-to-top,
+      .scrolltop,
+      [data-back-to-top],
+      [data-scroll-top],
+      a[href="#top"].gc-btn,
+      a[href="#contenido"].gc-btn{
+        bottom:clamp(34px,5.5vw,72px)!important;
+        right:clamp(18px,3vw,34px)!important;
+        z-index:42!important;
+      }
+
+      @media(max-width:760px){
+        .gc-back-to-top,
+        .gc-scroll-top,
+        .gc-to-top,
+        .back-to-top,
+        .scroll-to-top,
+        .scrolltop,
+        [data-back-to-top],
+        [data-scroll-top],
+        a[href="#top"].gc-btn,
+        a[href="#contenido"].gc-btn{
+          bottom:76px!important;
+        }
+      }
+
+
+      /* v7.0 public footer and scroll top refinement */
+      .gc-public-footer,
+      .gc-public-footer--v51{
+        background:var(--gc-mk-bg,#070a08)!important;
+        border-top:1px solid rgba(255,255,255,.075)!important;
+        box-shadow:none!important;
+      }
+
+      .gc-floating-scrolltop{
+        bottom:max(70px, env(safe-area-inset-bottom))!important;
+        z-index:70!important;
+      }
+
+
+      /* v7.1 footer and back-to-top final positioning */
+      .gc-public-footer,
+      .gc-public-footer--v51{
+        background:var(--gc-mk-bg,#070a08)!important;
+        border-top:1px solid rgba(255,255,255,.075)!important;
+        box-shadow:none!important;
+      }
+
+      .gc-floating-scrolltop,
+      .gc-backtop,
+      .gc-back-top,
+      .gc-back-to-top,
+      .gc-scroll-top,
+      .gc-scrolltop,
+      .gc-top-button,
+      [data-backtop],
+      [data-back-top],
+      [data-back-to-top],
+      [data-scroll-top],
+      [aria-label*="Volver"],
+      [aria-label*="volver"],
+      [title*="Volver"],
+      [title*="volver"]{
+        bottom:clamp(126px,13vh,190px)!important;
+        right:clamp(18px,3vw,34px)!important;
+        z-index:9999!important;
+      }
+
+      @media(max-width:760px){
+        .gc-floating-scrolltop,
+        .gc-backtop,
+        .gc-back-top,
+        .gc-back-to-top,
+        .gc-scroll-top,
+        .gc-scrolltop,
+        .gc-top-button,
+        [data-backtop],
+        [data-back-top],
+        [data-back-to-top],
+        [data-scroll-top],
+        [aria-label*="Volver"],
+        [aria-label*="volver"],
+        [title*="Volver"],
+        [title*="volver"]{
+          bottom:104px!important;
+        }
+      }
+
+</style>
 
     <script is:inline>
       (() => {

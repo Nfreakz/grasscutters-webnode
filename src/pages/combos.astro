@@ -9,7 +9,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         <h1 class="gc-title">Combos.</h1>
         <p class="gc-subtitle">Circuitos, paquetes de coches, actividad real y referencias rápidas para decidir dónde rodar.</p>
         <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Nombres corregidos</span>
+          <span class="gc-chip gc-chip--accent">Circuitos agrupados</span>
           <span class="gc-chip">Actividad real</span>
           <span class="gc-chip">Ficha por combo</span>
         </div>
@@ -288,6 +288,49 @@ import AppLayout from '../layouts/AppLayout.astro';
       min-height:34px;
     }
 
+
+    .gc-fastest-line-v52{
+      display:grid;
+      gap:3px;
+      margin:0;
+      padding:10px 0 8px;
+      border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+      border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+    }
+
+    .gc-fastest-line-v52 span{
+      color:var(--accent);
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-fastest-line-v52 strong{
+      color:var(--text);
+      font-size:13px;
+      line-height:1.25;
+      font-weight:850;
+    }
+
+    .gc-car-summary-line-v52{
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .gc-card-body-v42,
+    .gc-feature-body-v42{
+      position:relative;
+    }
+
+    .gc-combo-card-v42 .gc-kicker,
+    .gc-combo-feature-v42 .gc-kicker{
+      color:var(--accent);
+      letter-spacing:.09em;
+    }
+
     .gc-pill-row-v42{
       display:flex;
       flex-wrap:wrap;
@@ -418,7 +461,6 @@ import AppLayout from '../layouts/AppLayout.astro';
     }
   </style>
 
-  <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline>
     (() => {
@@ -670,6 +712,40 @@ import AppLayout from '../layouts/AppLayout.astro';
         'bestDriverName','fastestDriverName','leaderName','bestLap.driverName','bestLap.playerName','bestLap.name'
       ], ''));
 
+      const bestCarName = (combo) => cleanObjectText(pick(combo, [
+        'bestCarName',
+        'fastestCarName',
+        'bestLap.carName',
+        'bestLap.car.name',
+        'bestLap.car',
+        'bestLap.carModel',
+        'bestLap.model',
+        'carName'
+      ], ''));
+
+      const fastestSummary = (combo) => {
+        const driver = bestDriver(combo) || 'Sin piloto';
+        const car = bestCarName(combo) || carList(combo)[0] || 'Coche sin identificar';
+        const time = bestTimeText(combo) || '--';
+        return `${driver} - ${car} - ${time}`;
+      };
+
+      const carPackageLine = (combo) => {
+        const cars = carList(combo);
+        if (!cars.length) return 'Paquete de coches por confirmar';
+        const shown = cars.slice(0, 2).join(' + ');
+        const rest = cars.length > 2 ? ` + ${cars.length - 2} más` : '';
+        return `${cars.length} ${cars.length === 1 ? 'coche' : 'coches'} - ${shown}${rest}`;
+      };
+
+      const carPackageCountLine = (combo) => {
+        const cars = carList(combo);
+        const count = cars.length;
+        const laps = totalLaps(combo);
+        const drivers = driversCount(combo);
+        return `${count || 0} ${count === 1 ? 'coche permitido' : 'coches permitidos'} · ${formatNumber(laps)} vueltas · ${formatNumber(drivers)} pilotos`;
+      };
+
       const cleanPct = (combo) => totalLaps(combo) ? (validLaps(combo) / totalLaps(combo)) * 100 : 0;
       const formatNumber = (value) => new Intl.NumberFormat('es-ES').format(num(value, 0));
 
@@ -711,6 +787,7 @@ import AppLayout from '../layouts/AppLayout.astro';
               bestLapTimeMs: bestTimeMs(combo),
               bestLapTimeFormatted: bestTimeText(combo),
               bestDriverName: bestDriver(combo),
+              bestCarName: bestCarName(combo),
               cars: carList(combo),
               lastActivityIso: dateRaw(combo),
               canonicalComboId: id,
@@ -733,6 +810,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             current.bestLapTimeMs = comboBest;
             current.bestLapTimeFormatted = bestTimeText(combo);
             current.bestDriverName = bestDriver(combo);
+            current.bestCarName = bestCarName(combo);
           }
 
           if (dateMs(dateRaw(combo)) > dateMs(current.lastActivityIso)) {
@@ -782,26 +860,22 @@ import AppLayout from '../layouts/AppLayout.astro';
           return;
         }
 
-        const cars = carList(combo);
-        const primaryCars = cars.slice(0, 4);
-        const rest = Math.max(0, cars.length - primaryCars.length);
-
         target.innerHTML = `
           ${renderBanner(combo, label)}
           <div class="gc-feature-body-v42">
             <div>
               <h3>${escapeHtml(displayTrack(combo))}</h3>
-              <p class="gc-feature-meta-v42">${escapeHtml(cars.slice(0, 2).join(' + ') || 'Coches por confirmar')}${cars.length > 2 ? ` + ${cars.length - 2}` : ''}</p>
-              <div class="gc-pill-row-v42">
-                ${primaryCars.map((name) => `<span class="gc-pill-v42">${escapeHtml(name)}</span>`).join('')}
-                ${rest ? `<span class="gc-pill-v42 gc-pill-v42--muted">+${rest} más</span>` : ''}
-              </div>
+              <p class="gc-fastest-line-v52">
+                <span>Mejor referencia</span>
+                <strong>${escapeHtml(fastestSummary(combo))}</strong>
+              </p>
+              <p class="gc-car-summary-line-v52">${escapeHtml(carPackageCountLine(combo))}</p>
             </div>
             <div>
               <div class="gc-stats-row-v42">
                 <span class="gc-stat-badge-v42"><span>Vueltas</span>${escapeHtml(formatNumber(totalLaps(combo)))}</span>
                 <span class="gc-stat-badge-v42"><span>Pilotos</span>${escapeHtml(formatNumber(driversCount(combo)))}</span>
-                <span class="gc-stat-badge-v42"><span>Mejor</span>${escapeHtml(bestTimeText(combo))}</span>
+                <span class="gc-stat-badge-v42"><span>Variantes</span>${escapeHtml(String(combo.__variantCount || 1))}</span>
               </div>
               <div class="gc-stats-row-v42" style="margin-top:8px">
                 <a class="gc-btn gc-btn--primary" href="${escapeHtml(comboUrl(combo))}">Abrir ficha</a>
@@ -812,10 +886,6 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
 
       const renderCard = (combo, index) => {
-        const cars = carList(combo);
-        const primaryCars = cars.slice(0, 5);
-        const rest = Math.max(0, cars.length - primaryCars.length);
-
         return `
           <article class="gc-combo-card-v42">
             ${renderBanner(combo, `Combo ${index + 1}`)}
@@ -823,17 +893,17 @@ import AppLayout from '../layouts/AppLayout.astro';
               <div>
                 <span class="gc-kicker">Combo ${index + 1}</span>
                 <h3>${escapeHtml(displayTrack(combo))}</h3>
-                <p class="gc-card-meta-v42">${escapeHtml(formatDate(dateRaw(combo)))} · ${escapeHtml(String(combo.__variantCount || 1))} ${(combo.__variantCount || 1) === 1 ? 'variante' : 'variantes'} agrupadas</p>
-                <div class="gc-pill-row-v42">
-                  ${primaryCars.map((name) => `<span class="gc-pill-v42">${escapeHtml(name)}</span>`).join('')}
-                  ${rest ? `<span class="gc-pill-v42 gc-pill-v42--muted">+${rest} más</span>` : ''}
-                </div>
+                <p class="gc-fastest-line-v52">
+                  <span>Más rápido</span>
+                  <strong>${escapeHtml(fastestSummary(combo))}</strong>
+                </p>
+                <p class="gc-car-summary-line-v52">${escapeHtml(carPackageCountLine(combo))}</p>
               </div>
               <div>
                 <div class="gc-stats-row-v42">
                   <span class="gc-stat-badge-v42"><span>Vueltas</span>${escapeHtml(formatNumber(totalLaps(combo)))}</span>
                   <span class="gc-stat-badge-v42"><span>Pilotos</span>${escapeHtml(formatNumber(driversCount(combo)))}</span>
-                  <span class="gc-stat-badge-v42"><span>Mejor</span>${escapeHtml(bestTimeText(combo))}</span>
+                  <span class="gc-stat-badge-v42"><span>Variantes</span>${escapeHtml(String(combo.__variantCount || 1))}</span>
                 </div>
                 <div class="gc-stats-row-v42" style="margin-top:8px">
                   <a class="gc-btn gc-btn--primary" href="${escapeHtml(comboUrl(combo))}">Abrir ficha</a>
@@ -935,7 +1005,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         renderCards(rows);
         renderTable(rows);
 
-        console.info('[GC combos rebuilt fixed v4.3]', {
+        console.info('[GC combos polished cards v5.3]', {
           raw: rawCombos.length,
           grouped: groupedCombos.length,
           visible: rows.length,
@@ -958,7 +1028,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           groupedCombos = mergeCombos(rawCombos);
           draw();
         } catch (error) {
-          console.error('[GC combos rebuilt fixed v4.3] error', error);
+          console.error('[GC combos polished cards v5.3] error', error);
           els.cards.innerHTML = `<article class="gc-combo-card-v42"><div class="gc-empty-card-v42">Error cargando combos. Revisa /api/combos/stats.</div></article>`;
           els.table.innerHTML = `<tr><td colspan="7">Error cargando combos.</td></tr>`;
           [els.recent, els.laps, els.clean].forEach((node) => node.innerHTML = `<div class="gc-empty-card-v42">Sin datos.</div>`);
