@@ -137,9 +137,28 @@ function normalizeFacts(value: any) {
     .map(([label, v]) => ({ label, value: String(v ?? '').trim() }));
 }
 
+
+function cleanMediaKey(value: unknown) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function dedupeMediaEntries(media: any[]) {
+  const seen = new Set<string>();
+  return media.filter((entry: any) => {
+    const key = cleanMediaKey(entry.url || entry.localUrl || entry.originalUrl || entry.id);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function sameMediaUrl(a: unknown, b: unknown) {
+  return cleanMediaKey(a) === cleanMediaKey(b);
+}
+
 function normalizeMedia(value: any) {
   if (!Array.isArray(value)) return [];
-  return value.map((media: any) => ({
+  const normalized = value.map((media: any) => ({
     id: String(media.id || crypto.randomUUID()),
     kind: media.kind || media.type || 'image',
     type: media.type || media.kind || 'image',
@@ -155,8 +174,13 @@ function normalizeMedia(value: any) {
     locked: Boolean(media.locked),
     local: Boolean(media.local),
     createdAt: media.createdAt || nowIso(),
-    originalUrl: media.originalUrl || media.url || '',
+    originalUrl: media.originalUrl || media.url || media.localUrl || '',
+    fileName: media.fileName,
+    mime: media.mime,
+    sizeBytes: media.sizeBytes,
   })).filter((media: any) => media.url || media.localUrl);
+
+  return dedupeMediaEntries(normalized);
 }
 
 function normalizeRelations(value: any) {
@@ -883,7 +907,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   app.get('/api/admin/archive/unified/items', async (_req: Request, res: Response) => {
     try {
       const result = await storageList(rootDir);
-      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.21' });
+      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error listando Archivo.' });
     }
@@ -893,7 +917,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageFind(rootDir, String(req.params.id || ''));
       if (!result.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error cargando ficha.' });
     }
@@ -902,7 +926,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   async function save(req: Request, res: Response) {
     try {
       const result = await storageSave(rootDir, req.body || {}, req.params.id ? String(req.params.id) : undefined);
-      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error guardando ficha.' });
     }
@@ -916,7 +940,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageDelete(rootDir, String(req.params.id || ''));
       if (!result.deleted) return res.status(404).json({ ok: false, deleted: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, deleted: false, message: error?.message || 'Error borrando ficha.' });
     }
@@ -931,7 +955,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         await storageSave(rootDir, item);
         created += 1;
       }
-      return res.json({ ok: true, created, skipped, api: 'unified-v15.21' });
+      return res.json({ ok: true, created, skipped, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error creando demo.' });
     }
@@ -993,7 +1017,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         skipped,
         details,
         samples,
-        api: 'unified-v15.21',
+        api: 'unified-v15.24',
       });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error importando CSV.' });
@@ -1010,31 +1034,38 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
       if (!url) return res.status(400).json({ ok: false, message: 'Falta URL de imagen.' });
 
       const media = normalizeMedia(found.item.media);
-      if (req.body?.makePrimary !== false) media.forEach((m: any) => { m.isMain = false; m.isPrimary = false; });
+      const makePrimary = req.body?.makePrimary !== false;
+      if (makePrimary) media.forEach((m: any) => { m.isMain = false; m.isPrimary = false; });
 
-      const itemMedia = {
+      const existingMedia = media.find((m: any) => sameMediaUrl(m.url || m.localUrl || m.originalUrl, url));
+      const itemMedia = existingMedia || {
         id: crypto.randomUUID(),
         type: 'image',
         kind: 'image',
         url,
         localUrl: url,
-        alt: String(req.body?.alt || found.item.title || ''),
-        source: String(req.body?.source || 'URL externa'),
-        sourceUrl: String(req.body?.sourceUrl || url),
-        author: String(req.body?.author || ''),
-        license: String(req.body?.license || ''),
-        isMain: req.body?.makePrimary !== false,
-        isPrimary: req.body?.makePrimary !== false,
-        locked: Boolean(req.body?.locked),
-        local: false,
         createdAt: nowIso(),
-        originalUrl: url,
+        local: false,
       };
 
-      media.unshift(itemMedia);
+      Object.assign(itemMedia, {
+        url,
+        localUrl: url,
+        alt: String(req.body?.alt || itemMedia.alt || found.item.title || ''),
+        source: String(req.body?.source || itemMedia.source || 'URL externa'),
+        sourceUrl: String(req.body?.sourceUrl || itemMedia.sourceUrl || url),
+        author: String(req.body?.author || itemMedia.author || ''),
+        license: String(req.body?.license || itemMedia.license || ''),
+        isMain: makePrimary || Boolean(itemMedia.isMain),
+        isPrimary: makePrimary || Boolean(itemMedia.isPrimary),
+        locked: Boolean(req.body?.locked ?? itemMedia.locked),
+        originalUrl: url,
+      });
+
+      if (!existingMedia) media.unshift(itemMedia);
       const item = normalizeItem({ ...found.item, media }, found.item);
       await storageSave(rootDir, item, item.id);
-      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.21' });
+      return res.json({ ok: true, item, media: itemMedia, duplicateUpdated: Boolean(existingMedia), itemTitle: item.title, api: 'unified-v15.24' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error añadiendo imagen.' });
     }
@@ -1102,10 +1133,81 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         media: itemMedia,
         publicUrl,
         itemTitle: item.title,
-        api: 'unified-v15.21',
+        api: 'unified-v15.24',
       });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error subiendo imagen.' });
+    }
+  });
+
+
+  app.patch('/api/admin/archive/unified/items/:id/media/:mediaId', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id || '');
+      const mediaId = String(req.params.mediaId || '');
+      const found = await storageFind(rootDir, id);
+      if (!found.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
+
+      const media = normalizeMedia(found.item.media);
+      const target = media.find((entry: any) => String(entry.id) === mediaId);
+      if (!target) return res.status(404).json({ ok: false, message: 'Imagen no encontrada.' });
+
+      if (req.body?.makePrimary === true) {
+        media.forEach((entry: any) => { entry.isMain = false; entry.isPrimary = false; });
+        target.isMain = true;
+        target.isPrimary = true;
+      }
+
+      for (const key of ['alt', 'source', 'sourceUrl', 'author', 'license']) {
+        if (req.body?.[key] !== undefined) target[key] = String(req.body[key] || '');
+      }
+
+      if (req.body?.locked !== undefined) target.locked = Boolean(req.body.locked);
+
+      const item = normalizeItem({ ...found.item, media }, found.item);
+      await storageSave(rootDir, item, item.id);
+
+      return res.json({ ok: true, item, media: target, api: 'unified-v15.24' });
+    } catch (error: any) {
+      return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error actualizando imagen.' });
+    }
+  });
+
+  app.delete('/api/admin/archive/unified/items/:id/media/:mediaId', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id || '');
+      const mediaId = String(req.params.mediaId || '');
+      const found = await storageFind(rootDir, id);
+      if (!found.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
+
+      const media = normalizeMedia(found.item.media);
+      const target = media.find((entry: any) => String(entry.id) === mediaId);
+      if (!target) return res.status(404).json({ ok: false, message: 'Imagen no encontrada.' });
+
+      const remaining = media.filter((entry: any) => String(entry.id) !== mediaId);
+      if ((target.isMain || target.isPrimary) && remaining[0]) {
+        remaining[0].isMain = true;
+        remaining[0].isPrimary = true;
+      }
+
+      const publicUrl = String(target.localUrl || target.url || '');
+      if (target.local && publicUrl.startsWith('/uploads/archive/')) {
+        const { uploadDir } = mediaStorageConfig(rootDir);
+        const fileName = path.basename(publicUrl);
+        const filePath = path.join(uploadDir, fileName);
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch {
+          // No bloqueamos la eliminación de la referencia si el archivo físico no se puede borrar.
+        }
+      }
+
+      const item = normalizeItem({ ...found.item, media: remaining }, found.item);
+      await storageSave(rootDir, item, item.id);
+
+      return res.json({ ok: true, item, deleted: true, api: 'unified-v15.24' });
+    } catch (error: any) {
+      return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error borrando imagen.' });
     }
   });
 
@@ -1116,7 +1218,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
 
       const wikimedia = await inspectWikimediaImage(imageUrl);
       if (wikimedia) {
-        return res.json({ ok: true, metadata: wikimedia, api: 'unified-v15.21' });
+        return res.json({ ok: true, metadata: wikimedia, api: 'unified-v15.24' });
       }
 
       return res.json({
@@ -1130,7 +1232,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
           license: '',
           provider: 'generic',
         },
-        api: 'unified-v15.21',
+        api: 'unified-v15.24',
       });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'No se pudieron leer metadatos de la imagen.' });

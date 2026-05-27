@@ -36,13 +36,32 @@
     return media?.url || media?.localUrl || '/og/grasscutters-og.svg';
   }
 
-  function findInsertionTarget() {
-    return (
-      document.querySelector('#archiveMediaGrid')?.closest('.gc-section') ||
-      document.querySelector('.gc-archive-media-grid')?.closest('.gc-section') ||
-      document.querySelector('#archiveEditorContent') ||
-      document.querySelector('.gc-archive-editor')
-    );
+  function mediaKey(media) {
+    return String(media?.url || media?.localUrl || media?.originalUrl || media?.id || '')
+      .trim()
+      .replace(/\/+$/, '');
+  }
+
+  function uniqueMedia(media) {
+    const seen = new Set();
+    return (Array.isArray(media) ? media : []).filter((entry) => {
+      const key = mediaKey(entry);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function findMount() {
+    return document.querySelector('#archiveMediaGrid');
+  }
+
+  function addImageHref(item) {
+    const id = item?.id || itemIdFromPath();
+    const slug = item?.slug || '';
+    if (id) return `/admin/archivo/imagen-url?item=${encodeURIComponent(id)}`;
+    if (slug) return `/admin/archivo/imagen-url?slug=${encodeURIComponent(slug)}`;
+    return '/admin/archivo/imagen-url';
   }
 
   async function loadItem() {
@@ -52,66 +71,85 @@
   }
 
   function managerHtml(item) {
-    const media = Array.isArray(item.media) ? item.media : [];
+    const media = uniqueMedia(item.media);
+    const cover = media.find((entry) => entry.isMain || entry.isPrimary) || media[0] || null;
 
     return `
-      <section class="gc-section gc-archive-media-manager" id="gcArchiveMediaManager">
-        <div class="gc-section-head">
-          <h2>Imágenes de la ficha</h2>
-          <p>Edita créditos, marca portada o elimina imágenes asociadas.</p>
-        </div>
-
-        <div class="gc-media-manager-actions">
-          <a class="gc-btn gc-btn--primary" href="/admin/archivo/imagen-url">Añadir imagen</a>
-          <button class="gc-btn" type="button" data-refresh-media>Recargar imágenes</button>
+      <div class="gc-media-manager-compact" id="gcArchiveMediaManager">
+        <div class="gc-media-manager-head">
+          <div>
+            <strong>Imágenes</strong>
+            <p>${media.length} imagen${media.length === 1 ? '' : 'es'} asociada${media.length === 1 ? '' : 's'}${cover ? ' · portada definida' : ' · sin portada'}</p>
+          </div>
+          <div class="gc-media-manager-actions">
+            <a class="gc-btn gc-btn--primary" href="${esc(addImageHref(item))}">Añadir</a>
+            <button class="gc-btn" type="button" data-refresh-media>Recargar</button>
+          </div>
         </div>
 
         <div class="gc-media-manager-list">
-          ${media.length ? media.map((entry, index) => `
-            <article class="gc-media-item" data-media-id="${esc(entry.id)}">
-              <img src="${esc(mediaUrl(entry))}" alt="${esc(entry.alt || '')}" loading="lazy" />
-              <div class="gc-media-item__body">
-                <div class="gc-media-item__top">
-                  <strong>${entry.isMain || entry.isPrimary ? 'Portada' : `Imagen ${index + 1}`}</strong>
-                  <span>${entry.local ? 'Local' : 'Externa'}</span>
+          ${media.length ? media.map((entry, index) => {
+            const isCover = Boolean(entry.isMain || entry.isPrimary);
+            return `
+              <article class="gc-media-item ${isCover ? 'is-cover' : ''}" data-media-id="${esc(entry.id)}">
+                <div class="gc-media-thumb">
+                  <img src="${esc(mediaUrl(entry))}" alt="${esc(entry.alt || '')}" loading="lazy" />
+                  <span>${isCover ? 'Portada' : `Imagen ${index + 1}`}</span>
                 </div>
 
-                <label>
-                  <small>Alt</small>
-                  <input data-media-field="alt" value="${esc(entry.alt || '')}" />
-                </label>
+                <div class="gc-media-item__body">
+                  <div class="gc-media-item__top">
+                    <strong>${esc(entry.alt || item.title || item.nombre || 'Imagen')}</strong>
+                    <span>${entry.local ? 'Local' : 'Externa'}</span>
+                  </div>
 
-                <div class="gc-media-mini-grid">
-                  <label>
-                    <small>Fuente</small>
-                    <input data-media-field="source" value="${esc(entry.source || '')}" />
-                  </label>
-                  <label>
-                    <small>Autor</small>
-                    <input data-media-field="author" value="${esc(entry.author || '')}" />
-                  </label>
-                  <label>
-                    <small>Licencia</small>
-                    <input data-media-field="license" value="${esc(entry.license || '')}" />
-                  </label>
-                  <label>
-                    <small>URL fuente</small>
-                    <input data-media-field="sourceUrl" value="${esc(entry.sourceUrl || '')}" />
-                  </label>
-                </div>
+                  <details class="gc-media-details">
+                    <summary>Editar créditos</summary>
 
-                <div class="gc-media-actions">
-                  <button class="gc-btn" type="button" data-media-save>Guardar imagen</button>
-                  <button class="gc-btn" type="button" data-media-primary>Marcar portada</button>
-                  <button class="gc-admin-danger-button" type="button" data-media-delete>Borrar imagen</button>
+                    <label>
+                      <small>Alt</small>
+                      <input data-media-field="alt" value="${esc(entry.alt || '')}" />
+                    </label>
+
+                    <div class="gc-media-mini-grid">
+                      <label>
+                        <small>Fuente</small>
+                        <input data-media-field="source" value="${esc(entry.source || '')}" />
+                      </label>
+                      <label>
+                        <small>Autor</small>
+                        <input data-media-field="author" value="${esc(entry.author || '')}" />
+                      </label>
+                      <label>
+                        <small>Licencia</small>
+                        <input data-media-field="license" value="${esc(entry.license || '')}" />
+                      </label>
+                      <label>
+                        <small>URL fuente</small>
+                        <input data-media-field="sourceUrl" value="${esc(entry.sourceUrl || '')}" />
+                      </label>
+                    </div>
+                  </details>
+
+                  <div class="gc-media-actions">
+                    <button class="gc-btn gc-btn--small" type="button" data-media-save>Guardar</button>
+                    <button class="gc-btn gc-btn--small" type="button" data-media-primary ${isCover ? 'disabled' : ''}>${isCover ? 'Ya es portada' : 'Hacer portada'}</button>
+                    <button class="gc-admin-danger-button" type="button" data-media-delete>Borrar</button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          `).join('') : '<div class="gc-admin-empty">Esta ficha todavía no tiene imágenes. Usa “Añadir imagen”.</div>'}
+              </article>
+            `;
+          }).join('') : `
+            <div class="gc-admin-empty gc-media-empty">
+              <strong>Sin imágenes todavía.</strong>
+              <p>Añade una portada o una galería desde el gestor visual.</p>
+              <a class="gc-btn gc-btn--primary" href="${esc(addImageHref(item))}">Añadir imagen</a>
+            </div>
+          `}
         </div>
 
         <p class="gc-message" id="gcMediaManagerMsg"></p>
-      </section>
+      </div>
     `;
   }
 
@@ -131,6 +169,7 @@
         const card = button.closest('[data-media-id]');
         const mediaId = card?.dataset.mediaId;
         const msg = document.getElementById('gcMediaManagerMsg');
+
         try {
           button.disabled = true;
           msg.textContent = 'Guardando imagen...';
@@ -139,6 +178,7 @@
             body: JSON.stringify(collectMediaPayload(card)),
           });
           msg.textContent = 'Imagen guardada.';
+          await renderManager(true);
         } catch (error) {
           msg.textContent = error.message || 'No se pudo guardar.';
         } finally {
@@ -152,6 +192,7 @@
         const card = button.closest('[data-media-id]');
         const mediaId = card?.dataset.mediaId;
         const msg = document.getElementById('gcMediaManagerMsg');
+
         try {
           button.disabled = true;
           msg.textContent = 'Marcando portada...';
@@ -176,7 +217,6 @@
         const msg = document.getElementById('gcMediaManagerMsg');
 
         if (!confirm('¿Borrar esta imagen de la ficha?')) return;
-        if (!confirm('Última confirmación. Si es local, también se intentará borrar el archivo.')) return;
 
         try {
           button.disabled = true;
@@ -198,24 +238,18 @@
   async function renderManager(force = false) {
     if (!isEditor()) return;
 
-    const existing = document.getElementById('gcArchiveMediaManager');
-    if (existing && !force) return;
+    const mount = findMount();
+    if (!mount) return;
 
-    const target = findInsertionTarget();
-    if (!target) return;
+    if (mount.dataset.mediaManagerMounted === 'true' && !force) return;
 
     try {
       const item = await loadItem();
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = managerHtml(item);
-      const manager = wrapper.firstElementChild;
-
-      if (existing) existing.replaceWith(manager);
-      else target.parentElement?.insertBefore(manager, target);
-
-      bindManager(manager);
+      mount.dataset.mediaManagerMounted = 'true';
+      mount.innerHTML = managerHtml(item);
+      bindManager(mount);
     } catch (error) {
-      console.warn('[GC Archivo] No se pudo cargar gestor de imágenes:', error);
+      mount.innerHTML = `<div class="gc-admin-empty">No se pudo cargar el gestor de imágenes: ${esc(error.message || error)}</div>`;
     }
   }
 
@@ -224,7 +258,7 @@
 
     const observer = new MutationObserver(() => renderManager());
     observer.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => observer.disconnect(), 10000);
+    setTimeout(() => observer.disconnect(), 8000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

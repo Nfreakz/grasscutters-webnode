@@ -1,34 +1,89 @@
-.gc-archive-media-manager {
-  margin-top: 18px;
+.gc-media-manager-compact {
+  display: grid;
+  gap: 14px;
+}
+
+.gc-media-manager-head {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(156,255,63,.08), transparent 36%),
+    rgba(0,0,0,.15);
+}
+
+.gc-media-manager-head strong {
+  display: block;
+  font-size: 1.08rem;
+  line-height: 1.1;
+}
+
+.gc-media-manager-head p {
+  margin: 4px 0 0;
+  color: var(--soft, rgba(255,255,255,.7));
+  font-size: .9rem;
+  line-height: 1.35;
 }
 
 .gc-media-manager-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
 }
 
 .gc-media-manager-list {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .gc-media-item {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: 18px;
   background: rgba(255,255,255,.025);
 }
 
-.gc-media-item img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  background: rgba(0,0,0,.25);
+.gc-media-item.is-cover {
+  border-color: rgba(156,255,63,.28);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(156,255,63,.08), transparent 34%),
+    rgba(255,255,255,.025);
+}
+
+.gc-media-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
   border: 1px solid var(--line, rgba(255,255,255,.12));
+  background: rgba(0,0,0,.25);
+}
+
+.gc-media-thumb img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+}
+
+.gc-media-thumb span {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .gc-media-item__body {
@@ -37,24 +92,51 @@
 }
 
 .gc-media-item__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.gc-media-item__top strong {
+  line-height: 1.16;
+  overflow-wrap: anywhere;
 }
 
 .gc-media-item__top span {
   color: var(--soft, rgba(255,255,255,.7));
-  font-size: .82rem;
+  font-size: .74rem;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: .08em;
 }
 
-.gc-media-item label {
-  display: grid;
-  gap: 5px;
+.gc-media-details {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(0,0,0,.13);
+  overflow: hidden;
 }
 
+.gc-media-details summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  color: var(--soft, rgba(255,255,255,.72));
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.gc-media-details[open] summary {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.gc-media-details label {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.gc-media-details small,
 .gc-media-item small {
   color: var(--soft, rgba(255,255,255,.68));
   font-weight: 800;
@@ -62,11 +144,12 @@
   letter-spacing: .08em;
 }
 
-.gc-media-item input {
+.gc-media-details input {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: 12px;
   background: rgba(0,0,0,.24);
   color: inherit;
 }
@@ -74,26 +157,45 @@
 .gc-media-mini-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
 }
 
 .gc-media-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+}
+
+.gc-btn--small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: .78rem;
+}
+
+.gc-btn:disabled {
+  opacity: .52;
+  cursor: not-allowed;
 }
 
 .gc-admin-danger-button {
   border: 1px solid rgba(255,90,90,.45);
+  border-radius: 999px;
   background: rgba(255,90,90,.1);
   color: #ffd7d7;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-weight: 900;
   cursor: pointer;
 }
 
+.gc-media-empty {
+  display: grid;
+  gap: 8px;
+}
+
+.gc-media-empty strong {
+  display: block;
+}
+
 @media (max-width: 780px) {
-  .gc-media-item,
   .gc-media-mini-grid {
     grid-template-columns: 1fr;
   }
