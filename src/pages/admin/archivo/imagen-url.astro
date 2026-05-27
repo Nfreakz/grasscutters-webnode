@@ -129,6 +129,22 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             <input id="license" name="license" type="text" placeholder="CC BY-SA, dominio público..." />
           </label>
 
+          <label class="gc-field">
+            <span>Preset licencia</span>
+            <select id="licensePreset">
+              <option value="">No cambiar</option>
+              <option value="CC BY-SA 4.0">CC BY-SA 4.0</option>
+              <option value="CC BY 4.0">CC BY 4.0</option>
+              <option value="CC BY-SA 3.0">CC BY-SA 3.0</option>
+              <option value="CC BY 3.0">CC BY 3.0</option>
+              <option value="CC0 1.0">CC0 1.0</option>
+              <option value="Public domain">Dominio público</option>
+              <option value="Imagen propia / GrassCutters Racing">Imagen propia / GrassCutters Racing</option>
+              <option value="Uso con permiso del autor">Uso con permiso del autor</option>
+              <option value="Pendiente de verificar">Pendiente de verificar</option>
+            </select>
+          </label>
+
           <div class="gc-checks gc-field--full">
             <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Usar como portada</label>
             <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear imagen revisada</label>
@@ -138,6 +154,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             <img id="previewImg" src="" alt="" hidden />
             <span id="previewEmpty">Vista previa URL</span>
           </div>
+
+          <div class="gc-commons-meta gc-field--full" id="commonsMetaBox" hidden></div>
 
           <div class="gc-actions gc-field--full">
             <button type="submit" class="gc-button-primary">Añadir por URL</button>
@@ -197,6 +215,20 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           <label class="gc-field">
             <span>Licencia</span>
             <input id="uploadLicense" type="text" value="Imagen propia / GrassCutters Racing" />
+          </label>
+
+          <label class="gc-field">
+            <span>Preset licencia</span>
+            <select id="uploadLicensePreset">
+              <option value="">No cambiar</option>
+              <option value="Imagen propia / GrassCutters Racing" selected>Imagen propia / GrassCutters Racing</option>
+              <option value="Uso con permiso del autor">Uso con permiso del autor</option>
+              <option value="CC BY-SA 4.0">CC BY-SA 4.0</option>
+              <option value="CC BY 4.0">CC BY 4.0</option>
+              <option value="CC0 1.0">CC0 1.0</option>
+              <option value="Public domain">Dominio público</option>
+              <option value="Pendiente de verificar">Pendiente de verificar</option>
+            </select>
           </label>
 
           <div class="gc-checks gc-field--full">
@@ -564,7 +596,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
     .gc-field--full{grid-column:1/-1}
 
-    .gc-field input{
+    .gc-field input,
+    .gc-field select{
       width:100%;
       min-height:46px;
       box-sizing:border-box;
@@ -577,7 +610,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       outline:none;
     }
 
-    .gc-field input:focus{
+    .gc-field input:focus,
+    .gc-field select:focus{
       border-color:#9cff3f;
       box-shadow:0 0 0 4px rgba(156,255,63,.08);
     }
@@ -590,6 +624,74 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     }
 
     .gc-field input::placeholder{color:rgba(255,255,255,.42)}
+
+    .gc-field select{
+      appearance:none;
+      -webkit-appearance:none;
+      padding-right:42px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #9cff3f 50%),
+        linear-gradient(135deg, #9cff3f 50%, transparent 50%),
+        linear-gradient(to right, rgba(255,255,255,.10), rgba(255,255,255,.10));
+      background-position:
+        calc(100% - 21px) 20px,
+        calc(100% - 15px) 20px,
+        calc(100% - 40px) 10px;
+      background-size:
+        6px 6px,
+        6px 6px,
+        1px 26px;
+      background-repeat:no-repeat;
+    }
+
+    .gc-field select option{
+      background:#07110b;
+      color:#f3f7ef;
+    }
+
+    .gc-commons-meta{
+      padding:14px;
+      border:1px solid rgba(156,255,63,.18);
+      border-radius:16px;
+      background:rgba(156,255,63,.055);
+    }
+
+    .gc-commons-meta strong{
+      display:block;
+      margin-bottom:8px;
+      color:#9cff3f;
+      font-size:.76rem;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-commons-meta dl{
+      display:grid;
+      gap:7px;
+      margin:0;
+    }
+
+    .gc-commons-meta div{
+      display:grid;
+      grid-template-columns:110px 1fr;
+      gap:10px;
+      align-items:start;
+    }
+
+    .gc-commons-meta dt{
+      color:rgba(255,255,255,.54);
+      font-size:.78rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .gc-commons-meta dd{
+      margin:0;
+      color:rgba(255,255,255,.78);
+      overflow-wrap:anywhere;
+      line-height:1.35;
+    }
 
     .gc-field small{
       display:block;
@@ -779,6 +881,10 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       .gc-archive-media-page{
         padding-inline:12px;
       }
+
+      .gc-commons-meta div{
+        grid-template-columns:1fr;
+      }
     }
   </style>
 
@@ -904,6 +1010,33 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         $('previewEmpty').hidden = true;
       }
 
+      function setLicensePreset(selectId, inputId) {
+        const value = $(selectId)?.value || '';
+        if (value && $(inputId)) $(inputId).value = value;
+      }
+
+      function renderCommonsMeta(meta) {
+        const box = $('commonsMetaBox');
+        if (!box) return;
+
+        if (!meta || !meta.provider || meta.provider !== 'wikimedia') {
+          box.hidden = true;
+          box.innerHTML = '';
+          return;
+        }
+
+        box.hidden = false;
+        box.innerHTML = `
+          <strong>Metadata Wikimedia Commons detectada</strong>
+          <dl>
+            <div><dt>Archivo</dt><dd>${esc(meta.fileTitle || '')}</dd></div>
+            <div><dt>Autor</dt><dd>${esc(meta.author || 'No indicado')}</dd></div>
+            <div><dt>Licencia</dt><dd>${esc(meta.license || 'No indicada')}</dd></div>
+            <div><dt>Fuente</dt><dd>${esc(meta.sourceUrl || meta.descriptionUrl || '')}</dd></div>
+          </dl>
+        `;
+      }
+
       async function json(url, opt = {}) {
         const response = await fetch(url, {
           credentials: 'include',
@@ -1010,9 +1143,13 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         $('itemSearch').focus();
       });
 
+      $('licensePreset')?.addEventListener('change', () => setLicensePreset('licensePreset', 'license'));
+      $('uploadLicensePreset')?.addEventListener('change', () => setLicensePreset('uploadLicensePreset', 'uploadLicense'));
+
       $('imageUrl').addEventListener('input', () => {
         const url = $('imageUrl').value.trim();
         if (url.startsWith('http')) previewUrl(url);
+        renderCommonsMeta(null);
       });
 
       $('inspectBtn').addEventListener('click', async () => {
@@ -1027,11 +1164,19 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           });
           const meta = data.metadata || {};
           $('source').value = meta.source || $('source').value;
-          $('sourceUrl').value = meta.sourceUrl || url;
+          $('sourceUrl').value = meta.sourceUrl || meta.descriptionUrl || url;
           $('author').value = meta.author || $('author').value;
-          $('license').value = meta.license || $('license').value;
-          if (!$('alt').value && selectedItem) $('alt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
-          showStatus('ok', 'Metadatos leídos. Revisa autor y licencia antes de guardar.');
+          $('license').value = meta.license || meta.licenseShortName || $('license').value;
+          if (meta.imageUrl) {
+            $('imageUrl').value = meta.imageUrl;
+            previewUrl(meta.imageUrl);
+          }
+          if (!$('alt').value) {
+            $('alt').value = meta.alt || meta.description || (selectedItem ? `Imagen de ${selectedItem.title || selectedItem.nombre}` : '');
+          }
+          renderCommonsMeta(meta);
+          const origin = meta.provider === 'wikimedia' ? 'Wikimedia Commons' : 'URL';
+          showStatus('ok', `Metadatos leídos desde ${origin}. Revisa autor y licencia antes de guardar.`);
         } catch (error) {
           showStatus('error', error.message || 'No se pudieron leer datos.');
         }

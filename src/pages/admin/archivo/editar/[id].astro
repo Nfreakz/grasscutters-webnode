@@ -216,8 +216,9 @@ const itemId = Astro.params.id;
               </div>
             </div>
             <div class="gc-archive-editor-actions">
-              <a class="gc-btn" href="/admin/archivo/imagen-url">Añadir imagen</a>
+              <a class="gc-btn gc-btn--primary" id="archiveAddImageLink" href="/admin/archivo/imagen-url" aria-disabled="true">Añadir imagen a esta ficha</a>
             </div>
+            <p class="gc-editor-media-hint">Abre el gestor de imágenes con esta ficha ya seleccionada. No tendrás que buscarla otra vez.</p>
           </section>
 
 
@@ -431,6 +432,7 @@ const itemId = Astro.params.id;
         $('archiveEditorState').textContent = currentItem.status || 'OK';
         renderMedia(currentItem);
         updatePreviewLink();
+        updateImageLink();
         renderCompletenessChecklist();
       }
 
@@ -466,6 +468,32 @@ const itemId = Astro.params.id;
         const category = publicType($('fieldCategory').value);
         const slug = slugify($('fieldSlug').value || $('fieldTitle').value);
         $('publicPreviewLink').href = slug ? `/archivo/${category}/${slug}/` : '/archivo/';
+      }
+
+      function updateImageLink() {
+        const link = $('archiveAddImageLink');
+        if (!link) return;
+
+        const id = currentItem?.id || itemId || '';
+        const slug = slugify($('fieldSlug')?.value || currentItem?.slug || $('fieldTitle')?.value || '');
+
+        if (id) {
+          link.href = `/admin/archivo/imagen-url?item=${encodeURIComponent(id)}`;
+          link.removeAttribute('aria-disabled');
+          link.classList.remove('is-disabled');
+          return;
+        }
+
+        if (slug) {
+          link.href = `/admin/archivo/imagen-url?slug=${encodeURIComponent(slug)}`;
+          link.removeAttribute('aria-disabled');
+          link.classList.remove('is-disabled');
+          return;
+        }
+
+        link.href = '/admin/archivo/imagen-url';
+        link.setAttribute('aria-disabled', 'true');
+        link.classList.add('is-disabled');
       }
 
       function collectPayload() {
@@ -515,7 +543,7 @@ const itemId = Astro.params.id;
         field.addEventListener('change', renderCompletenessChecklist);
       });
 
-      $('fieldCategory').addEventListener('change', () => { showGroup($('fieldCategory').value); updatePreviewLink(); });
+      $('fieldCategory').addEventListener('change', () => { showGroup($('fieldCategory').value); updatePreviewLink(); updateImageLink(); });
       tabs.forEach((tab) => tab.addEventListener('click', () => {
         const target = tab.dataset.editorTab;
         if (target === 'vehiculos') $('fieldCategory').value = 'vehiculos';
@@ -523,13 +551,15 @@ const itemId = Astro.params.id;
         else if (target === 'pilotos') $('fieldCategory').value = 'pilotos';
         showGroup($('fieldCategory').value);
         updatePreviewLink();
+        updateImageLink();
       }));
 
       $('fieldTitle').addEventListener('input', () => {
         if (!titleTouched) $('fieldSlug').value = slugify($('fieldTitle').value);
         updatePreviewLink();
+        updateImageLink();
       });
-      $('fieldSlug').addEventListener('input', () => { titleTouched = true; updatePreviewLink(); });
+      $('fieldSlug').addEventListener('input', () => { titleTouched = true; updatePreviewLink(); updateImageLink(); });
 
       $('archiveMainForm').addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -703,6 +733,20 @@ const itemId = Astro.params.id;
       font-size:.72rem;
       line-height:1.35;
       margin-top:4px;
+    }
+
+  
+    .gc-archive-editor-v153 .gc-btn.is-disabled,
+    .gc-archive-editor-v153 .gc-btn[aria-disabled="true"]{
+      opacity:.55;
+      pointer-events:none;
+    }
+
+    .gc-archive-editor-v153 .gc-editor-media-hint{
+      margin:10px 0 0;
+      color:var(--dim,rgba(255,255,255,.52));
+      font-size:.78rem;
+      line-height:1.35;
     }
 
   </style>

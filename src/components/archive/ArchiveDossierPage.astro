@@ -299,7 +299,7 @@ const navItems = [
 ].filter((item) => item.show);
 ---
 
-<article class={`gc-archive-dossier gc-archive-dossier--${type}`}>
+<article class={`gc-archive-dossier gc-archive-dossier--${type}`} data-archive-share-root data-share-title={title} data-share-text={subtitle}>
   <header class={`gc-archive-dossier__hero ${hasImage ? 'has-image' : ''}`} style={heroStyle}>
     <div class="gc-archive-dossier__hero-main">
       <p class="gc-archive-dossier__breadcrumb">
@@ -459,6 +459,29 @@ const navItems = [
           {navItems.map((item) => <a href={`#${item.id}`}>{item.label}</a>)}
         </nav>
       </section>
+
+      <section class="gc-archive-dossier__side-panel gc-archive-dossier__share-panel">
+        <span class="gc-archive-dossier__side-kicker">Compartir</span>
+        <div class="gc-archive-dossier__share-actions" aria-label="Compartir ficha">
+          <button type="button" data-share-native aria-label="Compartir ficha">
+            <span>↗</span><small>Compartir</small>
+          </button>
+          <button type="button" data-share-copy aria-label="Copiar enlace">
+            <span>⧉</span><small>Copiar</small>
+          </button>
+          <a href="#" data-share-x target="_blank" rel="noreferrer" aria-label="Compartir en X">
+            <span>𝕏</span><small>X</small>
+          </a>
+          <a href="#" data-share-whatsapp target="_blank" rel="noreferrer" aria-label="Compartir en WhatsApp">
+            <span>WA</span><small>WhatsApp</small>
+          </a>
+          <a href="#" data-share-telegram target="_blank" rel="noreferrer" aria-label="Compartir en Telegram">
+            <span>TG</span><small>Telegram</small>
+          </a>
+        </div>
+        <p class="gc-archive-dossier__share-status" data-share-status aria-live="polite"></p>
+      </section>
+
 
       <section class="gc-archive-dossier__side-panel">
         <span class="gc-archive-dossier__side-kicker">Ficha</span>
@@ -1040,6 +1063,67 @@ const navItems = [
       text-decoration:none;
     }
 
+
+    .gc-archive-dossier__share-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:14px;
+    }
+
+    .gc-archive-dossier__share-actions a,
+    .gc-archive-dossier__share-actions button{
+      display:inline-grid;
+      place-items:center;
+      gap:4px;
+      min-width:54px;
+      min-height:54px;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:16px;
+      background:rgba(0,0,0,.14);
+      color:var(--text,#f2f7ef);
+      text-decoration:none;
+      font:inherit;
+      cursor:pointer;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
+    }
+
+    .gc-archive-dossier__share-actions a:hover,
+    .gc-archive-dossier__share-actions button:hover{
+      transform:translateY(-1px);
+      border-color:var(--archive-line-strong);
+      background:rgba(156,255,63,.06);
+    }
+
+    .gc-archive-dossier__share-actions span{
+      display:grid;
+      place-items:center;
+      min-width:24px;
+      min-height:24px;
+      color:var(--archive-accent);
+      font-size:.94rem;
+      font-weight:950;
+      line-height:1;
+      letter-spacing:-.02em;
+    }
+
+    .gc-archive-dossier__share-actions small{
+      color:var(--muted,#7f9184);
+      font-size:.66rem;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-archive-dossier__share-status{
+      min-height:18px;
+      margin:10px 0 0;
+      color:var(--archive-accent);
+      font-size:.8rem;
+      line-height:1.35;
+    }
+
     @media(max-width:1180px){
       .gc-archive-dossier__hero,
       .gc-archive-dossier__layout{
@@ -1093,4 +1177,67 @@ const navItems = [
       }
     }
   </style>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('[data-archive-share-root]');
+      if (!root) return;
+
+      const title = root.getAttribute('data-share-title') || document.title;
+      const text = root.getAttribute('data-share-text') || '';
+      const url = window.location.href.split('#')[0];
+      const encodedUrl = encodeURIComponent(url);
+      const encodedTitle = encodeURIComponent(title);
+      const encodedText = encodeURIComponent(text ? `${title} — ${text}` : title);
+      const status = root.querySelector('[data-share-status]');
+
+      const x = root.querySelector('[data-share-x]');
+      const whatsapp = root.querySelector('[data-share-whatsapp]');
+      const telegram = root.querySelector('[data-share-telegram]');
+
+      if (x) x.href = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
+      if (whatsapp) whatsapp.href = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
+      if (telegram) telegram.href = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
+
+      function setStatus(message) {
+        if (!status) return;
+        status.textContent = message;
+        window.clearTimeout(setStatus.timer);
+        setStatus.timer = window.setTimeout(() => {
+          status.textContent = '';
+        }, 2200);
+      }
+
+      async function copyLink() {
+        try {
+          await navigator.clipboard.writeText(url);
+          setStatus('Enlace copiado.');
+        } catch {
+          const temp = document.createElement('textarea');
+          temp.value = url;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          temp.remove();
+          setStatus('Enlace copiado.');
+        }
+      }
+
+      root.querySelector('[data-share-copy]')?.addEventListener('click', copyLink);
+
+      root.querySelector('[data-share-native]')?.addEventListener('click', async () => {
+        if (navigator.share) {
+          try {
+            await navigator.share({ title, text, url });
+            return;
+          } catch {
+            return;
+          }
+        }
+
+        await copyLink();
+      });
+    })();
+  </script>
+
 </article>

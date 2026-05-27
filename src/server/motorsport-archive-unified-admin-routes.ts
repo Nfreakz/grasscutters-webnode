@@ -765,11 +765,125 @@ function safeFileBase(value: unknown) {
   return slugify(String(value || 'imagen')).slice(0, 90) || 'imagen';
 }
 
+
+function decodeBasicHtml(value: unknown) {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function wikimediaFileTitleFromUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    const pathname = decodeURIComponent(url.pathname || '');
+
+    if (host.includes('commons.wikimedia.org')) {
+      const wikiMatch = pathname.match(/\/wiki\/(?:File:|Special:FilePath\/)(.+)$/i);
+      if (wikiMatch?.[1]) return `File:${wikiMatch[1].replace(/_/g, ' ')}`;
+    }
+
+    if (host.includes('upload.wikimedia.org')) {
+      const fileName = pathname.split('/').filter(Boolean).pop();
+      if (fileName) return `File:${fileName.replace(/_/g, ' ')}`;
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
+function metaValue(extmetadata: any, key: string) {
+  return decodeBasicHtml(extmetadata?.[key]?.value || '');
+}
+
+async function inspectWikimediaImage(imageUrl: string) {
+  const fileTitle = wikimediaFileTitleFromUrl(imageUrl);
+  if (!fileTitle) return null;
+
+  const params = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    prop: 'imageinfo',
+    titles: fileTitle,
+    iiprop: 'url|extmetadata|mime|size',
+    iiextmetadatalanguage: 'es',
+    iiextmetadatafilter: [
+      'Artist',
+      'Credit',
+      'LicenseShortName',
+      'LicenseUrl',
+      'UsageTerms',
+      'ImageDescription',
+      'ObjectName',
+      'Attribution',
+      'DateTimeOriginal',
+      'Restrictions',
+      'Copyrighted',
+    ].join('|'),
+  });
+
+  const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`, {
+    headers: {
+      'User-Agent': 'GrassCuttersWebNode/1.0 (archive image metadata)',
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const data: any = await response.json();
+  const pages = data?.query?.pages || {};
+  const page: any = Object.values(pages)[0] || {};
+  const info = Array.isArray(page.imageinfo) ? page.imageinfo[0] : null;
+  if (!info) return null;
+
+  const ext = info.extmetadata || {};
+  const author = metaValue(ext, 'Artist') || metaValue(ext, 'Attribution') || info.user || '';
+  const licenseShortName = metaValue(ext, 'LicenseShortName');
+  const usageTerms = metaValue(ext, 'UsageTerms');
+  const license = licenseShortName || usageTerms || '';
+  const description = metaValue(ext, 'ImageDescription') || metaValue(ext, 'ObjectName') || '';
+  const credit = metaValue(ext, 'Credit');
+  const licenseUrl = metaValue(ext, 'LicenseUrl');
+
+  return {
+    provider: 'wikimedia',
+    source: 'Wikimedia Commons',
+    sourceUrl: info.descriptionurl || imageUrl,
+    descriptionUrl: info.descriptionurl || '',
+    imageUrl: info.url || imageUrl,
+    fileTitle: page.title || fileTitle,
+    author,
+    license,
+    licenseShortName,
+    licenseUrl,
+    usageTerms,
+    credit,
+    description,
+    alt: description ? decodeBasicHtml(description).slice(0, 220) : '',
+    mime: info.mime || '',
+    width: info.width || null,
+    height: info.height || null,
+  };
+}
+
 export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { rootDir }: { rootDir: string }) {
   app.get('/api/admin/archive/unified/items', async (_req: Request, res: Response) => {
     try {
       const result = await storageList(rootDir);
-      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.18' });
+      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error listando Archivo.' });
     }
@@ -779,7 +893,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageFind(rootDir, String(req.params.id || ''));
       if (!result.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error cargando ficha.' });
     }
@@ -788,7 +902,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   async function save(req: Request, res: Response) {
     try {
       const result = await storageSave(rootDir, req.body || {}, req.params.id ? String(req.params.id) : undefined);
-      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error guardando ficha.' });
     }
@@ -802,7 +916,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageDelete(rootDir, String(req.params.id || ''));
       if (!result.deleted) return res.status(404).json({ ok: false, deleted: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, deleted: false, message: error?.message || 'Error borrando ficha.' });
     }
@@ -817,7 +931,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         await storageSave(rootDir, item);
         created += 1;
       }
-      return res.json({ ok: true, created, skipped, api: 'unified-v15.18' });
+      return res.json({ ok: true, created, skipped, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error creando demo.' });
     }
@@ -879,7 +993,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         skipped,
         details,
         samples,
-        api: 'unified-v15.18',
+        api: 'unified-v15.21',
       });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error importando CSV.' });
@@ -920,7 +1034,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
       media.unshift(itemMedia);
       const item = normalizeItem({ ...found.item, media }, found.item);
       await storageSave(rootDir, item, item.id);
-      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.18' });
+      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.21' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error añadiendo imagen.' });
     }
@@ -988,7 +1102,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         media: itemMedia,
         publicUrl,
         itemTitle: item.title,
-        api: 'unified-v15.18',
+        api: 'unified-v15.21',
       });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error subiendo imagen.' });
@@ -996,19 +1110,30 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   });
 
   app.post('/api/admin/archive/unified/media/inspect-url', async (req: Request, res: Response) => {
-    const imageUrl = String(req.body?.imageUrl || req.body?.url || '').trim();
-    if (!imageUrl) return res.status(400).json({ ok: false, message: 'Falta URL.' });
-    return res.json({
-      ok: true,
-      metadata: {
-        imageUrl,
-        source: imageUrl.includes('wikimedia') ? 'Wikimedia Commons' : 'URL externa',
-        sourceUrl: imageUrl,
-        alt: '',
-        author: '',
-        license: '',
-        provider: imageUrl.includes('wikimedia') ? 'wikimedia' : 'generic',
-      },
-    });
+    try {
+      const imageUrl = String(req.body?.imageUrl || req.body?.url || '').trim();
+      if (!imageUrl) return res.status(400).json({ ok: false, message: 'Falta URL.' });
+
+      const wikimedia = await inspectWikimediaImage(imageUrl);
+      if (wikimedia) {
+        return res.json({ ok: true, metadata: wikimedia, api: 'unified-v15.21' });
+      }
+
+      return res.json({
+        ok: true,
+        metadata: {
+          imageUrl,
+          source: 'URL externa',
+          sourceUrl: imageUrl,
+          alt: '',
+          author: '',
+          license: '',
+          provider: 'generic',
+        },
+        api: 'unified-v15.21',
+      });
+    } catch (error: any) {
+      return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'No se pudieron leer metadatos de la imagen.' });
+    }
   });
 }

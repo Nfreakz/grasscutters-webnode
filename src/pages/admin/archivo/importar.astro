@@ -12,8 +12,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         <span class="gc-kicker">Archivo</span>
         <h1 class="gc-title">Importar CSV.</h1>
         <p class="gc-subtitle">
-          Importa fichas por lotes con plantillas limpias para circuitos, coches, pilotos y glosario.
-          Primero prueba, después escribe.
+          Importa fichas por lotes con plantillas PRO preparadas para dossiers completos:
+          historia, contexto, datos técnicos, referencias, imágenes y conexiones.
         </p>
       </div>
 
@@ -35,41 +35,73 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     <section class="gc-section gc-archive-import-templates">
       <div class="gc-section-head">
         <div>
-          <h2>Plantillas recomendadas</h2>
+          <h2>Plantillas PRO</h2>
           <p>
-            Descarga una plantilla según el tipo de ficha. Récords y campeonatos no son categorías:
-            van dentro de circuitos, coches o pilotos.
+            Descarga una plantilla según el tipo de ficha. Ya incluyen los campos editoriales nuevos
+            para que la ficha pública no quede pobre después de importar.
           </p>
         </div>
       </div>
 
       <div class="gc-archive-import-template-grid">
         <article>
-          <span>Circuitos</span>
-          <h3>Datos de trazado</h3>
-          <p>Incluye longitud, curvas, sentido, zonas clave, eventos y récords internos.</p>
+          <span>Circuitos PRO</span>
+          <h3>Dossier de trazado</h3>
+          <p>Historia, importancia, zonas clave, eventos, récords, referencias y notas de sim racing.</p>
           <button class="gc-btn gc-btn--primary" type="button" data-template-download="circuitos">Descargar CSV</button>
         </article>
 
         <article>
-          <span>Coches</span>
-          <h3>Ficha técnica</h3>
-          <p>Incluye fabricante, motor, potencia, peso, historial, campeonatos y resultados.</p>
+          <span>Coches PRO</span>
+          <h3>Ficha técnica + historia</h3>
+          <p>Fabricante, specs, variantes, campeonatos, equipos, victorias y contexto competitivo.</p>
           <button class="gc-btn gc-btn--primary" type="button" data-template-download="vehiculos">Descargar CSV</button>
         </article>
 
         <article>
-          <span>Pilotos</span>
-          <h3>Trayectoria</h3>
-          <p>Incluye nacionalidad, periodo activo, biografía, palmarés y estilo de pilotaje.</p>
+          <span>Pilotos PRO</span>
+          <h3>Trayectoria completa</h3>
+          <p>Biografía, palmarés, estilo, momentos clave, coches asociados y circuitos asociados.</p>
           <button class="gc-btn gc-btn--primary" type="button" data-template-download="pilotos">Descargar CSV</button>
         </article>
 
         <article>
-          <span>Glosario</span>
-          <h3>Conceptos</h3>
-          <p>Incluye definición, uso práctico, ejemplos y conceptos relacionados.</p>
+          <span>Glosario PRO</span>
+          <h3>Conceptos útiles</h3>
+          <p>Definición, uso práctico, errores comunes, ejemplos, relaciones y notas para sim racing.</p>
           <button class="gc-btn gc-btn--primary" type="button" data-template-download="glosario">Descargar CSV</button>
+        </article>
+      </div>
+    </section>
+
+    <section class="gc-section gc-archive-import-guide">
+      <div class="gc-section-head">
+        <div>
+          <h2>Reglas de formato</h2>
+          <p>Pequeño mapa para que el CSV salga bien a la primera.</p>
+        </div>
+      </div>
+
+      <div class="gc-archive-import-guide-grid">
+        <article>
+          <strong>Listas</strong>
+          <p>Usa <code>||</code> para separar elementos.</p>
+          <pre>Ferrari||Porsche||BMW</pre>
+        </article>
+        <article>
+          <strong>Pares título + dato</strong>
+          <p>Usa <code>Título::Descripción</code>.</p>
+          <pre>Karussell::Curva peraltada icónica</pre>
+        </article>
+        <article>
+          <strong>Fuentes</strong>
+          <p>Usa el mismo sistema de pares.</p>
+          <pre>Wikipedia::https://...</pre>
+        </article>
+        <article>
+          <strong>No crear categorías antiguas</strong>
+          <p><code>records</code> y <code>campeonatos</code> van dentro de fichas.</p>
+          <pre>records_destacados / campeonatos</pre>
         </article>
       </div>
     </section>
@@ -151,13 +183,15 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       overflow:visible;
     }
 
-    .gc-archive-import-template-grid{
+    .gc-archive-import-template-grid,
+    .gc-archive-import-guide-grid{
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
       gap:12px;
     }
 
-    .gc-archive-import-template-grid article{
+    .gc-archive-import-template-grid article,
+    .gc-archive-import-guide-grid article{
       display:grid;
       align-content:start;
       gap:10px;
@@ -168,6 +202,10 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       background:
         radial-gradient(circle at 90% 12%, rgba(156,255,63,.10), transparent 36%),
         rgba(255,255,255,.025);
+    }
+
+    .gc-archive-import-guide-grid article{
+      min-height:0;
     }
 
     .gc-archive-import-template-grid span,
@@ -189,10 +227,28 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
     }
 
     .gc-archive-import-template-grid p,
-    .gc-archive-import-warning p{
+    .gc-archive-import-warning p,
+    .gc-archive-import-guide-grid p{
       margin:0;
       color:var(--soft);
       line-height:1.55;
+    }
+
+    .gc-archive-import-guide-grid strong{
+      font-size:1.1rem;
+      line-height:1.1;
+    }
+
+    .gc-archive-import-guide-grid pre{
+      margin:0;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      background:rgba(0,0,0,.22);
+      color:var(--soft);
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+      font-size:.82rem;
     }
 
     .gc-import-box{
@@ -318,6 +374,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
     @media(max-width:1180px){
       .gc-archive-import-template-grid,
+      .gc-archive-import-guide-grid,
       .gc-archive-import-summary-grid{
         grid-template-columns:repeat(2,minmax(0,1fr));
       }
@@ -325,6 +382,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
     @media(max-width:720px){
       .gc-archive-import-template-grid,
+      .gc-archive-import-guide-grid,
       .gc-archive-import-summary-grid,
       .gc-archive-import-sample{
         grid-template-columns:1fr;
@@ -343,108 +401,133 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
       const templates = {
         circuitos: {
-          filename: 'plantilla-archivo-circuitos.csv',
+          filename: 'plantilla-pro-archivo-circuitos.csv',
           rows: [
             {
               archive_category: 'circuitos',
-              title: 'Autodromo Nazionale Monza',
-              slug: 'autodromo-nazionale-monza',
-              summary: 'Circuito histórico italiano conocido por su velocidad, largas rectas y fuertes frenadas.',
-              body: 'Texto editorial de introducción con contexto histórico y deportivo del trazado.',
-              pais: 'Italia',
-              ubicacion: 'Monza',
-              tipo_trazado: 'Circuito permanente',
-              longitud_km: '5.793',
-              curvas: '11',
+              title: 'Circuit de Spa-Francorchamps',
+              slug: 'circuit-de-spa-francorchamps',
+              summary: 'Circuito belga de 7,004 km y 19 curvas, ubicado en las Ardenas, famoso por Eau Rouge-Raidillon, clima imprevisible, desnivel y una mezcla única de velocidad, apoyo y riesgo.',
+              body: 'Texto de apertura editorial. Explica cómo se siente el circuito, qué exige al piloto, por qué es relevante para carreras reales y sim racing, y qué lo hace diferente frente a otros trazados.',
+              contexto_historico: 'Historia del circuito, origen, evolución, grandes cambios de trazado, etapas importantes y relación con campeonatos o eventos destacados.',
+              importancia: 'Por qué esta ficha importa dentro del archivo: valor deportivo, técnico, cultural, histórico o de aprendizaje para pilotos.',
+              pais: 'Bélgica',
+              ubicacion: 'Stavelot / Francorchamps, Ardenas',
+              region: 'Valonia',
+              tipo_trazado: 'Circuito permanente de carretera',
+              longitud_km: '7.004',
+              curvas: '19',
               sentido: 'Horario',
-              recta_principal_km: '1.12',
-              fecha_apertura: '1922',
-              zonas_clave: 'Rettifilo::Frenada muy fuerte al final de recta||Ascari::Secuencia rápida clave para el tiempo de vuelta',
-              eventos_destacados: 'Formula 1::Gran Premio de Italia||GT World Challenge::Eventos de resistencia y GT',
-              records_destacados: 'F1::Añadir récord verificado con fuente',
-              caracteristicas_conduccion: 'Trazado de baja carga aerodinámica, velocidad alta y frenadas decisivas.',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Monza_Circuit',
+              recta_principal_km: 'Kemmel Straight como principal zona de velocidad',
+              fecha_apertura: '1921',
+              arquitecto: 'Jules de Thier y Henri Langlois van Ophem',
+              desnivel_m: 'aprox. 100 m',
+              disciplina: 'F1 / GT / Resistencia / WEC / Sim racing',
+              categoria: 'Circuito rápido de desnivel y alta carga',
+              caracteristicas_trazado: 'Descripción técnica del trazado: velocidad, apoyo, frenadas, desnivel, zonas de riesgo, compromiso aerodinámico y comportamiento típico.',
+              zonas_clave: 'La Source::Horquilla lenta y punto clásico de adelantamientos||Eau Rouge / Raidillon::Compresión y subida icónica||Kemmel Straight::Zona clave de rebufo||Pouhon::Curva rápida de doble vértice||Blanchimont::Curva rapidísima de confianza',
+              eventos_destacados: '1921::Nacimiento del trazado original||1924::Inicio de las 24 Horas de Spa||1950::Entrada en la primera temporada del Mundial de F1',
+              records_destacados: 'F1 carrera::Añadir vuelta rápida verificada||F1 clasificación::Añadir pole o referencia moderna||Nota::Comparar tiempos por categoría y condiciones',
+              anecdotas: 'Puede llover en un sector y estar seco en otro||Eau Rouge y Raidillon suelen citarse juntos, pero técnicamente forman una secuencia con bajada, compresión y subida',
+              referencias_tiempos: 'F1::Añadir tiempo verificado con fuente||GT/WEC::Añadir tiempo verificado con fuente',
+              datos_sim_racing: 'Notas para pilotos: carga aerodinámica recomendada, zonas que castigan setup, gestión de neumáticos, referencias de frenada o errores frecuentes.',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Circuit_de_Spa-Francorchamps||Web oficial::https://www.spa-francorchamps.be/',
               imagen_url: '',
-              imagen_alt: 'Autodromo Nazionale Monza',
-              tags: 'Italia||F1||GT||alta velocidad',
+              imagen_alt: 'Circuit de Spa-Francorchamps',
+              tags: 'Bélgica||Ardenas||F1||GT||WEC||Sim racing',
             },
           ],
         },
         vehiculos: {
-          filename: 'plantilla-archivo-coches.csv',
+          filename: 'plantilla-pro-archivo-coches.csv',
           rows: [
             {
               archive_category: 'vehiculos',
-              title: 'BMW M3 GT2',
-              slug: 'bmw-m3-gt2',
-              summary: 'Versión de competición del BMW M3 desarrollada para carreras GT de alto nivel.',
-              body: 'Texto editorial de introducción sobre origen, desarrollo e importancia del coche.',
-              fabricante: 'BMW',
-              modelo_base: 'BMW M3 E92',
-              constructor: 'BMW Motorsport',
-              categoria_competicion: 'GT2',
-              anos_actividad: '2009-2012',
-              motor: 'V8 atmosférico',
-              potencia: 'Aproximadamente 485 hp',
-              peso: 'Aproximadamente 1245 kg',
+              title: 'Ferrari F430 GT2',
+              slug: 'ferrari-f430-gt2',
+              summary: 'Versión GT2/GTC del Ferrari F430 desarrollada con Michelotto para competir en FIA GT, ALMS, Le Mans Series y grandes pruebas de resistencia.',
+              body: 'Texto de apertura editorial. Explica el carácter del coche, cómo se conduce, qué papel tiene dentro de la categoría y cómo se compara con rivales.',
+              contexto_historico: 'Origen del modelo, desarrollo, reglamento, debut, evolución y etapa competitiva.',
+              importancia: 'Por qué el coche es relevante: palmarés, concepto técnico, papel en la categoría, utilidad para comparar estilos de conducción o setups.',
+              fabricante: 'Ferrari',
+              modelo_base: 'Ferrari F430',
+              constructor: 'Ferrari Corse Clienti / Michelotto',
+              categoria_competicion: 'GT2 / GTC',
+              anos_actividad: '2006-2011 aprox.',
+              motor: 'V8 atmosférico Ferrari 4.0 L en configuración GT2',
+              potencia: 'aprox. 445-470 hp según restrictores y reglamento',
+              peso: 'mínimo GT2 alrededor de 1.100 kg según reglamento',
               traccion: 'Trasera',
-              ficha_tecnica: 'Motor::V8 atmosférico||Tracción::Trasera||Categoría::GT2',
-              historial_competicion: 'Participó en competiciones GT y pruebas de resistencia internacionales.',
-              campeonatos: 'ALMS::Participación en GT2||Le Mans::Presencia en carreras de resistencia',
-              victorias_destacadas: 'Añadir victoria::Añadir dato verificado',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/BMW_M3',
+              ficha_tecnica: 'Arquitectura::Motor central trasero y tracción trasera||Motor::V8 Ferrari 4.0 L||Clase::GT2 / GTC||Constructor::Michelotto / Ferrari Corse Clienti',
+              caracteristicas_tecnicas: 'Explicación del comportamiento técnico: motor, entrega, peso, aero, frenos, neumáticos y sensibilidad del coche.',
+              desarrollo: 'Cómo se desarrolló la versión de competición y qué cambios principales tuvo respecto al coche base.',
+              historial_competicion: 'Dónde compitió, con qué equipos y en qué campeonatos o carreras importantes.',
+              campeonatos: 'ALMS::Participación en GT2||FIA GT::Participación en GT2||Le Mans Series::Presencia en GT2',
+              victorias_destacadas: 'Sebring::Añadir victoria verificada||Le Mans::Añadir resultado de clase verificado',
+              equipos_destacados: 'Risi Competizione||AF Corse||JMB Racing',
+              variantes: 'F430 Challenge::Versión monomarca||F430 GT3::Versión FIA GT3||F430 GTC / GT2::Versión de competición GT2',
+              anecdotas: 'Curiosidad técnica o deportiva||Nota de conducción en sim racing||Diferencia frente a rivales',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Ferrari_F430',
               imagen_url: '',
-              imagen_alt: 'BMW M3 GT2',
-              tags: 'BMW||GT2||resistencia',
+              imagen_alt: 'Ferrari F430 GT2',
+              tags: 'Ferrari||GT2||GTC||Michelotto||Le Mans||Sim racing',
             },
           ],
         },
         pilotos: {
-          filename: 'plantilla-archivo-pilotos.csv',
+          filename: 'plantilla-pro-archivo-pilotos.csv',
           rows: [
             {
               archive_category: 'pilotos',
               title: 'Fernando Alonso',
               slug: 'fernando-alonso',
-              summary: 'Piloto español bicampeón del mundo de Fórmula 1 y referente internacional del automovilismo.',
-              body: 'Texto editorial de introducción con trayectoria, etapas clave y contexto deportivo.',
+              summary: 'Piloto español bicampeón del mundo de Fórmula 1, ganador de Le Mans y referente de longevidad, lectura de carrera, adaptación y competitividad en varias disciplinas.',
+              body: 'Texto de apertura editorial. Resume el carácter del piloto, por qué importa y qué lo diferencia dentro del motorsport.',
+              contexto_historico: 'Contexto de carrera: debut, etapas principales, cambios de equipo, momento histórico y evolución.',
+              importancia: 'Por qué es relevante: títulos, impacto, estilo, influencia, valor técnico o cultural.',
               nacionalidad: 'España',
               fecha_nacimiento: '1981-07-29',
-              lugar_nacimiento: 'Oviedo',
-              anos_activo: '2001-presente',
-              disciplinas: 'Fórmula 1||Resistencia||IndyCar',
-              equipos: 'Renault||McLaren||Ferrari||Alpine||Aston Martin',
-              titulos: 'Fórmula 1::2005 y 2006',
-              biografia: 'Resumen biográfico revisado.',
-              trayectoria: 'Renault::Títulos mundiales||Ferrari::Lucha por campeonatos||Aston Martin::Nueva etapa competitiva',
-              palmares: 'F1::2 campeonatos mundiales||Le Mans::Victorias en resistencia',
-              estilo_pilotaje: 'Piloto completo, fuerte en ritmo de carrera, lectura estratégica y adaptación.',
-              momentos_clave: '2005::Primer título mundial||2006::Segundo título mundial',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Fernando_Alonso',
+              lugar_nacimiento: 'Oviedo, Asturias, España',
+              anos_activo: '2001, 2003-2018, 2021-presente en F1',
+              disciplinas: 'Fórmula 1||WEC / Resistencia||24 Horas de Le Mans||IndyCar / Indianapolis 500||Karting',
+              equipos: 'Minardi||Renault||McLaren||Ferrari||Alpine||Aston Martin||Toyota Gazoo Racing',
+              titulos: 'Fórmula 1::Campeón del mundo 2005 y 2006||WEC::Campeón 2018-19||24 Horas de Le Mans::Ganador 2018 y 2019',
+              biografia: 'Biografía completa en varios párrafos si hace falta. Inicio, formación, salto a categorías superiores, llegada a F1 o disciplina principal.',
+              trayectoria: 'Renault::Títulos mundiales||Ferrari::Lucha por campeonatos||Toyota WEC::Victoria en Le Mans||Aston Martin::Regreso al podio',
+              palmares: 'F1::2 campeonatos mundiales||Le Mans::2 victorias absolutas||WEC::1 campeonato mundial',
+              estilo_pilotaje: 'Describe cómo pilota: frenada, defensa, gestión de neumáticos, ritmo de carrera, lluvia, clasificación, adaptación.',
+              momentos_clave: '2003 Hungría::Primera victoria en F1||2005 Brasil::Primer título mundial||2018 Le Mans::Primera victoria absoluta en Le Mans',
+              coches_asociados: 'Renault R25||Renault R26||Ferrari F2012||Toyota TS050 Hybrid||Aston Martin AMR23',
+              circuitos_asociados: 'Hungaroring||Interlagos||Le Mans / Circuit de la Sarthe||Bahrain International Circuit||Suzuka',
+              anecdotas: 'Curiosidad o episodio destacado||Rasgo de personalidad deportiva||Momento recordado por la comunidad',
+              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Fernando_Alonso||Formula 1::https://www.formula1.com/',
               imagen_url: '',
               imagen_alt: 'Fernando Alonso',
-              tags: 'España||F1||Le Mans',
+              tags: 'España||F1||Le Mans||WEC||Renault||Ferrari||Aston Martin',
             },
           ],
         },
         glosario: {
-          filename: 'plantilla-archivo-glosario.csv',
+          filename: 'plantilla-pro-archivo-glosario.csv',
           rows: [
             {
               archive_category: 'glosario',
               title: 'Apex',
               slug: 'apex',
-              summary: 'Punto interior de una curva que sirve como referencia para optimizar la trazada.',
-              body: 'Explicación editorial del concepto y su importancia en conducción deportiva.',
+              summary: 'Punto interior de una curva usado como referencia para optimizar trazada, velocidad mínima y salida.',
+              body: 'Texto de apertura editorial. Explica el concepto con lenguaje claro y conectado a conducción real y sim racing.',
               area: 'Técnica de pilotaje',
-              definicion: 'El apex es el punto de la curva donde el coche pasa más cerca del interior.',
-              uso: 'Sirve para entender cuándo cerrar la dirección y cuándo abrir gas.',
-              ejemplos: 'Curva lenta::Apex tardío para mejorar salida||Curva rápida::Apex más fluido para mantener velocidad',
-              relacionados: 'Trazada||Frenada||Salida de curva',
+              definicion: 'El apex es el punto de la curva donde el coche pasa más cerca del interior. Puede ser temprano, medio o tardío según el objetivo de la trazada.',
+              uso: 'Sirve para decidir cuándo cerrar dirección, cuándo mantener velocidad mínima y cuándo abrir gas.',
+              aplicacion_practica: 'En curvas lentas suele interesar un apex tardío para mejorar salida. En curvas rápidas puede buscarse una línea más fluida y menos angular.',
+              ejemplos: 'Curva lenta::Apex tardío para priorizar tracción||Curva rápida::Apex progresivo para mantener velocidad||Curva doble::Primer apex sacrificado para preparar el segundo',
+              errores_comunes: 'Entrar demasiado pronto||Cerrar dirección antes de tiempo||Confundir tocar el piano con hacer una buena trazada',
+              relacionados: 'Trazada||Frenada||Trail braking||Salida de curva||Subviraje||Sobreviraje',
+              datos_sim_racing: 'En simuladores ayuda a comparar telemetría: velocidad mínima, ángulo de volante, punto de gas y salida.',
               fuentes: 'DrivingFast::https://drivingfast.net/racing-line/',
               imagen_url: '',
               imagen_alt: 'Concepto de apex',
-              tags: 'pilotaje||técnica||trazada',
+              tags: 'pilotaje||técnica||trazada||sim racing',
             },
           ],
         },
