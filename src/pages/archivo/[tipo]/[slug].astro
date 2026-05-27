@@ -4,7 +4,9 @@ export const prerender = false;
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
 import ArchiveDossierPage from '../../../components/archive/ArchiveDossierPage.astro';
 import {
+  getArchiveImage,
   getArchiveItem,
+  getArchiveSummary,
   getRelatedArchiveItems,
   normalizeArchiveType,
   prettifyArchiveType,
@@ -21,14 +23,49 @@ if (requestedType && requestedType !== type) {
 const entry = await getArchiveItem(type, slug);
 const related = entry ? await getRelatedArchiveItems(entry) : [];
 const label = prettifyArchiveType(type);
-const description = entry?.descripcion_corta || entry?.subtitulo || entry?.introduccion || `Ficha de ${label.toLowerCase()} en el Archivo.`;
+
+function compactDescription(value, fallback) {
+  return String(value || fallback || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\|\|/g, '. ')
+    .replace(/::/g, ': ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 190);
+}
+
+function socialImageFor(item) {
+  const image = getArchiveImage(item);
+  const clean = String(image || '').split('?')[0].toLowerCase();
+  if (!image || clean.endsWith('.svg')) return '/og/archivo-og.png';
+  return image;
+}
+
+const description = entry
+  ? compactDescription(
+      getArchiveSummary(entry) || entry.importancia || entry.contexto_historico || entry.body,
+      `Ficha de ${label.toLowerCase()} en el Archivo GrassCutters.`
+    )
+  : `Ficha no encontrada en el Archivo GrassCutters.`;
+
+const seoTitle = entry ? `${entry.nombre} | Archivo GrassCutters` : 'Ficha no encontrada | Archivo GrassCutters';
+const seoImage = entry ? socialImageFor(entry) : '/og/archivo-og.png';
+const seoImageAlt = entry ? `Imagen de ${entry.nombre}` : 'Archivo GrassCutters';
 
 if (!entry) {
   Astro.response.status = 404;
 }
 ---
 
-<MarketingLayout bodyClass="gc-archive-public" title={entry ? `${entry.nombre} | Archivo` : `Ficha no encontrada | Archivo`} description={description}>
+<MarketingLayout
+  bodyClass="gc-archive-public"
+  title={seoTitle}
+  description={description}
+  canonicalPath={entry ? `/archivo/${type}/${slug}/` : Astro.url.pathname}
+  ogImage={seoImage}
+  ogImageAlt={seoImageAlt}
+  ogType={entry ? 'article' : 'website'}
+>
   {entry ? (
     <ArchiveDossierPage entry={entry} related={related} />
   ) : (

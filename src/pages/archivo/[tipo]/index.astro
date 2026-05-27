@@ -54,9 +54,19 @@ const searchTerms = (item) => [
 
 const title = `${label} | Archivo GrassCutters`;
 const description = archiveTypeLead(typeParam);
+const categoryImage = featured && getArchiveImage(featured) && !String(getArchiveImage(featured)).split('?')[0].toLowerCase().endsWith('.svg')
+  ? getArchiveImage(featured)
+  : '/og/archivo-og.png';
 ---
 
-<MarketingLayout bodyClass="gc-archive-public" title={title} description={description} canonicalPath={`/archivo/${typeParam}/`}>
+<MarketingLayout
+  bodyClass="gc-archive-public"
+  title={title}
+  description={description}
+  canonicalPath={`/archivo/${typeParam}/`}
+  ogImage={categoryImage}
+  ogImageAlt={`${label} del Archivo GrassCutters`}
+>
   <main class="gc-archive-category" data-archive-category-page>
     <header class="gc-archive-category__hero">
       <div class="gc-archive-category__hero-copy">
