@@ -171,14 +171,13 @@ const factsByType: Record<string, [string, string][]> = {
   ],
   pilotos: [
     ['Tipo de ficha', typeSingular],
-    ['Nombre completo', value(['nombre_completo', 'full_name'], title)],
-    ['Nacimiento', value(['fecha_nacimiento', 'birth_date'])],
-    ['Lugar', value(['lugar_nacimiento', 'birth_place'])],
     ['Nacionalidad', value(['nacionalidad', 'nationality'], country)],
     ['Años activo', value(['anos_activo', 'años_activo', 'periodo'])],
     ['Disciplinas', value(['disciplinas', 'disciplina'])],
     ['Equipos', value(['equipos', 'teams'])],
     ['Títulos', value(['titulos', 'títulos', 'titles'])],
+    ['Nacimiento', value(['fecha_nacimiento', 'birth_date'])],
+    ['Lugar', value(['lugar_nacimiento', 'birth_place'])],
   ],
   glosario: [
     ['Tipo de ficha', typeSingular],
@@ -215,9 +214,33 @@ const mergeFacts = (baseFacts: [string, string][], extraFacts: [string, string][
   return [...map.values()].slice(0, 12);
 };
 
+
+const formatFactParts = (raw: string) => {
+  const text = cleanText(raw);
+  if (!text) return [];
+
+  const entries = text.includes('||') || text.includes(';') || text.includes('\n')
+    ? splitList(text)
+    : [text];
+
+  return entries
+    .map((entry) => {
+      const parts = entry.split('::').map((part) => cleanText(part)).filter(Boolean);
+      if (parts.length >= 2) return { title: parts[0], text: parts.slice(1).join(' · ') };
+      return { title: cleanText(entry), text: '' };
+    })
+    .filter((part) => part.title || part.text);
+};
+
+const buildFactCards = (facts: [string, string][]) => facts.map(([label, fact]) => {
+  const parts = formatFactParts(fact);
+  const isList = parts.length > 1 || parts.some((part) => part.text);
+  return { label, fact, parts, isList };
+});
+
 const quickFacts = mergeFacts(factsByType[type] || fallbackFacts, factsFromAdmin);
-const primaryFacts = quickFacts.slice(0, 4);
-const secondaryFacts = quickFacts.slice(4);
+const primaryFactCards = buildFactCards(quickFacts.slice(0, 4));
+const secondaryFactCards = buildFactCards(quickFacts.slice(4));
 
 const typeSections: Record<string, Omit<DossierSection, 'id'>[]> = {
   circuitos: [
@@ -268,7 +291,7 @@ const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' �
 const heroStyle = hasImage ? `--archive-hero-image:url('${String(imageUrl).replace(/'/g, '%27')}');` : '';
 
 const navItems = [
-  { id: 'resumen', label: 'Resumen', show: Boolean(introText || subtitle || primaryFacts.length) },
+  { id: 'resumen', label: 'Resumen', show: Boolean(introText || subtitle || primaryFactCards.length) },
   { id: 'contenido', label: 'Contenido', show: commonSections.length > 0 || sections.length > 0 },
   { id: 'galeria', label: 'Galería', show: gallery.length > 1 },
   { id: 'relacionados', label: 'Relacionados', show: related.length > 0 },
@@ -287,12 +310,23 @@ const navItems = [
       <h1>{title}</h1>
       <p class="gc-archive-dossier__lead">{subtitle}</p>
 
-      {primaryFacts.length > 0 && (
+      {primaryFactCards.length > 0 && (
         <div class="gc-archive-dossier__hero-facts" aria-label="Datos principales">
-          {primaryFacts.map(([label, fact]) => (
+          {primaryFactCards.map((fact) => (
             <article>
-              <span>{label}</span>
-              <strong>{fact}</strong>
+              <span>{fact.label}</span>
+              {fact.isList ? (
+                <div class="gc-archive-dossier__fact-list">
+                  {fact.parts.map((part) => (
+                    <span>
+                      <b>{part.title}</b>
+                      {part.text && <em>{part.text}</em>}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <strong>{fact.fact}</strong>
+              )}
             </article>
           ))}
         </div>
@@ -327,12 +361,23 @@ const navItems = [
         </div>
         <p class="gc-archive-dossier__overview-copy">{introText || subtitle}</p>
 
-        {secondaryFacts.length > 0 && (
+        {secondaryFactCards.length > 0 && (
           <div class="gc-archive-dossier__secondary-facts" aria-label="Datos secundarios">
-            {secondaryFacts.map(([label, fact]) => (
+            {secondaryFactCards.map((fact) => (
               <div>
-                <span>{label}</span>
-                <strong>{fact}</strong>
+                <span>{fact.label}</span>
+                {fact.isList ? (
+                  <div class="gc-archive-dossier__fact-list">
+                    {fact.parts.map((part) => (
+                      <span>
+                        <b>{part.title}</b>
+                        {part.text && <em>{part.text}</em>}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <strong>{fact.fact}</strong>
+                )}
               </div>
             ))}
           </div>
@@ -582,6 +627,7 @@ const navItems = [
 
     .gc-archive-dossier__hero-facts article{
       min-height:92px;
+      min-width:0;
       padding:14px;
       border:1px solid rgba(255,255,255,.10);
       border-radius:18px;
@@ -608,6 +654,48 @@ const navItems = [
       letter-spacing:-.035em;
       overflow-wrap:anywhere;
     }
+
+    .gc-archive-dossier__fact-list{
+      display:grid;
+      gap:7px;
+      margin-top:8px;
+      min-width:0;
+    }
+
+    .gc-archive-dossier__fact-list > span{
+      display:grid;
+      gap:3px;
+      min-width:0;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.075);
+      border-radius:12px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-archive-dossier__fact-list b{
+      display:block;
+      color:var(--text,#f2f7ef);
+      font-size:.92rem;
+      line-height:1.16;
+      letter-spacing:-.015em;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-dossier__fact-list em{
+      display:block;
+      color:var(--soft,#b6c5b8);
+      font-size:.84rem;
+      line-height:1.34;
+      font-style:normal;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-archive-dossier__hero-facts .gc-archive-dossier__fact-list{
+      max-height:210px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
 
     .gc-archive-dossier__tags{
       display:flex;
@@ -737,6 +825,7 @@ const navItems = [
 
     .gc-archive-dossier__secondary-facts div{
       min-height:84px;
+      min-width:0;
       padding:14px;
       border:1px solid rgba(255,255,255,.08);
       border-radius:18px;
