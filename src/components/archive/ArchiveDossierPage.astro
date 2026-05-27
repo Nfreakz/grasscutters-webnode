@@ -285,15 +285,35 @@ const sections: DossierSection[] = (typeSections[type] || [])
   .filter((section) => section.text || (section.items && section.items.length))
   .map((section) => ({ ...section, id: slugifyId(section.title) }));
 
-const gallery = media.filter((item) => item?.url || item?.localUrl);
+const gallerySeen = new Set<string>();
+const gallery = media
+  .map((item) => {
+    const url = cleanText(item?.url || item?.localUrl || item?.originalUrl);
+    if (!url) return null;
+
+    return {
+      url,
+      alt: cleanText(item?.alt || imageAlt || title),
+      credit: [item?.source, item?.author, item?.license].map(cleanText).filter(Boolean).join(' · '),
+    };
+  })
+  .filter((item): item is { url: string; alt: string; credit: string } => {
+    if (!item?.url) return false;
+    const key = item.url.replace(/\/+$/, '');
+    if (gallerySeen.has(key)) return false;
+    gallerySeen.add(key);
+    return true;
+  });
+
+const galleryJson = JSON.stringify(gallery).replace(/</g, '\\u003c');
 const hasImage = Boolean(imageUrl);
 const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' · ');
 const heroStyle = hasImage ? `--archive-hero-image:url('${String(imageUrl).replace(/'/g, '%27')}');` : '';
 
 const navItems = [
   { id: 'resumen', label: 'Resumen', show: Boolean(introText || subtitle || primaryFactCards.length) },
-  { id: 'contenido', label: 'Contenido', show: commonSections.length > 0 || sections.length > 0 },
   { id: 'galeria', label: 'Galería', show: gallery.length > 1 },
+  { id: 'contenido', label: 'Contenido', show: commonSections.length > 0 || sections.length > 0 },
   { id: 'relacionados', label: 'Relacionados', show: related.length > 0 },
   { id: 'fuentes', label: 'Fuentes', show: true },
 ].filter((item) => item.show);
@@ -384,6 +404,64 @@ const navItems = [
         )}
       </section>
 
+      {gallery.length > 1 && (
+        <section id="galeria" class="gc-archive-dossier__panel gc-archive-dossier__gallery" data-gallery-root>
+          <div class="gc-archive-dossier__section-head gc-archive-dossier__gallery-head">
+            <div>
+              <span>Material visual</span>
+              <h2>Galería</h2>
+            </div>
+            <small>{gallery.length} imágenes</small>
+          </div>
+
+          <script type="application/json" data-gallery-items set:html={galleryJson}></script>
+
+          <div class="gc-archive-dossier__gallery-grid">
+            {gallery.map((image, index) => (
+              <figure>
+                <button
+                  type="button"
+                  class="gc-archive-dossier__gallery-trigger"
+                  data-gallery-open
+                  data-gallery-index={index}
+                  aria-label={`Abrir imagen ${index + 1} de la galería`}
+                >
+                  <img src={image.url} alt={image.alt} loading="lazy" />
+                  <span>Ampliar</span>
+                </button>
+                {image.credit && <figcaption>{image.credit}</figcaption>}
+              </figure>
+            ))}
+          </div>
+
+          <div class="gc-archive-dossier__lightbox" data-gallery-lightbox hidden>
+            <button class="gc-archive-dossier__lightbox-backdrop" type="button" data-gallery-close aria-label="Cerrar galería"></button>
+
+            <div class="gc-archive-dossier__lightbox-dialog" role="dialog" aria-modal="true" aria-label="Imagen ampliada">
+              <div class="gc-archive-dossier__lightbox-top">
+                <span data-gallery-counter>1 / {gallery.length}</span>
+                <button type="button" data-gallery-close aria-label="Cerrar">Cerrar</button>
+              </div>
+
+              <div class="gc-archive-dossier__lightbox-stage">
+                <button type="button" class="gc-archive-dossier__lightbox-nav is-prev" data-gallery-prev aria-label="Imagen anterior">‹</button>
+                <img data-gallery-image src="" alt="" />
+                <div class="gc-archive-dossier__lightbox-error" data-gallery-error hidden>
+                  <strong>No se pudo cargar esta imagen.</strong>
+                  <p>Revisa la URL en el gestor de imágenes de la ficha.</p>
+                </div>
+                <button type="button" class="gc-archive-dossier__lightbox-nav is-next" data-gallery-next aria-label="Imagen siguiente">›</button>
+              </div>
+
+              <div class="gc-archive-dossier__lightbox-caption">
+                <strong data-gallery-alt></strong>
+                <p data-gallery-credit></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div id="contenido" class="gc-archive-dossier__content-stack">
         {commonSections.length > 0 && (
           <section class="gc-archive-dossier__panel gc-archive-dossier__editorial">
@@ -432,63 +510,6 @@ const navItems = [
         ))}
       </div>
 
-      {gallery.length > 1 && (
-        <section id="galeria" class="gc-archive-dossier__panel gc-archive-dossier__gallery" data-gallery-root>
-          <div class="gc-archive-dossier__section-head">
-            <span>Material visual</span>
-            <h2>Galería</h2>
-          </div>
-
-          <div class="gc-archive-dossier__gallery-grid">
-            {gallery.map((image, index) => {
-              const galleryUrl = image.url || image.localUrl;
-              const galleryAlt = image.alt || title;
-              const galleryCredit = [image.source, image.author, image.license].filter(Boolean).join(' · ');
-
-              return (
-                <figure>
-                  <button
-                    type="button"
-                    class="gc-archive-dossier__gallery-trigger"
-                    data-gallery-open
-                    data-gallery-index={index}
-                    data-gallery-src={galleryUrl}
-                    data-gallery-alt={galleryAlt}
-                    data-gallery-credit={galleryCredit}
-                    aria-label={`Abrir imagen ${index + 1} de la galería`}
-                  >
-                    <img src={galleryUrl} alt={galleryAlt} loading="lazy" />
-                    <span>Ampliar</span>
-                  </button>
-                  {galleryCredit && <figcaption>{galleryCredit}</figcaption>}
-                </figure>
-              );
-            })}
-          </div>
-
-          <div class="gc-archive-dossier__lightbox" data-gallery-lightbox hidden>
-            <button class="gc-archive-dossier__lightbox-backdrop" type="button" data-gallery-close aria-label="Cerrar galería"></button>
-
-            <div class="gc-archive-dossier__lightbox-dialog" role="dialog" aria-modal="true" aria-label="Imagen ampliada">
-              <div class="gc-archive-dossier__lightbox-top">
-                <span data-gallery-counter>1 / {gallery.length}</span>
-                <button type="button" data-gallery-close aria-label="Cerrar">Cerrar</button>
-              </div>
-
-              <div class="gc-archive-dossier__lightbox-stage">
-                <button type="button" class="gc-archive-dossier__lightbox-nav is-prev" data-gallery-prev aria-label="Imagen anterior">‹</button>
-                <img data-gallery-image src="" alt="" />
-                <button type="button" class="gc-archive-dossier__lightbox-nav is-next" data-gallery-next aria-label="Imagen siguiente">›</button>
-              </div>
-
-              <div class="gc-archive-dossier__lightbox-caption">
-                <strong data-gallery-alt></strong>
-                <p data-gallery-credit></p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
     </main>
 
     <aside class="gc-archive-dossier__sidebar">
@@ -994,6 +1015,33 @@ const navItems = [
       margin:4px 0 0;
     }
 
+    .gc-archive-dossier__gallery{
+      scroll-margin-top:92px;
+    }
+
+    .gc-archive-dossier__gallery-head{
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .gc-archive-dossier__gallery-head small{
+      display:inline-flex;
+      align-items:center;
+      min-height:30px;
+      padding:0 10px;
+      border:1px solid rgba(156,255,63,.16);
+      border-radius:999px;
+      background:rgba(156,255,63,.055);
+      color:var(--archive-accent);
+      font-size:.74rem;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
     .gc-archive-dossier__gallery-grid{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
@@ -1161,6 +1209,31 @@ const navItems = [
       object-fit:contain;
       border-radius:18px;
       box-shadow:0 16px 60px rgba(0,0,0,.38);
+    }
+
+    .gc-archive-dossier__lightbox-stage img[hidden]{
+      display:none;
+    }
+
+    .gc-archive-dossier__lightbox-error{
+      max-width:520px;
+      padding:22px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:20px;
+      background:rgba(255,255,255,.04);
+      text-align:center;
+    }
+
+    .gc-archive-dossier__lightbox-error strong{
+      display:block;
+      color:var(--text,#f2f7ef);
+      margin-bottom:6px;
+    }
+
+    .gc-archive-dossier__lightbox-error p{
+      margin:0;
+      color:var(--soft,#b6c5b8);
+      line-height:1.45;
     }
 
     .gc-archive-dossier__lightbox-nav{
@@ -1499,8 +1572,10 @@ const navItems = [
 
       galleries.forEach((gallery) => {
         const triggers = Array.from(gallery.querySelectorAll('[data-gallery-open]'));
+        const jsonNode = gallery.querySelector('[data-gallery-items]');
         const lightbox = gallery.querySelector('[data-gallery-lightbox]');
         const image = gallery.querySelector('[data-gallery-image]');
+        const errorBox = gallery.querySelector('[data-gallery-error]');
         const altText = gallery.querySelector('[data-gallery-alt]');
         const credit = gallery.querySelector('[data-gallery-credit]');
         const counter = gallery.querySelector('[data-gallery-counter]');
@@ -1511,22 +1586,47 @@ const navItems = [
         if (!triggers.length || !lightbox || !image) return;
 
         let currentIndex = 0;
+        let items = [];
 
-        const items = triggers.map((trigger) => ({
-          src: trigger.getAttribute('data-gallery-src') || '',
-          alt: trigger.getAttribute('data-gallery-alt') || '',
-          credit: trigger.getAttribute('data-gallery-credit') || '',
-        }));
+        try {
+          items = JSON.parse(jsonNode?.textContent || '[]');
+        } catch {
+          items = [];
+        }
+
+        items = items
+          .map((item) => ({
+            src: String(item?.url || item?.src || '').trim(),
+            alt: String(item?.alt || '').trim(),
+            credit: String(item?.credit || '').trim(),
+          }))
+          .filter((item) => item.src);
+
+        if (!items.length) return;
+
+        function setError(show) {
+          if (!errorBox) return;
+          errorBox.hidden = !show;
+          image.hidden = show;
+        }
+
+        image.addEventListener('load', () => setError(false));
+        image.addEventListener('error', () => setError(true));
 
         function render(index) {
           currentIndex = (index + items.length) % items.length;
           const item = items[currentIndex];
 
-          image.src = item.src;
+          setError(false);
+          image.removeAttribute('src');
           image.alt = item.alt || '';
           if (altText) altText.textContent = item.alt || 'Imagen de galería';
           if (credit) credit.textContent = item.credit || '';
           if (counter) counter.textContent = `${currentIndex + 1} / ${items.length}`;
+
+          window.requestAnimationFrame(() => {
+            image.src = item.src;
+          });
 
           if (items.length <= 1) {
             if (prevButton) prevButton.hidden = true;
@@ -1544,6 +1644,7 @@ const navItems = [
         function close() {
           lightbox.hidden = true;
           document.body.classList.remove('gc-lightbox-open');
+          image.removeAttribute('src');
           triggers[currentIndex]?.focus({ preventScroll: true });
         }
 
