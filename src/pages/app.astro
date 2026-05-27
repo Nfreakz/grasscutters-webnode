@@ -91,7 +91,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             <img id="gcTopDriverAvatar" src="/images/pilot-avatar-default.png" alt="" loading="lazy" decoding="async" />
           </div>
           <div class="gc-app-top-driver-v1535__body">
-            <span>Mejor piloto</span>
+            <span>Mejor piloto combo</span>
             <strong id="gcTopDriverName">--</strong>
             <small id="gcTopDriverMeta">Sin referencia cargada</small>
           </div>
@@ -1039,6 +1039,84 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       }
     }
 
+
+    /* GC_APP_COMBO_BEST_DRIVER_V15_35_6 */
+    .gc-app-combo-v3.has-track-image::before{
+      opacity:.82!important;
+      filter:blur(1.15px) saturate(1.08) contrast(1.02) brightness(.72)!important;
+      transform:scale(1.018)!important;
+    }
+
+    .gc-app-combo-v3.has-track-image::after{
+      background:
+        linear-gradient(90deg,rgba(3,10,5,.78),rgba(3,10,5,.40) 44%,rgba(3,10,5,.56)),
+        linear-gradient(180deg,rgba(3,10,5,.25),rgba(3,10,5,.68)),
+        radial-gradient(circle at 13% 22%, color-mix(in srgb,var(--accent,#9dff00) 13%,transparent), transparent 28rem)!important;
+    }
+
+    .gc-app-top-driver-v1535__body span::after{
+      content:"";
+    }
+
+    .gc-app-top-driver-v1535{
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 34%,rgba(255,255,255,.10));
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 18%,transparent), transparent 9rem),
+        linear-gradient(135deg,rgba(255,255,255,.065),rgba(255,255,255,.02)),
+        rgba(0,0,0,.20);
+    }
+
+
+    /* GC_APP_COMBO_BEST_DRIVER_V15_35_7 */
+    .gc-app-combo-v3[data-track-name*="Mugello"],
+    .gc-app-combo-v3[data-track-name*="mugello"],
+    .gc-app-combo-v3.has-track-image{
+      background:
+        radial-gradient(circle at 18% 14%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 18rem),
+        color-mix(in srgb,var(--panel,#07110a) 86%,#000)!important;
+    }
+
+    .gc-app-combo-v3[data-track-name*="Mugello"]::before,
+    .gc-app-combo-v3[data-track-name*="mugello"]::before{
+      content:""!important;
+      position:absolute!important;
+      inset:0!important;
+      z-index:0!important;
+      pointer-events:none!important;
+      background-image:url("/images/tracks/mugello.webp")!important;
+      background-size:cover!important;
+      background-position:center!important;
+      opacity:.88!important;
+      filter:blur(.65px) saturate(1.08) contrast(1.04) brightness(.76)!important;
+      transform:scale(1.012)!important;
+    }
+
+    .gc-app-combo-v3.has-track-image::before{
+      opacity:.88!important;
+      filter:blur(.65px) saturate(1.08) contrast(1.04) brightness(.76)!important;
+      transform:scale(1.012)!important;
+    }
+
+    .gc-app-combo-v3[data-track-name*="Mugello"]::after,
+    .gc-app-combo-v3[data-track-name*="mugello"]::after,
+    .gc-app-combo-v3.has-track-image::after{
+      background:
+        linear-gradient(90deg,rgba(3,10,5,.72),rgba(3,10,5,.30) 46%,rgba(3,10,5,.48)),
+        linear-gradient(180deg,rgba(3,10,5,.22),rgba(3,10,5,.62)),
+        radial-gradient(circle at 13% 22%, color-mix(in srgb,var(--accent,#9dff00) 10%,transparent), transparent 28rem)!important;
+    }
+
+    .gc-app-combo-v3[data-track-name*="Mugello"] > *,
+    .gc-app-combo-v3[data-track-name*="mugello"] > *,
+    .gc-app-combo-v3.has-track-image > *{
+      position:relative!important;
+      z-index:2!important;
+    }
+
+    .gc-app-top-driver-v1535__body span{
+      color:var(--accent);
+    }
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -1121,7 +1199,23 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       };
 
       const lapDate = (lap) => dateMs(pick(lap, ['timestampIso','dateIso','createdAt','updatedAt','timestamp','Timestamp','lastSeenAt']));
-      const lapMs = (lap) => number(pick(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']), Number.POSITIVE_INFINITY);
+      const lapMs = (lap) => {
+        const raw = pick(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time','lapTimeFormatted','timeFormatted','bestLap']);
+        if (raw == null || raw === '') return Number.POSITIVE_INFINITY;
+        if (typeof raw === 'number') return Number.isFinite(raw) ? raw : Number.POSITIVE_INFINITY;
+
+        const value = String(raw).trim();
+        const direct = Number(value);
+        if (Number.isFinite(direct)) return direct;
+
+        const match = value.match(/^(?:(\d+):)?(\d{1,2})(?:\.(\d{1,3}))?$/);
+        if (!match) return Number.POSITIVE_INFINITY;
+
+        const minutes = Number(match[1] || 0);
+        const seconds = Number(match[2] || 0);
+        const millis = Number(String(match[3] || '0').padEnd(3, '0').slice(0, 3));
+        return minutes * 60000 + seconds * 1000 + millis;
+      };
       const lapTime = (lap) => text(pick(lap, ['lapTimeFormatted','timeFormatted','bestLap'])) || timeText(pick(lap, ['lapTimeMs','LapTime','lapTime','timeMs','time']));
       const driverName = (row) => text(pick(row, ['driverDisplayName','driverVisibleName','driverName','playerName','pilotName','name','player.displayName','player.name','driver.displayName','driver.name','driver','player']), 'Piloto');
       const carName = (row) => text(pick(row, ['carDisplayName','carVisibleName','carName','uiCarName','car.displayName','car.visibleName','car.uiCarName','car.name','car','Car']), 'Coche');
@@ -1282,7 +1376,80 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (carsNode) carsNode.innerHTML = '<span class="gc-chip gc-chip--warn">Sin datos</span>';
       }
 
-            function driverAvatarUrl(row){
+                  function comboNormalize(value){
+        return text(value, '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+      }
+
+      function comboWordMatch(a, b){
+        const aa = comboNormalize(a);
+        const bb = comboNormalize(b);
+        if (!aa || !bb) return false;
+        if (aa === bb) return true;
+        if (aa.includes(bb) || bb.includes(aa)) return true;
+        const aw = new Set(aa.split(' ').filter((x) => x.length > 2));
+        const bw = bb.split(' ').filter((x) => x.length > 2);
+        return bw.some((x) => aw.has(x));
+      }
+
+      function comboBestRowFromCombo(combo){
+        if (!combo || typeof combo !== 'object') return null;
+
+        const track = comboTrackName(combo);
+        const cars = comboCars(combo).slice(0, 8);
+        const nested = pick(combo, ['bestLap','fastestLap','leaderLap','recordLap','best']);
+
+        if (nested && typeof nested === 'object') {
+          return {
+            ...nested,
+            trackName: trackName(nested) !== 'Circuito' ? trackName(nested) : track,
+            carName: carName(nested) !== 'Coche' ? carName(nested) : (cars[0] || 'Coche'),
+            driverName: driverName(nested) !== 'Piloto' ? driverName(nested) : comboBestDriver(combo),
+            lapTimeFormatted: comboBestTime(combo) || lapTime(nested),
+            playerId: pick(nested, ['playerId','driverId','pilotId','id','driver.id','player.id','pilot.id']) || pick(combo, ['bestPlayerId','bestDriverId','fastestPlayerId','fastestDriverId']),
+          };
+        }
+
+        const time = comboBestTime(combo);
+        const name = comboBestDriver(combo);
+        if (!time || time === '--' || !name || name === 'Piloto') return null;
+
+        return {
+          driverName: name,
+          lapTimeFormatted: time,
+          carName: cars[0] || 'Coche',
+          trackName: track,
+          playerId: pick(combo, ['bestPlayerId','bestDriverId','fastestPlayerId','fastestDriverId']),
+        };
+      }
+
+      function lapMatchesActiveCombo(row){
+        const active = window.GCAppActiveComboV1535 || null;
+        if (!active) return false;
+
+        const rowTrack = trackName(row);
+        const rowCar = carName(row);
+        const trackOk = active.track ? comboWordMatch(rowTrack, active.track) : true;
+        const cars = Array.isArray(active.cars) ? active.cars : [];
+        const carOk = !cars.length || cars.some((car) => comboWordMatch(rowCar, car));
+
+        return trackOk && carOk;
+      }
+
+      function selectBestForActiveCombo(bestItems, recentItems){
+        const comboRow = window.GCAppActiveComboBestRowV1535 || null;
+        if (comboRow && lapTime(comboRow) && lapTime(comboRow) !== '--') return comboRow;
+
+        const pool = [...(bestItems || []), ...(recentItems || [])].filter(Boolean);
+        const comboPool = pool.filter(lapMatchesActiveCombo).sort((a, b) => lapMs(a) - lapMs(b));
+        return comboPool[0] || null;
+      }
+
+function driverAvatarUrl(row){
         const id = pick(row, ['playerId','driverId','pilotId','id','driver.id','player.id','pilot.id']);
         const direct = pick(row, ['avatarUrl','avatar_url','driver.avatarUrl','player.avatarUrl','pilot.avatarUrl']);
         if (direct) return String(direct);
@@ -1321,7 +1488,7 @@ function renderLapReadout(bestData, recentData){
         const best = bestItems[0] || [...recentItems].sort((a,b) => lapMs(a) - lapMs(b))[0] || null;
         const last = recentLaps[0] || null;
 
-        renderTopDriver(best);
+        renderTopDriver(selectBestForActiveCombo(bestItems, recentItems));
         setText('gcQuickRefs', formatNumber(recentData?.count ?? recentLaps.length));
         setText('gcRefsMeta', `${formatNumber(recentData?.totalMatchedLaps ?? recentData?.count ?? recentLaps.length)} vueltas encontradas · mostrando las más recientes`);
         setText('gcQuickTop', best ? lapTime(best) : '--');
@@ -1383,7 +1550,7 @@ function renderLapReadout(bestData, recentData){
           fetchJson('/api/auth/status').catch(() => null),
           fetchJson('/api/combos/stats?limit=300&sort=recent').catch(() => null),
           fetchJson('/api/combos?limit=300').catch(() => null),
-          fetchJson('/api/hotlaps?limit=12').catch(() => null),
+          fetchJson('/api/hotlaps?limit=300').catch(() => null),
           fetchJson('/api/laps?limit=12&sort=recent&valid=all').catch(() => null),
           fetchJson('/api/pilots?limit=800&valid=all').catch(() => null),
           fetchJson('/api/drivers?limit=800&valid=all').catch(() => null),
