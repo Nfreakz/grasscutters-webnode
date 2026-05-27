@@ -3,9 +3,114 @@ export const prerender = false;
 import AppLayout from '../../layouts/AppLayout.astro';
 
 const rawId = Astro.params.id ?? '';
-const pageTitle = `Ficha piloto #${rawId} · GrassCutters`;
+
+/* GC_PILOT_SOCIAL_V15_30 START */
+const isNumericPilotId = /^\d+$/.test(String(rawId || ''));
+const defaultPilotSeo = {
+  title: `Piloto #${rawId} | GrassCutters Racing`,
+  description: `Ficha pública del piloto #${rawId} en GrassCutters Racing.`,
+  image: '/og/pilotos-og.png',
+  imageAlt: `Piloto #${rawId} en GrassCutters Racing`,
+};
+
+function cleanSeoText(value, fallback = '') {
+  return String(value || fallback || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function valueAt(source, dottedPath) {
+  if (!source || typeof source !== 'object') return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, dottedPath)) return source[dottedPath];
+  return String(dottedPath).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+}
+
+function firstValue(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
+
+function firstPath(source, paths) {
+  for (const item of paths) {
+    const value = valueAt(source, item);
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return '';
+}
+
+function pilotDisplayName(pilot, data) {
+  const raw = firstPath(pilot, ['displayName', 'visibleName', 'cleanName', 'name', 'driverName', 'playerName']) || data?.pilotLink?.strackerName || `Piloto #${rawId}`;
+  return cleanSeoText(String(raw).replace(/_/g, ' '), `Piloto #${rawId}`);
+}
+
+function numberText(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString('es-ES') : null;
+}
+
+function lapText(value) {
+  return cleanSeoText(value, '') || null;
+}
+
+async function loadPilotSeo() {
+  if (!isNumericPilotId) return defaultPilotSeo;
+
+  try {
+    const apiUrl = new URL(`/api/pilots/${encodeURIComponent(rawId)}/profile`, Astro.url.origin);
+    const response = await fetch(apiUrl, {
+      headers: { accept: 'application/json' },
+    });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || !data?.ok) return defaultPilotSeo;
+
+    const pilot = firstValue(data.pilot, data.driver) || {};
+    const summary = data.summary || {};
+    const best = firstValue(summary.bestLap, data.bestLap);
+    const name = pilotDisplayName(pilot, data);
+
+    const validLaps = numberText(firstValue(summary.validLaps, data.validLaps));
+    const totalLaps = numberText(firstValue(summary.totalLaps, data.totalLaps));
+    const cars = numberText(firstValue(summary.carsCount, data.carsCount));
+    const tracks = numberText(firstValue(summary.tracksCount, data.tracksCount));
+    const bestLap = lapText(firstValue(best?.lapTimeFormatted, best?.lapTime, best?.bestLapTimeFormatted, summary.bestLapTime));
+
+    const parts = [
+      totalLaps ? `${totalLaps} vueltas` : '',
+      validLaps ? `${validLaps} válidas` : '',
+      cars ? `${cars} coches` : '',
+      tracks ? `${tracks} circuitos` : '',
+      bestLap ? `mejor vuelta ${bestLap}` : '',
+    ].filter(Boolean);
+
+    return {
+      title: `${name} | Piloto GrassCutters`,
+      description: parts.length
+        ? `${name} en GrassCutters Racing: ${parts.join(', ')}.`
+        : `Ficha pública de ${name} en GrassCutters Racing.`,
+      image: `/api/pilot-avatar/${encodeURIComponent(rawId)}`,
+      imageAlt: `Avatar de ${name}`,
+    };
+  } catch {
+    return defaultPilotSeo;
+  }
+}
+
+const pilotSeo = await loadPilotSeo();
+const pageTitle = pilotSeo.title;
+/* GC_PILOT_SOCIAL_V15_30 END */
 ---
-<AppLayout title={pageTitle}>
+<AppLayout
+  title={pageTitle}
+  description={pilotSeo.description}
+  canonicalPath={`/pilotos/${rawId}`}
+  ogImage={pilotSeo.image}
+  ogImageAlt={pilotSeo.imageAlt}
+  ogType="profile"
+>
   <section class="gc-page gc-pilot-detail-v20" data-pilot-page data-player-id={rawId}>
     <section class="gc-pilot-hero-v20">
       <div class="gc-pilot-hero-v20__main">

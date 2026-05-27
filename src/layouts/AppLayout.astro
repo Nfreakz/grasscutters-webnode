@@ -12,13 +12,65 @@ import AppVisualPass from '../components/AppVisualPass.astro';
 
 const {
   title = 'GrassCutters Platform',
-  description = 'GrassCutters Racing Platform'
+  description = 'GrassCutters Racing Platform',
+  canonicalPath,
+  ogImage,
+  ogImageAlt,
+  ogType = 'website',
+  noindex,
 } = Astro.props;
 
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || Astro.url.origin || 'https://grasscuttersracing.com').replace(/\/$/, '');
 const normalizePath = (path) => {
   if (!path || path === '/') return '/';
   return path.replace(/\/$/, '');
 };
+const currentPathForSeo = normalizePath(Astro.url.pathname);
+const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
+
+const pageOgImages = {
+  '/app': '/og/platform-og.png',
+  '/hotlaps': '/og/hotlaps-og.png',
+  '/combos': '/og/combos-og.png',
+  '/pilotos': '/og/pilotos-og.png',
+  '/perfil': '/og/perfil-og.png',
+  '/login': '/og/login-og.png',
+  '/herramientas/fov': '/og/fov-og.png',
+  '/admin': '/og/admin-og.png',
+};
+
+function compactSeoText(value, fallback = '') {
+  return String(value || fallback || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 220);
+}
+
+function absoluteSeoUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return new URL('/og/platform-og.png', siteUrl).toString();
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return new URL(raw.startsWith('/') ? raw : '/' + raw, siteUrl).toString();
+}
+
+function seoImageMime(value) {
+  const clean = String(value || '').split('?')[0].toLowerCase();
+  if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
+  if (clean.endsWith('.webp')) return 'image/webp';
+  if (clean.endsWith('.svg')) return 'image/svg+xml';
+  return 'image/png';
+}
+
+const cleanTitle = compactSeoText(title, 'GrassCutters Platform');
+const cleanDescription = compactSeoText(description, 'Panel de pista, hotlaps, combos y perfiles de GrassCutters Racing.');
+const matchedOgImage = pageOgImages[currentPathForSeo] || Object.entries(pageOgImages).find(([prefix]) => currentPathForSeo.startsWith(prefix + '/'))?.[1];
+const selectedOgImage = ogImage || matchedOgImage || '/og/platform-og.png';
+const absoluteOgImage = absoluteSeoUrl(selectedOgImage);
+const cleanOgImageAlt = compactSeoText(ogImageAlt, 'Imagen social de ' + cleanTitle);
+const ogImageType = seoImageMime(selectedOgImage);
+const shouldNoindex = noindex ?? (currentPathForSeo.startsWith('/admin') || currentPathForSeo.startsWith('/perfil'));
+
 
 const current = normalizePath(Astro.url.pathname);
 const nav = [
@@ -42,9 +94,32 @@ const nav = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
+    <meta name="description" content={cleanDescription} />
+    <meta name="robots" content={shouldNoindex ? 'noindex,nofollow' : 'index,follow'} />
     <meta name="theme-color" content="#07110a" />
-    <title>{title}</title>
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:site_name" content="GrassCutters Racing" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={cleanTitle} />
+    <meta property="og:description" content={cleanDescription} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={absoluteOgImage} />
+    <meta property="og:image:secure_url" content={absoluteOgImage} />
+    <meta property="og:image:type" content={ogImageType} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={cleanOgImageAlt} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={cleanTitle} />
+    <meta name="twitter:description" content={cleanDescription} />
+    <meta name="twitter:image" content={absoluteOgImage} />
+    <meta name="twitter:image:alt" content={cleanOgImageAlt} />
+    <meta name="twitter:url" content={canonicalUrl} />
+
+    <title>{cleanTitle}</title>
   </head>
   <body>
     <a class="gc-skip" href="#contenido">Saltar al contenido</a>
