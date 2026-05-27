@@ -9,7 +9,7 @@ const isNumericPilotId = /^\d+$/.test(String(rawId || ''));
 const defaultPilotSeo = {
   title: `Piloto #${rawId} | GrassCutters Racing`,
   description: `Ficha pública del piloto #${rawId} en GrassCutters Racing.`,
-  image: '/og/pilotos-og.png',
+  image: isNumericPilotId ? `/api/pilot-social-image/${encodeURIComponent(rawId)}.png` : '/og/pilotos-og.png',
   imageAlt: `Piloto #${rawId} en GrassCutters Racing`,
 };
 

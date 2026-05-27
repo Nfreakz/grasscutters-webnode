@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import { registerAcsmChampionshipRoutes } from './acsm-championship-routes';
 import crypto from 'node:crypto';
+import { DEFAULT_PILOT_AVATAR_URL, readAvatarImage } from '../lib/pilot-avatars';
 
 import { registerMotorsportArchiveRoutes } from './motorsport-archive-routes';
 import { registerMotorsportArchiveImageUrlRoutes } from './motorsport-archive-image-url-routes';
@@ -3974,6 +3975,136 @@ const mockPilots = [
 
 const app = express();
 
+/* GC_PILOT_SOCIAL_IMAGE_EXPRESS_V15_30_5 START */
+function gcPilotSocialDefaultAvatarBuffer() {
+  const relative = String(DEFAULT_PILOT_AVATAR_URL || '/images/pilot-avatar-default.png')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .join('/');
+  const filePath = path.join(rootDir, 'public', relative);
+  if (fs.existsSync(filePath)) return fs.readFileSync(filePath);
+
+  return Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#07110a"/><circle cx="256" cy="208" r="86" fill="#9cff3f"/><path d="M112 440c25-93 91-136 144-136s119 43 144 136" fill="#9cff3f"/></svg>'
+  );
+}
+
+function gcPilotSocialMaskSvg(size: number) {
+  const radius = size / 2;
+  return Buffer.from(
+    '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg"><circle cx="' + radius + '" cy="' + radius + '" r="' + radius + '" fill="#fff"/></svg>'
+  );
+}
+
+function gcPilotSocialBackgroundSvg(width: number, height: number) {
+  return Buffer.from(
+    '<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<radialGradient id="g1" cx="50%" cy="48%" r="56%">' +
+          '<stop offset="0%" stop-color="#16351e"/>' +
+          '<stop offset="48%" stop-color="#07130a"/>' +
+          '<stop offset="100%" stop-color="#020503"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="g2" cx="50%" cy="48%" r="38%">' +
+          '<stop offset="0%" stop-color="#9cff3f" stop-opacity=".22"/>' +
+          '<stop offset="68%" stop-color="#9cff3f" stop-opacity=".05"/>' +
+          '<stop offset="100%" stop-color="#9cff3f" stop-opacity="0"/>' +
+        '</radialGradient>' +
+        '<filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>' +
+      '</defs>' +
+      '<rect width="' + width + '" height="' + height + '" fill="url(#g1)"/>' +
+      '<circle cx="600" cy="315" r="270" fill="url(#g2)" filter="url(#blur)"/>' +
+      '<circle cx="600" cy="315" r="253" fill="none" stroke="#9cff3f" stroke-opacity=".30" stroke-width="2"/>' +
+      '<circle cx="600" cy="315" r="262" fill="none" stroke="#45f1db" stroke-opacity=".12" stroke-width="1"/>' +
+    '</svg>'
+  );
+}
+
+function gcPilotSocialFrameSvg(size: number) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 8;
+
+  return Buffer.from(
+    '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#9cff3f" stroke-width="10" stroke-opacity=".92"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 13) + '" fill="none" stroke="#45f1db" stroke-width="3" stroke-opacity=".42"/>' +
+    '</svg>'
+  );
+}
+
+async function gcBuildPilotSocialImage(playerId: string) {
+  const width = 1200;
+  const height = 630;
+  const avatarSize = 472;
+  const storedAvatar = readAvatarImage(playerId);
+  const sourceBuffer = storedAvatar?.buffer || gcPilotSocialDefaultAvatarBuffer();
+  const sharpModule: any = await import('sharp');
+  const sharp = sharpModule.default ?? sharpModule;
+
+  const avatar = await sharp(sourceBuffer)
+    .resize(avatarSize, avatarSize, { fit: 'cover' })
+    .png()
+    .composite([{ input: gcPilotSocialMaskSvg(avatarSize), blend: 'dest-in' }])
+    .png()
+    .toBuffer();
+
+  const left = Math.round((width - avatarSize) / 2);
+  const top = Math.round((height - avatarSize) / 2);
+
+  return sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: '#050805',
+    },
+  })
+    .composite([
+      { input: gcPilotSocialBackgroundSvg(width, height), left: 0, top: 0 },
+      { input: avatar, left, top },
+      { input: gcPilotSocialFrameSvg(avatarSize), left, top },
+    ])
+    .png({ compressionLevel: 8, adaptiveFiltering: true })
+    .toBuffer();
+}
+
+app.get(['/api/pilot-social-image/:playerId.png', '/api/pilot-social-image/:playerId'], async (req, res) => {
+  const playerId = String(req.params.playerId || '').replace(/\.png$/i, '').trim();
+
+  if (!/^[0-9]+$/.test(playerId)) {
+    res.status(400).type('text/plain').send('Invalid pilot id');
+    return;
+  }
+
+  try {
+    const image = await gcBuildPilotSocialImage(playerId);
+    res
+      .status(200)
+      .setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+    res.setHeader('X-GC-Social-Image', 'pilot-avatar-express-v15.30.5');
+    res.send(image);
+  } catch (error) {
+    console.error('[GC] Error generando pilot social image express:', error);
+
+    const fallback = readAvatarImage(playerId);
+    if (fallback?.buffer) {
+      res.status(200);
+      res.setHeader('Content-Type', fallback.contentType || 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      res.setHeader('X-GC-Social-Image', 'pilot-avatar-raw-fallback-v15.30.5');
+      res.send(fallback.buffer);
+      return;
+    }
+
+    res.redirect(302, DEFAULT_PILOT_AVATAR_URL);
+  }
+});
+/* GC_PILOT_SOCIAL_IMAGE_EXPRESS_V15_30_5 END */
+
+
 app.use((req, res, next) => {
   const started = Date.now();
   const url = req.originalUrl || req.url || '';
@@ -7384,6 +7515,7 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
 
 
 
