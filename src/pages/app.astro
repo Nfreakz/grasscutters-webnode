@@ -81,7 +81,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         </div>
         <div class="gc-app-readout-grid-v3">
           <div class="gc-app-readout-v3"><span>Vueltas</span><strong id="gcQuickRefs">--</strong><small>último refresco</small></div>
-          <div class="gc-app-readout-v3"><span>Best</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3 gc-app-server-uptime-v1535"><span>Servidor online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
           <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
           <div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
         </div>
@@ -1117,6 +1117,33 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       color:var(--accent);
     }
 
+
+    /* GC_APP_COMBO_BEST_DRIVER_LOGIC_V15_35_9_1_STYLE */
+    .gc-app-top-driver-v1535__body span{
+      color:var(--accent);
+    }
+
+    .gc-app-top-driver-v1535__time strong:not(:empty){
+      font-variant-numeric:tabular-nums;
+    }
+
+
+    /* GC_APP_SERVER_UPTIME_V15_35_10_STYLE */
+    .gc-app-server-uptime-v1535 strong{
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-app-server-uptime-v1535 small{
+      color:color-mix(in srgb,var(--text,#f2fff0) 52%,var(--muted));
+    }
+
+
+    /* GC_APP_UPTIME_DAYS_LABEL_V15_35_11 */
+    .gc-app-server-uptime-v1535 strong{
+      white-space:nowrap;
+      letter-spacing:-.055em;
+    }
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -1376,7 +1403,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (carsNode) carsNode.innerHTML = '<span class="gc-chip gc-chip--warn">Sin datos</span>';
       }
 
-                  function comboNormalize(value){
+                        /* GC_APP_COMBO_BEST_DRIVER_LOGIC_V15_35_9_1 START */
+      function gcBestNorm(value){
         return text(value, '')
           .toLowerCase()
           .normalize('NFD')
@@ -1385,69 +1413,145 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           .trim();
       }
 
-      function comboWordMatch(a, b){
-        const aa = comboNormalize(a);
-        const bb = comboNormalize(b);
+      function gcBestTokens(value){
+        return gcBestNorm(value).split(' ').filter((token) => token.length > 2);
+      }
+
+      function gcBestMatch(a, b){
+        const aa = gcBestNorm(a);
+        const bb = gcBestNorm(b);
         if (!aa || !bb) return false;
         if (aa === bb) return true;
         if (aa.includes(bb) || bb.includes(aa)) return true;
-        const aw = new Set(aa.split(' ').filter((x) => x.length > 2));
-        const bw = bb.split(' ').filter((x) => x.length > 2);
-        return bw.some((x) => aw.has(x));
+
+        const aw = new Set(gcBestTokens(aa));
+        const bw = gcBestTokens(bb);
+        if (!aw.size || !bw.length) return false;
+
+        let hits = 0;
+        for (const token of bw) {
+          if (aw.has(token)) hits += 1;
+        }
+
+        return hits >= Math.min(2, bw.length);
       }
 
-      function comboBestRowFromCombo(combo){
+      function gcBestActiveCombo(combosData){
+        const combos = items(combosData).filter(Boolean);
+        if (!combos.length) return null;
+
+        return [...combos].sort((a, b) => {
+          const last = comboLastMs(b) - comboLastMs(a);
+          if (last) return last;
+          return comboTotalLaps(b) - comboTotalLaps(a);
+        })[0] || null;
+      }
+
+      function gcBestRowFromComboObject(combo){
         if (!combo || typeof combo !== 'object') return null;
 
         const track = comboTrackName(combo);
         const cars = comboCars(combo).slice(0, 8);
-        const nested = pick(combo, ['bestLap','fastestLap','leaderLap','recordLap','best']);
+        const nested = pick(combo, ['bestLap','fastestLap','leaderLap','recordLap','best','best_lap','fastest_lap']);
 
         if (nested && typeof nested === 'object') {
           return {
             ...nested,
-            trackName: trackName(nested) !== 'Circuito' ? trackName(nested) : track,
-            carName: carName(nested) !== 'Coche' ? carName(nested) : (cars[0] || 'Coche'),
             driverName: driverName(nested) !== 'Piloto' ? driverName(nested) : comboBestDriver(combo),
+            carName: carName(nested) !== 'Coche' ? carName(nested) : (cars[0] || 'Coche'),
+            trackName: trackName(nested) !== 'Circuito' ? trackName(nested) : track,
             lapTimeFormatted: comboBestTime(combo) || lapTime(nested),
             playerId: pick(nested, ['playerId','driverId','pilotId','id','driver.id','player.id','pilot.id']) || pick(combo, ['bestPlayerId','bestDriverId','fastestPlayerId','fastestDriverId']),
           };
         }
 
-        const time = comboBestTime(combo);
-        const name = comboBestDriver(combo);
-        if (!time || time === '--' || !name || name === 'Piloto') return null;
+        const comboTime = comboBestTime(combo);
+        const comboDriver = comboBestDriver(combo);
 
-        return {
-          driverName: name,
-          lapTimeFormatted: time,
-          carName: cars[0] || 'Coche',
-          trackName: track,
-          playerId: pick(combo, ['bestPlayerId','bestDriverId','fastestPlayerId','fastestDriverId']),
-        };
+        if (comboTime && comboTime !== '--' && comboDriver && comboDriver !== 'Piloto') {
+          return {
+            driverName: comboDriver,
+            carName: cars[0] || 'Coche',
+            trackName: track,
+            lapTimeFormatted: comboTime,
+            playerId: pick(combo, ['bestPlayerId','bestDriverId','fastestPlayerId','fastestDriverId']),
+          };
+        }
+
+        return null;
       }
 
-      function lapMatchesActiveCombo(row){
-        const active = window.GCAppActiveComboV1535 || null;
-        if (!active) return false;
+      function gcBestLapMatchesCombo(row, combo, mode = 'track-car'){
+        if (!row || !combo) return false;
 
+        const comboTrack = comboTrackName(combo);
+        const comboCars = comboCars(combo).slice(0, 12);
         const rowTrack = trackName(row);
         const rowCar = carName(row);
-        const trackOk = active.track ? comboWordMatch(rowTrack, active.track) : true;
-        const cars = Array.isArray(active.cars) ? active.cars : [];
-        const carOk = !cars.length || cars.some((car) => comboWordMatch(rowCar, car));
 
-        return trackOk && carOk;
+        const trackOk = comboTrack ? gcBestMatch(rowTrack, comboTrack) : true;
+        if (!trackOk) return false;
+
+        if (mode === 'track-only') return true;
+
+        if (!comboCars.length) return true;
+        return comboCars.some((car) => gcBestMatch(rowCar, car));
       }
 
-      function selectBestForActiveCombo(bestItems, recentItems){
-        const comboRow = window.GCAppActiveComboBestRowV1535 || null;
-        if (comboRow && lapTime(comboRow) && lapTime(comboRow) !== '--') return comboRow;
+      function gcBestSelectComboDriver(combosData, recentData, bestData){
+        const combo = gcBestActiveCombo(combosData);
+        const comboDirect = gcBestRowFromComboObject(combo);
 
-        const pool = [...(bestItems || []), ...(recentItems || [])].filter(Boolean);
-        const comboPool = pool.filter(lapMatchesActiveCombo).sort((a, b) => lapMs(a) - lapMs(b));
-        return comboPool[0] || null;
+        if (comboDirect && lapMs(comboDirect) !== Number.POSITIVE_INFINITY) {
+          return comboDirect;
+        }
+
+        const recent = items(recentData).filter(Boolean);
+        const best = items(bestData).filter(Boolean);
+        const pool = [...recent, ...best].filter((row) => lapMs(row) !== Number.POSITIVE_INFINITY);
+
+        if (!combo) {
+          return pool.sort((a, b) => lapMs(a) - lapMs(b))[0] || null;
+        }
+
+        const exact = pool
+          .filter((row) => gcBestLapMatchesCombo(row, combo, 'track-car'))
+          .sort((a, b) => lapMs(a) - lapMs(b));
+
+        if (exact[0]) return exact[0];
+
+        const trackOnly = pool
+          .filter((row) => gcBestLapMatchesCombo(row, combo, 'track-only'))
+          .sort((a, b) => lapMs(a) - lapMs(b));
+
+        return trackOnly[0] || null;
       }
+
+      function gcBestRenderComboDriver(combosData, recentData, bestData){
+        const row = gcBestSelectComboDriver(combosData, recentData, bestData);
+
+        if (typeof renderTopDriver === 'function') {
+          renderTopDriver(row);
+        }
+
+        if (row) {
+          console.info('[GC /app] Mejor piloto combo', {
+            driver: driverName(row),
+            car: carName(row),
+            track: trackName(row),
+            time: lapTime(row),
+            ms: lapMs(row),
+          });
+        } else {
+          console.warn('[GC /app] No se pudo calcular mejor piloto combo', {
+            combo: gcBestActiveCombo(combosData),
+            combos: items(combosData).length,
+            recent: items(recentData).length,
+            best: items(bestData).length,
+          });
+        }
+      }
+      /* GC_APP_COMBO_BEST_DRIVER_LOGIC_V15_35_9_1 END */
 
 function driverAvatarUrl(row){
         const id = pick(row, ['playerId','driverId','pilotId','id','driver.id','player.id','pilot.id']);
@@ -1488,12 +1592,9 @@ function renderLapReadout(bestData, recentData){
         const best = bestItems[0] || [...recentItems].sort((a,b) => lapMs(a) - lapMs(b))[0] || null;
         const last = recentLaps[0] || null;
 
-        renderTopDriver(selectBestForActiveCombo(bestItems, recentItems));
         setText('gcQuickRefs', formatNumber(recentData?.count ?? recentLaps.length));
         setText('gcRefsMeta', `${formatNumber(recentData?.totalMatchedLaps ?? recentData?.count ?? recentLaps.length)} vueltas encontradas · mostrando las más recientes`);
-        setText('gcQuickTop', best ? lapTime(best) : '--');
-        setText('gcQuickTopMeta', best ? [driverName(best), carName(best), trackName(best)].filter(Boolean).join(' · ') : 'sin datos');
-        setText('gcQuickLast', last ? lapTime(last) : '--');
+setText('gcQuickLast', last ? lapTime(last) : '--');
         setText('gcQuickLastMeta', last ? [driverName(last), trackName(last), dateText(lapDate(last))].filter(Boolean).join(' · ') : 'sin datos');
 
         const table = byId('gcRefsTable');
@@ -1504,7 +1605,39 @@ function renderLapReadout(bestData, recentData){
         }
       }
 
-      function renderStracker(strackerData, recentData, bestData, combosData){
+            /* GC_APP_SERVER_UPTIME_V15_35_10 START */
+      function renderServerUptime(originCandidates, recentData, bestData){
+        const candidateGroups = Array.isArray(originCandidates) ? originCandidates : [originCandidates];
+        const rows = [
+          ...candidateGroups.flatMap((data) => items(data)),
+          ...items(recentData),
+          ...items(bestData),
+        ].filter(Boolean);
+
+        const timestamps = rows
+          .map((row) => lapDate(row))
+          .filter((ms) => Number.isFinite(ms) && ms > 0)
+          .sort((a, b) => a - b);
+
+        const firstMs = timestamps[0];
+
+        if (!firstMs) {
+          setText('gcServerUptimeDays', '--');
+          setText('gcServerUptimeMeta', 'sin fecha base');
+          return;
+        }
+
+        const now = Date.now();
+        const diffMs = Math.max(0, now - firstMs);
+        const days = Math.max(1, Math.floor(diffMs / 86400000) + 1);
+        const firstDate = new Date(firstMs).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' });
+
+        setText('gcServerUptimeDays', `${days} ${days === 1 ? 'día' : 'días'}`);
+        setText('gcServerUptimeMeta', `desde ${firstDate}`);
+      }
+      /* GC_APP_SERVER_UPTIME_V15_35_10 END */
+
+function renderStracker(strackerData, recentData, bestData, combosData){
         const db = strackerData?.stracker || strackerData?.database || strackerData || {};
         const exists = Boolean(db.exists || strackerData?.exists);
         const valid = Boolean(db.validSQLite || strackerData?.validSQLite);
@@ -1551,19 +1684,26 @@ function renderLapReadout(bestData, recentData){
           fetchJson('/api/combos/stats?limit=300&sort=recent').catch(() => null),
           fetchJson('/api/combos?limit=300').catch(() => null),
           fetchJson('/api/hotlaps?limit=300').catch(() => null),
-          fetchJson('/api/laps?limit=12&sort=recent&valid=all').catch(() => null),
+          fetchJson('/api/laps?limit=500&sort=recent&valid=all').catch(() => null),
           fetchJson('/api/pilots?limit=800&valid=all').catch(() => null),
           fetchJson('/api/drivers?limit=800&valid=all').catch(() => null),
           fetchJson('/api/stracker/status').catch(() => null)
         ]);
 
         const combosData = items(combos).length ? combos : combosFallback;
+        const serverOriginCandidates = await Promise.all([
+          fetchJson('/api/laps?limit=1&sort=oldest&valid=all').catch(() => null),
+          fetchJson('/api/laps?limit=1&sort=asc&valid=all').catch(() => null),
+          fetchJson('/api/laps?limit=1&order=asc&valid=all').catch(() => null),
+        ]);
 
         renderAuth(profile, auth);
         renderMetrics({ pilotsData: pilots, driversData: drivers, combosData, recentData: recentLaps, bestData: bestHotlaps });
         renderCombo(combosData, recentLaps, bestHotlaps);
         renderLapReadout(bestHotlaps, recentLaps);
+        renderServerUptime(serverOriginCandidates, recentLaps, bestHotlaps);
         renderStracker(stracker, recentLaps, bestHotlaps, combosData);
+        gcBestRenderComboDriver(combosData, recentLaps, bestHotlaps);
         setText('gcAppStatusChip','Live');
 
         console.info('[GC /app v6.3 panel fix]', {
