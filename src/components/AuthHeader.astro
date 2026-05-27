@@ -1,6 +1,273 @@
+<style is:global>
+  /* GC_USER_AVATAR_MENU_V15_33 */
+  /* GC_USER_MENU_ORDER_V15_33_1 */
+  .gc-public-actions,
+  .gc-topbar__right{
+    display:flex;
+    align-items:center;
+  }
+
+  .gc-public-actions .gc-theme--dropdown,
+  .gc-topbar__right .gc-theme--dropdown{
+    order:80;
+  }
+
+  .gc-public-actions .gc-user-menu-v1533,
+  .gc-topbar__right .gc-user-menu-v1533{
+    order:90;
+    margin-left:4px;
+  }
+
+  .gc-public-actions [data-auth-link],
+  .gc-topbar__right [data-auth-link]{
+    order:90;
+  }
+
+  @media(max-width:760px){
+    .gc-public-actions .gc-theme--dropdown,
+    .gc-topbar__right .gc-theme--dropdown{
+      order:80;
+    }
+
+    .gc-public-actions .gc-user-menu-v1533,
+    .gc-topbar__right .gc-user-menu-v1533{
+      order:90;
+      margin-left:2px;
+    }
+  }
+
+  html[data-auth-ready="false"] .gc-public-header [data-auth-link],
+  html[data-auth-ready="false"] .gc-topbar [data-auth-link]{
+    visibility:hidden;
+  }
+
+  .gc-public-header [data-auth-status],
+  .gc-topbar [data-auth-status],
+  .gc-public-header [data-auth-state],
+  .gc-topbar [data-auth-state],
+  .gc-public-header [data-auth-logout],
+  .gc-topbar [data-auth-logout]{
+    display:none!important;
+  }
+
+  .gc-user-menu-v1533{
+    position:relative;
+    display:none;
+    align-items:center;
+    z-index:80;
+  }
+
+  html[data-auth="true"] .gc-user-menu-v1533{
+    display:flex;
+  }
+
+  html[data-auth="true"] .gc-public-header [data-auth-link],
+  html[data-auth="true"] .gc-topbar [data-auth-link]{
+    display:none!important;
+  }
+
+  .gc-user-menu-v1533__button{
+    appearance:none;
+    border:1px solid color-mix(in srgb,var(--accent,#9dff00) 34%,rgba(255,255,255,.18));
+    background:
+      radial-gradient(circle at 28% 18%, color-mix(in srgb,var(--accent,#9dff00) 18%,transparent), transparent 1.8rem),
+      rgba(3,12,7,.76);
+    color:var(--text,#f2fff0);
+    border-radius:999px;
+    min-height:42px;
+    padding:4px 10px 4px 4px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.24),
+      inset 0 0 0 1px rgba(255,255,255,.04);
+    transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;
+  }
+
+  .gc-user-menu-v1533__button:hover,
+  .gc-user-menu-v1533.is-open .gc-user-menu-v1533__button{
+    transform:translateY(-1px);
+    border-color:color-mix(in srgb,var(--accent,#9dff00) 72%,rgba(255,255,255,.2));
+    box-shadow:
+      0 16px 42px rgba(0,0,0,.32),
+      0 0 22px color-mix(in srgb,var(--accent,#9dff00) 18%,transparent),
+      inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  .gc-user-menu-v1533__avatar{
+    width:34px;
+    height:34px;
+    border-radius:999px;
+    object-fit:cover;
+    display:block;
+    background:#050805;
+    box-shadow:
+      0 0 0 2px color-mix(in srgb,var(--accent,#9dff00) 75%,transparent),
+      0 0 18px color-mix(in srgb,var(--accent,#9dff00) 22%,transparent);
+  }
+
+  .gc-user-menu-v1533__text{
+    display:grid;
+    gap:0;
+    min-width:0;
+    text-align:left;
+    line-height:1;
+  }
+
+  .gc-user-menu-v1533__label{
+    font-size:.62rem;
+    font-weight:950;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent,#9dff00);
+    opacity:.92;
+  }
+
+  .gc-user-menu-v1533__name{
+    max-width:132px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.82rem;
+    font-weight:950;
+    color:var(--text,#f2fff0);
+  }
+
+  .gc-user-menu-v1533__chevron{
+    color:var(--accent,#9dff00);
+    font-size:.78rem;
+    line-height:1;
+    opacity:.9;
+    transform:translateY(-1px);
+  }
+
+  .gc-user-menu-v1533__panel{
+    position:absolute;
+    right:0;
+    top:calc(100% + 10px);
+    min-width:230px;
+    padding:8px;
+    border:1px solid color-mix(in srgb,var(--accent,#9dff00) 26%,rgba(255,255,255,.16));
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 20% 0%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 9rem),
+      rgba(3,10,6,.96);
+    box-shadow:0 24px 70px rgba(0,0,0,.42);
+    backdrop-filter:blur(18px);
+    display:none;
+  }
+
+  .gc-user-menu-v1533.is-open .gc-user-menu-v1533__panel{
+    display:block;
+  }
+
+  .gc-user-menu-v1533__head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 8px 10px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    margin-bottom:6px;
+  }
+
+  .gc-user-menu-v1533__head img{
+    width:42px;
+    height:42px;
+    border-radius:999px;
+    object-fit:cover;
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#9dff00) 65%,transparent);
+  }
+
+  .gc-user-menu-v1533__head strong{
+    display:block;
+    color:var(--text,#f2fff0);
+    font-size:.92rem;
+    max-width:150px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .gc-user-menu-v1533__head small{
+    display:block;
+    margin-top:3px;
+    color:var(--dim,#8fa293);
+    font-size:.72rem;
+    font-weight:800;
+  }
+
+  .gc-user-menu-v1533__item{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 11px;
+    border:0;
+    border-radius:12px;
+    background:transparent;
+    color:var(--soft,#c6d5c7);
+    text-decoration:none;
+    font:inherit;
+    font-size:.84rem;
+    font-weight:900;
+    cursor:pointer;
+    text-align:left;
+  }
+
+  .gc-user-menu-v1533__item:hover{
+    color:var(--text,#f2fff0);
+    background:rgba(255,255,255,.06);
+  }
+
+  .gc-user-menu-v1533__item--danger{
+    color:#ffb4a8;
+  }
+
+  .gc-user-menu-v1533__item--danger:hover{
+    color:#ffd0c8;
+    background:rgba(255,80,60,.10);
+  }
+
+  .gc-user-menu-v1533__sep{
+    height:1px;
+    background:rgba(255,255,255,.08);
+    margin:6px;
+  }
+
+  @media(max-width:760px){
+    .gc-user-menu-v1533__text{
+      display:none;
+    }
+
+    .gc-user-menu-v1533__button{
+      padding:4px;
+    }
+
+    .gc-user-menu-v1533__chevron{
+      display:none;
+    }
+
+    .gc-user-menu-v1533__panel{
+      position:fixed;
+      top:68px;
+      right:14px;
+      left:14px;
+      min-width:0;
+    }
+  }
+</style>
+
 <script is:inline>
   (() => {
     const root = document.documentElement;
+    const AUTH_CACHE_KEY = 'gc.auth.snapshot.v1533';
+    const AUTH_CACHE_TTL = 60 * 1000;
+    const AUTH_CACHE_STALE = 15 * 60 * 1000;
+    const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+
     const authEndpoints = ['/api/auth/me', '/api/profile'];
     const logoutEndpoints = [
       { url: '/api/auth/logout', method: 'POST' },
@@ -13,10 +280,16 @@
     const authBadges = () => Array.from(document.querySelectorAll('[data-auth-status], [data-auth-state]')).filter(inHeader);
     const logoutButtons = () => Array.from(document.querySelectorAll('[data-auth-logout]')).filter(inHeader);
     const adminLinks = () => Array.from(document.querySelectorAll('[data-admin-only]'));
+    const userMenus = () => Array.from(document.querySelectorAll('[data-gc-user-menu-v1533]'));
 
     const normalizedPath = () => {
       const path = window.location.pathname.replace(/\/$/, '');
       return path || '/';
+    };
+
+    const cleanText = (value, fallback = '') => String(value ?? fallback).trim().replace(/\s+/g, ' ');
+    const safeJsonParse = (value) => {
+      try { return JSON.parse(value); } catch { return null; }
     };
 
     const pickUser = (data) => {
@@ -35,7 +308,7 @@
 
     const isAdminUser = (data) => {
       const user = pickUser(data) || {};
-      const role = String(user.role || data?.role || '').trim().toLowerCase();
+      const role = String(user.role || data?.role || data?.profile?.role || '').trim().toLowerCase();
       return role === 'admin';
     };
 
@@ -50,9 +323,61 @@
     const userName = (data) => {
       const user = pickUser(data) || {};
       const raw = user.displayName || user.display_name || user.name || user.username || user.email || data?.email || '';
-      const text = String(raw || '').trim();
+      const text = cleanText(raw);
       if (!text) return 'Mi perfil';
       return text.includes('@') ? text.split('@')[0] : text;
+    };
+
+    const userEmail = (data) => {
+      const user = pickUser(data) || {};
+      return cleanText(user.email || data?.email || '');
+    };
+
+    const directAvatarUrl = (data) => {
+      const user = pickUser(data) || {};
+      return cleanText(
+        user.avatarUrl ||
+        user.avatar_url ||
+        user.profileAvatarUrl ||
+        user.profile_avatar_url ||
+        data?.avatarUrl ||
+        data?.avatar_url ||
+        data?.profile?.avatarUrl ||
+        data?.profile?.avatar_url ||
+        ''
+      );
+    };
+
+    const snapshot = (data) => ({
+      logged: isLogged(data),
+      admin: isAdminUser(data),
+      name: userName(data),
+      email: userEmail(data),
+      avatarUrl: directAvatarUrl(data),
+      raw: data || null,
+      ts: Date.now()
+    });
+
+    const readCachedSnapshot = () => {
+      const parsed = safeJsonParse(sessionStorage.getItem(AUTH_CACHE_KEY) || localStorage.getItem(AUTH_CACHE_KEY) || '');
+      if (!parsed || typeof parsed !== 'object') return null;
+      const age = Date.now() - Number(parsed.ts || 0);
+      if (age > AUTH_CACHE_STALE) return null;
+      return parsed;
+    };
+
+    const writeCachedSnapshot = (snap) => {
+      try {
+        sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(snap));
+        localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(snap));
+      } catch (_) {}
+    };
+
+    const clearCachedSnapshot = () => {
+      try {
+        sessionStorage.removeItem(AUTH_CACHE_KEY);
+        localStorage.removeItem(AUTH_CACHE_KEY);
+      } catch (_) {}
     };
 
     const setAdminVisibility = (isAdmin) => {
@@ -69,61 +394,172 @@
       });
     };
 
-    const hideBadges = () => {
+    const hideLegacyAuthPieces = () => {
       authBadges().forEach((badge) => {
         badge.hidden = true;
         badge.setAttribute('aria-hidden', 'true');
-        badge.textContent = 'Conectado';
       });
-    };
-
-    const setLoggedOut = () => {
-      root.dataset.auth = 'false';
-      root.dataset.authReady = 'true';
-      hideBadges();
-      setAdminVisibility(false);
 
       logoutButtons().forEach((button) => {
         button.hidden = true;
         button.disabled = false;
-        button.textContent = 'Salir';
         button.setAttribute('aria-hidden', 'true');
-      });
-
-      authLinks().forEach((link) => {
-        link.textContent = 'Login';
-        link.setAttribute('href', '/login');
-        link.classList.remove('is-authenticated', 'gc-auth-profile-link');
-        link.removeAttribute('data-auth-profile-link');
-        link.setAttribute('aria-label', 'Login');
-        link.setAttribute('title', 'Login');
       });
     };
 
-    const setLoggedIn = (data) => {
-      const name = userName(data);
-      const isAdmin = isAdminUser(data);
+    const setLegacyLoginVisible = (visible) => {
+      authLinks().forEach((link) => {
+        if (visible) {
+          link.textContent = 'Login';
+          link.setAttribute('href', '/login');
+          link.classList.remove('is-authenticated', 'gc-auth-profile-link');
+          link.removeAttribute('data-auth-profile-link');
+          link.removeAttribute('hidden');
+          link.removeAttribute('aria-hidden');
+          link.setAttribute('aria-label', 'Login');
+          link.setAttribute('title', 'Login');
+        } else {
+          link.hidden = true;
+          link.setAttribute('aria-hidden', 'true');
+        }
+      });
+    };
+
+    const avatarFromMeEndpoint = async () => {
+      try {
+        const response = await fetch('/api/pilot-avatar/me', { credentials:'include', cache:'no-store' });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok) return '';
+        return cleanText(data.avatarUrl || '');
+      } catch {
+        return '';
+      }
+    };
+
+    function ensureUserMenu(container) {
+      if (!container || container.querySelector('[data-gc-user-menu-v1533]')) return;
+
+      const menu = document.createElement('div');
+      menu.className = 'gc-user-menu-v1533';
+      menu.dataset.gcUserMenuV1533 = 'true';
+      menu.innerHTML = `
+        <button class="gc-user-menu-v1533__button" type="button" aria-haspopup="menu" aria-expanded="false" data-user-menu-toggle>
+          <img class="gc-user-menu-v1533__avatar" src="${DEFAULT_AVATAR}" alt="" loading="eager" decoding="async" data-user-menu-avatar />
+          <span class="gc-user-menu-v1533__text">
+            <span class="gc-user-menu-v1533__label">Cuenta</span>
+            <strong class="gc-user-menu-v1533__name" data-user-menu-name>Perfil</strong>
+          </span>
+          <span class="gc-user-menu-v1533__chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="gc-user-menu-v1533__panel" role="menu" data-user-menu-panel>
+          <div class="gc-user-menu-v1533__head">
+            <img src="${DEFAULT_AVATAR}" alt="" loading="eager" decoding="async" data-user-menu-avatar-large />
+            <span>
+              <strong data-user-menu-name-large>Perfil</strong>
+              <small data-user-menu-subtitle>GrassCutters</small>
+            </span>
+          </div>
+          <a class="gc-user-menu-v1533__item" href="/perfil" role="menuitem">Mi perfil <span>↗</span></a>
+          <a class="gc-user-menu-v1533__item" href="/app" role="menuitem">Panel <span>↗</span></a>
+          <a class="gc-user-menu-v1533__item" href="/pilotos" role="menuitem">Pilotos <span>↗</span></a>
+          <a class="gc-user-menu-v1533__item" href="/admin" role="menuitem" data-user-menu-admin hidden>Admin <span>↗</span></a>
+          <div class="gc-user-menu-v1533__sep"></div>
+          <button class="gc-user-menu-v1533__item gc-user-menu-v1533__item--danger" type="button" role="menuitem" data-user-menu-logout>Cerrar sesión <span>×</span></button>
+        </div>
+      `;
+
+      container.appendChild(menu);
+
+      const toggle = menu.querySelector('[data-user-menu-toggle]');
+      const panel = menu.querySelector('[data-user-menu-panel]');
+      const close = () => {
+        menu.classList.remove('is-open');
+        toggle?.setAttribute('aria-expanded', 'false');
+      };
+      const open = () => {
+        userMenus().forEach((other) => {
+          if (other !== menu) {
+            other.classList.remove('is-open');
+            other.querySelector('[data-user-menu-toggle]')?.setAttribute('aria-expanded', 'false');
+          }
+        });
+        menu.classList.add('is-open');
+        toggle?.setAttribute('aria-expanded', 'true');
+      };
+
+      toggle?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        menu.classList.contains('is-open') ? close() : open();
+      });
+
+      panel?.addEventListener('click', (event) => event.stopPropagation());
+      menu.querySelector('[data-user-menu-logout]')?.addEventListener('click', () => logout());
+
+      document.addEventListener('click', close);
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close();
+      });
+    }
+
+    function ensureAllMenus() {
+      document.querySelectorAll('.gc-public-actions, .gc-topbar__right').forEach(ensureUserMenu);
+    }
+
+    function updateMenus(snap) {
+      ensureAllMenus();
+      const name = cleanText(snap?.name, 'Mi perfil');
+      const subtitle = snap?.admin ? 'Admin local' : (snap?.email || 'Piloto GrassCutters');
+      const avatar = cleanText(snap?.avatarUrl) || DEFAULT_AVATAR;
+
+      userMenus().forEach((menu) => {
+        menu.querySelectorAll('[data-user-menu-name]').forEach((el) => { el.textContent = name; });
+        menu.querySelectorAll('[data-user-menu-name-large]').forEach((el) => { el.textContent = name; });
+        menu.querySelectorAll('[data-user-menu-subtitle]').forEach((el) => { el.textContent = subtitle; });
+        menu.querySelectorAll('[data-user-menu-avatar], [data-user-menu-avatar-large]').forEach((img) => {
+          img.src = avatar;
+          img.alt = `Avatar de ${name}`;
+          img.onerror = () => {
+            img.onerror = null;
+            img.src = DEFAULT_AVATAR;
+          };
+        });
+        menu.querySelectorAll('[data-user-menu-admin]').forEach((el) => {
+          el.hidden = !snap?.admin;
+          if (snap?.admin) el.removeAttribute('aria-hidden');
+          else el.setAttribute('aria-hidden', 'true');
+        });
+      });
+    }
+
+    const setLoggedOut = () => {
+      root.dataset.auth = 'false';
+      root.dataset.authReady = 'true';
+      hideLegacyAuthPieces();
+      setAdminVisibility(false);
+      setLegacyLoginVisible(true);
+      userMenus().forEach((menu) => menu.classList.remove('is-open'));
+      clearCachedSnapshot();
+    };
+
+    const setLoggedIn = async (dataOrSnap, options = {}) => {
+      const snap = dataOrSnap?.logged !== undefined ? dataOrSnap : snapshot(dataOrSnap);
       root.dataset.auth = 'true';
       root.dataset.authReady = 'true';
-      hideBadges();
-      setAdminVisibility(isAdmin);
+      hideLegacyAuthPieces();
+      setLegacyLoginVisible(false);
+      setAdminVisibility(Boolean(snap.admin));
+      updateMenus(snap);
 
-      authLinks().forEach((link) => {
-        link.textContent = `Conectado · ${name}`;
-        link.setAttribute('href', '/perfil');
-        link.setAttribute('title', `Abrir perfil de ${name}`);
-        link.setAttribute('aria-label', `Abrir perfil de ${name}`);
-        link.classList.add('is-authenticated', 'gc-auth-profile-link');
-        link.setAttribute('data-auth-profile-link', 'true');
-      });
+      if (!options.skipCache) writeCachedSnapshot(snap);
 
-      logoutButtons().forEach((button) => {
-        button.hidden = false;
-        button.disabled = false;
-        button.removeAttribute('aria-hidden');
-        button.textContent = 'Salir';
-        button.setAttribute('title', 'Cerrar sesión');
-      });
+      if (!snap.avatarUrl && !options.skipAvatarFetch) {
+        const avatarUrl = await avatarFromMeEndpoint();
+        if (avatarUrl) {
+          const next = { ...snap, avatarUrl, ts: Date.now() };
+          writeCachedSnapshot(next);
+          updateMenus(next);
+        }
+      }
     };
 
     async function fetchJson(url, options = {}) {
@@ -180,13 +616,14 @@
       document.cookie = `gc_session=; Max-Age=0; path=/; SameSite=Lax`;
     };
 
-    async function logout(button) {
-      if (button?.dataset.logoutBusy === 'true') return;
-      if (button) {
-        button.dataset.logoutBusy = 'true';
-        button.disabled = true;
-        button.textContent = 'Saliendo';
-      }
+    async function logout() {
+      userMenus().forEach((menu) => {
+        const btn = menu.querySelector('[data-user-menu-logout]');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Saliendo...';
+        }
+      });
 
       let ok = false;
       for (const endpoint of logoutEndpoints) {
@@ -211,25 +648,32 @@
       window.location.assign('/');
     }
 
-    function bindLogoutButtons() {
+    function bindLegacyLogoutButtons() {
       logoutButtons().forEach((button) => {
         if (button.dataset.logoutBound === 'true') return;
         button.dataset.logoutBound = 'true';
-        button.addEventListener('click', () => logout(button));
+        button.addEventListener('click', () => logout());
       });
     }
 
-    bindLogoutButtons();
-    setAdminVisibility(false);
+    ensureAllMenus();
+    bindLegacyLogoutButtons();
+
+    const cached = readCachedSnapshot();
+    if (cached?.logged) {
+      setLoggedIn(cached, { skipCache:true, skipAvatarFetch:true });
+    } else {
+      setAdminVisibility(false);
+    }
 
     fetchAuth().then((data) => {
       if (isLogged(data)) setLoggedIn(data);
       else setLoggedOut();
-      bindLogoutButtons();
+      bindLegacyLogoutButtons();
       guardAdminRoute(data);
     }).catch(() => {
-      setLoggedOut();
-      guardAdminRoute(null);
+      if (!cached?.logged) setLoggedOut();
+      guardAdminRoute(cached?.raw || null);
     });
   })();
 </script>

@@ -3975,6 +3975,183 @@ const mockPilots = [
 
 const app = express();
 
+/* GC_SECURITY_CORE_V15_32 START */
+type GcRateEntryV1532 = {
+  count: number;
+  resetAt: number;
+};
+
+const gcRateStoreV1532 = new Map<string, GcRateEntryV1532>();
+
+function gcSecurityBoolEnvV1532(name: string, fallback: boolean) {
+  const raw = String(process.env[name] ?? '').trim().toLowerCase();
+  if (!raw) return fallback;
+  if (['1', 'true', 'yes', 'si', 'sí', 'on'].includes(raw)) return true;
+  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
+  return fallback;
+}
+
+function gcSecurityNumberEnvV1532(name: string, fallback: number, min: number, max: number) {
+  const value = Number(process.env[name]);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, value));
+}
+
+function gcClientIpV1532(req: any) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function gcCleanRouteV1532(req: any) {
+  return String(req.originalUrl || req.url || '').split('?')[0] || '/';
+}
+
+function gcRateGroupV1532(req: any) {
+  const method = String(req.method || 'GET').toUpperCase();
+  const route = gcCleanRouteV1532(req);
+
+  if (route.startsWith('/api/auth/login') || route.startsWith('/api/login')) {
+    return {
+      key: 'auth-login',
+      max: gcSecurityNumberEnvV1532('GC_RATE_AUTH_LOGIN_MAX', 8, 1, 100),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_AUTH_LOGIN_WINDOW_MS', 15 * 60 * 1000, 1000, 60 * 60 * 1000),
+    };
+  }
+
+  if (route.startsWith('/api/auth/register') || route.startsWith('/api/register')) {
+    return {
+      key: 'auth-register',
+      max: gcSecurityNumberEnvV1532('GC_RATE_AUTH_REGISTER_MAX', 5, 1, 100),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_AUTH_REGISTER_WINDOW_MS', 30 * 60 * 1000, 1000, 2 * 60 * 60 * 1000),
+    };
+  }
+
+  if (route.includes('/sync') || route.includes('/auto-sync')) {
+    return {
+      key: 'sync',
+      max: gcSecurityNumberEnvV1532('GC_RATE_SYNC_MAX', 8, 1, 120),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_SYNC_WINDOW_MS', 60 * 1000, 1000, 15 * 60 * 1000),
+    };
+  }
+
+  if (route.includes('/upload') || route.includes('/import')) {
+    return {
+      key: 'upload-import',
+      max: gcSecurityNumberEnvV1532('GC_RATE_UPLOAD_IMPORT_MAX', 12, 1, 120),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_UPLOAD_IMPORT_WINDOW_MS', 60 * 1000, 1000, 15 * 60 * 1000),
+    };
+  }
+
+  if (route.startsWith('/api/admin')) {
+    return {
+      key: 'admin-api',
+      max: gcSecurityNumberEnvV1532('GC_RATE_ADMIN_MAX', 80, 5, 1000),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_ADMIN_WINDOW_MS', 60 * 1000, 1000, 15 * 60 * 1000),
+    };
+  }
+
+  if (method !== 'GET' && method !== 'HEAD' && route.startsWith('/api/')) {
+    return {
+      key: 'api-write',
+      max: gcSecurityNumberEnvV1532('GC_RATE_API_WRITE_MAX', 60, 5, 1000),
+      windowMs: gcSecurityNumberEnvV1532('GC_RATE_API_WRITE_WINDOW_MS', 60 * 1000, 1000, 15 * 60 * 1000),
+    };
+  }
+
+  return null;
+}
+
+function gcRateCleanupV1532(now: number) {
+  if (gcRateStoreV1532.size < 2000) return;
+  for (const [key, entry] of gcRateStoreV1532.entries()) {
+    if (entry.resetAt <= now) gcRateStoreV1532.delete(key);
+  }
+}
+
+function gcApplySecurityHeadersV1532(_req: any, res: any) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()');
+  res.setHeader('X-DNS-Prefetch-Control', 'on');
+
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+
+  if (gcSecurityBoolEnvV1532('GC_SECURITY_POWERED_BY_OFF', true)) {
+    res.removeHeader('X-Powered-By');
+  }
+}
+
+function gcShouldBlockDiagnosticsV1532(req: any) {
+  const route = gcCleanRouteV1532(req);
+  if (process.env.NODE_ENV !== 'production') return false;
+  if (gcSecurityBoolEnvV1532('GC_EXPOSE_DIAGNOSTICS_IN_PRODUCTION', false)) return false;
+
+  return [
+    '/api/debug',
+    '/api/runtime',
+    '/api/stracker/tables',
+    '/api/stracker/preview',
+    '/api/stracker/remote-config',
+    '/gc-data/health',
+  ].some((prefix) => route === prefix || route.startsWith(prefix + '/'));
+}
+
+function gcSecurityMiddlewareV1532(req: any, res: any, next: any) {
+  gcApplySecurityHeadersV1532(req, res);
+
+  if (gcShouldBlockDiagnosticsV1532(req)) {
+    res.status(404).json({ ok: false, message: 'Not found' });
+    return;
+  }
+
+  if (gcSecurityBoolEnvV1532('GC_RATE_LIMIT_DISABLED', false)) {
+    next();
+    return;
+  }
+
+  const group = gcRateGroupV1532(req);
+  if (!group) {
+    next();
+    return;
+  }
+
+  const now = Date.now();
+  const ip = gcClientIpV1532(req);
+  const key = group.key + ':' + ip;
+  const current = gcRateStoreV1532.get(key);
+
+  gcRateCleanupV1532(now);
+
+  if (!current || current.resetAt <= now) {
+    gcRateStoreV1532.set(key, { count: 1, resetAt: now + group.windowMs });
+    next();
+    return;
+  }
+
+  current.count += 1;
+
+  if (current.count > group.max) {
+    const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+    res.setHeader('Retry-After', String(retryAfter));
+    res.status(429).json({
+      ok: false,
+      message: 'Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.',
+      retryAfter,
+    });
+    return;
+  }
+
+  next();
+}
+
+app.disable('x-powered-by');
+app.use(gcSecurityMiddlewareV1532);
+/* GC_SECURITY_CORE_V15_32 END */
+
+
 /* GC_PILOT_SOCIAL_IMAGE_EXPRESS_V15_30_5 START */
 function gcPilotSocialDefaultAvatarBuffer() {
   const relative = String(DEFAULT_PILOT_AVATAR_URL || '/images/pilot-avatar-default.png')
@@ -7515,6 +7692,9 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
+
 
 
 
