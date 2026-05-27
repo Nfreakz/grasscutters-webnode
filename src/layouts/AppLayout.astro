@@ -39,6 +39,56 @@ const pageOgImages = {
   '/admin': '/og/admin-og.png',
 };
 
+/* GC_GLOBAL_SOCIAL_META_V15_31 START */
+const routeSocialMeta = {
+  '/app': {
+    title: 'Panel | GrassCutters Racing',
+    description: 'Panel de pista de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales.',
+    image: '/og/platform-og.png',
+    imageAlt: 'Panel GrassCutters Racing',
+  },
+  '/hotlaps': {
+    title: 'Hotlaps | GrassCutters Racing',
+    description: 'Leaderboard de GrassCutters Racing con tiempos de referencia, filtros por piloto, coche, circuito y vueltas válidas.',
+    image: '/og/hotlaps-og.png',
+    imageAlt: 'Hotlaps GrassCutters Racing',
+  },
+  '/combos': {
+    title: 'Combos | GrassCutters Racing',
+    description: 'Centro de combos de GrassCutters Racing con circuitos, coches, actividad real y referencias para decidir dónde rodar.',
+    image: '/og/combos-og.png',
+    imageAlt: 'Combos GrassCutters Racing',
+  },
+  '/pilotos': {
+    title: 'Pilotos | GrassCutters Racing',
+    description: 'Directorio de pilotos de GrassCutters Racing con perfiles públicos, actividad reciente y datos desde stracker.',
+    image: '/og/pilotos-og.png',
+    imageAlt: 'Pilotos GrassCutters Racing',
+  },
+  '/herramientas/fov': {
+    title: 'FOV Calculator | GrassCutters Racing',
+    description: 'Calculadora de FOV para ajustar la visión del cockpit y mejorar la referencia en pista.',
+    image: '/og/fov-og.png',
+    imageAlt: 'FOV Calculator GrassCutters Racing',
+  },
+  '/login': {
+    title: 'Login | GrassCutters Racing',
+    description: 'Acceso a la plataforma GrassCutters Racing.',
+    image: '/og/login-og.png',
+    imageAlt: 'Login GrassCutters Racing',
+  },
+};
+
+const exactRouteSocialMeta = routeSocialMeta[currentPathForSeo];
+
+function resolveSeoText(value, fallback = '') {
+  const text = compactSeoText(value, '');
+  const generic = ['grasscutters racing platform', 'grasscutters platform', ''];
+  if (generic.includes(text.toLowerCase())) return compactSeoText(fallback, text || fallback);
+  return text || compactSeoText(fallback, '');
+}
+/* GC_GLOBAL_SOCIAL_META_V15_31 END */
+
 function compactSeoText(value, fallback = '') {
   return String(value || fallback || '')
     .replace(/<[^>]*>/g, ' ')
@@ -62,12 +112,12 @@ function seoImageMime(value) {
   return 'image/png';
 }
 
-const cleanTitle = compactSeoText(title, 'GrassCutters Platform');
-const cleanDescription = compactSeoText(description, 'Panel de pista, hotlaps, combos y perfiles de GrassCutters Racing.');
+const cleanTitle = resolveSeoText(title, exactRouteSocialMeta?.title || 'GrassCutters Platform');
+const cleanDescription = resolveSeoText(description, exactRouteSocialMeta?.description || 'Panel de pista, hotlaps, combos y perfiles de GrassCutters Racing.');
 const matchedOgImage = pageOgImages[currentPathForSeo] || Object.entries(pageOgImages).find(([prefix]) => currentPathForSeo.startsWith(prefix + '/'))?.[1];
-const selectedOgImage = ogImage || matchedOgImage || '/og/platform-og.png';
+const selectedOgImage = ogImage || exactRouteSocialMeta?.image || matchedOgImage || '/og/platform-og.png';
 const absoluteOgImage = absoluteSeoUrl(selectedOgImage);
-const cleanOgImageAlt = compactSeoText(ogImageAlt, 'Imagen social de ' + cleanTitle);
+const cleanOgImageAlt = compactSeoText(ogImageAlt, exactRouteSocialMeta?.imageAlt || 'Imagen social de ' + cleanTitle);
 const ogImageType = seoImageMime(selectedOgImage);
 const shouldNoindex = noindex ?? (currentPathForSeo.startsWith('/admin') || currentPathForSeo.startsWith('/perfil'));
 
