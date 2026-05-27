@@ -1698,6 +1698,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
 
   try {
     const result = await syncStrackerFromGTX();
+    if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
     const ok = Boolean(result.ok);
     if (!ok) autoSyncFailureCount += 1;
 
@@ -1882,12 +1883,175 @@ function toObjects(result: any) {
   ) as PlainObject[];
 }
 
+/* GC_PERFORMANCE_CORE_V15_29 START
+ * Cache ligero para stracker.db3.
+ * Evita reimportar sql.js, releer el fichero SQLite y remapear todas las vueltas en cada request.
+ * Se invalida por firma de archivo: path + size + mtime.
+ */
+type GcStrackerSignature = {
+  path: string;
+  sizeBytes: number;
+  mtimeMs: number;
+  key: string;
+};
+
+type GcQueryCacheEntry = {
+  signatureKey: string;
+  createdAt: number;
+  rows: PlainObject[];
+};
+
+type GcJoinedLapsCacheEntry = {
+  signatureKey: string;
+  createdAt: number;
+  laps: ReturnType<typeof mapLapRow>[];
+};
+
+let gcStrackerSqlJsPromise: Promise<any> | null = null;
+let gcStrackerBytesCache: { signatureKey: string; bytes: Uint8Array } | null = null;
+let gcJoinedLapsCache: GcJoinedLapsCacheEntry | null = null;
+const gcStrackerQueryCache = new Map<string, GcQueryCacheEntry>();
+
+function gcPerfBoolEnv(name: string, fallback: boolean) {
+  const raw = String(process.env[name] ?? '').trim().toLowerCase();
+  if (!raw) return fallback;
+  if (['1', 'true', 'yes', 'si', 'sí', 'on', 'enabled'].includes(raw)) return true;
+  if (['0', 'false', 'no', 'off', 'disabled'].includes(raw)) return false;
+  return fallback;
+}
+
+function gcPerfNumberEnv(name: string, fallback: number, min: number, max: number) {
+  const value = Number(process.env[name]);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, value));
+}
+
+function gcStrackerQueryTtlMs() {
+  return gcPerfNumberEnv('STRACKER_QUERY_CACHE_TTL_MS', 15000, 0, 10 * 60 * 1000);
+}
+
+function gcJoinedLapsTtlMs() {
+  return gcPerfNumberEnv('STRACKER_JOINED_LAPS_CACHE_TTL_MS', 15000, 0, 10 * 60 * 1000);
+}
+
+function gcPublicHttpCacheSeconds() {
+  return gcPerfNumberEnv('GC_PUBLIC_HTTP_CACHE_SECONDS', 15, 0, 300);
+}
+
+function gcPublicHttpStaleSeconds() {
+  return gcPerfNumberEnv('GC_PUBLIC_HTTP_STALE_SECONDS', 60, 0, 900);
+}
+
+function gcPerformanceLogEnabled() {
+  return gcPerfBoolEnv('GC_PERF_LOG', process.env.NODE_ENV !== 'production');
+}
+
+function gcGetStrackerSignature(dbPath: string): GcStrackerSignature {
+  const stats = fs.statSync(dbPath);
+  const resolved = path.resolve(dbPath);
+  const sizeBytes = Number(stats.size || 0);
+  const mtimeMs = Number(stats.mtimeMs || 0);
+  return {
+    path: resolved,
+    sizeBytes,
+    mtimeMs,
+    key: resolved + ':' + sizeBytes + ':' + mtimeMs,
+  };
+}
+
+function gcCloneRows(rows: PlainObject[]) {
+  return rows.map((row) => ({ ...row }));
+}
+
+function gcTrimQueryCache(maxEntries = 80) {
+  if (gcStrackerQueryCache.size <= maxEntries) return;
+  const entries = Array.from(gcStrackerQueryCache.entries()).sort((a, b) => a[1].createdAt - b[1].createdAt);
+  for (const [key] of entries.slice(0, Math.max(1, entries.length - maxEntries))) {
+    gcStrackerQueryCache.delete(key);
+  }
+}
+
+function invalidateStrackerRuntimeCache(reason = 'manual') {
+  gcStrackerBytesCache = null;
+  gcJoinedLapsCache = null;
+  gcStrackerQueryCache.clear();
+  if (gcPerformanceLogEnabled()) console.log('[GC PERF] Caché stracker limpiada: ' + reason);
+}
+
+async function getCachedStrackerSqlJs() {
+  if (!gcStrackerSqlJsPromise) {
+    gcStrackerSqlJsPromise = (async () => {
+      const initSqlJsModule = await import('sql.js');
+      const initSqlJs = initSqlJsModule.default;
+      return initSqlJs();
+    })();
+  }
+  return gcStrackerSqlJsPromise;
+}
+
+function getCachedStrackerBytes(dbPath: string) {
+  const signature = gcGetStrackerSignature(dbPath);
+  const cacheBytes = gcPerfBoolEnv('STRACKER_CACHE_DB_BYTES', true);
+
+  if (!cacheBytes) return { signature, bytes: new Uint8Array(fs.readFileSync(dbPath)) };
+
+  if (gcStrackerBytesCache?.signatureKey === signature.key) {
+    return { signature, bytes: gcStrackerBytesCache.bytes };
+  }
+
+  const bytes = new Uint8Array(fs.readFileSync(dbPath));
+  gcStrackerBytesCache = { signatureKey: signature.key, bytes };
+  return { signature, bytes };
+}
+
+function gcCacheInfo() {
+  return {
+    api: 'performance-core-v15.29.3',
+    queryCacheEntries: gcStrackerQueryCache.size,
+    joinedLapsCached: Boolean(gcJoinedLapsCache),
+    dbBytesCached: Boolean(gcStrackerBytesCache),
+    queryTtlMs: gcStrackerQueryTtlMs(),
+    joinedLapsTtlMs: gcJoinedLapsTtlMs(),
+    publicHttpCacheSeconds: gcPublicHttpCacheSeconds(),
+    publicHttpStaleSeconds: gcPublicHttpStaleSeconds(),
+  };
+}
+
+function gcIsCachedPublicApi(url: string) {
+  const clean = String(url || '').split('?')[0];
+
+  if (!clean) return false;
+  if (clean.startsWith('/api/admin')) return false;
+  if (clean.startsWith('/api/auth')) return false;
+  if (clean.startsWith('/api/debug')) return false;
+  if (clean.startsWith('/api/runtime')) return false;
+  if (clean.includes('/sync')) return false;
+
+  return [
+    '/api/hotlaps',
+    '/api/laps',
+    '/api/drivers',
+    '/api/pilots',
+    '/api/cars',
+    '/api/tracks',
+    '/api/combos',
+    '/api/sessions',
+    '/api/activity/recent',
+    '/api/stats/overview',
+    '/api/calendar-events',
+    '/gc-data/hotlaps',
+    '/gc-data/hotlaps.php',
+    '/gc-data/drivers',
+    '/gc-data/cars',
+    '/gc-data/tracks',
+  ].some((prefix) => clean === prefix || clean.startsWith(prefix + '/'));
+}
+/* GC_PERFORMANCE_CORE_V15_29 END */
+
 async function withStrackerDb<T>(dbPath: string, callback: (db: SqlJsDatabase) => T | Promise<T>) {
-  const initSqlJsModule = await import('sql.js');
-  const initSqlJs = initSqlJsModule.default;
-  const SQL = await initSqlJs();
-  const fileBuffer = fs.readFileSync(dbPath);
-  const db = new SQL.Database(new Uint8Array(fileBuffer));
+  const SQL = await getCachedStrackerSqlJs();
+  const { bytes } = getCachedStrackerBytes(dbPath);
+  const db = new SQL.Database(bytes);
 
   try {
     return await callback(db);
@@ -1897,7 +2061,30 @@ async function withStrackerDb<T>(dbPath: string, callback: (db: SqlJsDatabase) =
 }
 
 async function runStrackerQuery(dbPath: string, sql: string) {
-  return withStrackerDb(dbPath, (db) => toObjects(db.exec(sql)));
+  const signature = gcGetStrackerSignature(dbPath);
+  const ttlMs = gcStrackerQueryTtlMs();
+  const normalizedSql = String(sql || '').replace(/\s+/g, ' ').trim();
+  const key = signature.key + '::' + normalizedSql;
+  const now = Date.now();
+  const cached = gcStrackerQueryCache.get(key);
+
+  if (ttlMs > 0 && cached && cached.signatureKey === signature.key && now - cached.createdAt <= ttlMs) {
+    return gcCloneRows(cached.rows);
+  }
+
+  const started = Date.now();
+  const rows = await withStrackerDb(dbPath, (db) => toObjects(db.exec(sql)));
+  if (ttlMs > 0) {
+    gcStrackerQueryCache.set(key, { signatureKey: signature.key, createdAt: now, rows });
+    gcTrimQueryCache();
+  }
+
+  if (gcPerformanceLogEnabled()) {
+    const elapsed = Date.now() - started;
+    if (elapsed > 120) console.log('[GC PERF] SQL stracker ' + elapsed + 'ms · ' + normalizedSql.slice(0, 120));
+  }
+
+  return gcCloneRows(rows);
 }
 
 function getSafeStrackerOrRespond(res: express.Response) {
@@ -2351,8 +2538,37 @@ function mapLapRow(row: PlainObject) {
 
 async function readJoinedLaps(dbPath: string) {
   await readDisplayNameStoreAsync();
+  const signature = gcGetStrackerSignature(dbPath);
+  const ttlMs = gcJoinedLapsTtlMs();
+  const now = Date.now();
+
+  if (
+    ttlMs > 0 &&
+    gcJoinedLapsCache &&
+    gcJoinedLapsCache.signatureKey === signature.key &&
+    now - gcJoinedLapsCache.createdAt <= ttlMs
+  ) {
+    return gcJoinedLapsCache.laps;
+  }
+
+  const started = Date.now();
   const rows = await runStrackerQuery(dbPath, `${joinedLapsSql} ORDER BY L.LapTime ASC`);
-  return rows.map(mapLapRow);
+  const laps = rows.map(mapLapRow);
+
+  if (ttlMs > 0) {
+    gcJoinedLapsCache = {
+      signatureKey: signature.key,
+      createdAt: now,
+      laps,
+    };
+  }
+
+  if (gcPerformanceLogEnabled()) {
+    const elapsed = Date.now() - started;
+    console.log('[GC PERF] readJoinedLaps ' + elapsed + 'ms · vueltas=' + laps.length);
+  }
+
+  return laps;
 }
 
 function filterLaps(laps: ReturnType<typeof mapLapRow>[], req: express.Request, defaults?: { validOnly?: boolean }) {
@@ -3758,6 +3974,35 @@ const mockPilots = [
 
 const app = express();
 
+app.use((req, res, next) => {
+  const started = Date.now();
+  const url = req.originalUrl || req.url || '';
+
+  if ((req.method === 'GET' || req.method === 'HEAD') && gcIsCachedPublicApi(url)) {
+    const maxAge = gcPublicHttpCacheSeconds();
+    const stale = gcPublicHttpStaleSeconds();
+
+    if (maxAge > 0) {
+      res.setHeader('Cache-Control', 'public, max-age=' + maxAge + ', stale-while-revalidate=' + stale);
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+
+    res.setHeader('Vary', 'Accept-Encoding');
+    res.setHeader('X-GC-Perf-Cache', 'public-api-v15.29.3');
+  }
+
+  res.on('finish', () => {
+    if (!gcPerformanceLogEnabled()) return;
+    const elapsed = Date.now() - started;
+    if (elapsed >= gcPerfNumberEnv('GC_PERF_SLOW_MS', 300, 0, 10000)) {
+      console.log('[GC PERF] ' + req.method + ' ' + url + ' -> ' + res.statusCode + ' · ' + elapsed + 'ms');
+    }
+  });
+
+  next();
+});
+
 // GC ACSR/ACSM championship community integration v3.1
 registerAcsmChampionshipRoutes(app);
 
@@ -4022,6 +4267,32 @@ function gcCompatCalendarStorageInfo() {
       : null
   };
 }
+
+app.get('/api/admin/performance/cache', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const stracker = getStrackerConfig();
+  res.json({
+    ok: true,
+    cache: gcCacheInfo(),
+    stracker: {
+      exists: stracker.exists,
+      validSQLite: stracker.validSQLite,
+      sizeBytes: stracker.sizeBytes,
+      modifiedAt: stracker.modifiedAt,
+    },
+    message: 'Estado de caché de rendimiento v15.29.3.'
+  });
+});
+
+app.post('/api/admin/performance/cache/clear', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  invalidateStrackerRuntimeCache('admin-clear');
+  res.json({ ok: true, cache: gcCacheInfo(), message: 'Caché de rendimiento limpiada.' });
+});
 
 app.get('/api/admin/status', async (req, res, next) => {
   try {
@@ -5588,6 +5859,7 @@ app.post('/api/admin/stracker/sync', async (req, res) => {
   if (!context) return;
 
   const result = await syncStrackerFromGTX();
+  if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
   res.status(result.statusCode).json({
     ...result,
     autoSync: getAutoSyncConfig()
@@ -6314,6 +6586,7 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
   }
 
   const result = await syncStrackerFromGTX();
+  if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
   lastAutoSyncResult = {
     ok: Boolean(result.ok),
     reason: 'manual',
@@ -6344,6 +6617,7 @@ async function handleStrackerSync(req: express.Request, res: express.Response) {
   }
 
   const result = await syncStrackerFromGTX();
+  if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
   res.status(result.statusCode).json(result);
 }
 
@@ -7110,6 +7384,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 
