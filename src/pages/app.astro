@@ -15,17 +15,17 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   <div class="gc-page gc-app-dashboard-v3">
     <section class="gc-hero gc-hero--compact gc-app-hero-v3">
       <div>
-        <span class="gc-kicker">GrassCutters Platform</span>
-        <h1 class="gc-title">Panel de pista.</h1>
-        <p class="gc-subtitle">Resumen de pista con combo activo, actividad reciente y accesos principales.</p>
+        <span class="gc-kicker">GrassCutters Control</span>
+        <h1 class="gc-title">Race Control</h1>
+        <p class="gc-subtitle">Combo, vueltas recientes y accesos de boxes.</p>
         <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent" id="gcAppStatusChip">Panel listo</span>
-          <span class="gc-chip" id="gcAppComboChip">Combo activo</span>
+          <span class="gc-chip gc-chip--accent" id="gcAppStatusChip">Sistema listo</span>
+          <span class="gc-chip" id="gcAppComboChip">Combo</span>
           <span class="gc-chip" id="gcAppClock">--:--</span>
         </div>
       </div>
       <aside class="gc-live-panel gc-app-session-v3" aria-label="Estado de sesión">
-        <div class="gc-live-panel__title"><span>Sesión</span><strong id="gcAppSessionState">Comprobando</strong></div>
+        <div class="gc-live-panel__title"><span>Sesión</span><strong id="gcAppSessionState">Check</strong></div>
         <div class="gc-status-list">
           <div class="gc-status-row"><span>Cuenta</span><strong id="gcAppSessionUser">...</strong></div>
           <div class="gc-status-row"><span>Rol</span><strong id="gcAppSessionRole">...</strong></div>
@@ -45,22 +45,17 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       <article class="gc-section gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
         <div class="gc-section-head gc-app-card-head-v3">
           <div>
-            <h2>Combo activo</h2>
-            <p id="gcComboHint">Leyendo actividad reciente.</p>
+            <h2>Combo</h2>
+            <p id="gcComboHint">Actividad reciente</p>
           </div>
-          <a class="gc-btn gc-btn--primary gc-app-combo-open-v5" href="/combos" id="gcComboLink">Abrir combo</a>
+          <a class="gc-btn gc-btn--primary gc-app-combo-open-v5" href="/combos" id="gcComboLink">Ver combo</a>
         </div>
         <div class="gc-app-combo-body-v3">
           <div>
             <span class="gc-app-label-v3">Circuito</span>
             <h3 id="gcComboTrack">Cargando...</h3>
             <div class="gc-app-chip-list-v3" id="gcComboCars"><span class="gc-chip">Leyendo coches</span></div>
-          </div>
-          <div class="gc-app-best-v3">
-            <span>Mejor referencia</span>
-            <strong id="gcComboBest">--</strong>
-            <small id="gcComboBestMeta">Pendiente de datos</small>
-          </div>
+          </div>
         </div>
         <div class="gc-app-mini-stats-v3">
           <div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div>
@@ -69,7 +64,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         </div>
 
         <div class="gc-app-pit-actions-v6" aria-label="Acciones rápidas del combo">
-          <a class="gc-btn gc-btn--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Unirse al servidor</a>
+          <a class="gc-btn gc-btn--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Entrar al server</a>
           <a class="gc-btn" href={carsDriveUrl} target="_blank" rel="noreferrer">Coches</a>
           <a class="gc-btn" href={tracksDriveUrl} target="_blank" rel="noreferrer">Circuito</a>
           <a class="gc-btn" href="/hotlaps">Hotlaps</a>
@@ -79,25 +74,40 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       <article class="gc-section gc-app-readout-card-v3">
         <div class="gc-section-head gc-app-card-head-v3">
           <div>
-            <h2>Lectura rápida</h2>
-            <p>Estado útil del último refresco.</p>
+            <h2>Lectura de pista</h2>
+            <p>Datos del último refresco.</p>
           </div>
           <span class="gc-chip" id="gcApiState">Estado</span>
         </div>
         <div class="gc-app-readout-grid-v3">
-          <div class="gc-app-readout-v3"><span>Vueltas recientes</span><strong id="gcQuickRefs">--</strong><small>cargadas en esta vista</small></div>
-          <div class="gc-app-readout-v3"><span>Referencia rápida</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
-          <div class="gc-app-readout-v3"><span>Último movimiento</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Vueltas</span><strong id="gcQuickRefs">--</strong><small>último refresco</small></div>
+          <div class="gc-app-readout-v3"><span>Best</span><strong id="gcQuickTop">--</strong><small id="gcQuickTopMeta">sin datos</small></div>
+          <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
           <div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
         </div>
-      </article>
+      
+        <div class="gc-app-top-driver-v1535" aria-label="Mejor piloto del combo">
+          <div class="gc-app-top-driver-v1535__avatar">
+            <img id="gcTopDriverAvatar" src="/images/pilot-avatar-default.png" alt="" loading="lazy" decoding="async" />
+          </div>
+          <div class="gc-app-top-driver-v1535__body">
+            <span>Mejor piloto</span>
+            <strong id="gcTopDriverName">--</strong>
+            <small id="gcTopDriverMeta">Sin referencia cargada</small>
+          </div>
+          <div class="gc-app-top-driver-v1535__time">
+            <span>Tiempo</span>
+            <strong id="gcTopDriverTime">--</strong>
+          </div>
+        </div>
+</article>
     </section>
 
     <section class="gc-section gc-app-references-v3">
       <div class="gc-section-head gc-app-card-head-v3">
         <div>
-          <h2>Últimas vueltas</h2>
-          <p id="gcRefsMeta">Cargando actividad...</p>
+          <h2>Actividad reciente</h2>
+          <p id="gcRefsMeta">Cargando vueltas...</p>
         </div>
         <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
       </div>
@@ -112,17 +122,17 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     <section class="gc-section gc-app-actions-v3">
       <div class="gc-section-head gc-app-card-head-v3">
         <div>
-          <h2>Accesos rápidos</h2>
-          <p>Lo que más se usa cuando entras al panel.</p>
+          <h2>Boxes</h2>
+          <p>Accesos principales del panel.</p>
         </div>
-        <span class="gc-chip gc-chip--accent">Garage</span>
+        <span class="gc-chip gc-chip--accent">Pit wall</span>
       </div>
       <div class="gc-app-action-grid-v3">
-        <a class="gc-app-action-card-v3" href="/hotlaps"><span>01</span><div><strong>Hotlaps</strong><p>Tabla de tiempos, filtros por piloto, coche y circuito.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/combos"><span>02</span><div><strong>Combos</strong><p>Actividad por combinación y referencia rápida del combo activo.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/pilotos"><span>03</span><div><strong>Pilotos</strong><p>Actividad de la comunidad y perfiles de conducción.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/perfil"><span>04</span><div><strong>Mi perfil</strong><p>Cuenta, piloto vinculado y resumen personal.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/herramientas"><span>05</span><div><strong>Herramientas</strong><p>Utilidades internas para mantener el garaje ordenado.</p></div></a>
+        <a class="gc-app-action-card-v3" href="/hotlaps"><span>01</span><div><strong>Hotlaps</strong><p>Tiempos y filtros.</p></div></a>
+        <a class="gc-app-action-card-v3" href="/combos"><span>02</span><div><strong>Combos</strong><p>Combos y referencias.</p></div></a>
+        <a class="gc-app-action-card-v3" href="/pilotos"><span>03</span><div><strong>Pilotos</strong><p>Perfiles y actividad.</p></div></a>
+        <a class="gc-app-action-card-v3" href="/perfil"><span>04</span><div><strong>Mi perfil</strong><p>Cuenta y piloto.</p></div></a>
+        <a class="gc-app-action-card-v3" href="/herramientas"><span>05</span><div><strong>Herramientas</strong><p>Herramientas del panel.</p></div></a>
       </div>
     </section>
 
@@ -169,6 +179,866 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     .gc-app-action-card-v3 p{margin:.28rem 0 0;color:var(--muted);line-height:1.35;font-size:.82rem}
     @media(max-width:1180px){.gc-app-action-grid-v3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1100px){.gc-app-top-grid-v3,.gc-app-combo-body-v3{grid-template-columns:1fr}}
     @media(max-width:720px){.gc-app-card-head-v3{flex-direction:column;align-items:flex-start}.gc-app-readout-grid-v3,.gc-app-mini-stats-v3{grid-template-columns:1fr}.gc-app-action-grid-v3{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-app-action-card-v3{min-height:78px}.gc-app-table-wrap-v3{max-height:none}}@media(max-width:460px){.gc-app-action-grid-v3{grid-template-columns:1fr}}
+
+    /* GC_APP_PANEL_POLISH_V15_35_1 */
+    .gc-app-dashboard-v3{
+      gap:clamp(18px,2.4vw,28px);
+    }
+
+    .gc-app-hero-v3{
+      position:relative;
+      overflow:hidden;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 22%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 12%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-app-hero-v3::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+      opacity:.46;
+    }
+
+    .gc-app-hero-v3 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-app-hero-v3 .gc-title{
+      letter-spacing:-.085em;
+      text-transform:none;
+    }
+
+    .gc-app-hero-v3 .gc-subtitle{
+      color:var(--soft);
+      font-size:clamp(1rem,1.4vw,1.18rem);
+    }
+
+    .gc-app-session-v3{
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-app-session-v3 .gc-status-row{
+      border-radius:14px;
+      background:rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.07);
+    }
+
+    .gc-app-metrics-v3{
+      gap:12px;
+    }
+
+    .gc-app-metrics-v3 .gc-metric{
+      position:relative;
+      overflow:hidden;
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 16%,var(--line));
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 10%,transparent), transparent 8rem),
+        linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+    }
+
+    .gc-app-metrics-v3 .gc-metric strong{
+      font-size:clamp(1.85rem,3.2vw,2.85rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+      color:var(--text);
+    }
+
+    .gc-app-metrics-v3 .gc-metric span{
+      color:var(--soft);
+      letter-spacing:.13em;
+    }
+
+    .gc-app-combo-v3{
+      position:relative;
+      overflow:hidden;
+      border-radius:28px;
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 24%,var(--line));
+      box-shadow:0 20px 80px rgba(0,0,0,.22);
+      background:
+        linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.46)),
+        radial-gradient(circle at 18% 14%, color-mix(in srgb,var(--accent,#9dff00) 10%,transparent), transparent 18rem),
+        var(--panel);
+    }
+
+    .gc-app-combo-v3::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(90deg,rgba(0,0,0,.34),transparent 58%,rgba(0,0,0,.38));
+      z-index:0;
+    }
+
+    .gc-app-combo-v3 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-app-combo-body-v3 h3{
+      font-size:clamp(2.75rem,5.7vw,5.4rem);
+      line-height:.82;
+      letter-spacing:-.09em;
+      max-width:780px;
+      text-wrap:balance;
+    }
+
+    .gc-app-card-head-v3 h2{
+      color:var(--text);
+      letter-spacing:-.055em;
+    }
+
+    .gc-app-card-head-v3 p{
+      color:var(--muted);
+    }
+
+    .gc-app-best-v3{
+      border-color:rgba(255,255,255,.13);
+      background:rgba(0,0,0,.24);
+      backdrop-filter:blur(10px);
+    }
+
+    .gc-app-best-v3 strong{
+      font-size:clamp(2rem,3.6vw,3.25rem);
+      color:var(--accent);
+      text-shadow:0 0 24px color-mix(in srgb,var(--accent,#9dff00) 18%,transparent);
+    }
+
+    .gc-app-mini-stats-v3 div,
+    .gc-app-readout-v3{
+      background:rgba(0,0,0,.16);
+      border-color:rgba(255,255,255,.09);
+    }
+
+    .gc-app-mini-stats-v3 strong,
+    .gc-app-readout-v3 strong{
+      color:var(--text);
+    }
+
+    .gc-app-readout-card-v3,
+    .gc-app-actions-v3,
+    .gc-app-references-v3{
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 10rem),
+        linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.016));
+    }
+
+    .gc-app-readout-v3 strong{
+      font-size:clamp(1.35rem,2.6vw,2.1rem);
+      letter-spacing:-.05em;
+    }
+
+    .gc-app-action-grid-v3{
+      grid-template-columns:repeat(5,minmax(0,1fr));
+    }
+
+    .gc-app-action-card-v3{
+      min-height:80px;
+      border-radius:15px;
+      background:rgba(255,255,255,.026);
+    }
+
+    .gc-app-action-card-v3 p{
+      font-size:.78rem;
+      color:var(--muted);
+    }
+
+    .gc-app-table-wrap-v3{
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-app-table-v3 tbody tr:hover td{
+      background:color-mix(in srgb,var(--accent,#9dff00) 7%,transparent);
+    }
+
+    .gc-app-table-v3 td strong{
+      color:var(--text);
+    }
+
+    @media(max-width:720px){
+      .gc-app-hero-v3{
+        border-radius:22px;
+      }
+
+      .gc-app-combo-body-v3 h3{
+        font-size:clamp(2.25rem,13vw,3.8rem);
+      }
+
+      .gc-app-action-grid-v3{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:460px){
+      .gc-app-action-grid-v3{
+        grid-template-columns:1fr;
+      }
+
+      .gc-app-pit-actions-v6 .gc-btn{
+        width:100%;
+        justify-content:center;
+      }
+    }
+
+
+    /* GC_APP_PANEL_DETAILS_V15_35_2 */
+    .gc-app-dashboard-v3{
+      padding-bottom:clamp(20px,3vw,36px);
+    }
+
+    .gc-app-hero-v3{
+      min-height:auto;
+      padding-block:clamp(26px,3.4vw,40px)!important;
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+    }
+
+    .gc-app-hero-v3 .gc-kicker{
+      color:var(--accent);
+      opacity:1;
+      text-shadow:0 0 18px color-mix(in srgb,var(--accent,#9dff00) 18%,transparent);
+    }
+
+    .gc-app-hero-v3 .gc-title{
+      margin-bottom:.32rem;
+      max-width:720px;
+    }
+
+    .gc-app-hero-v3 .gc-subtitle{
+      max-width:620px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
+    }
+
+    .gc-hero__meta{
+      gap:8px;
+    }
+
+    .gc-hero__meta .gc-chip{
+      min-height:30px;
+      padding:.42rem .72rem;
+      border-radius:0;
+      background:rgba(255,255,255,.035);
+      border-color:rgba(255,255,255,.11);
+    }
+
+    .gc-hero__meta .gc-chip--accent{
+      background:color-mix(in srgb,var(--accent,#9dff00) 12%,rgba(0,0,0,.22));
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 58%,rgba(255,255,255,.08));
+      color:var(--accent);
+    }
+
+    .gc-app-session-v3{
+      align-self:center;
+      min-height:auto;
+      padding:0;
+      overflow:hidden;
+    }
+
+    .gc-app-session-v3 .gc-live-panel__title{
+      padding:14px 16px;
+      margin:0;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-app-session-v3 .gc-status-list{
+      padding:0;
+      gap:0;
+    }
+
+    .gc-app-session-v3 .gc-status-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:13px 16px;
+      border-width:0 0 1px;
+      border-radius:0;
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-app-session-v3 .gc-status-row:last-child{
+      border-bottom:0;
+    }
+
+    .gc-app-session-v3 .gc-status-row span{
+      color:color-mix(in srgb,var(--text,#f2fff0) 66%,var(--muted));
+    }
+
+    .gc-app-session-v3 .gc-status-row strong{
+      max-width:180px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:var(--text);
+      font-weight:950;
+    }
+
+    .gc-app-metrics-v3{
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-radius:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-app-metrics-v3 .gc-metric{
+      border-width:0 1px 0 0;
+      border-radius:0;
+      min-height:112px;
+      box-shadow:none;
+    }
+
+    .gc-app-metrics-v3 .gc-metric:last-child{
+      border-right:0;
+    }
+
+    .gc-app-metrics-v3 .gc-metric strong{
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-app-top-grid-v3{
+      gap:clamp(16px,2vw,26px);
+    }
+
+    .gc-app-combo-v3{
+      min-height:0;
+      padding:clamp(18px,2.2vw,26px);
+    }
+
+    .gc-app-combo-v3 .gc-app-card-head-v3{
+      padding-bottom:14px;
+      margin-bottom:18px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+
+    .gc-app-combo-body-v3{
+      grid-template-columns:minmax(0,1fr) minmax(190px,.28fr);
+      align-items:center;
+    }
+
+    .gc-app-combo-body-v3 h3{
+      margin-bottom:12px;
+      color:#f2fff0;
+      text-shadow:0 0 30px rgba(156,255,63,.08);
+    }
+
+    .gc-app-chip-list-v3 .gc-chip{
+      border-radius:0;
+      background:rgba(255,255,255,.035);
+      border-color:rgba(255,255,255,.12);
+      color:color-mix(in srgb,var(--text,#f2fff0) 88%,var(--accent));
+    }
+
+    .gc-app-best-v3{
+      min-height:166px;
+      border-radius:20px;
+      background:
+        radial-gradient(circle at 75% 10%, color-mix(in srgb,var(--accent,#9dff00) 11%,transparent), transparent 8rem),
+        rgba(0,0,0,.28);
+    }
+
+    .gc-app-best-v3 strong{
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-app-best-v3 small,
+    .gc-app-readout-v3 small{
+      color:color-mix(in srgb,var(--text,#f2fff0) 48%,var(--muted));
+    }
+
+    .gc-app-mini-stats-v3{
+      margin-top:16px;
+    }
+
+    .gc-app-mini-stats-v3 div{
+      min-height:72px;
+      display:grid;
+      align-content:center;
+      border-radius:16px;
+    }
+
+    .gc-app-pit-actions-v6{
+      margin-top:18px;
+      padding-top:18px;
+    }
+
+    .gc-app-pit-actions-v6 .gc-btn{
+      border-radius:999px;
+      flex:1 1 130px;
+      justify-content:center;
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-app-pit-actions-v6 .gc-btn--primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#061006;
+      border-color:transparent;
+    }
+
+    .gc-app-readout-card-v3{
+      display:grid;
+      align-content:start;
+      min-height:100%;
+      padding:clamp(18px,2vw,24px);
+    }
+
+    .gc-app-readout-card-v3 .gc-app-card-head-v3{
+      min-height:84px;
+      margin-bottom:12px;
+      padding-bottom:12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-app-readout-grid-v3{
+      gap:10px;
+    }
+
+    .gc-app-readout-v3{
+      min-height:122px;
+      border-radius:16px;
+    }
+
+    .gc-app-readout-v3 strong{
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-app-references-v3{
+      margin-top:2px;
+      padding:clamp(18px,2vw,24px);
+    }
+
+    .gc-app-references-v3 .gc-app-card-head-v3{
+      align-items:center;
+      padding-bottom:14px;
+      border-bottom:1px solid rgba(255,255,255,.09);
+    }
+
+    .gc-app-references-v3 h2,
+    .gc-app-actions-v3 h2{
+      letter-spacing:-.055em;
+    }
+
+    .gc-app-table-wrap-v3{
+      max-height:330px;
+      border-color:rgba(255,255,255,.09);
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-app-table-v3 th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:color-mix(in srgb,var(--panel,#07110a) 92%,#000);
+      color:color-mix(in srgb,var(--accent,#9dff00) 50%,var(--soft));
+    }
+
+    .gc-app-table-v3 td{
+      color:color-mix(in srgb,var(--text,#f2fff0) 78%,var(--muted));
+    }
+
+    .gc-app-table-v3 td:nth-child(4) strong{
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-app-actions-v3{
+      margin-top:4px;
+      padding:clamp(18px,2vw,24px);
+    }
+
+    .gc-app-actions-v3 .gc-app-card-head-v3{
+      align-items:center;
+      margin-bottom:16px;
+      padding-bottom:14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-app-action-grid-v3{
+      gap:10px;
+    }
+
+    .gc-app-action-card-v3{
+      min-height:74px;
+      padding:13px 14px;
+      border-color:rgba(255,255,255,.10);
+    }
+
+    .gc-app-action-card-v3>span{
+      width:28px;
+      height:28px;
+      font-size:.6rem;
+    }
+
+    .gc-app-action-card-v3 strong{
+      font-size:.92rem;
+    }
+
+    .gc-app-action-card-v3 p{
+      max-width:220px;
+      opacity:.78;
+    }
+
+    @media(max-width:1180px){
+      .gc-app-metrics-v3{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-app-metrics-v3 .gc-metric:nth-child(2){
+        border-right:0;
+      }
+
+      .gc-app-metrics-v3 .gc-metric:nth-child(n+3){
+        border-top:1px solid var(--line);
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-app-session-v3 .gc-status-row strong{
+        max-width:52vw;
+      }
+
+      .gc-app-table-wrap-v3{
+        max-height:380px;
+      }
+
+      .gc-app-metrics-v3{
+        grid-template-columns:1fr;
+      }
+
+      .gc-app-metrics-v3 .gc-metric{
+        border-right:0;
+        border-bottom:1px solid var(--line);
+      }
+
+      .gc-app-metrics-v3 .gc-metric:last-child{
+        border-bottom:0;
+      }
+    }
+
+
+    /* GC_APP_PANEL_CENTERING_V15_35_3 */
+    .gc-app-dashboard-v3{
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
+    }
+
+    .gc-app-dashboard-v3 > *{
+      width:100%;
+    }
+
+    @media (min-width: 1600px){
+      .gc-app-dashboard-v3{
+        max-width:1440px;
+      }
+    }
+
+    @media (max-width: 980px){
+      .gc-app-dashboard-v3{
+        padding-inline:0;
+      }
+    }
+
+
+    /* GC_APP_PANEL_COMPOSITION_V15_35_4 */
+    .gc-app-hero-v3 > div:first-child{
+      padding-left:clamp(30px,4.2vw,86px);
+    }
+
+    .gc-app-session-v3{
+      width:min(420px,100%);
+      justify-self:end;
+      margin-right:clamp(28px,4vw,78px);
+    }
+
+    .gc-app-combo-body-v3{
+      grid-template-columns:1fr!important;
+    }
+
+    .gc-app-combo-v3{
+      background-size:cover!important;
+      background-position:center!important;
+      background-repeat:no-repeat!important;
+      isolation:isolate;
+    }
+
+    .gc-app-combo-v3::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      backdrop-filter:blur(3.5px) saturate(.9) brightness(.78);
+      -webkit-backdrop-filter:blur(3.5px) saturate(.9) brightness(.78);
+      background:
+        linear-gradient(90deg,rgba(3,10,5,.88),rgba(3,10,5,.58) 48%,rgba(3,10,5,.78)),
+        linear-gradient(180deg,rgba(3,10,5,.52),rgba(3,10,5,.84)),
+        radial-gradient(circle at 18% 20%, color-mix(in srgb,var(--accent,#9dff00) 13%,transparent), transparent 24rem);
+    }
+
+    .gc-app-combo-v3::after{
+      z-index:1!important;
+      background:
+        linear-gradient(90deg,rgba(0,0,0,.36),transparent 52%,rgba(0,0,0,.18)),
+        linear-gradient(0deg,rgba(0,0,0,.36),transparent 58%)!important;
+    }
+
+    .gc-app-combo-v3 > *{
+      position:relative;
+      z-index:2!important;
+    }
+
+    .gc-app-combo-body-v3 h3{
+      max-width:760px;
+    }
+
+    .gc-app-readout-card-v3{
+      align-content:start;
+    }
+
+    .gc-app-readout-card-v3 .gc-app-card-head-v3{
+      min-height:auto;
+      margin-bottom:12px;
+    }
+
+    .gc-app-best-v3--readout{
+      display:grid;
+      align-content:center;
+      gap:8px;
+      min-height:138px;
+      margin:0 0 12px;
+      padding:18px;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 24%,rgba(255,255,255,.12));
+      border-radius:18px;
+      background:
+        radial-gradient(circle at 88% 12%, color-mix(in srgb,var(--accent,#9dff00) 15%,transparent), transparent 9rem),
+        linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),
+        rgba(0,0,0,.18);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.035),
+        0 16px 46px rgba(0,0,0,.18);
+    }
+
+    .gc-app-best-v3--readout span{
+      color:var(--soft);
+      font-size:.68rem;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.14em;
+    }
+
+    .gc-app-best-v3--readout strong{
+      color:var(--accent);
+      font-size:clamp(2.45rem,4.2vw,4rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      font-variant-numeric:tabular-nums;
+      text-shadow:0 0 26px color-mix(in srgb,var(--accent,#9dff00) 18%,transparent);
+    }
+
+    .gc-app-best-v3--readout small{
+      max-width:320px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 55%,var(--muted));
+      line-height:1.35;
+    }
+
+    .gc-app-readout-grid-v3{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    @media(max-width:1180px){
+      .gc-app-hero-v3 > div:first-child{
+        padding-left:clamp(12px,2vw,24px);
+      }
+
+      .gc-app-session-v3{
+        margin-right:0;
+        justify-self:stretch;
+        width:100%;
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-app-hero-v3 > div:first-child{
+        padding-left:0;
+      }
+
+      .gc-app-best-v3--readout{
+        min-height:120px;
+      }
+
+      .gc-app-readout-grid-v3{
+        grid-template-columns:1fr;
+      }
+    }
+
+
+    /* GC_APP_TOP_DRIVER_V15_35_5_1 */
+    .gc-app-readout-card-v3{
+      gap:12px;
+    }
+
+    .gc-app-top-driver-v1535{
+      display:grid;
+      grid-template-columns:58px minmax(0,1fr) auto;
+      align-items:center;
+      gap:14px;
+      min-height:104px;
+      padding:15px;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 24%,rgba(255,255,255,.10));
+      border-radius:18px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 15%,transparent), transparent 9rem),
+        linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.018)),
+        rgba(0,0,0,.18);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.035),
+        0 16px 44px rgba(0,0,0,.16);
+    }
+
+    .gc-app-top-driver-v1535__avatar{
+      width:58px;
+      height:58px;
+      border-radius:999px;
+      padding:3px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      box-shadow:0 0 24px color-mix(in srgb,var(--accent,#9dff00) 18%,transparent);
+    }
+
+    .gc-app-top-driver-v1535__avatar img{
+      width:100%;
+      height:100%;
+      display:block;
+      object-fit:cover;
+      border-radius:999px;
+      background:#07110a;
+    }
+
+    .gc-app-top-driver-v1535 span{
+      display:block;
+      color:var(--soft);
+      font-size:.62rem;
+      font-weight:950;
+      letter-spacing:.13em;
+      text-transform:uppercase;
+    }
+
+    .gc-app-top-driver-v1535__body strong{
+      display:block;
+      margin-top:5px;
+      max-width:260px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:var(--text);
+      font-size:1.18rem;
+      line-height:1.05;
+      letter-spacing:-.035em;
+    }
+
+    .gc-app-top-driver-v1535__body small{
+      display:block;
+      margin-top:5px;
+      max-width:360px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:color-mix(in srgb,var(--text,#f2fff0) 50%,var(--muted));
+      line-height:1.25;
+    }
+
+    .gc-app-top-driver-v1535__time{
+      min-width:120px;
+      padding-left:14px;
+      border-left:1px solid rgba(255,255,255,.10);
+      text-align:right;
+    }
+
+    .gc-app-top-driver-v1535__time strong{
+      display:block;
+      margin-top:6px;
+      color:var(--accent);
+      font-size:clamp(1.45rem,2.4vw,2.2rem);
+      line-height:.9;
+      letter-spacing:-.055em;
+      font-variant-numeric:tabular-nums;
+      text-shadow:0 0 22px color-mix(in srgb,var(--accent,#9dff00) 17%,transparent);
+    }
+
+    .gc-app-combo-v3.has-track-image{
+      background:
+        radial-gradient(circle at 18% 14%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 18rem),
+        color-mix(in srgb,var(--panel,#07110a) 86%,#000)!important;
+    }
+
+    .gc-app-combo-v3.has-track-image::before{
+      content:""!important;
+      position:absolute!important;
+      inset:0!important;
+      z-index:0!important;
+      pointer-events:none!important;
+      background-image:var(--gc-track-image)!important;
+      background-size:cover!important;
+      background-position:center!important;
+      opacity:.54!important;
+      filter:blur(3px) saturate(1.08) contrast(1.04) brightness(.9)!important;
+      transform:scale(1.045)!important;
+      backdrop-filter:none!important;
+      -webkit-backdrop-filter:none!important;
+    }
+
+    .gc-app-combo-v3.has-track-image::after{
+      z-index:1!important;
+      background:
+        linear-gradient(90deg,rgba(3,10,5,.86),rgba(3,10,5,.52) 46%,rgba(3,10,5,.72)),
+        linear-gradient(180deg,rgba(3,10,5,.38),rgba(3,10,5,.78)),
+        radial-gradient(circle at 12% 22%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 28rem)!important;
+    }
+
+    .gc-app-combo-v3.has-track-image > *{
+      position:relative!important;
+      z-index:2!important;
+    }
+
+    @media(max-width:720px){
+      .gc-app-top-driver-v1535{
+        grid-template-columns:52px minmax(0,1fr);
+      }
+
+      .gc-app-top-driver-v1535__avatar{
+        width:52px;
+        height:52px;
+      }
+
+      .gc-app-top-driver-v1535__time{
+        grid-column:1 / -1;
+        min-width:0;
+        padding-left:0;
+        padding-top:12px;
+        border-left:0;
+        border-top:1px solid rgba(255,255,255,.10);
+        text-align:left;
+      }
+    }
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -259,7 +1129,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       const comboId = (combo) => pick(combo, ['canonicalComboId','comboId','id','ComboId']);
       const comboUrl = (combo) => combo?.url || (comboId(combo) != null ? `/combos/${encodeURIComponent(comboId(combo))}` : '/combos');
-      const comboTrackName = (combo) => text(pick(combo, ['track.displayName','track.visibleName','track.cleanName','track.uiName','track.name','trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code','track']), 'Combo activo');
+      const comboTrackName = (combo) => text(pick(combo, ['track.displayName','track.visibleName','track.cleanName','track.uiName','track.name','trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code','track']), 'Combo');
       const comboTotalLaps = (combo) => number(pick(combo, ['totalLaps','laps','lapCount','visibleLaps']), 0);
       const comboDrivers = (combo) => number(pick(combo, ['driversCount','pilotsCount','playersCount','uniqueDrivers','totalDrivers']), 0);
       const comboLastMs = (combo) => dateMs(pick(combo, ['lastActivityIso','lastSeenAt','latestLapAt','updatedAt','lastActivity','timestampIso','timestamp','lastLapAt']));
@@ -368,7 +1238,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             const latestDriver = recent ? driverName(recent) : '';
             setText('gcComboHint', comboLastMs(activeCombo)
               ? `Última actividad · ${dateText(comboLastMs(activeCombo))}${latestDriver && latestDriver !== 'Piloto' ? ` · ${latestDriver}` : ''}`
-              : 'Combo activo cargado.');
+              : 'Combo cargado.');
           }
           setText('gcComboBest', comboBestTime(activeCombo) || '--');
           setText('gcComboBestMeta', [comboBestDriver(activeCombo), cars[0]].filter(Boolean).join(' · ') || 'Mejor vuelta del combo');
@@ -412,13 +1282,46 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (carsNode) carsNode.innerHTML = '<span class="gc-chip gc-chip--warn">Sin datos</span>';
       }
 
-      function renderLapReadout(bestData, recentData){
+            function driverAvatarUrl(row){
+        const id = pick(row, ['playerId','driverId','pilotId','id','driver.id','player.id','pilot.id']);
+        const direct = pick(row, ['avatarUrl','avatar_url','driver.avatarUrl','player.avatarUrl','pilot.avatarUrl']);
+        if (direct) return String(direct);
+        if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
+        return '/images/pilot-avatar-default.png';
+      }
+
+      function renderTopDriver(row){
+        const avatar = byId('gcTopDriverAvatar');
+        const name = row ? driverName(row) : '--';
+        const car = row ? carName(row) : '';
+        const track = row ? trackName(row) : '';
+        const time = row ? lapTime(row) : '--';
+        const meta = row
+          ? [car, track].filter(Boolean).join(' · ')
+          : 'Sin referencia cargada';
+
+        setText('gcTopDriverName', name || '--');
+        setText('gcTopDriverTime', time || '--');
+        setText('gcTopDriverMeta', meta || 'Sin referencia cargada');
+
+        if (avatar) {
+          avatar.src = row ? driverAvatarUrl(row) : '/images/pilot-avatar-default.png';
+          avatar.alt = row ? `Avatar de ${name}` : '';
+          avatar.onerror = () => {
+            avatar.onerror = null;
+            avatar.src = '/images/pilot-avatar-default.png';
+          };
+        }
+      }
+
+function renderLapReadout(bestData, recentData){
         const bestItems = items(bestData).filter(Boolean);
         const recentItems = items(recentData).filter(Boolean);
         const recentLaps = [...recentItems].sort((a,b) => lapDate(b) - lapDate(a) || lapMs(a) - lapMs(b));
         const best = bestItems[0] || [...recentItems].sort((a,b) => lapMs(a) - lapMs(b))[0] || null;
         const last = recentLaps[0] || null;
 
+        renderTopDriver(best);
         setText('gcQuickRefs', formatNumber(recentData?.count ?? recentLaps.length));
         setText('gcRefsMeta', `${formatNumber(recentData?.totalMatchedLaps ?? recentData?.count ?? recentLaps.length)} vueltas encontradas · mostrando las más recientes`);
         setText('gcQuickTop', best ? lapTime(best) : '--');
