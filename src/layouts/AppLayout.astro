@@ -29,13 +29,13 @@ const currentPathForSeo = normalizePath(Astro.url.pathname);
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
 
 const pageOgImages = {
-  '/app': '/og/platform-og.png',
-  '/hotlaps': '/og/hotlaps-og.png',
-  '/combos': '/og/combos-og.png',
-  '/pilotos': '/og/pilotos-og.png',
+  '/app': '/og/platform-og-v1531.png',
+  '/hotlaps': '/og/hotlaps-og-v1531.png',
+  '/combos': '/og/combos-og-v1531.png',
+  '/pilotos': '/og/pilotos-og-v1531.png',
   '/perfil': '/og/perfil-og.png',
-  '/login': '/og/login-og.png',
-  '/herramientas/fov': '/og/fov-og.png',
+  '/login': '/og/login-og-v1531.png',
+  '/herramientas/fov': '/og/fov-og-v1531.png',
   '/admin': '/og/admin-og.png',
 };
 
@@ -44,37 +44,37 @@ const routeSocialMeta = {
   '/app': {
     title: 'Panel | GrassCutters Racing',
     description: 'Panel de pista de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales.',
-    image: '/og/platform-og.png',
+    image: '/og/platform-og-v1531.png',
     imageAlt: 'Panel GrassCutters Racing',
   },
   '/hotlaps': {
     title: 'Hotlaps | GrassCutters Racing',
     description: 'Leaderboard de GrassCutters Racing con tiempos de referencia, filtros por piloto, coche, circuito y vueltas válidas.',
-    image: '/og/hotlaps-og.png',
+    image: '/og/hotlaps-og-v1531.png',
     imageAlt: 'Hotlaps GrassCutters Racing',
   },
   '/combos': {
     title: 'Combos | GrassCutters Racing',
     description: 'Centro de combos de GrassCutters Racing con circuitos, coches, actividad real y referencias para decidir dónde rodar.',
-    image: '/og/combos-og.png',
+    image: '/og/combos-og-v1531.png',
     imageAlt: 'Combos GrassCutters Racing',
   },
   '/pilotos': {
     title: 'Pilotos | GrassCutters Racing',
     description: 'Directorio de pilotos de GrassCutters Racing con perfiles públicos, actividad reciente y datos desde stracker.',
-    image: '/og/pilotos-og.png',
+    image: '/og/pilotos-og-v1531.png',
     imageAlt: 'Pilotos GrassCutters Racing',
   },
   '/herramientas/fov': {
     title: 'FOV Calculator | GrassCutters Racing',
     description: 'Calculadora de FOV para ajustar la visión del cockpit y mejorar la referencia en pista.',
-    image: '/og/fov-og.png',
+    image: '/og/fov-og-v1531.png',
     imageAlt: 'FOV Calculator GrassCutters Racing',
   },
   '/login': {
     title: 'Login | GrassCutters Racing',
     description: 'Acceso a la plataforma GrassCutters Racing.',
-    image: '/og/login-og.png',
+    image: '/og/login-og-v1531.png',
     imageAlt: 'Login GrassCutters Racing',
   },
 };
@@ -99,7 +99,7 @@ function compactSeoText(value, fallback = '') {
 
 function absoluteSeoUrl(value) {
   const raw = String(value || '').trim();
-  if (!raw) return new URL('/og/platform-og.png', siteUrl).toString();
+  if (!raw) return new URL('/og/platform-og-v1531.png', siteUrl).toString();
   if (/^https?:\/\//i.test(raw)) return raw;
   return new URL(raw.startsWith('/') ? raw : '/' + raw, siteUrl).toString();
 }
@@ -115,7 +115,7 @@ function seoImageMime(value) {
 const cleanTitle = resolveSeoText(title, exactRouteSocialMeta?.title || 'GrassCutters Platform');
 const cleanDescription = resolveSeoText(description, exactRouteSocialMeta?.description || 'Panel de pista, hotlaps, combos y perfiles de GrassCutters Racing.');
 const matchedOgImage = pageOgImages[currentPathForSeo] || Object.entries(pageOgImages).find(([prefix]) => currentPathForSeo.startsWith(prefix + '/'))?.[1];
-const selectedOgImage = ogImage || exactRouteSocialMeta?.image || matchedOgImage || '/og/platform-og.png';
+const selectedOgImage = ogImage || exactRouteSocialMeta?.image || matchedOgImage || '/og/platform-og-v1531.png';
 const absoluteOgImage = absoluteSeoUrl(selectedOgImage);
 const cleanOgImageAlt = compactSeoText(ogImageAlt, exactRouteSocialMeta?.imageAlt || 'Imagen social de ' + cleanTitle);
 const ogImageType = seoImageMime(selectedOgImage);

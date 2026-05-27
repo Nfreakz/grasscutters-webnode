@@ -26,15 +26,15 @@ const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || As
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
 
 const pageOgImages = {
-  '/': '/og/home-og.png',
-  '/comunidad': '/og/comunidad-og.png',
-  '/campeonato': '/og/campeonato-og.png',
-  '/apoyo-servidor': '/og/apoyo-servidor-og.png',
-  '/normas': '/og/normas-og.png',
-  '/privacidad': '/og/privacidad-og.png',
-  '/app-android': '/og/app-android-og.png',
+  '/': '/og/home-og-v1531.png',
+  '/comunidad': '/og/comunidad-og-v1531.png',
+  '/campeonato': '/og/campeonato-og-v1531.png',
+  '/apoyo-servidor': '/og/apoyo-servidor-og-v1531.png',
+  '/normas': '/og/normas-og-v1531.png',
+  '/privacidad': '/og/privacidad-og-v1531.png',
+  '/app-android': '/og/app-android-og-v1531.png',
   '/archivo': '/og/archivo-og.png',
-  '/calendario': '/og/calendario-og.png',
+  '/calendario': '/og/calendario-og-v1531.png',
 };
 
 function compactText(value, fallback = '') {
@@ -55,14 +55,14 @@ function imageMime(value) {
 
 function absoluteUrl(value) {
   const raw = String(value || '').trim();
-  if (!raw) return new URL('/og/grasscutters-social-card.png', siteUrl).toString();
+  if (!raw) return new URL('/og/grasscutters-social-card-v1531.png', siteUrl).toString();
   if (/^https?:\/\//i.test(raw)) return raw;
   return new URL(raw.startsWith('/') ? raw : `/${raw}`, siteUrl).toString();
 }
 
 const cleanTitle = compactText(title, 'GrassCutters Racing');
 const cleanDescription = compactText(description, 'Comunidad de sim racing, motorsport y archivo técnico de GrassCutters Racing.');
-const selectedOgImage = ogImage || pageOgImages[path] || '/og/grasscutters-social-card.png';
+const selectedOgImage = ogImage || pageOgImages[path] || '/og/grasscutters-social-card-v1531.png';
 const absoluteOgImage = absoluteUrl(selectedOgImage);
 const cleanOgImageAlt = compactText(ogImageAlt, `Imagen social de ${cleanTitle}`);
 const ogImageType = imageMime(selectedOgImage);
