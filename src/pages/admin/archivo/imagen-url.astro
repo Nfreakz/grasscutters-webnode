@@ -3,31 +3,98 @@ export const prerender = false;
 import AppLayout from '../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
+
 <AppLayout title="Archivo Motorsport · Imágenes">
-  <section class="gc-archive-url-page">
+  <section class="gc-archive-media-page">
     <AdminSubnav />
 
-    <header class="gc-archive-url-hero">
-      <p class="gc-archive-kicker">Archivo Motorsport</p>
-      <h1>Imágenes</h1>
-      <p>Añade imágenes a una ficha pegando una URL externa o subiendo un archivo propio desde tu PC.</p>
+    <header class="gc-archive-media-hero">
+      <div>
+        <p class="gc-archive-kicker">Archivo Motorsport</p>
+        <h1>Imágenes</h1>
+        <p>
+          Primero selecciona la ficha desde el buscador visual. Después añade una imagen por URL o sube material propio.
+          Pensado para trabajar cómodo aunque el Archivo tenga decenas o cientos de fichas.
+        </p>
+      </div>
+
+      <aside class="gc-archive-media-rules">
+        <span>Flujo recomendado</span>
+        <ol>
+          <li>Busca la ficha.</li>
+          <li>Selecciona la tarjeta.</li>
+          <li>Añade URL o sube archivo.</li>
+          <li>Marca portada solo si toca.</li>
+        </ol>
+      </aside>
     </header>
+
+    <section class="gc-media-picker">
+      <div class="gc-media-picker__head">
+        <div>
+          <span class="gc-archive-kicker">Selector de ficha</span>
+          <h2>Elige dónde guardar la imagen.</h2>
+          <p>El desplegable deja de ser el centro del sistema. Ahora manda el buscador visual.</p>
+        </div>
+
+        <div class="gc-media-picker__summary">
+          <strong id="pickerVisibleCount">0</strong>
+          <span>fichas visibles</span>
+        </div>
+      </div>
+
+      <div class="gc-media-picker__tools">
+        <label class="gc-field">
+          <span>Buscar ficha</span>
+          <input id="itemSearch" type="search" placeholder="Busca Alonso, Spa, GT2, circuito, piloto..." autocomplete="off" />
+        </label>
+
+        <div class="gc-media-picker__filters" aria-label="Filtros de fichas">
+          <button type="button" class="is-active" data-picker-filter="all">Todo</button>
+          <button type="button" data-picker-filter="missing">Sin imagen</button>
+          <button type="button" data-picker-filter="cover">Con portada</button>
+          <button type="button" data-picker-filter="circuitos">Circuitos</button>
+          <button type="button" data-picker-filter="vehiculos">Coches</button>
+          <button type="button" data-picker-filter="pilotos">Pilotos</button>
+          <button type="button" data-picker-filter="glosario">Glosario</button>
+        </div>
+      </div>
+
+      <div class="gc-selected-item-main" id="selectedMain" hidden>
+        <div>
+          <span>Ficha seleccionada</span>
+          <strong id="selectedMainTitle">Sin ficha</strong>
+          <p id="selectedMainMeta"></p>
+        </div>
+        <div class="gc-selected-item-main__actions">
+          <a id="selectedPublicLink" href="#" target="_blank" rel="noreferrer">Ver pública</a>
+          <button id="clearSelectedItem" type="button">Cambiar</button>
+        </div>
+      </div>
+
+      <div class="gc-media-picker__grid" id="itemPickerGrid" aria-live="polite"></div>
+
+      <div class="gc-media-picker__empty" id="pickerEmpty" hidden>
+        <strong>No hay fichas con este filtro.</strong>
+        <p>Prueba con otro texto o vuelve a “Todo”.</p>
+      </div>
+    </section>
 
     <div class="gc-media-two-cols">
       <article class="gc-media-card">
         <div class="gc-media-card-head">
           <span>Opción 1</span>
           <h2>Añadir por URL</h2>
-          <p>Ideal para Wikimedia, webs oficiales o imágenes externas con fuente clara.</p>
+          <p>Ideal para Wikimedia Commons, webs oficiales o imágenes externas con créditos claros.</p>
         </div>
 
         <form id="media-url-form" class="gc-archive-url-form">
-          <label class="gc-field gc-field--full">
-            <span>Ficha</span>
-            <select id="itemIdUrl" name="itemId" required>
-              <option value="">Cargando fichas...</option>
-            </select>
-          </label>
+          <input id="itemIdUrl" name="itemId" type="hidden" />
+
+          <div class="gc-selected-inline gc-field--full" id="selectedUrlInfo">
+            <strong>Selecciona una ficha arriba</strong>
+            <p>La imagen por URL se asociará a la ficha seleccionada.</p>
+          </div>
 
           <label class="gc-field gc-field--full">
             <span>URL de imagen</span>
@@ -39,7 +106,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
           <label class="gc-field gc-field--full">
             <span>Texto alternativo</span>
-            <input id="alt" name="alt" type="text" />
+            <input id="alt" name="alt" type="text" placeholder="Ej. Fernando Alonso durante..." />
           </label>
 
           <label class="gc-field">
@@ -49,22 +116,22 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
           <label class="gc-field">
             <span>URL fuente</span>
-            <input id="sourceUrl" name="sourceUrl" type="url" />
+            <input id="sourceUrl" name="sourceUrl" type="url" placeholder="Página de origen o ficha Wikimedia" />
           </label>
 
           <label class="gc-field">
             <span>Autor</span>
-            <input id="author" name="author" type="text" />
+            <input id="author" name="author" type="text" placeholder="Autor si aparece" />
           </label>
 
           <label class="gc-field">
             <span>Licencia</span>
-            <input id="license" name="license" type="text" />
+            <input id="license" name="license" type="text" placeholder="CC BY-SA, dominio público..." />
           </label>
 
           <div class="gc-checks gc-field--full">
-            <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Portada</label>
-            <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear</label>
+            <label><input type="checkbox" id="makePrimary" name="makePrimary" checked /> Usar como portada</label>
+            <label><input type="checkbox" id="locked" name="locked" checked /> Bloquear imagen revisada</label>
           </div>
 
           <div class="gc-preview-frame gc-field--full">
@@ -82,20 +149,21 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         <div class="gc-media-card-head">
           <span>Opción 2</span>
           <h2>Subir desde PC</h2>
-          <p>Guarda la imagen en el almacenamiento persistente del Archivo.</p>
+          <p>Guarda la imagen dentro del proyecto. Recomendado para material propio o capturas revisadas.</p>
         </div>
 
         <form id="media-upload-form" class="gc-archive-url-form">
-          <label class="gc-field gc-field--full">
-            <span>Ficha</span>
-            <select id="itemIdUpload" name="itemId" required>
-              <option value="">Cargando fichas...</option>
-            </select>
-          </label>
+          <input id="itemIdUpload" name="itemId" type="hidden" />
 
-          <label class="gc-field gc-field--full">
+          <div class="gc-selected-inline gc-field--full" id="selectedUploadInfo">
+            <strong>Selecciona una ficha arriba</strong>
+            <p>La imagen subida se asociará a la ficha seleccionada.</p>
+          </div>
+
+          <label class="gc-field gc-field--full gc-file-field">
             <span>Archivo de imagen</span>
             <input id="uploadFile" type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" required />
+            <small>Recomendado: WebP o JPG optimizado. Límite de seguridad: 8 MB.</small>
           </label>
 
           <div class="gc-upload-preview gc-field--full" id="uploadPreview" hidden>
@@ -108,7 +176,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 
           <label class="gc-field gc-field--full">
             <span>Texto alternativo</span>
-            <input id="uploadAlt" type="text" />
+            <input id="uploadAlt" type="text" placeholder="Se autocompleta con el nombre de la ficha si está vacío" />
           </label>
 
           <label class="gc-field">
@@ -132,8 +200,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           </label>
 
           <div class="gc-checks gc-field--full">
-            <label><input type="checkbox" id="uploadPrimary" checked /> Portada</label>
-            <label><input type="checkbox" id="uploadLocked" checked /> Bloquear</label>
+            <label><input type="checkbox" id="uploadPrimary" checked /> Usar como portada</label>
+            <label><input type="checkbox" id="uploadLocked" checked /> Bloquear imagen revisada</label>
           </div>
 
           <div class="gc-actions gc-field--full">
@@ -143,6 +211,24 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       </article>
     </div>
 
+    <section class="gc-media-system-notes">
+      <article>
+        <span>Nuevo flujo</span>
+        <h3>Buscador visual</h3>
+        <p>Ya no dependes de un desplegable eterno. Filtras y seleccionas una tarjeta.</p>
+      </article>
+      <article>
+        <span>Nuevo flujo</span>
+        <h3>URL directa</h3>
+        <p>La página acepta <code>?item=id</code> o <code>?slug=slug</code> para abrir con una ficha preseleccionada.</p>
+      </article>
+      <article>
+        <span>Sistema</span>
+        <h3>Estado visible</h3>
+        <p>Cada tarjeta muestra categoría, estado, número de imágenes y si ya tiene portada.</p>
+      </article>
+    </section>
+
     <div class="gc-actions gc-media-back">
       <a class="gc-button-secondary" href="/admin/archivo">Volver al Archivo</a>
     </div>
@@ -151,46 +237,664 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
   </section>
 
   <style is:global>
-    .gc-archive-url-page{max-width:1180px;margin:0 auto;padding:24px 18px 56px}
-    .gc-archive-url-hero{margin:18px 0 20px;padding:24px;border:1px solid rgba(137,195,92,.22);border-radius:24px;background:linear-gradient(135deg,rgba(137,195,92,.10),rgba(255,255,255,.03))}
-    .gc-archive-kicker{margin:0 0 8px;color:#9fd46f;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}
-    .gc-media-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .gc-media-card{padding:20px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(255,255,255,.04)}
+    .gc-archive-media-page{
+      max-width:1280px;
+      margin:0 auto;
+      padding:24px 18px 64px;
+      color:var(--text,#f3f7ef);
+    }
+
+    .gc-archive-media-page *{box-sizing:border-box}
+
+    .gc-archive-media-hero{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(260px,.38fr);
+      gap:18px;
+      margin:18px 0 20px;
+      padding:24px;
+      border:1px solid rgba(137,195,92,.22);
+      border-radius:26px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(156,255,63,.12), transparent 36%),
+        linear-gradient(135deg,rgba(137,195,92,.10),rgba(255,255,255,.03));
+    }
+
+    .gc-archive-media-hero h1{
+      margin:.2rem 0 .5rem;
+      font-size:clamp(2.4rem,5vw,4.8rem);
+      line-height:.9;
+      letter-spacing:-.075em;
+    }
+
+    .gc-archive-media-hero p{
+      max-width:760px;
+      margin:0;
+      color:rgba(255,255,255,.74);
+      line-height:1.6;
+    }
+
+    .gc-archive-kicker,
+    .gc-media-card-head span,
+    .gc-archive-media-rules span,
+    .gc-media-system-notes span,
+    .gc-field > span,
+    .gc-media-picker__head > div > span{
+      margin:0 0 8px;
+      color:#9cff3f;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-size:.74rem;
+    }
+
+    .gc-archive-media-rules,
+    .gc-media-picker,
+    .gc-media-global-tools{
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:22px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-archive-media-rules{padding:16px;background:rgba(0,0,0,.18)}
+    .gc-archive-media-rules ol{
+      display:grid;
+      gap:7px;
+      margin:0;
+      padding-left:18px;
+      color:rgba(255,255,255,.72);
+      line-height:1.45;
+    }
+
+    .gc-media-picker{
+      margin:0 0 18px;
+      padding:18px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(156,255,63,.06), transparent 36%),
+        rgba(255,255,255,.025);
+    }
+
+    .gc-media-picker__head{
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:16px;
+    }
+
+    .gc-media-picker__head h2{
+      margin:.2rem 0 .35rem;
+      font-size:clamp(1.8rem,3.3vw,3.3rem);
+      line-height:.92;
+      letter-spacing:-.07em;
+    }
+
+    .gc-media-picker__head p{
+      margin:0;
+      color:rgba(255,255,255,.68);
+      line-height:1.5;
+    }
+
+    .gc-media-picker__summary{
+      min-width:138px;
+      padding:14px;
+      border:1px solid rgba(156,255,63,.18);
+      border-radius:18px;
+      background:rgba(156,255,63,.06);
+      text-align:right;
+    }
+
+    .gc-media-picker__summary strong{
+      display:block;
+      font-size:2rem;
+      line-height:1;
+    }
+
+    .gc-media-picker__summary span{
+      color:rgba(255,255,255,.62);
+      font-size:.82rem;
+    }
+
+    .gc-media-picker__tools{
+      display:grid;
+      grid-template-columns:minmax(260px,.45fr) minmax(0,1fr);
+      gap:14px;
+      align-items:end;
+      margin-bottom:14px;
+    }
+
+    .gc-media-picker__filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .gc-media-picker__filters button,
+    .gc-selected-item-main__actions a,
+    .gc-selected-item-main__actions button{
+      min-height:38px;
+      padding:0 13px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      background:rgba(255,255,255,.055);
+      color:rgba(255,255,255,.9);
+      font-weight:900;
+      font-size:.78rem;
+      letter-spacing:.07em;
+      text-transform:uppercase;
+      cursor:pointer;
+      text-decoration:none;
+    }
+
+    .gc-media-picker__filters button.is-active{
+      color:#061006;
+      background:#9cff3f;
+      border-color:transparent;
+    }
+
+    .gc-selected-item-main{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:center;
+      margin-bottom:14px;
+      padding:14px;
+      border:1px solid rgba(156,255,63,.28);
+      border-radius:18px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(156,255,63,.12), transparent 36%),
+        rgba(156,255,63,.065);
+    }
+
+    .gc-selected-item-main span,
+    .gc-selected-inline span{
+      color:#9cff3f;
+      font-size:.7rem;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-selected-item-main strong{
+      display:block;
+      margin:.25rem 0;
+      font-size:1.24rem;
+      line-height:1.05;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-selected-item-main p{
+      margin:0;
+      color:rgba(255,255,255,.65);
+      font-size:.9rem;
+    }
+
+    .gc-selected-item-main__actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .gc-media-picker__grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+      max-height:420px;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .gc-picker-card{
+      position:relative;
+      display:grid;
+      min-height:150px;
+      padding:13px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:18px;
+      background:rgba(0,0,0,.16);
+      color:inherit;
+      text-align:left;
+      cursor:pointer;
+      transition:transform .16s ease,border-color .16s ease,background .16s ease;
+    }
+
+    .gc-picker-card:hover,
+    .gc-picker-card.is-selected{
+      transform:translateY(-1px);
+      border-color:rgba(156,255,63,.42);
+      background:rgba(156,255,63,.06);
+    }
+
+    .gc-picker-card__top{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:start;
+      margin-bottom:10px;
+    }
+
+    .gc-picker-card__type{
+      color:#9cff3f;
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-picker-card__status{
+      color:rgba(255,255,255,.55);
+      font-size:.72rem;
+    }
+
+    .gc-picker-card strong{
+      display:block;
+      font-size:1.02rem;
+      line-height:1.08;
+      letter-spacing:-.025em;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-picker-card p{
+      margin:8px 0 0;
+      color:rgba(255,255,255,.55);
+      font-size:.82rem;
+      line-height:1.3;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-picker-card__badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:auto;
+      padding-top:12px;
+    }
+
+    .gc-picker-card__badges span{
+      display:inline-flex;
+      min-height:24px;
+      align-items:center;
+      padding:0 8px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background:rgba(255,255,255,.035);
+      color:rgba(255,255,255,.62);
+      font-size:.72rem;
+    }
+
+    .gc-media-picker__empty{
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-media-two-cols{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+      align-items:start;
+    }
+
+    .gc-media-card{
+      padding:20px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(156,255,63,.055), transparent 34%),
+        rgba(255,255,255,.04);
+      min-width:0;
+    }
+
     .gc-media-card-head{margin-bottom:18px}
-    .gc-media-card-head span{display:inline-flex;margin-bottom:6px;color:#9fd46f;font-size:.74rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
-    .gc-media-card-head h2{margin:0 0 6px}
-    .gc-media-card-head p{margin:0;color:rgba(255,255,255,.72)}
-    .gc-archive-url-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-    .gc-field{display:grid;gap:7px}
+    .gc-media-card-head h2{margin:0 0 6px;font-size:clamp(1.55rem,2.5vw,2.25rem);letter-spacing:-.045em}
+    .gc-media-card-head p{margin:0;color:rgba(255,255,255,.72);line-height:1.55}
+
+    .gc-archive-url-form{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .gc-field{
+      display:grid;
+      gap:7px;
+      min-width:0;
+    }
+
     .gc-field--full{grid-column:1/-1}
-    .gc-field input,.gc-field select{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(5,10,8,.68);color:inherit}
-    .gc-url-row{display:grid;grid-template-columns:1fr auto;gap:10px}
-    .gc-button-primary,.gc-button-secondary{border:0;border-radius:999px;padding:12px 18px;font-weight:800;text-decoration:none;cursor:pointer}
-    .gc-button-primary{background:#89c35c;color:#081008}
-    .gc-button-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.12)}
-    .gc-preview-frame{display:grid;place-items:center;aspect-ratio:16/10;border-radius:18px;background:rgba(0,0,0,.28);overflow:hidden}
+
+    .gc-field input{
+      width:100%;
+      min-height:46px;
+      box-sizing:border-box;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background-color:#07110b;
+      color:#f3f7ef;
+      font:inherit;
+      outline:none;
+    }
+
+    .gc-field input:focus{
+      border-color:#9cff3f;
+      box-shadow:0 0 0 4px rgba(156,255,63,.08);
+    }
+
+    .gc-field input[type="file"]{
+      display:flex;
+      align-items:center;
+      padding:10px 12px;
+      min-height:52px;
+    }
+
+    .gc-field input::placeholder{color:rgba(255,255,255,.42)}
+
+    .gc-field small{
+      display:block;
+      color:rgba(255,255,255,.48);
+      font-size:.78rem;
+      line-height:1.35;
+    }
+
+    .gc-selected-inline{
+      padding:12px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:16px;
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-selected-inline.is-ready{
+      border-color:rgba(156,255,63,.22);
+      background:rgba(156,255,63,.055);
+    }
+
+    .gc-selected-inline strong{
+      display:block;
+      margin-bottom:4px;
+      overflow-wrap:anywhere;
+    }
+
+    .gc-selected-inline p{
+      margin:0;
+      color:rgba(255,255,255,.60);
+      font-size:.9rem;
+      line-height:1.4;
+    }
+
+    .gc-url-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+    }
+
+    .gc-button-primary,
+    .gc-button-secondary{
+      border-radius:999px;
+      padding:12px 18px;
+      font-weight:900;
+      text-decoration:none;
+      cursor:pointer;
+      min-height:46px;
+      border:1px solid transparent;
+    }
+
+    .gc-button-primary{background:#9cff3f;color:#061006}
+    .gc-button-primary:disabled{opacity:.55;cursor:not-allowed}
+    .gc-button-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border-color:rgba(255,255,255,.12)}
+
+    .gc-preview-frame{
+      display:grid;
+      place-items:center;
+      aspect-ratio:16/10;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+      background:rgba(0,0,0,.28);
+      overflow:hidden;
+      color:rgba(255,255,255,.52);
+    }
+
     .gc-preview-frame img{width:100%;height:100%;object-fit:cover}
-    .gc-upload-preview{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);border-radius:16px}
-    .gc-upload-preview img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:rgba(0,0,0,.25)}
-    .gc-status{max-width:1180px;margin:18px auto 0;padding:14px 16px;border-radius:16px}
+
+    .gc-upload-preview{
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:14px;
+      align-items:center;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.025);
+      border-radius:16px;
+    }
+
+    .gc-upload-preview img{
+      width:100%;
+      aspect-ratio:1/1;
+      object-fit:cover;
+      border-radius:12px;
+      background:rgba(0,0,0,.25);
+    }
+
+    .gc-upload-preview strong{display:block;margin-bottom:5px;overflow-wrap:anywhere}
+    .gc-upload-preview p{margin:0;color:rgba(255,255,255,.58)}
+
+    .gc-status{
+      max-width:1280px;
+      margin:18px auto 0;
+      padding:14px 16px;
+      border-radius:16px;
+      line-height:1.5;
+      overflow-wrap:anywhere;
+    }
+
     .gc-status.ok{display:block;background:rgba(64,168,96,.15);border:1px solid rgba(64,168,96,.45);color:#c4f4d4}
     .gc-status.error{display:block;background:rgba(205,61,75,.14);border:1px solid rgba(205,61,75,.45);color:#ffd0d6}
-    .gc-checks{display:flex;gap:14px;flex-wrap:wrap}
-    .gc-checks label{display:flex;gap:8px;align-items:center;color:rgba(255,255,255,.76)}
+
+    .gc-checks{
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .gc-checks label{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      color:rgba(255,255,255,.76);
+      padding:9px 11px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background:rgba(0,0,0,.15);
+    }
+
+    .gc-media-system-notes{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+      margin-top:18px;
+    }
+
+    .gc-media-system-notes article{
+      padding:16px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:20px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .gc-media-system-notes h3{
+      margin:0 0 6px;
+      font-size:1.1rem;
+    }
+
+    .gc-media-system-notes p{
+      margin:0;
+      color:rgba(255,255,255,.68);
+      line-height:1.5;
+    }
+
+    .gc-media-system-notes code{
+      color:#9cff3f;
+      overflow-wrap:anywhere;
+    }
+
     .gc-media-back{margin-top:18px}
-    @media(max-width:980px){.gc-media-two-cols{grid-template-columns:1fr}}
-    @media(max-width:680px){.gc-archive-url-form,.gc-url-row,.gc-upload-preview{grid-template-columns:1fr}}
+
+    @media(max-width:1120px){
+      .gc-archive-media-hero,
+      .gc-media-two-cols,
+      .gc-media-system-notes,
+      .gc-media-picker__tools{
+        grid-template-columns:1fr;
+      }
+
+      .gc-media-picker__grid{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:780px){
+      .gc-media-picker__grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-media-picker__head,
+      .gc-selected-item-main{
+        display:grid;
+      }
+
+      .gc-media-picker__summary{
+        text-align:left;
+      }
+    }
+
+    @media(max-width:680px){
+      .gc-archive-url-form,
+      .gc-url-row,
+      .gc-upload-preview,
+      .gc-media-picker__grid{
+        grid-template-columns:1fr;
+      }
+
+      .gc-archive-media-page{
+        padding-inline:12px;
+      }
+    }
   </style>
 
   <script is:inline>
     (() => {
       const API = '/api/admin/archive/unified';
+      const MAX_UPLOAD_MB = 8;
       const $ = (id) => document.getElementById(id);
+
+      let allItems = [];
+      let filteredItems = [];
+      let selectedItem = null;
+      let activeFilter = 'all';
+
+      function esc(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        }[char]));
+      }
+
+      function normalize(value) {
+        return String(value || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
+      }
+
+      function categoryLabel(category) {
+        const raw = normalize(category);
+        return ({
+          circuitos: 'Circuito',
+          vehiculos: 'Coche',
+          coches: 'Coche',
+          pilotos: 'Piloto',
+          glosario: 'Glosario',
+          general: 'General',
+        })[raw] || category || 'General';
+      }
+
+      function publicHref(item) {
+        const type = normalize(item.category || item.tipo);
+        const publicType = type === 'vehiculos' ? 'coches' : type;
+        return `/archivo/${publicType}/${item.slug || ''}/`;
+      }
+
+      function imageCount(item) {
+        return Array.isArray(item?.media) ? item.media.filter((media) => media?.url || media?.localUrl).length : 0;
+      }
+
+      function hasCover(item) {
+        const media = Array.isArray(item?.media) ? item.media : [];
+        return Boolean(item?.coverUrl || media.some((entry) => entry?.isMain || entry?.isPrimary));
+      }
 
       function showStatus(kind, msg) {
         $('status').hidden = false;
         $('status').className = `gc-status ${kind}`;
         $('status').innerHTML = msg;
+        $('status').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function updateUrlParam(item) {
+        const url = new URL(window.location.href);
+        if (item?.id) url.searchParams.set('item', item.id);
+        else url.searchParams.delete('item');
+        window.history.replaceState({}, '', url.toString());
+      }
+
+      function setSelectedItem(item, scrollToForms = false) {
+        selectedItem = item || null;
+        $('itemIdUrl').value = selectedItem?.id || '';
+        $('itemIdUpload').value = selectedItem?.id || '';
+
+        document.querySelectorAll('.gc-picker-card').forEach((card) => {
+          card.classList.toggle('is-selected', selectedItem && card.dataset.itemId === selectedItem.id);
+        });
+
+        if (!selectedItem) {
+          $('selectedMain').hidden = true;
+          $('selectedUrlInfo').classList.remove('is-ready');
+          $('selectedUploadInfo').classList.remove('is-ready');
+          $('selectedUrlInfo').innerHTML = '<strong>Selecciona una ficha arriba</strong><p>La imagen por URL se asociará a la ficha seleccionada.</p>';
+          $('selectedUploadInfo').innerHTML = '<strong>Selecciona una ficha arriba</strong><p>La imagen subida se asociará a la ficha seleccionada.</p>';
+          updateUrlParam(null);
+          return;
+        }
+
+        const meta = `${categoryLabel(selectedItem.category || selectedItem.tipo)} · ${selectedItem.slug || ''} · ${selectedItem.status || 'draft'} · ${imageCount(selectedItem)} imagen(es)${hasCover(selectedItem) ? ' · portada OK' : ' · sin portada'}`;
+
+        $('selectedMain').hidden = false;
+        $('selectedMainTitle').textContent = selectedItem.title || selectedItem.nombre || 'Sin título';
+        $('selectedMainMeta').textContent = meta;
+        $('selectedPublicLink').href = publicHref(selectedItem);
+
+        for (const id of ['selectedUrlInfo', 'selectedUploadInfo']) {
+          const box = $(id);
+          box.classList.add('is-ready');
+          box.innerHTML = `
+            <strong>${esc(selectedItem.title || selectedItem.nombre || 'Sin título')}</strong>
+            <p>${esc(meta)}</p>
+          `;
+        }
+
+        if (!$('alt').value) $('alt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
+        if (!$('uploadAlt').value) $('uploadAlt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
+
+        updateUrlParam(selectedItem);
+
+        if (scrollToForms) {
+          document.querySelector('.gc-media-two-cols')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
 
       function previewUrl(url) {
@@ -212,20 +916,104 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         return data;
       }
 
+      function passesFilter(item) {
+        const type = normalize(item.category || item.tipo);
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'missing') return imageCount(item) === 0;
+        if (activeFilter === 'cover') return hasCover(item);
+        return type === activeFilter || (activeFilter === 'vehiculos' && type === 'coches');
+      }
+
+      function renderPicker() {
+        const query = normalize($('itemSearch').value);
+        filteredItems = allItems.filter((item) => {
+          const text = normalize([
+            item.title,
+            item.nombre,
+            item.slug,
+            item.category,
+            item.tipo,
+            item.status,
+            item.summary,
+          ].join(' '));
+          return passesFilter(item) && (!query || text.includes(query));
+        });
+
+        $('pickerVisibleCount').textContent = String(filteredItems.length);
+        $('pickerEmpty').hidden = filteredItems.length !== 0;
+
+        $('itemPickerGrid').innerHTML = filteredItems.map((item) => {
+          const count = imageCount(item);
+          const cover = hasCover(item);
+          const selected = selectedItem && selectedItem.id === item.id;
+          return `
+            <button class="gc-picker-card ${selected ? 'is-selected' : ''}" type="button" data-item-id="${esc(item.id)}">
+              <span class="gc-picker-card__top">
+                <span class="gc-picker-card__type">${esc(categoryLabel(item.category || item.tipo))}</span>
+                <span class="gc-picker-card__status">${esc(item.status || 'draft')}</span>
+              </span>
+              <strong>${esc(item.title || item.nombre || 'Sin título')}</strong>
+              <p>${esc(item.slug || '')}</p>
+              <span class="gc-picker-card__badges">
+                <span>${count} img</span>
+                <span>${cover ? 'portada' : 'sin portada'}</span>
+              </span>
+            </button>
+          `;
+        }).join('');
+
+        $('itemPickerGrid').querySelectorAll('[data-item-id]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const item = allItems.find((entry) => String(entry.id) === String(button.dataset.itemId));
+            setSelectedItem(item, true);
+          });
+        });
+      }
+
+      function applyInitialSelection() {
+        const params = new URLSearchParams(window.location.search);
+        const wantedItem = params.get('item');
+        const wantedSlug = params.get('slug');
+
+        let item = null;
+        if (wantedItem) item = allItems.find((entry) => String(entry.id) === String(wantedItem));
+        if (!item && wantedSlug) item = allItems.find((entry) => String(entry.slug) === String(wantedSlug));
+
+        if (item) setSelectedItem(item, false);
+      }
+
       async function loadItems() {
         try {
           const data = await json(`${API}/items`);
-          const options = '<option value="">Selecciona una ficha</option>' + (data.items || [])
-            .map((item) => `<option value="${item.id}">${item.title} · ${item.category} · ${item.status}</option>`)
-            .join('');
-          $('itemIdUrl').innerHTML = options;
-          $('itemIdUpload').innerHTML = options;
+          allItems = (data.items || []).sort((a, b) => String(a.title || a.nombre || '').localeCompare(String(b.title || b.nombre || ''), 'es'));
+          renderPicker();
+          applyInitialSelection();
         } catch (error) {
-          $('itemIdUrl').innerHTML = '<option value="">No se pudieron cargar fichas</option>';
-          $('itemIdUpload').innerHTML = '<option value="">No se pudieron cargar fichas</option>';
+          $('itemPickerGrid').innerHTML = '';
+          $('pickerEmpty').hidden = false;
           showStatus('error', error.message);
         }
       }
+
+      $('itemSearch').addEventListener('input', renderPicker);
+
+      document.querySelectorAll('[data-picker-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+          activeFilter = button.dataset.pickerFilter || 'all';
+          document.querySelectorAll('[data-picker-filter]').forEach((item) => item.classList.toggle('is-active', item === button));
+          renderPicker();
+        });
+      });
+
+      $('clearSelectedItem').addEventListener('click', () => {
+        setSelectedItem(null, false);
+        $('itemSearch').focus();
+      });
+
+      $('imageUrl').addEventListener('input', () => {
+        const url = $('imageUrl').value.trim();
+        if (url.startsWith('http')) previewUrl(url);
+      });
 
       $('inspectBtn').addEventListener('click', async () => {
         const url = $('imageUrl').value.trim();
@@ -240,16 +1028,28 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           const meta = data.metadata || {};
           $('source').value = meta.source || $('source').value;
           $('sourceUrl').value = meta.sourceUrl || url;
-          showStatus('ok', 'Metadatos leídos.');
+          $('author').value = meta.author || $('author').value;
+          $('license').value = meta.license || $('license').value;
+          if (!$('alt').value && selectedItem) $('alt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
+          showStatus('ok', 'Metadatos leídos. Revisa autor y licencia antes de guardar.');
         } catch (error) {
           showStatus('error', error.message || 'No se pudieron leer datos.');
         }
       });
 
+      function updateItemFromResponse(data) {
+        if (!data?.item) return;
+        const index = allItems.findIndex((item) => item.id === data.item.id);
+        if (index >= 0) allItems[index] = data.item;
+        else allItems.unshift(data.item);
+        renderPicker();
+        setSelectedItem(data.item, false);
+      }
+
       $('media-url-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const itemId = $('itemIdUrl').value;
-        if (!itemId) return showStatus('error', 'Selecciona una ficha.');
+        if (!itemId) return showStatus('error', 'Selecciona una ficha desde el buscador visual.');
 
         try {
           const data = await json(`${API}/items/${encodeURIComponent(itemId)}/media/from-url`, {
@@ -265,7 +1065,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
               locked: $('locked').checked,
             }),
           });
-          showStatus('ok', `Imagen añadida a <strong>${data.itemTitle}</strong>.`);
+          updateItemFromResponse(data);
+          showStatus('ok', `Imagen añadida a <strong>${esc(data.itemTitle)}</strong>.`);
         } catch (error) {
           showStatus('error', error.message || 'No se pudo añadir.');
         }
@@ -287,14 +1088,21 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           return;
         }
 
+        const mb = file.size / 1024 / 1024;
+        if (mb > MAX_UPLOAD_MB) {
+          showStatus('error', `La imagen pesa ${mb.toFixed(2)} MB. Reduce a menos de ${MAX_UPLOAD_MB} MB.`);
+          $('uploadFile').value = '';
+          $('uploadPreview').hidden = true;
+          return;
+        }
+
         const url = URL.createObjectURL(file);
         $('uploadPreview').hidden = false;
         $('uploadPreviewImg').src = url;
         $('uploadPreviewName').textContent = file.name;
-        $('uploadPreviewSize').textContent = `${file.type || 'imagen'} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        $('uploadPreviewSize').textContent = `${file.type || 'imagen'} · ${mb.toFixed(2)} MB`;
 
-        const selected = $('itemIdUpload').selectedOptions?.[0]?.textContent?.split(' · ')[0] || '';
-        if (!$('uploadAlt').value && selected) $('uploadAlt').value = `Imagen de ${selected}`;
+        if (!$('uploadAlt').value && selectedItem) $('uploadAlt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
       });
 
       $('media-upload-form').addEventListener('submit', async (event) => {
@@ -302,10 +1110,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const itemId = $('itemIdUpload').value;
         const file = $('uploadFile').files?.[0];
 
-        if (!itemId) return showStatus('error', 'Selecciona una ficha.');
+        if (!itemId) return showStatus('error', 'Selecciona una ficha desde el buscador visual.');
         if (!file) return showStatus('error', 'Selecciona una imagen.');
 
         try {
+          $('media-upload-form').querySelector('button[type="submit"]').disabled = true;
           showStatus('ok', 'Leyendo imagen...');
           const dataUrl = await fileToDataUrl(file);
 
@@ -324,9 +1133,12 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             }),
           });
 
-          showStatus('ok', `Imagen subida correctamente: <code>${data.publicUrl}</code>`);
+          updateItemFromResponse(data);
+          showStatus('ok', `Imagen subida correctamente: <code>${esc(data.publicUrl)}</code>`);
         } catch (error) {
           showStatus('error', error.message || 'No se pudo subir la imagen.');
+        } finally {
+          $('media-upload-form').querySelector('button[type="submit"]').disabled = false;
         }
       });
 

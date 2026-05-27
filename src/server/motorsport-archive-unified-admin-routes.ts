@@ -711,11 +711,65 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
   }, existing || null);
 }
 
+
+function mediaStorageConfig(rootDir: string) {
+  const configuredDir = process.env.ARCHIVE_MEDIA_DIR?.trim();
+  const uploadDir = configuredDir
+    ? (path.isAbsolute(configuredDir) ? configuredDir : path.resolve(rootDir, configuredDir))
+    : path.join(rootDir, 'public', 'uploads', 'archive');
+
+  const publicBase = (process.env.ARCHIVE_MEDIA_PUBLIC_BASE || '/uploads/archive')
+    .replace(/\/+$/, '');
+
+  return { uploadDir, publicBase };
+}
+
+function extensionFromMime(mime: string) {
+  const clean = String(mime || '').toLowerCase();
+  if (clean.includes('jpeg') || clean.includes('jpg')) return 'jpg';
+  if (clean.includes('png')) return 'png';
+  if (clean.includes('webp')) return 'webp';
+  if (clean.includes('svg')) return 'svg';
+  return 'bin';
+}
+
+function parseDataUrl(dataUrl: string) {
+  const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    const error: any = new Error('Formato de imagen no válido.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const mime = match[1];
+  const base64 = match[2];
+  const buffer = Buffer.from(base64, 'base64');
+
+  if (!buffer.length) {
+    const error: any = new Error('Imagen vacía.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const maxBytes = Number(process.env.ARCHIVE_MEDIA_MAX_BYTES || 8 * 1024 * 1024);
+  if (buffer.length > maxBytes) {
+    const error: any = new Error(`La imagen supera el límite permitido (${(maxBytes / 1024 / 1024).toFixed(1)} MB).`);
+    error.statusCode = 413;
+    throw error;
+  }
+
+  return { mime, buffer, extension: extensionFromMime(mime) };
+}
+
+function safeFileBase(value: unknown) {
+  return slugify(String(value || 'imagen')).slice(0, 90) || 'imagen';
+}
+
 export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { rootDir }: { rootDir: string }) {
   app.get('/api/admin/archive/unified/items', async (_req: Request, res: Response) => {
     try {
       const result = await storageList(rootDir);
-      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.15' });
+      return res.json({ ok: true, ...result, count: result.items.length, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error listando Archivo.' });
     }
@@ -725,7 +779,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageFind(rootDir, String(req.params.id || ''));
       if (!result.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error cargando ficha.' });
     }
@@ -734,7 +788,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
   async function save(req: Request, res: Response) {
     try {
       const result = await storageSave(rootDir, req.body || {}, req.params.id ? String(req.params.id) : undefined);
-      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error guardando ficha.' });
     }
@@ -748,7 +802,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
     try {
       const result = await storageDelete(rootDir, String(req.params.id || ''));
       if (!result.deleted) return res.status(404).json({ ok: false, deleted: false, message: 'Ficha no encontrada.' });
-      return res.json({ ok: true, ...result, api: 'unified-v15.15' });
+      return res.json({ ok: true, ...result, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, deleted: false, message: error?.message || 'Error borrando ficha.' });
     }
@@ -763,7 +817,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         await storageSave(rootDir, item);
         created += 1;
       }
-      return res.json({ ok: true, created, skipped, api: 'unified-v15.15' });
+      return res.json({ ok: true, created, skipped, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error creando demo.' });
     }
@@ -825,7 +879,7 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         skipped,
         details,
         samples,
-        api: 'unified-v15.15',
+        api: 'unified-v15.18',
       });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error importando CSV.' });
@@ -866,9 +920,78 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
       media.unshift(itemMedia);
       const item = normalizeItem({ ...found.item, media }, found.item);
       await storageSave(rootDir, item, item.id);
-      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.15' });
+      return res.json({ ok: true, item, media: itemMedia, itemTitle: item.title, api: 'unified-v15.18' });
     } catch (error: any) {
       return res.status(500).json({ ok: false, message: error?.message || 'Error añadiendo imagen.' });
+    }
+  });
+
+
+  app.post('/api/admin/archive/unified/items/:id/media/upload', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id || '');
+      const found = await storageFind(rootDir, id);
+      if (!found.item) return res.status(404).json({ ok: false, message: 'Ficha no encontrada.' });
+
+      const dataUrl = String(req.body?.dataUrl || '');
+      const parsed = parseDataUrl(dataUrl);
+
+      if (!['jpg', 'png', 'webp', 'svg'].includes(parsed.extension)) {
+        return res.status(400).json({ ok: false, message: 'Tipo de imagen no permitido.' });
+      }
+
+      const { uploadDir, publicBase } = mediaStorageConfig(rootDir);
+      fs.mkdirSync(uploadDir, { recursive: true });
+
+      const originalName = String(req.body?.fileName || '');
+      const baseName = safeFileBase(`${found.item.slug || found.item.title}-${originalName || crypto.randomUUID()}`);
+      const fileName = `${baseName}-${crypto.randomBytes(4).toString('hex')}.${parsed.extension}`;
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, parsed.buffer);
+
+      const publicUrl = `${publicBase}/${fileName}`;
+      const media = normalizeMedia(found.item.media);
+
+      if (req.body?.makePrimary !== false) {
+        media.forEach((m: any) => { m.isMain = false; m.isPrimary = false; });
+      }
+
+      const itemMedia = {
+        id: crypto.randomUUID(),
+        type: 'image',
+        kind: 'image',
+        url: publicUrl,
+        localUrl: publicUrl,
+        alt: String(req.body?.alt || found.item.title || ''),
+        source: String(req.body?.source || 'GrassCutters Racing'),
+        sourceUrl: String(req.body?.sourceUrl || ''),
+        author: String(req.body?.author || ''),
+        license: String(req.body?.license || 'Imagen propia / GrassCutters Racing'),
+        isMain: req.body?.makePrimary !== false,
+        isPrimary: req.body?.makePrimary !== false,
+        locked: Boolean(req.body?.locked),
+        local: true,
+        createdAt: nowIso(),
+        originalUrl: publicUrl,
+        fileName,
+        mime: parsed.mime,
+        sizeBytes: parsed.buffer.length,
+      };
+
+      media.unshift(itemMedia);
+      const item = normalizeItem({ ...found.item, media }, found.item);
+      await storageSave(rootDir, item, item.id);
+
+      return res.json({
+        ok: true,
+        item,
+        media: itemMedia,
+        publicUrl,
+        itemTitle: item.title,
+        api: 'unified-v15.18',
+      });
+    } catch (error: any) {
+      return res.status(error?.statusCode || 500).json({ ok: false, message: error?.message || 'Error subiendo imagen.' });
     }
   });
 
