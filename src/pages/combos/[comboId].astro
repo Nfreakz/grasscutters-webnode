@@ -10,9 +10,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   <div class="gc-page gc-combo-detail-page gc-combo-detail-v7" data-combo-detail>
     <section class="gc-combo-hero-v7">
       <div class="gc-combo-hero-v7__main">
-        <span class="gc-kicker">Combo lógico</span>
+        <span class="gc-kicker">Ficha de combo</span>
         <h1 class="gc-title" id="comboTitle">Cargando combo...</h1>
-        <p class="gc-subtitle" id="comboSubtitle">Leaderboard propio, paquete de coches y actividad reciente del combo.</p>
+        <p class="gc-subtitle" id="comboSubtitle">Ficha del circuito, paquete de coches permitido, mejores vueltas y actividad reciente.</p>
 
         <figure class="gc-combo-track-figure-v52" id="comboTrackFigure" hidden>
           <img id="comboTrackImage" src="" alt="" loading="lazy" />
@@ -598,6 +598,217 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         max-height:none;
       }
     }
+  
+/* GC_COMBO_DETAIL_VISUAL_POLISH_V55_START */
+    .gc-combo-detail-v7{
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
+    }
+
+    .gc-combo-hero-v7{
+      position:relative;
+      overflow:hidden;
+      align-items:center;
+      margin:0;
+      padding:clamp(26px,3.4vw,40px)!important;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combo-hero-v7::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      opacity:.28;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+    }
+
+    .gc-combo-hero-v7 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-combo-hero-v7 .gc-title{
+      text-transform:uppercase;
+      font-size:clamp(3.2rem,7vw,6.4rem);
+      line-height:.86;
+      letter-spacing:-.08em;
+      margin:8px 0 12px;
+    }
+
+    .gc-combo-track-figure-v52{
+      margin:16px 0 0;
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.1);
+      box-shadow:0 20px 70px rgba(0,0,0,.24);
+    }
+
+    .gc-combo-track-figure-v52 img{
+      aspect-ratio:16/6;
+      opacity:.98;
+      filter:saturate(1.02) contrast(1.04);
+    }
+
+    @media(min-width:981px){
+      .gc-combo-summary-v53{
+        margin-top:clamp(112px,10vw,168px);
+      }
+    }
+
+    .gc-combo-summary-v7{
+      padding:0;
+      overflow:hidden;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-top:2px solid var(--accent);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combo-summary-v7__title{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-combo-reference-v53{
+      border-width:0 0 1px;
+      padding:14px 16px;
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-combo-summary-v7__grid{
+      gap:0;
+    }
+
+    .gc-combo-summary-v7__grid div{
+      padding:13px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-combo-summary-v7__grid div:last-child{
+      border-bottom:0;
+    }
+
+    .gc-combo-garage-panel-v54{
+      border-radius:28px;
+      border:1px solid rgba(255,255,255,.08);
+      border-top:2px solid var(--accent);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
+    }
+
+    .gc-combo-garage-stats-v54{
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-radius:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-combo-garage-stats-v54 article{
+      min-height:112px;
+      border-color:var(--line);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+    }
+
+    .gc-combo-garage-stats-v54 strong{
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:clamp(1.65rem,2.85vw,2.55rem);
+      line-height:.92;
+      letter-spacing:-.055em;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-combo-table-section-v7{
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:28px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
+    }
+
+    .gc-combo-table-section-v7 .gc-section-head{
+      margin:0;
+      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-combo-table-wrap-v7{
+      max-height:520px;
+      margin:clamp(16px,2vw,22px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
+      overflow:auto;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-combo-table-wrap-v7 .gc-table thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:color-mix(in srgb,var(--panel,#07110a) 92%,#000);
+      color:color-mix(in srgb,var(--accent,#9dff00) 52%,var(--soft));
+      backdrop-filter:blur(12px);
+    }
+
+    .gc-combo-table-wrap-v7 .gc-table tbody tr{
+      transition:background .16s ease;
+    }
+
+    .gc-combo-table-wrap-v7 .gc-table tbody tr:hover td{
+      background:color-mix(in srgb,var(--accent,#9dff00) 7%,transparent);
+    }
+
+    @media(max-width:980px){
+      .gc-combo-hero-v7{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combo-summary-v53{
+        margin-top:0;
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-combo-detail-v7{
+        padding-inline:0;
+      }
+
+      .gc-combo-table-section-v7 .gc-section-head,
+      .gc-combo-table-wrap-v7{
+        margin-inline:16px;
+      }
+
+      .gc-combo-table-section-v7 .gc-section-head{
+        padding-inline:16px;
+      }
+    }
+/* GC_COMBO_DETAIL_VISUAL_POLISH_V55_END */
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -606,10 +817,48 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
     const fmtNumber = (value) => Math.max(0, Math.round(Number(value) || 0)).toLocaleString('es-ES');
     const fmtDate = (value) => {
-      if (!value) return '--';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '--';
-      return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      if (value === undefined || value === null || value === '') return '--';
+
+      let ms = 0;
+
+      if (typeof value === 'number') {
+        ms = value > 20000000000 ? value : value * 1000;
+      } else {
+        const raw = String(value).trim();
+
+        if (/^\d+$/.test(raw)) {
+          const numberValue = Number(raw);
+          ms = numberValue > 20000000000 ? numberValue : numberValue * 1000;
+        } else {
+          ms = new Date(raw).getTime();
+
+          if (!Number.isFinite(ms)) {
+            ms = new Date(raw.replace(' ', 'T')).getTime();
+          }
+
+          if (!Number.isFinite(ms)) {
+            const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2}))?/);
+            if (slash) {
+              const day = Number(slash[1]);
+              const month = Number(slash[2]) - 1;
+              const yearRaw = Number(slash[3]);
+              const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+              const hour = Number(slash[4] || 0);
+              const minute = Number(slash[5] || 0);
+              ms = new Date(year, month, day, hour, minute).getTime();
+            }
+          }
+        }
+      }
+
+      if (!Number.isFinite(ms) || ms <= 0) return '--';
+
+      return new Date(ms).toLocaleString('es-ES', {
+        day:'2-digit',
+        month:'2-digit',
+        hour:'2-digit',
+        minute:'2-digit'
+      });
     };
 
     const els = {
@@ -764,7 +1013,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         els.bestDriver.textContent = summary.bestLap?.driverName || summary.bestLap?.playerName || 'Sin piloto';
         els.speed.textContent = fmtSpeed(summary.maxSpeedKmh);
         els.top10.textContent = summary.best10Average || '--';
-        els.recent.textContent = fmtDate(summary.lastSeenAt);
+        els.recent.textContent = fmtDate(summary.lastSeenAt || summary.lastActivityAt || summary.latestLapAt || summary.lastLapAt || item.lastActivityAt || item.updatedAt || recentLaps[0]?.timestampIso);
 
         els.leaderboardCount.textContent = `${leaderboard.length} pilotos`;
         els.recentCount.textContent = `${recentLaps.length} vueltas`;

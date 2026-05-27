@@ -3,26 +3,26 @@ import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout
   title="Hotlaps | GrassCutters Racing"
-  description="Leaderboard de GrassCutters Racing con tiempos de referencia, filtros por piloto, coche, circuito y vueltas válidas."
+  description="Consulta rápida de hotlaps con filtro automático del último circuito activo, vueltas válidas y orden por tiempo, velocidad o actividad."
   canonicalPath="/hotlaps"
   ogImage="/og/hotlaps-og-v1531.png"
   ogImageAlt="Hotlaps GrassCutters Racing"
 >
-  <div class="gc-page gc-hotlaps-page gc-hotlaps-v8">
-    <section class="gc-hero gc-hero--compact gc-hotlaps-hero-v8">
+  <div class="gc-page gc-hotlaps-page gc-hotlaps-v13">
+    <section class="gc-hero gc-hero--compact gc-hotlaps-hero-v13">
       <div>
         <span class="gc-kicker">Leaderboard</span>
         <h1 class="gc-title">Hotlaps.</h1>
-        <p class="gc-subtitle">Tiempos de referencia desde stracker, con filtros rápidos por piloto, coche, circuito y estado.</p>
+        <p class="gc-subtitle">Consulta rápida del último circuito activo. Filtra por piloto, coche o circuito y ordena por tiempo, velocidad o actividad.</p>
         <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">stracker.db3</span>
-          <span class="gc-chip">Nombres corregidos</span>
-          <span class="gc-chip">Combos enlazados</span>
+          <span class="gc-chip gc-chip--accent" id="activeTrackChip">Último circuito activo</span>
+          <span class="gc-chip">Vueltas válidas</span>
+          <span class="gc-chip">Stracker live</span>
         </div>
       </div>
 
-      <aside class="gc-live-panel gc-hotlaps-status-v8">
-        <div class="gc-live-panel__title"><span>Leaderboard</span><strong id="hotlapSource">...</strong></div>
+      <aside class="gc-live-panel gc-hotlaps-status-v13">
+        <div class="gc-live-panel__title"><span>Datos</span><strong id="hotlapSource">...</strong></div>
         <div class="gc-status-list">
           <div class="gc-status-row"><span>Cargadas</span><strong id="hotlapLoaded">...</strong></div>
           <div class="gc-status-row"><span>Visibles</span><strong id="hotlapVisible">...</strong></div>
@@ -31,17 +31,40 @@ import AppLayout from '../layouts/AppLayout.astro';
       </aside>
     </section>
 
-    <section class="gc-metrics gc-hotlaps-metrics-v8" aria-label="Resumen de hotlaps">
-      <div class="gc-metric"><span>Mejor vuelta</span><strong id="hotlapMetricBest">...</strong><small id="hotlapMetricBestMeta">cargando</small></div>
-      <div class="gc-metric"><span>Pilotos</span><strong id="hotlapMetricDrivers">...</strong><small>visibles</small></div>
-      <div class="gc-metric"><span>Coches</span><strong id="hotlapMetricCars">...</strong><small>visibles</small></div>
-      <div class="gc-metric"><span>Circuitos</span><strong id="hotlapMetricTracks">...</strong><small>visibles</small></div>
+    <section class="gc-metrics gc-hotlaps-metrics-v13" aria-label="Resumen de hotlaps">
+      <div class="gc-metric gc-hotlaps-track-metric-v13">
+        <span>Circuito</span>
+        <strong id="hotlapMetricTrack">...</strong>
+        <small id="hotlapMetricTrackMeta">último activo</small>
+      </div>
+      <div class="gc-metric">
+        <span>Mejor vuelta</span>
+        <strong id="hotlapMetricBest">...</strong>
+        <small id="hotlapMetricBestMeta">cargando</small>
+      </div>
+      <div class="gc-metric">
+        <span>Pilotos</span>
+        <strong id="hotlapMetricDrivers">...</strong>
+        <small>en vista</small>
+      </div>
+      <div class="gc-metric">
+        <span>Vmax</span>
+        <strong id="hotlapMetricSpeed">...</strong>
+        <small id="hotlapMetricSpeedMeta">máxima visible</small>
+      </div>
     </section>
 
-    <section class="gc-toolbar gc-hotlaps-toolbar-v8" aria-label="Filtros del leaderboard">
-      <div class="gc-field gc-hotlaps-search-v8">
+    <section class="gc-toolbar gc-hotlaps-toolbar-v13" aria-label="Filtros del leaderboard">
+      <div class="gc-field gc-hotlaps-search-v13">
         <label for="hotlapSearch">Buscar</label>
         <input class="gc-input" id="hotlapSearch" placeholder="Piloto, coche o circuito" autocomplete="off" />
+      </div>
+
+      <div class="gc-field">
+        <label for="trackFilter">Circuito</label>
+        <select class="gc-select" id="trackFilter">
+          <option value="all">Todos los circuitos</option>
+        </select>
       </div>
 
       <div class="gc-field">
@@ -59,17 +82,10 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
 
       <div class="gc-field">
-        <label for="trackFilter">Circuito</label>
-        <select class="gc-select" id="trackFilter">
-          <option value="all">Todos los circuitos</option>
-        </select>
-      </div>
-
-      <div class="gc-field">
         <label for="validFilter">Estado</label>
         <select class="gc-select" id="validFilter">
+          <option value="valid" selected>Válidas</option>
           <option value="all">Todas</option>
-          <option value="valid">Válidas</option>
           <option value="invalid">No válidas</option>
         </select>
       </div>
@@ -77,26 +93,28 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div class="gc-field">
         <label for="sortFilter">Orden</label>
         <select class="gc-select" id="sortFilter">
-          <option value="fastest">Mejor tiempo</option>
-          <option value="recent">Recientes</option>
+          <option value="fastest" selected>Más rápido</option>
+          <option value="speed">Más velocidad</option>
+          <option value="recent">Más recientes</option>
           <option value="driver">Piloto</option>
           <option value="car">Coche</option>
-          <option value="track">Circuito</option>
-          <option value="speed">Vmax</option>
         </select>
       </div>
 
-      <button class="gc-btn gc-btn--primary" id="reloadHotlaps" type="button">Actualizar</button>
-      <button class="gc-btn" id="clearFilters" type="button">Limpiar</button>
+      <div class="gc-hotlaps-toolbar-v13__actions">
+        <button class="gc-btn gc-btn--primary" id="activeTrackButton" type="button">Último circuito</button>
+        <button class="gc-btn" id="reloadHotlaps" type="button">Actualizar</button>
+        <button class="gc-btn" id="clearFilters" type="button">Limpiar</button>
+      </div>
     </section>
 
-    <div class="gc-table-meta gc-hotlaps-meta-v8">
+    <div class="gc-table-meta gc-hotlaps-meta-v13">
       <span id="leaderboardHint">Cargando leaderboard...</span>
-      <span id="leaderboardOrder">Ordenado por mejor tiempo</span>
+      <span id="leaderboardOrder">Último circuito activo · válidas · más rápido</span>
     </div>
 
-    <section class="gc-table-wrap gc-hotlaps-table-wrap-v8">
-      <table class="gc-table gc-table--leaderboard gc-hotlaps-table-v8">
+    <section class="gc-table-wrap gc-hotlaps-table-wrap-v13">
+      <table class="gc-table gc-table--leaderboard gc-hotlaps-table-v13">
         <thead>
           <tr>
             <th>#</th>
@@ -117,112 +135,282 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <style is:global>
-    .gc-hotlaps-v8{
+    .gc-hotlaps-v13{
       display:grid;
       gap:clamp(18px,2.3vw,28px);
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
     }
 
-    .gc-hotlaps-hero-v8{
-      padding-block:clamp(22px,3vw,34px)!important;
+    .gc-hotlaps-hero-v13{
+      position:relative;
+      overflow:hidden;
       margin:0;
+      padding-block:clamp(26px,3.4vw,40px)!important;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
     }
 
-    .gc-hotlaps-hero-v8 .gc-title{
+    .gc-hotlaps-hero-v13::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      opacity:.34;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+    }
+
+    .gc-hotlaps-hero-v13 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-hotlaps-hero-v13 > div:first-child{
+      padding-left:clamp(30px,4.2vw,86px);
+    }
+
+    .gc-hotlaps-hero-v13 .gc-title{
       font-size:clamp(3.2rem,7vw,6rem);
       line-height:.86;
       letter-spacing:-.075em;
       margin:8px 0 12px;
     }
 
-    .gc-hotlaps-hero-v8 .gc-subtitle{
-      max-width:760px;
+    .gc-hotlaps-hero-v13 .gc-subtitle{
+      max-width:820px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
     }
 
-    .gc-hotlaps-metrics-v8{
+    .gc-hotlaps-status-v13{
+      width:min(420px,100%);
+      justify-self:end;
+      margin-right:clamp(28px,4vw,78px);
+      align-self:center;
+      min-height:auto;
+      padding:0;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-hotlaps-status-v13 .gc-live-panel__title{
+      padding:14px 16px;
       margin:0;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.14);
     }
 
-    .gc-hotlaps-toolbar-v8{
-      align-items:end;
+    .gc-hotlaps-status-v13 .gc-status-list{
+      padding:0;
+      gap:0;
+    }
+
+    .gc-hotlaps-status-v13 .gc-status-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:13px 16px;
+      border-width:0 0 1px;
+      border-radius:0;
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-hotlaps-status-v13 .gc-status-row:last-child{
+      border-bottom:0;
+    }
+
+    .gc-hotlaps-metrics-v13{
+      margin:0;
+      gap:0;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-radius:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-hotlaps-metrics-v13 .gc-metric{
+      border-width:0 1px 0 0;
+      border-radius:0;
+      min-height:118px;
+      box-shadow:none;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+    }
+
+    .gc-hotlaps-metrics-v13 .gc-metric:last-child{
+      border-right:0;
+    }
+
+    .gc-hotlaps-metrics-v13 .gc-metric strong{
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:clamp(1.85rem,3.2vw,2.85rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-hotlaps-track-metric-v13 strong{
+      text-transform:uppercase;
+    }
+
+    .gc-hotlaps-toolbar-v13{
+      display:grid;
+      grid-template-columns:minmax(240px,1.4fr) repeat(5,minmax(150px,.8fr));
       gap:10px;
+      align-items:end;
       margin:0;
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 10rem),
+        linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.016));
     }
 
-    .gc-hotlaps-toolbar-v8 .gc-field{
-      flex:1 1 170px;
+    .gc-hotlaps-toolbar-v13 .gc-field{
+      min-width:0;
     }
 
-    .gc-hotlaps-toolbar-v8 .gc-hotlaps-search-v8{
-      flex:1.6 1 260px;
-    }
-
-    .gc-hotlaps-toolbar-v8 .gc-select,
-    .gc-hotlaps-toolbar-v8 .gc-input{
+    .gc-hotlaps-toolbar-v13 .gc-select,
+    .gc-hotlaps-toolbar-v13 .gc-input{
       min-width:0;
       width:100%;
     }
 
-    .gc-hotlaps-meta-v8{
+    .gc-hotlaps-toolbar-v13__actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      grid-column:1 / -1;
+    }
+
+    .gc-hotlaps-toolbar-v13__actions .gc-btn{
+      min-height:40px;
+      border-radius:999px;
+    }
+
+    .gc-hotlaps-meta-v13{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
       margin:0;
-      padding:12px 0;
-      border-top:1px solid var(--line);
-      border-bottom:1px solid var(--line);
+      padding:13px 16px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      background:rgba(255,255,255,.018);
     }
 
-    .gc-hotlaps-meta-v8 span:last-child{
+    .gc-hotlaps-meta-v13 span{
       color:var(--muted);
+      font-size:.76rem;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
     }
 
-    .gc-hotlaps-table-wrap-v8{
-      max-height:calc(100vh - 260px);
-      min-height:360px;
+    .gc-hotlaps-meta-v13 span:last-child{
+      color:color-mix(in srgb,var(--accent,#9dff00) 52%,var(--muted));
+      text-align:right;
+    }
+
+    .gc-hotlaps-table-wrap-v13{
+      max-height:calc(100vh - 235px);
+      min-height:420px;
       overflow:auto;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      background:rgba(0,0,0,.12);
     }
 
-    .gc-hotlaps-table-v8{
+    .gc-hotlaps-table-v13{
       min-width:1180px;
     }
 
-    .gc-hotlaps-table-v8 thead th{
+    .gc-hotlaps-table-v13 thead th{
       position:sticky;
       top:0;
       z-index:2;
-      background:color-mix(in srgb,var(--bg) 92%,black);
+      background:color-mix(in srgb,var(--panel,#07110a) 92%,#000);
+      color:color-mix(in srgb,var(--accent,#9dff00) 52%,var(--soft));
       backdrop-filter:blur(12px);
     }
 
-    .gc-hotlaps-table-v8 td:nth-child(2),
-    .gc-hotlaps-table-v8 td:nth-child(3),
-    .gc-hotlaps-table-v8 td:nth-child(4){
+    .gc-hotlaps-table-v13 tbody tr{
+      transition:background .16s ease;
+    }
+
+    .gc-hotlaps-table-v13 tbody tr:hover td{
+      background:color-mix(in srgb,var(--accent,#9dff00) 7%,transparent);
+    }
+
+    .gc-hotlaps-table-v13 td:nth-child(2),
+    .gc-hotlaps-table-v13 td:nth-child(3),
+    .gc-hotlaps-table-v13 td:nth-child(4){
       min-width:170px;
       white-space:normal;
     }
 
-    .gc-hotlaps-table-v8 td:nth-child(5),
-    .gc-hotlaps-table-v8 td:nth-child(6),
-    .gc-hotlaps-table-v8 td:nth-child(7),
-    .gc-hotlaps-table-v8 td:nth-child(8),
-    .gc-hotlaps-table-v8 td:nth-child(9){
+    .gc-hotlaps-table-v13 td:nth-child(5),
+    .gc-hotlaps-table-v13 td:nth-child(6),
+    .gc-hotlaps-table-v13 td:nth-child(7),
+    .gc-hotlaps-table-v13 td:nth-child(8),
+    .gc-hotlaps-table-v13 td:nth-child(9){
       white-space:nowrap;
       font-variant-numeric:tabular-nums;
     }
 
+    .gc-hotlaps-table-v13 td:nth-child(5) strong{
+      color:var(--text);
+      font-size:1.04rem;
+    }
+
+    .gc-hotlap-rank-wrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:42px;
+    }
+
     .gc-hotlap-rank{
       display:inline-flex;
-      min-width:32px;
-      height:28px;
+      min-width:34px;
+      height:30px;
       align-items:center;
       justify-content:center;
       border:1px solid var(--line);
       font-weight:950;
       color:var(--soft);
       background:rgba(255,255,255,.025);
+      font-variant-numeric:tabular-nums;
     }
 
-    .gc-hotlap-rank.is-podium{
-      color:#07110a;
-      border-color:transparent;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
+    .gc-hotlap-rank-badge{
+      width:64px;
+      height:auto;
+      display:block;
+      filter:drop-shadow(0 0 12px rgba(255,220,120,.10));
     }
 
     .gc-driver-link{
@@ -239,23 +427,108 @@ import AppLayout from '../layouts/AppLayout.astro';
       display:block;
       margin-top:.18rem;
       color:var(--muted);
-      font-size:.72rem;
-      letter-spacing:.04em;
+      font-size:.68rem;
+      letter-spacing:.055em;
       text-transform:uppercase;
     }
 
-    .gc-hotlaps-table-v8 a{
+    .gc-hotlaps-table-v13 a{
       color:var(--text);
       font-weight:850;
     }
 
-    .gc-hotlaps-table-v8 a:hover{
+    .gc-hotlaps-table-v13 a:hover{
       color:var(--accent);
     }
 
-    @media(max-width:900px){
-      .gc-hotlaps-table-wrap-v8{
+    .gc-hotlap-state-v13{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:28px;
+      padding:0 10px;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 36%,rgba(255,255,255,.12));
+      color:var(--accent);
+      background:rgba(0,0,0,.18);
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-hotlap-state-v13--bad{
+      color:#ff7a7a;
+      border-color:rgba(255,122,122,.32);
+    }
+
+    @media(max-width:1280px){
+      .gc-hotlaps-toolbar-v13{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-hotlaps-hero-v13 > div:first-child{
+        padding-left:clamp(12px,2vw,24px);
+      }
+
+      .gc-hotlaps-status-v13{
+        margin-right:0;
+        justify-self:stretch;
+        width:100%;
+      }
+
+      .gc-hotlaps-toolbar-v13{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-hotlaps-metrics-v13{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-hotlaps-metrics-v13 .gc-metric:nth-child(2){
+        border-right:0;
+      }
+
+      .gc-hotlaps-metrics-v13 .gc-metric:nth-child(n+3){
+        border-top:1px solid var(--line);
+      }
+    }
+
+    @media(max-width:720px){
+      .gc-hotlaps-v13{
+        padding-inline:0;
+      }
+
+      .gc-hotlaps-hero-v13 > div:first-child{
+        padding-left:0;
+      }
+
+      .gc-hotlaps-toolbar-v13,
+      .gc-hotlaps-metrics-v13{
+        grid-template-columns:1fr;
+      }
+
+      .gc-hotlaps-toolbar-v13__actions{
+        flex-direction:column;
+      }
+
+      .gc-hotlaps-toolbar-v13__actions .gc-btn{
+        width:100%;
+        justify-content:center;
+      }
+
+      .gc-hotlaps-table-wrap-v13{
         max-height:none;
+      }
+
+      .gc-hotlaps-meta-v13{
+        align-items:flex-start;
+        flex-direction:column;
+      }
+
+      .gc-hotlaps-meta-v13 span:last-child{
+        text-align:left;
       }
     }
   </style>
@@ -271,6 +544,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         sort: document.getElementById('sortFilter'),
         reload: document.getElementById('reloadHotlaps'),
         clear: document.getElementById('clearFilters'),
+        activeTrackButton: document.getElementById('activeTrackButton'),
         rows: document.getElementById('hotlapRows'),
         loaded: document.getElementById('hotlapLoaded'),
         visible: document.getElementById('hotlapVisible'),
@@ -278,14 +552,25 @@ import AppLayout from '../layouts/AppLayout.astro';
         hint: document.getElementById('leaderboardHint'),
         order: document.getElementById('leaderboardOrder'),
         source: document.getElementById('hotlapSource'),
+        activeTrackChip: document.getElementById('activeTrackChip'),
+        metricTrack: document.getElementById('hotlapMetricTrack'),
+        metricTrackMeta: document.getElementById('hotlapMetricTrackMeta'),
         metricBest: document.getElementById('hotlapMetricBest'),
         metricBestMeta: document.getElementById('hotlapMetricBestMeta'),
         metricDrivers: document.getElementById('hotlapMetricDrivers'),
-        metricCars: document.getElementById('hotlapMetricCars'),
-        metricTracks: document.getElementById('hotlapMetricTracks')
+        metricSpeed: document.getElementById('hotlapMetricSpeed'),
+        metricSpeedMeta: document.getElementById('hotlapMetricSpeedMeta')
       };
 
       let cache = [];
+      let activeTrackValue = 'all';
+      let activeTrackLabel = 'Último circuito';
+
+      const rankBadgeMap = {
+        1: '/ui/leaderboard/rank-1.png',
+        2: '/ui/leaderboard/rank-2.png',
+        3: '/ui/leaderboard/rank-3.png'
+      };
 
       const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
         '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
@@ -388,27 +673,46 @@ import AppLayout from '../layouts/AppLayout.astro';
         return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
       };
 
-      const populateSelect = (select, rows, getter, allLabel) => {
-        if (!select) return;
-        const current = select.value || 'all';
+      const uniqueRows = (rows, getter) => {
         const map = new Map();
-
         rows.forEach((row) => {
           const label = getter(row);
           const value = normalizeFilterValue(label);
           if (!value || value === '-') return;
           if (!map.has(value)) map.set(value, label);
         });
+        return map;
+      };
 
+      const populateSelect = (select, rows, getter, allLabel) => {
+        if (!select) return;
+        const current = select.value || 'all';
+        const map = uniqueRows(rows, getter);
         const options = [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity:'base' }));
         select.innerHTML = `<option value="all">${escapeHtml(allLabel)}</option>` + options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
         select.value = map.has(current) ? current : 'all';
       };
 
+      function detectActiveTrack() {
+        const latest = [...cache].sort((a, b) => lapTimestamp(b) - lapTimestamp(a))[0];
+        if (!latest) {
+          activeTrackValue = 'all';
+          activeTrackLabel = 'Último circuito';
+          return;
+        }
+        activeTrackLabel = trackName(latest);
+        activeTrackValue = normalizeFilterValue(activeTrackLabel);
+      }
+
+      function applyActiveTrack() {
+        if (!activeTrackValue || activeTrackValue === 'all') return;
+        els.track.value = activeTrackValue;
+      }
+
       function populateFilterOptions() {
+        populateSelect(els.track, cache, trackName, 'Todos los circuitos');
         populateSelect(els.driver, cache, driverName, 'Todos los pilotos');
         populateSelect(els.car, cache, carName, 'Todos los coches');
-        populateSelect(els.track, cache, trackName, 'Todos los circuitos');
       }
 
       function baseFilteredRows() {
@@ -416,7 +720,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         const driver = els.driver.value || 'all';
         const car = els.car.value || 'all';
         const track = els.track.value || 'all';
-        const valid = els.valid.value;
+        const valid = els.valid.value || 'valid';
 
         return cache.filter((row) => {
           const haystack = normalizeFilterValue(`${driverName(row)} ${carName(row)} ${trackName(row)}`);
@@ -430,6 +734,39 @@ import AppLayout from '../layouts/AppLayout.astro';
         });
       }
 
+      function bestRowsByDriver(rows) {
+        const map = new Map();
+        const mode = els.sort.value;
+
+        rows.forEach((row) => {
+          const key = String(playerId(row) || normalizeFilterValue(driverName(row)) || driverName(row));
+          const current = map.get(key);
+
+          if (!current) {
+            map.set(key, row);
+            return;
+          }
+
+          if (mode === 'speed') {
+            if (speedValue(row) > speedValue(current)) map.set(key, row);
+            return;
+          }
+
+          if (mode === 'recent') {
+            if (lapTimestamp(row) > lapTimestamp(current)) map.set(key, row);
+            return;
+          }
+
+          const rowTime = lapMs(row) || 999999999;
+          const currentTime = lapMs(current) || 999999999;
+          if (rowTime < currentTime || (rowTime === currentTime && lapTimestamp(row) > lapTimestamp(current))) {
+            map.set(key, row);
+          }
+        });
+
+        return [...map.values()];
+      }
+
       function sortRows(rows) {
         const sort = els.sort.value;
         const sorted = [...rows];
@@ -438,54 +775,60 @@ import AppLayout from '../layouts/AppLayout.astro';
           if (sort === 'recent') return lapTimestamp(b) - lapTimestamp(a) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
           if (sort === 'driver') return driverName(a).localeCompare(driverName(b), 'es', { sensitivity:'base' }) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
           if (sort === 'car') return carName(a).localeCompare(carName(b), 'es', { sensitivity:'base' }) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
-          if (sort === 'track') return trackName(a).localeCompare(trackName(b), 'es', { sensitivity:'base' }) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
-          if (sort === 'speed') return speedValue(b) - speedValue(a);
+          if (sort === 'speed') return speedValue(b) - speedValue(a) || (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
           return (lapMs(a) || 999999999) - (lapMs(b) || 999999999);
         });
 
         return sorted;
       }
 
-      function updateMetrics(rows) {
-        const validRows = rows.filter((row) => !isInvalid(row));
-        const best = validRows.slice().sort((a, b) => (lapMs(a) || 999999999) - (lapMs(b) || 999999999))[0] || rows[0];
-        const drivers = new Set();
-        const cars = new Set();
-        const tracks = new Set();
+      function updateMetrics(filteredRows, rankedRows) {
+        const validRows = filteredRows.filter((row) => !isInvalid(row));
+        const best = validRows.slice().sort((a, b) => (lapMs(a) || 999999999) - (lapMs(b) || 999999999))[0] || rankedRows[0];
+        const fastest = filteredRows.slice().sort((a, b) => speedValue(b) - speedValue(a))[0];
+        const drivers = uniqueRows(filteredRows, driverName);
+        const selectedTrack = els.track.value === 'all'
+          ? 'Todos'
+          : (els.track.options[els.track.selectedIndex]?.textContent || activeTrackLabel);
 
-        rows.forEach((row) => {
-          drivers.add(normalizeFilterValue(driverName(row)));
-          cars.add(normalizeFilterValue(carName(row)));
-          tracks.add(normalizeFilterValue(trackName(row)));
-        });
+        els.metricTrack.textContent = selectedTrack;
+        els.metricTrackMeta.textContent = els.track.value === activeTrackValue ? 'último activo' : 'filtro manual';
+        els.activeTrackChip.textContent = activeTrackLabel || 'Último circuito activo';
 
         els.metricBest.textContent = best ? lapDisplay(best) : '--';
         els.metricBestMeta.textContent = best ? driverName(best) : 'sin datos';
-        els.metricDrivers.textContent = String([...drivers].filter(Boolean).length);
-        els.metricCars.textContent = String([...cars].filter(Boolean).length);
-        els.metricTracks.textContent = String([...tracks].filter(Boolean).length);
+        els.metricDrivers.textContent = String(drivers.size);
+        els.metricSpeed.textContent = fastest ? fmtSpeed(speedValue(fastest)) : '--';
+        els.metricSpeedMeta.textContent = fastest ? driverName(fastest) : 'máxima visible';
       }
 
       function orderLabel() {
-        const option = els.sort.options[els.sort.selectedIndex];
-        return `Ordenado por ${option ? option.textContent.toLowerCase() : 'mejor tiempo'}`;
+        const trackLabel = els.track.value === activeTrackValue ? 'último circuito activo' : (els.track.options[els.track.selectedIndex]?.textContent || 'todos los circuitos').toLowerCase();
+        const validLabel = els.valid.options[els.valid.selectedIndex]?.textContent || 'Válidas';
+        const sortLabel = els.sort.options[els.sort.selectedIndex]?.textContent || 'Más rápido';
+        return `${trackLabel} · ${validLabel.toLowerCase()} · ${sortLabel.toLowerCase()}`;
       }
 
       function draw() {
         const filtered = baseFilteredRows();
-        const rows = sortRows(filtered);
-        const best = Math.min(...filtered.map(lapMs).filter((value) => Number.isFinite(value)));
+        const compacted = bestRowsByDriver(filtered);
+        const rows = sortRows(compacted);
+        const best = Math.min(...rows.map(lapMs).filter((value) => Number.isFinite(value)));
 
-        updateMetrics(filtered);
+        updateMetrics(filtered, rows);
 
         els.visible.textContent = String(rows.length);
-        els.hint.textContent = rows.length ? `${rows.length} vueltas visibles de ${cache.length}` : 'No hay resultados con esos filtros';
+        els.hint.textContent = rows.length ? `${rows.length} pilotos visibles · ${filtered.length} vueltas filtradas de ${cache.length}` : 'No hay resultados con esos filtros';
         els.order.textContent = orderLabel();
 
         els.rows.innerHTML = rows.map((row, index) => {
           const id = playerId(row);
           const name = escapeHtml(driverName(row));
-          const rankClass = index < 3 ? 'gc-hotlap-rank is-podium' : 'gc-hotlap-rank';
+          const podium = rankBadgeMap[index + 1];
+          const rankHtml = podium
+            ? `<span class="gc-hotlap-rank-wrap"><img class="gc-hotlap-rank-badge" src="${podium}" alt="Posición ${index + 1}" loading="lazy" /></span>`
+            : `<span class="gc-hotlap-rank-wrap"><span class="gc-hotlap-rank">${index + 1}</span></span>`;
+
           const link = id
             ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${name}</a><span class="gc-leaderboard-sub">Perfil público</span>`
             : `<strong>${name}</strong>`;
@@ -495,7 +838,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
           return `
             <tr>
-              <td><span class="${rankClass}">${index + 1}</span></td>
+              <td>${rankHtml}</td>
               <td>${link}</td>
               <td>${combo ? `<a href="${escapeHtml(combo)}">${escapeHtml(carName(row))}</a>` : escapeHtml(carName(row))}</td>
               <td>${combo ? `<a href="${escapeHtml(combo)}">${escapeHtml(trackName(row))}</a>` : escapeHtml(trackName(row))}</td>
@@ -504,14 +847,17 @@ import AppLayout from '../layouts/AppLayout.astro';
               <td>${escapeHtml(fmtSpeed(speedValue(row)))}</td>
               <td>${escapeHtml(firstValue(row, ['cuts','Cuts']) || 0)}</td>
               <td>${escapeHtml(fmtDate(lapDate(row)))}</td>
-              <td>${isInvalid(row) ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>'}</td>
+              <td>${isInvalid(row) ? '<span class="gc-hotlap-state-v13 gc-hotlap-state-v13--bad">No válida</span>' : '<span class="gc-hotlap-state-v13">Válida</span>'}</td>
             </tr>
           `;
         }).join('') || '<tr><td colspan="10">Sin resultados</td></tr>';
 
-        console.info('[GC hotlaps v1.8]', {
+        console.info('[GC hotlaps v13]', {
           loaded: cache.length,
           visible: rows.length,
+          filtered: filtered.length,
+          activeTrackValue,
+          trackFilter: els.track.value,
           sort: els.sort.value
         });
       }
@@ -521,13 +867,21 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.reload.disabled = true;
 
         try {
-          const res = await fetch('/api/hotlaps?limit=1000', { cache:'no-store', credentials:'include' });
+          const res = await fetch('/api/hotlaps?limit=1500', { cache:'no-store', credentials:'include' });
           if (!res.ok) throw new Error('Endpoint no disponible');
 
           const json = await res.json();
           cache = json.items || json.hotlaps || json.laps || json.data || [];
 
+          detectActiveTrack();
           populateFilterOptions();
+
+          els.search.value = '';
+          els.driver.value = 'all';
+          els.car.value = 'all';
+          els.valid.value = 'valid';
+          els.sort.value = 'fastest';
+          applyActiveTrack();
 
           els.loaded.textContent = String(cache.length);
           els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
@@ -540,7 +894,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           els.source.style.color = 'var(--warn)';
           els.hint.textContent = 'No se pudo cargar /api/hotlaps';
           els.rows.innerHTML = '<tr><td colspan="10">Error cargando hotlaps. Revisa que el endpoint esté activo.</td></tr>';
-          console.warn('[GC hotlaps v1.8] Error', error);
+          console.warn('[GC hotlaps v13] Error', error);
         } finally {
           els.reload.disabled = false;
         }
@@ -551,15 +905,20 @@ import AppLayout from '../layouts/AppLayout.astro';
         input.addEventListener('change', draw);
       });
 
+      els.activeTrackButton.addEventListener('click', () => {
+        applyActiveTrack();
+        draw();
+      });
+
       els.reload.addEventListener('click', load);
 
       els.clear.addEventListener('click', () => {
         els.search.value = '';
         els.driver.value = 'all';
         els.car.value = 'all';
-        els.track.value = 'all';
-        els.valid.value = 'all';
+        els.valid.value = 'valid';
         els.sort.value = 'fastest';
+        applyActiveTrack();
         draw();
       });
 

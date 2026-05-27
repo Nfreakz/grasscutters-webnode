@@ -2,35 +2,62 @@
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout title="Perfil piloto | GrassCutters">
-  <div class="gc-page gc-profile-page">
-    <section class="gc-hero gc-hero--compact">
+  <div class="gc-page gc-profile-page gc-profile-page-v20">
+    <section class="gc-hero gc-hero--compact gc-profile-hero-v20">
       <div>
         <span class="gc-kicker">Mi perfil</span>
-        <h1 class="gc-title" id="profileTitle">Panel de piloto.</h1>
+        <h1 class="gc-title" id="profileTitle">Panel de piloto</h1>
         <p class="gc-subtitle" id="profileText">Tu garaje competitivo: ritmo, limpieza, combos, coches y circuitos desde stracker.</p>
-        <div class="gc-hero__meta" id="profileBadges"><span class="gc-chip">Cuenta</span><span class="gc-chip">Piloto stracker</span><span class="gc-chip">Nombres corregidos</span></div>
+        <div class="gc-hero__meta" id="profileBadges">
+          <span class="gc-chip">Cuenta</span>
+          <span class="gc-chip">Piloto stracker</span>
+          <span class="gc-chip">Nombres corregidos</span>
+        </div>
       </div>
-      <aside class="gc-live-panel">
-        <div class="gc-live-panel__title"><span>Cuenta</span><strong id="accountState">...</strong></div>
-        <div class="gc-status-list" id="profileMeta"><div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div></div>
+
+      <aside class="gc-live-panel gc-profile-account-panel-v20">
+        <div class="gc-live-panel__title">
+          <span>Cuenta</span>
+          <strong id="accountState">...</strong>
+        </div>
+        <div class="gc-status-list" id="profileMeta">
+          <div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div>
+        </div>
       </aside>
     </section>
 
-    <section class="gc-metrics" id="profileMetrics">
+    <section class="gc-metrics gc-profile-metrics-v20" id="profileMetrics">
       <div class="gc-metric"><span>Mejor vuelta</span><strong id="metricBestLap">...</strong><small>personal</small></div>
       <div class="gc-metric"><span>Ranking global</span><strong id="metricRank">...</strong><small>por mejor vuelta</small></div>
       <div class="gc-metric"><span>Vueltas válidas</span><strong id="metricValid">...</strong><small>limpieza</small></div>
       <div class="gc-metric"><span>Consistencia</span><strong id="metricConsistency">...</strong><small>desviación</small></div>
     </section>
 
-    <section class="gc-grid-2">
-      <div class="gc-section"><div class="gc-section-head"><h2>Resumen competitivo</h2><p id="summaryMeta">Cargando métricas...</p></div><div class="gc-slab-list" id="summaryRows"><div><span>Estado</span><strong>Cargando</strong></div></div></div>
-            <aside class="gc-section gc-profile-link-card-v1">
+    <section class="gc-profile-main-grid-v20">
+      <div class="gc-section gc-profile-summary-card-v20">
         <div class="gc-section-head">
-          <h2>Piloto vinculado</h2>
-          <p>Cuenta y vínculo stracker</p>
+          <div>
+            <span class="gc-kicker">Rendimiento</span>
+            <h2>Resumen competitivo</h2>
+            <p id="summaryMeta">Cargando métricas...</p>
+          </div>
         </div>
-        <div class="gc-slab" id="linkedPilot">Cargando...</div>
+        <div class="gc-slab-list gc-profile-summary-list-v20" id="summaryRows">
+          <div><span>Estado</span><strong>Cargando</strong></div>
+        </div>
+      </div>
+
+      <aside class="gc-section gc-profile-link-card-v1 gc-profile-link-card-v20">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Cuenta</span>
+            <h2>Piloto vinculado</h2>
+            <p>Cuenta y vínculo stracker.</p>
+          </div>
+        </div>
+
+        <div class="gc-slab gc-profile-linked-pilot-v20" id="linkedPilot">Cargando...</div>
+
         <div class="gc-actions gc-profile-link-actions">
           <button class="gc-btn gc-btn--primary" id="openPilotLink" type="button" hidden>Vincular piloto</button>
           <button class="gc-btn" id="unlinkPilotAction" type="button" hidden>Desvincular piloto</button>
@@ -38,33 +65,44 @@ import AppLayout from '../layouts/AppLayout.astro';
           <a class="gc-btn" id="publicProfileAction" href="/pilotos" hidden>Perfil público</a>
           <a class="gc-btn gc-btn--primary" href="/hotlaps">Ver hotlaps</a>
         </div>
+
         <div class="gc-slab gc-profile-link-panel" id="pilotLinkPanel" hidden>
           <h3>Vincular cuenta con piloto</h3>
           <p>Busca tu piloto real de stracker y guarda el vínculo. Si ya está vinculado a otra cuenta, la API lo bloqueará.</p>
+
           <label class="gc-field gc-profile-link-search">
             <span>Buscar piloto</span>
             <input class="gc-input" id="pilotLinkSearch" type="search" placeholder="Nombre, Player ID o Steam GUID" autocomplete="off" />
           </label>
+
           <label class="gc-field">
             <span>Piloto stracker</span>
-            <select class="gc-select" id="pilotLinkSelect"><option value="">Cargando pilotos...</option></select>
+            <select class="gc-select" id="pilotLinkSelect">
+              <option value="">Cargando pilotos...</option>
+            </select>
           </label>
+
           <div class="gc-profile-link-preview" id="pilotLinkPreview">Selecciona un piloto para ver el resumen.</div>
+
           <div class="gc-actions">
             <button class="gc-btn gc-btn--primary" id="confirmPilotLink" type="button">Guardar vínculo</button>
             <button class="gc-btn" id="cancelPilotLink" type="button">Cancelar</button>
           </div>
+
           <p class="gc-message" id="pilotLinkMessage"></p>
         </div>
       </aside>
     </section>
 
-<!-- GC PROFILE CHANGE PASSWORD V8.8.4 START -->
-    <section class="gc-section gc-profile-password-card" id="passwordSection" hidden>
+    <section class="gc-section gc-profile-password-card gc-profile-password-card-v20" id="passwordSection" hidden>
       <div class="gc-section-head">
-        <h2>Cambiar contraseña</h2>
-        <p>Actualiza tu acceso. Si has recibido una contraseña temporal, cámbiala aquí.</p>
+        <div>
+          <span class="gc-kicker">Seguridad</span>
+          <h2>Cambiar contraseña</h2>
+          <p>Actualiza tu acceso. Si has recibido una contraseña temporal, cámbiala aquí.</p>
+        </div>
       </div>
+
       <div class="gc-grid-3 gc-profile-password-grid">
         <label class="gc-field">
           <span>Contraseña actual</span>
@@ -79,52 +117,615 @@ import AppLayout from '../layouts/AppLayout.astro';
           <input class="gc-input" id="confirmPasswordInput" type="password" autocomplete="new-password" minlength="8" />
         </label>
       </div>
+
       <div class="gc-actions">
         <button class="gc-btn gc-btn--primary" id="changePasswordBtn" type="button">Guardar nueva contraseña</button>
       </div>
       <p class="gc-message" id="changePasswordMessage"></p>
     </section>
-<!-- GC PROFILE CHANGE PASSWORD V8.8.4 END -->
 
-    <section class="gc-grid-2">
-      <div class="gc-section"><div class="gc-section-head"><h2>Mejores combos</h2><p>Coche + circuito con posición de referencia</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>#</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Rank</th><th>Limpias</th></tr></thead><tbody id="bestCombos"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
-      <div class="gc-section"><div class="gc-section-head"><h2>Últimas vueltas</h2><p>Actividad reciente real</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>Fecha</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Estado</th><th>Vmax</th></tr></thead><tbody id="recentLaps"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
+    <section class="gc-profile-data-grid-v20">
+      <div class="gc-section gc-profile-table-section-v20">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Combos</span>
+            <h2>Mejores combos</h2>
+            <p>Coche + circuito con posición de referencia.</p>
+          </div>
+        </div>
+        <div class="gc-table-wrap gc-profile-table-wrap-v20">
+          <table class="gc-table gc-table--compact">
+            <thead>
+              <tr><th>#</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Rank</th><th>Limpias</th></tr>
+            </thead>
+            <tbody id="bestCombos"><tr><td colspan="6">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="gc-section gc-profile-table-section-v20">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Actividad</span>
+            <h2>Últimas vueltas</h2>
+            <p>Actividad reciente real.</p>
+          </div>
+        </div>
+        <div class="gc-table-wrap gc-profile-table-wrap-v20">
+          <table class="gc-table gc-table--compact">
+            <thead>
+              <tr><th>Fecha</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Estado</th><th>Vmax</th></tr>
+            </thead>
+            <tbody id="recentLaps"><tr><td colspan="6">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
-    <section class="gc-grid-2">
-      <div class="gc-section"><div class="gc-section-head"><h2>Garaje</h2><p>Coches usados por el piloto</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>Coche</th><th>Vueltas</th><th>Limpias</th><th>Mejor</th><th>Circuitos</th><th>Vmax</th></tr></thead><tbody id="garageRows"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
-      <div class="gc-section"><div class="gc-section-head"><h2>Circuitos</h2><p>Pistas donde ha rodado</p></div><div class="gc-table-wrap"><table class="gc-table gc-table--compact"><thead><tr><th>Circuito</th><th>Vueltas</th><th>Limpias</th><th>Mejor</th><th>Coches</th><th>Última</th></tr></thead><tbody id="trackRows"><tr><td colspan="6">Cargando...</td></tr></tbody></table></div></div>
+    <section class="gc-profile-data-grid-v20">
+      <div class="gc-section gc-profile-table-section-v20">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Garaje</span>
+            <h2>Coches</h2>
+            <p>Coches usados por el piloto.</p>
+          </div>
+        </div>
+        <div class="gc-table-wrap gc-profile-table-wrap-v20">
+          <table class="gc-table gc-table--compact">
+            <thead>
+              <tr><th>Coche</th><th>Vueltas</th><th>Limpias</th><th>Mejor</th><th>Circuitos</th><th>Vmax</th></tr>
+            </thead>
+            <tbody id="garageRows"><tr><td colspan="6">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="gc-section gc-profile-table-section-v20">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Pistas</span>
+            <h2>Circuitos</h2>
+            <p>Pistas donde ha rodado.</p>
+          </div>
+        </div>
+        <div class="gc-table-wrap gc-profile-table-wrap-v20">
+          <table class="gc-table gc-table--compact">
+            <thead>
+              <tr><th>Circuito</th><th>Vueltas</th><th>Limpias</th><th>Mejor</th><th>Coches</th><th>Última</th></tr>
+            </thead>
+            <tbody id="trackRows"><tr><td colspan="6">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </div>
 
   <style is:global>
-    .gc-profile-link-card-v1{display:grid;gap:14px}
-    .gc-profile-link-panel{margin-top:12px;padding:16px 0}
-    .gc-profile-link-panel[hidden]{display:none!important}
-    .gc-profile-link-panel h3{margin:0 0 8px;text-transform:uppercase;letter-spacing:-.035em;font-size:1.05rem}
-    .gc-profile-link-panel p{margin:0 0 12px;color:var(--soft)}
-    .gc-profile-link-search{margin-bottom:10px}
-    .gc-profile-link-preview{min-height:82px;margin-top:12px;padding:12px;border:1px solid var(--line);background:rgba(255,255,255,.018);color:var(--soft)}
-    .gc-profile-link-preview strong{display:block;color:var(--text);font-size:1.08rem}
-    .gc-profile-link-preview span{display:block;color:var(--dim);font-size:.82rem;margin-top:4px}
-    .gc-profile-link-actions{align-items:center}
-    @media(max-width:720px){.gc-profile-link-actions .gc-btn{width:100%}}
-/* GC PROFILE CHANGE PASSWORD V8.8.4 START */
-    .gc-profile-password-card{margin-top:18px}
-    .gc-profile-password-grid{align-items:end}
-    @media(max-width:920px){.gc-profile-password-grid{grid-template-columns:1fr}}
-    /* GC PROFILE CHANGE PASSWORD V8.8.4 END */
+    .gc-profile-page-v20{
+      display:grid;
+      gap:clamp(18px,2.3vw,28px);
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
+    }
+
+    .gc-profile-hero-v20{
+      position:relative;
+      overflow:hidden;
+      margin:0;
+      padding-block:clamp(26px,3.4vw,40px)!important;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-profile-hero-v20::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      opacity:.34;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+    }
+
+    .gc-profile-hero-v20 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-profile-hero-v20 > div:first-child{
+      padding-left:clamp(30px,4.2vw,86px);
+    }
+
+    .gc-profile-hero-v20 .gc-title{
+      font-size:clamp(3.2rem,7vw,6rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-profile-hero-v20 .gc-subtitle{
+      max-width:820px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
+    }
+
+    .gc-profile-account-panel-v20{
+      width:min(440px,100%);
+      justify-self:end;
+      margin-right:clamp(28px,4vw,78px);
+      align-self:center;
+      min-height:auto;
+      padding:0;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-profile-account-panel-v20 .gc-live-panel__title{
+      padding:14px 16px;
+      margin:0;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-list{
+      padding:0;
+      gap:0;
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:13px 16px;
+      border-width:0 0 1px;
+      border-radius:0;
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row:last-child{
+      border-bottom:0;
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row strong{
+      max-width:250px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      text-align:right;
+    }
+
+    .gc-profile-metrics-v20{
+      margin:0;
+      gap:0;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-radius:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-profile-metrics-v20 .gc-metric{
+      border-width:0 1px 0 0;
+      border-radius:0;
+      min-height:112px;
+      box-shadow:none;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+    }
+
+    .gc-profile-metrics-v20 .gc-metric:last-child{
+      border-right:0;
+    }
+
+    .gc-profile-metrics-v20 .gc-metric strong{
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:clamp(1.85rem,3.2vw,2.85rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-profile-main-grid-v20,
+    .gc-profile-data-grid-v20{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(360px,.72fr);
+      gap:clamp(18px,2.3vw,28px);
+      align-items:start;
+    }
+
+    .gc-profile-data-grid-v20{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .gc-profile-summary-card-v20,
+    .gc-profile-link-card-v20,
+    .gc-profile-password-card-v20,
+    .gc-profile-table-section-v20{
+      min-width:0;
+      margin:0;
+      border-radius:28px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
+      overflow:hidden;
+    }
+
+    .gc-profile-summary-card-v20 .gc-section-head,
+    .gc-profile-link-card-v20 .gc-section-head,
+    .gc-profile-password-card-v20 .gc-section-head,
+    .gc-profile-table-section-v20 .gc-section-head{
+      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 16px;
+      margin:0;
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+
+    .gc-profile-summary-card-v20 .gc-slab-list,
+    .gc-profile-linked-pilot-v20,
+    .gc-profile-link-card-v20 .gc-actions,
+    .gc-profile-password-card-v20 .gc-grid-3,
+    .gc-profile-password-card-v20 > .gc-actions,
+    .gc-profile-password-card-v20 > .gc-message{
+      margin:0;
+      padding:clamp(16px,2vw,24px) clamp(22px,2.6vw,34px);
+    }
+
+    .gc-profile-summary-list-v20{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .gc-profile-summary-list-v20 div{
+      min-height:86px;
+      padding:14px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-profile-summary-list-v20 span{
+      display:block;
+      color:var(--dim);
+      font-size:.68rem;
+      font-weight:950;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+    }
+
+    .gc-profile-summary-list-v20 strong{
+      display:block;
+      margin-top:8px;
+      color:var(--text);
+      font-size:1.12rem;
+      line-height:1.15;
+    }
+
+    .gc-profile-linked-pilot-v20{
+      background:transparent;
+      border:0;
+      color:var(--soft);
+    }
+
+    .gc-profile-linked-pilot-v20 p{
+      margin:.2rem 0;
+    }
+
+    .gc-profile-linked-pilot-v20 strong{
+      color:var(--text);
+      font-size:1.2rem;
+    }
+
+    .gc-profile-link-card-v20 .gc-actions{
+      padding-top:0;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .gc-profile-link-card-v20 .gc-actions .gc-btn{
+      border-radius:999px;
+    }
+
+    .gc-profile-link-panel{
+      margin:0 clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
+      padding:16px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      background:rgba(0,0,0,.15);
+    }
+
+    .gc-profile-link-panel[hidden]{
+      display:none!important;
+    }
+
+    .gc-profile-link-panel h3{
+      margin:0 0 8px;
+      text-transform:uppercase;
+      letter-spacing:-.035em;
+      font-size:1.05rem;
+    }
+
+    .gc-profile-link-panel p{
+      margin:0 0 12px;
+      color:var(--soft);
+    }
+
+    .gc-profile-link-search{
+      margin-bottom:10px;
+    }
+
+    .gc-profile-link-preview{
+      min-height:82px;
+      margin-top:12px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,255,255,.018);
+      color:var(--soft);
+    }
+
+    .gc-profile-link-preview strong{
+      display:block;
+      color:var(--text);
+      font-size:1.08rem;
+    }
+
+    .gc-profile-link-preview span{
+      display:block;
+      color:var(--dim);
+      font-size:.82rem;
+      margin-top:4px;
+    }
+
+    .gc-profile-password-card-v20 .gc-profile-password-grid{
+      align-items:end;
+      padding-bottom:0;
+    }
+
+    .gc-profile-table-wrap-v20{
+      max-height:440px;
+      margin:clamp(16px,2vw,22px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
+      overflow:auto;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table{
+      min-width:760px;
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:color-mix(in srgb,var(--panel,#07110a) 92%,#000);
+      color:color-mix(in srgb,var(--accent,#9dff00) 52%,var(--soft));
+      backdrop-filter:blur(12px);
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table tbody tr{
+      transition:background .16s ease;
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table tbody tr:hover td{
+      background:color-mix(in srgb,var(--accent,#9dff00) 7%,transparent);
+    }
+
+    .gc-profile-table-wrap-v20 td,
+    .gc-profile-table-wrap-v20 th{
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-profile-table-wrap-v20 td:nth-child(2),
+    .gc-profile-table-wrap-v20 td:nth-child(3){
+      white-space:normal;
+      min-width:160px;
+    }
+
+    @media(max-width:1180px){
+      .gc-profile-main-grid-v20,
+      .gc-profile-data-grid-v20{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-profile-hero-v20 > div:first-child{
+        padding-left:clamp(12px,2vw,24px);
+      }
+
+      .gc-profile-account-panel-v20{
+        margin-right:0;
+        justify-self:stretch;
+        width:100%;
+      }
+
+      .gc-profile-metrics-v20{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-profile-metrics-v20 .gc-metric:nth-child(2){
+        border-right:0;
+      }
+
+      .gc-profile-metrics-v20 .gc-metric:nth-child(n+3){
+        border-top:1px solid var(--line);
+      }
+
+      .gc-profile-summary-list-v20{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-profile-page-v20{
+        padding-inline:0;
+      }
+
+      .gc-profile-hero-v20 > div:first-child{
+        padding-left:0;
+      }
+
+      .gc-profile-metrics-v20{
+        grid-template-columns:1fr;
+      }
+
+      .gc-profile-metrics-v20 .gc-metric{
+        border-right:0;
+        border-top:1px solid var(--line);
+      }
+
+      .gc-profile-metrics-v20 .gc-metric:first-child{
+        border-top:0;
+      }
+
+      .gc-profile-link-card-v20 .gc-actions .gc-btn,
+      .gc-profile-password-card-v20 .gc-actions .gc-btn{
+        width:100%;
+        justify-content:center;
+      }
+
+      .gc-profile-table-wrap-v20{
+        margin-inline:16px;
+      }
+
+      .gc-profile-summary-card-v20 .gc-section-head,
+      .gc-profile-link-card-v20 .gc-section-head,
+      .gc-profile-password-card-v20 .gc-section-head,
+      .gc-profile-table-section-v20 .gc-section-head{
+        padding-inline:16px;
+      }
+    }
   </style>
+
   <script is:inline>
     (() => {
       const $ = (id) => document.getElementById(id);
-      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-      const valueAt = (source, path) => { if (!source || typeof source !== 'object') return undefined; if (Object.prototype.hasOwnProperty.call(source, path)) return source[path]; return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source); };
-      const firstValue = (source, paths) => { for (const path of paths) { const value = valueAt(source, path); if (value !== undefined && value !== null && value !== '') return value; } return ''; };
-      const cleanName = (value, fallback = '-') => { if (value === undefined || value === null || value === '') return fallback; if (typeof value === 'object') return cleanName(value.displayName ?? value.visibleName ?? value.cleanName ?? value.display_name ?? value.uiName ?? value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ?? value.driverName ?? value.playerName ?? value.code, fallback); return String(value).replace(/_/g,' ').replace(/\s+/g,' ').trim() || fallback; };
+
+      const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        "'":'&#39;',
+        '"':'&quot;'
+      }[char]));
+
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const firstValue = (source, paths) => {
+        for (const path of paths) {
+          const value = valueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return '';
+      };
+
+      const cleanName = (value, fallback = '-') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        if (typeof value === 'object') {
+          return cleanName(
+            value.displayName ??
+            value.visibleName ??
+            value.cleanName ??
+            value.display_name ??
+            value.uiName ??
+            value.uiCarName ??
+            value.uiTrackName ??
+            value.name ??
+            value.Name ??
+            value.driverName ??
+            value.playerName ??
+            value.code,
+            fallback
+          );
+        }
+        return String(value).replace(/_/g,' ').replace(/\s+/g,' ').trim() || fallback;
+      };
+
       const displayFrom = (source, paths, fallback = '-') => cleanName(firstValue(source, paths), fallback);
-      const fmtMs = (ms) => { const n = Number(ms); if (!Number.isFinite(n) || n <= 0) return '--'; const m = Math.floor(n / 60000); const s = Math.floor((n % 60000) / 1000); const x = String(Math.floor(n % 1000)).padStart(3, '0'); return `${m}:${String(s).padStart(2, '0')}.${x}`; };
-      const fmtDate = (value) => { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return date.toLocaleString('es-ES', { dateStyle:'short', timeStyle:'short' }); };
+
+      const fmtMs = (ms) => {
+        const n = Number(ms);
+        if (!Number.isFinite(n) || n <= 0) return '--';
+        const m = Math.floor(n / 60000);
+        const s = Math.floor((n % 60000) / 1000);
+        const x = String(Math.floor(n % 1000)).padStart(3, '0');
+        return `${m}:${String(s).padStart(2, '0')}.${x}`;
+      };
+
+      const fmtDate = (value) => {
+        if (value === undefined || value === null || value === '') return '-';
+
+        let ms = 0;
+
+        if (typeof value === 'number') {
+          ms = value > 20000000000 ? value : value * 1000;
+        } else {
+          const raw = String(value).trim();
+
+          if (/^\d+$/.test(raw)) {
+            const numeric = Number(raw);
+            ms = numeric > 20000000000 ? numeric : numeric * 1000;
+          } else {
+            ms = new Date(raw).getTime();
+
+            if (!Number.isFinite(ms)) {
+              ms = new Date(raw.replace(' ', 'T')).getTime();
+            }
+
+            if (!Number.isFinite(ms)) {
+              const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2}))?/);
+              if (slash) {
+                const day = Number(slash[1]);
+                const month = Number(slash[2]) - 1;
+                const yearRaw = Number(slash[3]);
+                const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+                const hour = Number(slash[4] || 0);
+                const minute = Number(slash[5] || 0);
+                ms = new Date(year, month, day, hour, minute).getTime();
+              }
+            }
+          }
+        }
+
+        if (!Number.isFinite(ms) || ms <= 0) return '-';
+
+        return new Date(ms).toLocaleString('es-ES', {
+          day:'2-digit',
+          month:'2-digit',
+          hour:'2-digit',
+          minute:'2-digit'
+        });
+      };
+
       const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
       const lapTime = (lap) => cleanName(firstValue(lap, ['lapTimeFormatted','lapTime','bestLapTimeFormatted','bestLap','bestTime']), '') || fmtMs(firstValue(lap, ['lapTimeMs','bestLapMs','LapTime']));
       const carName = (row) => displayFrom(row, ['carDisplayName','carVisibleName','carName','car.displayName','car.visibleName','car.cleanName','car.uiName','car.uiCarName','car.name','car.code','car'], '-');
@@ -133,6 +734,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       const cleanRate = (valid, total) => total ? `${Math.round((Number(valid || 0) / Number(total || 0)) * 1000) / 10}%` : '--';
       const setMetric = (id, value) => { const el = $(id); if (el) el.textContent = String(value ?? '--'); };
       const noRows = (cols, text) => `<tr><td colspan="${cols}">${escapeHtml(text)}</td></tr>`;
+
       const linkUi = {
         panel: $('pilotLinkPanel'),
         open: $('openPilotLink'),
@@ -144,54 +746,85 @@ import AppLayout from '../layouts/AppLayout.astro';
         preview: $('pilotLinkPreview'),
         message: $('pilotLinkMessage')
       };
+
       let pilotCandidates = [];
       let currentProfileData = null;
+
       const normalizeSearch = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       const candidateName = (pilot) => cleanName(pilot.displayName ?? pilot.visibleName ?? pilot.cleanName ?? pilot.name ?? pilot.driverName ?? pilot.playerName, 'Piloto');
       const candidateId = (pilot) => pilot.id ?? pilot.playerId ?? pilot.PlayerId ?? pilot.driverId ?? '';
       const candidateGuid = (pilot) => String(pilot.steamGuid ?? pilot.SteamGuid ?? '').trim();
-      const setLinkMessage = (text, tone = "") => { if (!linkUi.message) return; linkUi.message.textContent = text || ""; linkUi.message.style.color = tone === "error" ? "var(--danger)" : tone === "ok" ? "var(--accent)" : "var(--soft)"; };
+
+      const setLinkMessage = (text, tone = "") => {
+        if (!linkUi.message) return;
+        linkUi.message.textContent = text || "";
+        linkUi.message.style.color = tone === "error" ? "var(--danger)" : tone === "ok" ? "var(--accent)" : "var(--soft)";
+      };
+
       function setLinkBusy(isBusy) {
-        [linkUi.open, linkUi.cancel, linkUi.confirm, linkUi.unlink, linkUi.search, linkUi.select].forEach((el) => { if (el) el.disabled = Boolean(isBusy); });
+        [linkUi.open, linkUi.cancel, linkUi.confirm, linkUi.unlink, linkUi.search, linkUi.select].forEach((el) => {
+          if (el) el.disabled = Boolean(isBusy);
+        });
       }
+
       function updatePilotLinkControls(data) {
         currentProfileData = data || null;
         const linked = Boolean(data?.linked);
-        if (linkUi.open) { linkUi.open.hidden = false; linkUi.open.textContent = linked ? "Cambiar piloto" : "Vincular piloto"; }
+
+        if (linkUi.open) {
+          linkUi.open.hidden = false;
+          linkUi.open.textContent = linked ? "Cambiar piloto" : "Vincular piloto";
+        }
+
         if (linkUi.unlink) linkUi.unlink.hidden = !linked;
         if (linkUi.panel) linkUi.panel.hidden = true;
+
         setLinkMessage("");
       }
+
       function renderPilotCandidates() {
         if (!linkUi.select) return;
+
         const query = normalizeSearch(linkUi.search?.value || "");
         const filtered = pilotCandidates.filter((pilot) => {
           const haystack = normalizeSearch([candidateName(pilot), candidateId(pilot), candidateGuid(pilot)].join(" "));
           return !query || haystack.includes(query);
         }).slice(0, 150);
+
         if (!filtered.length) {
           linkUi.select.innerHTML = '<option value="">Sin pilotos con ese filtro</option>';
           renderPilotPreview();
           return;
         }
+
         linkUi.select.innerHTML = filtered.map((pilot) => {
           const id = candidateId(pilot);
           const laps = Number(pilot.totalLaps ?? pilot.laps ?? 0);
           const label = candidateName(pilot) + " · ID " + id + (laps ? " · " + laps + " vueltas" : "");
           return '<option value="' + escapeHtml(id) + '">' + escapeHtml(label) + '</option>';
         }).join("");
+
         renderPilotPreview();
       }
+
       function selectedPilot() {
         const id = String(linkUi.select?.value || "");
         return pilotCandidates.find((pilot) => String(candidateId(pilot)) === id) || null;
       }
+
       function renderPilotPreview() {
         if (!linkUi.preview) return;
+
         const pilot = selectedPilot();
-        if (!pilot) { linkUi.preview.textContent = "Selecciona un piloto para ver el resumen."; return; }
+
+        if (!pilot) {
+          linkUi.preview.textContent = "Selecciona un piloto para ver el resumen.";
+          return;
+        }
+
         const guid = candidateGuid(pilot);
         const shortGuid = guid ? guid.slice(0, 16) + "..." + guid.slice(-8) : "-";
+
         linkUi.preview.innerHTML =
           "<strong>" + escapeHtml(candidateName(pilot)) + "</strong>" +
           "<span>Player ID: " + escapeHtml(candidateId(pilot)) + "</span>" +
@@ -199,38 +832,72 @@ import AppLayout from '../layouts/AppLayout.astro';
           "<span>Mejor vuelta: " + escapeHtml(pilot.bestLap || fmtMs(pilot.bestLapMs)) + "</span>" +
           '<span title="' + escapeHtml(guid) + '">Steam GUID: ' + escapeHtml(shortGuid) + '</span>';
       }
+
       async function loadPilotCandidates() {
-        if (pilotCandidates.length) { renderPilotCandidates(); return; }
+        if (pilotCandidates.length) {
+          renderPilotCandidates();
+          return;
+        }
+
         if (linkUi.select) linkUi.select.innerHTML = '<option value="">Cargando pilotos...</option>';
         setLinkMessage("Cargando pilotos de stracker...");
-        const response = await fetch("/api/pilots?limit=500", { credentials:"include", cache:"no-store" });
+
+        const response = await fetch("/api/pilots?limit=500", {
+          credentials:"include",
+          cache:"no-store"
+        });
+
         const data = await response.json().catch(() => null);
-        if (!response.ok || !data?.ok) throw new Error(data?.message || "No se pudieron cargar los pilotos.");
+
+        if (!response.ok || !data?.ok) {
+          throw new Error(data?.message || "No se pudieron cargar los pilotos.");
+        }
+
         pilotCandidates = Array.isArray(data.items) ? data.items : Array.isArray(data.pilots) ? data.pilots : [];
         renderPilotCandidates();
         setLinkMessage(pilotCandidates.length ? "Selecciona tu piloto y guarda el vínculo." : "No hay pilotos disponibles en stracker.");
       }
+
       async function openPilotPanel() {
         if (!linkUi.panel) return;
+
         linkUi.panel.hidden = !linkUi.panel.hidden;
+
         if (!linkUi.panel.hidden) {
-          try { await loadPilotCandidates(); }
-          catch (error) { setLinkMessage(error.message || "No se pudieron cargar los pilotos.", "error"); }
+          try {
+            await loadPilotCandidates();
+          } catch (error) {
+            setLinkMessage(error.message || "No se pudieron cargar los pilotos.", "error");
+          }
         }
       }
+
       async function savePilotLink() {
         const playerId = String(linkUi.select?.value || "").trim();
-        if (!playerId) { setLinkMessage("Selecciona un piloto antes de guardar.", "error"); return; }
+
+        if (!playerId) {
+          setLinkMessage("Selecciona un piloto antes de guardar.", "error");
+          return;
+        }
+
         setLinkBusy(true);
         setLinkMessage("Guardando vínculo...");
+
         try {
           const response = await fetch("/api/auth/link-pilot", {
-            method:"POST", credentials:"include", cache:"no-store",
+            method:"POST",
+            credentials:"include",
+            cache:"no-store",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ playerId })
           });
+
           const data = await response.json().catch(() => null);
-          if (!response.ok || !data?.ok) throw new Error(data?.message || "No se pudo vincular el piloto.");
+
+          if (!response.ok || !data?.ok) {
+            throw new Error(data?.message || "No se pudo vincular el piloto.");
+          }
+
           setLinkMessage("Piloto vinculado correctamente. Recargando perfil...", "ok");
           window.setTimeout(() => window.location.reload(), 650);
         } catch (error) {
@@ -238,15 +905,27 @@ import AppLayout from '../layouts/AppLayout.astro';
           setLinkBusy(false);
         }
       }
+
       async function unlinkPilot() {
         if (!currentProfileData?.linked) return;
         if (!window.confirm("¿Desvincular este piloto de tu cuenta?")) return;
+
         setLinkBusy(true);
         setLinkMessage("Desvinculando piloto...");
+
         try {
-          const response = await fetch("/api/auth/unlink-pilot", { method:"POST", credentials:"include", cache:"no-store" });
+          const response = await fetch("/api/auth/unlink-pilot", {
+            method:"POST",
+            credentials:"include",
+            cache:"no-store"
+          });
+
           const data = await response.json().catch(() => null);
-          if (!response.ok || !data?.ok) throw new Error(data?.message || "No se pudo desvincular el piloto.");
+
+          if (!response.ok || !data?.ok) {
+            throw new Error(data?.message || "No se pudo desvincular el piloto.");
+          }
+
           setLinkMessage("Piloto desvinculado. Recargando perfil...", "ok");
           window.setTimeout(() => window.location.reload(), 650);
         } catch (error) {
@@ -254,36 +933,147 @@ import AppLayout from '../layouts/AppLayout.astro';
           setLinkBusy(false);
         }
       }
+
       linkUi.open?.addEventListener("click", openPilotPanel);
-      linkUi.cancel?.addEventListener("click", () => { if (linkUi.panel) linkUi.panel.hidden = true; setLinkMessage(""); });
+      linkUi.cancel?.addEventListener("click", () => {
+        if (linkUi.panel) linkUi.panel.hidden = true;
+        setLinkMessage("");
+      });
       linkUi.confirm?.addEventListener("click", savePilotLink);
       linkUi.unlink?.addEventListener("click", unlinkPilot);
       linkUi.search?.addEventListener("input", renderPilotCandidates);
       linkUi.select?.addEventListener("change", renderPilotPreview);
-      function renderUnauthenticated(data) { if (linkUi.open) linkUi.open.hidden = true; if (linkUi.unlink) linkUi.unlink.hidden = true; if (linkUi.panel) linkUi.panel.hidden = true; $('accountState').textContent='Sin login'; $('accountState').style.color='var(--warn)'; $('profileText').textContent=data.message || 'Entra con tu cuenta para ver tus datos de piloto.'; $('profileBadges').innerHTML='<span class="gc-chip gc-chip--warn">Sesión requerida</span>'; $('profileMeta').innerHTML='<div class="gc-status-row"><span>Sesión</span><strong>No activa</strong></div>'; $('linkedPilot').innerHTML='<p>No hay sesión activa.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Entrar ahora</a></div>'; ['metricBestLap','metricRank','metricValid','metricConsistency'].forEach((id)=>setMetric(id,'-')); $('summaryRows').innerHTML='<div><span>Estado</span><strong>Login requerido</strong></div>'; $('bestCombos').innerHTML=noRows(6,'Inicia sesión para ver combos.'); $('recentLaps').innerHTML=noRows(6,'Inicia sesión para ver actividad.'); $('garageRows').innerHTML=noRows(6,'Inicia sesión para ver garaje.'); $('trackRows').innerHTML=noRows(6,'Inicia sesión para ver circuitos.'); }
-      function renderProfile(data) {
-        const summary = data.summary || {}; const user = data.user || {}; const pilot = data.pilot || {};
-        updatePilotLinkControls(data);
-        $('profileTitle').textContent = pilotName(pilot) || cleanName(user.displayName, 'Perfil piloto');
-        $('profileText').textContent = data.linked ? 'Datos reales de rendimiento desde stracker con nombres corregidos.' : 'Cuenta activa, pendiente de vincular a un piloto real.';
-        $('accountState').textContent = data.linked ? 'Vinculado' : 'Sin piloto'; $('accountState').style.color = data.linked ? 'var(--accent)' : 'var(--warn)';
-        $('profileBadges').innerHTML = `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span><span class="gc-chip">${escapeHtml(pilotName(pilot))}</span><span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>`;
-        $('profileMeta').innerHTML = `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div><div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(cleanName(user.role,'pilot'))}</strong></div><div class="gc-status-row"><span>Última actividad</span><strong>${escapeHtml(fmtDate(summary.lastSeenAt))}</strong></div>`;
-        const rank = summary.bestRank ? `${summary.bestRank.position}/${summary.bestRank.total}` : '--'; setMetric('metricBestLap', lapTime(summary.bestLap)); setMetric('metricRank', rank); setMetric('metricValid', `${summary.validLaps || 0}/${summary.totalLaps || 0}`); setMetric('metricConsistency', summary.consistency || '--');
-        $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos`;
-        $('summaryRows').innerHTML = `<div><span>Limpieza</span><strong>${escapeHtml(summary.cleanRate ?? summary.validityRate ?? 0)}%</strong></div><div><span>Media mejores 10</span><strong>${escapeHtml(summary.best10Average || '--')}</strong></div><div><span>Delta top 10</span><strong>${escapeHtml(summary.best10Delta || '--')}</strong></div><div><span>Vmax</span><strong>${escapeHtml(fmtSpeed(summary.maxSpeedKmh))}</strong></div><div><span>Cortes totales</span><strong>${escapeHtml(summary.totalCuts ?? 0)}</strong></div><div><span>Coche favorito</span><strong>${escapeHtml(carName(summary.favoriteCar || {}))}</strong></div><div><span>Circuito favorito</span><strong>${escapeHtml(trackName(summary.favoriteTrack || {}))}</strong></div>`;
-        const linkedPlayerId = pilot.id || data.pilotLink?.playerId || null; const publicAction = $('publicProfileAction'); if (publicAction) { publicAction.hidden = !data.linked || !linkedPlayerId; if (data.linked && linkedPlayerId) publicAction.href = `/pilotos/${encodeURIComponent(linkedPlayerId)}`; }
-        const rawGuid = String(pilot.steamGuid || data.pilotLink?.steamGuid || ''); const shortGuid = rawGuid ? `${rawGuid.slice(0, 16)}...${rawGuid.slice(-8)}` : '-';
-        $('linkedPilot').innerHTML = data.linked ? `<p><strong>${escapeHtml(pilotName(pilot) || data.pilotLink?.strackerName || '-')}</strong></p><p class="gc-small">Player ID: ${escapeHtml(linkedPlayerId || '-')}</p><p class="gc-small" title="${escapeHtml(rawGuid)}">Steam GUID: ${escapeHtml(shortGuid)}</p><p class="gc-note">Vínculo creado: ${escapeHtml(fmtDate(data.pilotLink?.linkedAt))}</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/pilotos/${encodeURIComponent(linkedPlayerId || '')}">Abrir perfil público</a></div>` : `<p>Tu cuenta todavía no está vinculada a un piloto de stracker.</p><p class="gc-note">Selecciona tu piloto real desde administración o perfil cuando esté disponible.</p>`;
-        const combos = data.bestCombos || []; $('bestCombos').innerHTML = combos.length ? combos.slice(0,18).map((lap,index) => `<tr><td>${index+1}</td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${lap.rank ? `${escapeHtml(lap.rank.position)}/${escapeHtml(lap.rank.total)}` : '-'}</td><td>${escapeHtml(cleanRate(lap.validLaps, lap.totalLaps))}</td></tr>`).join('') : noRows(6,'Sin combos válidos todavía.');
-        const recent = data.recentLaps || []; $('recentLaps').innerHTML = recent.length ? recent.slice(0,18).map((lap) => `<tr><td>${escapeHtml(fmtDate(lap.timestampIso))}</td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${lap.valid ? '<span class="gc-chip gc-chip--accent">Válida</span>' : '<span class="gc-chip">No válida</span>'}</td><td>${escapeHtml(fmtSpeed(lap.maxSpeedKmh))}</td></tr>`).join('') : noRows(6,'Sin vueltas recientes.');
-        const cars = data.cars || []; $('garageRows').innerHTML = cars.length ? cars.slice(0,18).map((item) => `<tr><td><strong>${escapeHtml(carName(item))}</strong><br><span class="gc-muted-text">${escapeHtml(item.car?.brand || item.car?.code || '')}</span></td><td>${escapeHtml(item.totalLaps || 0)}</td><td>${escapeHtml(cleanRate(item.validLaps, item.totalLaps))}</td><td><strong>${escapeHtml(item.bestLap || fmtMs(item.bestLapMs))}</strong></td><td>${escapeHtml(item.tracksCount || 0)}</td><td>${escapeHtml(fmtSpeed(item.maxSpeedKmh))}</td></tr>`).join('') : noRows(6,'Sin coches usados.');
-        const tracks = data.tracks || []; $('trackRows').innerHTML = tracks.length ? tracks.slice(0,18).map((item) => `<tr><td><strong>${escapeHtml(trackName(item))}</strong><br><span class="gc-muted-text">${escapeHtml(item.track?.code || '')}</span></td><td>${escapeHtml(item.totalLaps || 0)}</td><td>${escapeHtml(cleanRate(item.validLaps, item.totalLaps))}</td><td><strong>${escapeHtml(item.bestLap || fmtMs(item.bestLapMs))}</strong></td><td>${escapeHtml(item.carsCount || 0)}</td><td>${escapeHtml(fmtDate(item.lastSeenAt))}</td></tr>`).join('') : noRows(6,'Sin circuitos usados.');
+
+      function renderUnauthenticated(data) {
+        if (linkUi.open) linkUi.open.hidden = true;
+        if (linkUi.unlink) linkUi.unlink.hidden = true;
+        if (linkUi.panel) linkUi.panel.hidden = true;
+
+        $('accountState').textContent = 'Sin login';
+        $('accountState').style.color = 'var(--warn)';
+        $('profileText').textContent = data.message || 'Entra con tu cuenta para ver tus datos de piloto.';
+        $('profileBadges').innerHTML = '<span class="gc-chip gc-chip--warn">Sesión requerida</span>';
+        $('profileMeta').innerHTML = '<div class="gc-status-row"><span>Sesión</span><strong>No activa</strong></div>';
+        $('linkedPilot').innerHTML = '<p>No hay sesión activa.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Entrar ahora</a></div>';
+
+        ['metricBestLap','metricRank','metricValid','metricConsistency'].forEach((id) => setMetric(id, '-'));
+
+        $('summaryRows').innerHTML = '<div><span>Estado</span><strong>Login requerido</strong></div>';
+        $('bestCombos').innerHTML = noRows(6, 'Inicia sesión para ver combos.');
+        $('recentLaps').innerHTML = noRows(6, 'Inicia sesión para ver actividad.');
+        $('garageRows').innerHTML = noRows(6, 'Inicia sesión para ver garaje.');
+        $('trackRows').innerHTML = noRows(6, 'Inicia sesión para ver circuitos.');
       }
-      fetch('/api/profile', { credentials:'include', cache:'no-store' }).then((response) => response.json()).then((data) => { if (!data.ok && data.authenticated === false) renderUnauthenticated(data); else renderProfile(data); }).catch((error) => { $('accountState').textContent='Error'; $('accountState').style.color='var(--warn)'; $('profileText').textContent = error.message || 'No se pudo cargar /api/profile.'; $('recentLaps').innerHTML = noRows(6,'No se pudo cargar el perfil.'); });
+
+      function renderProfile(data) {
+        const summary = data.summary || {};
+        const user = data.user || {};
+        const pilot = data.pilot || {};
+
+        updatePilotLinkControls(data);
+
+        $('profileTitle').textContent = pilotName(pilot) || cleanName(user.displayName, 'Perfil piloto');
+        $('profileText').textContent = data.linked
+          ? 'Datos reales de rendimiento desde stracker con nombres corregidos.'
+          : 'Cuenta activa, pendiente de vincular a un piloto real.';
+
+        $('accountState').textContent = data.linked ? 'Vinculado' : 'Sin piloto';
+        $('accountState').style.color = data.linked ? 'var(--accent)' : 'var(--warn)';
+
+        $('profileBadges').innerHTML =
+          `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span>` +
+          `<span class="gc-chip">${escapeHtml(pilotName(pilot))}</span>` +
+          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>`;
+
+        $('profileMeta').innerHTML =
+          `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div>` +
+          `<div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(cleanName(user.role,'pilot'))}</strong></div>` +
+          `<div class="gc-status-row"><span>Última actividad</span><strong>${escapeHtml(fmtDate(summary.lastSeenAt || summary.lastActivityAt || summary.latestLapAt))}</strong></div>`;
+
+        const rank = summary.bestRank ? `${summary.bestRank.position}/${summary.bestRank.total}` : '--';
+
+        setMetric('metricBestLap', lapTime(summary.bestLap));
+        setMetric('metricRank', rank);
+        setMetric('metricValid', `${summary.validLaps || 0}/${summary.totalLaps || 0}`);
+        setMetric('metricConsistency', summary.consistency || '--');
+
+        $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos`;
+
+        $('summaryRows').innerHTML =
+          `<div><span>Limpieza</span><strong>${escapeHtml(summary.cleanRate ?? summary.validityRate ?? 0)}%</strong></div>` +
+          `<div><span>Media mejores 10</span><strong>${escapeHtml(summary.best10Average || '--')}</strong></div>` +
+          `<div><span>Delta top 10</span><strong>${escapeHtml(summary.best10Delta || '--')}</strong></div>` +
+          `<div><span>Vmax</span><strong>${escapeHtml(fmtSpeed(summary.maxSpeedKmh))}</strong></div>` +
+          `<div><span>Cortes totales</span><strong>${escapeHtml(summary.totalCuts ?? 0)}</strong></div>` +
+          `<div><span>Coche favorito</span><strong>${escapeHtml(carName(summary.favoriteCar || {}))}</strong></div>` +
+          `<div><span>Circuito favorito</span><strong>${escapeHtml(trackName(summary.favoriteTrack || {}))}</strong></div>`;
+
+        const linkedPlayerId = pilot.id || data.pilotLink?.playerId || null;
+        const publicAction = $('publicProfileAction');
+
+        if (publicAction) {
+          publicAction.hidden = !data.linked || !linkedPlayerId;
+          if (data.linked && linkedPlayerId) publicAction.href = `/pilotos/${encodeURIComponent(linkedPlayerId)}`;
+        }
+
+        const rawGuid = String(pilot.steamGuid || data.pilotLink?.steamGuid || '');
+        const shortGuid = rawGuid ? `${rawGuid.slice(0, 16)}...${rawGuid.slice(-8)}` : '-';
+
+        $('linkedPilot').innerHTML = data.linked
+          ? `<p><strong>${escapeHtml(pilotName(pilot) || data.pilotLink?.strackerName || '-')}</strong></p>` +
+            `<p class="gc-small">Player ID: ${escapeHtml(linkedPlayerId || '-')}</p>` +
+            `<p class="gc-small" title="${escapeHtml(rawGuid)}">Steam GUID: ${escapeHtml(shortGuid)}</p>` +
+            `<p class="gc-note">Vínculo creado: ${escapeHtml(fmtDate(data.pilotLink?.linkedAt))}</p>` +
+            `<div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/pilotos/${encodeURIComponent(linkedPlayerId || '')}">Abrir perfil público</a></div>`
+          : `<p>Tu cuenta todavía no está vinculada a un piloto de stracker.</p><p class="gc-note">Selecciona tu piloto real desde el perfil para activar tus datos.</p>`;
+
+        const combos = data.bestCombos || [];
+        $('bestCombos').innerHTML = combos.length
+          ? combos.slice(0,18).map((lap,index) =>
+              `<tr><td>${index+1}</td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${lap.rank ? `${escapeHtml(lap.rank.position)}/${escapeHtml(lap.rank.total)}` : '-'}</td><td>${escapeHtml(cleanRate(lap.validLaps, lap.totalLaps))}</td></tr>`
+            ).join('')
+          : noRows(6, 'Sin combos válidos todavía.');
+
+        const recent = data.recentLaps || [];
+        $('recentLaps').innerHTML = recent.length
+          ? recent.slice(0,18).map((lap) =>
+              `<tr><td>${escapeHtml(fmtDate(lap.timestampIso || lap.createdAt || lap.dateIso))}</td><td>${escapeHtml(carName(lap))}</td><td>${escapeHtml(trackName(lap))}</td><td><strong>${escapeHtml(lapTime(lap))}</strong></td><td>${lap.valid ? '<span class="gc-chip gc-chip--accent">Válida</span>' : '<span class="gc-chip">No válida</span>'}</td><td>${escapeHtml(fmtSpeed(lap.maxSpeedKmh))}</td></tr>`
+            ).join('')
+          : noRows(6, 'Sin vueltas recientes.');
+
+        const cars = data.cars || [];
+        $('garageRows').innerHTML = cars.length
+          ? cars.slice(0,18).map((item) =>
+              `<tr><td><strong>${escapeHtml(carName(item))}</strong><br><span class="gc-muted-text">${escapeHtml(item.car?.brand || item.car?.code || '')}</span></td><td>${escapeHtml(item.totalLaps || 0)}</td><td>${escapeHtml(cleanRate(item.validLaps, item.totalLaps))}</td><td><strong>${escapeHtml(item.bestLap || fmtMs(item.bestLapMs))}</strong></td><td>${escapeHtml(item.tracksCount || 0)}</td><td>${escapeHtml(fmtSpeed(item.maxSpeedKmh))}</td></tr>`
+            ).join('')
+          : noRows(6, 'Sin coches usados.');
+
+        const tracks = data.tracks || [];
+        $('trackRows').innerHTML = tracks.length
+          ? tracks.slice(0,18).map((item) =>
+              `<tr><td><strong>${escapeHtml(trackName(item))}</strong><br><span class="gc-muted-text">${escapeHtml(item.track?.code || '')}</span></td><td>${escapeHtml(item.totalLaps || 0)}</td><td>${escapeHtml(cleanRate(item.validLaps, item.totalLaps))}</td><td><strong>${escapeHtml(item.bestLap || fmtMs(item.bestLapMs))}</strong></td><td>${escapeHtml(item.carsCount || 0)}</td><td>${escapeHtml(fmtDate(item.lastSeenAt || item.lastActivityAt || item.updatedAt))}</td></tr>`
+            ).join('')
+          : noRows(6, 'Sin circuitos usados.');
+      }
+
+      fetch('/api/profile', {
+        credentials:'include',
+        cache:'no-store'
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.ok && data.authenticated === false) renderUnauthenticated(data);
+          else renderProfile(data);
+        })
+        .catch((error) => {
+          $('accountState').textContent = 'Error';
+          $('accountState').style.color = 'var(--warn)';
+          $('profileText').textContent = error.message || 'No se pudo cargar /api/profile.';
+          $('recentLaps').innerHTML = noRows(6, 'No se pudo cargar el perfil.');
+        });
     })();
   </script>
-<!-- GC PROFILE CHANGE PASSWORD SCRIPT V8.8.4 START -->
+
   <script is:inline>
     (() => {
       const section = document.getElementById('passwordSection');
@@ -370,6 +1160,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       }
 
       button.addEventListener('click', changePassword);
+
       [currentInput, newInput, confirmInput].forEach((input) => {
         input.addEventListener('keydown', (event) => {
           if (event.key === 'Enter') changePassword();
@@ -379,5 +1170,4 @@ import AppLayout from '../layouts/AppLayout.astro';
       checkSession();
     })();
   </script>
-<!-- GC PROFILE CHANGE PASSWORD SCRIPT V8.8.4 END -->
 </AppLayout>

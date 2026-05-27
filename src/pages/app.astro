@@ -75,12 +75,12 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         <div class="gc-section-head gc-app-card-head-v3">
           <div>
             <h2>Lectura de pista</h2>
-            <p>Datos del último refresco.</p>
+            <p>Estado global del servidor y última actividad registrada.</p>
           </div>
           <span class="gc-chip" id="gcApiState">Estado</span>
         </div>
         <div class="gc-app-readout-grid-v3">
-          <div class="gc-app-readout-v3"><span>Vueltas</span><strong id="gcQuickRefs">--</strong><small>último refresco</small></div>
+          <div class="gc-app-readout-v3"><span>Vueltas servidor</span><strong id="gcQuickRefs">--</strong><small>total registradas</small></div>
           <div class="gc-app-readout-v3 gc-app-server-uptime-v1535"><span>Servidor online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
           <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
           <div class="gc-app-readout-v3"><span>Stracker</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
@@ -1144,6 +1144,61 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       letter-spacing:-.055em;
     }
 
+  
+/* GC_APP_SERVER_TOTAL_READOUT_V16_START */
+    .gc-app-readout-card-v3{
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 8%,transparent), transparent 12rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018)),
+        color-mix(in srgb,var(--panel,#07110a) 94%,#000)!important;
+    }
+
+    .gc-app-readout-card-v3::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+      background:
+        radial-gradient(circle at 15% 10%, color-mix(in srgb,var(--accent,#9dff00) 5%,transparent), transparent 16rem);
+      opacity:.75;
+    }
+
+    .gc-app-readout-card-v3 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-app-readout-grid-v3{
+      gap:12px;
+    }
+
+    .gc-app-readout-v3{
+      background:
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.018))!important;
+      border-color:rgba(255,255,255,.09)!important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);
+    }
+
+    .gc-app-top-driver-v1535{
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 9rem),
+        linear-gradient(135deg,rgba(255,255,255,.058),rgba(255,255,255,.02))!important;
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 30%,rgba(255,255,255,.10))!important;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.035),
+        0 16px 44px rgba(0,0,0,.12)!important;
+    }
+
+    .gc-app-readout-v3 strong#gcQuickRefs{
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+/* GC_APP_SERVER_TOTAL_READOUT_V16_END */
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -1592,7 +1647,16 @@ function renderLapReadout(bestData, recentData){
         const best = bestItems[0] || [...recentItems].sort((a,b) => lapMs(a) - lapMs(b))[0] || null;
         const last = recentLaps[0] || null;
 
-        setText('gcQuickRefs', formatNumber(recentData?.count ?? recentLaps.length));
+        const serverTotalLaps =
+          recentData?.totalMatchedLaps ??
+          recentData?.totalLaps ??
+          recentData?.total ??
+          bestData?.totalMatchedLaps ??
+          bestData?.totalLaps ??
+          bestData?.total ??
+          recentLaps.length;
+
+        setText('gcQuickRefs', formatNumber(serverTotalLaps));
         setText('gcRefsMeta', `${formatNumber(recentData?.totalMatchedLaps ?? recentData?.count ?? recentLaps.length)} vueltas encontradas · mostrando las más recientes`);
 setText('gcQuickLast', last ? lapTime(last) : '--');
         setText('gcQuickLastMeta', last ? [driverName(last), trackName(last), dateText(lapDate(last))].filter(Boolean).join(' · ') : 'sin datos');

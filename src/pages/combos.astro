@@ -12,7 +12,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     <section class="gc-hero gc-hero--compact gc-combos-hero-v42">
       <div>
         <span class="gc-kicker">Centro de combos</span>
-        <h1 class="gc-title">Combos.</h1>
+        <h1 class="gc-title">Combos</h1>
         <p class="gc-subtitle">Circuitos, paquetes de coches, actividad real y referencias rápidas para decidir dónde rodar.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Circuitos agrupados</span>
@@ -34,6 +34,23 @@ import AppLayout from '../layouts/AppLayout.astro';
       <article class="gc-metric-card"><span>Con vueltas</span><strong id="metricActive">--</strong><small>actividad real</small></article>
       <article class="gc-metric-card"><span>Vueltas</span><strong id="metricLaps">--</strong><small>total agrupado</small></article>
       <article class="gc-metric-card"><span>Coches</span><strong id="metricCars">--</strong><small>únicos visibles</small></article>
+    </section>
+
+
+    <section class="gc-combo-feature-grid-v42">
+      <article class="gc-combo-feature-v42" id="comboFeatureRecent"></article>
+      <article class="gc-combo-feature-v42" id="comboFeatureLaps"></article>
+      <article class="gc-combo-feature-v42" id="comboFeatureClean"></article>
+    </section>
+
+    <section class="gc-combos-explorer-panel-v48">
+    <section class="gc-section-head gc-combos-section-head-v42 gc-combos-explorer-head-v46">
+      <div>
+        <span class="gc-kicker">Explorar</span>
+        <h2>Todos los combos</h2>
+        <p id="cardsMeta">Cargando combos...</p>
+      </div>
+      <a href="/hotlaps" class="gc-btn">Ver hotlaps</a>
     </section>
 
     <section class="gc-toolbar gc-combos-toolbar-v42" aria-label="Filtros de combos">
@@ -68,50 +85,13 @@ import AppLayout from '../layouts/AppLayout.astro';
       <button class="gc-btn" id="clearCombos" type="button">Limpiar</button>
     </section>
 
-    <section class="gc-combo-feature-grid-v42">
-      <article class="gc-combo-feature-v42" id="comboFeatureRecent"></article>
-      <article class="gc-combo-feature-v42" id="comboFeatureLaps"></article>
-      <article class="gc-combo-feature-v42" id="comboFeatureClean"></article>
-    </section>
-
-    <section class="gc-section-head gc-combos-section-head-v42">
-      <div>
-        <span class="gc-kicker">Selección rápida</span>
-        <h2>Combos destacados</h2>
-        <p id="cardsMeta">Cargando combos...</p>
-      </div>
-      <a href="/hotlaps" class="gc-btn">Ver hotlaps</a>
-    </section>
-
-    <section class="gc-combo-grid-v42" id="comboCards">
+    <section class="gc-combo-grid-v42 gc-combo-explorer-grid-v46" id="comboCards">
       <article class="gc-combo-card-v42"><p>Cargando combos...</p></article>
     </section>
 
-    <section class="gc-section-head gc-combos-section-head-v42 gc-combos-table-head-v42">
-      <div>
-        <span class="gc-kicker">Listado</span>
-        <h2>Vista compacta</h2>
-        <p>Resumen limpio con circuitos agrupados y variantes unificadas.</p>
-      </div>
-    </section>
-
-    <section class="gc-combo-table-shell-v42">
-      <table class="gc-combo-table-v42">
-        <thead>
-          <tr>
-            <th>Circuito</th>
-            <th>Coches</th>
-            <th>Vueltas</th>
-            <th>Pilotos</th>
-            <th>Limpieza</th>
-            <th>Mejor vuelta</th>
-            <th>Última actividad</th>
-          </tr>
-        </thead>
-        <tbody id="comboTableBody">
-          <tr><td colspan="7">Cargando combos...</td></tr>
-        </tbody>
-      </table>
+    <div class="gc-combos-loadmore-v46">
+      <button class="gc-btn gc-btn--primary" id="comboLoadMore" type="button">Ver más combos</button>
+    </div>
     </section>
   </div>
 
@@ -465,6 +445,683 @@ import AppLayout from '../layouts/AppLayout.astro';
       .gc-track-banner-v42{ height:136px; }
       .gc-combo-card-v42 .gc-track-banner-v42{ height:110px; }
     }
+  
+/* GC_COMBOS_HERO_POLISH_V43_START */
+    .gc-combos-page-v42{
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
+    }
+
+    .gc-combos-hero-v42{
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(340px,420px);
+      gap:clamp(20px,3vw,38px);
+      align-items:center;
+      margin:0;
+      padding-block:clamp(26px,3.4vw,40px)!important;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combos-hero-v42::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      opacity:.34;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+    }
+
+    .gc-combos-hero-v42 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-combos-hero-v42 > div:first-child{
+      padding-left:clamp(30px,4.2vw,86px);
+    }
+
+    .gc-combos-hero-v42 .gc-title{
+      font-size:clamp(3.2rem,7vw,6rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-combos-hero-v42 .gc-subtitle{
+      max-width:820px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
+    }
+
+    .gc-combos-sidecard-v42{
+      width:100%;
+      justify-self:end;
+      align-self:center;
+      display:grid;
+      gap:0;
+      padding:0;
+      overflow:hidden;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-top:2px solid var(--accent);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combos-sidecard-v42 div{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:13px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-combos-sidecard-v42 div:first-child{
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-combos-sidecard-v42 div:last-child{
+      border-bottom:0;
+    }
+
+    .gc-combos-sidecard-v42 span{
+      color:var(--muted);
+      text-transform:uppercase;
+      font-size:11px;
+      letter-spacing:.09em;
+      font-weight:950;
+    }
+
+    .gc-combos-sidecard-v42 strong{
+      color:var(--text);
+      font-weight:950;
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    @media(max-width:980px){
+      .gc-combos-hero-v42{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combos-hero-v42 > div:first-child{
+        padding-left:clamp(12px,2vw,24px);
+      }
+
+      .gc-combos-sidecard-v42{
+        justify-self:stretch;
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-combos-page-v42{
+        padding-inline:0;
+      }
+
+      .gc-combos-hero-v42 > div:first-child{
+        padding-left:0;
+      }
+    }
+/* GC_COMBOS_HERO_POLISH_V43_END */
+
+  
+/* GC_COMBOS_LAYOUT_POLISH_V44_START */
+    .gc-combos-page-v42{
+      width:100%;
+      max-width:1480px;
+      margin-inline:auto;
+      padding-inline:clamp(8px,1.2vw,18px);
+      box-sizing:border-box;
+    }
+
+    .gc-combos-hero-v42{
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(340px,420px);
+      gap:clamp(20px,3vw,38px);
+      align-items:center;
+      margin:0;
+      padding-block:clamp(26px,3.4vw,40px)!important;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
+      border-radius:28px;
+      background:
+        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
+      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combos-hero-v42::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
+      background-size:42px 42px;
+      opacity:.34;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+    }
+
+    .gc-combos-hero-v42 > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc-combos-hero-v42 > div:first-child{
+      padding-left:clamp(30px,4.2vw,86px);
+    }
+
+    .gc-combos-hero-v42 .gc-title{
+      text-transform:none!important;
+      font-size:clamp(3.2rem,7vw,6rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:8px 0 12px;
+    }
+
+    .gc-combos-hero-v42 .gc-subtitle{
+      max-width:820px;
+      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
+    }
+
+    .gc-combos-sidecard-v42{
+      width:min(420px,100%);
+      justify-self:end;
+      align-self:center;
+      margin-right:clamp(24px,3.2vw,58px);
+      display:grid;
+      gap:0;
+      padding:0;
+      overflow:hidden;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-top:2px solid var(--accent);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        rgba(0,0,0,.18);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-combos-sidecard-v42 div{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:14px 22px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.08);
+    }
+
+    .gc-combos-sidecard-v42 div:first-child{
+      background:rgba(0,0,0,.14);
+    }
+
+    .gc-combos-sidecard-v42 div:last-child{
+      border-bottom:0;
+    }
+
+    .gc-combos-sidecard-v42 span{
+      color:var(--muted);
+      text-transform:uppercase;
+      font-size:11px;
+      letter-spacing:.09em;
+      font-weight:950;
+    }
+
+    .gc-combos-sidecard-v42 strong{
+      color:var(--text);
+      font-weight:950;
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-combos-metrics-v42{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:0;
+      margin:0;
+      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
+      border-radius:0;
+      overflow:hidden;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-combos-metrics-v42 .gc-metric-card{
+      border-width:0 1px 0 0;
+      border-color:var(--line);
+      border-radius:0;
+      min-height:112px;
+      padding:18px;
+      box-shadow:none;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
+        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+    }
+
+    .gc-combos-metrics-v42 .gc-metric-card:last-child{
+      border-right:0;
+    }
+
+    .gc-combos-metrics-v42 .gc-metric-card strong{
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:clamp(1.85rem,3.2vw,2.85rem);
+      line-height:.92;
+      letter-spacing:-.06em;
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-combos-toolbar-v42{
+      display:grid;
+      grid-template-columns:minmax(260px,1.55fr) repeat(2,minmax(180px,.9fr)) auto auto;
+      gap:10px;
+      align-items:end;
+      margin:0;
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 10rem),
+        linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.016));
+    }
+
+    .gc-combos-toolbar-v42 .gc-field{
+      min-width:0;
+    }
+
+    .gc-combos-toolbar-v42 .gc-input,
+    .gc-combos-toolbar-v42 .gc-select{
+      min-width:0;
+      width:100%;
+    }
+
+    .gc-combos-toolbar-v42 .gc-btn{
+      min-height:42px;
+      border-radius:999px;
+    }
+
+    .gc-combos-table-head-v42{
+      margin-top:4px;
+      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 16px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:28px 28px 0 0;
+      border-bottom:0;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+    }
+
+    .gc-combo-table-shell-v42{
+      max-height:calc(100vh - 235px);
+      min-height:420px;
+      overflow:auto;
+      margin-top:-20px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:0 0 24px 24px;
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-combo-table-v42{
+      width:100%;
+      min-width:980px;
+      border-collapse:collapse;
+    }
+
+    .gc-combo-table-v42 thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:color-mix(in srgb,var(--panel,#07110a) 92%,#000);
+      color:color-mix(in srgb,var(--accent,#9dff00) 52%,var(--soft));
+      backdrop-filter:blur(12px);
+    }
+
+    .gc-combo-table-v42 tbody tr{
+      transition:background .16s ease;
+    }
+
+    .gc-combo-table-v42 tbody tr:hover td{
+      background:color-mix(in srgb,var(--accent,#9dff00) 7%,transparent);
+    }
+
+    .gc-combo-table-v42 th,
+    .gc-combo-table-v42 td{
+      padding:15px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .gc-combo-table-v42 td:nth-child(3),
+    .gc-combo-table-v42 td:nth-child(4),
+    .gc-combo-table-v42 td:nth-child(5),
+    .gc-combo-table-v42 td:nth-child(6),
+    .gc-combo-table-v42 td:nth-child(7){
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+
+    @media(max-width:1180px){
+      .gc-combos-toolbar-v42{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+
+      .gc-combos-toolbar-v42 .gc-btn{
+        width:100%;
+        justify-content:center;
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-combos-hero-v42{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combos-hero-v42 > div:first-child{
+        padding-left:clamp(12px,2vw,24px);
+      }
+
+      .gc-combos-sidecard-v42{
+        justify-self:stretch;
+        width:100%;
+        margin-right:0;
+      }
+
+      .gc-combos-metrics-v42{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-combos-metrics-v42 .gc-metric-card:nth-child(2){
+        border-right:0;
+      }
+
+      .gc-combos-metrics-v42 .gc-metric-card:nth-child(n+3){
+        border-top:1px solid var(--line);
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-combos-page-v42{
+        padding-inline:0;
+      }
+
+      .gc-combos-hero-v42 > div:first-child{
+        padding-left:0;
+      }
+
+      .gc-combos-toolbar-v42,
+      .gc-combos-metrics-v42{
+        grid-template-columns:1fr;
+      }
+
+      .gc-combos-metrics-v42 .gc-metric-card{
+        border-right:0;
+        border-top:1px solid var(--line);
+      }
+
+      .gc-combos-metrics-v42 .gc-metric-card:first-child{
+        border-top:0;
+      }
+    }
+/* GC_COMBOS_LAYOUT_POLISH_V44_END */
+
+  
+/* GC_COMBOS_TABLE_LINKS_V45_START */
+    .gc-combo-table-v42 th:last-child,
+    .gc-combo-table-v42 td:last-child{
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .gc-combo-table-view-v45{
+      min-width:118px;
+      justify-content:center;
+      border-radius:999px;
+    }
+
+    @media(max-width:720px){
+      .gc-combo-table-view-v45{
+        min-width:104px;
+      }
+    }
+/* GC_COMBOS_TABLE_LINKS_V45_END */
+
+  
+/* GC_COMBOS_EXPLORER_GRID_V46_START */
+    .gc-combos-explorer-head-v46{
+      margin-top:4px;
+      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 16px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:28px 28px 0 0;
+      border-bottom:0;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+    }
+
+    .gc-combos-explorer-head-v46 h2{
+      text-transform:none;
+      font-size:clamp(2rem,3.4vw,3.1rem);
+      letter-spacing:-.06em;
+    }
+
+    .gc-combo-explorer-grid-v46{
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+      padding:clamp(16px,2vw,24px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
+      border:1px solid rgba(255,255,255,.08);
+      border-top:0;
+      border-radius:0 0 28px 28px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 5%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.032),rgba(255,255,255,.012));
+    }
+
+    .gc-combo-explorer-grid-v46 .gc-combo-card-v42{
+      min-height:310px;
+      border-radius:20px;
+      box-shadow:0 16px 48px rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.025);
+      transition:transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .gc-combo-explorer-grid-v46 .gc-combo-card-v42:hover{
+      transform:translateY(-2px);
+      border-color:color-mix(in srgb,var(--accent,#9dff00) 34%,var(--line));
+    }
+
+    .gc-combo-explorer-grid-v46 .gc-track-banner-v42{
+      height:132px;
+    }
+
+    .gc-combo-activity-line-v46{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:0;
+      padding:9px 0 0;
+      border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+    }
+
+    .gc-combo-activity-line-v46 span{
+      color:var(--muted);
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc-combo-activity-line-v46 strong{
+      color:var(--text);
+      font-size:12px;
+      font-weight:850;
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .gc-combos-loadmore-v46{
+      display:flex;
+      justify-content:center;
+      margin-top:-8px;
+    }
+
+    .gc-combos-loadmore-v46 .gc-btn{
+      min-width:220px;
+      border-radius:999px;
+    }
+
+    .gc-combos-loadmore-v46 .gc-btn[hidden]{
+      display:none;
+    }
+
+    @media(max-width:1320px){
+      .gc-combo-explorer-grid-v46{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:980px){
+      .gc-combo-explorer-grid-v46{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:640px){
+      .gc-combo-explorer-grid-v46{
+        grid-template-columns:1fr;
+        padding-inline:16px;
+      }
+
+      .gc-combos-explorer-head-v46{
+        padding-inline:16px;
+      }
+
+      .gc-combos-loadmore-v46 .gc-btn{
+        width:100%;
+      }
+    }
+/* GC_COMBOS_EXPLORER_GRID_V46_END */
+
+  
+/* GC_COMBOS_SEARCH_IN_EXPLORER_V47_START */
+    .gc-combos-explorer-head-v46{
+      border-bottom:0;
+      border-radius:28px 28px 0 0;
+    }
+
+    .gc-combos-explorer-head-v46 + .gc-combos-toolbar-v42{
+      margin:0;
+      border-radius:0;
+      border-top:0;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 6%,transparent), transparent 12rem),
+        linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.014));
+    }
+
+    .gc-combos-explorer-head-v46 + .gc-combos-toolbar-v42 + .gc-combo-explorer-grid-v46{
+      border-top:0;
+      border-radius:0 0 28px 28px;
+    }
+
+    @media(max-width:640px){
+      .gc-combos-explorer-head-v46 + .gc-combos-toolbar-v42{
+        padding-inline:16px;
+      }
+    }
+/* GC_COMBOS_SEARCH_IN_EXPLORER_V47_END */
+
+  
+/* GC_COMBOS_UNIFY_EXPLORER_PANEL_V48_START */
+    .gc-combos-explorer-panel-v48{
+      display:grid;
+      gap:0;
+      margin-top:4px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:28px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
+        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+      box-shadow:0 18px 70px rgba(0,0,0,.16);
+    }
+
+    .gc-combos-explorer-panel-v48 .gc-combos-explorer-head-v46{
+      margin:0;
+      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 14px;
+      border:0;
+      border-radius:0;
+      background:transparent;
+    }
+
+    .gc-combos-explorer-panel-v48 .gc-combos-explorer-head-v46 + .gc-combos-toolbar-v42{
+      margin:0;
+      padding:16px clamp(22px,2.6vw,34px);
+      border-width:1px 0;
+      border-color:rgba(255,255,255,.08);
+      border-radius:0;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 5%,transparent), transparent 12rem),
+        rgba(0,0,0,.10);
+    }
+
+    .gc-combos-explorer-panel-v48 .gc-combo-explorer-grid-v46{
+      margin:0;
+      padding:clamp(18px,2vw,24px) clamp(22px,2.6vw,34px) clamp(18px,2vw,24px);
+      border:0;
+      border-radius:0;
+      background:transparent;
+    }
+
+    .gc-combos-explorer-panel-v48 .gc-combos-loadmore-v46{
+      margin:0;
+      padding:0 clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
+      background:transparent;
+    }
+
+    .gc-combos-explorer-panel-v48 .gc-combos-loadmore-v46 .gc-btn{
+      min-width:220px;
+      border-radius:999px;
+    }
+
+    @media(max-width:640px){
+      .gc-combos-explorer-panel-v48{
+        border-radius:22px;
+      }
+
+      .gc-combos-explorer-panel-v48 .gc-combos-explorer-head-v46,
+      .gc-combos-explorer-panel-v48 .gc-combos-explorer-head-v46 + .gc-combos-toolbar-v42,
+      .gc-combos-explorer-panel-v48 .gc-combo-explorer-grid-v46,
+      .gc-combos-explorer-panel-v48 .gc-combos-loadmore-v46{
+        padding-inline:16px;
+      }
+
+      .gc-combos-explorer-panel-v48 .gc-combos-loadmore-v46 .gc-btn{
+        width:100%;
+      }
+    }
+/* GC_COMBOS_UNIFY_EXPLORER_PANEL_V48_END */
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -489,6 +1146,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
         cardsMeta: document.getElementById('cardsMeta'),
         cards: document.getElementById('comboCards'),
+        loadMore: document.getElementById('comboLoadMore'),
         table: document.getElementById('comboTableBody'),
 
         recent: document.getElementById('comboFeatureRecent'),
@@ -499,6 +1157,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       const MIN_LAPS = 50;
       let rawCombos = [];
       let groupedCombos = [];
+      let comboCardsLimit = 12;
 
       const pick = (obj, keys, fallback = null) => {
         for (const key of keys) {
@@ -680,11 +1339,45 @@ import AppLayout from '../layouts/AppLayout.astro';
       const totalLaps = (combo) => num(pick(combo, ['totalLaps','laps','lapCount','TotalLaps'], 0), 0);
       const validLaps = (combo) => num(pick(combo, ['validLaps','validLapCount','cleanLaps'], 0), 0);
       const driversCount = (combo) => num(pick(combo, ['driversCount','driverCount','pilots','Pilots'], 0), 0);
-      const dateRaw = (combo) => pick(combo, ['lastActivityIso','lastDate','lastActivity','updatedAt','date','LastDate'], '');
+      const dateRaw = (combo) => pick(combo, ['lastActivityIso','lastActivityAt','latestActivityAt','latestLapAt','lastLapAt','lastLapDate','lastSeenAt','lastDate','lastActivity','updatedAt','createdAt','date','timestampIso','Date','LastDate','bestLap.date','bestLap.createdAt','bestLap.timestampIso','bestLap.sessionDate','session.endTimeIso','session.startTimeIso'], '');
 
       const dateMs = (value) => {
-        const ms = value ? new Date(value).getTime() : 0;
-        return Number.isFinite(ms) ? ms : 0;
+        if (value === undefined || value === null || value === '') return 0;
+
+        if (typeof value === 'number') {
+          const ms = value > 20000000000 ? value : value * 1000;
+          return Number.isFinite(ms) ? ms : 0;
+        }
+
+        const raw = String(value).trim();
+        if (!raw) return 0;
+
+        if (/^\d+$/.test(raw)) {
+          const numberValue = Number(raw);
+          const ms = numberValue > 20000000000 ? numberValue : numberValue * 1000;
+          return Number.isFinite(ms) ? ms : 0;
+        }
+
+        const direct = new Date(raw).getTime();
+        if (Number.isFinite(direct)) return direct;
+
+        const sql = raw.replace(' ', 'T');
+        const sqlTime = new Date(sql).getTime();
+        if (Number.isFinite(sqlTime)) return sqlTime;
+
+        const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2}))?/);
+        if (slash) {
+          const day = Number(slash[1]);
+          const month = Number(slash[2]) - 1;
+          const yearRaw = Number(slash[3]);
+          const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+          const hour = Number(slash[4] || 0);
+          const minute = Number(slash[5] || 0);
+          const parsed = new Date(year, month, day, hour, minute).getTime();
+          return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        return 0;
       };
 
       const bestTimeTextRaw = (combo) => cleanObjectText(pick(combo, [
@@ -756,9 +1449,15 @@ import AppLayout from '../layouts/AppLayout.astro';
       const formatNumber = (value) => new Intl.NumberFormat('es-ES').format(num(value, 0));
 
       const formatDate = (value) => {
-        const date = value ? new Date(value) : null;
-        if (!date || Number.isNaN(date.getTime())) return 'Sin fecha';
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const ms = dateMs(value);
+        if (!ms) return 'Sin fecha';
+
+        return new Date(ms).toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       };
 
       const comboUrl = (combo) => {
@@ -904,6 +1603,7 @@ import AppLayout from '../layouts/AppLayout.astro';
                   <strong>${escapeHtml(fastestSummary(combo))}</strong>
                 </p>
                 <p class="gc-car-summary-line-v52">${escapeHtml(carPackageCountLine(combo))}</p>
+                <p class="gc-combo-activity-line-v46"><span>Última actividad</span><strong>${escapeHtml(formatDate(dateRaw(combo)))}</strong></p>
               </div>
               <div>
                 <div class="gc-stats-row-v42">
@@ -980,11 +1680,22 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
 
       const renderCards = (rows) => {
-        const shown = rows.slice(0, 6);
-        els.cardsMeta.textContent = shown.length ? `${shown.length} destacados de ${rows.length} visibles` : 'Sin combos visibles con los filtros actuales.';
+        const shown = rows.slice(0, comboCardsLimit);
+
+        els.cardsMeta.textContent = rows.length
+          ? `${shown.length} de ${rows.length} combos visibles · usa el buscador para filtrar por circuito o coche`
+          : 'Sin combos visibles con los filtros actuales.';
+
         els.cards.innerHTML = shown.length
           ? shown.map((combo, index) => renderCard(combo, index)).join('')
           : `<article class="gc-combo-card-v42"><div class="gc-empty-card-v42">Sin combos visibles. Prueba a limpiar filtros.</div></article>`;
+
+        if (els.loadMore) {
+          els.loadMore.hidden = shown.length >= rows.length;
+          els.loadMore.textContent = shown.length >= rows.length
+            ? 'Todos los combos visibles'
+            : `Ver más combos (${shown.length}/${rows.length})`;
+        }
       };
 
       const renderTable = (rows) => {
@@ -997,9 +1708,9 @@ import AppLayout from '../layouts/AppLayout.astro';
             <td>${escapeHtml(carList(combo).slice(0, 3).join(' + ') || 'Sin coches')}${carList(combo).length > 3 ? `<small>+${carList(combo).length - 3} más</small>` : ''}</td>
             <td>${escapeHtml(formatNumber(totalLaps(combo)))}</td>
             <td>${escapeHtml(formatNumber(driversCount(combo)))}</td>
-            <td>${escapeHtml(cleanPct(combo).toFixed(1))}%</td>
             <td>${escapeHtml(bestTimeText(combo))}${bestDriver(combo) ? `<small>${escapeHtml(bestDriver(combo))}</small>` : ''}</td>
             <td>${escapeHtml(formatDate(dateRaw(combo)))}<small>${escapeHtml(String(combo.__variantCount || 1))} variantes</small></td>
+            <td><a class="gc-btn gc-btn--mini gc-combo-table-view-v45" href="${escapeHtml(comboUrl(combo))}">Abrir ficha</a></td>
           </tr>
         `).join('') : `<tr><td colspan="7">No hay combos visibles con la política actual.</td></tr>`;
       };
@@ -1009,7 +1720,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         renderMetrics(rows);
         renderFeatures(rows);
         renderCards(rows);
-        renderTable(rows);
+        if (els.table) renderTable(rows);
 
         console.info('[GC combos polished cards v5.3]', {
           raw: rawCombos.length,
@@ -1036,21 +1747,34 @@ import AppLayout from '../layouts/AppLayout.astro';
         } catch (error) {
           console.error('[GC combos polished cards v5.3] error', error);
           els.cards.innerHTML = `<article class="gc-combo-card-v42"><div class="gc-empty-card-v42">Error cargando combos. Revisa /api/combos/stats.</div></article>`;
-          els.table.innerHTML = `<tr><td colspan="7">Error cargando combos.</td></tr>`;
+          if (els.table) els.table.innerHTML = `<tr><td colspan="7">Error cargando combos.</td></tr>`;
           [els.recent, els.laps, els.clean].forEach((node) => node.innerHTML = `<div class="gc-empty-card-v42">Sin datos.</div>`);
         }
       };
 
+      const redrawFromFilters = () => {
+        comboCardsLimit = 12;
+        draw();
+      };
+
       [els.search, els.activity, els.sort].forEach((input) => {
-        input.addEventListener('input', draw);
-        input.addEventListener('change', draw);
+        input.addEventListener('input', redrawFromFilters);
+        input.addEventListener('change', redrawFromFilters);
       });
+
+      if (els.loadMore) {
+        els.loadMore.addEventListener('click', () => {
+          comboCardsLimit += 12;
+          draw();
+        });
+      }
 
       els.reload.addEventListener('click', load);
       els.clear.addEventListener('click', () => {
         els.search.value = '';
         els.activity.value = 'all';
         els.sort.value = 'recent';
+        comboCardsLimit = 12;
         draw();
       });
 
