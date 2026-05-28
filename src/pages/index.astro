@@ -1588,426 +1588,172 @@ const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=
 </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
+  
+
+
+  
   <script is:inline>
-    const gcSetText = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = String(value ?? '0');
-    };
-
-    const gcEscape = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;'
-    }[char]));
-
-    const gcText = (value) => {
-      if (value == null) return '';
-      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
-      if (Array.isArray(value)) return value.map(gcText).filter(Boolean).join(' ');
-      if (typeof value === 'object') {
-        return gcText(
-          value.displayName ??
-          value.name ??
-          value.Name ??
-          value.uiName ??
-          value.uiCarName ??
-          value.uiTrackName ??
-          value.carName ??
-          value.trackName ??
-          value.driverName ??
-          value.playerName ??
-          value.code ??
-          value.id ??
-          value.ID ??
-          value.car ??
-          value.track
-        );
-      }
-      return String(value).trim();
-    };
-
-    const gcFormatMs = (value) => {
-      const ms = Number(value);
-      if (!Number.isFinite(ms) || ms <= 0) return '--';
-      const minutes = Math.floor(ms / 60000);
-      const seconds = Math.floor((ms % 60000) / 1000);
-      const millis = Math.floor(ms % 1000);
-      return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-    };
-
-    const gcNumber = (value, fallback = 0) => {
-      const n = Number(value);
-      return Number.isFinite(n) ? n : fallback;
-    };
-
-    const gcAnimateNumber = (id, value) => {
-      const el = document.getElementById(id);
-      const end = Math.max(0, Math.round(gcNumber(value, 0)));
-      if (!el) return;
-      const duration = 850;
-      const start = performance.now();
-      const step = (now) => {
-        const progress = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(end * eased).toLocaleString('es-ES');
-        if (progress < 1) requestAnimationFrame(step);
+    /* GC_HOME_DATACORE_SINGLE_RENDERER_V2_1_START */
+    (() => {
+      const state = { version:'v2.1', lastRunAt:null, lastOkAt:null, lastError:null, diagnostics:null, combo:null };
+      const byId = (id) => document.getElementById(id);
+      const setText = (id, value) => { const n = byId(id); if (n) n.textContent = String(value ?? '--'); };
+      const number = (v, f=0) => { const n = Number(v); return Number.isFinite(n) ? n : f; };
+      const formatNumber = (v) => Math.max(0, Math.round(number(v,0))).toLocaleString('es-ES');
+      const escapeHtml = (v) => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const valueAt = (src, p) => {
+        if (!src || typeof src !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(src, p)) return src[p];
+        return String(p).split('.').reduce((a, k) => a == null ? undefined : a[k], src);
       };
-      requestAnimationFrame(step);
-    };
-
-    const gcPickList = (data) => {
-      if (!data) return [];
-      return (
-        data.items ||
-        data.combos ||
-        data.stats ||
-        data.results ||
-        data.data ||
-        []
-      );
-    };
-
-    const gcPickTotal = (data, candidates = []) => {
-      if (!data) return 0;
-      for (const key of candidates) {
-        const n = Number(data?.[key]);
-        if (Number.isFinite(n)) return n;
-      }
-      const list = gcPickList(data);
-      return Array.isArray(list) ? list.length : 0;
-    };
-
-    const gcCarName = (car) => gcText(
-      car?.displayName ??
-      car?.uiCarName ??
-      car?.uiName ??
-      car?.carName ??
-      car?.name ??
-      car?.Car ??
-      car?.code ??
-      car
-    );
-
-    const gcExtractCars = (combo) => {
-      const raw = (
-        combo?.cars ||
-        combo?.carList ||
-        combo?.carNames ||
-        combo?.availableCars ||
-        combo?.comboCars ||
-        combo?.members?.cars ||
-        []
-      );
-
-      let cars = Array.isArray(raw) ? raw : [];
-      if (!cars.length && typeof raw === 'string') {
-        cars = raw.split(/[,|;]/g);
-      }
-
-      if (!cars.length && combo?.carName) cars = [combo.carName];
-      if (!cars.length && combo?.car?.name) cars = [combo.car];
-
-      const seen = new Set();
-      return cars
-        .map(gcCarName)
-        .filter(Boolean)
-        .filter((name) => {
-          const key = name.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-    };
-
-    const gcComboTime = (combo) => {
-      const best = combo?.bestLap || combo?.best || combo?.fastestLap || combo?.leader || combo?.topLap || {};
-      return (
-        gcText(combo?.bestLapTimeFormatted) ||
-        gcText(combo?.bestTimeFormatted) ||
-        gcText(combo?.bestLapFormatted) ||
-        gcText(best?.lapTimeFormatted) ||
-        gcText(best?.lapTime) ||
-        gcFormatMs(
-          combo?.bestLapTimeMs ??
-          combo?.bestTimeMs ??
-          combo?.bestLapMs ??
-          best?.lapTimeMs ??
-          best?.LapTime ??
-          best?.lapTime
-        )
-      );
-    };
-
-    const gcComboBestParts = (combo) => {
-      const best = combo?.bestLap || combo?.best || combo?.fastestLap || combo?.leader || combo?.topLap || {};
-      const driver = gcText(
-        combo?.bestDriverName ??
-        combo?.fastestDriverName ??
-        combo?.leaderName ??
-        best?.driverName ??
-        best?.playerName ??
-        best?.name ??
-        best?.driver ??
-        best?.player
-      );
-
-      const car = gcText(
-        combo?.bestCarName ??
-        combo?.fastestCarName ??
-        best?.carName ??
-        best?.uiCarName ??
-        best?.car?.displayName ??
-        best?.car?.name ??
-        best?.car
-      );
-
-      return {
-        driver: driver || 'Piloto pendiente',
-        car: car || 'Coche por confirmar'
+      const pick = (src, paths) => { for (const p of paths) { const v = valueAt(src,p); if (v !== undefined && v !== null && v !== '') return v; } };
+      const text = (v, f='') => {
+        if (v == null || v === '') return f;
+        if (Array.isArray(v)) return v.length ? text(v[0], f) : f;
+        if (typeof v === 'object') return text(v.displayName ?? v.visibleName ?? v.cleanName ?? v.display_name ?? v.uiName ?? v.uiCarName ?? v.uiTrackName ?? v.name ?? v.Name ?? v.driverName ?? v.playerName ?? v.code, f);
+        return String(v).replace(/_/g,' ').replace(/\s+/g,' ').trim() || f;
       };
-    };
-
-    const gcComboDate = (combo) => {
-      const raw = combo?.lastActivityIso || combo?.lastSeenAt || combo?.latestLapAt || combo?.updatedAt || combo?.lastActivity || combo?.timestampIso || combo?.timestamp;
-      if (!raw) return 0;
-      if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
-      const parsed = Date.parse(String(raw));
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-
-    const gcComboId = (combo) => combo?.canonicalComboId ?? combo?.comboId ?? combo?.id ?? combo?.ComboId;
-
-    const gcTrackName = (combo) => gcText(
-      combo?.__canonicalTrack ??
-      combo?.canonicalTrack ??
-      combo?.trackName ??
-      combo?.track?.displayName ??
-      combo?.track?.name ??
-      combo?.track?.id ??
-      combo?.uiTrackName ??
-      combo?.circuitName ??
-      combo?.trackCode ??
-      combo?.track
-    ) || 'Combo activo';
-
-    const gcSlug = (value) => String(value || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '');
-
-    const gcTrackImageCandidates = (trackName) => {
-      const raw = gcText(trackName);
-      const slug = gcSlug(raw);
-      const slugs = new Set();
-
-      const add = (value) => {
-        const item = gcSlug(value);
-        if (!item || item === 'object_object') return;
-
-        slugs.add(item);
-        slugs.add(item.replace(/^ks_/, ''));
-        slugs.add(item.replace(/^rt_/, ''));
-        slugs.add(item.replace(/^nrms_/, ''));
-        slugs.add(item.replace(/^acu_/, ''));
-        slugs.add(item.replace(/^actk_/, ''));
-        slugs.add(item.replace(/_online$/, ''));
-        slugs.add(item.replace(/_offline$/, ''));
-        slugs.add(item.replace(/(?:_|-)?(?:19|20)\d{2}(?:_|-)?/g, '_').replace(/^_+|_+$/g, ''));
+      const items = (data) => Array.isArray(data) ? data : (!data || typeof data !== 'object') ? [] : (data.items || data.data?.items || data.combos || data.results || data.data || []);
+      const timeText = (v) => {
+        const raw = text(v,''); if (raw && /[:.]/.test(raw) && !/^\d+$/.test(raw)) return raw;
+        const ms = number(v,0); if (!ms) return '--';
+        const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000), x = Math.floor(ms%1000);
+        return m + ':' + String(s).padStart(2,'0') + '.' + String(x).padStart(3,'0');
       };
-
-      add(slug);
-      raw.split(/[\/|,; ]+/).forEach(add);
-
-      if (slug.includes('mugello')) slugs.add('mugello');
-      if (slug.includes('zolder')) slugs.add('zolder');
-      if (slug.includes('sebring')) slugs.add('sebring');
-      if (slug.includes('hockenheim')) slugs.add('hockenheim');
-      if (slug.includes('phillip') || slug.includes('philip')) slugs.add('phillip_island');
-
-      const helper = window.GCTrackImages;
-      const helperUrls = helper?.candidates
-        ? helper.candidates(raw).filter((url) => !url.includes('object_object'))
-        : [];
-
-      const urls = [...helperUrls];
-
-      [...slugs].forEach((item) => {
-        if (!item) return;
-
-        ['webp','jpg','jpeg','png','avif'].forEach((ext) => {
-          urls.push(`/images/tracks/${item}.${ext}`);
-          urls.push(`/imagenes/tracks/${item}.${ext}`);
-        });
-      });
-
-      return [...new Set(urls)];
-    };
-
-    const gcFindFirstImage = (urls) => {
-      const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
-
-      return new Promise((resolve) => {
-        let index = 0;
-
-        const testNext = () => {
-          const url = list[index];
-          if (!url) {
-            resolve('');
-            return;
-          }
-
-          const image = new Image();
-          image.onload = () => resolve(url);
-          image.onerror = () => {
-            index += 1;
-            testNext();
-          };
-          image.src = url;
+      const slug = (v) => text(v,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+      const canonicalTrackSlug = (v) => {
+        const raw = slug(v); if (!raw) return '';
+        if (raw.includes('mugello')) return 'mugello';
+        if (raw.includes('zolder')) return 'zolder';
+        if (raw.includes('sebring')) return 'sebring';
+        if (raw.includes('hockenheim')) return 'hockenheim';
+        if (raw.includes('phillip') || raw.includes('philip')) return 'phillip_island';
+        if (raw.includes('salzburg')) return 'salzburgring';
+        if (raw.includes('suzuka')) return 'suzuka';
+        if (raw.includes('spa')) return 'spa';
+        if (raw.includes('brands')) return 'brands_hatch';
+        return raw.replace(/^ks_/,'').replace(/^rt_/,'').replace(/^mx_/,'').replace(/^nrms_/,'').replace(/_online$/,'').replace(/(?:_|-)?(?:19|20)\d{2}(?:_|-)?/g,'_').replace(/^_+|_+$/g,'');
+      };
+      const fetchJson = async (url) => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 10000);
+        try {
+          const res = await fetch(url, {credentials:'include', cache:'no-store', signal:controller.signal});
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data) throw new Error(url + ' ' + res.status);
+          return data;
+        } finally { window.clearTimeout(timeout); }
+      };
+      const animateNumber = (id, value) => {
+        const node = byId(id); if (!node) return;
+        const target = Math.max(0, Math.round(number(value,0)));
+        const start = performance.now(), duration = 650;
+        const tick = (now) => {
+          const p = Math.min(1, (now-start)/duration), e = 1 - Math.pow(1-p,3);
+          node.textContent = Math.round(target*e).toLocaleString('es-ES');
+          if (p < 1) requestAnimationFrame(tick);
         };
-
-        testNext();
-      });
-    };
-
-    const gcSetWeekComboImage = async (trackName) => {
-      const figure = document.getElementById('gcWeekComboImage');
-      const img = document.getElementById('gcWeekComboImageImg');
-      if (!figure || !img || !trackName) return;
-
-      const candidates = gcTrackImageCandidates(trackName);
-      const found = await gcFindFirstImage(candidates);
-
-      console.info('[GC home hero spacing v7.4]', {
-        trackName,
-        found,
-        firstCandidates: candidates.slice(0, 12)
-      });
-
-      if (!found) {
-        figure.hidden = true;
-        return;
-      }
-
-      img.alt = `Imagen del circuito ${trackName}`;
-      img.onerror = null;
-      img.onload = () => {
-        img.style.display = '';
-        figure.hidden = false;
+        requestAnimationFrame(tick);
       };
-      img.src = found;
-    };
-
-    async function gcLoadComboWeek() {
-      const card = document.getElementById('gcWeekCombo');
-      try {
-        const res = await fetch('/api/combos/stats', { cache: 'no-store' });
-        if (!res.ok) throw new Error(String(res.status));
-        const data = await res.json();
-        const combos = gcPickList(data)
-          .filter(Boolean)
-          .sort((a, b) => gcComboDate(b) - gcComboDate(a));
-
-        const combo = combos.find((item) => gcNumber(item.totalLaps ?? item.laps ?? item.lapCount, 0) > 0) || combos[0];
-        if (!combo) throw new Error('Sin combos');
-
-        const comboId = gcComboId(combo);
-        const cars = gcExtractCars(combo);
-        const laps = gcNumber(combo.totalLaps ?? combo.laps ?? combo.lapCount ?? combo.visibleLaps, 0);
-        const drivers = gcNumber(combo.driversCount ?? combo.pilotsCount ?? combo.playersCount ?? combo.uniqueDrivers ?? combo.totalDrivers, 0);
-        const bestTime = gcComboTime(combo);
-        const bestParts = gcComboBestParts(combo);
-        const trackName = gcTrackName(combo);
-
-        gcSetText('gcWeekComboTitle', trackName);
-        gcSetText('gcWeekComboLaps', laps.toLocaleString('es-ES'));
-        gcSetText('gcWeekComboDrivers', drivers.toLocaleString('es-ES'));
-        gcSetText('gcWeekComboBest', bestTime || '--');
-        gcSetText('gcWeekComboBestDriver', bestParts.driver);
-        gcSetText('gcWeekComboBestCar', bestParts.car);
-        await gcSetWeekComboImage(trackName);
-
-        const state = document.getElementById('gcWeekComboState');
-        if (state && combo.mergedCombosCount > 1) {
-          state.textContent = `Familia de ${combo.mergedCombosCount} combos`;
-        }
-
-        const carsEl = document.getElementById('gcWeekComboCars');
-        if (carsEl) {
-          carsEl.innerHTML = cars.length
-            ? cars.map((name) => `<span class="gc-week-combo__chip">${gcEscape(name)}</span>`).join('')
-            : '<span class="gc-week-combo__chip">Coches por confirmar</span>';
-        }
-
-        const open = document.getElementById('gcWeekComboOpen');
-        if (open && comboId != null) open.href = `/combos/${encodeURIComponent(comboId)}`;
-
-        card?.removeAttribute('data-loading');
-
-        console.info('[GC home hero spacing v7.4]', { trackName });
-      } catch (error) {
-        gcSetText('gcWeekComboTitle', 'Combo activo');
-        gcSetText('gcWeekComboBestDriver', 'Piloto pendiente');
-        gcSetText('gcWeekComboBestCar', 'Abre Combo Center para ver la actividad actual');
-        document.getElementById('gcWeekComboCars').innerHTML = '<span class="gc-week-combo__chip">Datos no disponibles</span>';
-        card?.setAttribute('data-error', 'true');
+      function diagnosticsStats(data) {
+        const race = data?.raceData || data?.stracker?.raceData || data?.stats || data?.overview || {};
+        const totalLaps = number(pick(race, ['lapsCount','totalLaps','laps','lapCount']) ?? pick(data, ['raceData.lapsCount','totalLaps','lapsCount']), 0);
+        return {
+          totalLaps,
+          validLaps: number(pick(race, ['validLapsCount','validLaps','cleanLaps']) ?? pick(data, ['raceData.validLapsCount','validLapsCount']), totalLaps),
+          driversCount: number(pick(race, ['driversCount','totalDrivers','pilotsCount']) ?? pick(data, ['raceData.driversCount','driversCount','totalDrivers']), 0)
+        };
       }
-    }
-
-    async function gcLoadLandingMetrics() {
-      const [overviewResult, hotlapsResult, pilotsResult] = await Promise.allSettled([
-        fetch('/api/stats/overview', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
-        fetch('/api/hotlaps?limit=5000', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
-        fetch('/api/pilots?limit=1', { cache: 'no-store' }).then((res) => res.ok ? res.json() : null),
-      ]);
-
-      const overview = overviewResult.status === 'fulfilled' ? overviewResult.value : null;
-      const hotlaps = hotlapsResult.status === 'fulfilled' ? hotlapsResult.value : null;
-      const pilots = pilotsResult.status === 'fulfilled' ? pilotsResult.value : null;
-      const stats = overview?.stats || overview?.overview || overview || {};
-
-      const totalLaps = (
-        stats.totalLaps ??
-        stats.laps ??
-        stats.lapCount ??
-        gcPickTotal(hotlaps, ['totalLaps', 'total', 'count'])
-      );
-
-      const hotlapItems = gcPickList(hotlaps);
-      const hotlapTotal = (
-        hotlaps?.total ??
-        hotlaps?.count ??
-        hotlaps?.totalItems ??
-        hotlaps?.visibleTotal ??
-        hotlaps?.totalVisible ??
-        stats.totalHotlaps ??
-        stats.hotlaps ??
-        (Array.isArray(hotlapItems) && hotlapItems.length > 1 ? hotlapItems.length : totalLaps)
-      );
-
-      const pilotsTotal = (
-        pilots?.total ??
-        pilots?.count ??
-        pilots?.totalItems ??
-        stats.totalDrivers ??
-        stats.drivers ??
-        stats.players ??
-        gcPickTotal(pilots)
-      );
-
-      gcAnimateNumber('gcMkLaps', hotlapTotal);
-      gcAnimateNumber('gcMkDrivers', pilotsTotal);
-      gcAnimateNumber('gcMkTotalLaps', totalLaps);
-    }
-
-    gcLoadComboWeek();
-    gcLoadLandingMetrics();
+      function comboCars(combo) {
+        const raw = pick(combo, ['publicComboCars','carNames','carList','cars','availableCars','comboCars','mainVariantAllCars']);
+        const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(/[,|;]/g) : []);
+        const seen = new Set();
+        return arr.map(c => text(c,'')).filter(Boolean).filter(name => { const k=name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+      }
+      const comboBest = (combo) => pick(combo, ['bestLap','summary.bestLap']) || (Array.isArray(combo?.leaderboard) ? combo.leaderboard[0] : null) || {};
+      const bestDriver = (row) => text(pick(row, ['driverName','playerName','name','driver.displayName','driver.name','player.name']), 'Piloto pendiente');
+      const bestCar = (row, fallback='') => text(pick(row, ['carName','car.displayName','car.name','car']), fallback || 'Coche por confirmar');
+      const bestTime = (row, combo) => text(pick(combo, ['bestLapTimeFormatted','bestLapTime','summary.bestLapTime']),'') || text(pick(row, ['lapTimeFormatted','lapTime','timeFormatted']),'') || timeText(pick(row, ['lapTimeMs','bestLapMs','timeMs']));
+      const comboTrack = (combo) => text(pick(combo, ['canonicalTrackName','displayTrackName','track.displayName','track.name','trackName','track']), 'Combo activo');
+      async function findTrackImage(trackName) {
+        const helper = window.GCTrackImages;
+        const best = helper?.bestAsset?.(trackName);
+        if (best?.url) return best.url;
+        const key = canonicalTrackSlug(trackName);
+        const candidates = [];
+        const push = (name) => { if (!name) return; ['webp','jpg','jpeg','png','avif'].forEach(ext => { candidates.push(`/images/tracks/${name}.${ext}`); candidates.push(`/imagenes/tracks/${name}.${ext}`); }); };
+        push(key); push(slug(trackName));
+        const unique = [...new Set(candidates.filter(Boolean))];
+        return new Promise(resolve => {
+          let i=0; const test = () => { const url=unique[i]; if (!url) return resolve(''); const img = new Image(); img.onload=()=>resolve(url); img.onerror=()=>{i++; test();}; img.src=url; }; test();
+        });
+      }
+      async function renderComboImage(trackName) {
+        const figure = byId('gcWeekComboImage'), img = byId('gcWeekComboImageImg');
+        if (!figure || !img) return;
+        figure.hidden = false; figure.dataset.loading = 'true';
+        const found = await findTrackImage(trackName);
+        if (!found) { figure.dataset.error='true'; figure.dataset.loading='false'; img.removeAttribute('src'); console.warn('[GC home Data Core v2.1] track image not found', {trackName}); return; }
+        img.onload = () => { figure.hidden=false; figure.dataset.loading='false'; figure.dataset.error='false'; figure.classList.add('has-track-image'); };
+        img.onerror = () => { figure.dataset.error='true'; figure.dataset.loading='false'; };
+        img.alt = `Imagen del circuito ${trackName}`; img.src = found;
+        figure.style.setProperty('--gc-track-image', `url("${found}")`);
+        figure.classList.add('has-track-image');
+      }
+      function renderMetrics(diagnostics) {
+        const stats = diagnosticsStats(diagnostics);
+        animateNumber('gcMkLaps', stats.validLaps);
+        animateNumber('gcMkDrivers', stats.driversCount);
+        animateNumber('gcMkTotalLaps', stats.totalLaps);
+      }
+      async function renderCombo(combosData) {
+        const combo = items(combosData)[0]; if (!combo) throw new Error('Sin combo canónico');
+        const track = comboTrack(combo), cars = comboCars(combo), best = comboBest(combo), comboId = pick(combo, ['comboId','canonicalComboId','id']);
+        const laps = number(pick(combo, ['totalLaps','summary.totalLaps','laps','lapCount']), 0);
+        const drivers = number(pick(combo, ['driversCount','summary.driversCount','pilotsCount','playersCount']), 0);
+        setText('gcWeekComboTitle', track);
+        setText('gcWeekComboLaps', formatNumber(laps));
+        setText('gcWeekComboDrivers', formatNumber(drivers));
+        setText('gcWeekComboBest', bestTime(best, combo));
+        setText('gcWeekComboBestDriver', bestDriver(best));
+        setText('gcWeekComboBestCar', bestCar(best, cars[0]));
+        const stateNode = byId('gcWeekComboState');
+        if (stateNode) {
+          const hiddenCars = number(pick(combo, ['hiddenLowLapCarsCount','summary.hiddenLowLapCarsCount']), 0);
+          const variants = number(pick(combo, ['variantsCount','summary.variantsCount']), 0);
+          stateNode.textContent = hiddenCars > 0 ? 'Filtrado' : variants > 1 ? 'Canónico' : 'Último activo';
+        }
+        const carsNode = byId('gcWeekComboCars');
+        if (carsNode) carsNode.innerHTML = cars.length ? cars.map(name => `<span class="gc-week-combo__chip">${escapeHtml(name)}</span>`).join('') : '<span class="gc-week-combo__chip">Coches por confirmar</span>';
+        const open = byId('gcWeekComboOpen');
+        if (open && comboId !== undefined && comboId !== null) open.href = `/combos/${encodeURIComponent(String(comboId))}`;
+        const card = byId('gcWeekCombo');
+        if (card) { card.removeAttribute('data-loading'); card.removeAttribute('data-error'); card.dataset.source = 'gc-home-datacore-v2.1'; }
+        await renderComboImage(track);
+      }
+      async function renderHome() {
+        state.lastRunAt = new Date().toISOString();
+        try {
+          const [diagnostics, combos] = await Promise.all([fetchJson('/api/gc/diagnostics'), fetchJson('/api/gc/combos?limit=1&sort=recent')]);
+          renderMetrics(diagnostics); await renderCombo(combos);
+          state.diagnostics=diagnostics; state.combo=items(combos)[0] || null; state.lastOkAt=new Date().toISOString(); state.lastError=null;
+          document.documentElement.dataset.gcHomeDataCore = 'v2.1-single';
+          window.GCHomeDataCoreStatus = () => ({...state});
+          console.info('[GC home Data Core single renderer v2.1]', {laps: diagnosticsStats(diagnostics).totalLaps, validLaps: diagnosticsStats(diagnostics).validLaps, drivers: diagnosticsStats(diagnostics).driversCount, combo: comboTrack(state.combo)});
+        } catch (error) {
+          state.lastError = error?.message || String(error); window.GCHomeDataCoreStatus = () => ({...state}); document.documentElement.dataset.gcHomeDataCore = 'error-v2.1';
+          const card = byId('gcWeekCombo'); if (card) card.dataset.error = 'true';
+          console.warn('[GC home Data Core single renderer v2.1] failed:', error);
+        }
+      }
+      const start = () => { window.setTimeout(renderHome, 150); window.setTimeout(renderHome, 900); window.clearInterval(window.GCHomeDataCoreTimer); window.GCHomeDataCoreTimer = window.setInterval(renderHome, 30000); };
+      window.GCHomeDataCoreReload = renderHome;
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true}); else start();
+    })();
+    /* GC_HOME_DATACORE_SINGLE_RENDERER_V2_1_END */
   </script>
 
-  <script is:inline>
+<script is:inline>
     (() => {
       const logo = document.querySelector('[data-gc-hero-logo]');
       if (!logo || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -2092,5 +1838,14 @@ const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=
       console.info('[GC home hero spacing v7.4]');
     })();
   </script>
+
+
+  <style is:global>
+    /* GC_HOME_DATACORE_IMAGE_FIX_V2_1_STYLE */
+    #gcWeekComboImage.has-track-image,
+    #gcWeekComboImage[data-loading="false"]{display:block}
+    #gcWeekComboImage.has-track-image img{display:block;width:100%;height:100%;object-fit:cover}
+    #gcWeekComboImage[data-error="true"]{display:none}
+  </style>
 
 </MarketingLayout>

@@ -606,8 +606,8 @@ export async function GET({ request }: { request: Request }) {
 
   try {
     const [combosData, hotlapsData, acsmDetails] = await Promise.all([
-      fetchJson(origin, '/api/combos/stats?limit=300&sort=recent').catch(() => null),
-      fetchJson(origin, '/api/hotlaps?limit=5000'),
+      fetchJson(origin, '/api/gc/combos?limit=300&sort=recent').catch(() => null),
+      fetchJson(origin, '/api/gc/leaderboard?limit=5000'),
       fetchExternalJson(ACSM_DETAILS_URL).catch(() => null),
     ]);
 

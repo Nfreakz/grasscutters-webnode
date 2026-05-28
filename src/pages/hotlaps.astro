@@ -867,7 +867,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.reload.disabled = true;
 
         try {
-          const res = await fetch('/api/hotlaps?limit=1500', { cache:'no-store', credentials:'include' });
+          const res = await fetch('/api/gc/leaderboard?limit=1500', { cache:'no-store', credentials:'include' });
           if (!res.ok) throw new Error('Endpoint no disponible');
 
           const json = await res.json();
@@ -892,7 +892,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         } catch (error) {
           els.source.textContent = 'Error';
           els.source.style.color = 'var(--warn)';
-          els.hint.textContent = 'No se pudo cargar /api/hotlaps';
+          els.hint.textContent = 'No se pudo cargar /api/gc/leaderboard';
           els.rows.innerHTML = '<tr><td colspan="10">Error cargando hotlaps. Revisa que el endpoint esté activo.</td></tr>';
           console.warn('[GC hotlaps v13] Error', error);
         } finally {
@@ -1411,7 +1411,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         runtime: document.documentElement.dataset.gcHotlapsRuntime,
         dataCore: document.documentElement.dataset.gcHotlapsDataCore || null,
         dataCoreVersion: document.documentElement.dataset.gcHotlapsDataCoreVersion || null,
-        legacyNetworkCut: Boolean(window.GCHotlapsLegacyNetworkCut)
+        legacyNetworkCut: Boolean(window.GCHotlapsLegacyNetworkRemoved)
       });
       console.info('[GC /hotlaps Runtime] Data Core primary clean v1');
     })();

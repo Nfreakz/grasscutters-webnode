@@ -1738,7 +1738,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const load = async () => {
         try {
-          const response = await fetch('/api/combos/stats?limit=300&sort=recent', { cache: 'no-store' });
+          const response = await fetch('/api/gc/combos?limit=300&sort=recent', { cache: 'no-store' });
           const data = await response.json();
           const source = Array.isArray(data) ? data : (data.rows || data.combos || data.items || data.results || data.data || []);
           rawCombos = Array.isArray(source) ? source.filter(Boolean) : [];
@@ -1746,7 +1746,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           draw();
         } catch (error) {
           console.error('[GC combos polished cards v5.3] error', error);
-          els.cards.innerHTML = `<article class="gc-combo-card-v42"><div class="gc-empty-card-v42">Error cargando combos. Revisa /api/combos/stats.</div></article>`;
+          els.cards.innerHTML = `<article class="gc-combo-card-v42"><div class="gc-empty-card-v42">Error cargando combos. Revisa /api/gc/combos.</div></article>`;
           if (els.table) els.table.innerHTML = `<tr><td colspan="7">Error cargando combos.</td></tr>`;
           [els.recent, els.laps, els.clean].forEach((node) => node.innerHTML = `<div class="gc-empty-card-v42">Sin datos.</div>`);
         }
@@ -2270,7 +2270,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         runtime: document.documentElement.dataset.gcCombosRuntime,
         dataCore: document.documentElement.dataset.gcCombosDataCore || null,
         dataCoreVersion: document.documentElement.dataset.gcCombosDataCoreVersion || null,
-        legacyNetworkCut: Boolean(window.GCCombosLegacyNetworkCut),
+        legacyNetworkCut: Boolean(window.GCCombosLegacyNetworkRemoved),
         trackImages: window.GCTrackImages?.version || null
       });
       console.info('[GC /combos Runtime] Data Core primary clean v1');

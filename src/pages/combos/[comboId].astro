@@ -1037,7 +1037,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
         if (!data.ok || !data.item) {
           console.warn('[GC combo detail Data Core primary] fallback legacy', data?.message || data);
-          response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
+          response = await fetch(`/api/gc/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
           data = await response.json();
         }
 
@@ -1136,7 +1136,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         dataCoreVersion: document.documentElement.dataset.gcComboDetailDataCoreVersion || null,
         trackImage: document.documentElement.dataset.gcComboDetailTrackImage || null,
         trackImages: window.GCTrackImages?.version || null,
-        legacyNetworkCut: Boolean(window.GCComboDetailLegacyNetworkCut)
+        legacyNetworkCut: Boolean(window.GCComboDetailLegacyNetworkRemoved)
       });
       console.info('[GC /combos/:id Runtime] Data Core primary clean v1');
     })();

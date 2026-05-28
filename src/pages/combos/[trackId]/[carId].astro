@@ -80,7 +80,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     async function load() {
       const { trackId, carId } = pathIds();
       try {
-        const response = await fetch(`/api/combos/${encodeURIComponent(trackId)}/${encodeURIComponent(carId)}`);
+        const response = await fetch(`/api/gc/combos/${encodeURIComponent(trackId)}/${encodeURIComponent(carId)}`);
         const data = await response.json();
         if (!data.ok || !data.item) throw new Error(data.message || 'Combo no encontrado');
         const item = data.item;

@@ -687,9 +687,9 @@
       let name = domName || 'Referencia';
 
       const [combosData, bestData, recentData, pilotsData] = await Promise.all([
-        fetchMaybeJson('/api/combos/stats?limit=300&sort=recent'),
-        fetchMaybeJson('/api/hotlaps?limit=12'),
-        fetchMaybeJson('/api/laps?limit=12&sort=recent&valid=all'),
+        fetchMaybeJson('/api/gc/combos?limit=300&sort=recent'),
+        fetchMaybeJson('/api/gc/leaderboard?limit=12'),
+        fetchMaybeJson('/api/gc/recent-laps?limit=12&sort=recent&valid=all'),
         fetchMaybeJson('/api/pilots?limit=800&valid=all')
       ]);
 

@@ -1252,37 +1252,16 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   
 
 
-  <script is:inline>
-    /* GC_APP_PRIMARY_CLEAN_RUNTIME_V1_START */
-    (() => {
-      document.documentElement.dataset.gcAppRuntime = 'data-core-primary-clean-v1';
-      window.GCAppRuntimeStatus = () => ({
-        runtime: document.documentElement.dataset.gcAppRuntime,
-        dataCore: document.documentElement.dataset.gcAppDataCore || null,
-        dataCoreVersion: document.documentElement.dataset.gcAppDataCoreVersion || null,
-        legacyGovernor: Boolean(window.GCAppLegacyGovernor),
-        legacyNetworkCut: Boolean(window.GCAppLegacyNetworkCut)
-      });
-      console.info('[GC /app Runtime] Data Core primary clean v1');
-    })();
-    /* GC_APP_PRIMARY_CLEAN_RUNTIME_V1_END */
-  </script>
+  
 
 
-  <script is:inline>
-    /* GC_APP_CANONICAL_COMBO_V1_5_MARKER */
-    (() => {
-      document.documentElement.dataset.gcAppCanonicalCombo = 'v1.5';
-    })();
-  </script>
+
+  
 
 
-  <script is:inline>
-    /* GC_APP_GLOBAL_DIAGNOSTICS_LAPS_FIX_V1_6_MARKER */
-    (() => {
-      document.documentElement.dataset.gcAppGlobalDiagnostics = 'v1.6';
-    })();
-  </script>
+
+  
+
 
 
   
@@ -1476,6 +1455,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           latestLapAt:
             pick(race, ['latestLapAt', 'lastSeenAt', 'latestActivityAt']) ||
             pick(data, ['raceData.latestLapAt', 'latestLapAt']),
+          firstSeenAt:
+            pick(race, ['oldestLapAt', 'firstSeenAt', 'startedAt']) ||
+            pick(data, ['raceData.oldestLapAt', 'oldestLapAt', 'firstSeenAt']),
           generatedAt: data?.generatedAt
         };
       }
@@ -1541,6 +1523,117 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         badge.style.color = stateName === 'error' ? '#ff6b6b' : stateName === 'warn' ? '#ffcf5a' : 'var(--accent,#7aff90)';
       }
 
+      function gcAppSessionUserFromV1_10(identityData, adminData) {
+        const candidates = [
+          identityData?.user,
+          identityData?.currentUser,
+          identityData?.account,
+          identityData?.profile?.user,
+          identityData?.session?.user,
+          identityData?.auth?.user,
+          identityData?.data?.user,
+          adminData?.user,
+          adminData?.currentUser,
+          adminData?.account,
+          adminData?.profile?.user,
+          adminData?.session?.user,
+          adminData?.auth?.user,
+          adminData?.data?.user
+        ].filter(Boolean);
+
+        return candidates[0] || {};
+      }
+
+      function gcAppSessionPilotFromV1_10(identityData, adminData, user) {
+        const candidates = [
+          identityData?.pilot,
+          identityData?.linkedPilot,
+          identityData?.pilotLink,
+          identityData?.linked,
+          identityData?.profile?.pilot,
+          identityData?.profile?.pilotLink,
+          identityData?.data?.pilot,
+          identityData?.data?.pilotLink,
+          adminData?.pilot,
+          adminData?.linkedPilot,
+          adminData?.pilotLink,
+          adminData?.profile?.pilot,
+          adminData?.profile?.pilotLink,
+          user?.pilot,
+          user?.pilotLink,
+          user?.linkedPilot
+        ].filter(Boolean);
+
+        return candidates[0] || {};
+      }
+
+      function gcAppSessionIsLoggedV1_10(identityData, adminData, user) {
+        return Boolean(
+          identityData?.authenticated === true ||
+          identityData?.loggedIn === true ||
+          identityData?.isAuthenticated === true ||
+          identityData?.ok === true ||
+          adminData?.authenticated === true ||
+          adminData?.loggedIn === true ||
+          adminData?.isAuthenticated === true ||
+          adminData?.ok === true ||
+          user?.id ||
+          user?.email ||
+          user?.name ||
+          user?.displayName ||
+          user?.role
+        );
+      }
+
+      function renderSession(identityData, adminData) {
+        const user = gcAppSessionUserFromV1_10(identityData, adminData);
+        const pilot = gcAppSessionPilotFromV1_10(identityData, adminData, user);
+        const logged = gcAppSessionIsLoggedV1_10(identityData, adminData, user);
+
+        const accountName = text(
+          user.displayName ??
+          user.display_name ??
+          user.username ??
+          user.name ??
+          user.email ??
+          identityData?.displayName ??
+          identityData?.name ??
+          adminData?.displayName ??
+          adminData?.name,
+          logged ? 'Admin Local' : 'Invitado'
+        );
+
+        const role = text(
+          user.role ??
+          user.userRole ??
+          user.accountRole ??
+          identityData?.role ??
+          identityData?.user?.role ??
+          adminData?.role ??
+          adminData?.user?.role,
+          logged ? 'pilot' : '-'
+        );
+
+        const pilotName = text(
+          pilot.displayName ??
+          pilot.display_name ??
+          pilot.driverName ??
+          pilot.strackerName ??
+          pilot.name ??
+          identityData?.pilotName ??
+          identityData?.driverName ??
+          user?.strackerName,
+          pilot && Object.keys(pilot).length ? 'Vinculado' : accountName
+        );
+
+        setText('gcAppSessionState', logged ? 'Conectado' : 'Invitado');
+        setText('gcAppSessionUser', accountName);
+        setText('gcAppSessionRole', role);
+        setText('gcAppSessionPilot', pilotName);
+
+        document.documentElement.dataset.gcAppSessionRenderer = 'v1.10';
+      }
+
       function renderGlobal(diagnostics) {
         const stats = globalStatsFromDiagnostics(diagnostics);
         if (stats.driversCount) setText('gcMetricDrivers', formatNumber(stats.driversCount));
@@ -1550,6 +1643,15 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         }
         if (stats.combosCount) setText('gcMetricCombos', formatNumber(stats.combosCount));
         if (stats.latestLapAt) setText('gcMetricLastActivity', dateText(stats.latestLapAt).split(',')[0]);
+
+        if (stats.firstSeenAt) {
+          const firstMs = dateMs(stats.firstSeenAt);
+          if (firstMs) {
+            const days = Math.max(1, Math.ceil((Date.now() - firstMs) / 86400000));
+            setText('gcServerUptimeDays', days + ' días');
+            setText('gcServerUptimeMeta', 'desde ' + dateText(stats.firstSeenAt).split(',')[0]);
+          }
+        }
 
         setText('gcQuickDb', 'Activo');
         setText('gcQuickDbMeta', stats.generatedAt ? 'Data Core · ' + dateText(stats.generatedAt) : 'Data Core');
@@ -1645,16 +1747,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         try {
           ensureBadge('warn', 'Data Core loading');
 
-          const [diagnostics, combosData, recentData, leaderboardData] = await Promise.all([
+          const [diagnostics, combosData, recentData, leaderboardData, identityData, adminData] = await Promise.all([
             fetchJson('/api/gc/diagnostics'),
             fetchJson('/api/gc/combos?limit=1&sort=recent'),
             fetchJson('/api/gc/recent-laps?limit=12&sort=recent&valid=all').catch(() => null),
-            fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=20').catch(() => null)
+            fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=20').catch(() => null),
+            fetchJson('/api/gc/identity/me').catch(() => null),
+            fetchJson('/api/admin/status').catch(() => null)
           ]);
 
           const combo = items(combosData)[0] || null;
           const recent = items(recentData);
           const leaderboard = items(leaderboardData);
+
+          renderSession(identityData, adminData);
 
           const globalStats = renderGlobal(diagnostics);
           renderCombo(combo, leaderboard, recent);
@@ -1680,6 +1786,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             combos: combosData,
             recent: recentData,
             leaderboard: leaderboardData,
+            identity: identityData,
+            admin: adminData,
             renderedAt: state.lastOkAt
           };
 
@@ -1714,6 +1822,14 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       else start();
     })();
     /* GC_APP_SINGLE_RENDERER_V1_8_END */
+  </script>
+
+
+  <script is:inline>
+    /* GC_APP_SINGLE_RENDERER_SESSION_FIX_V1_10_MARKER */
+    (() => {
+      document.documentElement.dataset.gcAppSessionFix = 'v1.10';
+    })();
   </script>
 
 </AppLayout>
