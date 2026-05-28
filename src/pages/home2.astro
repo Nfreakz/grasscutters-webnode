@@ -13,6 +13,17 @@ import '../styles/home2.css';
 const title = 'Home2 · GrassCutters Racing';
 const description = 'Portada experimental oculta de GrassCutters Racing.';
 
+const home2ToolLinks = {
+  hud: 'https://www.overtake.gg/downloads/grasscutters-lua-hud-lite.84201/',
+  android: '/app-android',
+  carsDrive: 'https://drive.google.com/drive/folders/REEMPLAZAR_COCHES',
+  tracksDrive: 'https://drive.google.com/drive/folders/REEMPLAZAR_CIRCUITOS',
+  profile: '/perfil',
+  hotlaps: '/hotlaps',
+  combos: '/combos',
+  championship: '/campeonato',
+};
+
 const archiveStats = await getArchiveStats();
 const home2ArchiveSeed = (archiveStats.items || [])
   .filter((item) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || '')))
@@ -459,28 +470,68 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </div>
 
         <div class="gc-home2-tools-grid">
-          <a href="https://www.overtake.gg/downloads/grasscutters-lua-hud-lite.84201/" target="_blank" rel="noreferrer" class="gc-home2-tool">
-            <img src="/ui/home2/icons/hud.svg" alt="" width="52" height="52" loading="lazy" />
+          <a href={home2ToolLinks.hud} target="_blank" rel="noreferrer" class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/hud-pro.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
             <strong>HUD / Overlays</strong>
             <span>Descarga el HUD oficial GC</span>
             <em>→</em>
           </a>
-          <a href="/app-android" class="gc-home2-tool">
-            <img src="/ui/home2/icons/android.svg" alt="" width="52" height="52" loading="lazy" />
+          <a href={home2ToolLinks.android} class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/android.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
             <strong>App Android</strong>
             <span>Lleva GC contigo en el móvil</span>
             <em>→</em>
           </a>
-          <a href="/combos" class="gc-home2-tool">
-            <img src="/ui/home2/icons/car.svg" alt="" width="52" height="52" loading="lazy" />
+          <a href={home2ToolLinks.carsDrive} target="_blank" rel="noreferrer" class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/car-download.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
             <strong>Coches</strong>
-            <span>Lista de coches disponibles</span>
+            <span>Descarga los coches desde Drive</span>
             <em>→</em>
           </a>
-          <a href="/archivo" class="gc-home2-tool">
-            <img src="/ui/home2/icons/track.svg" alt="" width="52" height="52" loading="lazy" />
+          <a href={home2ToolLinks.tracksDrive} target="_blank" rel="noreferrer" class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/track-download.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
             <strong>Circuitos</strong>
-            <span>Lista de circuitos disponibles</span>
+            <span>Descarga circuitos desde Drive</span>
+            <em>→</em>
+          </a>
+          <a href={home2ToolLinks.profile} class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/profile-helmet.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
+            <strong>Perfil</strong>
+            <span>Acceso rápido al perfil de piloto</span>
+            <em>→</em>
+          </a>
+          <a href={home2ToolLinks.hotlaps} class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/hotlaps-stopwatch.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
+            <strong>Hotlaps</strong>
+            <span>Consulta referencias y mejores vueltas</span>
+            <em>→</em>
+          </a>
+          <a href={home2ToolLinks.combos} class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/combos-stack.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
+            <strong>Combos</strong>
+            <span>Activos, históricos y próximos combos</span>
+            <em>→</em>
+          </a>
+          <a href={home2ToolLinks.championship} class="gc-home2-tool">
+            <span class="gc-home2-tool__icon">
+              <img src="/ui/home2/icons/championship-cup.svg" alt="" width="52" height="52" loading="lazy" />
+            </span>
+            <strong>Campeonato</strong>
+            <span>Calendario, clasificación e inscritos</span>
             <em>→</em>
           </a>
         </div>
