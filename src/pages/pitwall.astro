@@ -1,0 +1,418 @@
+---
+/* GC_PITWALL_PREVIEW_V1
+ * Hidden preview route for the public GrassCutters redesign.
+ * Does not replace /.
+ * Reads only canonical /api/gc/* endpoints introduced by GC Data Core.
+ */
+import AppLayout from '../layouts/AppLayout.astro';
+import '../styles/pages/pitwall.css';
+---
+
+<AppLayout
+  title="Pit Wall Preview | GrassCutters Racing"
+  description="Vista oculta de pruebas para el rediseño GrassCutters: race bulletin, active combo, timing sheet y diagnóstico de datos centralizados."
+  canonicalPath="/pitwall"
+  noindex={true}
+>
+  <div class="gc-pitwall" data-gc-pitwall>
+    <section class="gc-pitwall-hero" aria-labelledby="pitwallTitle">
+      <div class="gc-pitwall-hero__copy">
+        <span class="gc-pitwall-kicker">GrassCutters Pit Wall</span>
+        <h1 id="pitwallTitle">Race data, one truth.</h1>
+        <p>
+          Vista de pruebas para validar el nuevo rediseño con datos centralizados.
+          Si algo no cuadra aquí, se arregla en la API antes de tocar la home.
+        </p>
+        <div class="gc-pitwall-chips" aria-label="Estado de datos">
+          <span class="gc-pitwall-chip gc-pitwall-chip--accent" data-pit-source>GC Data Core</span>
+          <span class="gc-pitwall-chip" data-pit-generated>Sin cargar</span>
+          <span class="gc-pitwall-chip" data-pit-mode>Preview oculta</span>
+        </div>
+      </div>
+
+      <aside class="gc-pitwall-status" aria-label="Diagnóstico rápido">
+        <div class="gc-pitwall-status__head">
+          <span>Race control</span>
+          <strong data-pit-state>Check</strong>
+        </div>
+        <dl>
+          <div><dt>Endpoint</dt><dd data-pit-endpoint>/api/gc/snapshot</dd></div>
+          <div><dt>Fuente</dt><dd data-pit-source-state>--</dd></div>
+          <div><dt>Warnings</dt><dd data-pit-warnings>--</dd></div>
+        </dl>
+      </aside>
+    </section>
+
+    <section class="gc-pitwall-metrics" aria-label="Resumen global">
+      <article><span>Vueltas</span><strong data-pit-total-laps>--</strong><small>registradas</small></article>
+      <article><span>Válidas</span><strong data-pit-valid-laps>--</strong><small>referencias limpias</small></article>
+      <article><span>Pilotos</span><strong data-pit-drivers>--</strong><small>detectados</small></article>
+      <article><span>Combos</span><strong data-pit-combos>--</strong><small>lógicos</small></article>
+    </section>
+
+    <section class="gc-pitwall-grid">
+      <article class="gc-pitwall-card gc-pitwall-card--combo">
+        <div class="gc-pitwall-card__head">
+          <div>
+            <span class="gc-pitwall-kicker">Now on track</span>
+            <h2 data-pit-combo-track>Combo por cargar</h2>
+          </div>
+          <a class="gc-pitwall-open" href="/combos" data-pit-combo-link>Open combo</a>
+        </div>
+
+        <div class="gc-pitwall-combo-cars" data-pit-combo-cars>
+          <span>Coches por confirmar</span>
+        </div>
+
+        <div class="gc-pitwall-combo-readout">
+          <div><span>Vueltas</span><strong data-pit-combo-laps>--</strong></div>
+          <div><span>Pilotos</span><strong data-pit-combo-drivers>--</strong></div>
+          <div><span>Mejor</span><strong data-pit-combo-best>--</strong></div>
+        </div>
+
+        <div class="gc-pitwall-best">
+          <span>Referencia del combo</span>
+          <strong data-pit-best-driver>--</strong>
+          <small data-pit-best-meta>Sin datos todavía</small>
+        </div>
+      </article>
+
+      <article class="gc-pitwall-card gc-pitwall-card--bulletin">
+        <div class="gc-pitwall-card__head">
+          <div>
+            <span class="gc-pitwall-kicker">Race bulletin</span>
+            <h2>Última actividad</h2>
+          </div>
+          <span class="gc-pitwall-pill" data-pit-latest-state>Stand by</span>
+        </div>
+
+        <div class="gc-pitwall-latest">
+          <strong data-pit-latest-driver>--</strong>
+          <span data-pit-latest-time>--</span>
+          <small data-pit-latest-meta>Esperando vueltas recientes</small>
+        </div>
+
+        <div class="gc-pitwall-diagnostics">
+          <div><span>Snapshot</span><strong data-pit-snapshot-ok>--</strong></div>
+          <div><span>Leaderboard</span><strong data-pit-leaderboard-count>--</strong></div>
+          <div><span>Recent laps</span><strong data-pit-recent-count>--</strong></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="gc-pitwall-board" aria-labelledby="pitwallTimingTitle">
+      <div class="gc-pitwall-card__head">
+        <div>
+          <span class="gc-pitwall-kicker">Timing sheet</span>
+          <h2 id="pitwallTimingTitle">Leaderboard centralizado</h2>
+        </div>
+        <div class="gc-pitwall-board__actions">
+          <button type="button" class="gc-pitwall-button is-active" data-pit-scope="activeCombo">Combo</button>
+          <button type="button" class="gc-pitwall-button" data-pit-scope="global">Global</button>
+          <button type="button" class="gc-pitwall-button" data-pit-reload>Reload</button>
+        </div>
+      </div>
+
+      <div class="gc-pitwall-table-wrap">
+        <table class="gc-pitwall-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Circuito</th>
+              <th>Tiempo</th>
+              <th>Delta</th>
+              <th>Vmax</th>
+            </tr>
+          </thead>
+          <tbody data-pit-leaderboard>
+            <tr><td colspan="7">Cargando timing sheet...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="gc-pitwall-feed" aria-labelledby="pitwallFeedTitle">
+      <div class="gc-pitwall-card__head">
+        <div>
+          <span class="gc-pitwall-kicker">Race feed</span>
+          <h2 id="pitwallFeedTitle">Vueltas recientes</h2>
+        </div>
+        <span class="gc-pitwall-pill" data-pit-feed-scope>activeCombo</span>
+      </div>
+
+      <div class="gc-pitwall-feed-list" data-pit-feed>
+        <article><strong>Sin datos</strong><span>Esperando respuesta de /api/gc/recent-laps</span></article>
+      </div>
+    </section>
+  </div>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('[data-gc-pitwall]');
+      if (!root) return;
+
+      const $ = (selector) => root.querySelector(selector);
+      const $$ = (selector) => Array.from(root.querySelectorAll(selector));
+
+      const state = {
+        scope: 'activeCombo',
+        snapshot: null,
+        leaderboard: null,
+        recent: null
+      };
+
+      const setText = (selector, value) => {
+        const node = $(selector);
+        if (node) node.textContent = String(value ?? '--');
+      };
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[char]));
+
+      const number = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const formatNumber = (value) => Math.max(0, Math.round(number(value, 0))).toLocaleString('es-ES');
+
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const pick = (source, paths) => {
+        for (const path of paths) {
+          const value = valueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return undefined;
+      };
+
+      const items = (data) => {
+        if (Array.isArray(data)) return data;
+        if (!data || typeof data !== 'object') return [];
+        return data.items || data.data?.items || data.data?.leaderboard || data.leaderboard || data.laps || data.recentLaps || data.hotlaps || [];
+      };
+
+      const payload = (data) => data?.data || data || {};
+
+      const text = (value, fallback = '') => {
+        if (value == null || value === '') return fallback;
+        if (Array.isArray(value)) return value.length ? text(value[0], fallback) : fallback;
+        if (typeof value === 'object') {
+          return text(
+            value.displayName ?? value.visibleName ?? value.cleanName ?? value.display_name ??
+            value.uiName ?? value.uiCarName ?? value.uiTrackName ??
+            value.name ?? value.Name ?? value.driverName ?? value.playerName ?? value.code,
+            fallback
+          );
+        }
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+      };
+
+      const driverName = (row) => text(pick(row, ['driver.displayName', 'driver.visibleName', 'driver.name', 'driverName', 'playerName', 'pilotName', 'name']), 'Piloto');
+      const carName = (row) => text(pick(row, ['car.displayName', 'car.visibleName', 'car.name', 'carName', 'uiCarName']), 'Coche');
+      const trackName = (row) => text(pick(row, ['track.displayName', 'track.visibleName', 'track.name', 'trackName', 'uiTrackName']), 'Circuito');
+
+      const lapMs = (row) => {
+        const raw = pick(row, ['lapTimeMs', 'bestLapMs', 'timeMs', 'LapTime']);
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      };
+
+      const formatMs = (value) => {
+        const ms = number(value, 0);
+        if (!ms) return '--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const millis = Math.floor(ms % 1000);
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+      };
+
+      const lapTime = (row) => text(pick(row, ['lapTimeFormatted', 'lapTimeText', 'bestLapTime', 'bestLap', 'timeFormatted']), '') || formatMs(lapMs(row));
+
+      const speed = (row) => {
+        const raw = pick(row, ['maxSpeedKmh', 'maxSpeed', 'speedKmh', 'MaxSpeed_KMH']);
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '--';
+      };
+
+      const dateMs = (value) => {
+        if (!value) return 0;
+        if (typeof value === 'number') return value > 20000000000 ? value : value * 1000;
+        const parsed = Date.parse(String(value));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const lapDate = (row) => dateMs(pick(row, ['timestampIso', 'dateIso', 'createdAt', 'updatedAt', 'lastSeenAt', 'timestamp']));
+      const dateText = (value) => {
+        const ms = typeof value === 'object' ? lapDate(value) : dateMs(value);
+        if (!ms) return '--';
+        return new Date(ms).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+      };
+
+      async function fetchJson(url) {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 9000);
+        try {
+          const response = await fetch(url, { cache: 'no-store', credentials: 'include', signal: controller.signal });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data) throw new Error(`${url} ${response.status}`);
+          return data;
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      }
+
+      function setPitwallState(label, isOk = true) {
+        setText('[data-pit-state]', label);
+        root.dataset.state = isOk ? 'ok' : 'error';
+      }
+
+      function renderSnapshot(data) {
+        const snap = payload(data);
+        const stats = snap.stats || snap.overview || {};
+        const activeCombo = snap.activeCombo || snap.combo || {};
+        const bestLap = activeCombo.bestLap || snap.bestLap || {};
+        const latestLap = activeCombo.latestLap || snap.latestLap || {};
+        const warnings = snap.warnings || data?.warnings || data?.meta?.warnings || [];
+
+        setText('[data-pit-source]', data?.source || snap.source || data?.meta?.source || 'GC Data Core');
+        setText('[data-pit-source-state]', data?.mode || snap.mode || data?.meta?.source || 'central');
+        setText('[data-pit-generated]', dateText(data?.generatedAt || snap.generatedAt || data?.meta?.generatedAt || new Date().toISOString()));
+        setText('[data-pit-warnings]', warnings.length ? String(warnings.length) : '0');
+        setText('[data-pit-snapshot-ok]', data?.ok ? 'OK' : 'Error');
+
+        setText('[data-pit-total-laps]', formatNumber(pick(stats, ['totalLaps', 'laps', 'lapCount'])));
+        setText('[data-pit-valid-laps]', formatNumber(pick(stats, ['validLaps', 'cleanLaps'])));
+        setText('[data-pit-drivers]', formatNumber(pick(stats, ['driversCount', 'pilotsCount', 'totalDrivers'])));
+        setText('[data-pit-combos]', formatNumber(pick(stats, ['combosCount', 'totalCombos', 'activeCombos'])));
+
+        const comboTrack = text(pick(activeCombo, ['track.displayName', 'track.visibleName', 'track.name', 'trackName']), 'Combo no detectado');
+        const comboCars = pick(activeCombo, ['cars', 'carList', 'availableCars']) || [];
+        const comboUrl = activeCombo.url || (pick(activeCombo, ['comboId', 'canonicalComboId', 'id']) ? `/combos/${encodeURIComponent(pick(activeCombo, ['comboId', 'canonicalComboId', 'id']))}` : '/combos');
+
+        setText('[data-pit-combo-track]', comboTrack);
+        setText('[data-pit-combo-laps]', formatNumber(pick(activeCombo, ['totalLaps', 'stats.totalLaps', 'laps'])));
+        setText('[data-pit-combo-drivers]', formatNumber(pick(activeCombo, ['driversCount', 'stats.driversCount', 'pilotsCount'])));
+        setText('[data-pit-combo-best]', lapTime(bestLap) || text(pick(activeCombo, ['bestLapTime', 'bestTime']), '--'));
+        setText('[data-pit-best-driver]', driverName(bestLap));
+        setText('[data-pit-best-meta]', [carName(bestLap), comboTrack, lapTime(bestLap)].filter(Boolean).join(' · ') || 'Sin referencia limpia');
+        setText('[data-pit-latest-driver]', driverName(latestLap));
+        setText('[data-pit-latest-time]', lapTime(latestLap));
+        setText('[data-pit-latest-meta]', [carName(latestLap), trackName(latestLap), dateText(latestLap)].filter(Boolean).join(' · '));
+        setText('[data-pit-latest-state]', latestLap && Object.keys(latestLap).length ? 'Live feed' : 'Sin feed');
+
+        const link = $('[data-pit-combo-link]');
+        if (link) link.href = comboUrl;
+
+        const carsNode = $('[data-pit-combo-cars]');
+        if (carsNode) {
+          const list = Array.isArray(comboCars) ? comboCars : [];
+          carsNode.innerHTML = list.length
+            ? list.slice(0, 10).map((car) => `<span>${escapeHtml(text(car, 'Coche'))}</span>`).join('')
+            : '<span>Coches por confirmar</span>';
+        }
+      }
+
+      function renderLeaderboard(data) {
+        const rows = items(data);
+        const tbody = $('[data-pit-leaderboard]');
+        setText('[data-pit-leaderboard-count]', String(rows.length));
+
+        if (!tbody) return;
+        const best = rows.map(lapMs).filter((value) => Number.isFinite(value)).sort((a, b) => a - b)[0] || null;
+
+        tbody.innerHTML = rows.length
+          ? rows.slice(0, 20).map((row, index) => {
+              const ms = lapMs(row);
+              const delta = best && ms ? `+${((ms - best) / 1000).toFixed(3)}` : '--';
+              return `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td><strong>${escapeHtml(driverName(row))}</strong></td>
+                  <td>${escapeHtml(carName(row))}</td>
+                  <td>${escapeHtml(trackName(row))}</td>
+                  <td><strong>${escapeHtml(lapTime(row))}</strong></td>
+                  <td>${escapeHtml(index === 0 ? '+0.000' : delta)}</td>
+                  <td>${escapeHtml(speed(row))}</td>
+                </tr>
+              `;
+            }).join('')
+          : '<tr><td colspan="7">Sin datos de leaderboard centralizado.</td></tr>';
+      }
+
+      function renderRecent(data) {
+        const rows = items(data);
+        const feed = $('[data-pit-feed]');
+        setText('[data-pit-recent-count]', String(rows.length));
+        setText('[data-pit-feed-scope]', state.scope);
+
+        if (!feed) return;
+        feed.innerHTML = rows.length
+          ? rows.slice(0, 10).map((row) => `
+            <article>
+              <strong>${escapeHtml(driverName(row))}</strong>
+              <span>${escapeHtml(lapTime(row))} · ${escapeHtml(carName(row))} · ${escapeHtml(trackName(row))}</span>
+              <small>${escapeHtml(dateText(row))}</small>
+            </article>
+          `).join('')
+          : '<article><strong>Sin datos</strong><span>No hay vueltas recientes para este scope.</span></article>';
+      }
+
+      async function loadAll() {
+        setPitwallState('Loading', true);
+
+        try {
+          const [snapshot, leaderboard, recent] = await Promise.all([
+            fetchJson(`/api/gc/snapshot?scope=${encodeURIComponent(state.scope)}&limit=12`),
+            fetchJson(`/api/gc/leaderboard?scope=${encodeURIComponent(state.scope)}&limit=20`),
+            fetchJson(`/api/gc/recent-laps?scope=${encodeURIComponent(state.scope)}&limit=10`)
+          ]);
+
+          state.snapshot = snapshot;
+          state.leaderboard = leaderboard;
+          state.recent = recent;
+
+          renderSnapshot(snapshot);
+          renderLeaderboard(leaderboard);
+          renderRecent(recent);
+          setPitwallState('Live', true);
+        } catch (error) {
+          console.warn('[GC Pitwall Preview] Data core error:', error);
+          setPitwallState('Core missing', false);
+          setText('[data-pit-source-state]', 'error');
+          setText('[data-pit-warnings]', '1');
+          setText('[data-pit-snapshot-ok]', 'Error');
+
+          const tbody = $('[data-pit-leaderboard]');
+          if (tbody) tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar /api/gc/*. Aplica primero Pack 1 o revisa el build.</td></tr>';
+
+          const feed = $('[data-pit-feed]');
+          if (feed) feed.innerHTML = '<article><strong>GC Data Core no responde</strong><span>Revisa /api/gc/snapshot en el navegador.</span></article>';
+        }
+      }
+
+      $$('[data-pit-scope]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.scope = button.dataset.pitScope || 'activeCombo';
+          $$('[data-pit-scope]').forEach((item) => item.classList.toggle('is-active', item === button));
+          loadAll();
+        });
+      });
+
+      $('[data-pit-reload]')?.addEventListener('click', loadAll);
+
+      loadAll();
+    })();
+  </script>
+</AppLayout>

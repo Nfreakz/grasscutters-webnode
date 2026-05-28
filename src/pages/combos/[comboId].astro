@@ -810,9 +810,11 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 /* GC_COMBO_DETAIL_VISUAL_POLISH_V55_END */
 
   </style>
+    <script is:inline src="/js/gc-track-image.js"></script>
+  
+  
 
-  <script is:inline src="/js/gc-track-images.js"></script>
-  <script>
+<script>
     const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
     const fmtNumber = (value) => Math.max(0, Math.round(Number(value) || 0)).toLocaleString('es-ES');
@@ -917,34 +919,92 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       return '';
     }
 
-    function renderTrackImage(trackName) {
+    async function renderTrackImage(trackName) {
       const clean = cleanTrackText(trackName);
-      const candidates = window.GCTrackImages?.candidates
-        ? window.GCTrackImages.candidates(clean).filter((url) => !url.includes('object_object'))
-        : [`/images/tracks/${clean.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.webp`, `/images/tracks/${clean.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.jpg`];
 
-      if (!clean || !candidates.length || !els.trackImage || !els.trackFigure) {
-        if (els.trackFigure) els.trackFigure.hidden = true;
+      if (!els.trackImage || !els.trackFigure) return;
+
+      if (!clean) {
+        els.trackFigure.hidden = true;
         return;
       }
 
       els.trackFigure.hidden = false;
       els.trackImage.style.display = '';
       els.trackImage.alt = clean;
-      els.trackImage.dataset.fallbacks = candidates.slice(1).join('|');
-      els.trackImage.dataset.fallbackIndex = '0';
-      els.trackImage.onerror = function () {
-        const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
-        const index = Number(this.dataset.fallbackIndex || 0);
-        if (list[index]) {
-          this.dataset.fallbackIndex = String(index + 1);
-          this.src = list[index];
-          return;
-        }
-        this.closest('figure')?.setAttribute('hidden', '');
-        this.style.display = 'none';
+      els.trackImage.dataset.trackName = clean;
+      els.trackImage.dataset.gcTrackName = clean;
+
+      const localPlaceholder = () => {
+        const safe = clean.replace(/[<>&'"]/g, '');
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">' +
+          '<rect width="1200" height="675" fill="#071506"/>' +
+          '<circle cx="930" cy="90" r="260" fill="#89ff35" opacity=".12"/>' +
+          '<path d="M-40 535 C 180 420, 300 420, 500 530 S 830 680, 1240 430" fill="none" stroke="#b4ff73" stroke-width="3" opacity=".22"/>' +
+          '<text x="64" y="120" fill="#9dff47" font-size="42" font-family="Arial" font-weight="800">GrassCutters</text>' +
+          '<text x="64" y="185" fill="#f1ffe8" font-size="38" font-family="Arial" font-weight="800">' + safe + '</text>' +
+          '<text x="64" y="235" fill="#afc6a2" font-size="24" font-family="Arial">Track image pending</text>' +
+          '</svg>'
+        );
       };
-      els.trackImage.src = candidates[0];
+
+      try {
+        await window.GCTrackImages?.load?.();
+
+        let src = null;
+        let sourceType = 'placeholder';
+        let matchedFile = null;
+        let matchedScore = null;
+
+        const match = window.GCTrackImages?.bestAsset?.(clean);
+        if (match?.url) {
+          src = match.url;
+          sourceType = 'fuzzy';
+          matchedFile = match.file || null;
+          matchedScore = match.score || null;
+        }
+
+        if (!src && window.GCTrackImages?.candidates) {
+          const candidates = window.GCTrackImages.candidates(clean).filter(Boolean);
+          src = candidates[0] || null;
+          sourceType = src && !src.startsWith('data:') ? 'candidate' : 'placeholder';
+        }
+
+        if (!src && window.GCTrackImages?.placeholderUrl) {
+          src = window.GCTrackImages.placeholderUrl(clean);
+          sourceType = 'placeholder';
+        }
+
+        if (!src) {
+          src = localPlaceholder();
+          sourceType = 'local-placeholder';
+        }
+
+        els.trackImage.onerror = function () {
+          this.onerror = null;
+          this.src = window.GCTrackImages?.placeholderUrl?.(clean) || localPlaceholder();
+          this.dataset.gcTrackImageSource = 'placeholder-after-error';
+        };
+
+        els.trackImage.src = src;
+        els.trackImage.dataset.gcTrackImageSource = sourceType;
+        els.trackImage.dataset.gcTrackImageFile = matchedFile || '';
+        els.trackImage.dataset.gcTrackImageScore = matchedScore ? String(matchedScore) : '';
+
+        console.info('[GC combo detail image hardened v1]', {
+          trackName: clean,
+          source: sourceType,
+          file: matchedFile,
+          score: matchedScore,
+          src
+        });
+      } catch (error) {
+        console.warn('[GC combo detail image hardened v1] fallback', error);
+        els.trackImage.onerror = null;
+        els.trackImage.src = localPlaceholder();
+        els.trackImage.dataset.gcTrackImageSource = 'local-placeholder-error';
+      }
     }
 
     function cleanCarName(car) {
@@ -972,9 +1032,19 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       const comboId = pathComboId();
 
       try {
-        const response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
-        const data = await response.json();
+        let response = await fetch(`/api/gc/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
+        let data = await response.json();
+
+        if (!data.ok || !data.item) {
+          console.warn('[GC combo detail Data Core primary] fallback legacy', data?.message || data);
+          response = await fetch(`/api/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
+          data = await response.json();
+        }
+
         if (!data.ok || !data.item) throw new Error(data.message || 'Combo no encontrado');
+
+        document.documentElement.dataset.gcComboDetailDataCore = data.source === 'gc-data-core' ? 'primary' : 'legacy-fallback';
+        document.documentElement.dataset.gcComboDetailDataCoreVersion = 'v1';
 
         const item = data.item;
         const summary = item.summary || {};
@@ -994,9 +1064,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
         els.title.textContent = trackName;
         els.subtitle.textContent = `${cars.length || summary.usedCarsCount || 0} coches - ${summary.totalLaps || 0} vueltas - mejor referencia: ${fastestDriver || 'sin piloto'}${fastestCar ? ` - ${fastestCar}` : ''} - ${fastestTime}`;
-        renderTrackImage(trackName);
-
-        els.key.textContent = memberCount > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
+        await renderTrackImage(trackName);
+        window.setTimeout(() => renderTrackImage(trackName), 450);
+        window.setTimeout(() => renderTrackImage(trackName), 1500);els.key.textContent = memberCount > 1 ? `Familia ${item.comboId}` : `Combo ${item.comboId}`;
         els.status.textContent = memberCount > 1 ? 'Agrupado' : 'Activo';
         if (els.quickBest) els.quickBest.textContent = `${fastestDriver || 'Sin piloto'} - ${fastestTime}`;
         if (els.quickBestMeta) els.quickBestMeta.textContent = fastestCar || 'Coche sin identificar';
@@ -1026,6 +1096,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           return `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(row.carName || row.car?.name || '-')}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
         }).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
 
+        console.info('[GC combo detail Data Core primary] loaded', { source: data.source || 'legacy', comboId: item.comboId });
+
         console.info('[GC combo detail layout v5.4]', {
           comboId: item.comboId,
           memberCount,
@@ -1047,4 +1119,28 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
     load();
   </script>
+
+  <script is:inline>
+    /* GC_COMBO_DETAIL_IMAGE_AFTER_DATACORE_FIX_V1_MARKER */
+    document.documentElement.dataset.gcComboDetailTrackImage = 'hardened-v1';
+  </script>
+
+
+  <script is:inline>
+    /* GC_COMBO_DETAIL_PRIMARY_CLEAN_RUNTIME_V1_START */
+    (() => {
+      document.documentElement.dataset.gcComboDetailRuntime = 'data-core-primary-clean-v1';
+      window.GCComboDetailRuntimeStatus = () => ({
+        runtime: document.documentElement.dataset.gcComboDetailRuntime,
+        dataCore: document.documentElement.dataset.gcComboDetailDataCore || null,
+        dataCoreVersion: document.documentElement.dataset.gcComboDetailDataCoreVersion || null,
+        trackImage: document.documentElement.dataset.gcComboDetailTrackImage || null,
+        trackImages: window.GCTrackImages?.version || null,
+        legacyNetworkCut: Boolean(window.GCComboDetailLegacyNetworkCut)
+      });
+      console.info('[GC /combos/:id Runtime] Data Core primary clean v1');
+    })();
+    /* GC_COMBO_DETAIL_PRIMARY_CLEAN_RUNTIME_V1_END */
+  </script>
+
 </AppLayout>

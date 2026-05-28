@@ -1,0 +1,786 @@
+---
+/* GC_ADMIN_ENDPOINT_LAB_V1
+ * Internal admin lab to test public/admin endpoints and detect data consistency problems.
+ */
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Admin endpoints | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-endpoint-lab" data-endpoint-lab>
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Endpoint Lab.</h1>
+        <p class="gc-subtitle">
+          Banco de pruebas para Data Core, Championship Core, Archive Core, Identity Core y endpoints legacy.
+          Sirve para detectar descuadres antes de tocar UI o publicar cambios.
+        </p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Lab status</span>
+          <strong id="endpointLabState">Comprobando</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Total</span><strong id="endpointTotal">0</strong></div>
+          <div class="gc-status-row"><span>OK</span><strong id="endpointOk">0</strong></div>
+          <div class="gc-status-row"><span>Warnings</span><strong id="endpointWarnings">0</strong></div>
+          <div class="gc-status-row"><span>Fails</span><strong id="endpointFails">0</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-section-head">
+        <h2>Acceso restringido</h2>
+        <p>Solo administradores.</p>
+      </div>
+      <div class="gc-slab">
+        <p>Inicia sesión con una cuenta administradora para usar el laboratorio de endpoints.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+          <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminContent" hidden>
+      <section class="gc-section gc-endpoint-toolbar">
+        <div class="gc-section-head">
+          <h2>Pruebas rápidas</h2>
+          <p>Ejecuta todos los endpoints o filtra por core. Todo se lanza desde el navegador con tu sesión admin.</p>
+        </div>
+
+        <div class="gc-endpoint-controls">
+          <label>
+            <span>PlayerId para perfil</span>
+            <input class="gc-input" id="endpointPlayerId" type="number" min="1" value="1" />
+          </label>
+
+          <label>
+            <span>Filtro</span>
+            <input class="gc-input" id="endpointSearch" type="search" placeholder="Buscar endpoint, core o texto..." />
+          </label>
+
+          <label>
+            <span>Grupo</span>
+            <select class="gc-input" id="endpointGroup">
+              <option value="all">Todos</option>
+              <option value="race">Race Data Core</option>
+              <option value="identity">Identity/Profile</option>
+              <option value="championship">Championship</option>
+              <option value="archive">Archive</option>
+              <option value="calendar">Calendar</option>
+              <option value="legacy">Legacy compare</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="gc-actions">
+          <button class="gc-btn gc-btn--primary" id="runAllEndpoints" type="button">Ejecutar visibles</button>
+          <button class="gc-btn" id="runCriticalEndpoints" type="button">Ejecutar críticos</button>
+          <button class="gc-btn" id="clearEndpointResults" type="button">Limpiar</button>
+          <button class="gc-btn" id="copyEndpointReport" type="button">Copiar informe</button>
+        </div>
+
+        <p class="gc-message" id="endpointMessage">Preparado.</p>
+      </section>
+
+      <section class="gc-grid-2">
+        <article class="gc-section">
+          <div class="gc-section-head">
+            <h2>Checks de coherencia</h2>
+            <p>Lectura cruzada entre endpoints para detectar datos que no cuadran.</p>
+          </div>
+          <div class="gc-slab-list" id="consistencyRows">
+            <div><span>Estado</span><strong>Sin ejecutar</strong></div>
+          </div>
+        </article>
+
+        <article class="gc-section">
+          <div class="gc-section-head">
+            <h2>Detector de nombres</h2>
+            <p>Busca valores tipo “desconocido” en las respuestas.</p>
+          </div>
+          <div class="gc-slab-list" id="nameRows">
+            <div><span>Estado</span><strong>Sin ejecutar</strong></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="gc-section">
+        <div class="gc-section-head">
+          <h2>Endpoints</h2>
+          <p id="endpointVisibleMeta">0 endpoints visibles.</p>
+        </div>
+        <div class="gc-endpoint-list" id="endpointList"></div>
+      </section>
+
+      <section class="gc-section">
+        <div class="gc-section-head">
+          <h2>Informe JSON</h2>
+          <p>Resumen copiable para pegar en el chat o guardar en un MD.</p>
+        </div>
+        <pre class="gc-endpoint-report" id="endpointReport">{}</pre>
+      </section>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-endpoint-lab .gc-endpoint-controls{
+      display:grid;
+      grid-template-columns: minmax(120px,.45fr) minmax(220px,1fr) minmax(180px,.55fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .gc-endpoint-lab label{
+      display:grid;
+      gap:6px;
+      color:var(--soft);
+      font-size:.76rem;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    .gc-endpoint-list{
+      display:grid;
+      gap:10px;
+    }
+    .gc-endpoint-card{
+      display:grid;
+      gap:12px;
+      padding:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.018);
+    }
+    .gc-endpoint-card[data-state="ok"]{border-color:rgba(122,255,144,.32)}
+    .gc-endpoint-card[data-state="warn"]{border-color:rgba(255,207,90,.36)}
+    .gc-endpoint-card[data-state="fail"]{border-color:rgba(255,94,94,.42)}
+    .gc-endpoint-card__head{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:10px;
+      align-items:start;
+    }
+    .gc-endpoint-card h3{
+      margin:0;
+      color:var(--text);
+      font-size:1rem;
+      letter-spacing:-.02em;
+    }
+    .gc-endpoint-card code{
+      display:block;
+      margin-top:5px;
+      color:var(--soft);
+      white-space:normal;
+      word-break:break-word;
+      font-size:.78rem;
+    }
+    .gc-endpoint-badges{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .gc-endpoint-badge{
+      display:inline-flex;
+      align-items:center;
+      min-height:24px;
+      padding:4px 8px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      color:var(--soft);
+      font-size:.68rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      background:rgba(255,255,255,.025);
+    }
+    .gc-endpoint-badge--ok{border-color:rgba(122,255,144,.42);color:var(--accent)}
+    .gc-endpoint-badge--warn{border-color:rgba(255,207,90,.45);color:#ffcf5a}
+    .gc-endpoint-badge--fail{border-color:rgba(255,94,94,.45);color:#ff6b6b}
+    .gc-endpoint-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .gc-endpoint-result{
+      display:grid;
+      gap:8px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.18);
+      color:var(--soft);
+      font-size:.82rem;
+      line-height:1.45;
+      overflow:auto;
+      max-height:260px;
+    }
+    .gc-endpoint-result pre,
+    .gc-endpoint-report{
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:.76rem;
+      line-height:1.45;
+      color:var(--soft);
+    }
+    .gc-endpoint-report{
+      max-height:520px;
+      overflow:auto;
+      padding:14px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.22);
+    }
+    .gc-endpoint-issues{
+      margin:0;
+      padding-left:18px;
+      color:var(--soft);
+    }
+    .gc-endpoint-issues li + li{margin-top:4px}
+    @media(max-width:760px){
+      .gc-endpoint-lab .gc-endpoint-controls,
+      .gc-endpoint-card__head{
+        grid-template-columns:1fr;
+      }
+      .gc-endpoint-badges{justify-content:flex-start}
+    }
+  </style>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        gate: $('adminGate'),
+        content: $('adminContent'),
+        retry: $('retryAdmin'),
+        state: $('endpointLabState'),
+        total: $('endpointTotal'),
+        ok: $('endpointOk'),
+        warnings: $('endpointWarnings'),
+        fails: $('endpointFails'),
+        playerId: $('endpointPlayerId'),
+        search: $('endpointSearch'),
+        group: $('endpointGroup'),
+        runAll: $('runAllEndpoints'),
+        runCritical: $('runCriticalEndpoints'),
+        clear: $('clearEndpointResults'),
+        copy: $('copyEndpointReport'),
+        message: $('endpointMessage'),
+        consistency: $('consistencyRows'),
+        names: $('nameRows'),
+        list: $('endpointList'),
+        visibleMeta: $('endpointVisibleMeta'),
+        report: $('endpointReport')
+      };
+
+      const state = {
+        results: new Map(),
+        startedAt: null,
+        lastRunAt: null
+      };
+
+      const endpoints = [
+        { id:'admin-status', group:'admin', critical:true, title:'Admin status', url:'/api/admin/status', expect:'admin' },
+
+        { id:'race-diagnostics', group:'race', critical:true, title:'Race diagnostics', url:'/api/gc/diagnostics', expect:'raceDiagnostics' },
+        { id:'race-cache', group:'race', critical:false, title:'Race cache status', url:'/api/gc/cache/status', expect:'genericOk' },
+        { id:'display-names', group:'race', critical:true, title:'Display names status', url:'/api/gc/display-names/status', expect:'displayNames' },
+        { id:'names-preview', group:'race', critical:true, title:'Names pipeline preview', url:'/api/gc/names/preview?limit=30', expect:'namesPreview' },
+        { id:'snapshot', group:'race', critical:true, title:'Race snapshot', url:'/api/gc/snapshot?scope=activeCombo&limit=12', expect:'snapshot' },
+        { id:'active-combo', group:'race', critical:true, title:'Active combo', url:'/api/gc/active-combo', expect:'genericOk' },
+        { id:'leaderboard', group:'race', critical:true, title:'Leaderboard active combo', url:'/api/gc/leaderboard?scope=activeCombo&limit=30', expect:'items' },
+        { id:'recent-laps', group:'race', critical:true, title:'Recent laps active combo', url:'/api/gc/recent-laps?scope=activeCombo&limit=30', expect:'items' },
+        { id:'combos-core', group:'race', critical:true, title:'Combos core', url:'/api/gc/combos?limit=100&sort=recent', expect:'combos' },
+
+        { id:'identity-status', group:'identity', critical:true, title:'Identity status', url:'/api/gc/identity/status', expect:'identityStatus' },
+        { id:'identity-me', group:'identity', critical:false, title:'Identity me', url:'/api/gc/identity/me', expect:'genericOk' },
+        { id:'pilot-profile', group:'identity', critical:true, title:'Pilot profile by PlayerId', url:() => `/api/gc/pilots/${encodeURIComponent(String(els.playerId.value || 1))}/profile`, expect:'pilotProfile' },
+
+        { id:'championship-snapshot', group:'championship', critical:false, title:'Championship snapshot', url:'/api/gc/championship/snapshot', expect:'genericOk' },
+        { id:'championship-upcoming', group:'championship', critical:false, title:'Championship upcoming events', url:'/api/gc/championship/events?scope=upcoming', expect:'itemsMaybeEmpty' },
+
+        { id:'archive-snapshot', group:'archive', critical:false, title:'Archive snapshot', url:'/api/gc/archive/snapshot', expect:'genericOk' },
+        { id:'archive-latest', group:'archive', critical:false, title:'Archive latest', url:'/api/gc/archive/latest?limit=6', expect:'itemsMaybeEmpty' },
+
+        { id:'calendar-events', group:'calendar', critical:false, title:'Calendar events public', url:'/api/calendar-events', expect:'maybeOk' },
+
+        { id:'legacy-hotlaps', group:'legacy', critical:false, title:'Legacy hotlaps', url:'/api/hotlaps?limit=50', expect:'items' },
+        { id:'legacy-laps', group:'legacy', critical:false, title:'Legacy laps recent', url:'/api/laps?limit=50&sort=recent&valid=all', expect:'items' },
+        { id:'legacy-combos-stats', group:'legacy', critical:false, title:'Legacy combos stats', url:'/api/combos/stats?limit=50&sort=recent', expect:'items' },
+        { id:'legacy-overview', group:'legacy', critical:false, title:'Legacy stats overview', url:'/api/stats/overview', expect:'maybeOk' }
+      ];
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        "'":'&#39;',
+        '"':'&quot;'
+      }[char]));
+
+      const items = (data) => {
+        if (Array.isArray(data)) return data;
+        if (!data || typeof data !== 'object') return [];
+        return data.items || data.data?.items || data.data?.leaderboard || data.data?.laps || data.leaderboard || data.laps || data.hotlaps || [];
+      };
+
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const number = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      function resolveUrl(endpoint) {
+        return typeof endpoint.url === 'function' ? endpoint.url() : endpoint.url;
+      }
+
+      async function fetchJson(url) {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 12000);
+        const started = performance.now();
+
+        try {
+          const response = await fetch(url, {
+            credentials:'include',
+            cache:'no-store',
+            signal: controller.signal
+          });
+          const text = await response.text();
+          let data = null;
+          try { data = text ? JSON.parse(text) : null; } catch { data = { raw:text }; }
+
+          return {
+            httpOk: response.ok,
+            status: response.status,
+            ms: Math.round(performance.now() - started),
+            data,
+            rawText: text
+          };
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      }
+
+      async function isAdmin() {
+        try {
+          const response = await fetchJson('/api/admin/status');
+          const data = response.data || {};
+          if (response.httpOk && (data.authorized === true || data.ok === true)) return true;
+        } catch {}
+        try {
+          const response = await fetchJson('/api/profile');
+          const data = response.data || {};
+          if (data.user?.role === 'admin' || data.currentUser?.role === 'admin') return true;
+        } catch {}
+        return false;
+      }
+
+      function scanUnknownNames(data) {
+        const matches = [];
+        const suspicious = [
+          'piloto desconocido',
+          'coche desconocido',
+          'circuito desconocido',
+          'unknown driver',
+          'unknown car',
+          'unknown track'
+        ];
+
+        function walk(value, path = '$') {
+          if (matches.length > 60) return;
+          if (typeof value === 'string') {
+            const lower = value.toLowerCase();
+            if (suspicious.some((term) => lower.includes(term))) {
+              matches.push({ path, value });
+            }
+            return;
+          }
+          if (Array.isArray(value)) {
+            value.slice(0, 200).forEach((item, index) => walk(item, `${path}[${index}]`));
+            return;
+          }
+          if (value && typeof value === 'object') {
+            Object.entries(value).slice(0, 500).forEach(([key, item]) => walk(item, `${path}.${key}`));
+          }
+        }
+
+        walk(data);
+        return matches;
+      }
+
+      function collectWarnings(data) {
+        const warnings = [];
+        if (!data || typeof data !== 'object') return warnings;
+        if (Array.isArray(data.warnings)) warnings.push(...data.warnings.map(String));
+        if (Array.isArray(data.meta?.warnings)) warnings.push(...data.meta.warnings.map(String));
+        if (data.health && !['ok', 'live'].includes(String(data.health))) warnings.push(`health=${data.health}`);
+        if (data.ok === false) warnings.push(data.message || 'ok=false');
+        return warnings;
+      }
+
+      function validate(endpoint, response) {
+        const issues = [];
+        const warns = [];
+        const data = response.data;
+
+        if (!response.httpOk) issues.push(`HTTP ${response.status}`);
+        if (!data) issues.push('Respuesta vacía');
+        if (data?.ok === false) issues.push(data.message || 'ok=false');
+
+        warns.push(...collectWarnings(data));
+
+        const unknowns = scanUnknownNames(data);
+        if (unknowns.length) {
+          const asIssue = endpoint.id === 'pilot-profile' || endpoint.id === 'names-preview';
+          (asIssue ? issues : warns).push(`${unknowns.length} nombres desconocidos detectados`);
+        }
+
+        if (endpoint.expect === 'admin') {
+          if (!(data?.authorized === true || data?.ok === true)) issues.push('Admin no autorizado');
+        }
+
+        if (endpoint.expect === 'raceDiagnostics') {
+          if (data?.health !== 'ok' && data?.health !== 'ok_with_warnings') issues.push(`Race health=${data?.health}`);
+          if (!data?.stracker?.exists) issues.push('Stracker no existe');
+          if (!data?.stracker?.validSQLite) issues.push('Stracker SQLite no válido');
+          if (!data?.displayNames?.loaded) issues.push('Display names no cargados');
+          if (!data?.raceData?.lapsCount) issues.push('Sin vueltas Race Data');
+        }
+
+        if (endpoint.expect === 'displayNames') {
+          if (!data?.entries && !data?.displayNames && !data?.cache) warns.push('No se detecta resumen claro de display names');
+        }
+
+        if (endpoint.expect === 'namesPreview') {
+          const rows = items(data);
+          if (!rows.length) warns.push('Preview sin items');
+        }
+
+        if (endpoint.expect === 'snapshot') {
+          if (!data?.data && !data?.stats && !data?.activeCombo) warns.push('Snapshot sin data/stats/activeCombo reconocibles');
+        }
+
+        if (endpoint.expect === 'items') {
+          if (!items(data).length) warns.push('Sin items');
+        }
+
+        if (endpoint.expect === 'combos') {
+          if (!items(data).length) issues.push('Sin combos');
+          if (!number(data?.totalCombos, 0)) warns.push('totalCombos vacío');
+        }
+
+        if (endpoint.expect === 'identityStatus') {
+          if (!data?.users) warns.push('Sin bloque users');
+        }
+
+        if (endpoint.expect === 'pilotProfile') {
+          if (!data?.pilot) issues.push('Sin pilot');
+          if (data?.pilot?.stats?.totalLaps === 0) warns.push('Piloto sin vueltas');
+          if (!data?.pilot?.driverName) issues.push('Sin driverName');
+        }
+
+        const state = issues.length ? 'fail' : warns.length ? 'warn' : 'ok';
+
+        return { state, issues, warns, unknowns };
+      }
+
+      function filteredEndpoints() {
+        const q = String(els.search.value || '').toLowerCase().trim();
+        const group = els.group.value || 'all';
+
+        return endpoints.filter((endpoint) => {
+          if (group !== 'all' && endpoint.group !== group) return false;
+          if (!q) return true;
+          const haystack = `${endpoint.id} ${endpoint.group} ${endpoint.title} ${resolveUrl(endpoint)}`.toLowerCase();
+          return haystack.includes(q);
+        });
+      }
+
+      function renderList() {
+        const visible = filteredEndpoints();
+        els.visibleMeta.textContent = `${visible.length} endpoints visibles de ${endpoints.length}.`;
+
+        els.list.innerHTML = visible.map((endpoint) => {
+          const result = state.results.get(endpoint.id);
+          const status = result?.validation?.state || 'idle';
+          const badgeClass = status === 'ok' ? 'gc-endpoint-badge--ok' : status === 'warn' ? 'gc-endpoint-badge--warn' : status === 'fail' ? 'gc-endpoint-badge--fail' : '';
+          const badges = [
+            `<span class="gc-endpoint-badge">${esc(endpoint.group)}</span>`,
+            endpoint.critical ? '<span class="gc-endpoint-badge gc-endpoint-badge--warn">critical</span>' : '',
+            `<span class="gc-endpoint-badge ${badgeClass}">${esc(status)}</span>`,
+            result ? `<span class="gc-endpoint-badge">${esc(result.ms)}ms</span>` : ''
+          ].filter(Boolean).join('');
+
+          const url = resolveUrl(endpoint);
+          const issues = result?.validation?.issues || [];
+          const warns = result?.validation?.warns || [];
+          const unknowns = result?.validation?.unknowns || [];
+          const issueList = [...issues.map((item) => `❌ ${item}`), ...warns.map((item) => `⚠ ${item}`)]
+            .map((item) => `<li>${esc(item)}</li>`)
+            .join('');
+
+          const preview = result
+            ? JSON.stringify(result.data, null, 2).slice(0, 5000)
+            : 'Sin ejecutar';
+
+          return `
+            <article class="gc-endpoint-card" data-id="${esc(endpoint.id)}" data-state="${status}">
+              <div class="gc-endpoint-card__head">
+                <div>
+                  <h3>${esc(endpoint.title)}</h3>
+                  <code>${esc(url)}</code>
+                </div>
+                <div class="gc-endpoint-badges">${badges}</div>
+              </div>
+              <div class="gc-endpoint-actions">
+                <button class="gc-btn gc-btn--primary" type="button" data-run-endpoint="${esc(endpoint.id)}">Probar</button>
+                <button class="gc-btn" type="button" data-copy-endpoint="${esc(endpoint.id)}">Copiar JSON</button>
+                <a class="gc-btn" href="${esc(url)}" target="_blank" rel="noreferrer">Abrir</a>
+              </div>
+              <div class="gc-endpoint-result">
+                ${issueList ? `<ul class="gc-endpoint-issues">${issueList}</ul>` : '<p>Sin incidencias registradas.</p>'}
+                ${unknowns.length ? `<p>${unknowns.slice(0, 5).map((item) => `${esc(item.path)} = ${esc(item.value)}`).join('<br>')}</p>` : ''}
+                <pre>${esc(preview)}</pre>
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        els.list.querySelectorAll('[data-run-endpoint]').forEach((button) => {
+          button.addEventListener('click', () => runEndpoint(button.dataset.runEndpoint));
+        });
+        els.list.querySelectorAll('[data-copy-endpoint]').forEach((button) => {
+          button.addEventListener('click', () => copyEndpoint(button.dataset.copyEndpoint));
+        });
+
+        updateSummary();
+      }
+
+      function updateSummary() {
+        const results = [...state.results.values()];
+        const ok = results.filter((result) => result.validation?.state === 'ok').length;
+        const warn = results.filter((result) => result.validation?.state === 'warn').length;
+        const fail = results.filter((result) => result.validation?.state === 'fail').length;
+
+        els.total.textContent = String(results.length);
+        els.ok.textContent = String(ok);
+        els.warnings.textContent = String(warn);
+        els.fails.textContent = String(fail);
+        els.state.textContent = fail ? 'Fail' : warn ? 'Warnings' : results.length ? 'OK' : 'Ready';
+
+        renderConsistency();
+        renderNameDetector();
+        renderReport();
+      }
+
+      function getResult(id) {
+        return state.results.get(id)?.data || null;
+      }
+
+      function renderConsistency() {
+        const rows = [];
+        const diag = getResult('race-diagnostics');
+        const combos = getResult('combos-core');
+        const snapshot = getResult('snapshot');
+        const leaderboard = getResult('leaderboard');
+        const recent = getResult('recent-laps');
+        const legacyCombos = getResult('legacy-combos-stats');
+
+        if (diag && combos) {
+          const a = number(diag?.raceData?.combosCount, NaN);
+          const b = number(combos?.totalCombos, NaN);
+          rows.push(['Combos diagnostics vs core', Number.isFinite(a) && Number.isFinite(b) && a === b ? 'OK' : `${a} / ${b}`]);
+        }
+
+        if (diag && combos) {
+          const a = number(diag?.raceData?.lapsCount, NaN);
+          const b = number(combos?.totalLaps, NaN);
+          rows.push(['Vueltas diagnostics vs combos', Number.isFinite(a) && Number.isFinite(b) && a === b ? 'OK' : `${a} / ${b}`]);
+        }
+
+        if (leaderboard) rows.push(['Leaderboard items', String(items(leaderboard).length)]);
+        if (recent) rows.push(['Recent laps items', String(items(recent).length)]);
+
+        if (combos && legacyCombos) {
+          const a = number(combos?.totalCombos, NaN);
+          const b = number(legacyCombos?.totalCombos ?? legacyCombos?.items?.length, NaN);
+          rows.push(['Combos core vs legacy', Number.isFinite(a) && Number.isFinite(b) ? `${a} / ${b}` : 'Pendiente']);
+        }
+
+        if (snapshot) {
+          const active = snapshot?.data?.activeCombo || snapshot?.activeCombo || snapshot?.combo;
+          rows.push(['Snapshot active combo', active ? 'Detectado' : 'No detectado']);
+        }
+
+        els.consistency.innerHTML = rows.length
+          ? rows.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')
+          : '<div><span>Estado</span><strong>Ejecuta endpoints críticos</strong></div>';
+      }
+
+      function renderNameDetector() {
+        const all = [];
+        for (const [id, result] of state.results.entries()) {
+          const unknowns = result.validation?.unknowns || [];
+          if (unknowns.length) all.push({ id, count: unknowns.length, samples: unknowns.slice(0, 3) });
+        }
+
+        els.names.innerHTML = all.length
+          ? all.map((entry) => `
+              <div>
+                <span>${esc(entry.id)}</span>
+                <strong>${entry.count} casos</strong>
+              </div>
+            `).join('')
+          : '<div><span>Nombres desconocidos</span><strong>No detectados</strong></div>';
+      }
+
+      function renderReport() {
+        const payload = {
+          generatedAt: new Date().toISOString(),
+          page: '/admin/endpoints',
+          playerId: els.playerId.value || null,
+          summary: {
+            total: state.results.size,
+            ok: [...state.results.values()].filter((result) => result.validation?.state === 'ok').length,
+            warnings: [...state.results.values()].filter((result) => result.validation?.state === 'warn').length,
+            fails: [...state.results.values()].filter((result) => result.validation?.state === 'fail').length
+          },
+          results: [...state.results.entries()].map(([id, result]) => ({
+            id,
+            url: result.url,
+            status: result.status,
+            ms: result.ms,
+            state: result.validation?.state,
+            issues: result.validation?.issues || [],
+            warnings: result.validation?.warns || [],
+            unknownNames: (result.validation?.unknowns || []).slice(0, 10)
+          }))
+        };
+
+        els.report.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function runEndpoint(id) {
+        const endpoint = endpoints.find((item) => item.id === id);
+        if (!endpoint) return;
+
+        const url = resolveUrl(endpoint);
+        els.message.textContent = `Probando ${endpoint.title}...`;
+
+        try {
+          const response = await fetchJson(url);
+          const validation = validate(endpoint, response);
+
+          state.results.set(endpoint.id, {
+            id: endpoint.id,
+            title: endpoint.title,
+            group: endpoint.group,
+            critical: endpoint.critical,
+            url,
+            status: response.status,
+            httpOk: response.httpOk,
+            ms: response.ms,
+            data: response.data,
+            validation
+          });
+        } catch (error) {
+          state.results.set(endpoint.id, {
+            id: endpoint.id,
+            title: endpoint.title,
+            group: endpoint.group,
+            critical: endpoint.critical,
+            url,
+            status: 0,
+            httpOk: false,
+            ms: 0,
+            data: null,
+            validation: {
+              state: 'fail',
+              issues: [error?.message || 'Fetch failed'],
+              warns: [],
+              unknowns: []
+            }
+          });
+        }
+
+        state.lastRunAt = new Date().toISOString();
+        renderList();
+        els.message.textContent = `Última prueba: ${endpoint.title}`;
+      }
+
+      async function runMany(list) {
+        els.runAll.disabled = true;
+        els.runCritical.disabled = true;
+        els.message.textContent = `Ejecutando ${list.length} endpoints...`;
+
+        for (const endpoint of list) {
+          await runEndpoint(endpoint.id);
+        }
+
+        els.runAll.disabled = false;
+        els.runCritical.disabled = false;
+        els.message.textContent = `Finalizado: ${list.length} endpoints.`;
+      }
+
+      async function copyEndpoint(id) {
+        const result = state.results.get(id);
+        if (!result) return;
+        await navigator.clipboard?.writeText(JSON.stringify(result, null, 2));
+        els.message.textContent = `JSON copiado: ${id}`;
+      }
+
+      async function copyReport() {
+        await navigator.clipboard?.writeText(els.report.textContent || '{}');
+        els.message.textContent = 'Informe copiado.';
+      }
+
+      function clearResults() {
+        state.results.clear();
+        renderList();
+        els.message.textContent = 'Resultados limpiados.';
+      }
+
+      async function init() {
+        els.gate.hidden = false;
+        els.content.hidden = true;
+
+        const admin = await isAdmin();
+        if (!admin) {
+          els.state.textContent = 'Locked';
+          return;
+        }
+
+        els.gate.hidden = true;
+        els.content.hidden = false;
+        els.state.textContent = 'Ready';
+        renderList();
+      }
+
+      els.retry?.addEventListener('click', init);
+      els.search?.addEventListener('input', renderList);
+      els.group?.addEventListener('change', renderList);
+      els.playerId?.addEventListener('change', () => {
+        if (state.results.has('pilot-profile')) state.results.delete('pilot-profile');
+        renderList();
+      });
+
+      els.runAll?.addEventListener('click', () => runMany(filteredEndpoints()));
+      els.runCritical?.addEventListener('click', () => runMany(endpoints.filter((endpoint) => endpoint.critical)));
+      els.clear?.addEventListener('click', clearResults);
+      els.copy?.addEventListener('click', copyReport);
+
+      init();
+    })();
+  </script>
+</AppLayout>
