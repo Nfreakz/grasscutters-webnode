@@ -1,9 +1,75 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+import {
+  archiveItemHref,
+  getArchiveImage,
+  getArchiveStats,
+  getArchiveSummary,
+  normalizeArchiveType as normalizeArchiveTypeRuntime,
+  prettifyArchiveType,
+} from '../lib/archive/archiveRuntime';
 import '../styles/home2.css';
 
 const title = 'Home2 · GrassCutters Racing';
 const description = 'Portada experimental oculta de GrassCutters Racing.';
+
+const archiveStats = await getArchiveStats();
+const home2ArchiveSeed = (archiveStats.items || [])
+  .filter((item) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || '')))
+  .slice(0, 80)
+  .map((item) => ({
+    id: item.id || `${item.tipo}-${item.slug}`,
+    tipo: normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || ''),
+    type: normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || ''),
+    category: item.category || item.tipo || '',
+    slug: item.slug || '',
+    nombre: item.nombre || item.title || '',
+    title: item.title || item.nombre || '',
+    status: item.status || item.estado || 'published',
+    featured: item.featured || item.destacado || item.isFeatured || false,
+    href: archiveItemHref(item),
+    image: getArchiveImage(item),
+    imageUrl: getArchiveImage(item),
+    coverUrl: getArchiveImage(item),
+    summary: getArchiveSummary(item),
+    descripcion_corta: getArchiveSummary(item),
+    description: getArchiveSummary(item),
+    tipoLabel: prettifyArchiveType(item.tipo || item.category || item.type || ''),
+    pais: item.pais || item.país || item.nacionalidad || item.ubicacion || '',
+    periodo: item.periodo || item.epoca || item.años_actividad || item.anos_actividad || item.fecha_apertura || '',
+    tags: item.tags || '',
+    fabricante: item.fabricante || '',
+    modelo: item.modelo || item.modelo_base || '',
+    motor: item.motor || '',
+    disciplina: item.disciplina || '',
+    circuitos_asociados: item.circuitos_asociados || '',
+    coches_asociados: item.coches_asociados || '',
+    pilotos_asociados: item.pilotos_asociados || '',
+    search: [
+      item.nombre,
+      item.title,
+      item.slug,
+      item.tipo,
+      prettifyArchiveType(item.tipo || item.category || item.type || ''),
+      getArchiveSummary(item),
+      item.pais,
+      item.país,
+      item.nacionalidad,
+      item.ubicacion,
+      item.periodo,
+      item.epoca,
+      item.tags,
+      item.fabricante,
+      item.modelo,
+      item.modelo_base,
+      item.motor,
+      item.disciplina,
+      item.circuitos_asociados,
+      item.coches_asociados,
+      item.pilotos_asociados,
+    ].filter(Boolean).join(' '),
+  }));
+
 ---
 
 <MarketingLayout title={title} description={description} noindex={true}>
@@ -463,6 +529,9 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
   </main>
 
   <script is:inline src="/js/gc-track-images.js"></script>
+  <script is:inline define:vars={{ home2ArchiveSeed }}>
+    window.__GC_HOME2_ARCHIVE__ = home2ArchiveSeed;
+  </script>
   <script>
     (() => {
       const root = document.querySelector('[data-gc-home2]');
@@ -492,6 +561,9 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         if (Array.isArray(payload.results)) return payload.results;
         if (Array.isArray(payload.combos)) return payload.combos;
         if (Array.isArray(payload.leaderboard)) return payload.leaderboard;
+        if (Array.isArray(payload.items?.items)) return payload.items.items;
+        if (Array.isArray(payload.archive?.items)) return payload.archive.items;
+        if (Array.isArray(payload.stats?.items)) return payload.stats.items;
         return [];
       };
 
@@ -935,7 +1007,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         ].filter(Boolean);
 
         rawCandidates.push(
-          firstValue(item, ['image', 'imageUrl', 'image_url', 'imagen_url', 'imagen', 'cover', 'coverUrl', 'cover_url', 'mediaUrl', 'media_url', 'featuredImage', 'featured_image', 'heroImage', 'hero_image', 'thumbnail', 'thumb', 'mainImage', 'main_image'])
+          firstValue(item, ['image', 'imageUrl', 'image_url', 'imagen_url', 'imagen', 'cover', 'coverUrl', 'cover_url', 'mediaUrl', 'media_url', 'featuredImage', 'featured_image', 'heroImage', 'hero_image', 'thumbnail', 'thumb', 'mainImage', 'main_image', 'localUrl', 'url'])
         );
 
         mediaItems.forEach((media) => {
@@ -1547,6 +1619,8 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
       };
 
       const renderArchive = async (activeTrack = '', activeCars = []) => {
+        const serverSeed = Array.isArray(window.__GC_HOME2_ARCHIVE__) ? window.__GC_HOME2_ARCHIVE__ : [];
+
         const endpoints = [
           '/api/archive/items.json?limit=100',
           '/api/archive/items.json?limit=100&status=published',
@@ -1559,17 +1633,21 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           '/data/app/motorsport-archive.json'
         ];
 
-        let payload = null;
-        let items = [];
+        let items = getArray(serverSeed);
 
-        for (const endpoint of endpoints) {
-          payload = await fetchJson(endpoint);
-          items = getArray(payload);
-          if (items.length) break;
+        // En producción el Archivo público no depende de esos endpoints: /archivo usa archiveRuntime server-side.
+        // Por eso home2 debe usar primero el seed SSR y solo probar endpoints si no existe seed.
+        if (!items.length) {
+          let payload = null;
+          for (const endpoint of endpoints) {
+            payload = await fetchJson(endpoint);
+            items = getArray(payload);
+            if (items.length) break;
+          }
         }
 
         const wanted = [activeTrack, ...activeCars].filter(Boolean).map((value) => slugify(value));
-        const wantedWords = [activeTrack, ...activeCars].filter(Boolean).join(' ').toLowerCase();
+        const activeTrackSlug = slugify(activeTrack).replace(/^(ks_|rt_|mx_|nrms_)/, '');
 
         const visiblePool = items
           .filter((item) => {
@@ -1580,36 +1658,72 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
             const title = firstValue(item, ['title', 'nombre', 'name']) || '';
             const slug = firstValue(item, ['slug', 'seoSlug', 'seo_slug']) || '';
             const type = firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || '';
-            const text = `${title} ${slug} ${type}`.toLowerCase();
-            const compact = slugify(`${title} ${slug} ${type}`);
+            const normalizedType = normalizeArchiveType(type);
+            const searchText = [
+              title,
+              slug,
+              type,
+              firstValue(item, ['tipoLabel', 'label', 'categoryLabel']),
+              firstValue(item, ['search', 'descripcion_corta', 'summary', 'description', 'descripcion', 'subtitle', 'subtitulo']),
+              firstValue(item, ['pais', 'país', 'country', 'nacionalidad', 'ubicacion', 'ubicación']),
+              firstValue(item, ['periodo', 'epoca', 'año', 'year']),
+              firstValue(item, ['tags', 'fabricante', 'modelo', 'modelo_base', 'motor', 'disciplina']),
+              firstValue(item, ['circuitos_asociados', 'coches_asociados', 'pilotos_asociados'])
+            ].filter(Boolean).join(' ');
+
+            const compact = slugify(searchText);
 
             let score = 0;
+
             wanted.forEach((needle) => {
               if (!needle) return;
-              if (compact.includes(needle) || needle.includes(compact)) score += 100;
               const shortNeedle = needle.replace(/^(ks_|rt_|mx_|nrms_)/, '');
-              if (shortNeedle && compact.includes(shortNeedle)) score += 80;
+              if (compact.includes(needle) || needle.includes(compact)) score += 120;
+              if (shortNeedle && compact.includes(shortNeedle)) score += 90;
+              if (slugify(title).includes(shortNeedle) || slugify(slug).includes(shortNeedle)) score += 80;
             });
 
-            // Prefer one circuit, then combo cars, then any featured/public card.
-            const normalizedType = normalizeArchiveType(type);
-            if (activeTrack && ['circuitos', 'tracks'].includes(normalizedType) && compact.includes(slugify(activeTrack).replace(/^(ks_|rt_|mx_|nrms_)/, ''))) score += 60;
+            // Preferir un circuito activo, luego coches del combo, luego pilotos/glosario destacados.
+            if (activeTrackSlug && normalizedType === 'circuitos' && compact.includes(activeTrackSlug)) score += 140;
+            if (activeTrackSlug && normalizedType !== 'circuitos' && compact.includes(activeTrackSlug)) score += 25;
+
             if (String(firstValue(item, ['featured', 'destacado', 'isFeatured', 'is_featured'])).toLowerCase() === 'true') score += 20;
+            if (normalizedType === 'circuitos') score += 8;
+            if (normalizedType === 'coches') score += 6;
+            if (normalizedType === 'pilotos') score += 4;
             score += Math.max(0, 10 - index);
 
-            return { item, score, index };
+            return { item, score, index, type: normalizedType };
           })
           .sort((a, b) => b.score - a.score || a.index - b.index);
 
-        // Keep the active combo feeling: if Mugello exists anywhere, it should surface.
-        const visible = visiblePool.slice(0, 3).map((entry) => entry.item);
+        const picked = [];
+        const usedKeys = new Set();
+
+        const pushUnique = (entry) => {
+          if (!entry || !entry.item) return;
+          const key = `${normalizeArchiveType(firstValue(entry.item, ['tipo', 'type', 'category']) || '')}:${firstValue(entry.item, ['slug', 'title', 'nombre'])}`;
+          if (usedKeys.has(key)) return;
+          usedKeys.add(key);
+          picked.push(entry.item);
+        };
+
+        // Primero circuito activo si existe.
+        pushUnique(visiblePool.find((entry) => entry.type === 'circuitos' && activeTrackSlug && slugify([firstValue(entry.item, ['title', 'nombre']), firstValue(entry.item, ['slug']), firstValue(entry.item, ['search'])].join(' ')).includes(activeTrackSlug)));
+
+        // Luego mejores coches/pilotos relacionados.
+        visiblePool.forEach((entry) => {
+          if (picked.length < 3) pushUnique(entry);
+        });
+
+        const visible = picked.slice(0, 3);
 
         const host = $('[data-home2-archive]');
         if (!host || !visible.length) return;
 
         host.innerHTML = visible.map((item, index) => {
           const title = firstValue(item, ['title', 'nombre', 'name']) || 'Ficha';
-          const type = firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || 'Archivo';
+          const type = firstValue(item, ['tipoLabel', 'label']) || firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || 'Archivo';
           const summary = firstValue(item, ['descripcion_corta', 'summary', 'description', 'descripcion', 'subtitle', 'subtitulo']) || 'Ficha técnica e histórica.';
           const imageAttrs = archiveImageAttrs(item, index);
           const finalHref = archiveHref(item);
