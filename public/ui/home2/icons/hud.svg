@@ -1,7 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="HUD">
-  <rect width="128" height="128" rx="16" fill="#080d0a"/>
-  <rect x="8" y="8" width="112" height="112" rx="12" fill="none" stroke="#96ff2f" stroke-opacity=".16"/>
-  <g fill="none" stroke="#96ff2f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M28 64h72"/><path d="M64 28v72"/><circle cx="64" cy="64" r="34"/><path d="M40 40l10 10M88 40 78 50M40 88l10-10M88 88 78 78"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+
+<defs>
+  <filter id="g" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur stdDeviation="3.4" result="b"/>
+    <feColorMatrix in="b" type="matrix"
+      values="1 0 0 0 0
+              0 1 0 0 0.8
+              0 0 1 0 0.1
+              0 0 0 1 0"/>
+  </filter>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0a110c"/>
+    <stop offset="1" stop-color="#060906"/>
+  </linearGradient>
+</defs>
+<rect width="128" height="128" rx="22" fill="url(#bg)"/>
+<rect x="6" y="6" width="116" height="116" rx="18" fill="none" stroke="#89ff24" stroke-opacity=".12"/>
+
+<g fill="none" stroke="#96ff2f" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="28" filter="url(#g)" opacity=".42"/>
+  <path d="M36 78c2-18 11-32 28-32s26 14 28 32" filter="url(#g)" opacity=".42"/>
+</g>
+<g fill="none" stroke="#96ff2f" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M31 74c2-20 13-36 33-36s31 16 33 36"/>
+  <path d="M43 74v10M85 74v10"/>
+  <path d="M64 52v22"/>
+  <path d="M52 63h24"/>
+  <path d="M44 49l6 6M84 49l-6 6"/>
+</g>
 </svg>
