@@ -7353,6 +7353,49 @@ function gcLegacyAliasComboSummaryV1(combo: any) {
   };
 }
 
+/* GC_COMBOS_RESPONSE_NORMALIZER_V1_4_START */
+app.use((req, res, next) => {
+  if (req.path !== '/api/gc/combos') return next();
+
+  const originalJson = res.json.bind(res);
+
+  res.json = ((payload: any) => {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      const items = Array.isArray(payload.items)
+        ? payload.items
+        : Array.isArray(payload.combos)
+          ? payload.combos
+          : [];
+
+      const countFromPayload =
+        Number(payload.totalCombos) ||
+        Number(payload.publicCombos) ||
+        Number(payload.totalMatched) ||
+        Number(payload.count) ||
+        items.length ||
+        0;
+
+      payload.totalCombos = countFromPayload;
+      payload.publicCombos = Number(payload.publicCombos) || countFromPayload;
+      payload.rawCombos = Number(payload.rawCombos) || Number(payload.rawTotalCombos) || Math.max(countFromPayload, items.length);
+      payload.count = Number(payload.count) || items.length;
+      payload.totalMatched = Number(payload.totalMatched) || countFromPayload;
+
+      payload.normalizedBy = payload.normalizedBy || [];
+      if (Array.isArray(payload.normalizedBy)) {
+        payload.normalizedBy.push('gc-combos-response-normalizer-v1.4');
+      } else {
+        payload.normalizedBy = ['gc-combos-response-normalizer-v1.4'];
+      }
+    }
+
+    return originalJson(payload);
+  }) as any;
+
+  next();
+});
+/* GC_COMBOS_RESPONSE_NORMALIZER_V1_4_END */
+
 /* GC_COMBO_CANONICAL_PUBLIC_FILTER_V1_START */
 const GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1 = Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || 5);
 const GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1 = Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || 2);
@@ -8214,6 +8257,9 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       generatedAt: new Date().toISOString(),
       count: publicItems.length,
       totalMatched: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      totalCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      publicCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      rawCombos: items.length,
       items: publicItems,
       policy: {
         canonicalGrouping: 'track variants grouped by cleaned canonical track',
@@ -12099,6 +12145,10 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
+
+
 
 
 
