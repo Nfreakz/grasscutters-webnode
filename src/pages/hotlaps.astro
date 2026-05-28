@@ -3,7 +3,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 ---
 <AppLayout
   title="Hotlaps | GrassCutters Racing"
-  description="Consulta rápida de hotlaps con filtro automático del último circuito activo, vueltas válidas y orden por tiempo, velocidad o actividad."
+  description="Consulta todas las vueltas registradas en GrassCutters sin filtro automático de combo. Ordena por tiempo, velocidad o actividad."
   canonicalPath="/hotlaps"
   ogImage="/og/hotlaps-og-v1531.png"
   ogImageAlt="Hotlaps GrassCutters Racing"
@@ -13,10 +13,10 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div>
         <span class="gc-kicker">Leaderboard</span>
         <h1 class="gc-title">Hotlaps.</h1>
-        <p class="gc-subtitle">Consulta rápida del último circuito activo. Filtra por piloto, coche o circuito y ordena por tiempo, velocidad o actividad.</p>
+        <p class="gc-subtitle">Consulta todas las vueltas registradas. El filtro por combo pertenece a Combos; aquí se muestra el histórico completo.</p>
         <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent" id="activeTrackChip">Último circuito activo</span>
-          <span class="gc-chip">Vueltas válidas</span>
+          <span class="gc-chip gc-chip--accent" id="activeTrackChip">Todas las vueltas</span>
+          <span class="gc-chip">Sin filtro de combo</span>
           <span class="gc-chip">Stracker live</span>
         </div>
       </div>
@@ -35,7 +35,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div class="gc-metric gc-hotlaps-track-metric-v13">
         <span>Circuito</span>
         <strong id="hotlapMetricTrack">...</strong>
-        <small id="hotlapMetricTrackMeta">último activo</small>
+        <small id="hotlapMetricTrackMeta">todos los circuitos</small>
       </div>
       <div class="gc-metric">
         <span>Mejor vuelta</span>
@@ -84,8 +84,8 @@ import AppLayout from '../layouts/AppLayout.astro';
       <div class="gc-field">
         <label for="validFilter">Estado</label>
         <select class="gc-select" id="validFilter">
-          <option value="valid" selected>Válidas</option>
-          <option value="all">Todas</option>
+          <option value="valid">Válidas</option>
+          <option value="all" selected>Todas</option>
           <option value="invalid">No válidas</option>
         </select>
       </div>
@@ -102,7 +102,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
 
       <div class="gc-hotlaps-toolbar-v13__actions">
-        <button class="gc-btn gc-btn--primary" id="activeTrackButton" type="button">Último circuito</button>
+        <button class="gc-btn gc-btn--primary" id="activeTrackButton" type="button">Ver combos</button>
         <button class="gc-btn" id="reloadHotlaps" type="button">Actualizar</button>
         <button class="gc-btn" id="clearFilters" type="button">Limpiar</button>
       </div>
@@ -110,7 +110,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     <div class="gc-table-meta gc-hotlaps-meta-v13">
       <span id="leaderboardHint">Cargando leaderboard...</span>
-      <span id="leaderboardOrder">Último circuito activo · válidas · más rápido</span>
+      <span id="leaderboardOrder">Todas las vueltas · todos los circuitos · más rápido</span>
     </div>
 
     <section class="gc-table-wrap gc-hotlaps-table-wrap-v13">
@@ -531,7 +531,14 @@ import AppLayout from '../layouts/AppLayout.astro';
         text-align:left;
       }
     }
-  </style>
+
+      /* GC_HOTLAPS_ALL_LAPS_V1_STYLE */
+      .gc-hotlaps-v13 #activeTrackButton{
+        background:rgba(255,255,255,.08)!important;
+        color:var(--text,#f2fff0)!important;
+        border-color:rgba(255,255,255,.16)!important;
+      }
+    </style>
 
   <script is:inline>
     (() => {
@@ -1103,6 +1110,21 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
       }
 
+      async function fetchCoreJsonFirst(urls) {
+        let lastError = null;
+
+        for (const url of urls) {
+          try {
+            return await fetchCoreJson(url);
+          } catch (error) {
+            lastError = error;
+            console.warn('[GC /hotlaps] endpoint no disponible:', url, error?.message || error);
+          }
+        }
+
+        throw lastError || new Error('No hotlaps endpoint available');
+      }
+
       function ensureCoreBadge(status, label) {
         let badge = document.getElementById('gcHotlapsCoreBadge');
 
@@ -1247,8 +1269,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         const driverMetric = isPureActiveComboView && state.activeComboDrivers ? state.activeComboDrivers : drivers.size;
 
         if (els.metricTrack) els.metricTrack.textContent = selectedTrack;
-        if (els.metricTrackMeta) els.metricTrackMeta.textContent = isPureActiveComboView ? `combo activo · ${state.activeComboLaps || filtered.length} vueltas` : (activeTrackSelected ? 'combo activo filtrado' : 'filtro manual');
-        if (els.activeTrackChip) els.activeTrackChip.textContent = state.activeTrackLabel || 'Combo activo';
+        if (els.metricTrackMeta) els.metricTrackMeta.textContent = (els.track?.value || 'all') === 'all' ? 'todos los circuitos' : (activeTrackSelected ? 'combo activo filtrado' : 'filtro manual');
+        if (els.activeTrackChip) els.activeTrackChip.textContent = 'Todas las vueltas';
         if (els.metricBest) els.metricBest.textContent = best ? lapDisplay(best) : '--';
         if (els.metricBestMeta) els.metricBestMeta.textContent = best ? driverName(best) : 'sin datos';
         if (els.metricDrivers) els.metricDrivers.textContent = String(driverMetric);
@@ -1260,22 +1282,21 @@ import AppLayout from '../layouts/AppLayout.astro';
         const trackLabel = els.track?.value === state.activeTrackValue ? 'combo activo' : (els.track?.options[els.track.selectedIndex]?.textContent || 'todos los circuitos').toLowerCase();
         const validLabel = els.valid?.options[els.valid.selectedIndex]?.textContent || 'Válidas';
         const sortLabel = els.sort?.options[els.sort.selectedIndex]?.textContent || 'Más rápido';
-        return `${trackLabel} · ${validLabel.toLowerCase()} · ${sortLabel.toLowerCase()} · Data Core primary`;
+        return `${trackLabel} · ${validLabel.toLowerCase()} · ${sortLabel.toLowerCase()} · listado completo`;
       }
 
       function drawCore() {
         if (!state.coreReady) return;
 
         const filtered = filteredRows();
-        const compacted = compactByDriver(filtered);
-        const rows = sortRows(compacted);
+        const rows = sortRows(filtered);
         const best = Math.min(...rows.map(lapMs).filter((value) => Number.isFinite(value)));
 
         updateMetrics(filtered, rows);
 
         if (els.visible) els.visible.textContent = String(rows.length);
         if (els.hint) els.hint.textContent = rows.length
-          ? `${rows.length} pilotos visibles · ${filtered.length} vueltas filtradas de ${state.cache.length} · Data Core primary`
+? `${rows.length} vueltas visibles de ${state.cache.length} · Data Core primary`
           : 'No hay resultados con esos filtros · Data Core primary';
         if (els.order) els.order.textContent = orderLabel();
 
@@ -1309,8 +1330,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         }).join('') || '<tr><td colspan="10">Sin resultados · Data Core primary</td></tr>';
 
         document.documentElement.dataset.gcHotlapsDataCore = 'primary';
-        document.documentElement.dataset.gcHotlapsDataCoreVersion = 'v1.1';
-        ensureCoreBadge('ok', 'Data Core primary v1.1');
+        document.documentElement.dataset.gcHotlapsDataCoreVersion = 'all-laps-v1';
+        ensureCoreBadge('ok', 'Data Core all laps v1');
 
         state.lastGood = { snapshot: state.snapshot, rows: state.cache, renderedAt: new Date().toISOString() };
         window.GCHotlapsDataCorePrimary = { status: 'ok', ...state.lastGood };
@@ -1325,8 +1346,14 @@ import AppLayout from '../layouts/AppLayout.astro';
 
         try {
           const [snapshot, leaderboard] = await Promise.all([
-            fetchCoreJson('/api/gc/snapshot?scope=activeCombo&limit=12'),
-            fetchCoreJson('/api/gc/leaderboard?scope=activeCombo&limit=1000')
+            fetchCoreJson('/api/gc/snapshot?scope=activeCombo&limit=12').catch(() => null),
+            fetchCoreJsonFirst([
+              '/api/gc/leaderboard?scope=all&limit=3000',
+              '/api/gc/leaderboard?scope=global&limit=3000',
+              '/api/gc/recent-laps?limit=3000&sort=recent&valid=all',
+              '/api/laps?limit=3000&sort=recent&valid=all',
+              '/api/hotlaps?limit=3000&sort=recent&valid=all'
+            ])
           ]);
 
           state.snapshot = snapshot;
@@ -1340,9 +1367,9 @@ import AppLayout from '../layouts/AppLayout.astro';
             if (els.search) els.search.value = '';
             if (els.driver) els.driver.value = 'all';
             if (els.car) els.car.value = 'all';
-            if (els.valid) els.valid.value = 'valid';
+            if (els.valid) els.valid.value = 'all';
+            if (els.track) els.track.value = 'all';
             if (els.sort) els.sort.value = 'fastest';
-            applyActiveTrack();
           }
 
           if (els.loaded) els.loaded.textContent = String(state.cache.length);
@@ -1351,7 +1378,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
           drawCore();
 
-          console.info('[GC /hotlaps Data Core Primary v1.1]', {
+          console.info('[GC /hotlaps Data Core All Laps v1]', {
             loaded: state.cache.length,
             activeTrackValue: state.activeTrackValue,
             activeTrackLabel: state.activeTrackLabel
@@ -1373,14 +1400,14 @@ import AppLayout from '../layouts/AppLayout.astro';
         input?.addEventListener('change', drawCore);
       });
 
-      els.activeTrackButton?.addEventListener('click', () => { applyActiveTrack(); drawCore(); });
+      els.activeTrackButton?.addEventListener('click', () => { window.location.href = '/combos'; });
       els.clear?.addEventListener('click', () => {
         if (els.search) els.search.value = '';
         if (els.driver) els.driver.value = 'all';
         if (els.car) els.car.value = 'all';
-        if (els.valid) els.valid.value = 'valid';
+        if (els.valid) els.valid.value = 'all';
+        if (els.track) els.track.value = 'all';
         if (els.sort) els.sort.value = 'fastest';
-        applyActiveTrack();
         drawCore();
       });
       els.reload?.addEventListener('click', loadCore);
@@ -1406,7 +1433,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   <script is:inline>
     /* GC_HOTLAPS_PRIMARY_CLEAN_RUNTIME_V1_START */
     (() => {
-      document.documentElement.dataset.gcHotlapsRuntime = 'data-core-primary-clean-v1';
+      document.documentElement.dataset.gcHotlapsRuntime = 'data-core-all-laps-v1';
       window.GCHotlapsRuntimeStatus = () => ({
         runtime: document.documentElement.dataset.gcHotlapsRuntime,
         dataCore: document.documentElement.dataset.gcHotlapsDataCore || null,

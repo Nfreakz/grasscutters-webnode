@@ -7,7 +7,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
 ---
 
 <MarketingLayout title={title} description={description} noindex={true}>
-  <main class="gc-home2" data-gc-home2="hybrid-v3">
+  <main class="gc-home2" data-gc-home2="hybrid-v4">
     <section class="gc-home2-hero" aria-labelledby="gc-home2-title">
       <img
         class="gc-home2-hero__bg"
@@ -84,7 +84,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
 
         <div class="gc-home2-trackbox">
           <img data-home2-track-map src="/images/tracks/mugello_mapa.png" alt="" width="365" height="192" loading="lazy" decoding="async" />
-          <p class="gc-home2-trackbox__meta">5.245 km</p>
+          <p class="gc-home2-trackbox__meta" data-home2-track-distance>5.245 km</p>
         </div>
 
         <dl class="gc-home2-metrics">
@@ -161,6 +161,34 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           <div><dt>Uptime</dt><dd data-home2-uptime>7d 14h</dd></div>
         </dl>
         <a href="/estado" class="gc-home2-btn gc-home2-btn--small gc-home2-btn--wide">Ver estado completo →</a>
+      </article>
+    </section>
+
+    <section class="gc-home2-section gc-home2-shell gc-home2-championship-wrap" aria-labelledby="gc-home2-championship-title">
+      <article class="gc-home2-panel gc-home2-panel--championship" data-home2-championship>
+        <div class="gc-home2-panel__head">
+          <div>
+            <p class="gc-home2-panel__eyebrow">Campeonato ACSR</p>
+            <h2 id="gc-home2-championship-title" data-home2-champ-name>Campeonato de combos semanales</h2>
+            <p class="gc-home2-section__sub" data-home2-champ-sub>Clasificación, eventos e inscritos</p>
+          </div>
+          <a href="/campeonato" class="gc-home2-btn gc-home2-btn--small">Ver campeonato →</a>
+        </div>
+
+        <div class="gc-home2-championship-grid">
+          <div class="gc-home2-championship-main">
+            <span class="gc-home2-tag gc-home2-tag--green" data-home2-champ-status>Activo</span>
+            <strong data-home2-champ-next>Próximo evento</strong>
+            <small data-home2-champ-next-meta>Calendario ACSR</small>
+          </div>
+
+          <dl class="gc-home2-championship-stats">
+            <div><dt>Eventos</dt><dd data-home2-champ-events>--</dd></div>
+            <div><dt>Próximos</dt><dd data-home2-champ-upcoming>--</dd></div>
+            <div><dt>Inscritos</dt><dd data-home2-champ-entrants>--</dd></div>
+            <div><dt>Clases</dt><dd data-home2-champ-classes>--</dd></div>
+          </dl>
+        </div>
       </article>
     </section>
 
@@ -354,6 +382,12 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         if (Array.isArray(payload)) return payload;
         if (Array.isArray(payload.items)) return payload.items;
         if (Array.isArray(payload.data)) return payload.data;
+        if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
+        if (payload.data && Array.isArray(payload.data.entries)) return payload.data.entries;
+        if (payload.data && Array.isArray(payload.data.results)) return payload.data.results;
+        if (Array.isArray(payload.entries)) return payload.entries;
+        if (Array.isArray(payload.archiveItems)) return payload.archiveItems;
+        if (Array.isArray(payload.records)) return payload.records;
         if (Array.isArray(payload.laps)) return payload.laps;
         if (Array.isArray(payload.results)) return payload.results;
         if (Array.isArray(payload.combos)) return payload.combos;
@@ -402,6 +436,17 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
       };
 
       const archiveImage = (item, index = 0) => {
+        const mediaArray = Array.isArray(item?.media) ? item.media : [];
+        const firstMedia = mediaArray.find((media) => media && (
+          media.isCover ||
+          media.is_cover ||
+          media.portada ||
+          media.role === 'cover' ||
+          media.kind === 'cover' ||
+          media.url ||
+          media.publicUrl
+        )) || mediaArray[0];
+
         const direct = firstValue(item, [
           'image',
           'imageUrl',
@@ -411,12 +456,31 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           'cover',
           'coverUrl',
           'cover_url',
-          'media.0.url',
-          'media.0.publicUrl',
+          'mediaUrl',
+          'media_url',
           'featuredImage',
-          'featured_image'
+          'featured_image',
+          'heroImage',
+          'hero_image',
+          'thumbnail',
+          'thumb',
+          'mainImage',
+          'main_image'
         ]);
-        if (direct) return String(direct);
+
+        const mediaUrl = firstValue(firstMedia, [
+          'url',
+          'publicUrl',
+          'public_url',
+          'src',
+          'imageUrl',
+          'image_url',
+          'path'
+        ]);
+
+        const chosen = direct || mediaUrl;
+        if (chosen) return String(chosen);
+
         const fallbacks = [
           '/ui/home2/gc-home2-archive-circuit.svg',
           '/ui/home2/gc-home2-archive-car.svg',
@@ -428,7 +492,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
       const archiveHref = (item) => {
         const direct = firstValue(item, ['href', 'url', 'publicUrl', 'public_url', 'path']);
         if (direct) return String(direct);
-        const slug = firstValue(item, ['slug', 'seoSlug']);
+        const slug = firstValue(item, ['slug', 'seoSlug', 'seo_slug']);
         const type = normalizeArchiveType(firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']));
         return slug ? `/archivo/${type}/${slug}/` : '/archivo';
       };
@@ -495,12 +559,18 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         }
 
         const slug = slugify(trackName);
+        const compact = slug.replace(/^rt_/, '').replace(/^mx_/, '').replace(/^nrms_/, '');
         const candidates = [
           `/images/tracks/${slug}.webp`,
+          `/images/tracks/${compact}.webp`,
           `/images/tracks/${slug}.png`,
+          `/images/tracks/${compact}.png`,
           `/images/tracks/${slug}.jpg`,
+          `/images/tracks/${compact}.jpg`,
           `/imagenes/tracks/${slug}.webp`,
+          `/imagenes/tracks/${compact}.webp`,
           `/imagenes/tracks/${slug}.png`,
+          `/imagenes/tracks/${compact}.png`,
           '/ui/home2/gc-home2-track-fallback.svg'
         ];
 
@@ -525,6 +595,10 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           `/images/tracks/${compact}-mapa.png`,
           `/images/tracks/${slug}_map.png`,
           `/images/tracks/${compact}_map.png`,
+          `/images/tracks/mapa_${slug}.png`,
+          `/images/tracks/mapa_${compact}.png`,
+          `/imagenes/tracks/${slug}_mapa.png`,
+          `/imagenes/tracks/${compact}_mapa.png`,
           '/ui/home2/gc-home2-track-outline.svg'
         ];
 
@@ -570,36 +644,71 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         `).join('');
       };
 
-      const renderArchive = async () => {
+      const renderArchive = async (activeTrack = '', activeCars = []) => {
         const endpoints = [
-          '/api/archive/items.json?limit=3&status=published',
-          '/api/archive/items.json?featured=1&limit=3',
-          '/api/archive/items.json?limit=3',
-          '/api/archive/items?featured=1&limit=3',
-          '/api/archive/items?limit=3',
-          '/data/archive/items.json'
+          '/api/archive/items.json?limit=100',
+          '/api/archive/items.json?limit=100&status=published',
+          '/api/archive/items.json?featured=1&limit=100',
+          '/api/archive/items?limit=100',
+          '/api/archive/items?featured=1&limit=100',
+          '/api/archive',
+          '/api/archivo',
+          '/data/archive/items.json',
+          '/data/app/motorsport-archive.json'
         ];
 
         let payload = null;
+        let items = [];
+
         for (const endpoint of endpoints) {
           payload = await fetchJson(endpoint);
-          if (getArray(payload).length) break;
+          items = getArray(payload);
+          if (items.length) break;
         }
 
-        const items = getArray(payload)
+        const wanted = [activeTrack, ...activeCars].filter(Boolean).map((value) => slugify(value));
+        const wantedWords = [activeTrack, ...activeCars].filter(Boolean).join(' ').toLowerCase();
+
+        const visiblePool = items
           .filter((item) => {
             const status = String(firstValue(item, ['status', 'estado']) || 'published').toLowerCase();
             return !['draft', 'borrador', 'trash', 'deleted'].includes(status);
           })
-          .slice(0, 3);
+          .map((item, index) => {
+            const title = firstValue(item, ['title', 'nombre', 'name']) || '';
+            const slug = firstValue(item, ['slug', 'seoSlug', 'seo_slug']) || '';
+            const type = firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || '';
+            const text = `${title} ${slug} ${type}`.toLowerCase();
+            const compact = slugify(`${title} ${slug} ${type}`);
+
+            let score = 0;
+            wanted.forEach((needle) => {
+              if (!needle) return;
+              if (compact.includes(needle) || needle.includes(compact)) score += 100;
+              const shortNeedle = needle.replace(/^(ks_|rt_|mx_|nrms_)/, '');
+              if (shortNeedle && compact.includes(shortNeedle)) score += 80;
+            });
+
+            // Prefer one circuit, then combo cars, then any featured/public card.
+            const normalizedType = normalizeArchiveType(type);
+            if (activeTrack && ['circuitos', 'tracks'].includes(normalizedType) && compact.includes(slugify(activeTrack).replace(/^(ks_|rt_|mx_|nrms_)/, ''))) score += 60;
+            if (String(firstValue(item, ['featured', 'destacado', 'isFeatured', 'is_featured'])).toLowerCase() === 'true') score += 20;
+            score += Math.max(0, 10 - index);
+
+            return { item, score, index };
+          })
+          .sort((a, b) => b.score - a.score || a.index - b.index);
+
+        // Keep the active combo feeling: if Mugello exists anywhere, it should surface.
+        const visible = visiblePool.slice(0, 3).map((entry) => entry.item);
 
         const host = $('[data-home2-archive]');
-        if (!host || !items.length) return;
+        if (!host || !visible.length) return;
 
-        host.innerHTML = items.map((item, index) => {
+        host.innerHTML = visible.map((item, index) => {
           const title = firstValue(item, ['title', 'nombre', 'name']) || 'Ficha';
-          const type = firstValue(item, ['type', 'tipo', 'category', 'categoria', 'kind']) || 'Archivo';
-          const summary = firstValue(item, ['summary', 'descripcion_corta', 'description', 'subtitle', 'subtitulo']) || 'Ficha técnica e histórica.';
+          const type = firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || 'Archivo';
+          const summary = firstValue(item, ['descripcion_corta', 'summary', 'description', 'descripcion', 'subtitle', 'subtitulo']) || 'Ficha técnica e histórica.';
           const image = archiveImage(item, index);
           const finalHref = archiveHref(item);
           return `
@@ -612,6 +721,155 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
             </a>
           `;
         }).join('');
+      };
+
+      const fetchText = async (url) => {
+        try {
+          const res = await fetch(url, { headers: { Accept: 'text/html,application/xhtml+xml' } });
+          if (!res.ok) return '';
+          return await res.text();
+        } catch (_) {
+          return '';
+        }
+      };
+
+      const textNumberNear = (text, labels) => {
+        const clean = String(text || '').replace(/\s+/g, ' ');
+        for (const label of labels) {
+          const re1 = new RegExp(`${label}[^0-9]{0,40}(\\d+)`, 'i');
+          const re2 = new RegExp(`(\\d+)[^A-Za-zÁÉÍÓÚáéíóúÑñ]{0,20}${label}`, 'i');
+          const m = clean.match(re1) || clean.match(re2);
+          if (m && m[1]) return m[1];
+        }
+        return '';
+      };
+
+      const renderChampionshipFromPage = async () => {
+        const html = await fetchText('/campeonato');
+        if (!html) return false;
+
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const bodyText = doc.body ? doc.body.innerText : html.replace(/<[^>]+>/g, ' ');
+        const titleNode =
+          doc.querySelector('h1') ||
+          doc.querySelector('[data-acsm-title]') ||
+          doc.querySelector('[data-championship-title]');
+
+        const title = titleNode ? titleNode.textContent.trim() : 'Campeonato ACSR';
+        const events = textNumberNear(bodyText, ['Eventos', 'Rondas', 'Carreras']);
+        const entrants = textNumberNear(bodyText, ['Pilotos inscritos', 'Inscritos', 'Participantes', 'Drivers']);
+        const classes = textNumberNear(bodyText, ['Clases', 'Categorías', 'Categories']);
+        const nextNode =
+          doc.querySelector('[data-next-event]') ||
+          doc.querySelector('.next-event') ||
+          doc.querySelector('.gc-champ-next') ||
+          Array.from(doc.querySelectorAll('h2,h3,strong')).find((node) => /próximo|proximo|next|evento/i.test(node.textContent || ''));
+
+        setText('[data-home2-champ-name]', title || 'Campeonato ACSR');
+        setText('[data-home2-champ-events]', events || '--');
+        setText('[data-home2-champ-upcoming]', bodyText.match(/próxim/i) ? 'Sí' : '--');
+        setText('[data-home2-champ-entrants]', entrants || '--');
+        setText('[data-home2-champ-classes]', classes || '--');
+        setText('[data-home2-champ-next]', nextNode ? nextNode.textContent.trim().slice(0, 80) : 'Ver campeonato activo');
+        setText('[data-home2-champ-next-meta]', 'Datos desde /campeonato');
+
+        return true;
+      };
+
+      const renderChampionship = async () => {
+        const endpoints = [
+          '/api/acsm/championship',
+          '/api/acsm/championships',
+          '/api/acsm/current-championship',
+          '/api/acsm/events',
+          '/api/championship/acsm',
+          '/api/championship',
+          '/api/campeonato',
+          '/api/campeonato/acsm',
+          '/api/acsr/championship',
+          '/api/community/acsr-championship',
+          '/data/acsm/championship.json',
+          '/data/championship.json'
+        ];
+
+        let payload = null;
+        for (const endpoint of endpoints) {
+          payload = await fetchJson(endpoint);
+          if (payload && payload.ok !== false && (
+            getArray(payload).length ||
+            payload.championship ||
+            payload.data ||
+            payload.events ||
+            payload.Events ||
+            payload.Name ||
+            payload.name ||
+            payload.title
+          )) break;
+        }
+
+        const box = $('[data-home2-championship]');
+        if (!box) return;
+
+        if (!payload || payload.ok === false) {
+          await renderChampionshipFromPage();
+          return;
+        }
+
+        const stats = payload.stats || payload.Stats || {};
+        const root = payload.championship || payload.data || payload.ACSR || payload.acsm || payload;
+
+        const name =
+          firstValue(root, ['Name', 'name', 'title', 'championshipName', 'championship_name']) ||
+          firstValue(payload, ['Name', 'name', 'title']) ||
+          'Campeonato ACSR';
+
+        const events =
+          getArray(payload.events) ||
+          getArray(payload.Events) ||
+          getArray(root.Events) ||
+          getArray(root.events) ||
+          getArray(payload.eventList);
+
+        const eventList = Array.isArray(events) ? events : [];
+        const upcomingEvents = eventList.filter((event) => {
+          const raw = firstValue(event, ['Date', 'date', 'Start', 'start', 'startTime', 'scheduledAt']);
+          if (!raw) return false;
+          const date = new Date(raw).getTime();
+          return Number.isFinite(date) && date >= Date.now() - 86400000;
+        });
+
+        const nextEvent = upcomingEvents[0] || eventList[0] || null;
+        const nextName = firstValue(nextEvent, ['Name', 'name', 'title', 'Track', 'track']) || 'Próximo evento';
+        const nextDate = firstValue(nextEvent, ['Date', 'date', 'Start', 'start', 'startTime', 'scheduledAt']);
+
+        const entrants =
+          Number(firstValue(stats, ['entrants', 'registeredDrivers', 'drivers', 'participants'])) ||
+          getArray(payload.registeredDrivers).length ||
+          getArray(payload.entrants).length ||
+          getArray(root.registeredDrivers).length ||
+          getArray(root.entrants).length ||
+          0;
+
+        const classes =
+          firstValue(stats, ['classes', 'Classes']) ||
+          getArray(root.Classes).length ||
+          getArray(root.classes).length ||
+          getArray(payload.classes).length ||
+          '--';
+
+        setText('[data-home2-champ-name]', name);
+        setText('[data-home2-champ-events]', firstValue(stats, ['events', 'Events']) || eventList.length || '--');
+        setText('[data-home2-champ-upcoming]', firstValue(stats, ['upcomingEvents', 'upcoming']) || upcomingEvents.length || '--');
+        setText('[data-home2-champ-classes]', classes);
+        setText('[data-home2-champ-entrants]', entrants || '--');
+
+        if (nextEvent) {
+          setText('[data-home2-champ-next]', nextName);
+          setText('[data-home2-champ-next-meta]', nextDate ? formatAgo(nextDate) : 'Próximo en calendario');
+        } else {
+          setText('[data-home2-champ-next]', 'Calendario activo');
+          setText('[data-home2-champ-next-meta]', 'Ver próximas sesiones');
+        }
       };
 
       const init = async () => {
@@ -677,8 +935,11 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           setText('[data-home2-reference-time]', boardTime);
         }
 
-        await renderNews();
-        await renderArchive();
+        await Promise.all([
+          renderChampionship(),
+          renderNews(),
+          renderArchive(track, carList)
+        ]);
       };
 
       init();
