@@ -213,12 +213,13 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           <div class="gc-home2-championship-body">
             <section class="gc-home2-championship-next" aria-label="Próximo evento del campeonato">
               <div class="gc-home2-championship-next__copy">
-                <span class="gc-home2-tag gc-home2-tag--green" data-home2-champ-status>Activo</span>
+                <span class="gc-home2-tag gc-home2-tag--green gc-home2-tag--mini" data-home2-champ-status>Activo</span>
                 <strong data-home2-champ-next>Mugello, Italy</strong>
+                <time data-home2-champ-date>Fecha por confirmar</time>
                 <small data-home2-champ-next-meta>mugello</small>
               </div>
               <figure class="gc-home2-championship-next__thumb">
-                <img data-home2-champ-track-image src="/ui/home2/gc-home2-track-fallback.svg" alt="" width="420" height="200" loading="lazy" decoding="async" />
+                <img data-home2-champ-track-image src="/ui/home2/gc-home2-track-fallback.svg" alt="" width="620" height="220" loading="lazy" decoding="async" />
               </figure>
             </section>
 
@@ -868,6 +869,124 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
       };
 
 
+
+      const escapeAttr = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+
+      const publicImageCandidates = (item = {}) => {
+        const title = firstValue(item, ['title', 'nombre', 'name']) || '';
+        const slug = firstValue(item, ['slug', 'seoSlug', 'seo_slug']) || slugify(title);
+        const type = normalizeArchiveType(firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || '');
+        const rawCandidates = [];
+
+        const mediaArray = Array.isArray(item?.media) ? item.media : [];
+        const mediaItems = [
+          mediaArray.find((media) => media && (media.isCover || media.is_cover || media.portada || media.role === 'cover' || media.kind === 'cover')),
+          ...mediaArray
+        ].filter(Boolean);
+
+        rawCandidates.push(
+          firstValue(item, ['image', 'imageUrl', 'image_url', 'imagen_url', 'imagen', 'cover', 'coverUrl', 'cover_url', 'mediaUrl', 'media_url', 'featuredImage', 'featured_image', 'heroImage', 'hero_image', 'thumbnail', 'thumb', 'mainImage', 'main_image'])
+        );
+
+        mediaItems.forEach((media) => {
+          rawCandidates.push(firstValue(media, ['url', 'publicUrl', 'public_url', 'src', 'imageUrl', 'image_url', 'path', 'filename', 'fileName']));
+        });
+
+        const cleanSlug = slugify(slug || title);
+        if (cleanSlug) {
+          rawCandidates.push(
+            `/images/archive/${cleanSlug}.webp`,
+            `/images/archive/${cleanSlug}.jpg`,
+            `/images/archive/${cleanSlug}.png`,
+            `/imagenes/archive/${cleanSlug}.webp`,
+            `/imagenes/archive/${cleanSlug}.jpg`,
+            `/imagenes/archive/${cleanSlug}.png`,
+            `/images/archivo/${cleanSlug}.webp`,
+            `/images/archivo/${cleanSlug}.jpg`,
+            `/images/archivo/${cleanSlug}.png`,
+            `/imagenes/archivo/${cleanSlug}.webp`,
+            `/imagenes/archivo/${cleanSlug}.jpg`,
+            `/imagenes/archivo/${cleanSlug}.png`
+          );
+
+          if (type === 'circuitos') {
+            rawCandidates.push(
+              `/images/tracks/${cleanSlug}.webp`,
+              `/images/tracks/${cleanSlug}.jpg`,
+              `/images/tracks/${cleanSlug}.png`,
+              `/imagenes/tracks/${cleanSlug}.webp`,
+              `/imagenes/tracks/${cleanSlug}.jpg`,
+              `/imagenes/tracks/${cleanSlug}.png`
+            );
+          }
+
+          if (type === 'coches') {
+            rawCandidates.push(
+              `/images/cars/${cleanSlug}.webp`,
+              `/images/cars/${cleanSlug}.jpg`,
+              `/images/cars/${cleanSlug}.png`,
+              `/imagenes/cars/${cleanSlug}.webp`,
+              `/imagenes/cars/${cleanSlug}.jpg`,
+              `/imagenes/cars/${cleanSlug}.png`,
+              `/images/coches/${cleanSlug}.webp`,
+              `/images/coches/${cleanSlug}.jpg`,
+              `/images/coches/${cleanSlug}.png`
+            );
+          }
+
+          if (type === 'pilotos') {
+            rawCandidates.push(
+              `/images/pilots/${cleanSlug}.webp`,
+              `/images/pilots/${cleanSlug}.jpg`,
+              `/images/pilots/${cleanSlug}.png`,
+              `/imagenes/pilots/${cleanSlug}.webp`,
+              `/imagenes/pilots/${cleanSlug}.jpg`,
+              `/imagenes/pilots/${cleanSlug}.png`
+            );
+          }
+        }
+
+        const normalized = rawCandidates
+          .filter(Boolean)
+          .map((url) => String(url).trim())
+          .map((url) => {
+            if (!url) return '';
+            if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')) return url;
+            if (url.startsWith('public/')) return `/${url.replace(/^public\//, '')}`;
+            if (url.startsWith('uploads/') || url.startsWith('media/') || url.startsWith('images/') || url.startsWith('imagenes/')) return `/${url}`;
+            return url;
+          })
+          .filter((url) => url && !url.includes('[object Object]'));
+
+        return [...new Set(normalized)];
+      };
+
+      const archiveImageAttrs = (item, index = 0) => {
+        const fallbacks = [
+          '/ui/home2/gc-home2-archive-circuit.svg',
+          '/ui/home2/gc-home2-archive-car.svg',
+          '/ui/home2/gc-home2-archive-driver.svg'
+        ];
+        const candidates = [...publicImageCandidates(item), fallbacks[index % fallbacks.length]];
+        const primary = candidates[0];
+        const rest = candidates.slice(1).map(escapeAttr).join('|');
+
+        return `src="${escapeAttr(primary)}" data-fallbacks="${rest}" data-fallback-index="0" onerror="const list=(this.dataset.fallbacks||'').split('|').filter(Boolean); const i=Number(this.dataset.fallbackIndex||0); if(list[i]){this.dataset.fallbackIndex=String(i+1); this.src=list[i];} else {this.style.display='none';}"`;
+      };
+
+      const formatChampDate = (value) => {
+        const date = parseDateValue(value);
+        if (!date) return 'Fecha por confirmar';
+        return date.toLocaleString('es-ES', {
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).replace(',', '');
+      };
+
+
       const numericValue = (value) => {
         if (typeof value === 'number' && Number.isFinite(value)) return value;
         if (typeof value === 'string' && value.trim() !== '') {
@@ -1057,11 +1176,11 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
           const title = firstValue(item, ['title', 'nombre', 'name']) || 'Ficha';
           const type = firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || 'Archivo';
           const summary = firstValue(item, ['descripcion_corta', 'summary', 'description', 'descripcion', 'subtitle', 'subtitulo']) || 'Ficha técnica e histórica.';
-          const image = archiveImage(item, index);
+          const imageAttrs = archiveImageAttrs(item, index);
           const finalHref = archiveHref(item);
           return `
             <a class="gc-home2-archive-card" href="${finalHref}">
-              <img src="${image}" alt="" width="340" height="190" loading="lazy" decoding="async" />
+              <img ${imageAttrs} alt="" width="340" height="190" loading="lazy" decoding="async" />
               <span class="gc-home2-archive-card__tag">${type}</span>
               <strong>${title}</strong>
               <small>${summary}</small>
@@ -1171,10 +1290,31 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         if (next) {
           const track = firstValue(next, ['track', 'trackName']);
           const carSummary = firstValue(next, ['carSummary']);
+          const scheduledAt = firstValue(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime']);
           setText('[data-home2-champ-next]', next.name || `Ronda ${next.index || ''}`.trim() || 'Próxima ronda');
+          setText('[data-home2-champ-date]', formatChampDate(scheduledAt));
           setText('[data-home2-champ-next-meta]', [track, carSummary].filter(Boolean).join(' · ') || 'Próxima sesión');
+
+          const champTrackImage = $('[data-home2-champ-track-image]');
+          if (champTrackImage && track) {
+            const candidates = publicImageCandidates({ title: track, slug: track, tipo: 'circuito' });
+            if (candidates.length) {
+              champTrackImage.dataset.fallbacks = candidates.slice(1).join('|');
+              champTrackImage.dataset.fallbackIndex = '0';
+              champTrackImage.onerror = function () {
+                const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+                const i = Number(this.dataset.fallbackIndex || 0);
+                if (list[i]) {
+                  this.dataset.fallbackIndex = String(i + 1);
+                  this.src = list[i];
+                }
+              };
+              champTrackImage.src = candidates[0];
+            }
+          }
         } else {
           setText('[data-home2-champ-next]', 'Calendario activo');
+          setText('[data-home2-champ-date]', 'Fecha por confirmar');
           setText('[data-home2-champ-next-meta]', 'Ver próximas sesiones');
         }
 
@@ -1238,10 +1378,10 @@ const description = 'Portada experimental oculta de GrassCutters Racing.';
         await setTrackImage(track);
         await setTrackMap(track);
 
-        const champTrackImage = $('[data-home2-champ-track-image]');
+        const champTrackImageFallback = $('[data-home2-champ-track-image]');
         const heroTrackImage = $('[data-home2-track-image]');
-        if (champTrackImage && heroTrackImage) {
-          champTrackImage.src = heroTrackImage.currentSrc || heroTrackImage.src;
+        if (champTrackImageFallback && heroTrackImage && champTrackImageFallback.src.includes('gc-home2-track-fallback')) {
+          champTrackImageFallback.src = heroTrackImage.currentSrc || heroTrackImage.src;
         }
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
 
