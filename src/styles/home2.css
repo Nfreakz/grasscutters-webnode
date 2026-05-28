@@ -2128,3 +2128,1236 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* GC_HOME2_V14_COMBO_CARD_AND_SERVER_REVIEW */
+
+/* Combo activo: priorizar legibilidad del piloto y evitar cortes raros */
+.gc-home2-combo-card {
+  padding: 22px 22px 18px !important;
+}
+
+.gc-home2-combo-card__best {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+  padding: 16px 0 14px !important;
+}
+
+.gc-home2-driver--compact {
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 13px !important;
+}
+
+.gc-home2-driver__avatar img,
+.gc-home2-reference__avatar img {
+  width: 58px !important;
+  height: 58px !important;
+}
+
+.gc-home2-driver__meta {
+  min-width: 0 !important;
+}
+
+.gc-home2-driver__meta strong {
+  display: block !important;
+  margin-top: 4px !important;
+  color: var(--text) !important;
+  font-size: 16px !important;
+  line-height: 1.05 !important;
+  letter-spacing: .01em !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word !important;
+}
+
+.gc-home2-driver__meta small {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.gc-home2-combo-card__time {
+  justify-self: start !important;
+  width: 100% !important;
+  padding: 10px 12px 8px !important;
+  border: 1px solid rgba(150,255,47,.13) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.10), transparent 7rem),
+    rgba(255,255,255,.018) !important;
+  font-size: clamp(34px, 3.2vw, 42px) !important;
+  line-height: .95 !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-combo-card__time::before {
+  content: "Tiempo";
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+.gc-home2-combo-card__cta {
+  margin-top: 14px !important;
+}
+
+.gc-home2-combo-card__foot {
+  margin-top: 11px !important;
+  color: var(--muted) !important;
+}
+
+/* Estado del servidor: solo datos que podemos derivar de lo ya cargado */
+.gc-home2-panel--server .gc-home2-server-list {
+  margin-top: 8px !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list div {
+  min-height: 42px !important;
+  padding: 8px 0 !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list dt {
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list dd {
+  font-size: 14px !important;
+  line-height: 1.1 !important;
+  text-align: right !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-combo-card__time {
+    max-width: 100% !important;
+  }
+}
+
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V1
+   - Quita texto activos/conectados bajo la card de combo
+   - Quita recuadro de tiempo
+   - Separa bloques pegados
+*/
+
+.gc-home2-combo-card__foot {
+  display: none !important;
+}
+
+/* El tiempo vuelve a ser texto, sin caja/recuadro */
+.gc-home2-combo-card__time {
+  justify-self: start !important;
+  width: auto !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin-top: 4px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gc-home2-combo-card__time::before {
+  content: "Tiempo";
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+/* Más aire entre hero/card superior y la fila de paneles */
+.gc-home2-toprow {
+  margin-top: -28px !important;
+}
+
+/* Evita que la card del combo se coma visualmente la fila inferior */
+.gc-home2-combo-card {
+  margin-bottom: 18px !important;
+}
+
+/* Pequeño colchón visual en la primera fila de paneles */
+.gc-home2-toprow .gc-home2-panel {
+  margin-top: 8px !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-toprow {
+    margin-top: 18px !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-toprow {
+    margin-top: 16px !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V2
+   - Top combo: avatar pequeño, 8 filas
+   - +1px solo en filas de datos (sin tocar headers)
+   - Combo activo centrado
+*/
+
+/* Combo activo: centrar conjunto avatar/nombre/coche/tiempo */
+.gc-home2-combo-card__best {
+  grid-template-columns: 1fr !important;
+  justify-items: center !important;
+  gap: 14px !important;
+  text-align: center !important;
+}
+
+.gc-home2-driver--compact {
+  justify-content: center !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.gc-home2-driver__meta {
+  text-align: center !important;
+}
+
+.gc-home2-combo-card__time {
+  justify-self: center !important;
+  text-align: center !important;
+}
+
+/* Top combo: avatar pequeño entre nombre y tiempo */
+.gc-home2-combo-ranking-list {
+  gap: 4px !important;
+}
+
+.gc-home2-combo-rank {
+  grid-template-columns: 14px 24px minmax(0, 1fr) auto !important;
+  gap: 7px !important;
+  min-height: 30px !important;
+  padding: 4px 6px !important;
+}
+
+.gc-home2-combo-rank__avatar {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 999px !important;
+  object-fit: cover !important;
+  background: #111 !important;
+  border: 1px solid rgba(150,255,47,.22) !important;
+  box-shadow: 0 0 0 2px rgba(150,255,47,.035) !important;
+}
+
+.gc-home2-combo-rank--compact .gc-home2-combo-rank__avatar {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+/* +1px en filas de top combo (solo contenido, no headers) */
+.gc-home2-combo-rank strong {
+  font-size: 11px !important;
+  line-height: 1.02 !important;
+}
+
+.gc-home2-combo-rank small {
+  font-size: 9px !important;
+  line-height: 1.02 !important;
+}
+
+.gc-home2-combo-rank em {
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+/* +1px en filas de timing sheet / últimas vueltas, sin tocar cabecera */
+.gc-home2-table__row:not(.gc-home2-table__row--head) span {
+  font-size: 13px !important;
+}
+
+.gc-home2-table__row:not(.gc-home2-table__row--head) strong {
+  font-size: 13px !important;
+}
+
+.gc-home2-table__row:not(.gc-home2-table__row--head) small {
+  font-size: 13px !important;
+}
+
+@media (max-width: 800px) {
+  .gc-home2-combo-rank {
+    grid-template-columns: 14px 22px minmax(0, 1fr) auto !important;
+    gap: 6px !important;
+  }
+
+  .gc-home2-combo-rank__avatar {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V3
+   - Reduce Estado del servidor y da más ancho a Top combo
+   - Top combo: 8 filas más grandes, avatar entre nombre y tiempo
+   - Combo activo: avatar/nombre/tiempo más centrados
+   - Añade Primera vuelta en Estado del servidor
+*/
+
+/* Reparto de ancho de la primera fila */
+.gc-home2-toprow {
+  grid-template-columns: 1.02fr 1.34fr 1.56fr .72fr !important;
+  gap: 12px !important;
+}
+
+/* Combo activo: el conjunto no debe quedar pegado a la izquierda */
+.gc-home2-combo-card__best {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 14px !important;
+  text-align: center !important;
+}
+
+.gc-home2-driver--compact {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  justify-content: center !important;
+  gap: 18px !important;
+  padding-left: 10px !important;
+  transform: translateX(10px);
+}
+
+.gc-home2-driver__meta {
+  text-align: left !important;
+}
+
+.gc-home2-combo-card__time {
+  justify-self: center !important;
+  align-self: center !important;
+  text-align: center !important;
+}
+
+/* Top combo más protagonista */
+.gc-home2-panel--combo-ranking {
+  min-height: 360px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-ranking-list {
+  gap: 6px !important;
+  margin-top: 11px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+  grid-template-columns: 18px minmax(0, 1fr) 26px auto !important;
+  min-height: 34px !important;
+  padding: 5px 8px !important;
+  gap: 9px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank strong {
+  font-size: 12px !important;
+  line-height: 1.04 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank small {
+  margin-top: 2px !important;
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank em {
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge--plain {
+  font-size: 10.5px !important;
+}
+
+.gc-home2-combo-rank__avatar {
+  width: 24px !important;
+  height: 24px !important;
+  justify-self: center !important;
+}
+
+/* Estado del servidor más estrecho y con menos aire muerto */
+.gc-home2-panel--server {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list div {
+  min-height: 38px !important;
+  padding: 7px 0 !important;
+  gap: 8px !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list dt {
+  max-width: 92px !important;
+  font-size: 8.7px !important;
+  line-height: 1.15 !important;
+}
+
+.gc-home2-panel--server .gc-home2-server-list dd {
+  font-size: 13px !important;
+  line-height: 1.1 !important;
+  text-align: right !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-toprow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gc-home2-driver--compact {
+    transform: none;
+    padding-left: 0 !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+    grid-template-columns: 16px minmax(0, 1fr) 22px auto !important;
+    gap: 7px !important;
+  }
+
+  .gc-home2-combo-rank__avatar {
+    width: 21px !important;
+    height: 21px !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V4_SERVER_REDESIGN
+   Rediseño del bloque Estado del servidor:
+   - sin Activos 1h incoherente
+   - sin Primera vuelta como fecha falsa
+   - valores verdes más pequeños
+   - layout en tarjetas compactas 2 columnas
+*/
+
+.gc-home2-panel--server-v4 {
+  padding: 14px !important;
+}
+
+.gc-home2-server-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gc-home2-server-head h2 {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 16px !important;
+  line-height: 1 !important;
+  text-transform: uppercase;
+}
+
+.gc-home2-server-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 14px rgba(150,255,47,.48);
+}
+
+.gc-home2-server-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.gc-home2-server-grid > div {
+  min-height: 54px !important;
+  padding: 9px 9px 8px !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.06), transparent 4rem),
+    rgba(255,255,255,.015) !important;
+}
+
+.gc-home2-server-grid .gc-home2-server-item--wide {
+  grid-column: 1 / -1;
+  min-height: 50px !important;
+}
+
+.gc-home2-server-grid dt {
+  margin: 0 0 8px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 8.5px !important;
+  line-height: 1.1 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.gc-home2-server-grid dd {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-server-grid .gc-home2-server-item--wide dd {
+  font-size: 14px !important;
+}
+
+.gc-home2-server-note {
+  margin: 10px 0 12px;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.gc-home2-panel--server-v4 .gc-home2-btn {
+  min-height: 34px !important;
+  font-size: 11px !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-server-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-server-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V5_SERVER_REDESIGN
+   - Quita botón Estado completo
+   - Tarjetas centradas
+   - Valores verdes más pequeños
+   - Añade vueltas válidas
+   - Count-up en métricas numéricas vía JS
+*/
+
+.gc-home2-panel--server-v5 {
+  padding: 14px !important;
+}
+
+.gc-home2-server-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.gc-home2-server-head h2 {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 16px !important;
+  line-height: 1 !important;
+  text-transform: uppercase;
+}
+
+.gc-home2-server-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 14px rgba(150,255,47,.48);
+}
+
+.gc-home2-server-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.gc-home2-server-grid > div {
+  display: flex !important;
+  min-height: 58px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 9px 7px 8px !important;
+  text-align: center !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(150,255,47,.06), transparent 4.5rem),
+    rgba(255,255,255,.015) !important;
+}
+
+.gc-home2-server-grid dt {
+  margin: 0 0 8px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 8.1px !important;
+  line-height: 1.15 !important;
+  letter-spacing: .07em !important;
+  text-align: center !important;
+  text-transform: uppercase !important;
+}
+
+.gc-home2-server-grid dd {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 12.4px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-server-note {
+  margin: 10px 0 0 !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
+}
+
+.gc-home2-panel--server-v5 .gc-home2-btn,
+.gc-home2-panel--server-v5 .gc-home2-btn--wide {
+  display: none !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-server-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-server-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V5_2_SERVER_BLOCKS
+   Ajuste solicitado:
+   - se elimina Vueltas válidas porque online no tiene dato fiable
+   - Vueltas servidor ocupa dos columnas
+   - Última vuelta y 1ª vuelta pasan a tarjetas
+   - sin botón inferior
+*/
+
+.gc-home2-panel--server-v6 {
+  padding: 14px !important;
+}
+
+.gc-home2-panel--server-v6 .gc-home2-server-note,
+.gc-home2-panel--server-v6 .gc-home2-btn,
+.gc-home2-panel--server-v6 .gc-home2-btn--wide {
+  display: none !important;
+}
+
+.gc-home2-server-grid--v6 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.gc-home2-server-grid--v6 > div {
+  display: flex !important;
+  min-height: 56px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 9px 7px 8px !important;
+  text-align: center !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(150,255,47,.055), transparent 4.5rem),
+    rgba(255,255,255,.014) !important;
+}
+
+.gc-home2-server-grid--v6 .gc-home2-server-item--wide {
+  grid-column: 1 / -1 !important;
+  min-height: 58px !important;
+}
+
+.gc-home2-server-grid--v6 dt {
+  margin: 0 0 8px !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 8px !important;
+  line-height: 1.15 !important;
+  letter-spacing: .07em !important;
+  text-align: center !important;
+  text-transform: uppercase !important;
+}
+
+.gc-home2-server-grid--v6 dd {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-server-grid--v6 .gc-home2-server-item--wide dd {
+  font-size: 13px !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-server-grid--v6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V5_3_SERVER_ROWS
+   Cambio de diseño:
+   5 filas full-width tipo "Vueltas servidor":
+   Online / Pilotos servidor / Días desde 1ª vuelta / Vueltas servidor / Última vuelta
+*/
+
+.gc-home2-panel--server-v7 {
+  padding: 14px !important;
+}
+
+.gc-home2-panel--server-v7 .gc-home2-btn,
+.gc-home2-panel--server-v7 .gc-home2-btn--wide,
+.gc-home2-panel--server-v7 .gc-home2-server-note {
+  display: none !important;
+}
+
+.gc-home2-server-rows {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.gc-home2-server-rows > div {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  min-height: 46px !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.055), transparent 4.5rem),
+    rgba(255,255,255,.014) !important;
+}
+
+.gc-home2-server-rows dt {
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 8.6px !important;
+  line-height: 1.15 !important;
+  letter-spacing: .075em !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+}
+
+.gc-home2-server-rows dd {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 12.5px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-server-rows > div:first-child dd {
+  font-size: 13px !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-server-rows > div {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-server-rows > div {
+    grid-template-columns: 1fr auto !important;
+  }
+}
+
+
+/* GC_HOME2_PREAVATAR_LAYOUT_FIX_V5_4
+   - Añade Hotlaps al Estado del servidor
+   - Now Racing: mapa más nítido, sin fondo/transparencia/overlay ni km dentro del mapa
+   - Now Racing: recuadros inferiores centrados y distancia más ancha
+*/
+
+/* Estado servidor: 6 filas full width */
+.gc-home2-panel--server-v8 {
+  padding: 14px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-btn,
+.gc-home2-panel--server-v8 .gc-home2-btn--wide,
+.gc-home2-panel--server-v8 .gc-home2-server-note {
+  display: none !important;
+}
+
+.gc-home2-server-rows--v8 {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+  margin: 0 !important;
+}
+
+.gc-home2-server-rows--v8 > div {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  min-height: 40px !important;
+  gap: 12px !important;
+  padding: 8px 11px !important;
+  border: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.052), transparent 4.5rem),
+    rgba(255,255,255,.014) !important;
+}
+
+.gc-home2-server-rows--v8 dt {
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-family: var(--mono) !important;
+  font-size: 8.4px !important;
+  line-height: 1.15 !important;
+  letter-spacing: .075em !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+}
+
+.gc-home2-server-rows--v8 dd {
+  margin: 0 !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 12.2px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+/* Now Racing: mapa limpio */
+.gc-home2-trackbox {
+  height: 136px !important;
+  border: 1px solid rgba(255,255,255,.045) !important;
+  background: #050805 !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 1px rgba(150,255,47,.025) !important;
+}
+
+.gc-home2-trackbox::before,
+.gc-home2-trackbox::after {
+  content: none !important;
+  display: none !important;
+}
+
+.gc-home2-trackbox img {
+  width: 96% !important;
+  height: 92% !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+  image-rendering: auto !important;
+}
+
+.gc-home2-trackbox__meta {
+  display: none !important;
+}
+
+/* Now Racing: métricas inferiores centradas */
+.gc-home2-now-extra {
+  grid-template-columns: .82fr 1.36fr .82fr !important;
+  gap: 7px !important;
+  margin-top: 10px !important;
+}
+
+.gc-home2-now-extra div {
+  display: flex !important;
+  min-height: 50px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 6px 7px !important;
+  text-align: center !important;
+}
+
+.gc-home2-now-extra dt,
+.gc-home2-now-extra dd {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+.gc-home2-now-extra dt {
+  font-size: 8.3px !important;
+}
+
+.gc-home2-now-extra dd {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.08 !important;
+  white-space: normal !important;
+}
+
+/* Las dos métricas principales de Now Racing también quedan centradas */
+.gc-home2-panel--now .gc-home2-metrics div {
+  text-align: center !important;
+}
+
+.gc-home2-panel--now .gc-home2-metrics dt,
+.gc-home2-panel--now .gc-home2-metrics dd {
+  text-align: center !important;
+}
+
+@media (max-width: 800px) {
+  .gc-home2-now-extra {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* GC_HOME2_RECOVERY_V5_4_FINE_TUNE_V1
+   Ajuste fino conservador después del rollback v5.4.
+   NO fuerza filas con 1fr.
+   NO toca lógica de datos.
+   NO toca avatares.
+*/
+
+/* Misma presencia visual en la fila superior, sin estirar internamente a lo bruto */
+.gc-home2-toprow {
+  align-items: stretch !important;
+  gap: 12px !important;
+}
+
+.gc-home2-toprow > .gc-home2-panel {
+  min-height: 372px !important;
+}
+
+/* NOW RACING: aprovechar mejor el alto sin mover la estructura */
+.gc-home2-panel--now .gc-home2-trackbox {
+  height: 148px !important;
+  margin-bottom: 11px !important;
+}
+
+.gc-home2-panel--now .gc-home2-metrics div {
+  padding-top: 11px !important;
+  padding-bottom: 11px !important;
+}
+
+.gc-home2-panel--now .gc-home2-now-extra {
+  margin-top: 11px !important;
+}
+
+.gc-home2-panel--now .gc-home2-now-extra div {
+  min-height: 52px !important;
+}
+
+.gc-home2-panel--now .gc-home2-panel__footer {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  margin-top: 13px !important;
+}
+
+.gc-home2-panel--now .gc-home2-panel__footer .gc-home2-btn {
+  width: 100% !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding-inline: 8px !important;
+}
+
+/* TOP COMBO: filas algo más altas y anchas, pero sin expandirlas de forma salvaje */
+.gc-home2-panel--combo-ranking .gc-home2-combo-ranking-list {
+  gap: 5px !important;
+  margin-top: 11px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+  min-height: 33px !important;
+  padding: 5px 8px !important;
+  align-items: center !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank strong {
+  font-size: 12px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank small {
+  font-size: 9px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank em {
+  font-size: 14px !important;
+}
+
+/* TIMING SHEET: filas un poco más presentes, sin separaciones absurdas */
+.gc-home2-panel--timing .gc-home2-table {
+  margin-top: 8px !important;
+}
+
+.gc-home2-panel--timing .gc-home2-table__row {
+  min-height: 29px !important;
+}
+
+.gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) span,
+.gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) strong,
+.gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) small {
+  font-size: 12px !important;
+}
+
+/* ESTADO DEL SERVIDOR: 6 filas más compactas y equilibradas, sin hueco inferior enorme */
+.gc-home2-panel--server-v8 {
+  min-height: 372px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-head {
+  margin-bottom: 10px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 {
+  gap: 7px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 > div {
+  min-height: 43px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 dt {
+  font-size: 8.2px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 dd {
+  font-size: 12.2px !important;
+}
+
+/* Evitar que el ajuste de desktop afecte mal en tablet/móvil */
+@media (max-width: 1200px) {
+  .gc-home2-toprow > .gc-home2-panel,
+  .gc-home2-panel--server-v8 {
+    min-height: auto !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-panel--now .gc-home2-panel__footer {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gc-home2-panel--now .gc-home2-trackbox {
+    height: 138px !important;
+  }
+}
+
+
+/* GC_HOME2_RECOVERY_V5_4_FINE_TUNE_V2_SERVER_FILL
+   Ajuste suave del bloque Estado del servidor.
+   - No toca lógica de datos.
+   - No toca avatares.
+   - No incluye/reescribe mugello_mapa.png.
+*/
+
+.gc-home2-panel--server-v8 .gc-home2-server-head {
+  margin-bottom: 14px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-head h2 {
+  font-size: 17px !important;
+  line-height: 1.05 !important;
+}
+
+/* Relleno moderado del hueco inferior sin forzar filas gigantes */
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 {
+  gap: 8px !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 > div {
+  min-height: 46px !important;
+  padding: 9px 12px !important;
+}
+
+/* +1px aproximado en etiquetas y resultados del bloque */
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 dt {
+  font-size: 9.2px !important;
+  line-height: 1.15 !important;
+}
+
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 dd {
+  font-size: 13.2px !important;
+  line-height: 1 !important;
+}
+
+/* Pequeña mejora de presencia sin cambiar estructura */
+.gc-home2-panel--server-v8 .gc-home2-server-rows--v8 > div {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.065), transparent 4.8rem),
+    rgba(255,255,255,.017) !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-panel--server-v8 .gc-home2-server-rows--v8 > div {
+    min-height: 44px !important;
+  }
+}
+
+
+/* GC_HOME2_RECOVERY_V5_4_FINE_TUNE_V3_TOP_COMBO_FILL
+   Ajuste suave del bloque Top Combo.
+   - No toca lógica.
+   - No toca avatares.
+   - No fuerza grid-template-rows con 1fr.
+   - No incluye/reescribe mugello_mapa.png.
+*/
+
+.gc-home2-panel--combo-ranking .gc-home2-panel__head {
+  margin-bottom: 13px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-panel__eyebrow {
+  font-size: 10.2px !important;
+}
+
+.gc-home2-panel--combo-ranking h2 {
+  font-size: 22px !important;
+  line-height: .96 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-link {
+  font-size: 11.5px !important;
+}
+
+/* Filas algo más altas para ocupar mejor el hueco inferior sin romper como la v5.5 */
+.gc-home2-panel--combo-ranking .gc-home2-combo-ranking-list {
+  gap: 6px !important;
+  margin-top: 12px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+  min-height: 36px !important;
+  padding: 6px 9px !important;
+  gap: 9px !important;
+  background:
+    radial-gradient(circle at 100% 50%, rgba(150,255,47,.045), transparent 5.5rem),
+    rgba(255,255,255,.018) !important;
+}
+
+/* +1px aprox. en nombres, coches, posición y tiempo */
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank strong {
+  font-size: 13px !important;
+  line-height: 1.02 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank small {
+  margin-top: 2px !important;
+  font-size: 9.8px !important;
+  line-height: 1.05 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank em {
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge,
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge--plain {
+  font-size: 10.8px !important;
+}
+
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge--gold,
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge--silver,
+.gc-home2-panel--combo-ranking .gc-home2-rank-badge--bronze {
+  font-size: 14px !important;
+}
+
+/* Avatar pequeño ligeramente más presente, sin tocar sistema ni origen */
+.gc-home2-panel--combo-ranking .gc-home2-combo-rank__avatar {
+  width: 25px !important;
+  height: 25px !important;
+}
+
+/* Ajuste defensivo para que el bloque respire pero no se descontrole */
+.gc-home2-panel--combo-ranking {
+  padding-bottom: 18px !important;
+}
+
+@media (max-width: 1200px) {
+  .gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+    min-height: 34px !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .gc-home2-panel--combo-ranking h2 {
+    font-size: 20px !important;
+  }
+
+  .gc-home2-panel--combo-ranking .gc-home2-combo-rank {
+    min-height: 32px !important;
+    padding: 5px 8px !important;
+  }
+
+  .gc-home2-panel--combo-ranking .gc-home2-combo-rank strong {
+    font-size: 12px !important;
+  }
+
+  .gc-home2-panel--combo-ranking .gc-home2-combo-rank em {
+    font-size: 13.5px !important;
+  }
+}
+
+
+/* GC_HOME2_FINE_TUNE_V4_NO_FAKE_PLACEHOLDERS
+   Evita que /home2 muestre datos falsos/hardcoded antes de que cargue la API.
+*/
+
+.gc-home2-combo-rank--loading,
+.gc-home2-table__row--loading {
+  opacity: .62;
+}
+
+.gc-home2-combo-rank--loading strong,
+.gc-home2-table__row--loading span,
+.gc-home2-table__row--loading strong,
+.gc-home2-table__row--loading small {
+  color: rgba(239,247,236,.62) !important;
+}
+
+/* Sigue sin incluir ni pisar el mapa de Mugello del repo */
