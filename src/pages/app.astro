@@ -1311,6 +1311,26 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       const comboId = (combo) => pick(combo, ['canonicalComboId','comboId','id','ComboId']);
       const comboUrl = (combo) => combo?.url || (comboId(combo) != null ? `/combos/${encodeURIComponent(comboId(combo))}` : '/combos');
+
+      function gcAppCanonicalComboFromCombosV1(combosData) {
+        const rows = list(combosData).filter(Boolean);
+        if (!rows.length) return null;
+
+        return [...rows].sort((a, b) => {
+          const aLast = dateMs(pick(a, ['lastSeenAt','lastActivityAt','latestLapAt','summary.lastSeenAt','summary.lastActivityAt']));
+          const bLast = dateMs(pick(b, ['lastSeenAt','lastActivityAt','latestLapAt','summary.lastSeenAt','summary.lastActivityAt']));
+          if (bLast !== aLast) return bLast - aLast;
+          return number(pick(b, ['totalLaps','summary.totalLaps']), 0) - number(pick(a, ['totalLaps','summary.totalLaps']), 0);
+        })[0] || null;
+      }
+
+      function gcAppComboDisplayStateV1(combo) {
+        const variants = number(pick(combo, ['variantsCount','summary.variantsCount']), 0);
+        const hiddenCars = number(pick(combo, ['hiddenLowLapCarsCount','summary.hiddenLowLapCarsCount']), 0);
+        if (hiddenCars > 0) return 'Filtrado';
+        if (variants > 1) return 'Canónico';
+        return 'Activo';
+      }
       const comboTrackName = (combo) => text(pick(combo, ['track.displayName','track.visibleName','track.cleanName','track.uiName','track.name','trackName','displayTrackName','visibleTrackName','cleanTrackName','uiTrackName','circuitName','trackCode','track.code','track']), 'Combo');
       const comboTotalLaps = (combo) => number(pick(combo, ['totalLaps','laps','lapCount','visibleLaps']), 0);
       const comboDrivers = (combo) => number(pick(combo, ['driversCount','pilotsCount','playersCount','uniqueDrivers','totalDrivers']), 0);
@@ -1866,7 +1886,15 @@ function renderStracker(strackerData, recentData, bestData, combosData){
         return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '--';
       };
       const comboCars = (combo) => {
-        const raw = pick(combo, ['cars','carList','availableCars','comboCars']);
+        const raw = pick(combo, [
+          'publicComboCars',
+          'carNames',
+          'carList',
+          'cars',
+          'availableCars',
+          'comboCars',
+          'mainVariantAllCars'
+        ]);
         const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(/[,|;]/g) : []);
         const seen = new Set();
         return arr.map((car) => text(car, '')).filter(Boolean).filter((name) => {
@@ -1911,16 +1939,18 @@ function renderStracker(strackerData, recentData, bestData, combosData){
         badge.style.color = state === 'error' ? '#ff6b6b' : state === 'warn' ? '#ffcf5a' : 'var(--accent,#7aff90)';
       }
 
-      function renderCore(snapshotData, leaderboardData, recentData) {
+      function renderCore(snapshotData, leaderboardData, recentData, combosData) {
         const snapshot = payload(snapshotData);
         const stats = snapshot.stats || snapshot.overview || {};
-        const activeCombo = snapshot.activeCombo || snapshot.combo || {};
+        const snapshotCombo = snapshot.activeCombo || snapshot.combo || {};
+        const canonicalCombo = gcAppCanonicalComboFromCombosV1(combosData);
+        const activeCombo = canonicalCombo || snapshotCombo;
         const leaderboard = list(leaderboardData);
         const recent = list(recentData);
-        const bestLap = activeCombo.bestLap || leaderboard[0] || snapshot.bestLap || {};
+        const bestLap = activeCombo.bestLap || activeCombo.summary?.bestLap || leaderboard[0] || snapshot.bestLap || {};
         const latestLap = activeCombo.latestLap || recent[0] || snapshot.latestLap || {};
         const cars = comboCars(activeCombo).slice(0, 10);
-        const track = text(pick(activeCombo, ['track.displayName','track.visibleName','track.name','trackName']), trackName(latestLap));
+        const track = text(pick(activeCombo, ['track.displayName','track.visibleName','track.name','trackName','canonicalTrackName','displayTrackName']), trackName(latestLap));
 
         setText('gcAppStatusChip', 'Live');
         setText('gcAppComboChip', track || 'Combo activo');
@@ -1931,9 +1961,9 @@ function renderStracker(strackerData, recentData, bestData, combosData){
 
         setText('gcComboTrack', track || 'Sin combo');
         setText('gcComboHint', latestLap && Object.keys(latestLap).length ? `Última actividad · ${dateText(latestLap)} · ${driverName(latestLap)}` : 'Datos centralizados desde Race Data Core.');
-        setText('gcComboLaps', formatNumber(pick(activeCombo, ['totalLaps','stats.totalLaps','laps'])));
-        setText('gcComboDrivers', formatNumber(pick(activeCombo, ['driversCount','stats.driversCount','pilotsCount'])));
-        setText('gcComboFamily', number(pick(activeCombo, ['mergedCombosCount']), 1) > 1 ? `${number(pick(activeCombo, ['mergedCombosCount']), 1)} combos` : 'Activo');
+        setText('gcComboLaps', formatNumber(pick(activeCombo, ['totalLaps','summary.totalLaps','stats.totalLaps','laps'])));
+        setText('gcComboDrivers', formatNumber(pick(activeCombo, ['driversCount','summary.driversCount','stats.driversCount','pilotsCount'])));
+        setText('gcComboFamily', gcAppComboDisplayStateV1(activeCombo));
 
         const comboLink = byId('gcComboLink');
         if (comboLink) comboLink.href = comboUrl(activeCombo);
@@ -1996,10 +2026,10 @@ function renderStracker(strackerData, recentData, bestData, combosData){
         document.documentElement.dataset.gcAppDataCoreVersion = 'v1';
         ensureCoreBadge('ok', 'Data Core primary');
 
-        lastGoodPayload = { snapshot: snapshotData, leaderboard: leaderboardData, recent: recentData, renderedAt: new Date().toISOString() };
+        lastGoodPayload = { snapshot: snapshotData, leaderboard: leaderboardData, recent: recentData, combos: combosData, renderedAt: new Date().toISOString() };
         window.GCAppDataCorePrimary = { status: 'ok', ...lastGoodPayload };
 
-        console.info('[GC /app Data Core Primary v1]', { stats, activeCombo, leaderboard: leaderboard.length, recent: recent.length });
+        console.info('[GC /app Data Core Primary v1.5 canonical combo]', { stats, activeCombo, canonicalCombo: Boolean(canonicalCombo), cars: cars.length, leaderboard: leaderboard.length, recent: recent.length });
       }
 
       async function loadPrimary() {
@@ -2007,12 +2037,13 @@ function renderStracker(strackerData, recentData, bestData, combosData){
         running = true;
         try {
           ensureCoreBadge('warn', 'Data Core loading');
-          const [snapshot, leaderboard, recent] = await Promise.all([
+          const [snapshot, leaderboard, recent, combos] = await Promise.all([
             fetchCoreJson('/api/gc/snapshot?scope=activeCombo&limit=12'),
             fetchCoreJson('/api/gc/leaderboard?scope=activeCombo&limit=20'),
-            fetchCoreJson('/api/gc/recent-laps?scope=activeCombo&limit=12')
+            fetchCoreJson('/api/gc/recent-laps?scope=activeCombo&limit=12'),
+            fetchCoreJson('/api/gc/combos?limit=1&sort=recent').catch(() => null)
           ]);
-          renderCore(snapshot, leaderboard, recent);
+          renderCore(snapshot, leaderboard, recent, combos);
         } catch (error) {
           console.warn('[GC /app Data Core Primary v1] Core unavailable, legacy remains visible:', error);
           document.documentElement.dataset.gcAppDataCore = lastGoodPayload ? 'primary-stale' : 'fallback';
@@ -2058,6 +2089,14 @@ function renderStracker(strackerData, recentData, bestData, combosData){
       console.info('[GC /app Runtime] Data Core primary clean v1');
     })();
     /* GC_APP_PRIMARY_CLEAN_RUNTIME_V1_END */
+  </script>
+
+
+  <script is:inline>
+    /* GC_APP_CANONICAL_COMBO_V1_5_MARKER */
+    (() => {
+      document.documentElement.dataset.gcAppCanonicalCombo = 'v1.5';
+    })();
   </script>
 
 </AppLayout>
