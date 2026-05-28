@@ -3,11 +3,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import '../styles/home2.css';
 
 const title = 'Home2 · GrassCutters Racing';
-const description = 'Portada experimental oculta de GrassCutters Racing con competición, noticias, archivo y herramientas.';
+const description = 'Portada experimental oculta de GrassCutters Racing.';
 ---
 
 <MarketingLayout title={title} description={description} noindex={true}>
-  <main class="gc-home2" data-gc-home2="hybrid-v1">
+  <main class="gc-home2" data-gc-home2="hybrid-v3">
     <section class="gc-home2-hero" aria-labelledby="gc-home2-title">
       <img
         class="gc-home2-hero__bg"
@@ -19,20 +19,20 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         loading="eager"
         decoding="async"
       />
-      <div class="gc-home2-hero__shade" aria-hidden="true"></div>
+      <div class="gc-home2-hero__overlay" aria-hidden="true"></div>
       <div class="gc-home2-hero__grid" aria-hidden="true"></div>
 
-      <div class="gc-home2-shell gc-home2-hero__inner">
+      <div class="gc-home2-shell gc-home2-hero__shell">
         <div class="gc-home2-hero__copy">
+          <p class="gc-home2-kicker">GRASSCUTTERS RACE CONTROL</p>
+          <h1 id="gc-home2-title">Vive la competición</h1>
+          <p class="gc-home2-lead">Cada vuelta cuenta</p>
+
           <div class="gc-home2-statusline" aria-label="Estado de la plataforma">
             <span class="gc-home2-badge gc-home2-badge--live" data-home2-live>LIVE</span>
             <span class="gc-home2-badge">TRACKER OK</span>
             <span class="gc-home2-badge" data-home2-updated>ACTUALIZANDO</span>
           </div>
-
-          <p class="gc-home2-kicker">GRASSCUTTERS RACE CONTROL</p>
-          <h1 id="gc-home2-title">Vive la competición</h1>
-          <p class="gc-home2-lead">Cada vuelta cuenta.</p>
 
           <div class="gc-home2-hero__actions">
             <a class="gc-home2-btn gc-home2-btn--primary" href="https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78" target="_blank" rel="noreferrer">
@@ -43,136 +43,125 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
           </div>
         </div>
 
-        <article class="gc-home2-feature-card" aria-labelledby="gc-home2-combo-title">
-          <p class="gc-home2-card-label">Combo activo</p>
+        <article class="gc-home2-combo-card" aria-labelledby="gc-home2-combo-title">
+          <p class="gc-home2-combo-card__label">Combo activo</p>
           <h2 id="gc-home2-combo-title" data-home2-track>Mugello</h2>
-          <p class="gc-home2-feature-card__cars" data-home2-cars>BMW M3 GT2 / Ferrari F430 GT2</p>
+          <p class="gc-home2-combo-card__cars" data-home2-cars>BMW M3 GT2 / Ferrari F430 GT2</p>
 
-          <div class="gc-home2-driver">
-            <div class="gc-home2-driver__avatar">
-              <img data-home2-best-avatar src="/images/pilot-avatar-default.png" alt="" width="88" height="88" loading="lazy" decoding="async" />
-              <span class="gc-home2-driver__dot" aria-hidden="true"></span>
+          <div class="gc-home2-combo-card__best">
+            <div class="gc-home2-driver gc-home2-driver--compact">
+              <div class="gc-home2-driver__avatar">
+                <img data-home2-best-avatar src="/images/pilot-avatar-default.png" alt="" width="70" height="70" loading="lazy" decoding="async" />
+                <span class="gc-home2-driver__dot" aria-hidden="true"></span>
+              </div>
+              <div class="gc-home2-driver__meta">
+                <span class="gc-home2-card-label">Mejor vuelta</span>
+                <strong data-home2-best-driver>Nandy</strong>
+                <small data-home2-best-car>BMW M3 GT2</small>
+              </div>
             </div>
-            <div>
-              <span class="gc-home2-card-label">Mejor vuelta</span>
-              <strong data-home2-best-driver>Nandy</strong>
-              <small data-home2-best-car>BMW M3 GT2</small>
-            </div>
-            <div class="gc-home2-time" data-home2-best-time>1:50.264</div>
+            <div class="gc-home2-combo-card__time" data-home2-best-time>1:50.264</div>
           </div>
 
-          <a class="gc-home2-btn gc-home2-btn--primary gc-home2-feature-card__join" href="https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78" target="_blank" rel="noreferrer">
+          <a class="gc-home2-btn gc-home2-btn--primary gc-home2-combo-card__cta" href="https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78" target="_blank" rel="noreferrer">
             Entrar al servidor
             <span aria-hidden="true">→</span>
           </a>
-
-          <p class="gc-home2-feature-card__meta"><span data-home2-server-users>8 / 32</span> conectados</p>
+          <p class="gc-home2-combo-card__foot"><span data-home2-server-users>8 / 32</span> conectados</p>
         </article>
       </div>
     </section>
 
-    <section class="gc-home2-board gc-home2-shell" aria-label="Actividad principal">
-      <div class="gc-home2-grid-main">
-        <article class="gc-home2-panel gc-home2-panel--now">
-          <div class="gc-home2-panel__head">
-            <div>
-              <p class="gc-home2-panel__eyebrow">Now Racing</p>
-              <h2 data-home2-now-title>Mugello</h2>
-            </div>
-            <span class="gc-home2-country">🇮🇹</span>
+    <section class="gc-home2-toprow gc-home2-shell" aria-label="Actividad destacada">
+      <article class="gc-home2-panel gc-home2-panel--now">
+        <div class="gc-home2-panel__head">
+          <div>
+            <p class="gc-home2-panel__eyebrow">Now Racing</p>
+            <h2 data-home2-now-title>Mugello</h2>
           </div>
+          <span class="gc-home2-country">🇮🇹</span>
+        </div>
 
-          <div class="gc-home2-track-mini">
-            <img src="/ui/home2/gc-home2-track-outline.svg" alt="" width="220" height="130" loading="lazy" decoding="async" />
+        <div class="gc-home2-trackbox">
+          <img data-home2-track-map src="/images/tracks/mugello_mapa.png" alt="" width="365" height="192" loading="lazy" decoding="async" />
+          <p class="gc-home2-trackbox__meta">5.245 km</p>
+        </div>
+
+        <dl class="gc-home2-metrics">
+          <div><dt>Pilotos</dt><dd data-home2-drivers>23</dd></div>
+          <div><dt>Vueltas hoy</dt><dd data-home2-laps>156</dd></div>
+        </dl>
+
+        <div class="gc-home2-panel__footer">
+          <a href="/combos" class="gc-home2-btn gc-home2-btn--small">Ver combo →</a>
+          <a href="/hotlaps" class="gc-home2-btn gc-home2-btn--small">Ver hotlaps →</a>
+        </div>
+      </article>
+
+      <article class="gc-home2-panel gc-home2-panel--reference">
+        <p class="gc-home2-panel__eyebrow">Mejor referencia</p>
+        <div class="gc-home2-reference">
+          <div class="gc-home2-reference__avatar">
+            <img data-home2-reference-avatar src="/images/pilot-avatar-default.png" alt="" width="78" height="78" loading="lazy" decoding="async" />
           </div>
-
-          <dl class="gc-home2-metrics">
-            <div>
-              <dt>Pilotos</dt>
-              <dd data-home2-drivers>23</dd>
-            </div>
-            <div>
-              <dt>Vueltas</dt>
-              <dd data-home2-laps>156</dd>
-            </div>
-            <div>
-              <dt>Best lap</dt>
-              <dd data-home2-best-mini>1:50.264</dd>
-            </div>
-          </dl>
-
-          <div class="gc-home2-card-actions">
-            <a href="/combos" class="gc-home2-btn gc-home2-btn--small">Ver combo →</a>
-            <a href="/hotlaps" class="gc-home2-btn gc-home2-btn--small">Ver hotlaps →</a>
+          <div class="gc-home2-reference__meta">
+            <strong data-home2-reference-driver>Nandy</strong>
+            <small data-home2-reference-car>BMW M3 GT2</small>
           </div>
-        </article>
+        </div>
+        <div class="gc-home2-reference__time" data-home2-reference-time>1:50.264</div>
+        <dl class="gc-home2-metrics gc-home2-metrics--duo">
+          <div><dt>Mejoras hoy</dt><dd data-home2-improvements>12</dd></div>
+          <div><dt>Mejoras</dt><dd data-home2-clean>12</dd></div>
+        </dl>
+      </article>
 
-        <article class="gc-home2-panel gc-home2-panel--reference">
-          <p class="gc-home2-panel__eyebrow">Mejor referencia</p>
-          <div class="gc-home2-profile">
-            <img data-home2-reference-avatar src="/images/pilot-avatar-default.png" alt="" width="112" height="112" loading="lazy" decoding="async" />
-            <div>
-              <strong data-home2-reference-driver>Nandy</strong>
-              <span data-home2-reference-car>BMW M3 GT2</span>
-            </div>
+      <article class="gc-home2-panel gc-home2-panel--timing">
+        <div class="gc-home2-panel__head">
+          <div>
+            <p class="gc-home2-panel__eyebrow">Últimas vueltas</p>
+            <h2>Timing sheet</h2>
           </div>
-          <div class="gc-home2-reference-time" data-home2-reference-time>1:50.264</div>
-          <dl class="gc-home2-metrics gc-home2-metrics--compact">
-            <div>
-              <dt>Mejoras hoy</dt>
-              <dd data-home2-improvements>12</dd>
-            </div>
-            <div>
-              <dt>Vueltas limpias</dt>
-              <dd data-home2-clean>--</dd>
-            </div>
-          </dl>
-        </article>
+          <a href="/hotlaps" class="gc-home2-link">Ver todas →</a>
+        </div>
 
-        <article class="gc-home2-panel gc-home2-panel--laps">
-          <div class="gc-home2-panel__head">
-            <div>
-              <p class="gc-home2-panel__eyebrow">Últimas vueltas</p>
-              <h2>Timing sheet</h2>
-            </div>
-            <a href="/hotlaps" class="gc-home2-link">Ver todas →</a>
+        <div class="gc-home2-table" role="table" aria-label="Últimas vueltas">
+          <div class="gc-home2-table__row gc-home2-table__row--head" role="row">
+            <span>Piloto</span>
+            <span>Coche</span>
+            <span>Tiempo</span>
+            <span>Hace</span>
           </div>
-
-          <div class="gc-home2-table" role="table" aria-label="Últimas vueltas">
-            <div class="gc-home2-table__row gc-home2-table__row--head" role="row">
-              <span>Piloto</span>
-              <span>Coche</span>
-              <span>Tiempo</span>
-              <span>Hace</span>
+          <div data-home2-recent-laps>
+            <div class="gc-home2-table__row" role="row">
+              <span>Nandy</span><span>BMW M3 GT2</span><strong>1:50.264</strong><small>4 min</small>
             </div>
-            <div data-home2-recent-laps>
-              <div class="gc-home2-table__row" role="row">
-                <span>Nandy</span><span>BMW M3 GT2</span><strong>1:50.264</strong><small>4 min</small>
-              </div>
-              <div class="gc-home2-table__row" role="row">
-                <span>Neo RS</span><span>Ferrari F430 GT2</span><strong>1:51.102</strong><small>11 min</small>
-              </div>
-              <div class="gc-home2-table__row" role="row">
-                <span>DaniRS</span><span>BMW M3 GT2</span><strong>1:51.589</strong><small>17 min</small>
-              </div>
-              <div class="gc-home2-table__row" role="row">
-                <span>JaviMart</span><span>Ferrari F430 GT2</span><strong>1:52.013</strong><small>23 min</small>
-              </div>
+            <div class="gc-home2-table__row" role="row">
+              <span>Neo RS</span><span>Ferrari F430 GT2</span><strong>1:51.102</strong><small>11 min</small>
+            </div>
+            <div class="gc-home2-table__row" role="row">
+              <span>DaniRS</span><span>BMW M3 GT2</span><strong>1:51.589</strong><small>17 min</small>
+            </div>
+            <div class="gc-home2-table__row" role="row">
+              <span>JaviMart</span><span>Ferrari F430 GT2</span><strong>1:52.013</strong><small>23 min</small>
+            </div>
+            <div class="gc-home2-table__row" role="row">
+              <span>Punisher</span><span>BMW M3 GT2</span><strong>1:52.455</strong><small>28 min</small>
             </div>
           </div>
-        </article>
+        </div>
+      </article>
 
-        <article class="gc-home2-panel gc-home2-panel--server">
-          <p class="gc-home2-panel__eyebrow">Estado del servidor</p>
-          <dl class="gc-home2-server-list">
-            <div><dt>Servidor</dt><dd data-home2-server-state>Online</dd></div>
-            <div><dt>Tracker</dt><dd>OK</dd></div>
-            <div><dt>Latencia</dt><dd data-home2-latency>-- ms</dd></div>
-            <div><dt>Uptime</dt><dd data-home2-uptime>--</dd></div>
-          </dl>
-          <a href="/estado" class="gc-home2-btn gc-home2-btn--small gc-home2-btn--wide">Ver estado completo →</a>
-        </article>
-      </div>
+      <article class="gc-home2-panel gc-home2-panel--server">
+        <p class="gc-home2-panel__eyebrow">Estado del servidor</p>
+        <dl class="gc-home2-server-list">
+          <div><dt>Servidor</dt><dd data-home2-server-state>Online</dd></div>
+          <div><dt>Tracker</dt><dd>OK</dd></div>
+          <div><dt>Latencia</dt><dd data-home2-latency>28 ms</dd></div>
+          <div><dt>Uptime</dt><dd data-home2-uptime>7d 14h</dd></div>
+        </dl>
+        <a href="/estado" class="gc-home2-btn gc-home2-btn--small gc-home2-btn--wide">Ver estado completo →</a>
+      </article>
     </section>
 
     <section class="gc-home2-section gc-home2-shell" aria-labelledby="gc-home2-news-title">
@@ -180,59 +169,60 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         <div>
           <p class="gc-home2-panel__eyebrow">Paddock Wire</p>
           <h2 id="gc-home2-news-title">Últimas del paddock</h2>
+          <p class="gc-home2-section__sub">Lo último del mundo simracing</p>
         </div>
         <a href="/novedades" class="gc-home2-btn gc-home2-btn--small">Ver todas las noticias →</a>
       </div>
 
       <div class="gc-home2-news-grid" data-home2-news>
-        <article class="gc-home2-news-card gc-home2-news-card--main">
-          <img src="/ui/home2/gc-home2-news-hud.svg" alt="" width="760" height="430" loading="lazy" decoding="async" />
-          <div>
+        <article class="gc-home2-news-card">
+          <img src="/ui/home2/gc-home2-news-hud.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
             <span class="gc-home2-tag gc-home2-tag--green">Update</span>
             <time>28 may 2026</time>
             <h3>HUD Lite 2.3 ya disponible</h3>
-            <p>Nuevo overlay, mejor rendimiento y lectura ampliada.</p>
+            <p>Nuevos overlays, mejor rendimiento y compatibilidad ampliada.</p>
             <a href="/novedades" class="gc-home2-link">Leer más →</a>
           </div>
         </article>
 
         <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-combo.svg" alt="" width="380" height="214" loading="lazy" decoding="async" />
-          <div>
+          <img src="/ui/home2/gc-home2-news-combo.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
             <span class="gc-home2-tag">Comunidad</span>
             <time>27 may 2026</time>
             <h3>Nuevo combo semanal</h3>
-            <p>Mugello y GT2, la combinación perfecta para tandas rápidas.</p>
+            <p>Mugello y GT2, combinación perfecta para tandas rápidas.</p>
             <a href="/combos" class="gc-home2-link">Leer más →</a>
           </div>
         </article>
 
         <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-race.svg" alt="" width="380" height="214" loading="lazy" decoding="async" />
-          <div>
+          <img src="/ui/home2/gc-home2-news-race.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
             <span class="gc-home2-tag gc-home2-tag--red">Crónica</span>
             <time>26 may 2026</time>
             <h3>Crónica GC Weekly Race</h3>
-            <p>Resumen de carrera, batallas y vueltas clave del sábado.</p>
+            <p>Resumen de la carrera del sábado con grandes batallas.</p>
             <a href="/novedades" class="gc-home2-link">Leer más →</a>
           </div>
         </article>
 
         <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-sim.svg" alt="" width="380" height="214" loading="lazy" decoding="async" />
-          <div>
+          <img src="/ui/home2/gc-home2-news-sim.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
             <span class="gc-home2-tag gc-home2-tag--cyan">Simracing</span>
             <time>25 may 2026</time>
-            <h3>Formula Drift todo lo nuevo</h3>
-            <p>Análisis de una nueva actualización con coches añadidos.</p>
+            <h3>Formula Drift: todo lo nuevo</h3>
+            <p>Análisis de la nueva actualización y los coches añadidos.</p>
             <a href="/novedades" class="gc-home2-link">Leer más →</a>
           </div>
         </article>
       </div>
     </section>
 
-    <section class="gc-home2-section gc-home2-shell gc-home2-bottom-grid" aria-label="Archivo y herramientas">
-      <article class="gc-home2-panel gc-home2-archive">
+    <section class="gc-home2-section gc-home2-shell gc-home2-mid-grid" aria-label="Archivo y box tools">
+      <article class="gc-home2-panel gc-home2-panel--archive">
         <div class="gc-home2-panel__head">
           <div>
             <p class="gc-home2-panel__eyebrow">Archivo GC</p>
@@ -242,28 +232,31 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         </div>
 
         <div class="gc-home2-archive-grid" data-home2-archive>
-          <a class="gc-home2-archive-card" href="/archivo">
-            <img src="/ui/home2/gc-home2-archive-circuit.svg" alt="" width="360" height="205" loading="lazy" decoding="async" />
-            <span>Circuito</span>
+          <a class="gc-home2-archive-card" href="/archivo/circuitos/mugello/">
+            <img src="/ui/home2/gc-home2-archive-circuit.svg" alt="" width="340" height="190" loading="lazy" decoding="async" />
+            <span class="gc-home2-archive-card__tag">Circuito</span>
             <strong>Mugello</strong>
             <small>Guía completa del circuito, referencias y líneas.</small>
+            <em>Ver ficha →</em>
           </a>
-          <a class="gc-home2-archive-card" href="/archivo">
-            <img src="/ui/home2/gc-home2-archive-car.svg" alt="" width="360" height="205" loading="lazy" decoding="async" />
-            <span>Coche</span>
+          <a class="gc-home2-archive-card" href="/archivo/coches/bmw-m3-gt2/">
+            <img src="/ui/home2/gc-home2-archive-car.svg" alt="" width="340" height="190" loading="lazy" decoding="async" />
+            <span class="gc-home2-archive-card__tag">Coche</span>
             <strong>BMW M3 GT2</strong>
-            <small>Ficha técnica, setup base y puntos fuertes.</small>
+            <small>Ficha técnica, setup base y referencias.</small>
+            <em>Ver ficha →</em>
           </a>
-          <a class="gc-home2-archive-card" href="/archivo">
-            <img src="/ui/home2/gc-home2-archive-driver.svg" alt="" width="360" height="205" loading="lazy" decoding="async" />
-            <span>Piloto</span>
-            <strong>Nandy</strong>
-            <small>Perfil, estadísticas y mejores resultados.</small>
+          <a class="gc-home2-archive-card" href="/archivo/coches/ferrari-f430-gt2/">
+            <img src="/ui/home2/gc-home2-archive-driver.svg" alt="" width="340" height="190" loading="lazy" decoding="async" />
+            <span class="gc-home2-archive-card__tag">Coche</span>
+            <strong>Ferrari F430 GT2</strong>
+            <small>Ficha, contexto histórico y datos técnicos.</small>
+            <em>Ver ficha →</em>
           </a>
         </div>
       </article>
 
-      <article class="gc-home2-panel gc-home2-tools">
+      <article class="gc-home2-panel gc-home2-panel--tools">
         <div class="gc-home2-panel__head">
           <div>
             <p class="gc-home2-panel__eyebrow">Box Tools</p>
@@ -276,50 +269,69 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
             <img src="/ui/home2/icons/hud.svg" alt="" width="52" height="52" loading="lazy" />
             <strong>HUD / Overlays</strong>
             <span>Descarga el HUD oficial GC</span>
+            <em>→</em>
           </a>
           <a href="/app-android" class="gc-home2-tool">
             <img src="/ui/home2/icons/android.svg" alt="" width="52" height="52" loading="lazy" />
             <strong>App Android</strong>
-            <span>Lleva GC en el móvil</span>
+            <span>Lleva GC contigo en el móvil</span>
+            <em>→</em>
           </a>
           <a href="/combos" class="gc-home2-tool">
             <img src="/ui/home2/icons/car.svg" alt="" width="52" height="52" loading="lazy" />
             <strong>Coches</strong>
             <span>Lista de coches disponibles</span>
+            <em>→</em>
           </a>
           <a href="/archivo" class="gc-home2-tool">
             <img src="/ui/home2/icons/track.svg" alt="" width="52" height="52" loading="lazy" />
             <strong>Circuitos</strong>
-            <span>Fichas y referencias rápidas</span>
+            <span>Lista de circuitos disponibles</span>
+            <em>→</em>
           </a>
         </div>
       </article>
     </section>
 
-    <section class="gc-home2-community gc-home2-shell" aria-label="Comunidad GrassCutters">
-      <div>
-        <p class="gc-home2-panel__eyebrow">Comunidad</p>
-        <h2>Entra al paddock.</h2>
-        <p>Pocas normas, buen ambiente y pista limpia.</p>
-      </div>
-      <div class="gc-home2-community__links">
-        <a href="https://discord.gg/jA4yuuH5T" target="_blank" rel="noreferrer">
-          <img src="/ui/home2/icons/discord.svg" alt="" width="28" height="28" /> Discord
-        </a>
-        <a href="https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa" target="_blank" rel="noreferrer">
-          <img src="/ui/home2/icons/whatsapp.svg" alt="" width="28" height="28" /> WhatsApp
-        </a>
-        <a href="https://www.instagram.com/grasscutters_ac/" target="_blank" rel="noreferrer">
-          <img src="/ui/home2/icons/instagram.svg" alt="" width="28" height="28" /> Instagram
-        </a>
-        <a href="/normas">
-          <img src="/ui/home2/icons/rules.svg" alt="" width="28" height="28" /> Normas
-        </a>
-        <a href="/apoyo-servidor">
-          <img src="/ui/home2/icons/support.svg" alt="" width="28" height="28" /> Apoya el server
-        </a>
+    <section class="gc-home2-section gc-home2-shell" aria-label="Comunidad y CTA final">
+      <div class="gc-home2-bottom">
+        <article class="gc-home2-panel gc-home2-panel--community">
+          <div>
+            <p class="gc-home2-panel__eyebrow">Comunidad</p>
+            <h2>Únete al paddock</h2>
+            <p class="gc-home2-section__sub">Chat, grupo oficial y recursos</p>
+          </div>
+
+          <div class="gc-home2-community-links">
+            <a href="https://discord.gg/jA4yuuH5T" target="_blank" rel="noreferrer"><img src="/ui/home2/icons/discord.svg" alt="" width="24" height="24" />Discord</a>
+            <a href="https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa" target="_blank" rel="noreferrer"><img src="/ui/home2/icons/whatsapp.svg" alt="" width="24" height="24" />WhatsApp</a>
+            <a href="https://www.instagram.com/grasscutters_ac/" target="_blank" rel="noreferrer"><img src="/ui/home2/icons/instagram.svg" alt="" width="24" height="24" />Instagram</a>
+            <a href="/normas"><img src="/ui/home2/icons/rules.svg" alt="" width="24" height="24" />Normas</a>
+            <a href="/apoyo-servidor"><img src="/ui/home2/icons/support.svg" alt="" width="24" height="24" />Apoya el server</a>
+          </div>
+        </article>
+
+        <article class="gc-home2-panel gc-home2-panel--cta">
+          <p class="gc-home2-panel__eyebrow">¿Listo para rodar?</p>
+          <h2>Entra al servidor</h2>
+          <p class="gc-home2-section__sub">Mejora tus tiempos y forma parte de GrassCutters.</p>
+          <a class="gc-home2-btn gc-home2-btn--primary gc-home2-btn--wide" href="https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=185.216.144.78" target="_blank" rel="noreferrer">
+            Entrar al servidor
+            <span aria-hidden="true">→</span>
+          </a>
+        </article>
       </div>
     </section>
+
+    <footer class="gc-home2-footer gc-home2-shell">
+      <span>© 2026 GrassCutters Racing</span>
+      <nav aria-label="Footer home2">
+        <a href="/privacidad">Privacidad</a>
+        <a href="/terminos">Términos</a>
+        <a href="/contacto">Contacto</a>
+      </nav>
+      <strong>GRASSCUTTERS</strong>
+    </footer>
   </main>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -334,8 +346,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
       const setText = (selector, value) => {
         const el = $(selector);
         if (!el) return;
-        const clean = value === undefined || value === null || value === '' ? '--' : String(value);
-        el.textContent = clean;
+        el.textContent = value === undefined || value === null || value === '' ? '--' : String(value);
       };
 
       const getArray = (payload) => {
@@ -346,7 +357,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         if (Array.isArray(payload.laps)) return payload.laps;
         if (Array.isArray(payload.results)) return payload.results;
         if (Array.isArray(payload.combos)) return payload.combos;
-        if (payload.leaderboard && Array.isArray(payload.leaderboard)) return payload.leaderboard;
+        if (Array.isArray(payload.leaderboard)) return payload.leaderboard;
         return [];
       };
 
@@ -356,9 +367,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
           if (key.includes('.')) {
             const parts = key.split('.');
             let current = obj;
-            for (const part of parts) {
-              current = current && current[part];
-            }
+            for (const part of parts) current = current && current[part];
             if (current !== undefined && current !== null && current !== '') return current;
           } else if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
             return obj[key];
@@ -382,6 +391,47 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '');
+
+      const normalizeArchiveType = (value) => {
+        const raw = slugify(value || 'archivo');
+        if (['circuito', 'circuit', 'track', 'tracks'].includes(raw)) return 'circuitos';
+        if (['coche', 'coches', 'car', 'cars', 'vehiculo', 'vehiculos', 'vehicle'].includes(raw)) return 'coches';
+        if (['piloto', 'pilotos', 'driver', 'drivers'].includes(raw)) return 'pilotos';
+        if (raw.endsWith('s')) return raw;
+        return `${raw}s`;
+      };
+
+      const archiveImage = (item, index = 0) => {
+        const direct = firstValue(item, [
+          'image',
+          'imageUrl',
+          'image_url',
+          'imagen_url',
+          'imagen',
+          'cover',
+          'coverUrl',
+          'cover_url',
+          'media.0.url',
+          'media.0.publicUrl',
+          'featuredImage',
+          'featured_image'
+        ]);
+        if (direct) return String(direct);
+        const fallbacks = [
+          '/ui/home2/gc-home2-archive-circuit.svg',
+          '/ui/home2/gc-home2-archive-car.svg',
+          '/ui/home2/gc-home2-archive-driver.svg'
+        ];
+        return fallbacks[index % fallbacks.length];
+      };
+
+      const archiveHref = (item) => {
+        const direct = firstValue(item, ['href', 'url', 'publicUrl', 'public_url', 'path']);
+        if (direct) return String(direct);
+        const slug = firstValue(item, ['slug', 'seoSlug']);
+        const type = normalizeArchiveType(firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']));
+        return slug ? `/archivo/${type}/${slug}/` : '/archivo';
+      };
 
       const formatLap = (value) => {
         if (value === undefined || value === null || value === '') return '--';
@@ -423,6 +473,13 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         return '/images/pilot-avatar-default.png';
       };
 
+      const probeImage = (src) => new Promise((resolve) => {
+        const test = new Image();
+        test.onload = () => resolve(src);
+        test.onerror = () => resolve('');
+        test.src = src;
+      });
+
       const setTrackImage = async (trackName) => {
         const img = $('[data-home2-track-image]');
         if (!img || !trackName) return;
@@ -447,15 +504,32 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
           '/ui/home2/gc-home2-track-fallback.svg'
         ];
 
-        const probe = (src) => new Promise((resolve) => {
-          const test = new Image();
-          test.onload = () => resolve(src);
-          test.onerror = () => resolve('');
-          test.src = src;
-        });
+        for (const candidate of candidates) {
+          const ok = await probeImage(candidate);
+          if (ok) {
+            img.src = ok;
+            return;
+          }
+        }
+      };
+
+      const setTrackMap = async (trackName) => {
+        const img = $('[data-home2-track-map]');
+        if (!img || !trackName) return;
+        const slug = slugify(trackName);
+        const compact = slug.replace(/^rt_/, '').replace(/^mx_/, '').replace(/^nrms_/, '');
+        const candidates = [
+          `/images/tracks/${slug}_mapa.png`,
+          `/images/tracks/${compact}_mapa.png`,
+          `/images/tracks/${slug}-mapa.png`,
+          `/images/tracks/${compact}-mapa.png`,
+          `/images/tracks/${slug}_map.png`,
+          `/images/tracks/${compact}_map.png`,
+          '/ui/home2/gc-home2-track-outline.svg'
+        ];
 
         for (const candidate of candidates) {
-          const ok = await probe(candidate);
+          const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
             return;
@@ -482,46 +556,59 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         const items = getArray(data);
         const host = $('[data-home2-news]');
         if (!host || !items.length) return;
-
-        host.innerHTML = items.slice(0, 4).map((item, index) => {
-          const image = item.image || '/ui/home2/gc-home2-news-sim.svg';
-          const cls = index === 0 ? 'gc-home2-news-card gc-home2-news-card--main' : 'gc-home2-news-card';
-          return `
-            <article class="${cls}">
-              <img src="${image}" alt="" width="${index === 0 ? 760 : 380}" height="${index === 0 ? 430 : 214}" loading="lazy" decoding="async" />
-              <div>
-                <span class="gc-home2-tag">${item.category || 'Paddock'}</span>
-                <time>${item.date || item.publishedAt || ''}</time>
-                <h3>${item.title || 'Noticia'}</h3>
-                <p>${item.excerpt || ''}</p>
-                <a href="${item.href || '/novedades'}" class="gc-home2-link">Leer más →</a>
-              </div>
-            </article>
-          `;
-        }).join('');
+        host.innerHTML = items.slice(0, 4).map((item) => `
+          <article class="gc-home2-news-card">
+            <img src="${item.image || '/ui/home2/gc-home2-news-sim.svg'}" alt="" width="380" height="216" loading="lazy" decoding="async" />
+            <div class="gc-home2-news-card__body">
+              <span class="gc-home2-tag">${item.category || 'Paddock'}</span>
+              <time>${item.date || item.publishedAt || ''}</time>
+              <h3>${item.title || 'Noticia'}</h3>
+              <p>${item.excerpt || ''}</p>
+              <a href="${item.href || '/novedades'}" class="gc-home2-link">Leer más →</a>
+            </div>
+          </article>
+        `).join('');
       };
 
       const renderArchive = async () => {
-        const data = await fetchJson('/api/archive/items.json') || await fetchJson('/api/archive/items?featured=1&limit=3') || await fetchJson('/api/archive/items?limit=3');
-        const items = getArray(data).slice(0, 3);
+        const endpoints = [
+          '/api/archive/items.json?limit=3&status=published',
+          '/api/archive/items.json?featured=1&limit=3',
+          '/api/archive/items.json?limit=3',
+          '/api/archive/items?featured=1&limit=3',
+          '/api/archive/items?limit=3',
+          '/data/archive/items.json'
+        ];
+
+        let payload = null;
+        for (const endpoint of endpoints) {
+          payload = await fetchJson(endpoint);
+          if (getArray(payload).length) break;
+        }
+
+        const items = getArray(payload)
+          .filter((item) => {
+            const status = String(firstValue(item, ['status', 'estado']) || 'published').toLowerCase();
+            return !['draft', 'borrador', 'trash', 'deleted'].includes(status);
+          })
+          .slice(0, 3);
+
         const host = $('[data-home2-archive]');
         if (!host || !items.length) return;
 
-        host.innerHTML = items.map((item) => {
+        host.innerHTML = items.map((item, index) => {
           const title = firstValue(item, ['title', 'nombre', 'name']) || 'Ficha';
-          const type = firstValue(item, ['type', 'tipo', 'category', 'categoria']) || 'Archivo';
-          const summary = firstValue(item, ['summary', 'descripcion_corta', 'description', 'subtitle']) || 'Ficha técnica e histórica.';
-          const image = firstValue(item, ['image', 'imageUrl', 'imagen_url', 'cover', 'media.0.url']) || '/ui/home2/gc-home2-archive-circuit.svg';
-          const href = firstValue(item, ['href', 'url', 'publicUrl']);
-          const slug = firstValue(item, ['slug']);
-          const tipo = firstValue(item, ['tipo', 'type', 'category']);
-          const finalHref = href || (slug && tipo ? `/archivo/${tipo}/${slug}` : '/archivo');
+          const type = firstValue(item, ['type', 'tipo', 'category', 'categoria', 'kind']) || 'Archivo';
+          const summary = firstValue(item, ['summary', 'descripcion_corta', 'description', 'subtitle', 'subtitulo']) || 'Ficha técnica e histórica.';
+          const image = archiveImage(item, index);
+          const finalHref = archiveHref(item);
           return `
             <a class="gc-home2-archive-card" href="${finalHref}">
-              <img src="${image}" alt="" width="360" height="205" loading="lazy" decoding="async" />
-              <span>${type}</span>
+              <img src="${image}" alt="" width="340" height="190" loading="lazy" decoding="async" />
+              <span class="gc-home2-archive-card__tag">${type}</span>
               <strong>${title}</strong>
               <small>${summary}</small>
+              <em>Ver ficha →</em>
             </a>
           `;
         }).join('');
@@ -555,7 +642,7 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
         const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || 'Nandy';
         const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']) || carList[0] || 'BMW M3 GT2';
-        const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime']));
+        const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime'])) || '1:50.264';
 
         setText('[data-home2-track]', track);
         setText('[data-home2-now-title]', track);
@@ -565,37 +652,33 @@ const description = 'Portada experimental oculta de GrassCutters Racing con comp
         setText('[data-home2-best-car]', bestCar);
         setText('[data-home2-reference-car]', bestCar);
         setText('[data-home2-best-time]', bestTime);
-        setText('[data-home2-best-mini]', bestTime);
         setText('[data-home2-reference-time]', bestTime);
         if (totalComboLaps) setText('[data-home2-laps]', totalComboLaps);
         if (comboDrivers) setText('[data-home2-drivers]', comboDrivers);
 
         const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
-        const avatarNodes = $$('[data-home2-best-avatar], [data-home2-reference-avatar]');
-        avatarNodes.forEach((img) => { img.src = bestAvatar; });
+        $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
         await setTrackImage(track);
-
+        await setTrackMap(track);
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
+
         const board = getArray(leaderboardPayload);
         if (board.length) {
           const firstBoard = board[0];
           const boardDriver = firstValue(firstBoard, ['driverName', 'pilotName', 'playerName', 'name']) || bestDriver;
           const boardCar = firstValue(firstBoard, ['carName', 'car', 'carDisplayName']) || bestCar;
-          const boardTime = formatLap(firstValue(firstBoard, ['lapTimeFormatted', 'bestLapTimeFormatted', 'lapTime', 'time', 'bestLap']));
+          const boardTime = formatLap(firstValue(firstBoard, ['lapTimeFormatted', 'bestLapTimeFormatted', 'lapTime', 'time', 'bestLap'])) || bestTime;
           setText('[data-home2-best-driver]', boardDriver);
           setText('[data-home2-reference-driver]', boardDriver);
           setText('[data-home2-best-car]', boardCar);
           setText('[data-home2-reference-car]', boardCar);
           setText('[data-home2-best-time]', boardTime);
-          setText('[data-home2-best-mini]', boardTime);
           setText('[data-home2-reference-time]', boardTime);
         }
 
         await renderNews();
         await renderArchive();
-
-        document.documentElement.dataset.gcHome2 = 'hybrid-v1-ready';
       };
 
       init();
