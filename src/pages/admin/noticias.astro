@@ -260,7 +260,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
             method: id ? 'PUT' : 'POST',
             body: JSON.stringify(body)
           });
-          els.message.textContent = 'Noticia guardada.';
+          els.message.innerHTML = `Noticia guardada. <a href="/noticias/${data.post.slug}" target="_blank" rel="noreferrer">Ver noticia</a>`;
           await load();
           editPost(data.post.id);
         } catch (error) {

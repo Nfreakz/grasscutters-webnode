@@ -864,7 +864,7 @@ import '../styles/home2.css';
             <time>${esc(post.date || '')}</time>
             <h3>${esc(post.title || 'Noticia')}</h3>
             <p>${esc(post.excerpt || '')}</p>
-            ${post.href ? `<a href="${esc(post.href)}" class="gc-home2-link">Leer más →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
+            <a href="${esc(post.href || `/noticias/${post.slug}`)}" class="gc-home2-link">Leer noticia →</a>
           </div>
         </article>
       `;
@@ -945,7 +945,7 @@ import '../styles/home2.css';
             <time>${esc(first.date || '')}</time>
             <h2>${esc(first.title || 'Noticia')}</h2>
             <p>${esc(first.excerpt || '')}</p>
-            ${first.href ? `<a class="gc-home2-btn gc-home2-btn--primary" href="${esc(first.href)}">Leer más →</a>` : ''}
+            <a class="gc-home2-btn gc-home2-btn--primary" href="${esc(first.href || `/noticias/${first.slug}`)}">Leer noticia →</a>
           </div>
         `;
       };

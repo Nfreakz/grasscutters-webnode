@@ -1699,7 +1699,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const host = $('[data-home2-news]');
         if (!host || !items.length) return;
         host.innerHTML = items.slice(0, 4).map((item) => {
-          const href = item.href || item.linkUrl || item.link || '';
+          const href = item.href || item.linkUrl || item.link || (item.slug ? `/noticias/${item.slug}` : '');
           return `
             <article class="gc-home2-news-card">
               <img src="${item.image || '/ui/home2/gc-home2-news-sim.svg'}" alt="" width="380" height="216" loading="lazy" decoding="async" />
@@ -1708,7 +1708,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
                 <time>${item.date || item.publishedAt || ''}</time>
                 <h3>${item.title || 'Noticia'}</h3>
                 <p>${item.excerpt || ''}</p>
-                ${href ? `<a href="${href}" class="gc-home2-link">Leer más →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
+                ${href ? `<a href="${href}" class="gc-home2-link">Leer noticia →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
               </div>
             </article>
           `;
