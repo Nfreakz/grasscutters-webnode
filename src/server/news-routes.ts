@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Express, Request, Response } from 'express';
+import express, { type Express, type Request, type Response } from 'express';
 
 type RequireAdmin = (req: Request, res: Response) => Promise<any | null>;
 
@@ -95,6 +95,21 @@ function newsMediaConfig(rootDir: string) {
   return { uploadDir, publicBase };
 }
 
+function publicPathFromBase(publicBase: string) {
+  const raw = String(publicBase || '/uploads/news').trim();
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      return new URL(raw).pathname.replace(/\/+$/, '') || '/uploads/news';
+    } catch {
+      return '/uploads/news';
+    }
+  }
+
+  if (raw.startsWith('/')) return raw.replace(/\/+$/, '') || '/uploads/news';
+  return `/${raw.replace(/^\/+|\/+$/g, '') || 'uploads/news'}`;
+}
+
 function extensionFromMime(mime: string) {
   const clean = String(mime || '').toLowerCase();
   if (clean.includes('jpeg') || clean.includes('jpg')) return 'jpg';
@@ -134,7 +149,6 @@ function parseDataUrl(dataUrl: string) {
 function safeFileBase(value: unknown) {
   return slugify(String(value || 'noticia')).slice(0, 90) || 'noticia';
 }
-
 
 function safeDate(value: unknown, fallback = nowIso()) {
   const raw = String(value ?? '').trim();
@@ -410,6 +424,15 @@ function demoPosts() {
 }
 
 export function registerNewsRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin: RequireAdmin }) {
+  const newsMedia = newsMediaConfig(rootDir);
+  fs.mkdirSync(newsMedia.uploadDir, { recursive: true });
+
+  const publicMediaPath = publicPathFromBase(newsMedia.publicBase);
+  app.use(publicMediaPath, express.static(newsMedia.uploadDir, {
+    maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
+    index: false,
+  }));
+
   app.get(['/api/news', '/api/noticias'], async (req: Request, res: Response) => {
     try {
       const result = await listPosts(rootDir);
@@ -505,7 +528,7 @@ export function registerNewsRoutes(app: Express, { rootDir, requireAdmin }: { ro
       const filePath = path.join(cfg.uploadDir, fileName);
       fs.writeFileSync(filePath, parsed.buffer);
 
-      const publicUrl = `${cfg.publicBase}/${fileName}`.replace(/\/+/g, '/');
+      const publicUrl = `${cfg.publicBase.replace(/\/+$/, '')}/${fileName}`;
       return res.json({
         ok: true,
         url: publicUrl,
@@ -526,16 +549,29 @@ export function registerNewsRoutes(app: Express, { rootDir, requireAdmin }: { ro
     try {
       let created = 0;
       let skipped = 0;
+
       for (const post of demoPosts()) {
         const existing = await findPost(rootDir, post.id);
-        if (existing) { skipped += 1; continue; }
-        await savePost(rootDir, post);
+        if (existing) {
+          skipped += 1;
+          continue;
+        }
+
+        await savePost(rootDir, post, post.id);
         created += 1;
       }
+
       const result = await listPosts(rootDir);
-      return res.json({ ok: true, created, skipped, posts: sortPosts(result.posts), storage: result.storage, api: 'gc-news-v2' });
+      return res.json({
+        ok: true,
+        created,
+        skipped,
+        posts: sortPosts(result.posts),
+        storage: result.storage,
+        api: 'gc-news-v2'
+      });
     } catch (error: any) {
-      return res.status(500).json({ ok: false, message: error?.message || 'No se pudo crear la demo.' });
+      return res.status(400).json({ ok: false, message: error?.message || 'No se pudo crear la demo de noticias.' });
     }
   });
 }
