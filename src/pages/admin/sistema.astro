@@ -2,23 +2,751 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
+
 <AppLayout title="Admin sistema | GrassCutters">
-  <div class="gc-page gc-admin-page-clean">
-    <section class="gc-hero gc-hero--compact">
-      <div><span class="gc-kicker">Administración</span><h1 class="gc-title">Sistema.</h1><p class="gc-subtitle">Storage, stracker, ACSM y herramientas de diagnóstico.</p></div>
-      <aside class="gc-live-panel"><div class="gc-live-panel__title"><span>Sistema</span><strong id="systemState">Comprobando</strong></div><div class="gc-status-list"><div class="gc-status-row"><span>Storage</span><strong id="storageSource">...</strong></div><div class="gc-status-row"><span>stracker</span><strong id="strackerState">...</strong></div><div class="gc-status-row"><span>ACSM</span><strong id="acsmState">...</strong></div></div></aside>
+  <div class="gc-page gc-admin-page-clean gc-admin-system-v1">
+    <section class="gc-hero gc-hero--compact gc-admin-system-hero-v1">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Sistema.</h1>
+        <p class="gc-subtitle">Storage, stracker, ACSM, sincronización y diagnóstico operativo. El panel de máquinas de la nave, pero sin cables mordidos.</p>
+
+        <div class="gc-admin-system-chips-v1">
+          <span>Storage</span>
+          <span>stracker</span>
+          <span>ACSM</span>
+          <span>Sync</span>
+        </div>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Sistema</span>
+          <strong id="systemState">Comprobando</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Storage</span><strong id="storageSource">...</strong></div>
+          <div class="gc-status-row"><span>stracker</span><strong id="strackerState">...</strong></div>
+          <div class="gc-status-row"><span>ACSM</span><strong id="acsmState">...</strong></div>
+          <div class="gc-status-row"><span>Último check</span><strong id="lastCheck">...</strong></div>
+        </div>
+      </aside>
     </section>
+
     <AdminSubnav />
-    <section class="gc-section" id="adminGate" hidden><div class="gc-section-head"><h2>Acceso restringido</h2><p>Solo administradores</p></div><div class="gc-slab"><p>Inicia sesión con una cuenta administradora.</p><div class="gc-actions"><a class="gc-btn gc-btn--primary" href="/login">Login</a><button class="gc-btn" id="retryAdmin" type="button">Reintentar</button></div></div></section>
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Acceso</span>
+          <h2>Acceso restringido</h2>
+          <p>Solo administradores.</p>
+        </div>
+      </div>
+      <div class="gc-slab">
+        <p>Inicia sesión con una cuenta administradora para revisar sistema.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+          <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
+        </div>
+      </div>
+    </section>
+
     <section id="adminContent" hidden>
-      <section class="gc-grid-2">
-        <div class="gc-section"><div class="gc-section-head"><h2>Storage persistente</h2><p>Usuarios, sesiones, alias y calendario.</p></div><div class="gc-slab-list" id="storageRows"><div><span>Storage</span><strong>Cargando...</strong></div></div><p class="gc-message" id="storageMessage"></p></div>
-        <div class="gc-section"><div class="gc-section-head"><h2>stracker</h2><p>Base de datos de vueltas.</p></div><div class="gc-slab-list" id="strackerRows"><div><span>DB</span><strong>Cargando...</strong></div></div><div class="gc-actions"><button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button><a class="gc-btn" href="/app">Ver panel</a></div><p class="gc-message" id="syncMessage"></p></div>
+      <section class="gc-admin-system-metrics-v1">
+        <article>
+          <span>Storage</span>
+          <strong id="metricStorage">...</strong>
+          <small id="metricStorageNote">Comprobando persistencia</small>
+        </article>
+        <article>
+          <span>stracker</span>
+          <strong id="metricStracker">...</strong>
+          <small id="metricStrackerNote">Comprobando DB</small>
+        </article>
+        <article>
+          <span>ACSM</span>
+          <strong id="metricAcsm">...</strong>
+          <small id="metricAcsmNote">Comprobando conexión</small>
+        </article>
+        <article>
+          <span>Sync</span>
+          <strong id="metricSync">Manual</strong>
+          <small id="metricSyncNote">Acciones bajo demanda</small>
+        </article>
       </section>
-      <section class="gc-section"><div class="gc-section-head"><h2>ACSM</h2><p>Sincronización del combo activo desde Assetto Corsa Server Manager.</p></div><div class="gc-slab-list" id="acsmRows"><div><span>Estado</span><strong>Cargando...</strong></div></div><div class="gc-actions"><button class="gc-btn" id="checkAcsmBtn" type="button">Probar conexión</button><button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button><a class="gc-btn" href="/admin/calendario">Ver calendario admin</a></div><p class="gc-message" id="acsmMessage"></p></section>
+
+      <section class="gc-admin-system-layout-v1">
+        <main class="gc-admin-system-main-v1">
+          <section class="gc-section gc-admin-system-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Storage</span>
+                <h2>Storage persistente</h2>
+                <p>Usuarios, sesiones, alias, calendario y archivos de trabajo.</p>
+              </div>
+              <div class="gc-admin-actions">
+                <button class="gc-btn" id="reloadStatusBtn" type="button">Recargar estado</button>
+              </div>
+            </div>
+
+            <div class="gc-admin-system-grid-v1" id="storageRows">
+              <div><span>Storage</span><strong>Cargando...</strong></div>
+            </div>
+
+            <p class="gc-message" id="storageMessage"></p>
+          </section>
+
+          <section class="gc-section gc-admin-system-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">stracker</span>
+                <h2>Base de vueltas</h2>
+                <p>Estado de la base de datos de vueltas y acciones de sincronización.</p>
+              </div>
+              <div class="gc-admin-actions">
+                <button class="gc-btn gc-btn--primary" id="forceSyncBtn" type="button">Forzar sync</button>
+                <a class="gc-btn" href="/app">Ver panel</a>
+                <a class="gc-btn" href="/admin/endpoints">Endpoint Lab</a>
+              </div>
+            </div>
+
+            <div class="gc-admin-system-grid-v1" id="strackerRows">
+              <div><span>DB</span><strong>Cargando...</strong></div>
+            </div>
+
+            <p class="gc-message" id="syncMessage"></p>
+          </section>
+
+          <section class="gc-section gc-admin-system-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">ACSM</span>
+                <h2>Assetto Corsa Server Manager</h2>
+                <p>Comprueba credenciales y sincroniza el combo activo con calendario.</p>
+              </div>
+              <div class="gc-admin-actions">
+                <button class="gc-btn" id="checkAcsmBtn" type="button">Probar conexión</button>
+                <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
+                <a class="gc-btn" href="/admin/calendario">Calendario admin</a>
+              </div>
+            </div>
+
+            <div class="gc-admin-system-grid-v1" id="acsmRows">
+              <div><span>Estado</span><strong>Cargando...</strong></div>
+            </div>
+
+            <p class="gc-message" id="acsmMessage"></p>
+          </section>
+        </main>
+
+        <aside class="gc-admin-system-side-v1">
+          <section class="gc-section gc-admin-system-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Resumen</span>
+                <h2>Diagnóstico rápido</h2>
+                <p>Lectura resumida de estado.</p>
+              </div>
+            </div>
+
+            <div class="gc-admin-system-timeline-v1" id="diagnosticRows">
+              <article><span>Estado</span><strong>Sin ejecutar</strong><p>Esperando datos del servidor.</p></article>
+            </div>
+          </section>
+
+          <section class="gc-section gc-admin-system-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Acciones</span>
+                <h2>Herramientas</h2>
+                <p>Accesos relacionados.</p>
+              </div>
+            </div>
+
+            <div class="gc-admin-system-links-v1">
+              <a href="/admin/endpoints"><strong>Endpoint Lab</strong><span>Pruebas API</span></a>
+              <a href="/admin/historial"><strong>Historial</strong><span>Auditoría</span></a>
+              <a href="/admin/archivo/calidad"><strong>Calidad archivo</strong><span>Revisión editorial</span></a>
+              <a href="/admin"><strong>Hub admin</strong><span>Volver al resumen</span></a>
+            </div>
+          </section>
+        </aside>
+      </section>
     </section>
   </div>
+
+  <style is:global>
+    .gc-admin-system-v1 {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: grid;
+      gap: clamp(18px, 2.2vw, 28px);
+    }
+
+    .gc-admin-system-hero-v1 {
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--accent2, #35d3ff) 10%, transparent), transparent 24rem),
+        radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--accent, #9dff00) 10%, transparent), transparent 20rem),
+        linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.016));
+    }
+
+    .gc-admin-system-chips-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .gc-admin-system-chips-v1 span {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      background: rgba(0,0,0,.14);
+      color: var(--soft);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-system-metrics-v1 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin-bottom: clamp(18px, 2.2vw, 28px);
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 18%, var(--line));
+      overflow: hidden;
+      background: rgba(255,255,255,.018);
+    }
+
+    .gc-admin-system-metrics-v1 article {
+      min-height: 112px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 9%, transparent), transparent 8rem),
+        linear-gradient(135deg, rgba(255,255,255,.052), rgba(255,255,255,.018));
+    }
+
+    .gc-admin-system-metrics-v1 article:last-child {
+      border-right: 0;
+    }
+
+    .gc-admin-system-metrics-v1 span,
+    .gc-admin-system-grid-v1 span,
+    .gc-admin-system-timeline-v1 span {
+      color: var(--dim);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-system-metrics-v1 strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: clamp(1.65rem, 3vw, 2.45rem);
+      line-height: .92;
+      letter-spacing: -.06em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gc-admin-system-metrics-v1 small {
+      display: block;
+      margin-top: 8px;
+      color: var(--soft);
+      line-height: 1.35;
+    }
+
+    .gc-admin-system-layout-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, .38fr);
+      gap: clamp(18px, 2.2vw, 28px);
+      align-items: start;
+    }
+
+    .gc-admin-system-main-v1 {
+      display: grid;
+      gap: 18px;
+    }
+
+    .gc-admin-system-side-v1 {
+      position: sticky;
+      top: 86px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .gc-admin-system-card-v1 {
+      margin: 0;
+      overflow: hidden;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 7%, transparent), transparent 16rem),
+        linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 18px 70px rgba(0,0,0,.16);
+    }
+
+    .gc-admin-system-card-v1 .gc-section-head {
+      margin: 0;
+      padding: clamp(20px, 2.2vw, 28px) clamp(20px, 2.4vw, 30px) 14px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+
+    .gc-admin-system-card-v1 .gc-section-head h2 {
+      margin: 4px 0 6px;
+      font-size: clamp(1.35rem, 2.3vw, 2.05rem);
+      line-height: .95;
+      letter-spacing: -.05em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-system-grid-v1,
+    .gc-admin-system-timeline-v1,
+    .gc-admin-system-links-v1 {
+      display: grid;
+      gap: 10px;
+      padding: clamp(16px, 2vw, 24px) clamp(20px, 2.4vw, 30px) clamp(20px, 2.4vw, 30px);
+    }
+
+    .gc-admin-system-grid-v1 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .gc-admin-system-grid-v1 div,
+    .gc-admin-system-timeline-v1 article,
+    .gc-admin-system-links-v1 a {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 6%, transparent), transparent 8rem),
+        rgba(0,0,0,.13);
+    }
+
+    .gc-admin-system-grid-v1 strong {
+      display: block;
+      margin-top: 7px;
+      color: var(--text);
+      line-height: 1.18;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gc-admin-system-card-v1 .gc-message {
+      margin: 0 clamp(20px, 2.4vw, 30px) clamp(20px, 2.4vw, 30px);
+    }
+
+    .gc-admin-system-timeline-v1 article strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text);
+      font-size: 1.05rem;
+      line-height: 1.1;
+    }
+
+    .gc-admin-system-timeline-v1 article p {
+      margin: 8px 0 0;
+      color: var(--soft);
+      line-height: 1.4;
+    }
+
+    .gc-admin-system-links-v1 a {
+      display: grid;
+      gap: 5px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .gc-admin-system-links-v1 a:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent, #9dff00) 34%, var(--line));
+      background: rgba(122,255,144,.06);
+    }
+
+    .gc-admin-system-links-v1 a strong {
+      font-size: .88rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .gc-admin-system-links-v1 a span {
+      color: var(--soft);
+      font-size: .86rem;
+    }
+
+    .gc-admin-system-v1 .gc-admin-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .gc-admin-system-v1 .gc-btn[disabled] {
+      opacity: .55;
+      pointer-events: none;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-admin-system-layout-v1 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-admin-system-side-v1 {
+        position: static;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .gc-admin-system-metrics-v1,
+      .gc-admin-system-grid-v1 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-admin-system-metrics-v1 article {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .gc-admin-system-metrics-v1 article:last-child {
+        border-bottom: 0;
+      }
+    }
+  </style>
+
   <script is:inline>
-    (()=>{const $=(id)=>document.getElementById(id);const els={gate:$('adminGate'),content:$('adminContent'),retry:$('retryAdmin'),system:$('systemState'),storageSource:$('storageSource'),strackerState:$('strackerState'),acsmState:$('acsmState'),storageRows:$('storageRows'),storageMessage:$('storageMessage'),strackerRows:$('strackerRows'),syncMessage:$('syncMessage'),forceSyncBtn:$('forceSyncBtn'),acsmRows:$('acsmRows'),acsmMessage:$('acsmMessage'),checkAcsmBtn:$('checkAcsmBtn'),syncAcsmBtn:$('syncAcsmBtn')};const esc=(v)=>String(v??'').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));const short=(v)=>{const t=String(v||'-');return t.length>60?'...'+t.slice(-57):t};async function fetchJson(url,options={}){const r=await fetch(url,{credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},...options});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw new Error(d.message||`HTTP ${r.status}`);return d}async function isAdmin(){try{const s=await fetchJson('/api/admin/status');if(s.authorized===true)return s}catch{}const p=await fetchJson('/api/profile');if(p.user?.role==='admin')return {authorized:true,currentUser:p.user,admin:{}};return null}function show(mode){els.gate.hidden=mode!=='gate';els.content.hidden=mode!=='content'}function renderStatus(data){els.system.textContent='OK';const storage=data.admin?.storage||{};const storageRoot=storage.storage||storage;const files=storage.files||{};els.storageSource.textContent=files.users?.source||storageRoot.source||'-';els.storageRows.innerHTML=`<div><span>Usuarios</span><strong>${esc(files.users?.source||storageRoot.source||'-')}</strong></div><div><span>Nombres</span><strong>${esc(files.displayNames?.source||storageRoot.source||'-')}</strong></div><div><span>Persistente</span><strong>${storageRoot.persistent===false?'No':'Sí'}</strong></div><div><span>Ruta</span><strong>${esc(short(storageRoot.dataRoot||files.users?.resolvedPath||'-'))}</strong></div>`;const s=data.admin?.stracker||{};els.strackerState.textContent=s.exists?'OK':'No';els.strackerRows.innerHTML=`<div><span>Existe</span><strong>${s.exists?'Sí':'No'}</strong></div><div><span>SQLite</span><strong>${s.validSQLite?'Válido':'-'}</strong></div><div><span>Tamaño</span><strong>${Math.round(((s.sizeBytes||0)/1024/1024)*10)/10} MB</strong></div><div><span>Ruta</span><strong>${esc(short(s.resolvedPath||'-'))}</strong></div>`}async function checkAcsm(){try{els.acsmMessage.textContent='Comprobando ACSM...';const d=await fetchJson('/api/admin/acsm/status');els.acsmState.textContent=d.authorized?'OK':'No';els.acsmRows.innerHTML=`<div><span>Guard</span><strong>${esc(d.source||'-')}</strong></div><div><span>Host</span><strong>${d.config?.hostConfigured?'OK':'Falta'}</strong></div><div><span>User</span><strong>${d.config?.userConfigured?'OK':'Falta'}</strong></div><div><span>Password</span><strong>${d.config?.passwordConfigured?'OK':'Falta'}</strong></div>`;els.acsmMessage.textContent='ACSM disponible.';els.acsmMessage.style.color='var(--accent)'}catch(e){els.acsmState.textContent='Error';els.acsmRows.innerHTML=`<div><span>Error</span><strong>${esc(e.message||'No disponible')}</strong></div>`;els.acsmMessage.textContent=e.message||'No se pudo comprobar ACSM.'}}async function syncAcsm(){try{els.acsmMessage.textContent='Sincronizando combo...';const d=await fetchJson('/api/admin/acsm/sync-current-combo',{method:'POST'});els.acsmMessage.textContent=`Combo sincronizado. Storage: ${d.source||'-'}. Eventos: ${d.totalEvents??'-'}`;els.acsmMessage.style.color='var(--accent)';await checkAcsm()}catch(e){els.acsmMessage.textContent=e.message||'No se pudo sincronizar.';els.acsmMessage.style.color='var(--soft)'}}async function forceSync(){try{els.syncMessage.textContent='Solicitando sync...';await fetchJson('/api/admin/stracker/sync',{method:'POST'});els.syncMessage.textContent='Sync solicitado.';els.syncMessage.style.color='var(--accent)'}catch(e){els.syncMessage.textContent=e.message||'No se pudo forzar sync.'}}async function init(){show('gate');try{const status=await isAdmin();if(!status?.authorized)return show('gate');show('content');let full=status;try{full=await fetchJson('/api/admin/status')}catch{}renderStatus(full);await checkAcsm()}catch{show('gate')}}els.retry.addEventListener('click',init);els.checkAcsmBtn.addEventListener('click',checkAcsm);els.syncAcsmBtn.addEventListener('click',syncAcsm);els.forceSyncBtn.addEventListener('click',forceSync);init()})();
+    (() => {
+      const $ = (id) => document.getElementById(id);
+
+      const els = {
+        gate: $('adminGate'),
+        content: $('adminContent'),
+        retry: $('retryAdmin'),
+        system: $('systemState'),
+        storageSource: $('storageSource'),
+        strackerState: $('strackerState'),
+        acsmState: $('acsmState'),
+        lastCheck: $('lastCheck'),
+
+        metricStorage: $('metricStorage'),
+        metricStorageNote: $('metricStorageNote'),
+        metricStracker: $('metricStracker'),
+        metricStrackerNote: $('metricStrackerNote'),
+        metricAcsm: $('metricAcsm'),
+        metricAcsmNote: $('metricAcsmNote'),
+        metricSync: $('metricSync'),
+        metricSyncNote: $('metricSyncNote'),
+
+        storageRows: $('storageRows'),
+        storageMessage: $('storageMessage'),
+        strackerRows: $('strackerRows'),
+        syncMessage: $('syncMessage'),
+        forceSyncBtn: $('forceSyncBtn'),
+        acsmRows: $('acsmRows'),
+        acsmMessage: $('acsmMessage'),
+        checkAcsmBtn: $('checkAcsmBtn'),
+        syncAcsmBtn: $('syncAcsmBtn'),
+        reloadStatusBtn: $('reloadStatusBtn'),
+        diagnosticRows: $('diagnosticRows')
+      };
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        "'":'&#39;',
+        '"':'&quot;'
+      }[char]));
+
+      const short = (value, length = 68) => {
+        const text = String(value || '-');
+        return text.length > length ? `...${text.slice(-(length - 3))}` : text;
+      };
+
+      const mb = (bytes) => {
+        const value = Number(bytes || 0);
+        if (!Number.isFinite(value) || value <= 0) return '0 MB';
+        return `${Math.round((value / 1024 / 1024) * 10) / 10} MB`;
+      };
+
+      const nowText = () => new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+      function setMessage(el, text, tone = '') {
+        if (!el) return;
+        el.textContent = text || '';
+        el.style.color = tone === 'ok' ? 'var(--accent)' : tone === 'bad' ? 'var(--warn)' : 'var(--soft)';
+      }
+
+      function setMetric(main, note, value, detail) {
+        if (main) main.textContent = value;
+        if (note) note.textContent = detail;
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, {
+          credentials:'include',
+          cache:'no-store',
+          headers:{ 'Content-Type':'application/json' },
+          ...options
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return status;
+        } catch {}
+
+        const profile = await fetchJson('/api/profile');
+        if (profile.user?.role === 'admin') return { authorized:true, currentUser:profile.user, admin:{} };
+
+        return null;
+      }
+
+      function show(mode) {
+        els.gate.hidden = mode !== 'gate';
+        els.content.hidden = mode !== 'content';
+      }
+
+      function renderDiagnostics(rows) {
+        els.diagnosticRows.innerHTML = rows.map((row) => `
+          <article>
+            <span>${esc(row.label)}</span>
+            <strong>${esc(row.value)}</strong>
+            <p>${esc(row.detail)}</p>
+          </article>
+        `).join('');
+      }
+
+      function renderStatus(data) {
+        els.system.textContent = 'OK';
+        els.system.style.color = 'var(--accent)';
+        els.lastCheck.textContent = nowText();
+
+        const storage = data.admin?.storage || {};
+        const storageRoot = storage.storage || storage;
+        const files = storage.files || {};
+        const storagePersistent = storageRoot.persistent !== false;
+        const storageSource = files.users?.source || storageRoot.source || '-';
+
+        els.storageSource.textContent = storageSource;
+        setMetric(
+          els.metricStorage,
+          els.metricStorageNote,
+          storagePersistent ? 'OK' : 'Revisar',
+          storagePersistent ? `${storageSource} persistente` : 'La ruta persistente requiere revisión'
+        );
+
+        els.storageRows.innerHTML = `
+          <div><span>Usuarios</span><strong>${esc(files.users?.source || storageRoot.source || '-')}</strong></div>
+          <div><span>Nombres</span><strong>${esc(files.displayNames?.source || storageRoot.source || '-')}</strong></div>
+          <div><span>Persistente</span><strong>${storagePersistent ? 'Sí' : 'No'}</strong></div>
+          <div><span>Data root</span><strong title="${esc(storageRoot.dataRoot || files.users?.resolvedPath || '-')}">${esc(short(storageRoot.dataRoot || files.users?.resolvedPath || '-'))}</strong></div>
+          <div><span>Users path</span><strong title="${esc(files.users?.resolvedPath || '-')}">${esc(short(files.users?.resolvedPath || '-'))}</strong></div>
+          <div><span>Display names path</span><strong title="${esc(files.displayNames?.resolvedPath || '-')}">${esc(short(files.displayNames?.resolvedPath || '-'))}</strong></div>
+        `;
+
+        const stracker = data.admin?.stracker || {};
+        const strackerOk = Boolean(stracker.exists && stracker.validSQLite);
+
+        els.strackerState.textContent = strackerOk ? 'OK' : stracker.exists ? 'Revisar' : 'No';
+        els.strackerState.style.color = strackerOk ? 'var(--accent)' : 'var(--warn)';
+
+        setMetric(
+          els.metricStracker,
+          els.metricStrackerNote,
+          strackerOk ? 'OK' : stracker.exists ? 'Revisar' : 'No DB',
+          strackerOk ? `${mb(stracker.sizeBytes)} detectados` : 'Sin base válida'
+        );
+
+        els.strackerRows.innerHTML = `
+          <div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div>
+          <div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div>
+          <div><span>Tamaño</span><strong>${mb(stracker.sizeBytes)}</strong></div>
+          <div><span>Ruta</span><strong title="${esc(stracker.resolvedPath || '-')}">${esc(short(stracker.resolvedPath || '-'))}</strong></div>
+        `;
+
+        renderDiagnostics([
+          {
+            label:'Storage',
+            value: storagePersistent ? 'OK' : 'Revisar',
+            detail: storagePersistent ? 'El storage parece persistente.' : 'Revisar configuración de rutas.'
+          },
+          {
+            label:'stracker',
+            value: strackerOk ? 'OK' : 'Pendiente',
+            detail: strackerOk ? 'Base SQLite válida.' : 'No hay base válida detectada.'
+          },
+          {
+            label:'Admin status',
+            value: data.authorized ? 'Autorizado' : 'Bloqueado',
+            detail: data.currentUser?.displayName || data.currentUser?.email || 'Usuario admin.'
+          }
+        ]);
+
+        setMessage(els.storageMessage, 'Estado de storage actualizado.', 'ok');
+      }
+
+      async function reloadStatus() {
+        try {
+          els.reloadStatusBtn.disabled = true;
+          els.reloadStatusBtn.textContent = 'Recargando...';
+
+          const status = await fetchJson('/api/admin/status');
+          renderStatus(status);
+        } catch (error) {
+          els.system.textContent = 'Error';
+          els.system.style.color = 'var(--warn)';
+          setMessage(els.storageMessage, error.message || 'No se pudo recargar sistema.', 'bad');
+        } finally {
+          els.reloadStatusBtn.disabled = false;
+          els.reloadStatusBtn.textContent = 'Recargar estado';
+        }
+      }
+
+      async function checkAcsm() {
+        try {
+          els.checkAcsmBtn.disabled = true;
+          els.checkAcsmBtn.textContent = 'Comprobando...';
+          setMessage(els.acsmMessage, 'Comprobando ACSM...');
+
+          const data = await fetchJson('/api/admin/acsm/status');
+          const ready = Boolean(data.authorized || data.ok || data.config?.hostConfigured);
+
+          els.acsmState.textContent = ready ? 'OK' : 'Revisar';
+          els.acsmState.style.color = ready ? 'var(--accent)' : 'var(--warn)';
+
+          setMetric(
+            els.metricAcsm,
+            els.metricAcsmNote,
+            ready ? 'OK' : 'Revisar',
+            ready ? 'Configuración ACSM detectada' : 'Faltan datos de conexión'
+          );
+
+          els.acsmRows.innerHTML = `
+            <div><span>Guard</span><strong>${esc(data.source || '-')}</strong></div>
+            <div><span>Host</span><strong>${data.config?.hostConfigured ? 'OK' : 'Falta'}</strong></div>
+            <div><span>User</span><strong>${data.config?.userConfigured ? 'OK' : 'Falta'}</strong></div>
+            <div><span>Password</span><strong>${data.config?.passwordConfigured ? 'OK' : 'Falta'}</strong></div>
+          `;
+
+          setMessage(els.acsmMessage, ready ? 'ACSM disponible.' : 'ACSM revisado, falta configuración.', ready ? 'ok' : '');
+        } catch (error) {
+          els.acsmState.textContent = 'Error';
+          els.acsmState.style.color = 'var(--warn)';
+          setMetric(els.metricAcsm, els.metricAcsmNote, 'Error', 'No se pudo comprobar ACSM');
+
+          els.acsmRows.innerHTML = `<div><span>Error</span><strong>${esc(error.message || 'No disponible')}</strong></div>`;
+          setMessage(els.acsmMessage, error.message || 'No se pudo comprobar ACSM.', 'bad');
+        } finally {
+          els.checkAcsmBtn.disabled = false;
+          els.checkAcsmBtn.textContent = 'Probar conexión';
+        }
+      }
+
+      async function syncAcsm() {
+        try {
+          els.syncAcsmBtn.disabled = true;
+          els.syncAcsmBtn.textContent = 'Sincronizando...';
+          setMessage(els.acsmMessage, 'Sincronizando combo desde ACSM...');
+
+          const data = await fetchJson('/api/admin/acsm/sync-current-combo', { method:'POST' });
+
+          setMetric(
+            els.metricSync,
+            els.metricSyncNote,
+            'OK',
+            `Eventos: ${data.totalEvents ?? '-'}`
+          );
+
+          setMessage(
+            els.acsmMessage,
+            `Combo sincronizado. Storage: ${data.source || '-'}. Eventos: ${data.totalEvents ?? '-'}`,
+            'ok'
+          );
+
+          await checkAcsm();
+        } catch (error) {
+          setMetric(els.metricSync, els.metricSyncNote, 'Error', 'No se pudo sincronizar');
+          setMessage(els.acsmMessage, error.message || 'No se pudo sincronizar.', 'bad');
+        } finally {
+          els.syncAcsmBtn.disabled = false;
+          els.syncAcsmBtn.textContent = 'Sincronizar combo';
+        }
+      }
+
+      async function forceSync() {
+        try {
+          els.forceSyncBtn.disabled = true;
+          els.forceSyncBtn.textContent = 'Sincronizando...';
+          setMessage(els.syncMessage, 'Solicitando sync de stracker...');
+
+          const data = await fetchJson('/api/admin/stracker/sync', { method:'POST' });
+
+          setMessage(els.syncMessage, data.message || 'Sync solicitado.', 'ok');
+          await reloadStatus();
+        } catch (error) {
+          setMessage(els.syncMessage, error.message || 'No se pudo forzar sync.', 'bad');
+        } finally {
+          els.forceSyncBtn.disabled = false;
+          els.forceSyncBtn.textContent = 'Forzar sync';
+        }
+      }
+
+      async function init() {
+        show('gate');
+
+        try {
+          const status = await isAdmin();
+
+          if (!status?.authorized) {
+            els.system.textContent = 'Bloqueado';
+            els.system.style.color = 'var(--warn)';
+            show('gate');
+            return;
+          }
+
+          show('content');
+
+          let fullStatus = status;
+          try {
+            fullStatus = await fetchJson('/api/admin/status');
+          } catch {}
+
+          renderStatus(fullStatus);
+          await checkAcsm();
+        } catch {
+          els.system.textContent = 'Error';
+          els.system.style.color = 'var(--warn)';
+          show('gate');
+        }
+      }
+
+      els.retry?.addEventListener('click', init);
+      els.reloadStatusBtn?.addEventListener('click', reloadStatus);
+      els.checkAcsmBtn?.addEventListener('click', checkAcsm);
+      els.syncAcsmBtn?.addEventListener('click', syncAcsm);
+      els.forceSyncBtn?.addEventListener('click', forceSync);
+
+      init();
+    })();
   </script>
 </AppLayout>
