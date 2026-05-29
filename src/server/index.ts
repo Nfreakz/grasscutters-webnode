@@ -18,6 +18,7 @@ import { registerMotorsportArchiveSafeApiV824 } from './motorsport-archive-safe-
 import { registerMotorsportArchiveUnifiedAdminRoutes } from './motorsport-archive-unified-admin-routes';
 import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-archive-local-image-upload-routes';
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
+import { registerNewsRoutes } from './news-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -5257,6 +5258,7 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
 
 // GC_CALENDAR_EVENTS_PATCH_V6_ROUTE_FIRST
 app.use(express.json({ limit: '25mb' }));
+registerNewsRoutes(app, { rootDir, requireAdmin });
 
 const gcCalendarV6AllowedTypes = ['combo', 'race_lfm', 'race_gc'] as const;
 type GcCalendarV6Type = typeof gcCalendarV6AllowedTypes[number];
@@ -12145,6 +12147,10 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
+
+
 
 
 

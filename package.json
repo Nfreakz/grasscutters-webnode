@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
     "dev:web": "astro dev --host 0.0.0.0 --port 4321",
-    "dev:server": "node scripts/patch-auth-logout.mjs && tsx watch src/server/index.ts",
-    "prebuild": "node scripts/patch-server-runtime-root.mjs && node scripts/patch-auth-logout.mjs && node scripts/ensure-hostinger-runtime.mjs",
+    "dev:server": "node scripts/patch-news-system.mjs && node scripts/patch-auth-logout.mjs && tsx watch src/server/index.ts",
+    "prebuild": "node scripts/patch-news-system.mjs && node scripts/patch-server-runtime-root.mjs && node scripts/patch-auth-logout.mjs && node scripts/ensure-hostinger-runtime.mjs",
     "build": "astro build && node scripts/build-server.mjs && node scripts/prepare-hostinger-dist.mjs",
     "start": "node server.cjs",
     "preview": "npm run build && npm start",

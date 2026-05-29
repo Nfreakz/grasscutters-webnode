@@ -1,0 +1,73 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+---
+
+<MarketingLayout title="Paddock Wire | GrassCutters" description="Página oculta de trabajo para las noticias de GrassCutters Racing.">
+  <main class="gc-news-hidden-page" data-news-hidden>
+    <section class="gc-news-hidden-hero">
+      <span>Paddock Wire</span>
+      <h1>Noticias GC</h1>
+      <p>Sistema editorial oculto para preparar noticias antes de enlazarlo en la web pública.</p>
+    </section>
+
+    <section class="gc-news-hidden-grid" data-news-list>
+      <article class="gc-news-hidden-card">
+        <strong>Cargando noticias...</strong>
+        <p>Esperando datos del sistema persistente.</p>
+      </article>
+    </section>
+  </main>
+
+  <style is:global>
+    .gc-news-hidden-page{width:min(1280px,calc(100% - 32px));margin:0 auto;padding:42px 0 64px}
+    .gc-news-hidden-hero{border:1px solid var(--line);background:radial-gradient(circle at 80% 0%,rgba(157,255,0,.12),transparent 22rem),rgba(255,255,255,.018);padding:clamp(24px,4vw,48px);border-radius:28px;margin-bottom:18px}
+    .gc-news-hidden-hero span{color:var(--accent);font-weight:900;text-transform:uppercase;letter-spacing:.14em}
+    .gc-news-hidden-hero h1{font-size:clamp(3rem,8vw,6rem);line-height:.88;margin:10px 0;text-transform:uppercase;letter-spacing:-.07em}
+    .gc-news-hidden-hero p{max-width:720px;color:var(--soft)}
+    .gc-news-hidden-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .gc-news-hidden-card{border:1px solid var(--line);background:rgba(255,255,255,.018);border-radius:22px;overflow:hidden}
+    .gc-news-hidden-card img{width:100%;height:180px;object-fit:cover;background:#101510;filter:saturate(.9) brightness(.82)}
+    .gc-news-hidden-card__body{padding:15px}
+    .gc-news-hidden-card span{color:var(--accent);font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em}
+    .gc-news-hidden-card time{display:block;margin-top:6px;color:var(--dim);font-size:.76rem;text-transform:uppercase}
+    .gc-news-hidden-card h2{font-size:1.2rem;line-height:1.05;margin:9px 0;text-transform:uppercase}
+    .gc-news-hidden-card p{color:var(--soft);line-height:1.45}
+    .gc-news-hidden-card a{color:var(--accent);font-weight:900;text-transform:uppercase;text-decoration:none}
+    @media(max-width:900px){.gc-news-hidden-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){.gc-news-hidden-grid{grid-template-columns:1fr}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('[data-news-hidden]');
+      const host = root?.querySelector('[data-news-list]');
+      if (!host) return;
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const fallbackImage = '/ui/home2/gc-home2-news-sim.svg';
+      fetch('/api/news?limit=50', { cache:'no-store' })
+        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+        .then((data) => {
+          const posts = Array.isArray(data.posts) ? data.posts : [];
+          if (!posts.length) {
+            host.innerHTML = '<article class="gc-news-hidden-card"><div class="gc-news-hidden-card__body"><h2>Sin noticias publicadas</h2><p>Publica una entrada desde /admin/noticias para verla aquí.</p></div></article>';
+            return;
+          }
+          host.innerHTML = posts.map((post) => `
+            <article class="gc-news-hidden-card">
+              <img src="${esc(post.image || fallbackImage)}" alt="${esc(post.imageAlt || '')}" width="420" height="240" loading="lazy" decoding="async" />
+              <div class="gc-news-hidden-card__body">
+                <span>${esc(post.category || 'Paddock')}</span>
+                <time>${esc(post.date || '')}</time>
+                <h2>${esc(post.title || 'Noticia')}</h2>
+                <p>${esc(post.excerpt || '')}</p>
+                ${post.href ? `<a href="${esc(post.href)}">Leer más →</a>` : ''}
+              </div>
+            </article>
+          `).join('');
+        })
+        .catch((error) => {
+          host.innerHTML = `<article class="gc-news-hidden-card"><div class="gc-news-hidden-card__body"><h2>Error cargando noticias</h2><p>${esc(error.message || 'Error desconocido')}</p></div></article>`;
+        });
+    })();
+  </script>
+</MarketingLayout>

@@ -1,0 +1,1018 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import '../styles/home2.css';
+---
+
+<MarketingLayout title="Noticias | GrassCutters" description="Noticias y actualizaciones de GrassCutters Racing.">
+  <main class="gc-home2 gc-news-page-v4" data-news-page>
+    <section class="gc-news-race-hero-v4">
+      <div class="gc-home2-shell gc-news-race-hero-v4__grid">
+        <div class="gc-news-race-hero-v4__copy">
+          <p class="gc-home2-kicker">GRASSCUTTERS RACE CONTROL</p>
+          <h1>Noticias</h1>
+          <p class="gc-home2-lead">Lo último del paddock</p>
+          <p class="gc-news-race-hero-v4__lead">
+            Actualizaciones del servidor, comunidad, herramientas, carreras y cambios importantes del ecosistema GrassCutters.
+          </p>
+
+          <div class="gc-home2-statusline gc-news-race-hero-v4__meta">
+            <span class="gc-home2-badge">Oculta por URL</span>
+            <span class="gc-home2-badge">Editable desde admin</span>
+            <span class="gc-home2-badge">MySQL / Persistente</span>
+          </div>
+        </div>
+
+        <aside class="gc-news-hero-search-v42" aria-label="Buscar noticias">
+          <p class="gc-home2-panel__eyebrow">Buscar</p>
+          <h2>Encuentra noticias</h2>
+          <label class="gc-news-search-v4 gc-news-search-v42">
+            <span>Buscar por texto</span>
+            <input data-news-search type="search" placeholder="HUD, combo, carrera..." autocomplete="off" />
+          </label>
+          <div class="gc-news-hero-search-v42__meta">
+            <span>Resultados</span>
+            <strong data-news-results>--</strong>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="gc-home2-section gc-home2-shell gc-news-command-v4" aria-label="Noticias destacadas y búsqueda">
+      <article class="gc-news-feature-card-v4" data-featured-news>
+        <div class="gc-news-feature-card-v4__media">
+          <img src="/ui/home2/gc-home2-news-sim.svg" alt="" width="860" height="480" loading="lazy" decoding="async" />
+        </div>
+        <div class="gc-news-feature-card-v4__body">
+          <span class="gc-home2-tag">Sistema</span>
+          <time>Cargando</time>
+          <h2>Cargando noticia principal</h2>
+          <p>Esperando datos del sistema persistente.</p>
+        </div>
+      </article>
+
+      <aside class="gc-news-blog-sidebar-v4">
+        <section class="gc-home2-panel gc-news-filter-box-v4">
+          <div class="gc-news-filter-box-v4__head">
+            <div>
+              <p class="gc-home2-panel__eyebrow">Filtros</p>
+              <h2>Categorías</h2>
+            </div>
+            <button type="button" data-news-clear class="gc-news-clear-v4">Reset</button>
+          </div>
+
+          <div class="gc-news-filter-list-v4" data-news-categories>
+            <button type="button" class="is-active" data-news-category="all"><span>Todo</span><strong>--</strong></button>
+            <button type="button" data-news-category="Update"><span>Updates</span><strong>--</strong></button>
+            <button type="button" data-news-category="Comunidad"><span>Comunidad</span><strong>--</strong></button>
+            <button type="button" data-news-category="Carreras"><span>Carreras</span><strong>--</strong></button>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="gc-home2-section gc-home2-shell" aria-labelledby="gc-news-title">
+      <div class="gc-home2-section__head gc-news-section-head-v4">
+        <div>
+          <p class="gc-home2-panel__eyebrow">Blog GC</p>
+          <h2 id="gc-news-title">Últimas noticias</h2>
+          <p class="gc-home2-section__sub" data-news-list-subtitle>Contenido publicado desde /admin/noticias</p>
+        </div>
+
+        <div class="gc-news-filter-pills-v4" data-news-pills aria-label="Filtros rápidos">
+          <button type="button" class="is-active" data-news-category="all">Todo</button>
+          <button type="button" data-news-category="Update">Updates</button>
+          <button type="button" data-news-category="Comunidad">Comunidad</button>
+          <button type="button" data-news-category="Carreras">Carreras</button>
+          <button type="button" data-news-category="Herramientas">Herramientas</button>
+        </div>
+      </div>
+
+      <div class="gc-news-grid-v4" data-news-list>
+        <article class="gc-home2-news-card gc-news-card-v4">
+          <img src="/ui/home2/gc-home2-news-sim.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
+            <span class="gc-home2-tag">Sistema</span>
+            <time>Cargando</time>
+            <h3>Cargando noticias</h3>
+            <p>Esperando datos del sistema persistente.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <style is:global>
+    .gc-news-page-v4 {
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 82% 8%, rgba(150,255,47,.10), transparent 26rem),
+        radial-gradient(circle at 18% 30%, rgba(255,154,61,.055), transparent 24rem),
+        linear-gradient(180deg, #050806 0%, #020302 48%, #060906 100%);
+      isolation: isolate;
+    }
+
+    .gc-news-page-v4::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: .22;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,.026) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: radial-gradient(circle at 50% 0%, black, transparent 72%);
+    }
+
+    .gc-news-race-hero-v4 {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(86px, 9vw, 128px) 0 clamp(26px, 4vw, 54px);
+      border-bottom: 1px solid rgba(150,255,47,.11);
+      background:
+        linear-gradient(90deg, rgba(2,4,2,.44), rgba(2,4,2,.80)),
+        radial-gradient(circle at 62% 28%, rgba(150,255,47,.15), transparent 18rem),
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(0,0,0,.78));
+    }
+
+    .gc-news-race-hero-v4::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 78px;
+      pointer-events: none;
+      background: linear-gradient(180deg, transparent, #050806);
+    }
+
+    .gc-news-race-hero-v4__grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 392px);
+      gap: clamp(18px, 4vw, 56px);
+      align-items: end;
+    }
+
+    /* Igualado al tamaño del hero de /home2 */
+    .gc-news-race-hero-v4__copy h1 {
+      margin: 8px 0 0;
+      font-size: clamp(58px, 8vw, 86px);
+      line-height: .88;
+      letter-spacing: -.055em;
+      text-transform: uppercase;
+      max-width: 540px;
+    }
+
+    .gc-news-race-hero-v4__lead {
+      max-width: 760px;
+      margin: 14px 0 0;
+      color: rgba(232,242,226,.78);
+      font-size: clamp(1rem, 1.25vw, 1.16rem);
+      line-height: 1.45;
+    }
+
+    .gc-news-race-hero-v4__meta {
+      margin-top: 22px;
+    }
+
+    .gc-news-race-panel-v4 {
+      border: 1px solid rgba(150,255,47,.16);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.11), transparent 8rem),
+        linear-gradient(180deg, rgba(9,14,10,.86), rgba(3,6,4,.96));
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.035),
+        0 18px 60px rgba(0,0,0,.26);
+      padding: 16px;
+      min-height: 222px;
+    }
+
+    .gc-news-race-panel-v4__top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+
+    .gc-news-race-panel-v4__top span {
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-race-panel-v4__top strong {
+      font-size: 44px;
+      line-height: .86;
+      letter-spacing: -.06em;
+    }
+
+    .gc-news-race-panel-v4__rows {
+      display: grid;
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    .gc-news-race-panel-v4__rows div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.018);
+      padding: 10px 11px;
+    }
+
+    .gc-news-race-panel-v4__rows span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-race-panel-v4__rows strong {
+      color: var(--text);
+      font-size: 12px;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .gc-news-command-v4 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.34fr) minmax(310px, .66fr);
+      gap: 14px;
+      align-items: stretch;
+      margin-top: clamp(16px, 3vw, 28px);
+    }
+
+    .gc-news-feature-card-v4 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(300px, .72fr);
+      min-height: 360px;
+      border: 1px solid rgba(150,255,47,.13);
+      background:
+        radial-gradient(circle at 72% 0%, rgba(150,255,47,.095), transparent 10rem),
+        linear-gradient(180deg, rgba(9,14,10,.88), rgba(3,6,4,.96));
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-news-feature-card-v4__media {
+      min-height: 100%;
+      background: #080c08;
+      overflow: hidden;
+    }
+
+    .gc-news-feature-card-v4__media img {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      object-fit: cover;
+      filter: saturate(.86) brightness(.70) contrast(1.08);
+      transform: scale(1.01);
+    }
+
+    .gc-news-feature-card-v4__body {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: clamp(18px, 3vw, 30px);
+    }
+
+    .gc-news-feature-card-v4__body time,
+    .gc-news-card-v4 time {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-feature-card-v4__body h2 {
+      margin: 12px 0 10px;
+      font-size: clamp(2.1rem, 4.6vw, 4rem);
+      line-height: .9;
+      letter-spacing: -.055em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-feature-card-v4__body p {
+      margin: 0;
+      color: rgba(232,242,226,.74);
+      line-height: 1.48;
+    }
+
+    .gc-news-blog-sidebar-v4 {
+      display: grid;
+      gap: 12px;
+      align-content: stretch;
+    }
+
+    .gc-news-search-box-v4,
+    .gc-news-filter-box-v4 {
+      min-height: auto !important;
+      padding: 18px !important;
+    }
+
+    .gc-news-search-box-v4 h2,
+    .gc-news-filter-box-v4 h2 {
+      margin: 7px 0 10px;
+      font-size: 26px;
+      line-height: .95;
+      text-transform: uppercase;
+    }
+
+    .gc-news-search-v4 {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .gc-news-search-v4 span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-search-v4 input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid rgba(150,255,47,.14);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.08), transparent 7rem),
+        rgba(0,0,0,.32);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    .gc-news-search-v4 input:focus {
+      border-color: rgba(150,255,47,.38);
+      box-shadow: 0 0 0 3px rgba(150,255,47,.06);
+    }
+
+    .gc-news-filter-box-v4__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .gc-news-clear-v4 {
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.022);
+      color: var(--muted);
+      padding: 7px 9px;
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .gc-news-filter-list-v4 {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .gc-news-filter-list-v4 button {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      min-height: 42px;
+      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.018);
+      color: var(--text);
+      padding: 9px 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .gc-news-filter-list-v4 button.is-active,
+    .gc-news-filter-list-v4 button:hover {
+      border-color: rgba(150,255,47,.27);
+      background:
+        radial-gradient(circle at 100% 50%, rgba(150,255,47,.10), transparent 6rem),
+        rgba(255,255,255,.025);
+    }
+
+    .gc-news-filter-list-v4 span {
+      font-size: 11px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+
+    .gc-news-filter-list-v4 strong {
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .gc-news-section-head-v4 {
+      align-items: end;
+    }
+
+    .gc-news-filter-pills-v4 {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .gc-news-filter-pills-v4 button {
+      border: 1px solid rgba(150,255,47,.16);
+      background: rgba(255,255,255,.025);
+      color: rgba(232,242,226,.78);
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .gc-news-filter-pills-v4 button.is-active,
+    .gc-news-filter-pills-v4 button:hover {
+      color: #071006;
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .gc-news-grid-v4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .gc-news-card-v4 {
+      min-height: 100%;
+      background:
+        linear-gradient(180deg, rgba(9,14,10,.84), rgba(3,6,4,.96)),
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.07), transparent 8rem) !important;
+    }
+
+    .gc-news-card-v4 img {
+      filter: saturate(.86) brightness(.72) contrast(1.05);
+    }
+
+    .gc-news-card-v4 h3 {
+      min-height: 2.25em;
+    }
+
+    .gc-news-empty-v4 {
+      grid-column: 1 / -1;
+      border: 1px solid rgba(150,255,47,.12);
+      background: rgba(255,255,255,.018);
+      padding: 22px;
+      color: var(--soft);
+    }
+
+    @media (max-width: 1180px) {
+      .gc-news-command-v4,
+      .gc-news-feature-card-v4 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-news-grid-v4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .gc-news-feature-card-v4__media img {
+        min-height: 260px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .gc-news-race-hero-v4__grid {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .gc-news-section-head-v4 {
+        align-items: start;
+      }
+
+      .gc-news-filter-pills-v4 {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .gc-news-grid-v4 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-news-race-panel-v4__top strong {
+        font-size: 34px;
+      }
+    }
+  
+
+    /* GC_NEWS_SYSTEM_V4_1_COMPACT
+       Compactación general de /noticias.
+       Objetivo: menos altura en hero y bloque principal tipo blog.
+    */
+
+    .gc-news-race-hero-v4 {
+      padding: clamp(66px, 7vw, 94px) 0 clamp(18px, 3vw, 34px) !important;
+    }
+
+    .gc-news-race-hero-v4::after {
+      height: 42px !important;
+    }
+
+    .gc-news-race-hero-v4__grid {
+      align-items: center !important;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 330px) !important;
+      gap: clamp(16px, 3vw, 34px) !important;
+    }
+
+    .gc-news-race-hero-v4__copy h1 {
+      margin-top: 6px !important;
+      font-size: clamp(52px, 7.2vw, 78px) !important;
+      line-height: .86 !important;
+      max-width: 520px !important;
+    }
+
+    .gc-news-race-hero-v4__lead {
+      margin-top: 10px !important;
+      max-width: 680px !important;
+      font-size: clamp(.92rem, 1.05vw, 1.06rem) !important;
+      line-height: 1.36 !important;
+    }
+
+    .gc-news-race-hero-v4__meta {
+      margin-top: 14px !important;
+    }
+
+    .gc-news-race-hero-v4__meta .gc-home2-badge {
+      min-height: 22px !important;
+      padding-inline: 8px !important;
+      font-size: 9px !important;
+    }
+
+    .gc-news-race-panel-v4 {
+      min-height: 0 !important;
+      padding: 12px !important;
+    }
+
+    .gc-news-race-panel-v4__top {
+      padding-bottom: 9px !important;
+    }
+
+    .gc-news-race-panel-v4__top strong {
+      font-size: 34px !important;
+    }
+
+    .gc-news-race-panel-v4__rows {
+      gap: 6px !important;
+      margin-top: 9px !important;
+    }
+
+    .gc-news-race-panel-v4__rows div {
+      min-height: 34px !important;
+      padding: 7px 9px !important;
+    }
+
+    .gc-news-command-v4 {
+      margin-top: 16px !important;
+      grid-template-columns: minmax(0, 1.26fr) minmax(280px, .74fr) !important;
+    }
+
+    .gc-news-feature-card-v4 {
+      min-height: 270px !important;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, .65fr) !important;
+    }
+
+    .gc-news-feature-card-v4__media img {
+      min-height: 270px !important;
+    }
+
+    .gc-news-feature-card-v4__body {
+      padding: 18px !important;
+    }
+
+    .gc-news-feature-card-v4__body h2 {
+      margin: 9px 0 8px !important;
+      font-size: clamp(1.65rem, 3.4vw, 2.75rem) !important;
+      line-height: .9 !important;
+    }
+
+    .gc-news-feature-card-v4__body p {
+      font-size: 13px !important;
+      line-height: 1.36 !important;
+    }
+
+    .gc-news-search-box-v4,
+    .gc-news-filter-box-v4 {
+      padding: 14px !important;
+    }
+
+    .gc-news-search-box-v4 h2,
+    .gc-news-filter-box-v4 h2 {
+      margin: 5px 0 8px !important;
+      font-size: 21px !important;
+    }
+
+    .gc-news-search-v4 {
+      margin-top: 10px !important;
+      gap: 6px !important;
+    }
+
+    .gc-news-search-v4 input {
+      min-height: 38px !important;
+      padding: 8px 10px !important;
+      font-size: 13px !important;
+    }
+
+    .gc-news-filter-list-v4 {
+      gap: 6px !important;
+      margin-top: 9px !important;
+    }
+
+    .gc-news-filter-list-v4 button {
+      min-height: 36px !important;
+      padding: 7px 9px !important;
+    }
+
+    .gc-news-filter-list-v4 span {
+      font-size: 10px !important;
+    }
+
+    .gc-news-filter-list-v4 strong {
+      font-size: 9px !important;
+    }
+
+    .gc-news-section-head-v4 {
+      margin-top: 2px !important;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-news-feature-card-v4 {
+        min-height: 0 !important;
+      }
+
+      .gc-news-feature-card-v4__media img {
+        min-height: 220px !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .gc-news-race-hero-v4 {
+        padding-top: 72px !important;
+      }
+
+      .gc-news-race-hero-v4__grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+  
+
+    /* GC_NEWS_SYSTEM_V4_2_SEARCH_HERO_COMPACT_EMPTY
+       - Se elimina el bloque News Feed del hero.
+       - El buscador ocupa ese lugar.
+       - La columna lateral del bloque principal queda para filtros.
+       - La noticia principal vacía se reduce para no parecer un cartel gigante.
+    */
+
+    .gc-news-race-hero-v4__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 360px) !important;
+      align-items: end !important;
+    }
+
+    .gc-news-hero-search-v42 {
+      border: 1px solid rgba(150,255,47,.16);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.10), transparent 8rem),
+        linear-gradient(180deg, rgba(9,14,10,.86), rgba(3,6,4,.96));
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.035),
+        0 18px 60px rgba(0,0,0,.24);
+      padding: 15px;
+    }
+
+    .gc-news-hero-search-v42 h2 {
+      margin: 6px 0 10px;
+      font-size: 22px;
+      line-height: .96;
+      text-transform: uppercase;
+    }
+
+    .gc-news-search-v42 {
+      margin-top: 8px !important;
+    }
+
+    .gc-news-hero-search-v42__meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 9px;
+      min-height: 34px;
+      padding: 7px 9px;
+      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.018);
+    }
+
+    .gc-news-hero-search-v42__meta span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-hero-search-v42__meta strong {
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .gc-news-blog-sidebar-v4 {
+      align-content: start !important;
+    }
+
+    .gc-news-filter-box-v4 {
+      min-height: 270px !important;
+    }
+
+    .gc-news-feature-card-v4 {
+      min-height: 230px !important;
+      grid-template-columns: minmax(0, .95fr) minmax(270px, .58fr) !important;
+    }
+
+    .gc-news-feature-card-v4__media img {
+      min-height: 230px !important;
+    }
+
+    .gc-news-feature-card-v4__body {
+      padding: 16px !important;
+    }
+
+    .gc-news-feature-card-v4__body h2 {
+      margin: 8px 0 7px !important;
+      font-size: clamp(1.45rem, 2.55vw, 2.1rem) !important;
+      line-height: .93 !important;
+      letter-spacing: -.045em !important;
+    }
+
+    .gc-news-feature-card-v4__body p {
+      font-size: 12.5px !important;
+      line-height: 1.34 !important;
+    }
+
+    .gc-news-feature-card-v4__body .gc-home2-tag {
+      min-height: 22px !important;
+      font-size: 9px !important;
+    }
+
+    .gc-news-feature-card-v4__body time {
+      margin-top: 6px !important;
+      font-size: 9px !important;
+    }
+
+    .gc-news-command-v4 {
+      grid-template-columns: minmax(0, 1.38fr) minmax(280px, .62fr) !important;
+      align-items: stretch !important;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-news-feature-card-v4 {
+        grid-template-columns: 1fr !important;
+      }
+
+      .gc-news-feature-card-v4__media img {
+        min-height: 210px !important;
+      }
+
+      .gc-news-filter-box-v4 {
+        min-height: auto !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .gc-news-race-hero-v4__grid {
+        grid-template-columns: 1fr !important;
+        align-items: start !important;
+      }
+
+      .gc-news-hero-search-v42 {
+        max-width: none;
+      }
+    }
+
+  </style>
+
+  <script is:inline>
+    (() => {
+      const list = document.querySelector('[data-news-list]');
+      const featured = document.querySelector('[data-featured-news]');
+      const count = document.querySelector('[data-news-count]');
+      const latest = document.querySelector('[data-news-latest]');
+      const results = document.querySelector('[data-news-results]');
+      const status = document.querySelector('[data-news-status]');
+      const subtitle = document.querySelector('[data-news-list-subtitle]');
+      const search = document.querySelector('[data-news-search]');
+      const clear = document.querySelector('[data-news-clear]');
+      const categoryHosts = [
+        document.querySelector('[data-news-categories]'),
+        document.querySelector('[data-news-pills]')
+      ].filter(Boolean);
+
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const fallbackImage = '/ui/home2/gc-home2-news-sim.svg';
+      let posts = [];
+      let activeCategory = 'all';
+      let query = '';
+
+      const normalize = (value) => String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+      const categoryLabel = (value) => String(value || 'Noticias').trim() || 'Noticias';
+
+      const filteredPosts = () => {
+        const q = normalize(query);
+        return posts.filter((post) => {
+          const categoryOk = activeCategory === 'all' || normalize(post.category) === normalize(activeCategory);
+          const textOk = !q || normalize([post.title, post.excerpt, post.category, post.body].join(' ')).includes(q);
+          return categoryOk && textOk;
+        });
+      };
+
+      const cardHtml = (post) => `
+        <article class="gc-home2-news-card gc-news-card-v4">
+          <img src="${esc(post.image || fallbackImage)}" alt="${esc(post.imageAlt || '')}" width="380" height="216" loading="lazy" decoding="async" />
+          <div class="gc-home2-news-card__body">
+            <span class="gc-home2-tag">${esc(post.category || 'Noticias')}</span>
+            <time>${esc(post.date || '')}</time>
+            <h3>${esc(post.title || 'Noticia')}</h3>
+            <p>${esc(post.excerpt || '')}</p>
+            ${post.href ? `<a href="${esc(post.href)}" class="gc-home2-link">Leer más →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
+          </div>
+        </article>
+      `;
+
+      const renderEmpty = () => {
+        if (count) count.textContent = '0';
+        if (latest) latest.textContent = 'Sin publicar';
+        if (results) results.textContent = '0';
+        if (status) status.textContent = 'Sin datos';
+
+        if (featured) {
+          featured.innerHTML = `
+            <div class="gc-news-feature-card-v4__media">
+              <img src="${fallbackImage}" alt="" width="860" height="480" loading="lazy" decoding="async" />
+            </div>
+            <div class="gc-news-feature-card-v4__body">
+              <span class="gc-home2-tag">Admin</span>
+              <time>Sin publicar</time>
+              <h2>No hay noticias todavía</h2>
+              <p>Publica una entrada desde /admin/noticias para verla aquí.</p>
+            </div>
+          `;
+        }
+
+        if (list) {
+          list.innerHTML = `
+            <article class="gc-news-empty-v4">
+              <strong>Feed preparado</strong>
+              <p>El sistema ya está listo. Falta publicar la primera noticia.</p>
+            </article>
+          `;
+        }
+      };
+
+      const renderCategories = () => {
+        const counts = new Map();
+        posts.forEach((post) => {
+          const label = categoryLabel(post.category);
+          counts.set(label, (counts.get(label) || 0) + 1);
+        });
+
+        const base = ['all', ...Array.from(counts.keys())];
+        const extras = ['Update', 'Comunidad', 'Carreras', 'Herramientas'].filter((name) => !base.some((item) => normalize(item) === normalize(name)));
+        const cats = [...base, ...extras].slice(0, 7);
+
+        categoryHosts.forEach((host) => {
+          host.innerHTML = cats.map((cat) => {
+            const isAll = cat === 'all';
+            const total = isAll ? posts.length : (counts.get(cat) || 0);
+            const label = isAll ? 'Todo' : cat;
+            const active = normalize(activeCategory) === normalize(cat) ? 'is-active' : '';
+            if (host.matches('[data-news-pills]')) {
+              return `<button type="button" class="${active}" data-news-category="${esc(cat)}">${esc(label)}</button>`;
+            }
+            return `<button type="button" class="${active}" data-news-category="${esc(cat)}"><span>${esc(label)}</span><strong>${total}</strong></button>`;
+          }).join('');
+
+          host.querySelectorAll('[data-news-category]').forEach((button) => {
+            button.addEventListener('click', () => {
+              activeCategory = button.dataset.newsCategory || 'all';
+              render();
+            });
+          });
+        });
+      };
+
+      const renderFeatured = () => {
+        if (!featured) return;
+        const first = filteredPosts()[0] || posts[0];
+        if (!first) return renderEmpty();
+
+        featured.innerHTML = `
+          <div class="gc-news-feature-card-v4__media">
+            <img src="${esc(first.image || fallbackImage)}" alt="${esc(first.imageAlt || '')}" width="860" height="480" loading="lazy" decoding="async" />
+          </div>
+          <div class="gc-news-feature-card-v4__body">
+            <span class="gc-home2-tag">${esc(first.category || 'Noticias')}</span>
+            <time>${esc(first.date || '')}</time>
+            <h2>${esc(first.title || 'Noticia')}</h2>
+            <p>${esc(first.excerpt || '')}</p>
+            ${first.href ? `<a class="gc-home2-btn gc-home2-btn--primary" href="${esc(first.href)}">Leer más →</a>` : ''}
+          </div>
+        `;
+      };
+
+      const render = () => {
+        const filtered = filteredPosts();
+
+        if (!posts.length) {
+          renderCategories();
+          renderEmpty();
+          return;
+        }
+
+        if (count) count.textContent = String(posts.length);
+        if (latest) latest.textContent = posts[0]?.date || 'Publicado';
+        if (results) results.textContent = String(filtered.length);
+        if (status) status.textContent = 'Operativo';
+        if (subtitle) {
+          subtitle.textContent = activeCategory === 'all'
+            ? `${filtered.length} noticias publicadas`
+            : `${filtered.length} noticias en ${activeCategory}`;
+        }
+
+        renderCategories();
+        renderFeatured();
+
+        if (list) {
+          list.innerHTML = filtered.length
+            ? filtered.map(cardHtml).join('')
+            : `<article class="gc-news-empty-v4"><strong>Sin resultados</strong><p>No hay noticias que coincidan con la búsqueda actual.</p></article>`;
+        }
+      };
+
+      fetch('/api/noticias?limit=48', { cache: 'no-store' })
+        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+        .then((data) => {
+          posts = Array.isArray(data.posts) ? data.posts : [];
+          render();
+        })
+        .catch((error) => {
+          if (status) status.textContent = 'Error';
+          if (featured) {
+            featured.innerHTML = `
+              <div class="gc-news-feature-card-v4__media">
+                <img src="${fallbackImage}" alt="" width="860" height="480" loading="lazy" decoding="async" />
+              </div>
+              <div class="gc-news-feature-card-v4__body">
+                <span class="gc-home2-tag">Error</span>
+                <time>API</time>
+                <h2>No se pudo cargar</h2>
+                <p>${esc(error.message || 'Error desconocido')}</p>
+              </div>
+            `;
+          }
+        });
+
+      search?.addEventListener('input', () => {
+        query = search.value || '';
+        render();
+      });
+
+      clear?.addEventListener('click', () => {
+        query = '';
+        activeCategory = 'all';
+        if (search) search.value = '';
+        render();
+      });
+    })();
+  </script>
+</MarketingLayout>

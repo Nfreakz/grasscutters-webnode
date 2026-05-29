@@ -372,11 +372,11 @@ const home2ArchiveSeed = (archiveStats.items || [])
     <section class="gc-home2-section gc-home2-shell" aria-labelledby="gc-home2-news-title">
       <div class="gc-home2-section__head">
         <div>
-          <p class="gc-home2-panel__eyebrow">Paddock Wire</p>
-          <h2 id="gc-home2-news-title">Últimas del paddock</h2>
-          <p class="gc-home2-section__sub">Lo último del mundo simracing</p>
+          <p class="gc-home2-panel__eyebrow">Noticias GC</p>
+          <h2 id="gc-home2-news-title">Últimas noticias</h2>
+          <p class="gc-home2-section__sub">Lo último de GrassCutters</p>
         </div>
-        <a href="/novedades" class="gc-home2-btn gc-home2-btn--small">Ver todas las noticias →</a>
+        <span class="gc-home2-btn gc-home2-btn--small gc-home2-btn--ghost" aria-hidden="true">Sistema oculto</span>
       </div>
 
       <div class="gc-home2-news-grid" data-home2-news>
@@ -643,6 +643,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         if (!payload) return [];
         if (Array.isArray(payload)) return payload;
         if (Array.isArray(payload.items)) return payload.items;
+        if (Array.isArray(payload.posts)) return payload.posts;
         if (Array.isArray(payload.data)) return payload.data;
         if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
         if (payload.data && Array.isArray(payload.data.entries)) return payload.data.entries;
@@ -1693,22 +1694,25 @@ const home2ArchiveSeed = (archiveStats.items || [])
       };
 
       const renderNews = async () => {
-        const data = await fetchJson('/data/home2-news.json');
+        const data = await fetchJson('/api/noticias?limit=4&featured=1') || await fetchJson('/data/home2-news.json');
         const items = getArray(data);
         const host = $('[data-home2-news]');
         if (!host || !items.length) return;
-        host.innerHTML = items.slice(0, 4).map((item) => `
-          <article class="gc-home2-news-card">
-            <img src="${item.image || '/ui/home2/gc-home2-news-sim.svg'}" alt="" width="380" height="216" loading="lazy" decoding="async" />
-            <div class="gc-home2-news-card__body">
-              <span class="gc-home2-tag">${item.category || 'Paddock'}</span>
-              <time>${item.date || item.publishedAt || ''}</time>
-              <h3>${item.title || 'Noticia'}</h3>
-              <p>${item.excerpt || ''}</p>
-              <a href="${item.href || '/novedades'}" class="gc-home2-link">Leer más →</a>
-            </div>
-          </article>
-        `).join('');
+        host.innerHTML = items.slice(0, 4).map((item) => {
+          const href = item.href || item.linkUrl || item.link || '';
+          return `
+            <article class="gc-home2-news-card">
+              <img src="${item.image || '/ui/home2/gc-home2-news-sim.svg'}" alt="" width="380" height="216" loading="lazy" decoding="async" />
+              <div class="gc-home2-news-card__body">
+                <span class="gc-home2-tag">${item.category || 'Paddock'}</span>
+                <time>${item.date || item.publishedAt || ''}</time>
+                <h3>${item.title || 'Noticia'}</h3>
+                <p>${item.excerpt || ''}</p>
+                ${href ? `<a href="${href}" class="gc-home2-link">Leer más →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
+              </div>
+            </article>
+          `;
+        }).join('');
       };
 
       const renderArchive = async (activeTrack = '', activeCars = []) => {

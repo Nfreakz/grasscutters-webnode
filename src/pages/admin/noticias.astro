@@ -1,0 +1,316 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Noticias | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-news-admin-page">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Noticias</span>
+        <h1 class="gc-title">Noticias editables.</h1>
+        <p class="gc-subtitle">Sistema oculto de noticias para preparar contenido sin añadir enlaces públicos al menú todavía.</p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Noticias</span><strong id="newsAdminState">Cargando</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Total</span><strong id="newsTotal">...</strong></div>
+          <div class="gc-status-row"><span>Publicadas</span><strong id="newsPublished">...</strong></div>
+          <div class="gc-status-row"><span>Borradores</span><strong id="newsDrafts">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-news-admin-grid">
+      <article class="gc-section">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Listado</span>
+            <h2>Noticias</h2>
+            <p>Entradas persistentes en Hostinger, con API pública oculta y soporte de imágenes.</p>
+          </div>
+          <div class="gc-admin-actions">
+            <button class="gc-btn gc-btn--primary" id="newPostBtn" type="button">Nueva noticia</button>
+            <button class="gc-btn" id="refreshNewsBtn" type="button">Recargar</button>
+            <button class="gc-btn" id="demoNewsBtn" type="button">Crear demo</button>
+          </div>
+        </div>
+
+        <div class="gc-slab" id="newsNotice" hidden><h3 id="newsNoticeTitle">Aviso</h3><p id="newsNoticeText"></p></div>
+        <div class="gc-row-list" id="newsList"><div class="gc-admin-empty">Cargando noticias...</div></div>
+      </article>
+
+      <article class="gc-section gc-news-editor-panel">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Editor</span>
+            <h2 id="editorTitle">Nueva noticia</h2>
+            <p id="editorHint">Rellena los campos y guarda como borrador o publicado.</p>
+          </div>
+        </div>
+
+        <form id="newsForm" class="gc-news-editor-form">
+          <input type="hidden" id="fieldId" />
+          <label class="gc-field gc-field--full"><span>Título</span><input id="fieldTitle" required /></label>
+          <label class="gc-field"><span>Slug</span><input id="fieldSlug" placeholder="se genera desde el título" /></label>
+          <label class="gc-field"><span>Estado</span><select id="fieldStatus"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="hidden">Oculto</option></select></label>
+          <label class="gc-field"><span>Categoría</span><input id="fieldCategory" placeholder="Update, Comunidad, Crónica..." /></label>
+          <label class="gc-field"><span>Fecha publicación</span><input id="fieldPublishedAt" type="datetime-local" /></label>
+          <label class="gc-field"><span>Imagen URL</span><input id="fieldImage" placeholder="/uploads/news/imagen.webp" /></label>
+          <label class="gc-field"><span>Subir imagen</span><input id="fieldImageFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
+          <label class="gc-field"><span>Enlace opcional</span><input id="fieldHref" placeholder="de momento puede quedar vacío" /></label>
+          <label class="gc-field"><span>Destacada</span><select id="fieldFeatured"><option value="false">No</option><option value="true">Sí</option></select></label>
+          <label class="gc-field"><span>Fijada arriba</span><select id="fieldPinned"><option value="false">No</option><option value="true">Sí</option></select></label>
+          <label class="gc-field gc-field--full"><span>Resumen</span><textarea id="fieldExcerpt" rows="3"></textarea></label>
+          <label class="gc-field gc-field--full"><span>Cuerpo</span><textarea id="fieldBody" rows="8"></textarea></label>
+
+          <div class="gc-actions">
+            <button class="gc-btn gc-btn--primary" type="submit" id="saveNewsBtn">Guardar noticia</button>
+            <button class="gc-btn" type="button" id="resetNewsBtn">Limpiar</button>
+            <button class="gc-btn gc-btn--danger" type="button" id="deleteNewsBtn" hidden>Eliminar</button>
+          </div>
+          <p class="gc-message" id="newsEditorMessage"></p>
+        </form>
+      </article>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-news-admin-page{display:grid;gap:clamp(18px,2vw,26px)}
+    .gc-news-admin-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(360px,.74fr);gap:16px;align-items:start}
+    .gc-news-editor-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .gc-news-editor-form .gc-field--full{grid-column:1/-1}
+    .gc-row-link.is-selected{border-color:var(--accent);background:rgba(122,255,144,.08)}
+    .gc-btn--danger{border-color:rgba(255,95,95,.35);color:#ffaaaa}
+    @media(max-width:980px){.gc-news-admin-grid,.gc-news-editor-form{grid-template-columns:1fr}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const API = '/api/admin/news';
+      const $ = (id) => document.getElementById(id);
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const fields = {
+        id: $('fieldId'), title: $('fieldTitle'), slug: $('fieldSlug'), status: $('fieldStatus'),
+        category: $('fieldCategory'), publishedAt: $('fieldPublishedAt'), image: $('fieldImage'), imageFile: $('fieldImageFile'),
+        href: $('fieldHref'), featured: $('fieldFeatured'), pinned: $('fieldPinned'),
+        excerpt: $('fieldExcerpt'), body: $('fieldBody')
+      };
+      const els = {
+        state:$('newsAdminState'), total:$('newsTotal'), published:$('newsPublished'), drafts:$('newsDrafts'),
+        list:$('newsList'), notice:$('newsNotice'), noticeTitle:$('newsNoticeTitle'), noticeText:$('newsNoticeText'),
+        newBtn:$('newPostBtn'), refresh:$('refreshNewsBtn'), demo:$('demoNewsBtn'), form:$('newsForm'),
+        save:$('saveNewsBtn'), reset:$('resetNewsBtn'), del:$('deleteNewsBtn'), title:$('editorTitle'),
+        hint:$('editorHint'), message:$('newsEditorMessage')
+      };
+      let currentPosts = [];
+
+      function slugify(value) {
+        return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '').slice(0, 120);
+      }
+      function toLocalDateTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+      }
+      function fromLocalDateTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+      }
+      async function fetchJson(url, options={}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+      }
+      function showNotice(title, text) { els.notice.hidden = false; els.noticeTitle.textContent = title; els.noticeText.textContent = text; }
+      function clearNotice() { els.notice.hidden = true; }
+      function statusLabel(status) {
+        if (status === 'published') return 'Publicado';
+        if (status === 'hidden') return 'Oculto';
+        return 'Borrador';
+      }
+      function render(posts) {
+        currentPosts = posts;
+        els.state.textContent = 'Operativo';
+        els.total.textContent = posts.length;
+        els.published.textContent = posts.filter((post) => post.status === 'published').length;
+        els.drafts.textContent = posts.filter((post) => post.status !== 'published').length;
+
+        if (!posts.length) {
+          els.list.innerHTML = '<div class="gc-admin-empty">Todavía no hay noticias.</div>';
+          return;
+        }
+
+        els.list.innerHTML = posts.map((post, index) => `
+          <button class="gc-row-link ${fields.id.value === post.id ? 'is-selected' : ''}" type="button" data-post-id="${esc(post.id)}">
+            <span class="gc-row-link__num">${String(index + 1).padStart(2, '0')}</span>
+            <span><strong class="gc-row-link__title">${esc(post.title)}</strong><br><span class="gc-row-link__desc">${esc(post.category || 'Paddock')} · ${esc(statusLabel(post.status))} · ${esc(post.excerpt || 'Sin resumen')}</span></span>
+            <span class="gc-row-link__cta">Editar</span>
+          </button>`).join('');
+
+        els.list.querySelectorAll('[data-post-id]').forEach((btn) => {
+          btn.addEventListener('click', () => editPost(btn.dataset.postId));
+        });
+      }
+      function clearForm() {
+        fields.id.value = '';
+        fields.title.value = '';
+        fields.slug.value = '';
+        fields.status.value = 'draft';
+        fields.category.value = 'Paddock';
+        fields.publishedAt.value = toLocalDateTime(new Date().toISOString());
+        fields.image.value = '';
+        fields.href.value = '';
+        fields.featured.value = 'false';
+        fields.pinned.value = 'false';
+        fields.excerpt.value = '';
+        fields.body.value = '';
+        els.title.textContent = 'Nueva noticia';
+        els.hint.textContent = 'Rellena los campos y guarda como borrador o publicado.';
+        els.del.hidden = true;
+        els.message.textContent = '';
+        render(currentPosts);
+      }
+      function editPost(id) {
+        const post = currentPosts.find((entry) => entry.id === id);
+        if (!post) return;
+        fields.id.value = post.id || '';
+        fields.title.value = post.title || '';
+        fields.slug.value = post.slug || '';
+        fields.status.value = post.status || 'draft';
+        fields.category.value = post.category || 'Paddock';
+        fields.publishedAt.value = toLocalDateTime(post.publishedAt);
+        fields.image.value = post.image || '';
+        fields.href.value = post.href || '';
+        fields.featured.value = post.featured ? 'true' : 'false';
+        fields.pinned.value = post.pinned ? 'true' : 'false';
+        fields.excerpt.value = post.excerpt || '';
+        fields.body.value = post.body || '';
+        els.title.textContent = 'Editar noticia';
+        els.hint.textContent = post.slug ? `/noticias · ${post.slug}` : 'Editando noticia.';
+        els.del.hidden = false;
+        els.message.textContent = '';
+        render(currentPosts);
+      }
+      function payload() {
+        const title = fields.title.value.trim();
+        return {
+          id: fields.id.value || undefined,
+          title,
+          slug: fields.slug.value.trim() || slugify(title),
+          status: fields.status.value,
+          category: fields.category.value.trim() || 'Paddock',
+          publishedAt: fromLocalDateTime(fields.publishedAt.value) || new Date().toISOString(),
+          image: fields.image.value.trim(),
+          href: fields.href.value.trim(),
+          featured: fields.featured.value === 'true',
+          pinned: fields.pinned.value === 'true',
+          excerpt: fields.excerpt.value.trim(),
+          body: fields.body.value.trim()
+        };
+      }
+      async function load() {
+        clearNotice(); els.state.textContent = 'Cargando';
+        try {
+          const data = await fetchJson(API);
+          render(Array.isArray(data.posts) ? data.posts : []);
+        } catch (error) {
+          els.state.textContent = 'API error';
+          els.list.innerHTML = '<div class="gc-admin-empty">No se pudieron cargar noticias.</div>';
+          showNotice('No se pudo leer Noticias', error.message || 'Error desconocido');
+        }
+      }
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('No se pudo leer la imagen.'));
+          reader.readAsDataURL(file);
+        });
+      }
+      async function uploadSelectedImage(title) {
+        const file = fields.imageFile?.files?.[0];
+        if (!file) return '';
+        const dataUrl = await fileToDataUrl(file);
+        const data = await fetchJson(`${API}/image-upload`, {
+          method: 'POST',
+          body: JSON.stringify({ dataUrl, title: title || file.name, fileName: file.name })
+        });
+        return data.url || data.localUrl || '';
+      }
+      async function save(event) {
+        event.preventDefault();
+        clearNotice(); els.save.disabled = true; els.save.textContent = 'Guardando...';
+        try {
+          const body = payload();
+          const uploadedUrl = await uploadSelectedImage(body.title);
+          if (uploadedUrl) {
+            body.image = uploadedUrl;
+            fields.image.value = uploadedUrl;
+            if (fields.imageFile) fields.imageFile.value = '';
+          }
+          const id = fields.id.value;
+          const data = await fetchJson(id ? `${API}/${encodeURIComponent(id)}` : API, {
+            method: id ? 'PUT' : 'POST',
+            body: JSON.stringify(body)
+          });
+          els.message.textContent = 'Noticia guardada.';
+          await load();
+          editPost(data.post.id);
+        } catch (error) {
+          els.message.textContent = error.message || 'No se pudo guardar.';
+        } finally {
+          els.save.disabled = false; els.save.textContent = 'Guardar noticia';
+        }
+      }
+      async function remove() {
+        const id = fields.id.value;
+        if (!id || !confirm('¿Eliminar esta noticia?')) return;
+        clearNotice(); els.del.disabled = true; els.del.textContent = 'Eliminando...';
+        try {
+          await fetchJson(`${API}/${encodeURIComponent(id)}`, { method:'DELETE' });
+          clearForm();
+          await load();
+        } catch (error) {
+          els.message.textContent = error.message || 'No se pudo eliminar.';
+        } finally {
+          els.del.disabled = false; els.del.textContent = 'Eliminar';
+        }
+      }
+      async function demo() {
+        clearNotice(); els.demo.disabled = true; els.demo.textContent = 'Creando...';
+        try {
+          const data = await fetchJson(`${API}/demo`, { method:'POST' });
+          render(Array.isArray(data.posts) ? data.posts : []);
+          showNotice('Demo creada', `Creadas ${data.created}, omitidas ${data.skipped}.`);
+        } catch (error) {
+          showNotice('No se pudo crear la demo', error.message || 'Error desconocido');
+        } finally {
+          els.demo.disabled = false; els.demo.textContent = 'Crear demo';
+        }
+      }
+
+      fields.title.addEventListener('input', () => {
+        if (!fields.slug.value || fields.slug.dataset.auto === '1') {
+          fields.slug.dataset.auto = '1';
+          fields.slug.value = slugify(fields.title.value);
+        }
+      });
+      fields.slug.addEventListener('input', () => { fields.slug.dataset.auto = fields.slug.value ? '0' : '1'; });
+      els.form.addEventListener('submit', save);
+      els.del.addEventListener('click', remove);
+      els.reset.addEventListener('click', clearForm);
+      els.newBtn.addEventListener('click', clearForm);
+      els.refresh.addEventListener('click', load);
+      els.demo.addEventListener('click', demo);
+      clearForm();
+      load();
+    })();
+  </script>
+</AppLayout>
