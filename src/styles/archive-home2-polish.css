@@ -1,7 +1,9 @@
-/* GC ARCHIVO HOME2 WIDTH + PALETTE FIX v2
-   Corrige el ancho raro detectado en /archivo y fuerza la paleta real de Home2.
-   Archivo único para copiar encima de:
-   src/styles/archive-home2-polish.css
+/* GC ARCHIVO + NOTICIAS HOME2 BLOCK TUNING v1
+   Objetivo:
+   - Igualar Archivo y Noticias al patrón sobrio de Home2.
+   - Reducir títulos grandes de bloques en Archivo.
+   - Quitar glow verde interno excesivo en cards/paneles.
+   - Mantener layout, colores base y estructura.
 */
 
 .gc-archive-home2,
@@ -60,9 +62,6 @@
   block-size: auto;
 }
 
-/* MISMO ANCHO QUE HOME2: width:min(100% - 34px, 1240px)
-   El fallo del v1 era mezclar shells de 1460px con secciones más anchas.
-*/
 .gc-archive-shell {
   width: min(100% - 34px, 1240px);
   max-width: 1240px;
@@ -70,7 +69,6 @@
   padding-inline: 0;
 }
 
-/* Si una sección es shell + panel, no debe ganar anchura visual por padding raro */
 .gc-archive-shell.gc-archive-section--panel {
   width: min(100% - 34px, 1240px);
   max-width: 1240px;
@@ -134,7 +132,6 @@
   padding-block: 34px 44px;
 }
 
-/* Tipografía Home2 */
 .gc-archive-kicker,
 .gc-archive-panel__eyebrow,
 .gc-archive-card small,
@@ -206,21 +203,28 @@
   text-decoration: none;
 }
 
-/* Command card como panel Home2 */
+/* Panel de mando: más Home2, menos glow interno */
 .gc-archive-command-card {
   border: 1px solid var(--line);
   background:
-    radial-gradient(circle at 100% 0%, rgba(150,255,47,.08), transparent 8rem),
-    linear-gradient(180deg, var(--panel-soft), var(--panel));
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.025),
-    0 18px 60px rgba(0,0,0,.24);
+    linear-gradient(180deg, rgba(7,11,8,.95), rgba(5,8,6,.97));
+  box-shadow: 0 20px 60px rgba(0,0,0,.42);
   padding: 16px;
   min-height: 230px;
   display: grid;
   align-content: end;
   gap: 10px;
   border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.gc-archive-command-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(255,255,255,.03);
+  pointer-events: none;
 }
 
 .gc-archive-command-card > span,
@@ -261,9 +265,10 @@
   text-decoration: none;
 }
 
-.gc-archive-command-grid a.is-active {
-  border-color: rgba(150,255,47,.55);
-  background: rgba(150,255,47,.08);
+.gc-archive-command-grid a.is-active,
+.gc-archive-command-grid button.is-active {
+  border-color: rgba(150,255,47,.38);
+  background: rgba(150,255,47,.04);
 }
 
 .gc-archive-command-grid strong {
@@ -350,9 +355,18 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background:
-    radial-gradient(circle at 72% 0%, rgba(150,255,47,.055), transparent 10rem),
-    linear-gradient(180deg, var(--panel-soft), var(--panel));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    linear-gradient(180deg, rgba(7,11,8,.95), rgba(5,8,6,.97));
+  box-shadow: 0 20px 60px rgba(0,0,0,.42);
+  position: relative;
+  overflow: hidden;
+}
+
+.gc-archive-section--panel::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(255,255,255,.03);
+  pointer-events: none;
 }
 
 .gc-archive-section-head {
@@ -361,13 +375,16 @@
   gap: 18px;
   align-items: end;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
 }
 
+/* Archivo: títulos de bloques más contenidos, como Noticias v4 */
 .gc-archive-section-head h2 {
   margin: 5px 0 0;
-  font-size: clamp(44px, 6.4vw, 72px);
-  line-height: .88;
-  letter-spacing: -.055em;
+  font-size: clamp(28px, 3.45vw, 42px);
+  line-height: .94;
+  letter-spacing: -.04em;
   text-transform: uppercase;
 }
 
@@ -378,7 +395,7 @@
   line-height: 1.45;
 }
 
-/* Cards */
+/* Cards: sin glow verde interno fuerte */
 .gc-archive-type-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0,1fr));
@@ -393,9 +410,22 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background:
-    radial-gradient(circle at 88% 0%, rgba(150,255,47,.055), transparent 9rem),
-    linear-gradient(180deg, var(--panel-soft), var(--panel));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    linear-gradient(180deg, rgba(7,11,8,.95), rgba(5,8,6,.97));
+  box-shadow: 0 20px 60px rgba(0,0,0,.42);
+  position: relative;
+  overflow: hidden;
+}
+
+.gc-archive-type-card::before,
+.gc-archive-card::before,
+.gc-archive-spotlight::before,
+.gc-archive-empty::before,
+.gc-archive-az::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(255,255,255,.03);
+  pointer-events: none;
 }
 
 .gc-archive-type-card {
@@ -410,8 +440,10 @@
 
 .gc-archive-type-card:hover,
 .gc-archive-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: var(--line-2);
+  background:
+    linear-gradient(180deg, rgba(9,14,10,.96), rgba(5,8,6,.99));
 }
 
 .gc-archive-type-card strong {
@@ -431,23 +463,24 @@
   line-height: 1.45;
 }
 
-/* Spotlight */
+/* Spotlight igualado, sin brillo interior excesivo */
 .gc-archive-spotlight {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, .55fr);
-  overflow: hidden;
 }
 
 .gc-archive-spotlight__copy {
   padding: 24px;
   align-self: end;
+  position: relative;
+  z-index: 1;
 }
 
 .gc-archive-spotlight h2 {
   margin: 7px 0 9px;
-  font-size: clamp(40px, 5vw, 64px);
-  line-height: .88;
-  letter-spacing: -.055em;
+  font-size: clamp(26px, 3.05vw, 40px);
+  line-height: .94;
+  letter-spacing: -.04em;
   text-transform: uppercase;
 }
 
@@ -495,6 +528,10 @@
 .gc-archive-spotlight figure {
   margin: 0;
   min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(8,14,10,.72), rgba(4,8,5,.8)),
+    url("/ui/home2/gc-home2-grid.svg");
+  background-size: cover;
 }
 
 .gc-archive-spotlight img,
@@ -508,6 +545,7 @@
   gap: 10px;
   text-align: center;
   background: rgba(255,255,255,.035);
+  filter: saturate(.88) brightness(.74);
 }
 
 /* Filters + grid */
@@ -518,6 +556,8 @@
   gap: 8px;
   align-items: center;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .gc-archive-az {
@@ -543,12 +583,13 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0,1fr));
   gap: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .gc-archive-card {
   display: grid;
   grid-template-rows: auto 1fr;
-  overflow: hidden;
   text-decoration: none;
   transition: transform .16s ease, border-color .16s ease;
 }
@@ -560,13 +601,19 @@
   object-fit: cover;
   display: grid;
   place-items: center;
-  background: rgba(255,255,255,.035);
+  background:
+    linear-gradient(180deg, rgba(8,14,10,.72), rgba(4,8,5,.8)),
+    url("/ui/home2/gc-home2-grid.svg");
+  background-size: cover;
+  filter: saturate(.88) brightness(.74);
 }
 
 .gc-archive-card > div {
   display: grid;
   gap: 8px;
   padding: 15px;
+  position: relative;
+  z-index: 1;
 }
 
 .gc-archive-card strong {
@@ -644,7 +691,7 @@
 }
 
 .gc-archive-detail-home2 .gc-archive-dossier__hero-media img {
-  filter: saturate(.92) brightness(.68) contrast(1.06) !important;
+  filter: saturate(.88) brightness(.74) !important;
 }
 
 .gc-archive-detail-home2 .gc-archive-dossier__panel,
@@ -652,16 +699,15 @@
   border-radius: var(--radius) !important;
   border-color: var(--line) !important;
   background:
-    radial-gradient(circle at 72% 0%, rgba(150,255,47,.045), transparent 10rem),
-    linear-gradient(180deg, var(--panel-soft), var(--panel)) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025) !important;
+    linear-gradient(180deg, rgba(7,11,8,.95), rgba(5,8,6,.97)) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.42) !important;
 }
 
 .gc-archive-detail-home2 .gc-archive-dossier__section-head h2,
 .gc-archive-detail-home2 .gc-archive-dossier__side-panel h2 {
-  font-size: clamp(34px, 4vw, 54px) !important;
-  line-height: .88 !important;
-  letter-spacing: -.055em !important;
+  font-size: clamp(28px, 3.45vw, 42px) !important;
+  line-height: .94 !important;
+  letter-spacing: -.04em !important;
   text-transform: uppercase !important;
 }
 
@@ -724,5 +770,12 @@
 
   .gc-archive-section--panel {
     padding: 18px;
+  }
+
+  .gc-archive-section-head h2,
+  .gc-archive-spotlight h2,
+  .gc-archive-detail-home2 .gc-archive-dossier__section-head h2,
+  .gc-archive-detail-home2 .gc-archive-dossier__side-panel h2 {
+    font-size: clamp(26px, 9vw, 38px) !important;
   }
 }

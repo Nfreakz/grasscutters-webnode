@@ -12,13 +12,15 @@ import {
 
 const { entry = {}, related = [] } = Astro.props;
 
-type PairItem = { title: string; text: string; parts: string[] };
+type PairItem = { title: string; text: string };
 type DossierSection = { id: string; title: string; text?: string; items?: PairItem[]; eyebrow?: string };
+
+const cleanText = (raw: any) => String(raw || '').trim();
 
 const value = (keys: string[], fallback = '') => {
   for (const key of keys) {
     const raw = entry?.[key];
-    if (raw !== undefined && raw !== null && String(raw).trim() !== '') return String(raw).trim();
+    if (raw !== undefined && raw !== null && cleanText(raw) !== '') return cleanText(raw);
   }
   return fallback;
 };
@@ -29,8 +31,9 @@ const splitList = (raw: any) => String(raw || '')
   .filter(Boolean);
 
 const parsePairs = (raw: any): PairItem[] => splitList(raw).map((item) => {
-  const parts = item.split('::').map((part) => part.trim());
-  return { title: parts[0] || '', text: parts.slice(1).join(' · ') || '', parts };
+  const parts = item.split('::').map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) return { title: parts[0], text: parts.slice(1).join(' · ') };
+  return { title: item, text: '' };
 }).filter((item) => item.title || item.text);
 
 const parseSources = (raw: any) => splitList(raw).map((item) => {
@@ -38,8 +41,6 @@ const parseSources = (raw: any) => splitList(raw).map((item) => {
   if (!url && /^https?:\/\//i.test(label || '')) return { label, url: label };
   return { label: label || url || item, url: url || '' };
 });
-
-const cleanText = (raw: any) => String(raw || '').trim();
 
 const normalizeLabel = (raw: any) => cleanText(raw)
   .normalize('NFD')
@@ -49,17 +50,17 @@ const normalizeLabel = (raw: any) => cleanText(raw)
 const titleCase = (raw: any) => cleanText(raw).replace(/\b\w/g, (char) => char.toUpperCase());
 
 const prettyTrackType = (raw: any) => {
-  const value = cleanText(raw);
-  const normalized = normalizeLabel(value);
+  const trackValue = cleanText(raw);
+  const normalized = normalizeLabel(trackValue);
 
-  if (!value) return '';
+  if (!trackValue) return '';
   if (normalized === 'permanente') return 'Circuito permanente';
   if (normalized === 'urbano') return 'Circuito urbano';
   if (normalized === 'temporal') return 'Trazado temporal';
   if (normalized === 'oval' || normalized === 'ovalo') return 'Óvalo';
-  if (normalized.includes('circuito') || normalized.includes('trazado')) return value;
+  if (normalized.includes('circuito') || normalized.includes('trazado')) return trackValue;
 
-  return titleCase(value);
+  return titleCase(trackValue);
 };
 
 const normalizeFactLabel = (label: any, currentType: string) => {
@@ -82,21 +83,27 @@ const normalizeFactLabel = (label: any, currentType: string) => {
 };
 
 const normalizeFactValue = (label: string, fact: any, currentType: string) => {
-  const value = cleanText(fact);
+  const factValue = cleanText(fact);
   const normalizedLabel = normalizeLabel(label);
 
-  if (!value) return '';
-
-  if (currentType === 'circuitos' && normalizedLabel === 'tipo de trazado') return prettyTrackType(value);
+  if (!factValue) return '';
+  if (currentType === 'circuitos' && normalizedLabel === 'tipo de trazado') return prettyTrackType(factValue);
 
   if (currentType === 'circuitos' && normalizedLabel === 'longitud') {
-    const normalizedValue = normalizeLabel(value);
-    if (normalizedValue.includes('km')) return value;
-    return `${value} km`;
+    const normalizedValue = normalizeLabel(factValue);
+    if (normalizedValue.includes('km')) return factValue;
+    return `${factValue} km`;
   }
 
-  return value;
+  return factValue;
 };
+
+const slugifyId = (raw: string) => cleanText(raw)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || 'seccion';
 
 const title = value(['nombre', 'name', 'titulo', 'title'], 'Ficha sin título');
 const type = normalizeArchiveType(value(['tipo', 'tipo_importacion', 'collection', 'categoria_tipo', 'category'], 'general'));
@@ -119,8 +126,7 @@ const author = value(['autor', 'author'], 'Redacción del archivo');
 const license = value(['licencia', 'license'], 'Texto editorial propio con fuentes indicadas.');
 const lastReview = value(['ultima_revision', 'última_revisión', 'last_review'], '');
 const sources = parseSources(value(['fuentes', 'sources'], value(['fuente_url', 'source_url'], '')));
-
-const adminFactBlacklist = new Set(['fuente', 'fuente url', 'autor', 'licencia', 'sources', 'source', 'source url', 'license', 'author']);
+const introText = value(['introduccion', 'descripcion_larga', 'description_long', 'body']);
 
 const factsFromAdmin = Array.isArray(entry.facts)
   ? entry.facts
@@ -129,16 +135,8 @@ const factsFromAdmin = Array.isArray(entry.facts)
         const factValue = normalizeFactValue(label, fact?.value || '', type);
         return [label, factValue] as [string, string];
       })
-      .filter(([label, fact]) => label && fact && !adminFactBlacklist.has(normalizeLabel(label)))
+      .filter(([label, fact]) => label && fact)
   : [];
-
-const introText = value(['introduccion', 'descripcion_larga', 'description_long', 'body']);
-
-const commonSections = [
-  ['Contexto histórico', value(['contexto_historico', 'historia', 'historical_context'])],
-  ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
-  ['Nota de identificación', value(['nota_identificacion', 'identificacion', 'identification_note'])],
-].filter(([, text]) => text);
 
 const trackType = prettyTrackType(value(['tipo_trazado', 'tipo_circuito', 'track_type']));
 const lengthValue = value(['longitud_km', 'length_km'])
@@ -154,20 +152,17 @@ const factsByType: Record<string, [string, string][]> = {
     ['Longitud', lengthValue],
     ['Curvas', value(['curvas', 'corners'])],
     ['Sentido', value(['sentido', 'direction'])],
-    ['Recta principal', value(['recta_principal_km', 'main_straight_km']) ? `${value(['recta_principal_km', 'main_straight_km'])} km` : value(['recta_principal'])],
     ['Apertura', value(['fecha_apertura', 'apertura', 'opened', 'ano', 'año'])],
   ],
   coches: [
     ['Tipo de ficha', typeSingular],
     ['Fabricante', value(['fabricante', 'manufacturer'])],
     ['Modelo base', value(['modelo_base', 'base_model'])],
-    ['Constructor', value(['constructor', 'built_by'])],
     ['Categoría', value(['categoria_competicion', 'categoria', 'category'])],
     ['Años', value(['anos_actividad', 'años_actividad', 'periodo'])],
     ['Motor', value(['motor', 'engine'])],
     ['Potencia', value(['potencia', 'power'])],
     ['Peso', value(['peso', 'weight'])],
-    ['Tracción', value(['traccion', 'tracción', 'drivetrain'])],
   ],
   pilotos: [
     ['Tipo de ficha', typeSingular],
@@ -176,8 +171,6 @@ const factsByType: Record<string, [string, string][]> = {
     ['Disciplinas', value(['disciplinas', 'disciplina'])],
     ['Equipos', value(['equipos', 'teams'])],
     ['Títulos', value(['titulos', 'títulos', 'titles'])],
-    ['Nacimiento', value(['fecha_nacimiento', 'birth_date'])],
-    ['Lugar', value(['lugar_nacimiento', 'birth_place'])],
   ],
   glosario: [
     ['Tipo de ficha', typeSingular],
@@ -204,43 +197,21 @@ const mergeFacts = (baseFacts: [string, string][], extraFacts: [string, string][
     const key = normalizeLabel(label);
 
     if (!label || !fact) continue;
-
-    const previous = map.get(key);
-    if (!previous || fact.length > previous[1].length || previous[1] === typeSingular) {
-      map.set(key, [label, fact]);
-    }
+    if (!map.has(key)) map.set(key, [label, fact]);
   }
 
   return [...map.values()].slice(0, 12);
 };
 
-
-const formatFactParts = (raw: string) => {
-  const text = cleanText(raw);
-  if (!text) return [];
-
-  const entries = text.includes('||') || text.includes(';') || text.includes('\n')
-    ? splitList(text)
-    : [text];
-
-  return entries
-    .map((entry) => {
-      const parts = entry.split('::').map((part) => cleanText(part)).filter(Boolean);
-      if (parts.length >= 2) return { title: parts[0], text: parts.slice(1).join(' · ') };
-      return { title: cleanText(entry), text: '' };
-    })
-    .filter((part) => part.title || part.text);
-};
-
-const buildFactCards = (facts: [string, string][]) => facts.map(([label, fact]) => {
-  const parts = formatFactParts(fact);
-  const isList = parts.length > 1 || parts.some((part) => part.text);
-  return { label, fact, parts, isList };
-});
-
 const quickFacts = mergeFacts(factsByType[type] || fallbackFacts, factsFromAdmin);
-const primaryFactCards = buildFactCards(quickFacts.slice(0, 4));
-const secondaryFactCards = buildFactCards(quickFacts.slice(4));
+const primaryFacts = quickFacts.slice(0, 3);
+const secondaryFacts = quickFacts.slice(3);
+
+const commonSections = [
+  ['Contexto histórico', value(['contexto_historico', 'historia', 'historical_context'])],
+  ['Importancia', value(['importancia', 'por_que_importa', 'why_matters'])],
+  ['Nota de identificación', value(['nota_identificacion', 'identificacion', 'identification_note'])],
+].filter(([, text]) => text);
 
 const typeSections: Record<string, Omit<DossierSection, 'id'>[]> = {
   circuitos: [
@@ -256,15 +227,12 @@ const typeSections: Record<string, Omit<DossierSection, 'id'>[]> = {
     { title: 'Historial deportivo', text: value(['historial_competicion', 'competition_history']), eyebrow: 'Competición' },
     { title: 'Campeonatos, equipos y resultados', items: parsePairs(value(['campeonatos', 'equipos_destacados', 'equipos', 'victorias_destacadas', 'resultados_destacados'])), eyebrow: 'Palmarés' },
     { title: 'Variantes', items: parsePairs(value(['variantes', 'versions'])), eyebrow: 'Versiones' },
-    { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])), eyebrow: 'Notas' },
   ],
   pilotos: [
     { title: 'Biografía', text: value(['biografia', 'biografía', 'trayectoria']), eyebrow: 'Perfil' },
     { title: 'Trayectoria', items: parsePairs(value(['hitos_trayectoria', 'momentos_clave'])), eyebrow: 'Carrera' },
     { title: 'Palmarés y resultados', items: parsePairs(value(['palmares', 'palmarés', 'titulos', 'victorias_destacadas', 'records_destacados'])), eyebrow: 'Palmarés' },
     { title: 'Estilo de pilotaje', text: value(['estilo_conduccion', 'estilo_pilotaje']), eyebrow: 'Estilo' },
-    { title: 'Coches y circuitos asociados', items: parsePairs(value(['coches_asociados', 'circuitos_asociados'])), eyebrow: 'Conexiones' },
-    { title: 'Anécdotas', items: parsePairs(value(['anecdotas', 'anécdotas', 'stories'])), eyebrow: 'Notas' },
   ],
   glosario: [
     { title: 'Definición', text: value(['definicion', 'definición', 'descripcion_larga', 'body']), eyebrow: 'Concepto' },
@@ -273,13 +241,6 @@ const typeSections: Record<string, Omit<DossierSection, 'id'>[]> = {
     { title: 'Conceptos relacionados', items: parsePairs(value(['relacionados', 'related'])), eyebrow: 'Relaciones' },
   ],
 };
-
-const slugifyId = (raw: string) => cleanText(raw)
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-+|-+$/g, '') || 'seccion';
 
 const sections: DossierSection[] = (typeSections[type] || [])
   .filter((section) => section.text || (section.items && section.items.length))
@@ -305,1428 +266,498 @@ const gallery = media
     return true;
   });
 
-const galleryJson = JSON.stringify(gallery).replace(/</g, '\\u003c');
-const hasImage = Boolean(imageUrl);
-const sidebarSubtitle = [typeSingular, country, period].filter(Boolean).join(' · ');
-const heroStyle = hasImage ? `--archive-hero-image:url('${String(imageUrl).replace(/'/g, '%27')}');` : '';
-
-const navItems = [
-  { id: 'resumen', label: 'Resumen', show: Boolean(introText || subtitle || primaryFactCards.length) },
-  { id: 'galeria', label: 'Galería', show: gallery.length > 1 },
-  { id: 'contenido', label: 'Contenido', show: commonSections.length > 0 || sections.length > 0 },
-  { id: 'relacionados', label: 'Relacionados', show: related.length > 0 },
-  { id: 'fuentes', label: 'Fuentes', show: true },
-].filter((item) => item.show);
+const heroStyle = imageUrl ? `--archive-hero-image:url('${String(imageUrl).replace(/'/g, '%27')}');` : '';
+const tagList = [category !== typeSingular ? category : '', country, period, discipline, ...tags].filter(Boolean).slice(0, 8);
 ---
 
-<article class={`gc-archive-dossier gc-archive-dossier--${type}`} data-archive-share-root data-share-title={title} data-share-text={subtitle}>
-  <header class={`gc-archive-dossier__hero ${hasImage ? 'has-image' : ''}`} style={heroStyle}>
-    <div class="gc-archive-dossier__hero-main">
-      <p class="gc-archive-dossier__breadcrumb">
-        <a href="/archivo/">Archivo</a> / <a href={archiveTypeHref(type)}>{typeLabel}</a> / <strong>{title}</strong>
-      </p>
+<article class="gc-archive-inner-v1">
+  <section class={`gc-archive-race-hero ${imageUrl ? 'has-image' : ''}`} style={heroStyle}>
+    <div class="gc-archive-shell gc-archive-race-hero__grid">
+      <div>
+        <p class="gc-archive-breadcrumb">
+          <a href="/archivo/">Archivo</a> / <a href={archiveTypeHref(type)}>{typeLabel}</a> / <strong>{title}</strong>
+        </p>
 
-      <span class="gc-archive-dossier__kicker">{typeSingular}</span>
-      <h1>{title}</h1>
-      <p class="gc-archive-dossier__lead">{subtitle}</p>
+        <p class="gc-archive-kicker">{typeSingular}</p>
+        <h1>{title}</h1>
+        <p class="gc-archive-race-hero__lead">{subtitle}</p>
 
-      {primaryFactCards.length > 0 && (
-        <div class="gc-archive-dossier__hero-facts" aria-label="Datos principales">
-          {primaryFactCards.map((fact) => (
-            <article>
-              <span>{fact.label}</span>
-              {fact.isList ? (
-                <div class="gc-archive-dossier__fact-list">
-                  {fact.parts.map((part) => (
-                    <span>
-                      <b>{part.title}</b>
-                      {part.text && <em>{part.text}</em>}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <strong>{fact.fact}</strong>
-              )}
-            </article>
+        <div class="gc-archive-statusline">
+          {[typeLabel, country, period, discipline].filter(Boolean).slice(0, 4).map((tag) => <span class="gc-archive-badge">{tag}</span>)}
+        </div>
+      </div>
+
+      <aside class="gc-archive-command-card" aria-label="Resumen de ficha">
+        <span>Ficha editorial</span>
+        <strong>{typeSingular.slice(0, 2).toUpperCase()}</strong>
+        <small>{[typeSingular, country, period].filter(Boolean).join(' · ') || 'Archivo GC'}</small>
+
+        <div class="gc-archive-command-grid">
+          {primaryFacts.slice(0, 4).map(([label, fact]) => (
+            <div>
+              <small>{label}</small>
+              <strong>{fact}</strong>
+            </div>
           ))}
         </div>
-      )}
-
-      <div class="gc-archive-dossier__tags">
-        {[category !== typeSingular ? category : '', country, period, discipline, ...tags].filter(Boolean).slice(0, 8).map((tag) => <span>{tag}</span>)}
-      </div>
+      </aside>
     </div>
+  </section>
 
-    <aside class="gc-archive-dossier__hero-media">
-      {hasImage ? (
-        <figure>
-          <img src={imageUrl} alt={imageAlt} loading="eager" />
-          {(imageCredit || imageLicense) && <figcaption>{imageCredit}{imageCredit && imageLicense ? ' · ' : ''}{imageLicense}</figcaption>}
-        </figure>
-      ) : (
-        <div class="gc-archive-dossier__media-empty">
-          <span>Imagen pendiente</span>
-          <small>Añadir foto, mapa, render o material visual cuando esté revisado.</small>
+  <section class="gc-archive-shell gc-archive-section">
+    <article class="gc-archive-spotlight gc-archive-inner-spotlight-v1">
+      <div class="gc-archive-spotlight__copy">
+        <span class="gc-archive-panel__eyebrow">Ficha destacada</span>
+        <h2>{title}</h2>
+        <p>{introText || subtitle}</p>
+
+        <dl>
+          {primaryFacts.map(([label, fact]) => (
+            <div>
+              <dt>{label}</dt>
+              <dd>{fact}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <a href="#contenido-ficha">Ver contenido</a>
+      </div>
+
+      <figure>
+        {imageUrl ? (
+          <>
+            <img src={imageUrl} alt={imageAlt} loading="eager" />
+            {(imageCredit || imageLicense) && <figcaption>{imageCredit}{imageCredit && imageLicense ? ' · ' : ''}{imageLicense}</figcaption>}
+          </>
+        ) : (
+          <div class="gc-archive-spotlight__mark">
+            <span>{typeSingular}</span>
+            <strong>{title}</strong>
+          </div>
+        )}
+      </figure>
+    </article>
+  </section>
+
+  <section class="gc-archive-shell gc-archive-section gc-archive-inner-layout-v1">
+    <main id="contenido-ficha" class="gc-archive-inner-main-v1">
+      <section class="gc-archive-section--panel">
+        <div class="gc-archive-section-head">
+          <div>
+            <span>Visión general</span>
+            <h2>Resumen</h2>
+          </div>
+          <p>{subtitle}</p>
         </div>
-      )}
-    </aside>
-  </header>
 
-  <div class="gc-archive-dossier__layout">
-    <main class="gc-archive-dossier__main">
-      <section id="resumen" class="gc-archive-dossier__panel gc-archive-dossier__overview">
-        <div class="gc-archive-dossier__section-head">
-          <span>Visión general</span>
-          <h2>Resumen</h2>
+        <div class="gc-archive-inner-prose-v1">
+          <p>{introText || subtitle}</p>
         </div>
-        <p class="gc-archive-dossier__overview-copy">{introText || subtitle}</p>
 
-        {secondaryFactCards.length > 0 && (
-          <div class="gc-archive-dossier__secondary-facts" aria-label="Datos secundarios">
-            {secondaryFactCards.map((fact) => (
+        {secondaryFacts.length > 0 && (
+          <div class="gc-archive-inner-facts-v1">
+            {secondaryFacts.map(([label, fact]) => (
               <div>
-                <span>{fact.label}</span>
-                {fact.isList ? (
-                  <div class="gc-archive-dossier__fact-list">
-                    {fact.parts.map((part) => (
-                      <span>
-                        <b>{part.title}</b>
-                        {part.text && <em>{part.text}</em>}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <strong>{fact.fact}</strong>
-                )}
+                <span>{label}</span>
+                <strong>{fact}</strong>
               </div>
             ))}
           </div>
         )}
       </section>
 
+      {commonSections.length > 0 && (
+        <section class="gc-archive-section--panel">
+          {commonSections.map(([heading, text]) => (
+            <article class="gc-archive-inner-text-block-v1">
+              <div class="gc-archive-section-head">
+                <div>
+                  <span>Contexto</span>
+                  <h2>{heading}</h2>
+                </div>
+              </div>
+              <div class="gc-archive-inner-prose-v1">
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {sections.map((section) => (
+        <section id={section.id} class="gc-archive-section--panel">
+          <div class="gc-archive-section-head">
+            <div>
+              <span>{section.eyebrow || 'Contenido'}</span>
+              <h2>{section.title}</h2>
+            </div>
+          </div>
+
+          {section.text && (
+            <div class="gc-archive-inner-prose-v1">
+              <p>{section.text}</p>
+            </div>
+          )}
+
+          {section.items && section.items.length > 0 && (
+            <div class="gc-archive-inner-items-v1">
+              {section.items.map((item) => (
+                <article>
+                  <strong>{item.title}</strong>
+                  {item.text && <p>{item.text}</p>}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+
       {gallery.length > 1 && (
-        <section id="galeria" class="gc-archive-dossier__panel gc-archive-dossier__gallery" data-gallery-root>
-          <div class="gc-archive-dossier__section-head gc-archive-dossier__gallery-head">
+        <section class="gc-archive-section--panel">
+          <div class="gc-archive-section-head">
             <div>
               <span>Material visual</span>
               <h2>Galería</h2>
             </div>
-            <small>{gallery.length} imágenes</small>
+            <p>{gallery.length} imágenes</p>
           </div>
 
-          <script type="application/json" data-gallery-items set:html={galleryJson}></script>
-
-          <div class="gc-archive-dossier__gallery-grid">
-            {gallery.map((image, index) => (
+          <div class="gc-archive-inner-gallery-v1">
+            {gallery.map((image) => (
               <figure>
-                <button
-                  type="button"
-                  class="gc-archive-dossier__gallery-trigger"
-                  data-gallery-open
-                  data-gallery-index={index}
-                  aria-label={`Abrir imagen ${index + 1} de la galería`}
-                >
-                  <img src={image.url} alt={image.alt} loading="lazy" />
-                  <span>Ampliar</span>
-                </button>
+                <img src={image.url} alt={image.alt} loading="lazy" />
                 {image.credit && <figcaption>{image.credit}</figcaption>}
               </figure>
             ))}
           </div>
+        </section>
+      )}
 
-          <div class="gc-archive-dossier__lightbox" data-gallery-lightbox hidden>
-            <button class="gc-archive-dossier__lightbox-backdrop" type="button" data-gallery-close aria-label="Cerrar galería"></button>
+      <section class="gc-archive-section--panel">
+        <div class="gc-archive-section-head">
+          <div>
+            <span>Fuentes</span>
+            <h2>Referencias</h2>
+          </div>
+          <p>Información editorial del Archivo GrassCutters.</p>
+        </div>
 
-            <div class="gc-archive-dossier__lightbox-dialog" role="dialog" aria-modal="true" aria-label="Imagen ampliada">
-              <div class="gc-archive-dossier__lightbox-top">
-                <span data-gallery-counter>1 / {gallery.length}</span>
-                <button type="button" data-gallery-close aria-label="Cerrar">Cerrar</button>
-              </div>
-
-              <div class="gc-archive-dossier__lightbox-stage">
-                <button type="button" class="gc-archive-dossier__lightbox-nav is-prev" data-gallery-prev aria-label="Imagen anterior">‹</button>
-                <img data-gallery-image src="" alt="" />
-                <div class="gc-archive-dossier__lightbox-error" data-gallery-error hidden>
-                  <strong>No se pudo cargar esta imagen.</strong>
-                  <p>Revisa la URL en el gestor de imágenes de la ficha.</p>
-                </div>
-                <button type="button" class="gc-archive-dossier__lightbox-nav is-next" data-gallery-next aria-label="Imagen siguiente">›</button>
-              </div>
-
-              <div class="gc-archive-dossier__lightbox-caption">
-                <strong data-gallery-alt></strong>
-                <p data-gallery-credit></p>
-              </div>
+        <div class="gc-archive-inner-sources-v1">
+          <div>
+            <span>Autoría</span>
+            <strong>{author}</strong>
+          </div>
+          <div>
+            <span>Licencia</span>
+            <strong>{license}</strong>
+          </div>
+          {lastReview && (
+            <div>
+              <span>Última revisión</span>
+              <strong>{lastReview}</strong>
             </div>
+          )}
+        </div>
+
+        {sources.length > 0 && (
+          <ul class="gc-archive-inner-source-list-v1">
+            {sources.map((source) => (
+              <li>
+                {source.url ? <a href={source.url} target="_blank" rel="noreferrer">{source.label}</a> : <span>{source.label}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
+
+    <aside class="gc-archive-inner-side-v1">
+      <section class="gc-archive-type-card">
+        <small>Índice</small>
+        <strong>{typeLabel}</strong>
+        <p>Volver al listado de {typeLabel.toLowerCase()} del Archivo GrassCutters.</p>
+        <small><a href={archiveTypeHref(type)}>Ver categoría</a></small>
+      </section>
+
+      {tagList.length > 0 && (
+        <section class="gc-archive-type-card">
+          <small>Etiquetas</small>
+          <strong>Tags</strong>
+          <div class="gc-archive-inner-tags-v1">
+            {tagList.map((tag) => <span>{tag}</span>)}
           </div>
         </section>
       )}
 
-      <div id="contenido" class="gc-archive-dossier__content-stack">
-        {commonSections.length > 0 && (
-          <section class="gc-archive-dossier__panel gc-archive-dossier__editorial">
-            {commonSections.map(([heading, text]) => (
-              <div class="gc-archive-dossier__text-section">
-                <div class="gc-archive-dossier__section-head">
-                  <span>Contexto</span>
-                  <h2>{heading}</h2>
-                </div>
-                <p>{text}</p>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {sections.map((section) => (
-          <section id={section.id} class="gc-archive-dossier__panel">
-            <div class="gc-archive-dossier__section-head">
-              <span>{section.eyebrow || typeSingular}</span>
-              <h2>{section.title}</h2>
-            </div>
-
-            {section.text && <p>{section.text}</p>}
-
-            {section.items && section.items.length > 0 && (
-              <div class={`gc-archive-dossier__cards ${section.title.toLowerCase().includes('zona') ? 'gc-archive-dossier__cards--zones' : ''}`}>
-                {section.items.map((item) => (
-                  <article>
-                    <h3>{item.title}</h3>
-                    {item.text && <p>{item.text}</p>}
-                    {item.parts.length > 2 && (
-                      <dl>
-                        {item.parts.slice(1).map((part, index) => (
-                          <div>
-                            <dt>{index === 0 ? 'Dato' : `Ref. ${index + 1}`}</dt>
-                            <dd>{part}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
-
-    </main>
-
-    <aside class="gc-archive-dossier__sidebar">
-      <section class="gc-archive-dossier__side-panel gc-archive-dossier__nav-panel">
-        <span class="gc-archive-dossier__side-kicker">En esta ficha</span>
-        <nav>
-          {navItems.map((item) => <a href={`#${item.id}`}>{item.label}</a>)}
-        </nav>
-      </section>
-
-      <section class="gc-archive-dossier__side-panel gc-archive-dossier__share-panel">
-        <span class="gc-archive-dossier__side-kicker">Compartir</span>
-        <div class="gc-archive-dossier__share-actions" aria-label="Compartir ficha">
-          <button type="button" class="gc-share-btn gc-share-btn--native" data-share-native aria-label="Compartir ficha">
-            <span class="gc-share-btn__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M14 5L19 10M19 10L14 15M19 10H9M12 19H7C5.89543 19 5 18.1046 5 17V7C5 5.89543 5.89543 5 7 5H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <small>Compartir</small>
-          </button>
-
-          <button type="button" class="gc-share-btn gc-share-btn--copy" data-share-copy aria-label="Copiar enlace">
-            <span class="gc-share-btn__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M15 9V7C15 5.89543 14.1046 5 13 5H7C5.89543 5 5 5.89543 5 7V13C5 14.1046 5.89543 15 7 15H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <small>Copiar</small>
-          </button>
-
-          <a href="#" class="gc-share-btn gc-share-btn--x" data-share-x target="_blank" rel="noreferrer" aria-label="Compartir en X">
-            <span class="gc-share-btn__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.901 2H21.98l-6.726 7.69L23 22h-6.17l-4.834-6.322L6.467 22H3.387l7.193-8.222L1 2h6.327l4.37 5.79L18.901 2Zm-1.08 18.14h1.706L6.4 3.765H4.57L17.821 20.14Z"/>
-              </svg>
-            </span>
-            <small>X</small>
-          </a>
-
-          <a href="#" class="gc-share-btn gc-share-btn--whatsapp" data-share-whatsapp target="_blank" rel="noreferrer" aria-label="Compartir en WhatsApp">
-            <span class="gc-share-btn__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.52 3.48A11.83 11.83 0 0 0 12.07 0C5.5 0 .15 5.34.15 11.91c0 2.1.55 4.16 1.59 5.97L0 24l6.29-1.65a11.9 11.9 0 0 0 5.78 1.48h.01c6.57 0 11.92-5.34 11.92-11.91 0-3.18-1.24-6.17-3.48-8.44ZM12.08 21.8a9.87 9.87 0 0 1-5.04-1.38l-.36-.22-3.73.98 1-3.63-.24-.37a9.88 9.88 0 1 1 8.37 4.62Zm5.41-7.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.19.3-.76.97-.93 1.16-.17.2-.34.22-.64.08-.3-.15-1.24-.46-2.36-1.46a8.75 8.75 0 0 1-1.64-2.04c-.17-.3-.02-.46.13-.61.13-.13.3-.34.44-.5.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.08-.8.37-.27.3-1.04 1.01-1.04 2.47 0 1.45 1.06 2.86 1.2 3.06.15.2 2.1 3.2 5.08 4.48.71.3 1.26.48 1.7.61.71.22 1.35.19 1.86.12.57-.09 1.76-.72 2-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z"/>
-              </svg>
-            </span>
-            <small>WhatsApp</small>
-          </a>
-
-          <a href="#" class="gc-share-btn gc-share-btn--telegram" data-share-telegram target="_blank" rel="noreferrer" aria-label="Compartir en Telegram">
-            <span class="gc-share-btn__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9.04 15.47 8.66 20.8c.54 0 .77-.23 1.04-.51l2.5-2.38 5.18 3.79c.95.53 1.62.25 1.88-.88l3.4-15.91.01-.01c.31-1.46-.53-2.03-1.46-1.68L1.42 10.86c-1.42.55-1.4 1.34-.24 1.7l5.06 1.58L17.98 6.8c.55-.36 1.05-.16.64.2"/>
-              </svg>
-            </span>
-            <small>Telegram</small>
-          </a>
-        </div>
-        <p class="gc-archive-dossier__share-status" data-share-status aria-live="polite"></p>
-      </section>
-
-
-      <section class="gc-archive-dossier__side-panel">
-        <span class="gc-archive-dossier__side-kicker">Ficha</span>
-        <h2>{typeSingular}</h2>
-        <p>{sidebarSubtitle || category}</p>
-        {(country || period || discipline) && (
-          <ul class="gc-archive-dossier__meta-list">
-            {country && <li><strong>Origen</strong><span>{country}</span></li>}
-            {period && <li><strong>Periodo</strong><span>{period}</span></li>}
-            {discipline && <li><strong>Disciplina</strong><span>{discipline}</span></li>}
-          </ul>
-        )}
-      </section>
-
       {related.length > 0 && (
-        <section id="relacionados" class="gc-archive-dossier__side-panel gc-archive-dossier__related-panel">
-          <span class="gc-archive-dossier__side-kicker">Relacionados</span>
-          <h2>Más fichas</h2>
-          <div class="gc-archive-dossier__related-list">
-            {related.map((item) => (
+        <section class="gc-archive-type-card">
+          <small>Relacionados</small>
+          <strong>Más fichas</strong>
+          <div class="gc-archive-inner-related-v1">
+            {related.slice(0, 4).map((item) => (
               <a href={archiveItemHref(item)}>
-                <strong>{item.nombre || item.title}</strong>
-                <span>{singularArchiveType(normalizeArchiveType(item.tipo || item.category || 'general'))}</span>
+                <span>{prettifyArchiveType(item.tipo)}</span>
+                <b>{item.nombre}</b>
               </a>
             ))}
           </div>
         </section>
       )}
-
-      <section id="fuentes" class="gc-archive-dossier__side-panel gc-archive-dossier__sources">
-        <span class="gc-archive-dossier__side-kicker">Fuentes</span>
-        <h2>Créditos</h2>
-        <p><strong>Texto:</strong> {author}</p>
-        <p><strong>Licencia:</strong> {license}</p>
-        {lastReview && <p><strong>Última revisión:</strong> {lastReview}</p>}
-        {sources.length > 0 && (
-          <ul>
-            {sources.map((source) => (
-              <li>{source.url ? <a href={source.url} target="_blank" rel="noreferrer">{source.label}</a> : source.label}</li>
-            ))}
-          </ul>
-        )}
-      </section>
     </aside>
-  </div>
-
-  <style is:global>
-    .gc-archive-dossier{
-      --archive-line:rgba(202,255,188,.13);
-      --archive-line-strong:rgba(156,255,63,.28);
-      --archive-accent:var(--accent,#9cff3f);
-      width:min(100%,1460px);
-      margin:0 auto;
-      padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(70px,8vw,118px);
-      color:var(--text,#f2f7ef);
-      scroll-behavior:smooth;
-    }
-
-    .gc-archive-dossier *,
-    .gc-archive-dossier *::before,
-    .gc-archive-dossier *::after{box-sizing:border-box}
-
-    .gc-archive-dossier a{color:inherit}
-
-    .gc-archive-dossier__hero{
-      position:relative;
-      display:grid;
-      grid-template-columns:minmax(0,1.05fr) minmax(300px,.56fr);
-      gap:clamp(18px,3vw,36px);
-      align-items:stretch;
-      min-height:clamp(430px,58vh,620px);
-      padding:clamp(22px,4vw,46px);
-      border:1px solid var(--archive-line);
-      border-radius:38px;
-      background:
-        radial-gradient(circle at 12% 4%, rgba(156,255,63,.16), transparent 36%),
-        radial-gradient(circle at 88% 12%, rgba(37,214,230,.10), transparent 35%),
-        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
-      box-shadow:0 40px 130px rgba(0,0,0,.30);
-      overflow:hidden;
-    }
-
-    .gc-archive-dossier__hero.has-image::before{
-      content:"";
-      position:absolute;
-      inset:-1px;
-      background:
-        linear-gradient(90deg, rgba(0,9,4,.92) 0%, rgba(0,9,4,.72) 44%, rgba(0,9,4,.28) 100%),
-        var(--archive-hero-image);
-      background-size:cover;
-      background-position:center;
-      filter:saturate(.9) contrast(1.08);
-      opacity:.24;
-      pointer-events:none;
-    }
-
-    .gc-archive-dossier__hero.has-image::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:
-        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px);
-      background-size:54px 54px;
-      mask-image:linear-gradient(90deg, rgba(0,0,0,.72), transparent 92%);
-      pointer-events:none;
-    }
-
-    .gc-archive-dossier__hero-main,
-    .gc-archive-dossier__hero-media{
-      position:relative;
-      z-index:1;
-    }
-
-    .gc-archive-dossier__hero-main{
-      display:grid;
-      align-content:center;
-      min-width:0;
-    }
-
-    .gc-archive-dossier__breadcrumb{
-      display:flex;
-      flex-wrap:wrap;
-      gap:.5rem;
-      margin:0 0 1rem;
-      color:var(--muted,#7f9184);
-    }
-
-    .gc-archive-dossier__breadcrumb a{
-      text-decoration:none;
-    }
-
-    .gc-archive-dossier__kicker,
-    .gc-archive-dossier__side-kicker,
-    .gc-archive-dossier__section-head span{
-      color:var(--archive-accent);
-      font-size:.74rem;
-      font-weight:950;
-      letter-spacing:.2em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-dossier h1{
-      max-width:900px;
-      margin:.35rem 0 .9rem;
-      font-size:clamp(3.2rem,7.2vw,7.4rem);
-      line-height:.8;
-      letter-spacing:-.095em;
-    }
-
-    .gc-archive-dossier__lead{
-      max-width:720px;
-      margin:0;
-      color:var(--soft,#b6c5b8);
-      font-size:clamp(1.05rem,1.45vw,1.3rem);
-      line-height:1.56;
-    }
-
-    .gc-archive-dossier__hero-facts{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:10px;
-      margin-top:22px;
-      max-width:900px;
-    }
-
-    .gc-archive-dossier__hero-facts article{
-      min-height:92px;
-      min-width:0;
-      padding:14px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:18px;
-      background:rgba(0,0,0,.22);
-      backdrop-filter:blur(12px);
-    }
-
-    .gc-archive-dossier__hero-facts span,
-    .gc-archive-dossier__secondary-facts span{
-      display:block;
-      color:var(--muted,#7f9184);
-      font-size:.7rem;
-      font-weight:950;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-dossier__hero-facts strong,
-    .gc-archive-dossier__secondary-facts strong{
-      display:block;
-      margin-top:8px;
-      font-size:clamp(1rem,1.35vw,1.36rem);
-      line-height:1.13;
-      letter-spacing:-.035em;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__fact-list{
-      display:grid;
-      gap:7px;
-      margin-top:8px;
-      min-width:0;
-    }
-
-    .gc-archive-dossier__fact-list > span{
-      display:grid;
-      gap:3px;
-      min-width:0;
-      padding:8px 10px;
-      border:1px solid rgba(255,255,255,.075);
-      border-radius:12px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-dossier__fact-list b{
-      display:block;
-      color:var(--text,#f2f7ef);
-      font-size:.92rem;
-      line-height:1.16;
-      letter-spacing:-.015em;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__fact-list em{
-      display:block;
-      color:var(--soft,#b6c5b8);
-      font-size:.84rem;
-      line-height:1.34;
-      font-style:normal;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__hero-facts .gc-archive-dossier__fact-list{
-      max-height:210px;
-      overflow:auto;
-      padding-right:2px;
-    }
-
-
-    .gc-archive-dossier__tags{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:18px;
-    }
-
-    .gc-archive-dossier__tags span{
-      display:inline-flex;
-      align-items:center;
-      min-height:32px;
-      padding:0 11px;
-      border:1px solid rgba(255,255,255,.11);
-      border-radius:999px;
-      background:rgba(255,255,255,.045);
-      color:#fff;
-      font-size:.84rem;
-      font-weight:800;
-    }
-
-    .gc-archive-dossier__hero-media{
-      min-width:0;
-      display:grid;
-      align-items:center;
-    }
-
-    .gc-archive-dossier__hero-media figure,
-    .gc-archive-dossier__media-empty{
-      margin:0;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.11);
-      border-radius:30px;
-      background:rgba(0,0,0,.22);
-      box-shadow:0 28px 86px rgba(0,0,0,.28);
-    }
-
-    .gc-archive-dossier__hero-media img{
-      width:100%;
-      aspect-ratio:4/3;
-      min-height:320px;
-      max-height:500px;
-      object-fit:cover;
-      display:block;
-    }
-
-    .gc-archive-dossier__hero-media figcaption{
-      padding:11px 13px;
-      color:var(--soft,#b6c5b8);
-      font-size:.84rem;
-      line-height:1.4;
-      border-top:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.24);
-    }
-
-    .gc-archive-dossier__media-empty{
-      min-height:320px;
-      display:grid;
-      place-content:center;
-      gap:8px;
-      text-align:center;
-      padding:24px;
-    }
-
-    .gc-archive-dossier__media-empty span{
-      color:var(--archive-accent);
-      font-weight:950;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-dossier__media-empty small{
-      color:var(--soft,#b6c5b8);
-    }
-
-    .gc-archive-dossier__layout{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(300px,.32fr);
-      gap:18px;
-      align-items:start;
-      margin-top:18px;
-    }
-
-    .gc-archive-dossier__main,
-    .gc-archive-dossier__content-stack,
-    .gc-archive-dossier__sidebar{
-      display:grid;
-      gap:18px;
-      min-width:0;
-    }
-
-    .gc-archive-dossier__sidebar{
-      position:sticky;
-      top:76px;
-    }
-
-    .gc-archive-dossier__panel,
-    .gc-archive-dossier__side-panel{
-      padding:clamp(20px,3vw,30px);
-      border:1px solid var(--archive-line);
-      border-radius:28px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
-    }
-
-    .gc-archive-dossier__overview{
-      background:
-        radial-gradient(circle at 10% 0%, rgba(156,255,63,.10), transparent 34%),
-        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
-    }
-
-    .gc-archive-dossier__overview-copy,
-    .gc-archive-dossier__editorial > p,
-    .gc-archive-dossier__lead-copy{
-      margin:0;
-      color:var(--text,#f2f7ef);
-      font-size:clamp(1.05rem,1.28vw,1.18rem);
-      line-height:1.82;
-      max-width:860px;
-    }
-
-    .gc-archive-dossier__secondary-facts{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:10px;
-      margin-top:20px;
-    }
-
-    .gc-archive-dossier__secondary-facts div{
-      min-height:84px;
-      min-width:0;
-      padding:14px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-dossier__text-section + .gc-archive-dossier__text-section{
-      margin-top:24px;
-      padding-top:24px;
-      border-top:1px solid rgba(255,255,255,.08);
-    }
-
-    .gc-archive-dossier__section-head{
-      margin-bottom:14px;
-    }
-
-    .gc-archive-dossier h2{
-      margin:.25rem 0 .65rem;
-      font-size:clamp(2rem,3.4vw,3.8rem);
-      line-height:.88;
-      letter-spacing:-.08em;
-    }
-
-    .gc-archive-dossier h3{
-      margin:0 0 .5rem;
-      font-size:1.18rem;
-      line-height:1.1;
-      letter-spacing:-.035em;
-    }
-
-    .gc-archive-dossier p{
-      color:var(--soft,#b6c5b8);
-      line-height:1.78;
-    }
-
-    .gc-archive-dossier__cards{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:12px;
-    }
-
-    .gc-archive-dossier__cards article{
-      padding:16px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:20px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-dossier__cards--zones{
-      grid-template-columns:repeat(3,minmax(0,1fr));
-    }
-
-    .gc-archive-dossier__cards dl{
-      display:grid;
-      gap:7px;
-      margin:12px 0 0;
-    }
-
-    .gc-archive-dossier__cards dl div{
-      padding:10px;
-      border-radius:12px;
-      background:rgba(255,255,255,.035);
-    }
-
-    .gc-archive-dossier__cards dt{
-      color:var(--muted,#7f9184);
-      font-size:.72rem;
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-    }
-
-    .gc-archive-dossier__cards dd{
-      margin:4px 0 0;
-    }
-
-    .gc-archive-dossier__gallery{
-      scroll-margin-top:92px;
-    }
-
-    .gc-archive-dossier__gallery-head{
-      display:flex;
-      align-items:end;
-      justify-content:space-between;
-      gap:16px;
-    }
-
-    .gc-archive-dossier__gallery-head small{
-      display:inline-flex;
-      align-items:center;
-      min-height:30px;
-      padding:0 10px;
-      border:1px solid rgba(156,255,63,.16);
-      border-radius:999px;
-      background:rgba(156,255,63,.055);
-      color:var(--archive-accent);
-      font-size:.74rem;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      white-space:nowrap;
-    }
-
-    .gc-archive-dossier__gallery-grid{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:14px;
-    }
-
-    .gc-archive-dossier__gallery figure{
-      margin:0;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:20px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-dossier__gallery-trigger{
-      position:relative;
-      display:block;
-      width:100%;
-      padding:0;
-      border:0;
-      background:transparent;
-      color:inherit;
-      cursor:pointer;
-      overflow:hidden;
-      text-align:left;
-    }
-
-    .gc-archive-dossier__gallery-trigger img{
-      width:100%;
-      aspect-ratio:16/10;
-      object-fit:cover;
-      display:block;
-      transition:transform .24s ease, filter .24s ease;
-    }
-
-    .gc-archive-dossier__gallery-trigger span{
-      position:absolute;
-      right:12px;
-      bottom:12px;
-      display:inline-flex;
-      align-items:center;
-      min-height:30px;
-      padding:0 11px;
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:999px;
-      background:rgba(0,0,0,.56);
-      color:#fff;
-      font-size:.72rem;
-      font-weight:950;
-      letter-spacing:.1em;
-      text-transform:uppercase;
-      opacity:0;
-      transform:translateY(6px);
-      transition:opacity .18s ease, transform .18s ease;
-      backdrop-filter:blur(10px);
-    }
-
-    .gc-archive-dossier__gallery-trigger:hover img,
-    .gc-archive-dossier__gallery-trigger:focus-visible img{
-      transform:scale(1.035);
-      filter:saturate(1.08) contrast(1.06);
-    }
-
-    .gc-archive-dossier__gallery-trigger:hover span,
-    .gc-archive-dossier__gallery-trigger:focus-visible span{
-      opacity:1;
-      transform:translateY(0);
-    }
-
-    .gc-archive-dossier__gallery figcaption{
-      padding:10px 12px;
-      color:var(--soft,#b6c5b8);
-      font-size:.82rem;
-      line-height:1.35;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__lightbox[hidden]{
-      display:none;
-    }
-
-    .gc-archive-dossier__lightbox{
-      position:fixed;
-      inset:0;
-      z-index:9999;
-      display:grid;
-      place-items:center;
-      padding:clamp(12px,3vw,34px);
-    }
-
-    .gc-archive-dossier__lightbox-backdrop{
-      position:absolute;
-      inset:0;
-      border:0;
-      background:rgba(0,0,0,.82);
-      backdrop-filter:blur(12px);
-      cursor:zoom-out;
-    }
-
-    .gc-archive-dossier__lightbox-dialog{
-      position:relative;
-      z-index:1;
-      width:min(100%,1180px);
-      max-height:calc(100vh - 32px);
-      display:grid;
-      grid-template-rows:auto minmax(0,1fr) auto;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:28px;
-      background:
-        radial-gradient(circle at 12% 0%, rgba(156,255,63,.08), transparent 34%),
-        #050806;
-      box-shadow:0 36px 120px rgba(0,0,0,.56);
-    }
-
-    .gc-archive-dossier__lightbox-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      min-height:54px;
-      padding:10px 14px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      color:var(--soft,#b6c5b8);
-    }
-
-    .gc-archive-dossier__lightbox-top span{
-      color:var(--archive-accent);
-      font-size:.74rem;
-      font-weight:950;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-dossier__lightbox-top button{
-      min-height:34px;
-      padding:0 12px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:999px;
-      background:rgba(255,255,255,.06);
-      color:#fff;
-      font:inherit;
-      font-size:.78rem;
-      font-weight:900;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      cursor:pointer;
-    }
-
-    .gc-archive-dossier__lightbox-stage{
-      position:relative;
-      display:grid;
-      place-items:center;
-      min-height:0;
-      padding:clamp(10px,2vw,18px);
-      background:rgba(0,0,0,.22);
-    }
-
-    .gc-archive-dossier__lightbox-stage img{
-      display:block;
-      max-width:100%;
-      max-height:calc(100vh - 190px);
-      width:auto;
-      height:auto;
-      object-fit:contain;
-      border-radius:18px;
-      box-shadow:0 16px 60px rgba(0,0,0,.38);
-    }
-
-    .gc-archive-dossier__lightbox-stage img[hidden]{
-      display:none;
-    }
-
-    .gc-archive-dossier__lightbox-error{
-      max-width:520px;
-      padding:22px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:20px;
-      background:rgba(255,255,255,.04);
-      text-align:center;
-    }
-
-    .gc-archive-dossier__lightbox-error strong{
-      display:block;
-      color:var(--text,#f2f7ef);
-      margin-bottom:6px;
-    }
-
-    .gc-archive-dossier__lightbox-error p{
-      margin:0;
-      color:var(--soft,#b6c5b8);
-      line-height:1.45;
-    }
-
-    .gc-archive-dossier__lightbox-nav{
-      position:absolute;
-      top:50%;
-      z-index:2;
-      width:46px;
-      height:70px;
-      display:grid;
-      place-items:center;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px;
-      background:rgba(0,0,0,.46);
-      color:#fff;
-      font-size:2.2rem;
-      line-height:1;
-      cursor:pointer;
-      transform:translateY(-50%);
-      backdrop-filter:blur(10px);
-      transition:background .16s ease, transform .16s ease;
-    }
-
-    .gc-archive-dossier__lightbox-nav:hover{
-      background:rgba(156,255,63,.16);
-      transform:translateY(-50%) scale(1.03);
-    }
-
-    .gc-archive-dossier__lightbox-nav.is-prev{
-      left:14px;
-    }
-
-    .gc-archive-dossier__lightbox-nav.is-next{
-      right:14px;
-    }
-
-    .gc-archive-dossier__lightbox-caption{
-      padding:14px 16px 16px;
-      border-top:1px solid rgba(255,255,255,.08);
-    }
-
-    .gc-archive-dossier__lightbox-caption strong{
-      display:block;
-      color:var(--text,#f2f7ef);
-      line-height:1.25;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__lightbox-caption p{
-      margin:5px 0 0;
-      color:var(--soft,#b6c5b8);
-      font-size:.9rem;
-      line-height:1.45;
-      overflow-wrap:anywhere;
-    }
-
-    body.gc-lightbox-open{
-      overflow:hidden;
-    }
-
-    .gc-archive-dossier__side-panel h2{
-      font-size:clamp(1.65rem,2.2vw,2.45rem);
-      line-height:.92;
-      letter-spacing:-.05em;
-    }
-
-    .gc-archive-dossier__side-panel p{
-      margin:.35rem 0 0;
-    }
-
-    .gc-archive-dossier__nav-panel{
-      background:
-        radial-gradient(circle at 10% 0%, rgba(156,255,63,.08), transparent 34%),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
-    }
-
-    .gc-archive-dossier__nav-panel nav{
-      display:grid;
-      gap:8px;
-      margin-top:14px;
-    }
-
-    .gc-archive-dossier__nav-panel a{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:14px;
-      min-height:42px;
-      padding:0 12px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      background:rgba(0,0,0,.14);
-      color:var(--soft,#b6c5b8);
-      text-decoration:none;
-      font-weight:850;
-    }
-
-    .gc-archive-dossier__nav-panel a::after{
-      content:"↘";
-      color:var(--archive-accent);
-      font-size:.78rem;
-    }
-
-    .gc-archive-dossier__meta-list{
-      display:grid;
-      gap:8px;
-      padding:0;
-      margin:16px 0 0;
-      list-style:none;
-    }
-
-    .gc-archive-dossier__meta-list li,
-    .gc-archive-dossier__related-list a{
-      display:grid;
-      gap:4px;
-      padding:14px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      background:rgba(0,0,0,.14);
-    }
-
-    .gc-archive-dossier__meta-list strong{
-      color:var(--muted,#7f9184);
-      font-size:.72rem;
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-    }
-
-    .gc-archive-dossier__related-list{
-      display:grid;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .gc-archive-dossier__related-list a{
-      position:relative;
-      text-decoration:none;
-      transition:border-color .16s ease, background .16s ease, transform .16s ease;
-    }
-
-    .gc-archive-dossier__related-list a:hover{
-      transform:translateY(-1px);
-      border-color:var(--archive-line-strong);
-      background:rgba(255,255,255,.032);
-    }
-
-    .gc-archive-dossier__related-list span{
-      color:var(--muted,#7f9184);
-      font-size:.82rem;
-      text-transform:capitalize;
-    }
-
-    .gc-archive-dossier__sources p strong{
-      color:var(--text,#f2f7ef);
-    }
-
-    .gc-archive-dossier__sources ul{
-      display:grid;
-      gap:8px;
-      padding-left:18px;
-      color:var(--soft,#b6c5b8);
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-dossier__sources a{
-      color:var(--archive-accent);
-      text-decoration:none;
-    }
-
-
-    .gc-archive-dossier__share-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:14px;
-    }
-
-    .gc-share-btn{
-      --share-bg: rgba(0,0,0,.14);
-      --share-border: rgba(255,255,255,.09);
-      --share-color: var(--text,#f2f7ef);
-      --share-tint: rgba(255,255,255,.04);
-      display:inline-grid;
-      place-items:center;
-      gap:5px;
-      min-width:60px;
-      min-height:60px;
-      padding:8px 10px;
-      border:1px solid var(--share-border);
-      border-radius:18px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
-        var(--share-bg);
-      color:var(--share-color);
-      text-decoration:none;
-      font:inherit;
-      cursor:pointer;
-      transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-    }
-
-    .gc-share-btn:hover{
-      transform:translateY(-1px);
-      border-color:color-mix(in srgb, var(--share-color) 38%, rgba(255,255,255,.18));
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--share-color) 14%, transparent), rgba(255,255,255,.02)),
-        color-mix(in srgb, var(--share-bg) 86%, var(--share-tint));
-      box-shadow:0 10px 24px rgba(0,0,0,.16);
-    }
-
-    .gc-share-btn__icon{
-      display:grid;
-      place-items:center;
-      width:26px;
-      height:26px;
-      color:var(--share-color);
-      line-height:1;
-    }
-
-    .gc-share-btn__icon svg{
-      width:20px;
-      height:20px;
-      display:block;
-    }
-
-    .gc-share-btn small{
-      color:var(--share-color);
-      font-size:.64rem;
-      font-weight:900;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-    }
-
-    .gc-share-btn--native{
-      --share-bg: rgba(156,255,63,.09);
-      --share-border: rgba(156,255,63,.18);
-      --share-color: #9cff3f;
-      --share-tint: rgba(156,255,63,.06);
-    }
-
-    .gc-share-btn--copy{
-      --share-bg: rgba(90,108,121,.14);
-      --share-border: rgba(125,145,160,.22);
-      --share-color: #d9e6ef;
-      --share-tint: rgba(125,145,160,.08);
-    }
-
-    .gc-share-btn--x{
-      --share-bg: rgba(15,15,16,.92);
-      --share-border: rgba(255,255,255,.12);
-      --share-color: #ffffff;
-      --share-tint: rgba(255,255,255,.05);
-    }
-
-    .gc-share-btn--whatsapp{
-      --share-bg: rgba(37,211,102,.13);
-      --share-border: rgba(37,211,102,.28);
-      --share-color: #25D366;
-      --share-tint: rgba(37,211,102,.08);
-    }
-
-    .gc-share-btn--telegram{
-      --share-bg: rgba(36,161,222,.13);
-      --share-border: rgba(36,161,222,.28);
-      --share-color: #24A1DE;
-      --share-tint: rgba(36,161,222,.08);
-    }
-
-    .gc-archive-dossier__share-status{
-      min-height:18px;
-      margin:10px 0 0;
-      color:var(--archive-accent);
-      font-size:.8rem;
-      line-height:1.35;
-    }
-
-    @media(max-width:1180px){
-      .gc-archive-dossier__hero,
-      .gc-archive-dossier__layout{
-        grid-template-columns:1fr;
-        min-height:auto;
-      }
-
-      .gc-archive-dossier__sidebar{
-        position:static;
-      }
-
-      .gc-archive-dossier__hero-facts{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-
-      .gc-archive-dossier__cards--zones,
-      .gc-archive-dossier__gallery-grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-    }
-
-    @media(max-width:720px){
-      .gc-archive-dossier{
-        padding-inline:12px;
-      }
-
-      .gc-archive-dossier__hero{
-        padding:20px;
-        border-radius:26px;
-      }
-
-      .gc-archive-dossier h1{
-        font-size:clamp(3.2rem,16vw,5.4rem);
-      }
-
-      .gc-archive-dossier__hero-media img{
-        min-height:240px;
-      }
-
-      .gc-archive-dossier__hero-facts,
-      .gc-archive-dossier__secondary-facts,
-      .gc-archive-dossier__cards,
-      .gc-archive-dossier__cards--zones,
-      .gc-archive-dossier__gallery-grid{
-        grid-template-columns:1fr;
-      }
-
-      .gc-archive-dossier__panel,
-      .gc-archive-dossier__side-panel{
-        border-radius:22px;
-      }
-    }
-  </style>
-
-
-  <script is:inline>
-    (() => {
-      const galleries = document.querySelectorAll('[data-gallery-root]');
-      if (!galleries.length) return;
-
-      galleries.forEach((gallery) => {
-        const triggers = Array.from(gallery.querySelectorAll('[data-gallery-open]'));
-        const jsonNode = gallery.querySelector('[data-gallery-items]');
-        const lightbox = gallery.querySelector('[data-gallery-lightbox]');
-        const image = gallery.querySelector('[data-gallery-image]');
-        const errorBox = gallery.querySelector('[data-gallery-error]');
-        const altText = gallery.querySelector('[data-gallery-alt]');
-        const credit = gallery.querySelector('[data-gallery-credit]');
-        const counter = gallery.querySelector('[data-gallery-counter]');
-        const closeButtons = gallery.querySelectorAll('[data-gallery-close]');
-        const prevButton = gallery.querySelector('[data-gallery-prev]');
-        const nextButton = gallery.querySelector('[data-gallery-next]');
-
-        if (!triggers.length || !lightbox || !image) return;
-
-        let currentIndex = 0;
-        let items = [];
-
-        try {
-          items = JSON.parse(jsonNode?.textContent || '[]');
-        } catch {
-          items = [];
-        }
-
-        items = items
-          .map((item) => ({
-            src: String(item?.url || item?.src || '').trim(),
-            alt: String(item?.alt || '').trim(),
-            credit: String(item?.credit || '').trim(),
-          }))
-          .filter((item) => item.src);
-
-        if (!items.length) return;
-
-        function setError(show) {
-          if (!errorBox) return;
-          errorBox.hidden = !show;
-          image.hidden = show;
-        }
-
-        image.addEventListener('load', () => setError(false));
-        image.addEventListener('error', () => setError(true));
-
-        function render(index) {
-          currentIndex = (index + items.length) % items.length;
-          const item = items[currentIndex];
-
-          setError(false);
-          image.removeAttribute('src');
-          image.alt = item.alt || '';
-          if (altText) altText.textContent = item.alt || 'Imagen de galería';
-          if (credit) credit.textContent = item.credit || '';
-          if (counter) counter.textContent = `${currentIndex + 1} / ${items.length}`;
-
-          window.requestAnimationFrame(() => {
-            image.src = item.src;
-          });
-
-          if (items.length <= 1) {
-            if (prevButton) prevButton.hidden = true;
-            if (nextButton) nextButton.hidden = true;
-          }
-        }
-
-        function open(index) {
-          render(index);
-          lightbox.hidden = false;
-          document.body.classList.add('gc-lightbox-open');
-          nextButton?.focus({ preventScroll: true });
-        }
-
-        function close() {
-          lightbox.hidden = true;
-          document.body.classList.remove('gc-lightbox-open');
-          image.removeAttribute('src');
-          triggers[currentIndex]?.focus({ preventScroll: true });
-        }
-
-        triggers.forEach((trigger, index) => {
-          trigger.addEventListener('click', () => open(index));
-        });
-
-        closeButtons.forEach((button) => button.addEventListener('click', close));
-        prevButton?.addEventListener('click', () => render(currentIndex - 1));
-        nextButton?.addEventListener('click', () => render(currentIndex + 1));
-
-        document.addEventListener('keydown', (event) => {
-          if (lightbox.hidden) return;
-
-          if (event.key === 'Escape') close();
-          if (event.key === 'ArrowLeft') render(currentIndex - 1);
-          if (event.key === 'ArrowRight') render(currentIndex + 1);
-        });
-      });
-    })();
-  </script>
-
-  <script is:inline>
-    (() => {
-      const root = document.querySelector('[data-archive-share-root]');
-      if (!root) return;
-
-      const title = root.getAttribute('data-share-title') || document.title;
-      const text = root.getAttribute('data-share-text') || '';
-      const url = window.location.href.split('#')[0];
-      const encodedUrl = encodeURIComponent(url);
-      const encodedTitle = encodeURIComponent(title);
-      const encodedText = encodeURIComponent(text ? `${title} — ${text}` : title);
-      const status = root.querySelector('[data-share-status]');
-
-      const x = root.querySelector('[data-share-x]');
-      const whatsapp = root.querySelector('[data-share-whatsapp]');
-      const telegram = root.querySelector('[data-share-telegram]');
-
-      if (x) x.href = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
-      if (whatsapp) whatsapp.href = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
-      if (telegram) telegram.href = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
-
-      function setStatus(message) {
-        if (!status) return;
-        status.textContent = message;
-        window.clearTimeout(setStatus.timer);
-        setStatus.timer = window.setTimeout(() => {
-          status.textContent = '';
-        }, 2200);
-      }
-
-      async function copyLink() {
-        try {
-          await navigator.clipboard.writeText(url);
-          setStatus('Enlace copiado.');
-        } catch {
-          const temp = document.createElement('textarea');
-          temp.value = url;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand('copy');
-          temp.remove();
-          setStatus('Enlace copiado.');
-        }
-      }
-
-      root.querySelector('[data-share-copy]')?.addEventListener('click', copyLink);
-
-      root.querySelector('[data-share-native]')?.addEventListener('click', async () => {
-        if (navigator.share) {
-          try {
-            await navigator.share({ title, text, url });
-            return;
-          } catch {
-            return;
-          }
-        }
-
-        await copyLink();
-      });
-    })();
-  </script>
-
+  </section>
 </article>
+
+<style is:global>
+  .gc-archive-inner-v1 {
+    padding-bottom: 34px;
+  }
+
+  .gc-archive-inner-v1 .gc-archive-race-hero h1 {
+    max-width: 900px;
+  }
+
+  .gc-archive-inner-v1 .gc-archive-command-grid div {
+    display: grid;
+    gap: 5px;
+    min-height: 58px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.018);
+  }
+
+  .gc-archive-inner-v1 .gc-archive-command-grid strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gc-archive-inner-spotlight-v1 h2 {
+    font-size: clamp(26px, 3.05vw, 40px);
+    line-height: .94;
+    letter-spacing: -.04em;
+    max-width: 760px;
+  }
+
+  .gc-archive-inner-spotlight-v1 figure {
+    min-height: 100%;
+    background:
+      linear-gradient(180deg, rgba(8,14,10,.72), rgba(4,8,5,.8)),
+      url("/ui/home2/gc-home2-grid.svg");
+    background-size: cover;
+  }
+
+  .gc-archive-inner-spotlight-v1 figcaption {
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .gc-archive-inner-layout-v1 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .gc-archive-inner-main-v1 {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .gc-archive-inner-main-v1 .gc-archive-section--panel {
+    margin-top: 0;
+  }
+
+  .gc-archive-inner-prose-v1 {
+    position: relative;
+    z-index: 1;
+    color: var(--soft);
+    font-size: 15px;
+    line-height: 1.68;
+  }
+
+  .gc-archive-inner-prose-v1 p {
+    margin: 0;
+  }
+
+  .gc-archive-inner-facts-v1,
+  .gc-archive-inner-sources-v1 {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .gc-archive-inner-facts-v1 div,
+  .gc-archive-inner-sources-v1 div,
+  .gc-archive-inner-items-v1 article {
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.018);
+  }
+
+  .gc-archive-inner-facts-v1 span,
+  .gc-archive-inner-sources-v1 span,
+  .gc-archive-inner-related-v1 span {
+    display: block;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .gc-archive-inner-facts-v1 strong,
+  .gc-archive-inner-sources-v1 strong {
+    display: block;
+    margin-top: 6px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .gc-archive-inner-text-block-v1 + .gc-archive-inner-text-block-v1 {
+    margin-top: 24px;
+  }
+
+  .gc-archive-inner-items-v1 {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 8px;
+  }
+
+  .gc-archive-inner-items-v1 strong {
+    display: block;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .gc-archive-inner-items-v1 p {
+    margin: 6px 0 0;
+    color: var(--soft);
+    line-height: 1.5;
+  }
+
+  .gc-archive-inner-gallery-v1 {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px;
+  }
+
+  .gc-archive-inner-gallery-v1 figure {
+    margin: 0;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: rgba(255,255,255,.018);
+  }
+
+  .gc-archive-inner-gallery-v1 img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gc-archive-inner-gallery-v1 figcaption {
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .gc-archive-inner-source-list-v1 {
+    position: relative;
+    z-index: 1;
+    margin: 16px 0 0;
+    padding-left: 1.1em;
+    color: var(--soft);
+  }
+
+  .gc-archive-inner-source-list-v1 a {
+    color: var(--green);
+  }
+
+  .gc-archive-inner-side-v1 {
+    display: grid;
+    gap: 12px;
+    position: sticky;
+    top: 84px;
+  }
+
+  .gc-archive-inner-side-v1 .gc-archive-type-card {
+    min-height: 150px;
+  }
+
+  .gc-archive-inner-side-v1 a {
+    color: var(--green);
+    text-decoration: none;
+  }
+
+  .gc-archive-inner-tags-v1 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .gc-archive-inner-tags-v1 span {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 0 8px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 999px;
+    color: var(--soft);
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .gc-archive-inner-related-v1 {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .gc-archive-inner-related-v1 a {
+    display: grid;
+    gap: 4px;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.018);
+  }
+
+  .gc-archive-inner-related-v1 b {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 960px) {
+    .gc-archive-inner-layout-v1,
+    .gc-archive-inner-facts-v1,
+    .gc-archive-inner-sources-v1 {
+      grid-template-columns: 1fr;
+    }
+
+    .gc-archive-inner-side-v1 {
+      position: static;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .gc-archive-inner-gallery-v1 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

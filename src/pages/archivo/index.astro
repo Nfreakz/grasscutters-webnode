@@ -27,14 +27,14 @@ const heroImage = featured ? getArchiveImage(featured) : '';
 const heroStyle = heroImage ? `--archive-hero-image:url('${String(heroImage).replace(/'/g, '%27')}');` : '';
 
 const typeIntros = {
-  circuitos: 'Trazados, datos técnicos, zonas clave y contexto de conducción.',
-  coches: 'Modelos, versiones de competición, mecánica e historial deportivo.',
-  pilotos: 'Trayectorias, palmarés, estilo de pilotaje y etapas clave.',
-  glosario: 'Conceptos de pilotaje, técnica, competición y cultura motorsport.',
+  circuitos: 'Trazados, historia, características, eventos y contexto dentro del motorsport.',
+  coches: 'Modelos de competición, versiones, técnica, categorías e historial deportivo.',
+  pilotos: 'Trayectorias, palmarés, etapas clave, equipos y estilo dentro de la competición.',
+  glosario: 'Conceptos técnicos, términos de pilotaje, cultura racing y vocabulario del motor.',
 };
 
-const pageTitle = 'Archivo GrassCutters | Circuitos, coches, pilotos y glosario';
-const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas de circuitos, coches, pilotos y conceptos técnicos del motorsport.';
+const pageTitle = 'Archivo GrassCutters | Base de datos de motorsport';
+const pageDescription = 'Base de datos editorial de motorsport con fichas de circuitos, coches, pilotos, conceptos técnicos, historia y cultura racing.';
 ---
 
 <MarketingLayout
@@ -49,16 +49,16 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
     <section class={`gc-archive-race-hero ${heroImage ? 'has-image' : ''}`} style={heroStyle}>
       <div class="gc-archive-shell gc-archive-race-hero__grid">
         <div>
-          <p class="gc-archive-kicker">GRASSCUTTERS RACE CONTROL</p>
+          <p class="gc-archive-kicker">GRASSCUTTERS DATABASE</p>
           <h1>Archivo</h1>
           <p class="gc-archive-race-hero__lead">
-            Circuitos, coches, pilotos y conceptos. Fichas claras para consultar rápido antes de rodar, comparar o preparar una sesión.
+            Base de datos editorial sobre motorsport: circuitos, coches, pilotos, conceptos técnicos, historia y cultura racing organizada para consultar y ampliar contexto.
           </p>
 
           <div class="gc-archive-statusline">
-            <span class="gc-archive-badge">Motorsport</span>
-            <span class="gc-archive-badge">Fichas GC</span>
-            <span class="gc-archive-badge">Consulta rápida</span>
+            <span class="gc-archive-badge">Motorsport database</span>
+            <span class="gc-archive-badge">Fichas editoriales</span>
+            <span class="gc-archive-badge">Historia y técnica</span>
           </div>
 
           <form class="gc-archive-search" role="search" aria-label="Buscar en el archivo">
@@ -78,7 +78,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
         </div>
 
         <aside class="gc-archive-command-card" aria-label="Resumen del archivo">
-          <span>Índice actual</span>
+          <span>Base de datos</span>
           <strong>{items.length}</strong>
           <small>fichas publicadas</small>
 
@@ -100,7 +100,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
           <a class="gc-archive-type-card" href={archiveTypeHref(type.tipo)} data-home-type-card={type.tipo}>
             <small>{type.singular}</small>
             <strong>{type.label}</strong>
-            <p>{typeIntros[type.tipo] || 'Fichas del archivo.'}</p>
+            <p>{typeIntros[type.tipo] || 'Fichas editoriales del archivo motorsport.'}</p>
             <small>{type.count} ficha{type.count === 1 ? '' : 's'}</small>
           </a>
         ))}
@@ -111,9 +111,9 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
       <section class="gc-archive-shell gc-archive-section">
         <article class="gc-archive-spotlight">
           <div class="gc-archive-spotlight__copy">
-            <span class="gc-archive-panel__eyebrow">Dossier destacado</span>
+            <span class="gc-archive-panel__eyebrow">Ficha destacada</span>
             <h2>{featured.nombre}</h2>
-            <p>{getArchiveSummary(featured) || 'Ficha destacada del archivo.'}</p>
+            <p>{getArchiveSummary(featured) || 'Entrada destacada de la base de datos motorsport.'}</p>
 
             <dl>
               <div>
@@ -134,7 +134,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
               )}
             </dl>
 
-            <a href={archiveItemHref(featured)}>Abrir dossier</a>
+            <a href={archiveItemHref(featured)}>Abrir ficha</a>
           </div>
 
           {getArchiveImage(featured) ? (
@@ -157,7 +157,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
           <span>Catálogo</span>
           <h2>Todas las fichas</h2>
         </div>
-        <p>Filtra por categoría o busca por título, país, época, motor, equipo, trazado o concepto.</p>
+        <p>Explora la base de datos por categoría o busca por título, país, época, motor, equipo, trazado, piloto o concepto técnico.</p>
       </div>
 
       <div class="gc-archive-filter-row" aria-label="Filtros del archivo">
@@ -186,7 +186,7 @@ const pageDescription = 'Archivo visual y editorial de GrassCutters con fichas d
               <div>
                 <small>{prettifyArchiveType(item.tipo)}</small>
                 <strong>{item.nombre}</strong>
-                <p>{getArchiveSummary(item) || 'Ficha del archivo.'}</p>
+                <p>{getArchiveSummary(item) || 'Ficha editorial de la base de datos motorsport.'}</p>
                 <footer>
                   {getArchiveCountry(item) && <em>{getArchiveCountry(item)}</em>}
                   {getArchivePeriod(item) && <em>{getArchivePeriod(item)}</em>}

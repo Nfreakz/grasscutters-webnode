@@ -3,81 +3,330 @@ export const prerender = false;
 
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import '../../styles/home2.css';
+import '../../styles/archive-home2-polish.css';
 
 const slug = Astro.params.slug || '';
 ---
 
-<MarketingLayout title="Noticia | GrassCutters" description="Detalle de noticia GrassCutters Racing.">
-  <main class="gc-home2 gc-news-detail-page-v44" data-news-detail data-news-slug={slug}>
-    <section class="gc-news-detail-hero-v44">
-      <div class="gc-home2-shell gc-news-detail-hero-v44__grid">
-        <div class="gc-news-detail-hero-v44__copy">
-          <p class="gc-home2-kicker">GRASSCUTTERS RACE CONTROL</p>
+<MarketingLayout title="Noticia | GrassCutters Newsroom" description="Detalle de noticia GrassCutters Racing, sim racing y motorsport.">
+  <main class="gc-archive-home2 gc-news-detail-archive-v1" data-news-detail data-news-slug={slug}>
+    <section class="gc-archive-race-hero" data-detail-hero>
+      <div class="gc-archive-shell gc-archive-race-hero__grid">
+        <div>
+          <p class="gc-archive-breadcrumb">
+            <a href="/noticias/">Noticias</a> / <strong data-detail-breadcrumb>Newsroom</strong>
+          </p>
+          <p class="gc-archive-kicker">GRASSCUTTERS NEWSROOM</p>
           <h1 data-detail-title>Cargando noticia</h1>
-          <p class="gc-home2-lead" data-detail-category>Noticias</p>
-          <p class="gc-news-detail-hero-v44__excerpt" data-detail-excerpt>Esperando datos del sistema de noticias.</p>
-          <div class="gc-home2-statusline gc-news-detail-hero-v44__meta">
-            <span class="gc-home2-badge" data-detail-date>Actualizando</span>
-            <a class="gc-home2-badge gc-news-detail-back-v44" href="/noticias">← Volver a noticias</a>
+          <p class="gc-archive-race-hero__lead" data-detail-excerpt>
+            Esperando datos del sistema de noticias.
+          </p>
+
+          <div class="gc-archive-statusline">
+            <span class="gc-archive-badge" data-detail-category>Noticias</span>
+            <span class="gc-archive-badge" data-detail-date>Actualizando</span>
+            <a class="gc-archive-badge" href="/noticias/">← Volver a noticias</a>
           </div>
         </div>
-        <aside class="gc-news-detail-hero-v44__side" aria-label="Resumen de noticia">
-          <span>Estado</span>
-          <strong data-detail-status>Conectando</strong>
-          <small data-detail-side-meta>Noticias GC</small>
+
+        <aside class="gc-archive-command-card" aria-label="Resumen de noticia">
+          <span>Ficha de noticia</span>
+          <strong data-detail-short>GC</strong>
+          <small data-detail-side-meta>Newsroom</small>
+
+          <div class="gc-archive-command-grid">
+            <a href="/noticias/">
+              <small>Canal</small>
+              <strong>News</strong>
+            </a>
+            <a href="/archivo/">
+              <small>Contexto</small>
+              <strong>Archivo</strong>
+            </a>
+          </div>
         </aside>
       </div>
     </section>
 
-    <section class="gc-home2-section gc-home2-shell gc-news-detail-layout-v44">
-      <article class="gc-news-detail-article-v44">
-        <div class="gc-news-detail-article-v44__media">
-          <img data-detail-image src="/ui/home2/gc-home2-news-sim.svg" alt="" width="1180" height="620" loading="eager" decoding="async" />
+    <section class="gc-archive-shell gc-archive-section">
+      <article class="gc-archive-spotlight gc-news-detail-spotlight-v1">
+        <div class="gc-archive-spotlight__copy">
+          <span class="gc-archive-panel__eyebrow">Noticia</span>
+          <h2 data-detail-spot-title>Cargando contenido</h2>
+          <p data-detail-spot-excerpt>Esperando publicación.</p>
+
+          <dl>
+            <div>
+              <dt>Categoría</dt>
+              <dd data-detail-meta-category>Noticias</dd>
+            </div>
+            <div>
+              <dt>Fecha</dt>
+              <dd data-detail-meta-date>Actualizando</dd>
+            </div>
+            <div>
+              <dt>Canal</dt>
+              <dd>GC News</dd>
+            </div>
+          </dl>
+
+          <a href="#contenido-noticia">Leer contenido</a>
         </div>
-        <div class="gc-news-detail-article-v44__body" data-detail-body><p>Cargando contenido...</p></div>
+
+        <figure>
+          <img data-detail-image src="/ui/home2/gc-home2-news-sim.svg" alt="" loading="eager" />
+        </figure>
       </article>
-      <aside class="gc-news-detail-aside-v44">
-        <div class="gc-home2-panel gc-news-detail-box-v44 gc-news-detail-box-v44--main">
-          <p class="gc-home2-panel__eyebrow">Noticias GC</p>
-          <h2>Más del paddock</h2>
-          <p>Consulta las últimas actualizaciones del servidor, herramientas, combos y comunidad.</p>
-          <a href="/noticias" class="gc-home2-btn gc-home2-btn--primary gc-home2-btn--wide">Ver noticias →</a>
+    </section>
+
+    <section class="gc-archive-shell gc-archive-section gc-news-detail-layout-v1">
+      <article id="contenido-noticia" class="gc-archive-section--panel gc-news-detail-body-v1">
+        <div class="gc-archive-section-head">
+          <div>
+            <span>Contenido</span>
+            <h2>Artículo</h2>
+          </div>
+          <p data-detail-updated>Actualizando datos de publicación.</p>
         </div>
-        <div class="gc-home2-panel gc-news-detail-box-v44">
-          <p class="gc-home2-panel__eyebrow">Entrada</p>
-          <h2 data-detail-mini-status>Actualizando</h2>
-          <p data-detail-updated>Comprobando última edición.</p>
+
+        <div class="gc-news-detail-prose-v1" data-detail-body>
+          <p>Cargando contenido...</p>
         </div>
+      </article>
+
+      <aside class="gc-news-detail-side-v1">
+        <section class="gc-archive-type-card">
+          <small>Newsroom</small>
+          <strong>Noticias</strong>
+          <p>Actualidad de GrassCutters, sim racing, herramientas, carreras y motorsport.</p>
+          <small><a href="/noticias/">Volver al canal</a></small>
+        </section>
+
+        <section class="gc-archive-type-card">
+          <small>Contexto</small>
+          <strong>Archivo</strong>
+          <p>Base de datos editorial con circuitos, coches, pilotos y conceptos técnicos.</p>
+          <small><a href="/archivo/">Abrir archivo</a></small>
+        </section>
       </aside>
     </section>
   </main>
 
   <style is:global>
-    .gc-news-detail-page-v44{min-height:100vh;color:var(--text);background:radial-gradient(circle at 82% 8%,rgba(150,255,47,.10),transparent 26rem),radial-gradient(circle at 18% 30%,rgba(255,154,61,.055),transparent 24rem),linear-gradient(180deg,#050806 0%,#020302 48%,#060906 100%);isolation:isolate}
-    .gc-news-detail-page-v44::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.20;background:linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at 50% 0%,black,transparent 72%)}
-    .gc-news-detail-hero-v44{position:relative;overflow:hidden;padding:clamp(66px,7vw,94px) 0 clamp(18px,3vw,34px);border-bottom:1px solid rgba(150,255,47,.11);background:linear-gradient(90deg,rgba(2,4,2,.44),rgba(2,4,2,.82)),radial-gradient(circle at 62% 28%,rgba(150,255,47,.15),transparent 18rem),linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.78))}
-    .gc-news-detail-hero-v44::after{content:"";position:absolute;inset:auto 0 0;height:42px;pointer-events:none;background:linear-gradient(180deg,transparent,#050806)}
-    .gc-news-detail-hero-v44__grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:clamp(16px,3vw,34px);align-items:end}
-    .gc-news-detail-hero-v44__copy h1{margin:6px 0 0;max-width:880px;font-size:clamp(52px,7.2vw,78px);line-height:.86;letter-spacing:-.055em;text-transform:uppercase;text-wrap:balance}
-    .gc-news-detail-hero-v44__excerpt{max-width:760px;margin:10px 0 0;color:rgba(232,242,226,.78);font-size:clamp(.92rem,1.05vw,1.06rem);line-height:1.36}
-    .gc-news-detail-hero-v44__meta{margin-top:14px}.gc-news-detail-hero-v44__meta .gc-home2-badge{min-height:22px;padding-inline:8px;font-size:9px}.gc-news-detail-back-v44{text-decoration:none}
-    .gc-news-detail-hero-v44__side{border:1px solid rgba(150,255,47,.16);background:radial-gradient(circle at 100% 0%,rgba(150,255,47,.10),transparent 8rem),linear-gradient(180deg,rgba(9,14,10,.86),rgba(3,6,4,.96));padding:15px;min-height:132px;display:flex;flex-direction:column;justify-content:end;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 18px 60px rgba(0,0,0,.24)}
-    .gc-news-detail-hero-v44__side span,.gc-news-detail-hero-v44__side small{color:var(--muted);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase}.gc-news-detail-hero-v44__side strong{display:block;margin:7px 0;color:var(--green);font-size:clamp(22px,2.5vw,30px);line-height:.95;text-transform:uppercase;letter-spacing:-.035em}
-    .gc-news-detail-layout-v44{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:14px;align-items:start;margin-top:clamp(16px,3vw,26px)}
-    .gc-news-detail-article-v44{border:1px solid rgba(150,255,47,.13);background:radial-gradient(circle at 72% 0%,rgba(150,255,47,.075),transparent 10rem),linear-gradient(180deg,rgba(9,14,10,.88),rgba(3,6,4,.96));overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 18px 70px rgba(0,0,0,.24)}
-    .gc-news-detail-article-v44__media{width:100%;max-height:440px;overflow:hidden;background:radial-gradient(circle at 50% 0%,rgba(150,255,47,.08),transparent 16rem),#080c08;border-bottom:1px solid rgba(255,255,255,.07)}
-    .gc-news-detail-article-v44__media img{display:block;width:100%;height:100%;max-height:440px;min-height:clamp(230px,35vw,440px);object-fit:cover;filter:saturate(.92) brightness(.82) contrast(1.06)}
-    .gc-news-detail-article-v44__body{padding:clamp(20px,3vw,38px);color:rgba(232,242,226,.86);font-size:clamp(1rem,1.02vw,1.08rem);line-height:1.72}.gc-news-detail-article-v44__body p{margin:0 0 1em}.gc-news-detail-article-v44__body p:first-child{color:rgba(232,242,226,.92);font-size:clamp(1.04rem,1.16vw,1.18rem)}
-    .gc-news-detail-article-v44__body h2,.gc-news-detail-article-v44__body h3{margin:1.15em 0 .45em;color:var(--text);line-height:.98;text-transform:uppercase;letter-spacing:-.04em}.gc-news-detail-article-v44__body h2{font-size:clamp(1.9rem,3vw,3rem)}.gc-news-detail-article-v44__body h3{font-size:clamp(1.35rem,2vw,2rem)}.gc-news-detail-article-v44__body a{color:var(--green);font-weight:900;text-underline-offset:3px}.gc-news-detail-article-v44__body ul,.gc-news-detail-article-v44__body ol{margin:1em 0 1.2em;padding-left:1.2em}.gc-news-detail-article-v44__body li+li{margin-top:.45em}
-    .gc-news-detail-aside-v44{display:grid;gap:12px;position:sticky;top:84px}.gc-news-detail-box-v44{min-height:auto!important;padding:16px!important;border-color:rgba(150,255,47,.13)!important;background:radial-gradient(circle at 100% 0%,rgba(150,255,47,.08),transparent 8rem),linear-gradient(180deg,rgba(9,14,10,.86),rgba(3,6,4,.96))!important}.gc-news-detail-box-v44--main{padding:18px!important}.gc-news-detail-box-v44 h2{margin:7px 0 8px;font-size:22px;line-height:.95;text-transform:uppercase;letter-spacing:-.035em}.gc-news-detail-box-v44 p{color:rgba(232,242,226,.72);line-height:1.45}
-    @media(max-width:960px){.gc-news-detail-hero-v44__grid,.gc-news-detail-layout-v44{grid-template-columns:1fr}.gc-news-detail-aside-v44{position:static}.gc-news-detail-hero-v44__side{max-width:none}}
-    @media(max-width:640px){.gc-news-detail-hero-v44{padding-top:72px}.gc-news-detail-hero-v44__copy h1{font-size:clamp(42px,15vw,58px)}.gc-news-detail-article-v44__body{padding:18px}}
+    .gc-news-detail-archive-v1 .gc-archive-race-hero h1 {
+      max-width: 900px;
+    }
+
+    .gc-news-detail-spotlight-v1 h2 {
+      font-size: clamp(26px, 3.05vw, 40px);
+      line-height: .94;
+      letter-spacing: -.04em;
+      max-width: 760px;
+    }
+
+    .gc-news-detail-spotlight-v1 figure {
+      min-height: 100%;
+      background:
+        linear-gradient(180deg, rgba(8,14,10,.72), rgba(4,8,5,.8)),
+        url("/ui/home2/gc-home2-grid.svg");
+      background-size: cover;
+    }
+
+    .gc-news-detail-spotlight-v1 img {
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+      object-fit: cover;
+      filter: saturate(.88) brightness(.74);
+    }
+
+    .gc-news-detail-layout-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .gc-news-detail-body-v1 {
+      margin-top: 0;
+    }
+
+    .gc-news-detail-prose-v1 {
+      position: relative;
+      z-index: 1;
+      color: var(--soft);
+      font-size: 15px;
+      line-height: 1.68;
+    }
+
+    .gc-news-detail-prose-v1 p {
+      margin: 0 0 1em;
+    }
+
+    .gc-news-detail-prose-v1 p:first-child {
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .gc-news-detail-prose-v1 h2,
+    .gc-news-detail-prose-v1 h3 {
+      margin: 1.25em 0 .5em;
+      color: var(--text);
+      line-height: .98;
+      letter-spacing: -.04em;
+      text-transform: uppercase;
+    }
+
+    .gc-news-detail-prose-v1 h2 {
+      font-size: clamp(26px, 3.05vw, 40px);
+    }
+
+    .gc-news-detail-prose-v1 h3 {
+      font-size: clamp(20px, 2.2vw, 30px);
+    }
+
+    .gc-news-detail-prose-v1 a {
+      color: var(--green);
+      font-weight: 900;
+      text-underline-offset: 3px;
+    }
+
+    .gc-news-detail-prose-v1 ul,
+    .gc-news-detail-prose-v1 ol {
+      margin: 1em 0 1.2em;
+      padding-left: 1.2em;
+    }
+
+    .gc-news-detail-prose-v1 li + li {
+      margin-top: .45em;
+    }
+
+    .gc-news-detail-side-v1 {
+      display: grid;
+      gap: 12px;
+      position: sticky;
+      top: 84px;
+    }
+
+    .gc-news-detail-side-v1 .gc-archive-type-card {
+      min-height: 150px;
+    }
+
+    .gc-news-detail-side-v1 a {
+      color: var(--green);
+      text-decoration: none;
+    }
+
+    @media (max-width: 960px) {
+      .gc-news-detail-layout-v1 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-news-detail-side-v1 {
+        position: static;
+      }
+    }
   </style>
 
   <script is:inline>
-    (()=>{const root=document.querySelector('[data-news-detail]');const slug=root?.dataset.newsSlug||'';const $=(selector)=>root?.querySelector(selector);const esc=(v)=>String(v??'').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));const fallbackImage='/ui/home2/gc-home2-news-sim.svg';
-    const paragraphsToHtml=(body)=>{const raw=String(body||'').trim();if(!raw)return '<p>Esta noticia todavía no tiene contenido publicado.</p>';if(raw.includes('<p')||raw.includes('<h2')||raw.includes('<ul')||raw.includes('<ol'))return raw;return raw.split(/\n{2,}/).map((block)=>`<p>${esc(block).replace(/\n/g,'<br />')}</p>`).join('')};
-    const setText=(selector,value)=>{const node=$(selector);if(node)node.textContent=value};
-    fetch(`/api/noticias/${encodeURIComponent(slug)}`,{cache:'no-store'}).then((res)=>{if(res.status===404)throw new Error('Noticia no encontrada');return res.ok?res.json():Promise.reject(new Error(`HTTP ${res.status}`))}).then((data)=>{const post=data.post||{};const title=post.title||'Noticia';const image=post.image||fallbackImage;document.title=`${title} | GrassCutters`;setText('[data-detail-title]',title);setText('[data-detail-category]',post.category||'Noticias');setText('[data-detail-excerpt]',post.excerpt||'');setText('[data-detail-date]',post.date||'Publicado');setText('[data-detail-status]','Publicado');setText('[data-detail-side-meta]',post.category||'Noticias GC');setText('[data-detail-mini-status]',post.category||'Noticias');setText('[data-detail-updated]',post.updatedAt?`Actualizada: ${new Date(post.updatedAt).toLocaleDateString('es-ES')}`:'Actualizada recientemente.');const img=$('[data-detail-image]');if(img){img.src=image;img.alt=post.imageAlt||title}const body=$('[data-detail-body]');if(body){body.innerHTML=paragraphsToHtml(post.body||post.excerpt||'')}}).catch((error)=>{setText('[data-detail-title]','Noticia no encontrada');setText('[data-detail-category]','Error');setText('[data-detail-excerpt]',error.message||'No se pudo cargar la noticia.');setText('[data-detail-status]','Error');setText('[data-detail-side-meta]','Revisar enlace');const body=$('[data-detail-body]');if(body){body.innerHTML=`<h2>No se pudo cargar esta noticia</h2><p>${esc(error.message||'Error desconocido')}</p><p><a href="/noticias">Volver a noticias</a></p>`}})})();
+    (() => {
+      const root = document.querySelector('[data-news-detail]');
+      const slug = root?.dataset.newsSlug || '';
+      const $ = (selector) => root?.querySelector(selector);
+      const fallbackImage = '/ui/home2/gc-home2-news-sim.svg';
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;',
+      }[char]));
+
+      const normalizeCategory = (value) => {
+        const allowed = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'GrassCutters'];
+        const raw = String(value || '').trim();
+        const simple = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return allowed.find((item) => item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === simple) || 'Update';
+      };
+
+      const paragraphsToHtml = (body) => {
+        const raw = String(body || '').trim();
+        if (!raw) return '<p>Esta noticia todavía no tiene contenido publicado.</p>';
+
+        if (/<(p|h2|h3|ul|ol|blockquote|figure|img|a)\b/i.test(raw)) {
+          return raw;
+        }
+
+        return raw
+          .split(/\n{2,}/)
+          .map((block) => `<p>${esc(block).replace(/\n/g, '<br />')}</p>`)
+          .join('');
+      };
+
+      const setText = (selector, value) => {
+        const node = $(selector);
+        if (node) node.textContent = value;
+      };
+
+      fetch(`/api/noticias/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+        .then((response) => {
+          if (response.status === 404) throw new Error('Noticia no encontrada');
+          return response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`));
+        })
+        .then((data) => {
+          const post = data.post || {};
+          const title = post.title || 'Noticia';
+          const category = normalizeCategory(post.category);
+          const image = post.image || fallbackImage;
+
+          document.title = `${title} | GrassCutters Newsroom`;
+
+          setText('[data-detail-title]', title);
+          setText('[data-detail-breadcrumb]', title);
+          setText('[data-detail-excerpt]', post.excerpt || 'Publicación del newsroom GrassCutters.');
+          setText('[data-detail-category]', category);
+          setText('[data-detail-date]', post.date || 'Publicado');
+          setText('[data-detail-side-meta]', category);
+          setText('[data-detail-short]', category === 'GrassCutters' ? 'GC' : 'News');
+
+          setText('[data-detail-spot-title]', title);
+          setText('[data-detail-spot-excerpt]', post.excerpt || 'Publicación del newsroom GrassCutters.');
+          setText('[data-detail-meta-category]', category);
+          setText('[data-detail-meta-date]', post.date || 'Publicado');
+          setText('[data-detail-updated]', post.updatedAt ? `Actualizada: ${new Date(post.updatedAt).toLocaleDateString('es-ES')}` : 'Publicación del newsroom GrassCutters.');
+
+          const img = $('[data-detail-image]');
+          if (img) {
+            img.src = image;
+            img.alt = post.imageAlt || title;
+          }
+
+          const body = $('[data-detail-body]');
+          if (body) {
+            body.innerHTML = paragraphsToHtml(post.body || post.excerpt || '');
+          }
+        })
+        .catch((error) => {
+          setText('[data-detail-title]', 'Noticia no encontrada');
+          setText('[data-detail-excerpt]', error.message || 'No se pudo cargar la noticia.');
+          setText('[data-detail-category]', 'Error');
+          setText('[data-detail-date]', 'Revisar URL');
+          setText('[data-detail-spot-title]', 'No se pudo cargar esta noticia');
+          setText('[data-detail-spot-excerpt]', error.message || 'Error desconocido');
+          setText('[data-detail-meta-category]', 'Error');
+          setText('[data-detail-meta-date]', 'No disponible');
+
+          const body = $('[data-detail-body]');
+          if (body) {
+            body.innerHTML = `
+              <h2>No se pudo cargar esta noticia</h2>
+              <p>${esc(error.message || 'Error desconocido')}</p>
+              <p><a href="/noticias/">Volver a noticias</a></p>
+            `;
+          }
+        });
+    })();
   </script>
 </MarketingLayout>
