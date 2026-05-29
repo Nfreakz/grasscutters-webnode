@@ -874,7 +874,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.reload.disabled = true;
 
         try {
-          const res = await fetch('/api/gc/leaderboard?limit=1500', { cache:'no-store', credentials:'include' });
+          const res = await fetch('/api/gc/leaderboard?scope=all&limit=3000', { cache:'no-store', credentials:'include' });
           if (!res.ok) throw new Error('Endpoint no disponible');
 
           const json = await res.json();
@@ -888,7 +888,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           els.car.value = 'all';
           els.valid.value = 'valid';
           els.sort.value = 'fastest';
-          applyActiveTrack();
+          if (els.track) els.track.value = 'all';
 
           els.loaded.textContent = String(cache.length);
           els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
@@ -912,10 +912,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         input.addEventListener('change', draw);
       });
 
-      els.activeTrackButton.addEventListener('click', () => {
-        applyActiveTrack();
-        draw();
-      });
+      els.activeTrackButton.addEventListener('click', () => { window.location.href = '/combos'; });
 
       els.reload.addEventListener('click', load);
 
@@ -925,7 +922,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.car.value = 'all';
         els.valid.value = 'valid';
         els.sort.value = 'fastest';
-        applyActiveTrack();
+        if (els.track) els.track.value = 'all';
         draw();
       });
 
@@ -1443,6 +1440,50 @@ import AppLayout from '../layouts/AppLayout.astro';
       console.info('[GC /hotlaps Runtime] Data Core primary clean v1');
     })();
     /* GC_HOTLAPS_PRIMARY_CLEAN_RUNTIME_V1_END */
+  </script>
+
+
+  <script is:inline>
+    /* GC_HOTLAPS_ALL_TRACKS_GUARD_V1_START */
+    (() => {
+      const root = document.documentElement;
+      root.dataset.gcHotlapsAllTracksGuard = 'v1';
+
+      const forceAll = () => {
+        const track = document.getElementById('trackFilter');
+        const valid = document.getElementById('validFilter');
+        const chip = document.getElementById('activeTrackChip');
+        const order = document.getElementById('leaderboardOrder');
+        const button = document.getElementById('activeTrackButton');
+
+        if (track && track.value !== 'all') {
+          track.value = 'all';
+          track.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (valid && valid.value !== 'all') {
+          valid.value = 'all';
+          valid.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (chip) chip.textContent = 'Todas las vueltas';
+        if (order && order.textContent.toLowerCase().includes('combo activo')) {
+          order.textContent = order.textContent.replace(/combo activo/gi, 'todos los circuitos');
+        }
+
+        if (button) {
+          button.textContent = 'Ver combos';
+          button.onclick = () => { window.location.href = '/combos'; };
+        }
+      };
+
+      window.addEventListener('load', () => {
+        window.setTimeout(forceAll, 250);
+        window.setTimeout(forceAll, 1200);
+        window.setTimeout(forceAll, 2600);
+      });
+    })();
+    /* GC_HOTLAPS_ALL_TRACKS_GUARD_V1_END */
   </script>
 
 </AppLayout>

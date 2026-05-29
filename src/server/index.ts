@@ -8449,7 +8449,7 @@ app.get('/api/hotlaps', async (req, res) => {
     await readDisplayNameStoreAsync();
 
     const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
-    const scope = getQueryString(req, 'scope', 'activeCombo');
+    const scope = getQueryString(req, 'scope', 'all');
 
     const [laps, comboDefinitions] = await Promise.all([
       readJoinedLaps(stracker.resolvedPath),
@@ -12147,6 +12147,8 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
+
+
 
 
 

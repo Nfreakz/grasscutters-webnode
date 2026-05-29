@@ -1832,5 +1832,233 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     })();
   </script>
 
+
+  <script is:inline>
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_START */
+    (() => {
+      const table = document.getElementById('gcRefsTable');
+      if (!table) return;
+
+      const endpoints = [
+        '/api/gc/recent-laps?scope=all&limit=80&sort=recent&valid=all',
+        '/api/laps?scope=all&limit=80&sort=recent&valid=all',
+        '/api/gc/leaderboard?scope=all&limit=3000',
+        '/api/hotlaps?scope=all&limit=3000&valid=all'
+      ];
+
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const pick = (source, paths) => {
+        for (const path of paths) {
+          const value = valueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return undefined;
+      };
+
+      const list = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (!payload || typeof payload !== 'object') return [];
+        return (
+          payload.items ||
+          payload.laps ||
+          payload.hotlaps ||
+          payload.leaderboard ||
+          payload.data?.items ||
+          payload.data?.laps ||
+          payload.data?.leaderboard ||
+          []
+        );
+      };
+
+      const text = (value, fallback = '-') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        if (Array.isArray(value)) return value.length ? text(value[0], fallback) : fallback;
+        if (typeof value === 'object') {
+          return text(
+            value.displayName ??
+            value.visibleName ??
+            value.cleanName ??
+            value.uiName ??
+            value.uiCarName ??
+            value.uiTrackName ??
+            value.name ??
+            value.Name ??
+            value.driverName ??
+            value.playerName ??
+            value.code,
+            fallback
+          );
+        }
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+      };
+
+      const esc = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        "'":'&#39;',
+        '"':'&quot;'
+      }[char]));
+
+      const number = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const driverName = (row) => text(pick(row, [
+        'driver.displayName','driver.visibleName','driver.name',
+        'driverDisplayName','driverVisibleName','driverName',
+        'playerName','pilotName','name','Name'
+      ]), 'Piloto');
+
+      const carName = (row) => text(pick(row, [
+        'car.displayName','car.visibleName','car.name',
+        'carDisplayName','carVisibleName','carName',
+        'uiCarName','Car'
+      ]), 'Coche');
+
+      const trackName = (row) => text(pick(row, [
+        'track.displayName','track.visibleName','track.name',
+        'trackDisplayName','trackVisibleName','trackName',
+        'uiTrackName','Track'
+      ]), 'Circuito');
+
+      const lapMs = (row) => {
+        const parsed = Number(pick(row, ['lapTimeMs','bestLapMs','timeMs','LapTime']));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      };
+
+      const fmtMs = (value) => {
+        const ms = number(value, 0);
+        if (!ms) return '--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const millis = Math.floor(ms % 1000);
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+      };
+
+      const lapDisplay = (row) => text(pick(row, ['lapTimeFormatted','lapTimeText','lapTime','bestLapTime']), '') || fmtMs(lapMs(row));
+
+      const lapDateMs = (row) => {
+        const iso = pick(row, ['timestampIso','dateIso','createdAt','updatedAt','lastSeenAt','session.endTimeIso','session.startTimeIso']);
+        if (iso) {
+          const parsed = Date.parse(String(iso));
+          if (Number.isFinite(parsed)) return parsed;
+        }
+        const raw = pick(row, ['timestamp','Timestamp','date']);
+        if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
+        return 0;
+      };
+
+      const fmtDate = (row) => {
+        const ms = lapDateMs(row);
+        if (!ms) return '--';
+        return new Date(ms).toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      const isInvalid = (row) => {
+        const value = pick(row, ['valid','isValid','Valid']);
+        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
+      };
+
+      const setText = (id, value) => {
+        const node = document.getElementById(id);
+        if (node) node.textContent = value;
+      };
+
+      async function fetchFirst() {
+        let lastError = null;
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, { cache: 'no-store', credentials: 'include' });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload) throw new Error(`${endpoint} ${response.status}`);
+            const rows = list(payload);
+            if (rows.length) return { endpoint, payload, rows };
+          } catch (error) {
+            lastError = error;
+            console.warn('[GC /app all tracks] endpoint failed', endpoint, error?.message || error);
+          }
+        }
+        throw lastError || new Error('No hotlaps endpoint available');
+      }
+
+      function updateMetrics(rows, payload, endpoint) {
+        const uniqueDrivers = new Set(rows.map(driverName).filter(Boolean));
+        const uniqueTracks = new Set(rows.map(trackName).filter(Boolean));
+        const latest = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a))[0] || null;
+
+        const totalFromPayload =
+          Number(payload?.totalLaps) ||
+          Number(payload?.total) ||
+          Number(payload?.count) ||
+          rows.length;
+
+        setText('gcMetricDrivers', String(uniqueDrivers.size));
+        setText('gcMetricLaps', String(totalFromPayload));
+        setText('gcMetricCombos', String(uniqueTracks.size));
+        setText('gcMetricLastActivity', latest ? fmtDate(latest) : '--');
+
+        setText('gcQuickRefs', String(totalFromPayload));
+        setText('gcQuickLast', latest ? fmtDate(latest) : '--');
+        setText('gcQuickDb', 'OK');
+        setText('gcQuickDbMeta', endpoint.replace(/^\/api\//, 'api/'));
+
+        const refsMeta = document.getElementById('gcRefsMeta');
+        if (refsMeta) refsMeta.textContent = `${rows.length} vueltas recientes · todos los circuitos`;
+
+        const apiState = document.getElementById('gcApiState');
+        if (apiState) apiState.textContent = 'All tracks';
+      }
+
+      function renderRows(rows) {
+        const sorted = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a)).slice(0, 12);
+
+        table.innerHTML = sorted.map((row) => {
+          const valid = isInvalid(row) ? 'No válida' : 'Válida';
+          return `
+            <tr>
+              <td>${esc(driverName(row))}</td>
+              <td>${esc(carName(row))}</td>
+              <td>${esc(trackName(row))}</td>
+              <td><strong>${esc(lapDisplay(row))}</strong><span class="gc-leaderboard-sub">${esc(valid)}</span></td>
+              <td>${esc(fmtDate(row))}</td>
+            </tr>
+          `;
+        }).join('') || '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
+      }
+
+      async function loadAllTracksActivity() {
+        try {
+          const { endpoint, payload, rows } = await fetchFirst();
+          updateMetrics(rows, payload, endpoint);
+          renderRows(rows);
+          document.documentElement.dataset.gcAppHotlapsScope = 'all-tracks';
+          window.GCAppHotlapsAllTracks = { status: 'ok', endpoint, rows: rows.length, updatedAt: new Date().toISOString() };
+        } catch (error) {
+          console.warn('[GC /app all tracks] error', error);
+          setText('gcApiState', 'Error');
+          const refsMeta = document.getElementById('gcRefsMeta');
+          if (refsMeta) refsMeta.textContent = 'No se pudieron cargar todas las vueltas';
+          window.GCAppHotlapsAllTracks = { status: 'error', error: error?.message || String(error) };
+        }
+      }
+
+      loadAllTracksActivity();
+      window.setInterval(loadAllTracksActivity, 45000);
+    })();
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_END */
+  </script>
+
 </AppLayout>
 
