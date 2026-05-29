@@ -5,8 +5,6 @@ import type { Express, Request, Response } from 'express';
 
 type ArchiveItem = Record<string, any>;
 
-type RequireAdmin = (req: Request, res: Response) => Promise<any | null>;
-
 const VALID_ARCHIVE_CATEGORIES = new Set(['circuitos', 'pilotos', 'vehiculos', 'glosario', 'general']);
 
 function isMysql() {
@@ -567,64 +565,8 @@ const CSV_TOP_LEVEL_FIELDS = new Set([
   'autor',
   'author',
   'licencia',
-  'subtitulo',
-  'introduccion',
-  'propietario',
-  'diseniador',
-  'diseñador',
-  'datos_sim_racing',
-  'cilindrada',
-  'transmision',
-  'transmisión',
-  'chasis',
-  'aerodinamica',
-  'aerodinámica',
-  'victorias',
-  'podios',
-  'poles',
-  'errores_comunes',
-  'datos_destacados',
-  'cronologia',
-  'cronología',
-  'referencias',
-  'ultima_revision',
-  'última_revision',
-  'seo_title',
-  'seo_description',
-  'seotitle',
-  'seodescription',
-  'cover_url',
-  'cover_alt',
   'license',
 ]);
-
-const CSV_TOP_LEVEL_ALIASES: Record<string, string> = {
-  pais: 'pais',
-  país: 'pais',
-  ubicacion: 'ubicacion',
-  ubicación: 'ubicacion',
-  region: 'region',
-  epoca: 'periodo',
-  año: 'ano',
-  diseñador: 'diseniador',
-  transmision: 'transmision',
-  transmisión: 'transmision',
-  aerodinámica: 'aerodinamica',
-  cronología: 'cronologia',
-  última_revision: 'ultima_revision',
-  seotitle: 'seoTitle',
-  seo_title: 'seoTitle',
-  seodescription: 'seoDescription',
-  seo_description: 'seoDescription',
-  cover_url: 'coverUrl',
-  cover_alt: 'coverAlt',
-  image_alt: 'coverAlt',
-  imagen_alt: 'coverAlt'
-};
-
-function canonicalCsvTopLevelKey(key: string) {
-  return CSV_TOP_LEVEL_ALIASES[key] || key;
-}
 
 function topLevelFieldsFromCsvRow(row: any) {
   const output: Record<string, string> = {};
@@ -632,12 +574,7 @@ function topLevelFieldsFromCsvRow(row: any) {
     const key = cleanCsvKey(String(rawKey));
     const value = String(rawValue ?? '').trim();
     if (!key || !value) continue;
-
-    const canonicalKey = canonicalCsvTopLevelKey(key);
-
-    if (CSV_TOP_LEVEL_FIELDS.has(key) || CSV_TOP_LEVEL_FIELDS.has(canonicalKey)) {
-      output[canonicalKey] = value;
-    }
+    if (CSV_TOP_LEVEL_FIELDS.has(key)) output[key] = value;
   }
   return output;
 }
@@ -756,8 +693,6 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
     'id','slug','title','titulo','nombre','name',
     'summary','resumen','descripcion_corta','description',
     'body','descripcion','descripcion_larga','texto','content',
-    'seo_title','seo_description','seotitle','seodescription',
-    'cover_url','cover_alt','image_alt','imagen_alt',
     'archive_category','archivecategory','tipo_ficha','tipo_archivo',
     'type','tipo','status','estado','published','publicado',
     ...Array.from(CSV_TOP_LEVEL_FIELDS),
@@ -968,12 +903,7 @@ async function inspectWikimediaImage(imageUrl: string) {
   };
 }
 
-export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin: RequireAdmin }) {
-  app.use('/api/admin/archive/unified', async (req: Request, res: Response, next: () => void) => {
-    if (!(await requireAdmin(req, res))) return;
-    next();
-  });
-
+export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { rootDir }: { rootDir: string }) {
   app.get('/api/admin/archive/unified/items', async (_req: Request, res: Response) => {
     try {
       const result = await storageList(rootDir);
@@ -1226,17 +1156,6 @@ export function registerMotorsportArchiveUnifiedAdminRoutes(app: Express, { root
         media.forEach((entry: any) => { entry.isMain = false; entry.isPrimary = false; });
         target.isMain = true;
         target.isPrimary = true;
-      }
-
-      if (req.body?.url !== undefined || req.body?.localUrl !== undefined || req.body?.originalUrl !== undefined) {
-        const nextUrl = String(req.body?.url ?? target.url ?? '').trim();
-        const nextLocalUrl = String(req.body?.localUrl ?? req.body?.url ?? target.localUrl ?? target.url ?? '').trim();
-        const nextOriginalUrl = String(req.body?.originalUrl ?? target.originalUrl ?? nextUrl ?? nextLocalUrl ?? '').trim();
-
-        target.url = nextUrl || nextLocalUrl;
-        target.localUrl = nextLocalUrl || nextUrl;
-        target.originalUrl = nextOriginalUrl || target.url || target.localUrl;
-        target.local = Boolean(String(target.localUrl || target.url || '').startsWith('/uploads/archive/'));
       }
 
       for (const key of ['alt', 'source', 'sourceUrl', 'author', 'license']) {

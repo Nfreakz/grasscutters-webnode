@@ -99,7 +99,6 @@ const categories = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'Grass
     .gc-news-image-actions-v1 button,.gc-news-image-actions-v1 a{border-radius:999px;padding:10px 13px;font-weight:900;text-decoration:none;cursor:pointer;min-height:38px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);color:rgba(255,255,255,.9)}
     .gc-news-image-actions-v1 button:first-child{background:var(--accent,#9cff3f);color:#061006;border-color:transparent}
     .gc-news-image-actions-v1 .danger{border-color:rgba(255,90,90,.45);background:rgba(255,90,90,.1);color:#ffd7d7}
-    .gc-news-image-disabled-v1{border-radius:999px;padding:10px 13px;font-weight:900;min-height:38px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);color:var(--dim);display:inline-flex;align-items:center;justify-content:center}
     .gc-news-image-pagination-v1{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px}
     .gc-news-image-pagination-v1 span{color:var(--soft);font-weight:900;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
     @media(max-width:1180px){.gc-news-image-grid-v1{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-news-image-filters-v1{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -121,8 +120,6 @@ const categories = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'Grass
       const hasImage = (post) => Boolean(post.image);
       const issues = (post) => (!post.image ? 1 : 0) + (!post.imageAlt ? 1 : 0) + (!post.imageLicense ? 1 : 0) + (!post.imageSource && !post.imageSourceUrl ? 1 : 0);
       const publicHref = (post) => post.href || `/noticias/${post.slug}`;
-      const isPublicPost = (post) => post?.status === 'published';
-      const publicImageAction = (post) => isPublicPost(post) ? `${publicImageAction(post)}` : `<span class="gc-news-image-disabled-v1">${post.status === 'hidden' ? 'Oculta' : 'Borrador'}</span>`;
 
       async function fetchJson(url, options={}) {
         const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
@@ -236,7 +233,7 @@ const categories = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'Grass
               <div class="gc-news-image-actions-v1">
                 <button type="button" data-save-image>Guardar</button>
                 <a href="/admin/noticias?edit=${encodeURIComponent(post.id || '')}">Noticia</a>
-                ${publicImageAction(post)}
+                <a href="${esc(publicHref(post))}" target="_blank" rel="noreferrer">Ver</a>
                 ${post.image ? `<a href="${esc(post.image)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}
                 <button type="button" class="danger" data-clear-image>Quitar imagen</button>
               </div>

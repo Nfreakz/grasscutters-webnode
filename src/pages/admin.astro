@@ -1,38 +1,73 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
 import AdminSubnav from '../components/AdminSubnav.astro';
+
+const moduleGroups = [
+  {
+    label: 'Base',
+    desc: 'Gestión de usuarios, alias y calendario.',
+    modules: [
+      { href: '/admin/usuarios', title: 'Usuarios', desc: 'Cuentas, roles, sesiones y pilotos vinculados.', tag: 'Core' },
+      { href: '/admin/nombres', title: 'Nombres visibles', desc: 'Alias de pilotos, coches y circuitos.', tag: 'Core' },
+      { href: '/admin/calendario', title: 'Calendario', desc: 'Eventos, combo semanal y sincronización ACSM.', tag: 'Eventos' },
+    ],
+  },
+  {
+    label: 'Contenido',
+    desc: 'Newsroom, archivo motorsport, importadores e imágenes.',
+    modules: [
+      { href: '/admin/noticias', title: 'Noticias', desc: 'Gestor editorial del newsroom.', tag: 'News' },
+      { href: '/admin/noticias/importar', title: 'Importar noticias', desc: 'Carga CSV para publicaciones y updates.', tag: 'CSV' },
+      { href: '/admin/noticias/imagenes', title: 'Imágenes noticias', desc: 'Biblioteca visual del newsroom.', tag: 'Media' },
+      { href: '/admin/archivo', title: 'Archivo', desc: 'Fichas de circuitos, coches, pilotos y conceptos.', tag: 'DB' },
+      { href: '/admin/archivo/importar', title: 'Importar archivo', desc: 'Carga CSV para dossiers del archivo.', tag: 'CSV' },
+      { href: '/admin/archivo/imagen-url', title: 'Imágenes archivo', desc: 'Biblioteca visual de fichas del archivo.', tag: 'Media' },
+    ],
+  },
+  {
+    label: 'Herramientas',
+    desc: 'Revisión, conexiones, endpoints y diagnóstico.',
+    modules: [
+      { href: '/admin/archivo/calidad', title: 'Calidad archivo', desc: 'Checklist editorial de fichas.', tag: 'QA' },
+      { href: '/admin/archivo/relaciones', title: 'Relaciones archivo', desc: 'Conexiones entre fichas y entidades.', tag: 'Graph' },
+      { href: '/admin/endpoints', title: 'Endpoints', desc: 'Pruebas rápidas de API.', tag: 'API' },
+      { href: '/admin/sistema', title: 'Sistema', desc: 'Storage, stracker, ACSM y diagnóstico.', tag: 'Ops' },
+      { href: '/admin/historial', title: 'Historial', desc: 'Auditoría de acciones sensibles.', tag: 'Log' },
+    ],
+  },
+];
 ---
+
 <AppLayout title="Admin | GrassCutters">
-  <div class="gc-page gc-admin-page-clean gc-admin-page-v30">
-    <section class="gc-hero gc-hero--compact gc-admin-hero-v30">
+  <div class="gc-page gc-admin-page-clean gc-admin-hub-v1">
+    <section class="gc-admin-hub-hero">
       <div>
         <span class="gc-kicker">Admin console</span>
-        <h1 class="gc-title">Control de boxes</h1>
-        <p class="gc-subtitle">Panel rápido de administración: usuarios, nombres visibles, calendario, sistema, stracker y ACSM.</p>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent">Resumen</span>
-          <span class="gc-chip">MySQL</span>
-          <span class="gc-chip">ACSM</span>
-          <span class="gc-chip">stracker</span>
+        <h1>Control de boxes</h1>
+        <p>Panel central para gestionar comunidad, calendario, noticias, archivo, imágenes, importadores y herramientas internas.</p>
+
+        <div class="gc-admin-hub-hero__chips">
+          <span>Base</span>
+          <span>Contenido</span>
+          <span>Herramientas</span>
+          <span>Sistema</span>
         </div>
       </div>
 
-      <aside class="gc-live-panel gc-admin-status-panel-v30">
-        <div class="gc-live-panel__title">
+      <aside class="gc-admin-status-panel-v1">
+        <div class="gc-admin-status-panel-v1__head">
           <span>Admin</span>
           <strong id="adminState">Comprobando</strong>
         </div>
-        <div class="gc-status-list" id="adminStatusRows">
-          <div class="gc-status-row"><span>Estado</span><strong>Cargando</strong></div>
+        <div id="adminStatusRows" class="gc-admin-status-panel-v1__rows">
+          <div><span>Estado</span><strong>Cargando</strong></div>
         </div>
       </aside>
     </section>
 
-    <div class="gc-admin-subnav-shell-v30">
-      <AdminSubnav />
-    </div>
+    <AdminSubnav />
 
-    <section class="gc-section gc-admin-gate-v30" id="adminGate" hidden>
+    <section class="gc-section gc-admin-gate-v1" id="adminGate" hidden>
       <div class="gc-section-head">
         <div>
           <span class="gc-kicker">Acceso</span>
@@ -41,7 +76,7 @@ import AdminSubnav from '../components/AdminSubnav.astro';
         </div>
       </div>
 
-      <div class="gc-slab gc-admin-gate-slab-v30">
+      <div class="gc-slab gc-admin-gate-slab-v1">
         <h3 id="adminGateTitle">No tienes permisos de admin</h3>
         <p id="adminGateText">Inicia sesión con una cuenta administradora.</p>
         <div class="gc-actions">
@@ -51,601 +86,508 @@ import AdminSubnav from '../components/AdminSubnav.astro';
       </div>
     </section>
 
-    <section id="adminContent" class="gc-admin-content-v30" hidden>
-      <section class="gc-metrics gc-admin-metrics-v30">
-        <div class="gc-metric"><span>Usuarios</span><strong id="metricUsers">...</strong><small>cuentas web</small></div>
-        <div class="gc-metric"><span>Admins</span><strong id="metricAdmins">...</strong><small>permisos</small></div>
-        <div class="gc-metric"><span>Vinculados</span><strong id="metricLinked">...</strong><small>piloto real</small></div>
-        <div class="gc-metric"><span>Sesiones</span><strong id="metricSessions">...</strong><small>activas</small></div>
+    <section id="adminContent" class="gc-admin-content-v1" hidden>
+      <section class="gc-admin-metrics-v1">
+        <div><span>Usuarios</span><strong id="metricUsers">...</strong><small>cuentas web</small></div>
+        <div><span>Admins</span><strong id="metricAdmins">...</strong><small>permisos</small></div>
+        <div><span>Vinculados</span><strong id="metricLinked">...</strong><small>piloto real</small></div>
+        <div><span>Sesiones</span><strong id="metricSessions">...</strong><small>activas</small></div>
       </section>
 
-      <section class="gc-admin-main-grid-v30">
-        <div class="gc-section gc-admin-modules-card-v30">
-          <div class="gc-section-head">
-            <div>
-              <span class="gc-kicker">Módulos</span>
-              <h2>Módulos de administración</h2>
-              <p>Accesos separados para trabajar sin una página infinita.</p>
+      <section class="gc-admin-hub-layout-v1">
+        <main class="gc-admin-hub-main-v1">
+          {moduleGroups.map((group) => (
+            <section class="gc-admin-module-group-v1">
+              <div class="gc-admin-module-group-v1__head">
+                <div>
+                  <span class="gc-kicker">{group.label}</span>
+                  <h2>{group.label}</h2>
+                  <p>{group.desc}</p>
+                </div>
+              </div>
+
+              <div class="gc-admin-module-grid-v1">
+                {group.modules.map((item) => (
+                  <a class="gc-admin-module-card-v1" href={item.href}>
+                    <span class="gc-admin-module-card-v1__tag">{item.tag}</span>
+                    <strong>{item.title}</strong>
+                    <small>{item.desc}</small>
+                    <em>Abrir</em>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ))}
+        </main>
+
+        <aside class="gc-admin-side-v1">
+          <section class="gc-admin-side-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Sistema</span>
+                <h2>Estado rápido</h2>
+                <p>Datos principales del panel.</p>
+              </div>
             </div>
-          </div>
 
-          <div class="gc-admin-module-grid-v30">
-            <a class="gc-admin-module-card-v30" href="/admin/usuarios">
-              <span class="gc-admin-module-card-v30__num">01</span>
-              <span class="gc-admin-module-card-v30__body">
-                <strong>Usuarios</strong>
-                <small>Cuentas, roles, sesiones y pilotos vinculados.</small>
-              </span>
-              <span class="gc-admin-module-card-v30__cta">Abrir</span>
-            </a>
+            <div class="gc-admin-health-stack-v1">
+              <article>
+                <header><h3>Storage</h3><span id="storageBadge">...</span></header>
+                <p id="storageText">Cargando...</p>
+                <div class="gc-admin-mini-list-v1" id="storageRows">
+                  <div><span>Storage</span><strong>...</strong></div>
+                </div>
+              </article>
 
-            <a class="gc-admin-module-card-v30" href="/admin/nombres">
-              <span class="gc-admin-module-card-v30__num">02</span>
-              <span class="gc-admin-module-card-v30__body">
-                <strong>Nombres visibles</strong>
-                <small>Alias de pilotos, coches y circuitos.</small>
-              </span>
-              <span class="gc-admin-module-card-v30__cta">Abrir</span>
-            </a>
+              <article>
+                <header><h3>stracker</h3><span id="strackerBadge">...</span></header>
+                <p id="strackerText">Cargando...</p>
+                <div class="gc-admin-mini-list-v1" id="strackerRows">
+                  <div><span>DB</span><strong>...</strong></div>
+                </div>
+              </article>
 
-            <a class="gc-admin-module-card-v30" href="/admin/calendario">
-              <span class="gc-admin-module-card-v30__num">03</span>
-              <span class="gc-admin-module-card-v30__body">
-                <strong>Calendario</strong>
-                <small>Eventos, combo semanal y sincronización ACSM.</small>
-              </span>
-              <span class="gc-admin-module-card-v30__cta">Abrir</span>
-            </a>
-
-            <a class="gc-admin-module-card-v30" href="/admin/sistema">
-              <span class="gc-admin-module-card-v30__num">04</span>
-              <span class="gc-admin-module-card-v30__body">
-                <strong>Sistema</strong>
-                <small>Storage, stracker, ACSM y diagnóstico.</small>
-              </span>
-              <span class="gc-admin-module-card-v30__cta">Abrir</span>
-            </a>
-
-            <a class="gc-admin-module-card-v30" href="/admin/historial">
-              <span class="gc-admin-module-card-v30__num">05</span>
-              <span class="gc-admin-module-card-v30__body">
-                <strong>Historial</strong>
-                <small>Auditoría de acciones sensibles.</small>
-              </span>
-              <span class="gc-admin-module-card-v30__cta">Abrir</span>
-            </a>
-          </div>
-        </div>
-
-        <aside class="gc-section gc-admin-quick-card-v30">
-          <div class="gc-section-head">
-            <div>
-              <span class="gc-kicker">Sistema</span>
-              <h2>Estado rápido</h2>
-              <p>Datos principales del panel.</p>
+              <article>
+                <header><h3>ACSM</h3><span id="acsmBadge">Manual</span></header>
+                <p id="acsmText">Sincronización del combo actual desde ACSM.</p>
+                <div class="gc-actions gc-admin-acsm-actions-v1">
+                  <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
+                  <a class="gc-btn" href="/calendario">Ver calendario</a>
+                </div>
+                <p class="gc-message" id="acsmMessage"></p>
+              </article>
             </div>
-          </div>
-
-          <div class="gc-admin-health-stack-v30">
-            <article class="gc-admin-health-card-v30">
-              <div class="gc-admin-health-card-v30__head">
-                <h3>Storage</h3>
-                <span id="storageBadge">...</span>
-              </div>
-              <p id="storageText">Cargando...</p>
-              <div class="gc-slab-list gc-admin-mini-list-v30" id="storageRows">
-                <div><span>Storage</span><strong>...</strong></div>
-              </div>
-            </article>
-
-            <article class="gc-admin-health-card-v30">
-              <div class="gc-admin-health-card-v30__head">
-                <h3>stracker</h3>
-                <span id="strackerBadge">...</span>
-              </div>
-              <p id="strackerText">Cargando...</p>
-              <div class="gc-slab-list gc-admin-mini-list-v30" id="strackerRows">
-                <div><span>DB</span><strong>...</strong></div>
-              </div>
-            </article>
-
-            <article class="gc-admin-health-card-v30">
-              <div class="gc-admin-health-card-v30__head">
-                <h3>ACSM</h3>
-                <span id="acsmBadge">Manual</span>
-              </div>
-              <p id="acsmText">Sincronización del combo actual desde ACSM.</p>
-              <div class="gc-actions gc-admin-acsm-actions-v30">
-                <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
-                <a class="gc-btn" href="/calendario">Ver calendario</a>
-              </div>
-              <p class="gc-message" id="acsmMessage"></p>
-            </article>
-          </div>
+          </section>
         </aside>
       </section>
     </section>
   </div>
 
   <style is:global>
-    .gc-admin-page-v30{
-      display:grid;
-      gap:clamp(18px,2.3vw,28px);
-      width:100%;
-      max-width:1480px;
-      margin-inline:auto;
-      padding-inline:clamp(8px,1.2vw,18px);
-      box-sizing:border-box;
+    .gc-admin-hub-v1 {
+      display: grid;
+      gap: clamp(18px, 2.3vw, 28px);
+      width: 100%;
+      max-width: 1480px;
+      margin-inline: auto;
+      padding-inline: clamp(8px, 1.2vw, 18px);
+      box-sizing: border-box;
     }
 
-    .gc-admin-hero-v30{
-      position:relative;
-      overflow:hidden;
-      margin:0;
-      padding-block:clamp(26px,3.4vw,40px)!important;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 30%,var(--line));
-      border-radius:28px;
+    .gc-admin-hub-hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .42fr);
+      gap: clamp(18px, 2.3vw, 28px);
+      align-items: center;
+      margin: 0;
+      padding: clamp(26px, 3.4vw, 42px);
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 30%, var(--line));
+      border-radius: 28px;
       background:
-        linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018)),
-        radial-gradient(circle at 82% 12%, color-mix(in srgb,var(--accent2,#35d3ff) 10%,transparent), transparent 22rem),
-        radial-gradient(circle at 8% 18%, color-mix(in srgb,var(--accent,#9dff00) 12%,transparent), transparent 20rem);
-      box-shadow:0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
+        linear-gradient(120deg, rgba(255,255,255,.07), rgba(255,255,255,.018)),
+        radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--accent2, #35d3ff) 10%, transparent), transparent 22rem),
+        radial-gradient(circle at 8% 18%, color-mix(in srgb, var(--accent, #9dff00) 12%, transparent), transparent 20rem);
+      box-shadow: 0 18px 70px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.035);
     }
 
-    .gc-admin-hero-v30::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
+    .gc-admin-hub-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
       background:
-        linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px),
-        linear-gradient(0deg,rgba(255,255,255,.026) 1px,transparent 1px);
-      background-size:42px 42px;
-      opacity:.34;
-      mask-image:linear-gradient(90deg,rgba(0,0,0,.48),transparent 72%);
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,.026) 1px, transparent 1px);
+      background-size: 42px 42px;
+      opacity: .34;
+      mask-image: linear-gradient(90deg, rgba(0,0,0,.48), transparent 72%);
     }
 
-    .gc-admin-hero-v30 > *{
-      position:relative;
-      z-index:1;
+    .gc-admin-hub-hero > * {
+      position: relative;
+      z-index: 1;
     }
 
-    .gc-admin-hero-v30 > div:first-child{
-      padding-left:clamp(30px,4.2vw,86px);
+    .gc-admin-hub-hero h1 {
+      margin: 8px 0 12px;
+      font-size: clamp(3.2rem, 7vw, 6rem);
+      line-height: .86;
+      letter-spacing: -.075em;
+      text-transform: uppercase;
     }
 
-    .gc-admin-hero-v30 .gc-title{
-      font-size:clamp(3.2rem,7vw,6rem);
-      line-height:.86;
-      letter-spacing:-.075em;
-      margin:8px 0 12px;
+    .gc-admin-hub-hero p {
+      max-width: 820px;
+      margin: 0;
+      color: color-mix(in srgb, var(--text, #f2fff0) 74%, var(--muted));
+      line-height: 1.5;
     }
 
-    .gc-admin-hero-v30 .gc-subtitle{
-      max-width:820px;
-      color:color-mix(in srgb,var(--text,#f2fff0) 74%,var(--muted));
+    .gc-admin-hub-hero__chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 18px;
     }
 
-    .gc-admin-status-panel-v30{
-      width:min(440px,100%);
-      justify-self:end;
-      margin-right:clamp(28px,4vw,78px);
-      align-self:center;
-      min-height:auto;
-      padding:0;
-      overflow:hidden;
+    .gc-admin-hub-hero__chips span {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      color: var(--soft);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(0,0,0,.14);
+    }
+
+    .gc-admin-status-panel-v1 {
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 18%, var(--line));
+      border-radius: 22px;
+      overflow: hidden;
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 16%,transparent), transparent 10rem),
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 16%, transparent), transparent 10rem),
         rgba(0,0,0,.18);
-      border-color:color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
-      box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
     }
 
-    .gc-admin-status-panel-v30 .gc-live-panel__title{
-      padding:14px 16px;
-      margin:0;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.14);
+    .gc-admin-status-panel-v1__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.14);
     }
 
-    .gc-admin-status-panel-v30 .gc-status-list{
-      padding:0;
-      gap:0;
+    .gc-admin-status-panel-v1__head span,
+    .gc-admin-status-panel-v1__rows span,
+    .gc-admin-mini-list-v1 span {
+      color: var(--dim);
+      font-size: .68rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
     }
 
-    .gc-admin-status-panel-v30 .gc-status-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-      padding:13px 16px;
-      border-width:0 0 1px;
-      border-radius:0;
-      background:rgba(0,0,0,.08);
+    .gc-admin-status-panel-v1__rows {
+      display: grid;
     }
 
-    .gc-admin-status-panel-v30 .gc-status-row:last-child{
-      border-bottom:0;
+    .gc-admin-status-panel-v1__rows div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      background: rgba(0,0,0,.08);
     }
 
-    .gc-admin-status-panel-v30 .gc-status-row strong{
-      max-width:260px;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      text-align:right;
+    .gc-admin-status-panel-v1__rows div:last-child {
+      border-bottom: 0;
     }
 
-    .gc-admin-subnav-shell-v30{
-      margin-top:-8px;
+    .gc-admin-content-v1 {
+      display: grid;
+      gap: clamp(18px, 2.3vw, 28px);
     }
 
-    .gc-admin-subnav-shell-v30 :is(nav, .gc-admin-subnav, .gc-subnav){
-      border-radius:20px;
-      border-color:rgba(255,255,255,.08);
+    .gc-admin-metrics-v1 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 18%, var(--line));
+      overflow: hidden;
+      background: rgba(255,255,255,.018);
+    }
+
+    .gc-admin-metrics-v1 div {
+      min-height: 112px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 6%,transparent), transparent 12rem),
-        linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.014));
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 9%, transparent), transparent 8rem),
+        linear-gradient(135deg, rgba(255,255,255,.052), rgba(255,255,255,.018));
     }
 
-    .gc-admin-gate-v30,
-    .gc-admin-modules-card-v30,
-    .gc-admin-quick-card-v30{
-      margin:0;
-      overflow:hidden;
-      border-radius:28px;
+    .gc-admin-metrics-v1 div:last-child {
+      border-right: 0;
+    }
+
+    .gc-admin-metrics-v1 span {
+      color: var(--dim);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-metrics-v1 strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: clamp(1.85rem, 3.2vw, 2.85rem);
+      line-height: .92;
+      letter-spacing: -.06em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gc-admin-metrics-v1 small {
+      display: block;
+      margin-top: 8px;
+      color: var(--soft);
+    }
+
+    .gc-admin-hub-layout-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, .42fr);
+      gap: clamp(18px, 2.3vw, 28px);
+      align-items: start;
+    }
+
+    .gc-admin-hub-main-v1 {
+      display: grid;
+      gap: 18px;
+    }
+
+    .gc-admin-module-group-v1,
+    .gc-admin-side-card-v1,
+    .gc-admin-gate-v1 {
+      margin: 0;
+      overflow: hidden;
+      border-radius: 28px;
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 16rem),
-        linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
-      border:1px solid rgba(255,255,255,.08);
-      box-shadow:0 18px 70px rgba(0,0,0,.16);
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 7%, transparent), transparent 16rem),
+        linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 18px 70px rgba(0,0,0,.16);
     }
 
-    .gc-admin-gate-v30 .gc-section-head,
-    .gc-admin-modules-card-v30 .gc-section-head,
-    .gc-admin-quick-card-v30 .gc-section-head{
-      margin:0;
-      padding:clamp(22px,2.4vw,32px) clamp(22px,2.6vw,34px) 16px;
-      border-bottom:1px solid rgba(255,255,255,.07);
+    .gc-admin-module-group-v1__head,
+    .gc-admin-side-card-v1 .gc-section-head,
+    .gc-admin-gate-v1 .gc-section-head {
+      margin: 0;
+      padding: clamp(20px, 2.2vw, 28px) clamp(20px, 2.4vw, 30px) 14px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
     }
 
-    .gc-admin-gate-slab-v30{
-      margin:clamp(16px,2vw,22px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
-      padding:18px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.15);
+    .gc-admin-module-group-v1__head h2,
+    .gc-admin-side-card-v1 h2 {
+      margin: 4px 0 6px;
+      font-size: clamp(1.55rem, 2.6vw, 2.35rem);
+      line-height: .95;
+      letter-spacing: -.05em;
+      text-transform: uppercase;
     }
 
-    .gc-admin-content-v30{
-      display:grid;
-      gap:clamp(18px,2.3vw,28px);
+    .gc-admin-module-group-v1__head p,
+    .gc-admin-side-card-v1 p {
+      margin: 0;
+      color: var(--soft);
+      line-height: 1.45;
     }
 
-    .gc-admin-metrics-v30{
-      margin:0;
-      gap:0;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 18%,var(--line));
-      border-radius:0;
-      overflow:hidden;
-      background:rgba(255,255,255,.018);
+    .gc-admin-module-grid-v1 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: clamp(16px, 2vw, 24px) clamp(20px, 2.4vw, 30px) clamp(20px, 2.4vw, 30px);
     }
 
-    .gc-admin-metrics-v30 .gc-metric{
-      border-width:0 1px 0 0;
-      border-radius:0;
-      min-height:112px;
-      box-shadow:none;
+    .gc-admin-module-card-v1 {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      align-content: start;
+      min-height: 150px;
+      padding: 16px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 14%, var(--line));
+      border-radius: 20px;
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
-        linear-gradient(135deg,rgba(255,255,255,.052),rgba(255,255,255,.018));
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 9%, transparent), transparent 8rem),
+        linear-gradient(135deg, rgba(255,255,255,.054), rgba(255,255,255,.018));
+      box-shadow: 0 16px 48px rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.025);
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
     }
 
-    .gc-admin-metrics-v30 .gc-metric:last-child{
-      border-right:0;
-    }
-
-    .gc-admin-metrics-v30 .gc-metric strong{
-      max-width:100%;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-size:clamp(1.85rem,3.2vw,2.85rem);
-      line-height:.92;
-      letter-spacing:-.06em;
-      color:var(--text);
-      font-variant-numeric:tabular-nums;
-    }
-
-    .gc-admin-main-grid-v30{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(380px,.72fr);
-      gap:clamp(18px,2.3vw,28px);
-      align-items:start;
-    }
-
-    .gc-admin-module-grid-v30{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:12px;
-      padding:clamp(16px,2vw,24px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
-    }
-
-    .gc-admin-module-card-v30{
-      position:relative;
-      overflow:hidden;
-      display:grid;
-      grid-template-columns:auto minmax(0,1fr) auto;
-      gap:14px;
-      align-items:center;
-      min-height:116px;
-      padding:16px;
-      color:var(--text);
-      text-decoration:none;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 14%,var(--line));
-      border-radius:20px;
+    .gc-admin-module-card-v1:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent, #9dff00) 34%, var(--line));
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 9%,transparent), transparent 8rem),
-        linear-gradient(135deg,rgba(255,255,255,.054),rgba(255,255,255,.018));
-      box-shadow:0 16px 48px rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.025);
-      transition:transform .16s ease, border-color .16s ease, background .16s ease;
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 14%, transparent), transparent 8rem),
+        linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.022));
     }
 
-    .gc-admin-module-card-v30:hover{
-      transform:translateY(-2px);
-      border-color:color-mix(in srgb,var(--accent,#9dff00) 34%,var(--line));
+    .gc-admin-module-card-v1__tag {
+      width: max-content;
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 28%, var(--line));
+      color: var(--accent);
+      font-size: .66rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(0,0,0,.18);
+    }
+
+    .gc-admin-module-card-v1 strong {
+      display: block;
+      margin-top: 16px;
+      color: var(--text);
+      font-size: 1.12rem;
+      line-height: 1.05;
+      letter-spacing: -.04em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-module-card-v1 small {
+      display: block;
+      margin-top: 8px;
+      color: var(--soft);
+      line-height: 1.35;
+    }
+
+    .gc-admin-module-card-v1 em {
+      width: max-content;
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      margin-top: 16px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: var(--text);
+      font-size: .72rem;
+      font-style: normal;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    .gc-admin-side-v1 {
+      position: sticky;
+      top: 86px;
+    }
+
+    .gc-admin-health-stack-v1 {
+      display: grid;
+      gap: 12px;
+      padding: clamp(16px, 2vw, 24px) clamp(20px, 2.4vw, 30px) clamp(20px, 2.4vw, 30px);
+    }
+
+    .gc-admin-health-stack-v1 article {
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
       background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 14%,transparent), transparent 8rem),
-        linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.022));
-    }
-
-    .gc-admin-module-card-v30::after{
-      content:"";
-      position:absolute;
-      right:-44px;
-      bottom:-54px;
-      width:126px;
-      height:126px;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 24%,transparent);
-      border-radius:50%;
-      opacity:.18;
-      pointer-events:none;
-    }
-
-    .gc-admin-module-card-v30__num{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width:42px;
-      height:42px;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 28%,var(--line));
-      color:var(--accent);
-      font-weight:950;
-      font-size:.78rem;
-      font-variant-numeric:tabular-nums;
-      background:rgba(0,0,0,.18);
-    }
-
-    .gc-admin-module-card-v30__body{
-      min-width:0;
-    }
-
-    .gc-admin-module-card-v30__body strong{
-      display:block;
-      color:var(--text);
-      font-size:1.1rem;
-      line-height:1.05;
-      letter-spacing:-.04em;
-    }
-
-    .gc-admin-module-card-v30__body small{
-      display:block;
-      margin-top:7px;
-      color:var(--soft);
-      line-height:1.35;
-    }
-
-    .gc-admin-module-card-v30__cta{
-      position:relative;
-      z-index:1;
-      display:inline-flex;
-      min-height:34px;
-      align-items:center;
-      justify-content:center;
-      padding:0 14px;
-      border:1px solid rgba(255,255,255,.1);
-      border-radius:999px;
-      color:var(--text);
-      font-size:.72rem;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-admin-health-stack-v30{
-      display:grid;
-      gap:12px;
-      padding:clamp(16px,2vw,24px) clamp(22px,2.6vw,34px) clamp(22px,2.6vw,34px);
-    }
-
-    .gc-admin-health-card-v30{
-      padding:16px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:
-        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 7%,transparent), transparent 8rem),
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 7%, transparent), transparent 8rem),
         rgba(0,0,0,.13);
     }
 
-    .gc-admin-health-card-v30__head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
+    .gc-admin-health-stack-v1 header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
     }
 
-    .gc-admin-health-card-v30 h3{
-      margin:0;
-      color:var(--text);
-      font-size:1.05rem;
-      text-transform:uppercase;
-      letter-spacing:-.035em;
+    .gc-admin-health-stack-v1 h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 1.05rem;
+      text-transform: uppercase;
+      letter-spacing: -.035em;
     }
 
-    .gc-admin-health-card-v30__head span{
-      display:inline-flex;
-      min-height:26px;
-      align-items:center;
-      justify-content:center;
-      padding:0 9px;
-      border:1px solid color-mix(in srgb,var(--accent,#9dff00) 32%,var(--line));
-      color:var(--accent);
-      font-size:.66rem;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      background:rgba(0,0,0,.15);
+    .gc-admin-health-stack-v1 header span {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 32%, var(--line));
+      color: var(--accent);
+      font-size: .66rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(0,0,0,.15);
     }
 
-    .gc-admin-health-card-v30 p{
-      margin:0 0 12px;
-      color:var(--soft);
-      line-height:1.45;
+    .gc-admin-mini-list-v1 {
+      display: grid;
+      gap: 8px;
+      margin: 0;
     }
 
-    .gc-admin-mini-list-v30{
-      display:grid;
-      gap:8px;
-      margin:0;
+    .gc-admin-mini-list-v1 div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 38px;
+      padding: 9px 10px;
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      background: rgba(255,255,255,.018);
     }
 
-    .gc-admin-mini-list-v30 div{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      min-height:38px;
-      padding:9px 10px;
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:12px;
-      background:rgba(255,255,255,.018);
+    .gc-admin-mini-list-v1 strong {
+      color: var(--text);
+      text-align: right;
+      max-width: 210px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
     }
 
-    .gc-admin-mini-list-v30 span{
-      color:var(--dim);
-      font-size:.68rem;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
+    .gc-admin-gate-slab-v1 {
+      margin: clamp(16px, 2vw, 22px) clamp(20px, 2.4vw, 30px) clamp(20px, 2.4vw, 30px);
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.15);
     }
 
-    .gc-admin-mini-list-v30 strong{
-      color:var(--text);
-      text-align:right;
-      max-width:210px;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-variant-numeric:tabular-nums;
-    }
+    @media (max-width: 1180px) {
+      .gc-admin-hub-layout-v1,
+      .gc-admin-hub-hero {
+        grid-template-columns: 1fr;
+      }
 
-    .gc-admin-acsm-actions-v30{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-    }
+      .gc-admin-side-v1 {
+        position: static;
+      }
 
-    .gc-admin-acsm-actions-v30 .gc-btn{
-      border-radius:999px;
-    }
-
-    .gc-admin-health-card-v30 .gc-message{
-      min-height:1.4em;
-      margin:10px 0 0;
-    }
-
-    @media(max-width:1180px){
-      .gc-admin-main-grid-v30{
-        grid-template-columns:1fr;
+      .gc-admin-module-grid-v1 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
-    @media(max-width:980px){
-      .gc-admin-hero-v30 > div:first-child{
-        padding-left:clamp(12px,2vw,24px);
+    @media (max-width: 760px) {
+      .gc-admin-metrics-v1,
+      .gc-admin-module-grid-v1 {
+        grid-template-columns: 1fr;
       }
 
-      .gc-admin-status-panel-v30{
-        margin-right:0;
-        justify-self:stretch;
-        width:100%;
+      .gc-admin-hub-v1 {
+        padding-inline: 0;
       }
 
-      .gc-admin-metrics-v30{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-
-      .gc-admin-metrics-v30 .gc-metric:nth-child(2){
-        border-right:0;
-      }
-
-      .gc-admin-metrics-v30 .gc-metric:nth-child(n+3){
-        border-top:1px solid var(--line);
-      }
-
-      .gc-admin-module-grid-v30{
-        grid-template-columns:1fr;
-      }
-    }
-
-    @media(max-width:640px){
-      .gc-admin-page-v30{
-        padding-inline:0;
-      }
-
-      .gc-admin-hero-v30 > div:first-child{
-        padding-left:0;
-      }
-
-      .gc-admin-metrics-v30{
-        grid-template-columns:1fr;
-      }
-
-      .gc-admin-metrics-v30 .gc-metric{
-        border-right:0;
-        border-top:1px solid var(--line);
-      }
-
-      .gc-admin-metrics-v30 .gc-metric:first-child{
-        border-top:0;
-      }
-
-      .gc-admin-module-card-v30{
-        grid-template-columns:1fr;
-      }
-
-      .gc-admin-module-card-v30__cta{
-        width:max-content;
-      }
-
-      .gc-admin-acsm-actions-v30 .gc-btn,
-      .gc-admin-gate-slab-v30 .gc-btn{
-        width:100%;
-        justify-content:center;
-      }
-
-      .gc-admin-modules-card-v30 .gc-section-head,
-      .gc-admin-quick-card-v30 .gc-section-head,
-      .gc-admin-gate-v30 .gc-section-head,
-      .gc-admin-module-grid-v30,
-      .gc-admin-health-stack-v30{
-        padding-inline:16px;
-      }
-
-      .gc-admin-gate-slab-v30{
-        margin-inline:16px;
+      .gc-admin-module-card-v1 {
+        min-height: auto;
       }
     }
   </style>
@@ -753,9 +695,9 @@ import AdminSubnav from '../components/AdminSubnav.astro';
 
         if (els.rows) {
           els.rows.innerHTML =
-            `<div class="gc-status-row"><span>Usuario</span><strong>${esc(data.currentUser?.displayName || '-')}</strong></div>` +
-            `<div class="gc-status-row"><span>Rol</span><strong>${esc(data.currentUser?.role || '-')}</strong></div>` +
-            `<div class="gc-status-row"><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>`;
+            `<div><span>Usuario</span><strong>${esc(data.currentUser?.displayName || '-')}</strong></div>` +
+            `<div><span>Rol</span><strong>${esc(data.currentUser?.role || '-')}</strong></div>` +
+            `<div><span>Setup</span><strong>${data.setupRequired ? 'Pendiente' : 'OK'}</strong></div>`;
         }
 
         const storage = data.admin?.storage?.storage || data.admin?.storage || {};
@@ -858,7 +800,7 @@ import AdminSubnav from '../components/AdminSubnav.astro';
           if (els.state) els.state.style.color = 'var(--warn)';
 
           if (els.rows) {
-            els.rows.innerHTML = `<div class="gc-status-row"><span>Error</span><strong>${esc(error.message || 'No disponible')}</strong></div>`;
+            els.rows.innerHTML = `<div><span>Error</span><strong>${esc(error.message || 'No disponible')}</strong></div>`;
           }
         }
       }

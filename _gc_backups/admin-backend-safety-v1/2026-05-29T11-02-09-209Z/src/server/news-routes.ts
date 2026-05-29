@@ -15,13 +15,6 @@ type NewsPost = {
   body: string;
   image: string;
   imageAlt: string;
-  imageSource: string;
-  imageAuthor: string;
-  imageLicense: string;
-  imageSourceUrl: string;
-  tags: string;
-  seoTitle: string;
-  seoDescription: string;
   href: string;
   featured: boolean;
   pinned: boolean;
@@ -190,13 +183,6 @@ function normalizePost(input: any = {}, existing?: Partial<NewsPost> | null): Ne
     body: text(input.body ?? input.content ?? input.contenido ?? existing?.body).slice(0, 20000),
     image: text(input.image ?? input.imageUrl ?? input.imagen ?? existing?.image).slice(0, 800),
     imageAlt: text(input.imageAlt ?? input.alt ?? existing?.imageAlt ?? title).slice(0, 180),
-    imageSource: text(input.imageSource ?? input.source ?? input.fuente ?? existing?.imageSource).slice(0, 180),
-    imageAuthor: text(input.imageAuthor ?? input.author ?? input.autor ?? existing?.imageAuthor).slice(0, 180),
-    imageLicense: text(input.imageLicense ?? input.license ?? input.licencia ?? existing?.imageLicense).slice(0, 180),
-    imageSourceUrl: text(input.imageSourceUrl ?? input.sourceUrl ?? input.fuenteUrl ?? input.fuente_url ?? existing?.imageSourceUrl).slice(0, 800),
-    tags: text(input.tags ?? input.etiquetas ?? existing?.tags).slice(0, 500),
-    seoTitle: text(input.seoTitle ?? input.metaTitle ?? existing?.seoTitle).slice(0, 180),
-    seoDescription: text(input.seoDescription ?? input.metaDescription ?? existing?.seoDescription).slice(0, 320),
     href: text(input.href ?? input.linkUrl ?? input.link ?? existing?.href).slice(0, 800),
     featured: bool(input.featured ?? input.destacado, existing?.featured || false),
     pinned: bool(input.pinned ?? input.fijado, existing?.pinned || false),
@@ -216,13 +202,6 @@ function publicPost(post: NewsPost) {
     body: post.body,
     image: post.image,
     imageAlt: post.imageAlt,
-    imageSource: post.imageSource,
-    imageAuthor: post.imageAuthor,
-    imageLicense: post.imageLicense,
-    imageSourceUrl: post.imageSourceUrl,
-    tags: post.tags,
-    seoTitle: post.seoTitle,
-    seoDescription: post.seoDescription,
     href: post.href,
     featured: post.featured,
     pinned: post.pinned,

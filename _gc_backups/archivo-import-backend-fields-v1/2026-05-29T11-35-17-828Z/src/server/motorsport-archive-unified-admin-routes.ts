@@ -567,64 +567,8 @@ const CSV_TOP_LEVEL_FIELDS = new Set([
   'autor',
   'author',
   'licencia',
-  'subtitulo',
-  'introduccion',
-  'propietario',
-  'diseniador',
-  'diseñador',
-  'datos_sim_racing',
-  'cilindrada',
-  'transmision',
-  'transmisión',
-  'chasis',
-  'aerodinamica',
-  'aerodinámica',
-  'victorias',
-  'podios',
-  'poles',
-  'errores_comunes',
-  'datos_destacados',
-  'cronologia',
-  'cronología',
-  'referencias',
-  'ultima_revision',
-  'última_revision',
-  'seo_title',
-  'seo_description',
-  'seotitle',
-  'seodescription',
-  'cover_url',
-  'cover_alt',
   'license',
 ]);
-
-const CSV_TOP_LEVEL_ALIASES: Record<string, string> = {
-  pais: 'pais',
-  país: 'pais',
-  ubicacion: 'ubicacion',
-  ubicación: 'ubicacion',
-  region: 'region',
-  epoca: 'periodo',
-  año: 'ano',
-  diseñador: 'diseniador',
-  transmision: 'transmision',
-  transmisión: 'transmision',
-  aerodinámica: 'aerodinamica',
-  cronología: 'cronologia',
-  última_revision: 'ultima_revision',
-  seotitle: 'seoTitle',
-  seo_title: 'seoTitle',
-  seodescription: 'seoDescription',
-  seo_description: 'seoDescription',
-  cover_url: 'coverUrl',
-  cover_alt: 'coverAlt',
-  image_alt: 'coverAlt',
-  imagen_alt: 'coverAlt'
-};
-
-function canonicalCsvTopLevelKey(key: string) {
-  return CSV_TOP_LEVEL_ALIASES[key] || key;
-}
 
 function topLevelFieldsFromCsvRow(row: any) {
   const output: Record<string, string> = {};
@@ -632,12 +576,7 @@ function topLevelFieldsFromCsvRow(row: any) {
     const key = cleanCsvKey(String(rawKey));
     const value = String(rawValue ?? '').trim();
     if (!key || !value) continue;
-
-    const canonicalKey = canonicalCsvTopLevelKey(key);
-
-    if (CSV_TOP_LEVEL_FIELDS.has(key) || CSV_TOP_LEVEL_FIELDS.has(canonicalKey)) {
-      output[canonicalKey] = value;
-    }
+    if (CSV_TOP_LEVEL_FIELDS.has(key)) output[key] = value;
   }
   return output;
 }
@@ -756,8 +695,6 @@ function csvItem(row: any, fileName: string, index: number, publish: boolean, ex
     'id','slug','title','titulo','nombre','name',
     'summary','resumen','descripcion_corta','description',
     'body','descripcion','descripcion_larga','texto','content',
-    'seo_title','seo_description','seotitle','seodescription',
-    'cover_url','cover_alt','image_alt','imagen_alt',
     'archive_category','archivecategory','tipo_ficha','tipo_archivo',
     'type','tipo','status','estado','published','publicado',
     ...Array.from(CSV_TOP_LEVEL_FIELDS),
