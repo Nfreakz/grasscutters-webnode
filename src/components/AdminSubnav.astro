@@ -1,64 +1,172 @@
 ---
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
-const items = [
-  { href: '/admin', label: 'Resumen', desc: 'Estado general' },
-  { href: '/admin/usuarios', label: 'Usuarios', desc: 'Cuentas y permisos' },
-  { href: '/admin/nombres', label: 'Nombres', desc: 'Alias visibles' },
-  { href: '/admin/calendario', label: 'Calendario', desc: 'Eventos y ACSM' },
-  { href: '/admin/noticias', label: 'Noticias', desc: 'Paddock Wire' },
-  { href: '/admin/archivo', label: 'Archivo', desc: 'Dossiers y fichas' },
-  { href: '/admin/archivo/calidad', label: 'Calidad', desc: 'Revisión de fichas' },
-  { href: '/admin/archivo/relaciones', label: 'Relaciones', desc: 'Conexiones entre fichas' },
-  { href: '/admin/archivo/imagen-url', label: 'Imágenes', desc: 'Subir y asociar' },
-  { href: '/admin/endpoints', label: 'Endpoints', desc: 'Pruebas API' },
-  { href: '/admin/sistema', label: 'Sistema', desc: 'Storage y sync' },
-  { href: '/admin/historial', label: 'Historial', desc: 'Auditoría' }
+
+const groups = [
+  {
+    label: 'Base',
+    items: [
+      { href: '/admin', label: 'Resumen', desc: 'Estado general' },
+      { href: '/admin/usuarios', label: 'Usuarios', desc: 'Cuentas y permisos' },
+      { href: '/admin/nombres', label: 'Nombres', desc: 'Alias visibles' },
+      { href: '/admin/calendario', label: 'Calendario', desc: 'Eventos y ACSM' },
+    ],
+  },
+  {
+    label: 'Contenido',
+    items: [
+      { href: '/admin/noticias', label: 'Noticias', desc: 'Gestor editorial' },
+      { href: '/admin/noticias/importar', label: 'Importar noticias', desc: 'CSV newsroom' },
+      { href: '/admin/noticias/imagenes', label: 'Imágenes noticias', desc: 'Biblioteca visual' },
+      { href: '/admin/archivo', label: 'Archivo', desc: 'Dossiers y fichas' },
+      { href: '/admin/archivo/importar', label: 'Importar archivo', desc: 'CSV fichas' },
+      { href: '/admin/archivo/imagen-url', label: 'Imágenes archivo', desc: 'Biblioteca visual' },
+    ],
+  },
+  {
+    label: 'Herramientas',
+    items: [
+      { href: '/admin/archivo/calidad', label: 'Calidad', desc: 'Revisión de fichas' },
+      { href: '/admin/archivo/relaciones', label: 'Relaciones', desc: 'Conexiones' },
+      { href: '/admin/endpoints', label: 'Endpoints', desc: 'Pruebas API' },
+      { href: '/admin/sistema', label: 'Sistema', desc: 'Storage y sync' },
+      { href: '/admin/historial', label: 'Historial', desc: 'Auditoría' },
+    ],
+  },
 ];
+
 const isActive = (href) => current === href || (href !== '/admin' && current.startsWith(href));
+const groupHasActive = (group) => group.items.some((item) => isActive(item.href));
 ---
-<nav class="gc-admin-subnav" aria-label="Navegación de administración">
-  {items.map((item) => (
-    <a href={item.href} class:list={[{ 'is-active': isActive(item.href) }]}>
-      <strong>{item.label}</strong>
-      <small>{item.desc}</small>
-    </a>
+
+<nav class="gc-admin-subnav-v2" aria-label="Navegación de administración">
+  {groups.map((group) => (
+    <details class="gc-admin-subnav-group" open={groupHasActive(group) || group.label !== 'Herramientas'}>
+      <summary>
+        <strong>{group.label}</strong>
+        <small>{group.items.length} opciones</small>
+      </summary>
+
+      <div class="gc-admin-subnav-grid">
+        {group.items.map((item) => (
+          <a href={item.href} class:list={[{ 'is-active': isActive(item.href) }]}>
+            <strong>{item.label}</strong>
+            <small>{item.desc}</small>
+          </a>
+        ))}
+      </div>
+    </details>
   ))}
 </nav>
 
 <style is:global>
-  .gc-admin-subnav{
+  .gc-admin-subnav{display:none!important}
+
+  .gc-admin-subnav-v2{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(138px,1fr));
     gap:10px;
     margin:0 0 clamp(18px,2vw,26px);
   }
-  .gc-admin-subnav a{
+
+  .gc-admin-subnav-group{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.018);
+    border-radius:18px;
+    overflow:hidden;
+  }
+
+  .gc-admin-subnav-group summary{
+    list-style:none;
+    cursor:pointer;
+    min-height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 14px;
+    color:var(--soft);
+    border-bottom:1px solid transparent;
+  }
+
+  .gc-admin-subnav-group[open] summary{
+    border-bottom-color:rgba(255,255,255,.07);
+  }
+
+  .gc-admin-subnav-group summary::-webkit-details-marker{
+    display:none;
+  }
+
+  .gc-admin-subnav-group summary::after{
+    content:"Abrir";
+    display:inline-flex;
+    min-height:26px;
+    align-items:center;
+    padding:0 9px;
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:999px;
+    color:var(--dim);
+    font-size:.68rem;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .gc-admin-subnav-group[open] summary::after{
+    content:"Cerrar";
+    color:#071006;
+    background:var(--accent);
+    border-color:transparent;
+  }
+
+  .gc-admin-subnav-group summary strong{
+    font-size:.84rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+
+  .gc-admin-subnav-group summary small{
+    color:var(--dim);
+    font-size:.72rem;
+  }
+
+  .gc-admin-subnav-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(158px,1fr));
+    gap:10px;
+    padding:10px;
+  }
+
+  .gc-admin-subnav-grid a{
     display:grid;
     gap:3px;
-    min-height:66px;
+    min-height:62px;
     padding:13px 14px;
     border:1px solid var(--line);
     background:rgba(255,255,255,.018);
     color:var(--soft);
     text-decoration:none;
+    border-radius:14px;
     transition:transform .16s ease,border-color .16s ease,background .16s ease,color .16s ease;
   }
-  .gc-admin-subnav a:hover,
-  .gc-admin-subnav a.is-active{
+
+  .gc-admin-subnav-grid a:hover,
+  .gc-admin-subnav-grid a.is-active{
     transform:translateY(-1px);
     border-color:var(--accent);
     background:rgba(122,255,144,.08);
     color:var(--text);
   }
-  .gc-admin-subnav strong{
-    font-size:.84rem;
+
+  .gc-admin-subnav-grid a strong{
+    font-size:.8rem;
     text-transform:uppercase;
     letter-spacing:.08em;
   }
-  .gc-admin-subnav small{
+
+  .gc-admin-subnav-grid a small{
     color:var(--dim);
     font-size:.72rem;
   }
+
   .gc-admin-page-clean [hidden]{display:none!important}
   .gc-admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .gc-admin-note{color:var(--soft)}
@@ -66,5 +174,9 @@ const isActive = (href) => current === href || (href !== '/admin' && current.sta
   .gc-admin-empty{padding:18px;border:1px solid var(--line);background:rgba(255,255,255,.018);color:var(--soft)}
   .gc-input--compact{min-height:36px;padding:7px 10px}
   .gc-admin-page-clean .gc-section{min-width:0}
-  @media(max-width:720px){.gc-admin-subnav{grid-template-columns:1fr}.gc-admin-subnav a{min-height:auto}}
+
+  @media(max-width:720px){
+    .gc-admin-subnav-grid{grid-template-columns:1fr}
+    .gc-admin-subnav-grid a{min-height:auto}
+  }
 </style>

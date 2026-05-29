@@ -1,0 +1,324 @@
+---
+export const prerender = false;
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+
+const categories = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'GrassCutters'];
+---
+
+<AppLayout title="Imágenes de Noticias | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-news-images-page-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Noticias</span>
+        <h1 class="gc-title">Imágenes de noticias.</h1>
+        <p class="gc-subtitle">Biblioteca visual del newsroom. Edita portada, alt, créditos y licencia como si cada imagen fuera una entrada.</p>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Imágenes</span><strong id="imageTotal">...</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Sin imagen</span><strong id="postsMissingImage">...</strong></div>
+          <div class="gc-status-row"><span>Sin alt</span><strong id="imagesMissingAlt">...</strong></div>
+          <div class="gc-status-row"><span>Sin licencia</span><strong id="imagesMissingLicense">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Biblioteca</span>
+          <h2>Todas las imágenes</h2>
+          <p>Una noticia tiene una imagen principal. Aquí puedes gestionarlas todas sin entrar una por una.</p>
+        </div>
+        <div class="gc-admin-actions">
+          <a class="gc-btn" href="/admin/noticias">Noticias</a>
+          <button class="gc-btn" id="refreshImagesBtn" type="button">Recargar</button>
+        </div>
+      </div>
+
+      <div class="gc-slab gc-news-image-toolbar-v1">
+        <label class="gc-news-field"><span>Buscar</span><input id="imageSearch" type="search" placeholder="Título, alt, fuente, licencia..." /></label>
+        <div class="gc-news-image-filters-v1">
+          <label><span>Categoría</span><select id="imageCategoryFilter"><option value="all">Todo</option>{categories.map((cat) => <option value={cat}>{cat}</option>)}</select></label>
+          <label><span>Estado</span><select id="imageStateFilter"><option value="all">Todo</option><option value="with">Con imagen</option><option value="missing">Sin imagen</option><option value="missing-alt">Sin alt</option><option value="missing-license">Sin licencia</option><option value="missing-source">Sin fuente</option></select></label>
+          <label><span>Orden</span><select id="imageSort"><option value="date-desc">Fecha reciente</option><option value="title-asc">Título A-Z</option><option value="issues-desc">Más incompletas</option></select></label>
+          <label><span>Por página</span><select id="imagePageSize"><option value="12" selected>12</option><option value="24">24</option><option value="48">48</option></select></label>
+        </div>
+
+        <div class="gc-news-image-pills-v1">
+          <button type="button" class="is-active" data-image-state="all">Todo</button>
+          <button type="button" data-image-state="missing">Sin imagen</button>
+          <button type="button" data-image-state="missing-alt">Sin alt</button>
+          <button type="button" data-image-state="missing-license">Sin licencia</button>
+          <button type="button" data-image-state="missing-source">Sin fuente</button>
+        </div>
+      </div>
+
+      <div class="gc-news-image-grid-v1" id="imageGrid"><div class="gc-admin-empty">Cargando imágenes...</div></div>
+
+      <nav class="gc-news-image-pagination-v1">
+        <button class="gc-btn" id="imagePrevPage" type="button">Anterior</button>
+        <span id="imagePageInfo">Página 1/1</span>
+        <button class="gc-btn" id="imageNextPage" type="button">Siguiente</button>
+      </nav>
+
+      <p class="gc-message" id="imageMessage"></p>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-news-images-page-v1{max-width:1440px;margin:0 auto}
+    .gc-news-image-toolbar-v1{display:grid;gap:14px;margin-bottom:16px}
+    .gc-news-field,.gc-news-image-filters-v1 label{display:grid;gap:7px}
+    .gc-news-field span,.gc-news-image-filters-v1 span{color:var(--soft);font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+    .gc-news-field input,.gc-news-image-filters-v1 select,.gc-news-image-card-v1 input{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(4,9,6,.62);color:inherit;padding:11px 12px;font:inherit;outline:none}
+    .gc-news-image-filters-v1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .gc-news-image-pills-v1{display:flex;flex-wrap:wrap;gap:8px}
+    .gc-news-image-pills-v1 button{min-height:34px;padding:0 12px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.035);color:inherit;font-weight:900;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+    .gc-news-image-pills-v1 button.is-active{color:#071006;background:var(--accent,#9cff3f);border-color:transparent}
+    .gc-news-image-grid-v1{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .gc-news-image-card-v1{display:grid;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(0,0,0,.16);overflow:hidden}
+    .gc-news-image-thumb-v1{position:relative;background:#07110b}
+    .gc-news-image-thumb-v1 img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+    .gc-news-image-thumb-v1 span{position:absolute;left:10px;bottom:10px;display:inline-flex;min-height:26px;align-items:center;padding:0 9px;border-radius:999px;background:rgba(0,0,0,.66);color:#fff;font-size:.68rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-news-image-card-body-v1{display:grid;gap:10px;padding:12px}
+    .gc-news-image-card-body-v1 h3{margin:0;font-size:1.05rem;line-height:1.12;overflow-wrap:anywhere}
+    .gc-news-image-card-body-v1 p{margin:0;color:var(--soft);font-size:.88rem;line-height:1.35;overflow-wrap:anywhere}
+    .gc-news-image-meta-v1{display:flex;flex-wrap:wrap;gap:6px}
+    .gc-news-image-meta-v1 span{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.09);border-radius:999px;color:var(--soft);font-size:.7rem}
+    .gc-news-image-edit-v1{display:grid;gap:8px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(0,0,0,.14);overflow:hidden}
+    .gc-news-image-edit-v1 summary{cursor:pointer;padding:10px 12px;color:var(--soft);font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-news-image-edit-v1[open] summary{border-bottom:1px solid rgba(255,255,255,.08)}
+    .gc-news-image-edit-v1 label{display:grid;gap:5px;padding:0 12px 9px}
+    .gc-news-image-edit-v1 small{color:var(--soft);font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-news-image-actions-v1{display:flex;flex-wrap:wrap;gap:8px}
+    .gc-news-image-actions-v1 button,.gc-news-image-actions-v1 a{border-radius:999px;padding:10px 13px;font-weight:900;text-decoration:none;cursor:pointer;min-height:38px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);color:rgba(255,255,255,.9)}
+    .gc-news-image-actions-v1 button:first-child{background:var(--accent,#9cff3f);color:#061006;border-color:transparent}
+    .gc-news-image-actions-v1 .danger{border-color:rgba(255,90,90,.45);background:rgba(255,90,90,.1);color:#ffd7d7}
+    .gc-news-image-pagination-v1{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px}
+    .gc-news-image-pagination-v1 span{color:var(--soft);font-weight:900;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
+    @media(max-width:1180px){.gc-news-image-grid-v1{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-news-image-filters-v1{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.gc-news-image-grid-v1,.gc-news-image-filters-v1{grid-template-columns:1fr}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const API = '/api/admin/news';
+      const CATEGORIES = ['Update','Sim racing','Motorsport','Herramientas','GrassCutters'];
+      const $ = (id) => document.getElementById(id);
+      let allPosts = [];
+      let filtered = [];
+      let page = 1;
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const normalize = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const categoryLabel = (value) => CATEGORIES.find((cat) => normalize(cat) === normalize(value)) || 'Update';
+      const hasImage = (post) => Boolean(post.image);
+      const issues = (post) => (!post.image ? 1 : 0) + (!post.imageAlt ? 1 : 0) + (!post.imageLicense ? 1 : 0) + (!post.imageSource && !post.imageSourceUrl ? 1 : 0);
+      const publicHref = (post) => post.href || `/noticias/${post.slug}`;
+
+      async function fetchJson(url, options={}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function matchesState(post, state) {
+        if (state === 'all') return true;
+        if (state === 'with') return hasImage(post);
+        if (state === 'missing') return !hasImage(post);
+        if (state === 'missing-alt') return hasImage(post) && !post.imageAlt;
+        if (state === 'missing-license') return hasImage(post) && !post.imageLicense;
+        if (state === 'missing-source') return hasImage(post) && !post.imageSource && !post.imageSourceUrl;
+        return true;
+      }
+
+      function maxPage() { return Math.max(1, Math.ceil(filtered.length / Number($('imagePageSize').value || 12))); }
+
+      function applyFilters() {
+        const q = normalize($('imageSearch').value);
+        const cat = $('imageCategoryFilter').value;
+        const state = $('imageStateFilter').value;
+        const sort = $('imageSort').value;
+
+        filtered = allPosts.filter((post) => {
+          const text = normalize([post.title, post.slug, post.category, post.image, post.imageAlt, post.imageSource, post.imageAuthor, post.imageLicense, post.imageSourceUrl].join(' '));
+          const catOk = cat === 'all' || normalize(categoryLabel(post.category)) === normalize(cat);
+          return catOk && matchesState(post, state) && (!q || text.includes(q));
+        });
+
+        filtered.sort((a,b) => {
+          if (sort === 'title-asc') return String(a.title || '').localeCompare(String(b.title || ''), 'es');
+          if (sort === 'issues-desc') return issues(b) - issues(a) || String(a.title || '').localeCompare(String(b.title || ''), 'es');
+          return String(b.publishedAt || b.updatedAt || '').localeCompare(String(a.publishedAt || a.updatedAt || ''));
+        });
+
+        page = Math.min(page, maxPage());
+        if (page < 1) page = 1;
+
+        document.querySelectorAll('[data-image-state]').forEach((button) => button.classList.toggle('is-active', button.dataset.imageState === state));
+        render();
+      }
+
+      function collectCard(card) {
+        const id = card.dataset.postId;
+        const post = allPosts.find((item) => item.id === id) || {};
+        return {
+          ...post,
+          image: card.querySelector('[data-field="image"]').value.trim(),
+          imageAlt: card.querySelector('[data-field="imageAlt"]').value.trim(),
+          imageSource: card.querySelector('[data-field="imageSource"]').value.trim(),
+          imageAuthor: card.querySelector('[data-field="imageAuthor"]').value.trim(),
+          imageLicense: card.querySelector('[data-field="imageLicense"]').value.trim(),
+          imageSourceUrl: card.querySelector('[data-field="imageSourceUrl"]').value.trim(),
+        };
+      }
+
+      function renderStats() {
+        $('imageTotal').textContent = String(allPosts.filter(hasImage).length);
+        $('postsMissingImage').textContent = String(allPosts.filter((post) => !hasImage(post)).length);
+        $('imagesMissingAlt').textContent = String(allPosts.filter((post) => hasImage(post) && !post.imageAlt).length);
+        $('imagesMissingLicense').textContent = String(allPosts.filter((post) => hasImage(post) && !post.imageLicense).length);
+      }
+
+      function render() {
+        const grid = $('imageGrid');
+        const pageSize = Number($('imagePageSize').value || 12);
+        const start = (page - 1) * pageSize;
+        const pageItems = filtered.slice(start, start + pageSize);
+
+        $('imagePageInfo').textContent = `Página ${page}/${maxPage()}`;
+        $('imagePrevPage').disabled = page <= 1;
+        $('imageNextPage').disabled = page >= maxPage();
+
+        if (!pageItems.length) {
+          grid.innerHTML = '<div class="gc-admin-empty">No hay noticias con estos filtros.</div>';
+          return;
+        }
+
+        grid.innerHTML = pageItems.map((post) => `
+          <article class="gc-news-image-card-v1" data-post-id="${esc(post.id)}">
+            <div class="gc-news-image-thumb-v1">
+              ${post.image ? `<img src="${esc(post.image)}" alt="${esc(post.imageAlt || '')}" loading="lazy" data-live-preview />` : '<div class="gc-admin-empty">Sin imagen</div>'}
+              <span>${hasImage(post) ? 'Imagen' : 'Sin imagen'}</span>
+            </div>
+            <div class="gc-news-image-card-body-v1">
+              <div>
+                <h3>${esc(post.title || 'Sin título')}</h3>
+                <p>${esc(post.imageAlt || post.excerpt || 'Sin alt / resumen')}</p>
+              </div>
+
+              <div class="gc-news-image-meta-v1">
+                <span>${esc(categoryLabel(post.category))}</span>
+                <span>${hasImage(post) ? 'Con imagen' : 'Sin imagen'}</span>
+                <span>${post.imageLicense ? esc(post.imageLicense) : 'Sin licencia'}</span>
+                <span>${issues(post)} avisos</span>
+              </div>
+
+              <details class="gc-news-image-edit-v1" open>
+                <summary>Editar imagen</summary>
+                <label><small>URL imagen</small><input data-field="image" data-live-url value="${esc(post.image || '')}" /></label>
+                <label><small>Alt</small><input data-field="imageAlt" value="${esc(post.imageAlt || '')}" /></label>
+                <label><small>Fuente</small><input data-field="imageSource" value="${esc(post.imageSource || '')}" /></label>
+                <label><small>Autor</small><input data-field="imageAuthor" value="${esc(post.imageAuthor || '')}" /></label>
+                <label><small>Licencia</small><input data-field="imageLicense" value="${esc(post.imageLicense || '')}" /></label>
+                <label><small>URL fuente</small><input data-field="imageSourceUrl" value="${esc(post.imageSourceUrl || '')}" /></label>
+              </details>
+
+              <div class="gc-news-image-actions-v1">
+                <button type="button" data-save-image>Guardar</button>
+                <a href="/admin/noticias?edit=${encodeURIComponent(post.id || '')}">Noticia</a>
+                <a href="${esc(publicHref(post))}" target="_blank" rel="noreferrer">Ver</a>
+                ${post.image ? `<a href="${esc(post.image)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}
+                <button type="button" class="danger" data-clear-image>Quitar imagen</button>
+              </div>
+            </div>
+          </article>
+        `).join('');
+
+        grid.querySelectorAll('[data-live-url]').forEach((input) => {
+          input.addEventListener('input', () => {
+            const card = input.closest('[data-post-id]');
+            let img = card.querySelector('[data-live-preview]');
+            if (!img && input.value.trim()) {
+              card.querySelector('.gc-news-image-thumb-v1').innerHTML = `<img src="${esc(input.value.trim())}" alt="" data-live-preview /><span>Imagen</span>`;
+              img = card.querySelector('[data-live-preview]');
+            }
+            if (img && input.value.trim()) img.src = input.value.trim();
+          });
+        });
+
+        grid.querySelectorAll('[data-save-image]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const card = button.closest('[data-post-id]');
+            const post = collectCard(card);
+            try {
+              button.disabled = true;
+              await fetchJson(`${API}/${encodeURIComponent(post.id)}`, { method:'PUT', body:JSON.stringify(post) });
+              $('imageMessage').textContent = 'Imagen guardada.';
+              await load();
+            } catch (error) {
+              $('imageMessage').textContent = error.message || 'No se pudo guardar.';
+            } finally {
+              button.disabled = false;
+            }
+          });
+        });
+
+        grid.querySelectorAll('[data-clear-image]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const card = button.closest('[data-post-id]');
+            const post = collectCard(card);
+            if (!confirm('¿Quitar la imagen de esta noticia?')) return;
+            try {
+              button.disabled = true;
+              post.image = '';
+              await fetchJson(`${API}/${encodeURIComponent(post.id)}`, { method:'PUT', body:JSON.stringify(post) });
+              $('imageMessage').textContent = 'Imagen quitada.';
+              await load();
+            } catch (error) {
+              $('imageMessage').textContent = error.message || 'No se pudo quitar.';
+            } finally {
+              button.disabled = false;
+            }
+          });
+        });
+      }
+
+      async function load() {
+        try {
+          const data = await fetchJson(API);
+          allPosts = Array.isArray(data.posts) ? data.posts : [];
+          renderStats();
+          applyFilters();
+        } catch (error) {
+          $('imageGrid').innerHTML = `<div class="gc-admin-empty">No se pudo cargar: ${esc(error.message || 'error')}</div>`;
+        }
+      }
+
+      ['imageSearch','imageCategoryFilter','imageStateFilter','imageSort','imagePageSize'].forEach((id) => {
+        $(id).addEventListener('input', () => { page = 1; applyFilters(); });
+        $(id).addEventListener('change', () => { page = 1; applyFilters(); });
+      });
+
+      document.querySelectorAll('[data-image-state]').forEach((button) => {
+        button.addEventListener('click', () => {
+          $('imageStateFilter').value = button.dataset.imageState || 'all';
+          page = 1;
+          applyFilters();
+        });
+      });
+
+      $('imagePrevPage').addEventListener('click', () => { page = Math.max(1, page - 1); render(); });
+      $('imageNextPage').addEventListener('click', () => { page = Math.min(maxPage(), page + 1); render(); });
+      $('refreshImagesBtn').addEventListener('click', load);
+
+      load();
+    })();
+  </script>
+</AppLayout>

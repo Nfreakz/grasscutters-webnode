@@ -1,0 +1,427 @@
+---
+export const prerender = false;
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Importar Noticias | Admin GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-news-import-page-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Noticias</span>
+        <h1 class="gc-title">Importar noticias.</h1>
+        <p class="gc-subtitle">Importador CSV sin backend nuevo: valida en navegador y crea/actualiza usando la API existente de Noticias.</p>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Campos exactos</span><strong>19</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Categorías</span><strong>5</strong></div>
+          <div class="gc-status-row"><span>Separador</span><strong>;</strong></div>
+          <div class="gc-status-row"><span>Modo</span><strong>Dry-run</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <h2>Plantillas de noticias</h2>
+          <p>Todas usan la misma cabecera exacta. Cambia el ejemplo, no las columnas.</p>
+        </div>
+      </div>
+
+      <div class="gc-news-import-template-grid">
+        <article><span>Update</span><h3>Actualización GC</h3><p>Para versiones, mejoras y cambios internos.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="update">Descargar CSV</button></article>
+        <article><span>Sim racing</span><h3>Actualidad sim</h3><p>Para noticias del entorno sim racing.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="simracing">Descargar CSV</button></article>
+        <article><span>Motorsport</span><h3>Motor real</h3><p>Para contexto racing y competición.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="motorsport">Descargar CSV</button></article>
+        <article><span>Herramientas</span><h3>Apps y recursos</h3><p>Para HUDs, utilidades y herramientas.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="herramientas">Descargar CSV</button></article>
+        <article><span>GrassCutters</span><h3>Comunidad</h3><p>Para actividad propia de GC.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="grasscutters">Descargar CSV</button></article>
+      </div>
+
+      <div class="gc-news-import-actions-top">
+        <button class="gc-btn" type="button" data-template-download="all-fields">Descargar plantilla maestra</button>
+        <button class="gc-btn" type="button" id="copyFieldsBtn">Copiar cabecera exacta</button>
+      </div>
+
+      <details class="gc-news-fields-box">
+        <summary>Ver campos exactos</summary>
+        <pre id="fieldsListBox"></pre>
+      </details>
+    </section>
+
+    <section class="gc-section">
+      <div class="gc-section-head">
+        <div>
+          <h2>Subir y validar CSV</h2>
+          <p>Primero se previsualiza. Si todo está bien, desactiva dry-run y ejecuta.</p>
+        </div>
+      </div>
+
+      <div class="gc-slab gc-news-import-box">
+        <label class="gc-news-field">
+          <span>CSV</span>
+          <input id="newsCsvFiles" type="file" accept=".csv,text/csv" multiple />
+          <small>Admite varios CSV. Separador recomendado: punto y coma.</small>
+        </label>
+
+        <div class="gc-news-import-options">
+          <label><input id="newsDryRun" type="checkbox" checked /> Solo probar, no escribir</label>
+          <label><input id="newsPublish" type="checkbox" /> Publicar directamente</label>
+          <label><input id="newsForce" type="checkbox" /> Actualizar si existe slug</label>
+        </div>
+
+        <div class="gc-news-import-warning">
+          <strong>Sin backend nuevo</strong>
+          <p>Este importador usa <code>GET /api/admin/news</code>, <code>POST /api/admin/news</code> y <code>PUT /api/admin/news/:id</code>.</p>
+        </div>
+
+        <div class="gc-admin-actions">
+          <button class="gc-btn" id="newsPreviewBtn" type="button">Previsualizar CSV</button>
+          <button class="gc-btn gc-btn--primary" id="newsImportBtn" type="button">Importar noticias</button>
+          <a class="gc-btn" href="/admin/noticias">Volver</a>
+        </div>
+
+        <p class="gc-message" id="newsImportMsg"></p>
+      </div>
+    </section>
+
+    <section class="gc-section" id="newsPreviewSection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <h2>Preview</h2>
+          <p>Validación de cabecera, columnas y contenido mínimo.</p>
+        </div>
+      </div>
+      <div class="gc-news-import-preview" id="newsPreviewBox"></div>
+    </section>
+
+    <section class="gc-section" id="newsImportSummarySection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <h2>Resultado</h2>
+          <p>Resumen de creación/actualización.</p>
+        </div>
+      </div>
+      <div class="gc-news-import-summary" id="newsImportSummary"></div>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-news-import-page-v1 code{padding:.12rem .32rem;border:1px solid rgba(255,255,255,.10);border-radius:7px;background:rgba(0,0,0,.22);color:var(--accent,#9cff3f);font-size:.9em}
+    .gc-news-import-template-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .gc-news-import-template-grid article,.gc-news-import-card{display:grid;gap:10px;padding:18px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.025)}
+    .gc-news-import-template-grid span,.gc-news-field small,.gc-news-import-card span{color:var(--dim);font-size:.72rem;font-weight:900;letter-spacing:.11em;text-transform:uppercase}
+    .gc-news-import-template-grid h3{margin:0;color:var(--text);font-size:1.22rem;line-height:1.05;letter-spacing:-.04em}
+    .gc-news-import-template-grid p,.gc-news-import-warning p{margin:0;color:var(--soft);line-height:1.55}
+    .gc-news-import-actions-top,.gc-news-import-options{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+    .gc-news-fields-box{margin-top:12px;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(0,0,0,.16);overflow:hidden}
+    .gc-news-fields-box summary{cursor:pointer;padding:12px 14px;color:var(--soft);font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-news-fields-box pre{margin:0;padding:14px;border-top:1px solid rgba(255,255,255,.08);color:var(--soft);white-space:pre-wrap;word-break:break-word}
+    .gc-news-import-box{display:grid;gap:16px}
+    .gc-news-field{display:grid;gap:7px}
+    .gc-news-field span{color:var(--soft);font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+    .gc-news-field input{width:100%;min-height:44px;box-sizing:border-box;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:#07110b;color:#f3f7ef;font:inherit;outline:none}
+    .gc-news-import-options label{display:flex;gap:8px;align-items:center;color:var(--soft);padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.025)}
+    .gc-news-import-warning{padding:14px;border:1px solid rgba(255,194,87,.22);border-radius:18px;background:rgba(255,194,87,.065)}
+    .gc-news-import-warning strong{display:block;margin-bottom:6px;color:#ffe0a3;font-size:.75rem;font-weight:950;letter-spacing:.12em;text-transform:uppercase}
+    .gc-news-import-preview-grid,.gc-news-import-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .gc-news-import-card strong{display:block;margin-top:6px;color:var(--text);font-size:clamp(1.45rem,2.6vw,2.4rem);line-height:1;letter-spacing:-.06em}
+    .gc-news-import-errors{display:grid;gap:8px;margin:12px 0}
+    .gc-news-import-errors article{padding:10px 12px;border:1px solid rgba(255,90,90,.24);border-radius:14px;background:rgba(255,90,90,.08);color:#ffd0d0}
+    .gc-news-import-ok{margin:12px 0;padding:10px 12px;border:1px solid rgba(156,255,63,.22);border-radius:14px;background:rgba(156,255,63,.055);color:#d7ffd4}
+    .gc-news-import-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .gc-news-import-table th{text-align:left;color:var(--dim);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+    .gc-news-import-table td{padding:10px;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.14);color:var(--soft);vertical-align:top}
+    .gc-news-import-table td:first-child{border-left:1px solid rgba(255,255,255,.08);border-radius:12px 0 0 12px}
+    .gc-news-import-table td:last-child{border-right:1px solid rgba(255,255,255,.08);border-radius:0 12px 12px 0}
+    @media(max-width:1180px){.gc-news-import-template-grid,.gc-news-import-preview-grid,.gc-news-import-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.gc-news-import-template-grid,.gc-news-import-preview-grid,.gc-news-import-summary-grid{grid-template-columns:1fr}.gc-news-import-options{display:grid}.gc-news-import-table{font-size:.85rem}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const API = '/api/admin/news';
+      const TEMPLATE_DATA = {"fields": ["title", "slug", "status", "category", "publishedAt", "image", "imageAlt", "imageSource", "imageAuthor", "imageLicense", "imageSourceUrl", "href", "featured", "pinned", "excerpt", "body", "tags", "seoTitle", "seoDescription"], "rows": {"update": {"title": "GC HUD Lite recibe mejoras de rendimiento", "slug": "gc-hud-lite-mejoras-rendimiento", "status": "draft", "category": "Update", "publishedAt": "2026-05-29T12:00:00.000Z", "image": "", "imageAlt": "HUD de GrassCutters en pista", "imageSource": "GrassCutters Racing", "imageAuthor": "GrassCutters Racing", "imageLicense": "Imagen propia / GrassCutters Racing", "imageSourceUrl": "", "href": "", "featured": "true", "pinned": "false", "excerpt": "Nueva actualización centrada en estabilidad, lectura en pista y mejoras internas de rendimiento.", "body": "Texto completo de la noticia. Explica qué cambia, por qué importa y cómo afecta a los pilotos.", "tags": "HUD||Update||Performance", "seoTitle": "GC HUD Lite recibe mejoras de rendimiento | GrassCutters", "seoDescription": "Actualización de GC HUD Lite centrada en rendimiento, estabilidad y lectura en pista."}, "simracing": {"title": "La escena sim racing prepara una semana intensa", "slug": "escena-sim-racing-semana-intensa", "status": "draft", "category": "Sim racing", "publishedAt": "2026-05-29T12:00:00.000Z", "image": "", "imageAlt": "Carrera de sim racing", "imageSource": "Pendiente de verificar", "imageAuthor": "", "imageLicense": "Pendiente de verificar", "imageSourceUrl": "", "href": "", "featured": "false", "pinned": "false", "excerpt": "Resumen breve de novedades, campeonatos, herramientas y temas relevantes para la comunidad.", "body": "Texto completo de la noticia de sim racing.", "tags": "Sim racing||Comunidad||Carreras", "seoTitle": "Actualidad sim racing | GrassCutters", "seoDescription": "Resumen de actualidad sim racing publicado en GrassCutters Newsroom."}, "motorsport": {"title": "Motorsport: claves del fin de semana", "slug": "motorsport-claves-fin-de-semana", "status": "draft", "category": "Motorsport", "publishedAt": "2026-05-29T12:00:00.000Z", "image": "", "imageAlt": "Coche de competición en circuito", "imageSource": "Pendiente de verificar", "imageAuthor": "", "imageLicense": "Pendiente de verificar", "imageSourceUrl": "", "href": "", "featured": "false", "pinned": "false", "excerpt": "Contexto rápido para seguir las carreras, equipos, coches y temas técnicos del fin de semana.", "body": "Texto completo de actualidad motorsport.", "tags": "Motorsport||Racing||Circuitos", "seoTitle": "Motorsport: claves del fin de semana | GrassCutters", "seoDescription": "Claves de motorsport para seguir la actualidad desde GrassCutters Newsroom."}, "herramientas": {"title": "Nueva herramienta para preparar sesiones", "slug": "nueva-herramienta-preparar-sesiones", "status": "draft", "category": "Herramientas", "publishedAt": "2026-05-29T12:00:00.000Z", "image": "", "imageAlt": "Herramienta de sim racing", "imageSource": "GrassCutters Racing", "imageAuthor": "GrassCutters Racing", "imageLicense": "Imagen propia / GrassCutters Racing", "imageSourceUrl": "", "href": "", "featured": "false", "pinned": "false", "excerpt": "Presentación de una utilidad pensada para consultar información, preparar tandas o mejorar el flujo de carrera.", "body": "Texto completo sobre la herramienta.", "tags": "Herramientas||Setup||Sim racing", "seoTitle": "Nueva herramienta para preparar sesiones | GrassCutters", "seoDescription": "Herramienta de GrassCutters orientada a preparar sesiones de sim racing."}, "grasscutters": {"title": "GrassCutters abre una nueva fase de contenidos", "slug": "grasscutters-nueva-fase-contenidos", "status": "draft", "category": "GrassCutters", "publishedAt": "2026-05-29T12:00:00.000Z", "image": "", "imageAlt": "GrassCutters Racing comunidad", "imageSource": "GrassCutters Racing", "imageAuthor": "GrassCutters Racing", "imageLicense": "Imagen propia / GrassCutters Racing", "imageSourceUrl": "", "href": "", "featured": "false", "pinned": "false", "excerpt": "La web empieza a separar noticias, archivo y herramientas para ordenar mejor la actividad de la comunidad.", "body": "Texto completo sobre la evolución de GrassCutters.", "tags": "GrassCutters||Comunidad||Web", "seoTitle": "GrassCutters abre una nueva fase de contenidos", "seoDescription": "Nueva fase editorial de GrassCutters con noticias, archivo y herramientas."}}, "categories": ["Update", "Sim racing", "Motorsport", "Herramientas", "GrassCutters"]};
+      const NEWS_IMPORT_FIELDS = TEMPLATE_DATA.fields;
+      const CATEGORIES = TEMPLATE_DATA.categories;
+      const $ = (id) => document.getElementById(id);
+      let lastRows = [];
+
+      $('fieldsListBox').textContent = NEWS_IMPORT_FIELDS.join(';');
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const slugify = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'-');
+
+      function publicCategory(value) {
+        const simple = String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        return CATEGORIES.find((cat) => cat.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') === simple) || 'Update';
+      }
+
+      function csvEscape(value) {
+        const raw = String(value ?? '');
+        if (/[;"\n\r]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
+        return raw;
+      }
+
+      function toCsv(rows) {
+        return [NEWS_IMPORT_FIELDS.join(';'), ...rows.map((row) => NEWS_IMPORT_FIELDS.map((field) => csvEscape(row[field] ?? '')).join(';'))].join('\n');
+      }
+
+      function downloadText(filename, content) {
+        const blob = new Blob([`\uFEFF${content}`], { type:'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function detectDelimiter(text) {
+        const first = String(text || '').split(/\r?\n/).find(Boolean) || '';
+        return [';', ',', '\t'].map((d) => [d, first.split(d).length]).sort((a,b) => b[1]-a[1])[0][0] || ';';
+      }
+
+      function parseCsv(text, delimiter) {
+        const rows = [];
+        let row = [], field = '', quoted = false;
+        for (let i=0; i<text.length; i++) {
+          const ch = text[i], next = text[i+1];
+          if (ch === '"') {
+            if (quoted && next === '"') { field += '"'; i++; }
+            else quoted = !quoted;
+            continue;
+          }
+          if (!quoted && ch === delimiter) { row.push(field); field=''; continue; }
+          if (!quoted && (ch === '\n' || ch === '\r')) {
+            if (ch === '\r' && next === '\n') i++;
+            row.push(field);
+            if (row.some((c) => String(c).trim() !== '')) rows.push(row);
+            row=[]; field='';
+            continue;
+          }
+          field += ch;
+        }
+        row.push(field);
+        if (row.some((c) => String(c).trim() !== '')) rows.push(row);
+        return rows;
+      }
+
+      function rowsToObjects(text) {
+        const delimiter = detectDelimiter(text);
+        const raw = parseCsv(text.replace(/^\uFEFF/, ''), delimiter);
+        const headers = (raw.shift() || []).map((h) => String(h || '').trim());
+        const rows = raw.map((cells) => {
+          const item = {};
+          headers.forEach((h, i) => { if (h) item[h] = String(cells[i] ?? '').trim(); });
+          return item;
+        });
+        return { delimiter, headers, rows };
+      }
+
+      function normalizeRow(row) {
+        const item = {};
+        NEWS_IMPORT_FIELDS.forEach((field) => item[field] = row[field] ?? '');
+        item.title = item.title || '';
+        item.slug = item.slug || slugify(item.title);
+        item.status = item.status || 'draft';
+        item.category = publicCategory(item.category);
+        item.publishedAt = item.publishedAt || new Date().toISOString();
+        item.featured = String(item.featured).toLowerCase() === 'true';
+        item.pinned = String(item.pinned).toLowerCase() === 'true';
+        return item;
+      }
+
+      function validateFile(fileName, headers, rows) {
+        const errors = [];
+        const missing = NEWS_IMPORT_FIELDS.filter((field) => !headers.includes(field));
+        const extra = headers.filter((field) => !NEWS_IMPORT_FIELDS.includes(field));
+        if (missing.length) errors.push(`${fileName}: faltan columnas: ${missing.join(', ')}`);
+        if (extra.length) errors.push(`${fileName}: sobran columnas: ${extra.join(', ')}`);
+        rows.forEach((row, index) => {
+          const line = index + 2;
+          if (!row.title) errors.push(`${fileName} · línea ${line}: falta title.`);
+          if (!row.category) errors.push(`${fileName} · línea ${line}: falta category.`);
+          if (!row.excerpt) errors.push(`${fileName} · línea ${line}: falta excerpt/resumen.`);
+        });
+        return { errors, missing, extra };
+      }
+
+      async function readFiles() {
+        const files = Array.from($('newsCsvFiles').files || []);
+        const errors = [];
+        const results = [];
+        for (const file of files) {
+          const content = await file.text();
+          const parsed = rowsToObjects(content);
+          const rows = parsed.rows.map(normalizeRow);
+          const validation = validateFile(file.name, parsed.headers, rows);
+          errors.push(...validation.errors);
+          results.push({ name:file.name, rows, headers:parsed.headers, validation });
+        }
+        lastRows = results.flatMap((file) => file.rows);
+        return { files:results, rows:lastRows, errors };
+      }
+
+      function renderPreview(data) {
+        const box = $('newsPreviewBox');
+        const rows = data.rows || [];
+        const exactFiles = data.files.filter((file) => !file.validation.missing.length && !file.validation.extra.length).length;
+        const counts = rows.reduce((acc,row) => { acc[row.category] = (acc[row.category] || 0) + 1; return acc; }, {});
+
+        const errors = data.errors.length
+          ? `<div class="gc-news-import-errors">${data.errors.slice(0,30).map((error) => `<article>${esc(error)}</article>`).join('')}</div>`
+          : '<div class="gc-news-import-ok">Cabecera exacta y validación básica correcta.</div>';
+
+        box.innerHTML = `
+          <div class="gc-news-import-preview-grid">
+            <article class="gc-news-import-card"><span>Archivos</span><strong>${data.files.length}</strong></article>
+            <article class="gc-news-import-card"><span>Cabecera exacta</span><strong>${exactFiles}/${data.files.length}</strong></article>
+            <article class="gc-news-import-card"><span>Filas</span><strong>${rows.length}</strong></article>
+            <article class="gc-news-import-card"><span>Publicar</span><strong>${$('newsPublish').checked ? 'Sí' : 'No'}</strong></article>
+            <article class="gc-news-import-card"><span>Errores</span><strong>${data.errors.length}</strong></article>
+          </div>
+          ${errors}
+          <div style="overflow:auto">
+            <table class="gc-news-import-table">
+              <thead><tr><th>Categoría</th><th>Título</th><th>Slug</th><th>Estado</th><th>Imagen</th></tr></thead>
+              <tbody>
+                ${rows.slice(0,30).map((row) => `
+                  <tr><td>${esc(row.category)}</td><td>${esc(row.title)}</td><td>${esc(row.slug)}</td><td>${esc(row.status)}</td><td>${row.image ? 'Sí' : 'No'}</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        $('newsPreviewSection').hidden = false;
+      }
+
+      async function fetchJson(url, options={}) {
+        const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        return data;
+      }
+
+      async function importRows(rows) {
+        const existing = await fetchJson(API).then((data) => Array.isArray(data.posts) ? data.posts : []);
+        const bySlug = new Map(existing.map((post) => [String(post.slug || ''), post]));
+        const summary = { created:0, updated:0, skipped:0, dryRun:$('newsDryRun').checked, samples:[] };
+
+        for (const row of rows) {
+          const post = {
+            ...row,
+            status: $('newsPublish').checked ? 'published' : row.status,
+            featured: Boolean(row.featured),
+            pinned: Boolean(row.pinned),
+          };
+          const found = bySlug.get(post.slug);
+
+          if (summary.dryRun) {
+            summary[found ? 'updated' : 'created']++;
+            summary.samples.push({ title:post.title, category:post.category, action:found ? 'update' : 'create' });
+            continue;
+          }
+
+          if (found && !$('newsForce').checked) {
+            summary.skipped++;
+            summary.samples.push({ title:post.title, category:post.category, action:'skip existing' });
+            continue;
+          }
+
+          if (found) {
+            await fetchJson(`${API}/${encodeURIComponent(found.id)}`, { method:'PUT', body:JSON.stringify({ ...found, ...post, id: found.id }) });
+            summary.updated++;
+            summary.samples.push({ title:post.title, category:post.category, action:'updated' });
+          } else {
+            await fetchJson(API, { method:'POST', body:JSON.stringify(post) });
+            summary.created++;
+            summary.samples.push({ title:post.title, category:post.category, action:'created' });
+          }
+        }
+
+        return summary;
+      }
+
+      function renderSummary(summary) {
+        const box = $('newsImportSummary');
+        box.innerHTML = `
+          <div class="gc-news-import-summary-grid">
+            <article class="gc-news-import-card"><span>Crear</span><strong>${summary.created}</strong></article>
+            <article class="gc-news-import-card"><span>Actualizar</span><strong>${summary.updated}</strong></article>
+            <article class="gc-news-import-card"><span>Omitidas</span><strong>${summary.skipped}</strong></article>
+            <article class="gc-news-import-card"><span>Modo</span><strong>${summary.dryRun ? 'Test' : 'Write'}</strong></article>
+            <article class="gc-news-import-card"><span>Filas</span><strong>${lastRows.length}</strong></article>
+          </div>
+          <div style="overflow:auto">
+            <table class="gc-news-import-table">
+              <thead><tr><th>Título</th><th>Categoría</th><th>Acción</th></tr></thead>
+              <tbody>${summary.samples.slice(0,40).map((s) => `<tr><td>${esc(s.title)}</td><td>${esc(s.category)}</td><td>${esc(s.action)}</td></tr>`).join('')}</tbody>
+            </table>
+          </div>
+        `;
+        $('newsImportSummarySection').hidden = false;
+      }
+
+      document.querySelectorAll('[data-template-download]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.getAttribute('data-template-download');
+          if (key === 'all-fields') {
+            const row = Object.fromEntries(NEWS_IMPORT_FIELDS.map((field) => [field, '']));
+            row.title = 'Ejemplo noticia';
+            row.slug = 'ejemplo-noticia';
+            row.status = 'draft';
+            row.category = 'Update';
+            row.publishedAt = new Date().toISOString();
+            row.excerpt = 'Resumen breve de la noticia.';
+            row.body = 'Cuerpo de la noticia.';
+            downloadText('plantilla-maestra-noticias-campos-exactos.csv', toCsv([row]));
+            return;
+          }
+          const row = TEMPLATE_DATA.rows[key];
+          if (row) downloadText(`plantilla-noticias-${key}-campos-exactos.csv`, toCsv([row]));
+        });
+      });
+
+      $('copyFieldsBtn').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(NEWS_IMPORT_FIELDS.join(';')).catch(() => null);
+        $('newsImportMsg').textContent = 'Cabecera copiada.';
+      });
+
+      $('newsPreviewBtn').addEventListener('click', async () => {
+        if (!($('newsCsvFiles').files || []).length) return $('newsImportMsg').textContent = 'Selecciona al menos un CSV.';
+        $('newsImportMsg').textContent = 'Leyendo CSV...';
+        try {
+          const preview = await readFiles();
+          renderPreview(preview);
+          $('newsImportMsg').textContent = preview.errors.length ? 'Preview generado con avisos.' : 'Preview correcto.';
+        } catch (error) {
+          $('newsImportMsg').textContent = error.message || 'No se pudo leer.';
+        }
+      });
+
+      $('newsImportBtn').addEventListener('click', async () => {
+        if (!($('newsCsvFiles').files || []).length) return $('newsImportMsg').textContent = 'Selecciona al menos un CSV.';
+        $('newsImportBtn').disabled = true;
+        try {
+          const preview = await readFiles();
+          renderPreview(preview);
+          if (preview.errors.length && !$('newsDryRun').checked) throw new Error('Hay errores. Haz dry-run o corrige el CSV.');
+          $('newsImportMsg').textContent = 'Importando...';
+          const summary = await importRows(preview.rows);
+          renderSummary(summary);
+          $('newsImportMsg').textContent = summary.dryRun ? 'Dry-run completado.' : 'Importación completada.';
+        } catch (error) {
+          $('newsImportMsg').textContent = error.message || 'No se pudo importar.';
+        } finally {
+          $('newsImportBtn').disabled = false;
+        }
+      });
+    })();
+  </script>
+</AppLayout>
