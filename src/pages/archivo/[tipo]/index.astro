@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import '../../../styles/home2.css';
+import '../../../styles/archive-home2-polish.css';
 import {
   archiveItemHref,
   archiveTypeHref,
@@ -57,6 +59,8 @@ const description = archiveTypeLead(typeParam);
 const categoryImage = featured && getArchiveImage(featured) && !String(getArchiveImage(featured)).split('?')[0].toLowerCase().endsWith('.svg')
   ? getArchiveImage(featured)
   : '/og/archivo-og.png';
+const heroImage = categoryImage && categoryImage !== '/og/archivo-og.png' ? categoryImage : '';
+const heroStyle = heroImage ? `--archive-hero-image:url('${String(heroImage).replace(/'/g, '%27')}');` : '';
 ---
 
 <MarketingLayout
@@ -67,56 +71,66 @@ const categoryImage = featured && getArchiveImage(featured) && !String(getArchiv
   ogImage={categoryImage}
   ogImageAlt={`${label} del Archivo GrassCutters`}
 >
-  <main class="gc-archive-category" data-archive-category-page>
-    <header class="gc-archive-category__hero">
-      <div class="gc-archive-category__hero-copy">
-        <p class="gc-archive-category__breadcrumb">
-          <a href="/archivo/">Archivo</a> / <strong>{label}</strong>
-        </p>
-        <span class="gc-archive-category__eyebrow">{singular}</span>
-        <h1>{label}</h1>
-        <p>{archiveTypeLead(typeParam)}</p>
+  <main class="gc-archive-type-home2" data-archive-category-page>
+    <section class={`gc-archive-race-hero ${heroImage ? 'has-image' : ''}`} style={heroStyle}>
+      <div class="gc-archive-shell gc-archive-race-hero__grid">
+        <div>
+          <p class="gc-archive-breadcrumb">
+            <a href="/archivo/">Archivo</a> / <strong>{label}</strong>
+          </p>
+          <p class="gc-archive-kicker">{singular}</p>
+          <h1>{label}</h1>
+          <p class="gc-archive-race-hero__lead">{archiveTypeLead(typeParam)}</p>
 
-        <form class="gc-archive-category__search" role="search" aria-label={`Buscar en ${label}`}>
-          <label for="archiveCategorySearch">Buscar dentro de {label.toLowerCase()}</label>
-          <div>
-            <input id="archiveCategorySearch" type="search" placeholder={`Buscar ${singular.toLowerCase()}, marca, país, época...`} autocomplete="off" data-category-search-input />
-            <button type="button" data-category-clear>Limpiar</button>
+          <div class="gc-archive-statusline">
+            <span class="gc-archive-badge">{items.length} ficha{items.length === 1 ? '' : 's'}</span>
+            <span class="gc-archive-badge">Archivo GC</span>
+            <a class="gc-archive-badge" href="/archivo/">← Volver al archivo</a>
           </div>
-          <small><span data-category-count>{items.length}</span> fichas visibles</small>
-        </form>
-      </div>
 
-      <aside class="gc-archive-category__side-index">
-        <span>Índice</span>
-        <strong>{items.length}</strong>
-        <p>{items.length === 1 ? 'ficha publicada' : 'fichas publicadas'} en {label.toLowerCase()}.</p>
-        <nav>
-          {types.map((type) => (
-            <a href={archiveTypeHref(type.tipo)} class={type.tipo === typeParam ? 'is-active' : ''}>
-              <span>{type.label}</span>
-              <small>{type.count}</small>
-            </a>
-          ))}
-        </nav>
-      </aside>
-    </header>
+          <form class="gc-archive-search" role="search" aria-label={`Buscar en ${label}`}>
+            <label for="archiveCategorySearch">Buscar dentro de {label.toLowerCase()}</label>
+            <div>
+              <input id="archiveCategorySearch" type="search" placeholder={`Buscar ${singular.toLowerCase()}, marca, país, época...`} autocomplete="off" data-category-search-input />
+              <button type="button" data-category-clear>Limpiar</button>
+            </div>
+            <small><span data-category-count>{items.length}</span> fichas visibles</small>
+          </form>
+        </div>
+
+        <aside class="gc-archive-command-card">
+          <span>Índice</span>
+          <strong>{items.length}</strong>
+          <small>{items.length === 1 ? 'ficha publicada' : 'fichas publicadas'}</small>
+          <div class="gc-archive-command-grid">
+            {types.map((type) => (
+              <a href={archiveTypeHref(type.tipo)} class={type.tipo === typeParam ? 'is-active' : ''}>
+                <small>{type.label}</small>
+                <strong>{type.count}</strong>
+              </a>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </section>
 
     {items.length > 0 && (
-      <section class="gc-archive-category__az">
-        <span>Índice A-Z</span>
-        <div>
-          <button type="button" class="is-active" data-category-letter="all">Todos</button>
-          {alphaLetters.map((letter) => <button type="button" data-category-letter={letter}>{letter}</button>)}
+      <section class="gc-archive-shell gc-archive-section">
+        <div class="gc-archive-az">
+          <span>Índice A-Z</span>
+          <div>
+            <button type="button" class="is-active" data-category-letter="all">Todos</button>
+            {alphaLetters.map((letter) => <button type="button" data-category-letter={letter}>{letter}</button>)}
+          </div>
         </div>
       </section>
     )}
 
     {featured && (
-      <section class="gc-archive-category__featured">
-        <article>
-          <div>
-            <span class="gc-archive-category__eyebrow">Dossier destacado</span>
+      <section class="gc-archive-shell gc-archive-section">
+        <article class="gc-archive-spotlight">
+          <div class="gc-archive-spotlight__copy">
+            <span class="gc-archive-panel__eyebrow">Dossier destacado</span>
             <h2>{featured.nombre}</h2>
             <p>{getArchiveSummary(featured) || `Ficha destacada de ${label.toLowerCase()}.`}</p>
             <dl>
@@ -128,9 +142,11 @@ const categoryImage = featured && getArchiveImage(featured) && !String(getArchiv
           </div>
 
           {getArchiveImage(featured) ? (
-            <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="lazy" />
+            <figure>
+              <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="lazy" />
+            </figure>
           ) : (
-            <div class="gc-archive-category__mark">
+            <div class="gc-archive-spotlight__mark">
               <span>{singular}</span>
               <strong>{featured.nombre}</strong>
             </div>
@@ -139,23 +155,23 @@ const categoryImage = featured && getArchiveImage(featured) && !String(getArchiv
       </section>
     )}
 
-    <section class="gc-archive-category__library">
-      <div class="gc-archive-category__library-head">
+    <section class="gc-archive-shell gc-archive-section gc-archive-section--panel">
+      <div class="gc-archive-section-head">
         <div>
-          <span class="gc-archive-category__eyebrow">Catálogo</span>
+          <span>Catálogo</span>
           <h2>Todas las fichas</h2>
         </div>
         <p>Listado de {label.toLowerCase()} publicados en el archivo.</p>
       </div>
 
       {items.length ? (
-        <div class="gc-archive-category__grid" data-category-results>
+        <div class="gc-archive-grid" data-category-results>
           {items.map((item) => (
-            <a class="gc-archive-category__card" href={archiveItemHref(item)} data-category-card data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()} data-search={searchTerms(item)}>
+            <a class="gc-archive-card" href={archiveItemHref(item)} data-category-card data-letter={String(item.nombre || item.title || '').trim().charAt(0).toUpperCase()} data-search={searchTerms(item)}>
               {getArchiveImage(item) ? (
                 <img src={getArchiveImage(item)} alt={item.coverAlt || item.imagen_alt || item.nombre} loading="lazy" />
               ) : (
-                <span class="gc-archive-category__card-mark">{singular}</span>
+                <span class="gc-archive-card__mark">{singular}</span>
               )}
 
               <div>
@@ -172,14 +188,14 @@ const categoryImage = featured && getArchiveImage(featured) && !String(getArchiv
           ))}
         </div>
       ) : (
-        <div class="gc-archive-category__empty">
+        <div class="gc-archive-empty">
           <strong>Aún no hay fichas publicadas en esta categoría.</strong>
           <p>Cuando publiques una ficha desde el admin aparecerá aquí automáticamente.</p>
-          <a href="/admin/archivo/nuevo">Crear ficha</a>
+          <a class="gc-archive-main-btn" href="/admin/archivo/nuevo">Crear ficha</a>
         </div>
       )}
 
-      <div class="gc-archive-category__empty" data-category-empty hidden>
+      <div class="gc-archive-empty" data-category-empty hidden>
         <strong>No hay resultados con ese filtro.</strong>
         <p>Prueba con otro término o vuelve al índice completo.</p>
       </div>
@@ -242,458 +258,4 @@ const categoryImage = featured && getArchiveImage(featured) && !String(getArchiv
 
     applyFilters();
   </script>
-
-  <style is:global>
-    .gc-archive-category{
-      --archive-line:rgba(202,255,188,.13);
-      --archive-accent:var(--accent,#9cff3f);
-      width:min(100%,1380px);
-      margin:0 auto;
-      padding:clamp(28px,5vw,74px) clamp(14px,3vw,34px) clamp(70px,8vw,118px);
-      color:var(--text,#f2f7ef);
-    }
-
-    .gc-archive-category *,
-    .gc-archive-category *::before,
-    .gc-archive-category *::after{box-sizing:border-box}
-
-    .gc-archive-category a{color:inherit}
-
-    .gc-archive-category__hero{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(280px,.38fr);
-      gap:clamp(18px,3vw,34px);
-      align-items:stretch;
-      padding:clamp(22px,4vw,46px);
-      border:1px solid var(--archive-line);
-      border-radius:36px;
-      background:
-        radial-gradient(circle at 12% 4%, rgba(156,255,63,.15), transparent 36%),
-        radial-gradient(circle at 86% 10%, rgba(37,214,230,.08), transparent 34%),
-        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
-      box-shadow:0 36px 110px rgba(0,0,0,.24);
-    }
-
-    .gc-archive-category__breadcrumb{
-      display:flex;
-      gap:.5rem;
-      flex-wrap:wrap;
-      margin:0 0 1rem;
-      color:var(--muted,#7f9184);
-    }
-
-    .gc-archive-category__breadcrumb a{
-      text-decoration:none;
-    }
-
-    .gc-archive-category__eyebrow{
-      display:inline-flex;
-      color:var(--archive-accent);
-      font-size:.74rem;
-      font-weight:950;
-      letter-spacing:.22em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__hero h1{
-      max-width:900px;
-      margin:.35rem 0 .9rem;
-      font-size:clamp(3.8rem,8vw,8.8rem);
-      line-height:.8;
-      letter-spacing:-.095em;
-    }
-
-    .gc-archive-category__hero p{
-      max-width:760px;
-      margin:0;
-      color:var(--soft,#b6c5b8);
-      font-size:clamp(1.02rem,1.35vw,1.24rem);
-      line-height:1.55;
-    }
-
-    .gc-archive-category__search{
-      width:min(100%,760px);
-      margin-top:clamp(20px,3vw,34px);
-      padding:12px;
-      border:1px solid var(--archive-line);
-      border-radius:22px;
-      background:rgba(0,0,0,.24);
-      backdrop-filter:blur(14px);
-    }
-
-    .gc-archive-category__search label{
-      display:block;
-      margin:2px 0 9px 4px;
-      color:var(--archive-accent);
-      font-size:.72rem;
-      font-weight:950;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__search div{
-      display:grid;
-      grid-template-columns:1fr auto;
-      gap:10px;
-    }
-
-    .gc-archive-category__search input{
-      width:100%;
-      min-height:56px;
-      padding:0 18px;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-      background:rgba(2,6,4,.78);
-      color:#fff;
-      font:inherit;
-      outline:none;
-    }
-
-    .gc-archive-category__search button,
-    .gc-archive-category__az button{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.045);
-      color:var(--text,#f2f7ef);
-      border-radius:999px;
-      min-height:42px;
-      padding:0 16px;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      cursor:pointer;
-    }
-
-    .gc-archive-category__search small{
-      display:block;
-      margin:10px 0 0 4px;
-      color:var(--muted,#7f9184);
-    }
-
-    .gc-archive-category__side-index{
-      display:grid;
-      align-content:start;
-      gap:14px;
-      padding:22px;
-      border:1px solid var(--archive-line);
-      border-radius:28px;
-      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.018));
-    }
-
-    .gc-archive-category__side-index > span{
-      color:var(--archive-accent);
-      font-size:.74rem;
-      font-weight:950;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__side-index > strong{
-      font-size:clamp(3.4rem,6vw,5.4rem);
-      line-height:.8;
-      letter-spacing:-.08em;
-    }
-
-    .gc-archive-category__side-index nav{
-      display:grid;
-      gap:8px;
-      margin-top:8px;
-    }
-
-    .gc-archive-category__side-index nav a{
-      display:flex;
-      justify-content:space-between;
-      gap:16px;
-      padding:12px 13px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      background:rgba(0,0,0,.14);
-      text-decoration:none;
-    }
-
-    .gc-archive-category__side-index nav a.is-active,
-    .gc-archive-category__az button.is-active{
-      color:#061006;
-      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
-      border-color:transparent;
-    }
-
-    .gc-archive-category__az{
-      display:flex;
-      justify-content:space-between;
-      gap:14px;
-      align-items:center;
-      margin:18px 0;
-      padding:16px;
-      border:1px solid var(--archive-line);
-      border-radius:22px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .gc-archive-category__az span{
-      color:var(--archive-accent);
-      font-weight:950;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      font-size:.74rem;
-    }
-
-    .gc-archive-category__az div{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      justify-content:flex-end;
-    }
-
-    .gc-archive-category__featured{
-      margin:0 0 24px;
-    }
-
-    .gc-archive-category__featured article{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(300px,.38fr);
-      overflow:hidden;
-      border:1px solid var(--archive-line);
-      border-radius:30px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
-    }
-
-    .gc-archive-category__featured article > div{
-      padding:clamp(22px,3vw,34px);
-    }
-
-    .gc-archive-category__featured h2,
-    .gc-archive-category__library-head h2{
-      margin:.4rem 0 .7rem;
-      font-size:clamp(2.4rem,5vw,5rem);
-      line-height:.86;
-      letter-spacing:-.08em;
-    }
-
-    .gc-archive-category__featured p,
-    .gc-archive-category__library-head p,
-    .gc-archive-category__card p,
-    .gc-archive-category__empty p{
-      color:var(--soft,#b6c5b8);
-      line-height:1.6;
-    }
-
-    .gc-archive-category__featured dl{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:10px;
-      margin:22px 0;
-    }
-
-    .gc-archive-category__featured dl div{
-      padding:12px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-category__featured dt{
-      color:var(--muted,#7f9184);
-      font-size:.72rem;
-      font-weight:900;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__featured dd{
-      margin:6px 0 0;
-    }
-
-    .gc-archive-category__featured a,
-    .gc-archive-category__empty a{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-height:44px;
-      padding:0 18px;
-      border-radius:999px;
-      background:linear-gradient(135deg,var(--archive-accent),#45f1db);
-      color:#061006;
-      text-decoration:none;
-      font-weight:950;
-    }
-
-    .gc-archive-category__featured img{
-      width:100%;
-      height:100%;
-      min-height:280px;
-      object-fit:cover;
-    }
-
-    .gc-archive-category__mark{
-      min-height:280px;
-      display:grid;
-      place-content:center;
-      gap:10px;
-      padding:24px;
-      text-align:center;
-      background:
-        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-      background-size:42px 42px;
-    }
-
-    .gc-archive-category__mark span,
-    .gc-archive-category__card-mark{
-      color:var(--archive-accent);
-      font-size:.78rem;
-      font-weight:950;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__mark strong{
-      font-size:clamp(1.8rem,3vw,3rem);
-      line-height:.95;
-      letter-spacing:-.06em;
-    }
-
-    .gc-archive-category__library{
-      padding:clamp(20px,3vw,30px);
-      border:1px solid var(--archive-line);
-      border-radius:30px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.014));
-    }
-
-    .gc-archive-category__library-head{
-      display:flex;
-      justify-content:space-between;
-      gap:18px;
-      align-items:end;
-      margin-bottom:18px;
-    }
-
-    .gc-archive-category__grid{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:13px;
-    }
-
-    .gc-archive-category__card{
-      display:grid;
-      grid-template-rows:auto 1fr;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:22px;
-      background:rgba(0,0,0,.15);
-      text-decoration:none;
-      transition:transform .16s ease,border-color .16s ease,background .16s ease;
-    }
-
-    .gc-archive-category__card:hover{
-      transform:translateY(-2px);
-      border-color:rgba(156,255,63,.28);
-      background:rgba(255,255,255,.032);
-    }
-
-    .gc-archive-category__card img,
-    .gc-archive-category__card-mark{
-      width:100%;
-      aspect-ratio:16/10;
-      object-fit:cover;
-      display:grid;
-      place-items:center;
-      background:rgba(255,255,255,.035);
-    }
-
-    .gc-archive-category__card > div{
-      display:grid;
-      gap:8px;
-      padding:16px;
-    }
-
-    .gc-archive-category__card small{
-      color:var(--archive-accent);
-      font-weight:950;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-category__card strong{
-      font-size:1.22rem;
-      line-height:1.08;
-      letter-spacing:-.04em;
-    }
-
-    .gc-archive-category__card p{
-      margin:0;
-    }
-
-    .gc-archive-category__card footer{
-      display:flex;
-      flex-wrap:wrap;
-      gap:7px;
-      align-items:center;
-      margin-top:auto;
-    }
-
-    .gc-archive-category__card em{
-      color:var(--muted,#7f9184);
-      font-style:normal;
-      font-size:.82rem;
-    }
-
-    .gc-archive-category__card b{
-      margin-left:auto;
-      color:#fff;
-      font-size:.82rem;
-    }
-
-    .gc-archive-category__empty{
-      padding:22px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-archive-category__empty strong{
-      display:block;
-      font-size:1.25rem;
-    }
-
-    @media(max-width:1080px){
-      .gc-archive-category__hero,
-      .gc-archive-category__featured article{
-        grid-template-columns:1fr;
-      }
-
-      .gc-archive-category__grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-    }
-
-    @media(max-width:720px){
-      .gc-archive-category{
-        padding-inline:12px;
-      }
-
-      .gc-archive-category__hero{
-        padding:20px;
-        border-radius:24px;
-      }
-
-      .gc-archive-category__hero h1{
-        font-size:clamp(3.4rem,17vw,5.6rem);
-      }
-
-      .gc-archive-category__search div,
-      .gc-archive-category__featured dl,
-      .gc-archive-category__grid{
-        grid-template-columns:1fr;
-      }
-
-      .gc-archive-category__az,
-      .gc-archive-category__library-head{
-        display:grid;
-      }
-
-      .gc-archive-category__az div{
-        justify-content:flex-start;
-      }
-    }
-  </style>
 </MarketingLayout>

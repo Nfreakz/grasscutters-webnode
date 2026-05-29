@@ -1,0 +1,728 @@
+/* GC ARCHIVO HOME2 WIDTH + PALETTE FIX v2
+   Corrige el ancho raro detectado en /archivo y fuerza la paleta real de Home2.
+   Archivo único para copiar encima de:
+   src/styles/archive-home2-polish.css
+*/
+
+.gc-archive-home2,
+.gc-archive-type-home2,
+.gc-archive-detail-home2 {
+  --bg: #030503;
+  --bg2: #070a07;
+  --panel: rgba(5, 9, 6, .92);
+  --panel-soft: rgba(8, 14, 10, .88);
+  --line: rgba(164, 255, 68, .12);
+  --line-2: rgba(164, 255, 68, .22);
+  --text: #f2f4ef;
+  --soft: #b7c0b2;
+  --muted: #72806d;
+  --green: #96ff2f;
+  --green-2: #80f016;
+  --cyan: #21c8d6;
+  --red: #ec4b4b;
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius: 8px;
+  --radius-sm: 5px;
+
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--sans);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(150,255,47,.06), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(33,200,214,.03), transparent 24%),
+    linear-gradient(180deg, #020402 0%, #030503 45%, #030503 100%);
+  isolation: isolate;
+}
+
+.gc-archive-home2 *,
+.gc-archive-home2 *::before,
+.gc-archive-home2 *::after,
+.gc-archive-type-home2 *,
+.gc-archive-type-home2 *::before,
+.gc-archive-type-home2 *::after,
+.gc-archive-detail-home2 *,
+.gc-archive-detail-home2 *::before,
+.gc-archive-detail-home2 *::after {
+  box-sizing: border-box;
+}
+
+.gc-archive-home2 a,
+.gc-archive-type-home2 a,
+.gc-archive-detail-home2 a {
+  color: inherit;
+}
+
+.gc-archive-home2 img,
+.gc-archive-type-home2 img,
+.gc-archive-detail-home2 img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+/* MISMO ANCHO QUE HOME2: width:min(100% - 34px, 1240px)
+   El fallo del v1 era mezclar shells de 1460px con secciones más anchas.
+*/
+.gc-archive-shell {
+  width: min(100% - 34px, 1240px);
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+/* Si una sección es shell + panel, no debe ganar anchura visual por padding raro */
+.gc-archive-shell.gc-archive-section--panel {
+  width: min(100% - 34px, 1240px);
+  max-width: 1240px;
+}
+
+.gc-archive-home2::before,
+.gc-archive-type-home2::before,
+.gc-archive-detail-home2::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .14;
+  background-image: url("/ui/home2/gc-home2-grid.svg");
+  background-size: 560px 560px;
+  mix-blend-mode: screen;
+}
+
+/* HERO */
+.gc-archive-race-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 470px;
+  padding: 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  background: #030503;
+}
+
+.gc-archive-race-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(3,5,3,.86) 0%, rgba(3,5,3,.58) 38%, rgba(3,5,3,.18) 62%, rgba(3,5,3,.78) 100%),
+    linear-gradient(180deg, rgba(3,5,3,.12) 0%, rgba(3,5,3,.05) 56%, rgba(3,5,3,.92) 100%);
+  z-index: 1;
+}
+
+.gc-archive-race-hero.has-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--archive-hero-image);
+  background-size: cover;
+  background-position: center;
+  filter: saturate(.92) brightness(.68) contrast(1.06);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gc-archive-race-hero__grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: center;
+  min-height: 470px;
+  padding-block: 34px 44px;
+}
+
+/* Tipografía Home2 */
+.gc-archive-kicker,
+.gc-archive-panel__eyebrow,
+.gc-archive-card small,
+.gc-archive-section-head span,
+.gc-archive-breadcrumb,
+.gc-archive-az > span {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+.gc-archive-breadcrumb {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  color: var(--soft);
+}
+
+.gc-archive-breadcrumb a {
+  text-decoration: none;
+}
+
+.gc-archive-race-hero h1 {
+  margin: 8px 0 0;
+  font-size: clamp(58px, 8vw, 86px);
+  line-height: .88;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+  max-width: 680px;
+  text-wrap: balance;
+}
+
+.gc-archive-race-hero__lead {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: var(--soft);
+  font-size: clamp(15px, 1.2vw, 18px);
+  line-height: 1.45;
+}
+
+.gc-archive-statusline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.gc-archive-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding-inline: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: rgba(6,10,7,.75);
+  color: var(--soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+/* Command card como panel Home2 */
+.gc-archive-command-card {
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.08), transparent 8rem),
+    linear-gradient(180deg, var(--panel-soft), var(--panel));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.025),
+    0 18px 60px rgba(0,0,0,.24);
+  padding: 16px;
+  min-height: 230px;
+  display: grid;
+  align-content: end;
+  gap: 10px;
+  border-radius: var(--radius);
+}
+
+.gc-archive-command-card > span,
+.gc-archive-command-card small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.gc-archive-command-card > strong {
+  display: block;
+  color: var(--green);
+  font-size: clamp(58px, 5.4vw, 82px);
+  line-height: .78;
+  letter-spacing: -.085em;
+}
+
+.gc-archive-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gc-archive-command-grid a,
+.gc-archive-command-grid button {
+  display: grid;
+  gap: 5px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.018);
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.gc-archive-command-grid a.is-active {
+  border-color: rgba(150,255,47,.55);
+  background: rgba(150,255,47,.08);
+}
+
+.gc-archive-command-grid strong {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Search */
+.gc-archive-search {
+  width: min(100%, 760px);
+  margin-top: 22px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(5,9,6,.76);
+  backdrop-filter: blur(14px);
+}
+
+.gc-archive-search label {
+  display: block;
+  margin: 2px 0 9px 4px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.gc-archive-search div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.gc-archive-search input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius-sm);
+  background: rgba(3,5,3,.88);
+  color: #fff;
+  font: inherit;
+  outline: none;
+}
+
+.gc-archive-search input:focus {
+  border-color: var(--line-2);
+  box-shadow: 0 0 0 3px rgba(150,255,47,.08);
+}
+
+.gc-archive-search button,
+.gc-archive-filter-row button,
+.gc-archive-az button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gc-archive-search small {
+  display: block;
+  margin: 10px 0 0 4px;
+  color: var(--muted);
+}
+
+/* Secciones */
+.gc-archive-section {
+  margin-top: 16px;
+}
+
+.gc-archive-section--panel {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 72% 0%, rgba(150,255,47,.055), transparent 10rem),
+    linear-gradient(180deg, var(--panel-soft), var(--panel));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+}
+
+.gc-archive-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.gc-archive-section-head h2 {
+  margin: 5px 0 0;
+  font-size: clamp(44px, 6.4vw, 72px);
+  line-height: .88;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+}
+
+.gc-archive-section-head p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.45;
+}
+
+/* Cards */
+.gc-archive-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+
+.gc-archive-type-card,
+.gc-archive-card,
+.gc-archive-spotlight,
+.gc-archive-empty,
+.gc-archive-az {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(150,255,47,.055), transparent 9rem),
+    linear-gradient(180deg, var(--panel-soft), var(--panel));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+}
+
+.gc-archive-type-card {
+  min-height: 150px;
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  padding: 16px;
+  text-decoration: none;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.gc-archive-type-card:hover,
+.gc-archive-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-2);
+}
+
+.gc-archive-type-card strong {
+  font-size: clamp(22px, 2.4vw, 31px);
+  line-height: .96;
+  letter-spacing: -.05em;
+  text-transform: uppercase;
+}
+
+.gc-archive-type-card p,
+.gc-archive-type-card small,
+.gc-archive-card p,
+.gc-archive-spotlight p,
+.gc-archive-empty p {
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.45;
+}
+
+/* Spotlight */
+.gc-archive-spotlight {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .55fr);
+  overflow: hidden;
+}
+
+.gc-archive-spotlight__copy {
+  padding: 24px;
+  align-self: end;
+}
+
+.gc-archive-spotlight h2 {
+  margin: 7px 0 9px;
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: .88;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+}
+
+.gc-archive-spotlight dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.gc-archive-spotlight dl div {
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.018);
+}
+
+.gc-archive-spotlight dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.gc-archive-spotlight dd {
+  margin: 6px 0 0;
+  color: var(--text);
+}
+
+.gc-archive-spotlight a,
+.gc-archive-main-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  color: #071006;
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.gc-archive-spotlight figure {
+  margin: 0;
+  min-height: 100%;
+}
+
+.gc-archive-spotlight img,
+.gc-archive-spotlight__mark {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  object-fit: cover;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+  background: rgba(255,255,255,.035);
+}
+
+/* Filters + grid */
+.gc-archive-filter-row,
+.gc-archive-az {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gc-archive-az {
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.gc-archive-az div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gc-archive-filter-row button.is-active,
+.gc-archive-az button.is-active {
+  color: #071006;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  border-color: rgba(150,255,47,.65);
+}
+
+.gc-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+}
+
+.gc-archive-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform .16s ease, border-color .16s ease;
+}
+
+.gc-archive-card img,
+.gc-archive-card__mark {
+  width: 100%;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.035);
+}
+
+.gc-archive-card > div {
+  display: grid;
+  gap: 8px;
+  padding: 15px;
+}
+
+.gc-archive-card strong {
+  font-size: clamp(19px, 1.6vw, 24px);
+  line-height: 1.02;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+
+.gc-archive-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin-top: auto;
+}
+
+.gc-archive-card em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: .82rem;
+}
+
+.gc-archive-card b {
+  margin-left: auto;
+  color: var(--text);
+  font-size: .82rem;
+}
+
+.gc-archive-empty {
+  padding: 22px;
+}
+
+.gc-archive-empty strong {
+  display: block;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Detail dossier overrides */
+.gc-archive-detail-home2 .gc-archive-dossier {
+  width: min(100% - 34px, 1240px) !important;
+  max-width: 1240px !important;
+  padding: 16px 0 70px !important;
+  color: var(--text) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__hero {
+  border-radius: var(--radius) !important;
+  border-color: var(--line) !important;
+  min-height: 470px !important;
+  background:
+    linear-gradient(90deg, rgba(3,5,3,.86) 0%, rgba(3,5,3,.58) 38%, rgba(3,5,3,.18) 62%, rgba(3,5,3,.78) 100%),
+    linear-gradient(180deg, rgba(3,5,3,.12) 0%, rgba(3,5,3,.05) 56%, rgba(3,5,3,.92) 100%) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier h1 {
+  font-size: clamp(58px, 8vw, 86px) !important;
+  line-height: .88 !important;
+  letter-spacing: -.055em !important;
+  text-transform: uppercase !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__lead {
+  font-size: clamp(15px, 1.2vw, 18px) !important;
+  line-height: 1.45 !important;
+  color: var(--soft) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__hero-media figure {
+  border-radius: var(--radius) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  background: rgba(0,0,0,.18) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__hero-media img {
+  filter: saturate(.92) brightness(.68) contrast(1.06) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__panel,
+.gc-archive-detail-home2 .gc-archive-dossier__side-panel {
+  border-radius: var(--radius) !important;
+  border-color: var(--line) !important;
+  background:
+    radial-gradient(circle at 72% 0%, rgba(150,255,47,.045), transparent 10rem),
+    linear-gradient(180deg, var(--panel-soft), var(--panel)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025) !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__section-head h2,
+.gc-archive-detail-home2 .gc-archive-dossier__side-panel h2 {
+  font-size: clamp(34px, 4vw, 54px) !important;
+  line-height: .88 !important;
+  letter-spacing: -.055em !important;
+  text-transform: uppercase !important;
+}
+
+.gc-archive-detail-home2 .gc-archive-dossier__overview-copy,
+.gc-archive-detail-home2 .gc-archive-dossier__panel p {
+  color: var(--soft) !important;
+  line-height: 1.62 !important;
+}
+
+/* Responsive */
+@media (max-width: 1120px) {
+  .gc-archive-race-hero__grid,
+  .gc-archive-spotlight {
+    grid-template-columns: 1fr;
+  }
+
+  .gc-archive-type-grid,
+  .gc-archive-grid {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+
+  .gc-archive-spotlight dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .gc-archive-shell,
+  .gc-archive-shell.gc-archive-section--panel,
+  .gc-archive-detail-home2 .gc-archive-dossier {
+    width: min(100% - 24px, 1240px) !important;
+  }
+
+  .gc-archive-race-hero {
+    min-height: auto;
+  }
+
+  .gc-archive-race-hero__grid {
+    min-height: auto;
+    padding-block: 78px 34px;
+  }
+
+  .gc-archive-race-hero__grid,
+  .gc-archive-search div,
+  .gc-archive-command-grid,
+  .gc-archive-type-grid,
+  .gc-archive-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gc-archive-race-hero h1,
+  .gc-archive-detail-home2 .gc-archive-dossier h1 {
+    font-size: clamp(44px, 15vw, 62px) !important;
+  }
+
+  .gc-archive-section-head {
+    display: grid;
+    align-items: start;
+  }
+
+  .gc-archive-section--panel {
+    padding: 18px;
+  }
+}

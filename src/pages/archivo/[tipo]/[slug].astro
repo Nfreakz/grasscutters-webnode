@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import '../../../styles/home2.css';
+import '../../../styles/archive-home2-polish.css';
 import ArchiveDossierPage from '../../../components/archive/ArchiveDossierPage.astro';
 import {
   getArchiveImage,
@@ -66,19 +68,23 @@ if (!entry) {
   ogImageAlt={seoImageAlt}
   ogType={entry ? 'article' : 'website'}
 >
-  {entry ? (
-    <ArchiveDossierPage entry={entry} related={related} />
-  ) : (
-    <main class="gc-archive-index">
-      <header class="gc-archive-index__hero">
-        <span>Archivo</span>
-        <h1>Ficha no encontrada.</h1>
-        <p>No existe una ficha publicada para esta ruta o todavía no se ha publicado desde el panel de administración.</p>
-        <div class="gc-archive-catalogue__actions">
-          <a class="gc-archive-catalogue__cta" href="/archivo/">Volver al Archivo</a>
-          <a class="gc-archive-catalogue__cta" href={`/archivo/${type}/`}>Ver {label}</a>
+  <main class="gc-archive-detail-home2">
+    {entry ? (
+      <ArchiveDossierPage entry={entry} related={related} />
+    ) : (
+      <section class="gc-archive-race-hero">
+        <div class="gc-archive-shell gc-archive-race-hero__grid">
+          <div>
+            <p class="gc-archive-kicker">Archivo</p>
+            <h1>Ficha no encontrada</h1>
+            <p class="gc-archive-race-hero__lead">No existe una ficha publicada para esta ruta o todavía no se ha publicado desde el panel de administración.</p>
+            <div class="gc-archive-statusline">
+              <a class="gc-archive-badge" href="/archivo/">← Volver al Archivo</a>
+              <a class="gc-archive-badge" href={`/archivo/${type}/`}>Ver {label}</a>
+            </div>
+          </div>
         </div>
-      </header>
-    </main>
-  )}
+      </section>
+    )}
+  </main>
 </MarketingLayout>
