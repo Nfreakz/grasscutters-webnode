@@ -147,52 +147,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </article>
       </div>
     </section>
-    <!-- GC_HOME2_SWAP_RACE_CONTROL_COMBO_CAROUSEL_V5_HTML -->
-    <section class="gc-home2-combo-strip gc-home2-shell" aria-label="Combo pulse del último combo">
-      <div class="gc-home2-combo-strip__rail">
-        <div class="gc-home2-combo-strip__title">
-          <span class="gc-home2-server-dot" aria-hidden="true"></span>
-          <strong>Combo Pulse</strong>
-        </div>
 
-        <div class="gc-home2-combo-marquee" aria-live="polite">
-          <dl class="gc-home2-combo-marquee-track">
-            <div>
-              <dt>Rodador</dt>
-              <dd data-home2-standout-most-laps>--</dd>
-              <small data-home2-standout-most-laps-meta>vueltas del combo</small>
-            </div>
-            <div>
-              <dt>Ritmo</dt>
-              <dd data-home2-standout-best-average>--</dd>
-              <small data-home2-standout-best-average-meta>media del combo</small>
-            </div>
-            <div>
-              <dt>Limpio</dt>
-              <dd data-home2-standout-cleanest>--</dd>
-              <small data-home2-standout-cleanest-meta>limpieza del combo</small>
-            </div>
-            <div>
-              <dt>Vmax</dt>
-              <dd data-home2-standout-vmax>--</dd>
-              <small data-home2-standout-vmax-meta>velocidad en combo</small>
-            </div>
-            <div>
-              <dt>Última</dt>
-              <dd data-home2-standout-last-driver>--</dd>
-              <small data-home2-standout-last-driver-meta>última del combo</small>
-            </div>
-            <div>
-              <dt>Duelo</dt>
-              <dd data-home2-standout-duel>--</dd>
-              <small data-home2-standout-duel-meta>diferencias del combo</small>
-            </div>
-          </dl>
-        </div>
-      </div>
-    </section>
-
-<section class="gc-home2-toprow gc-home2-shell" aria-label="Actividad destacada">
+    <section class="gc-home2-toprow gc-home2-shell" aria-label="Actividad destacada">
       <article class="gc-home2-panel gc-home2-panel--now">
         <div class="gc-home2-panel__head">
           <div>
@@ -330,11 +286,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
       </article>
 
       <article class="gc-home2-panel gc-home2-panel--server gc-home2-panel--server-v8">
-        <div class="gc-home2-panel__head">
+        <div class="gc-home2-server-head">
           <div>
             <p class="gc-home2-panel__eyebrow">Estado del servidor</p>
             <h2>Race Control</h2>
           </div>
+          <span class="gc-home2-server-dot" aria-hidden="true"></span>
         </div>
 
         <dl class="gc-home2-server-rows gc-home2-server-rows--v8">
@@ -1696,186 +1653,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
       };
 
-
-      /* GC_HOME2_SERVER_STRIP_STANDOUTS_V1_JS */
-      const driverNameFromLapV1 = (lap) =>
-        firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'driver.name', 'player.name', 'DriverName', 'steamName']) || 'Piloto';
-
-      const carNameFromLapV1 = (lap) =>
-        firstValue(lap, ['carName', 'carDisplayName', 'carVisibleName', 'car.name', 'car.displayName', 'vehicle', 'Car']) || '';
-
-      const isLapInvalidV1 = (lap) => {
-        const value = firstValue(lap, ['valid', 'isValid', 'Valid']);
-        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
-      };
-
-      const speedFromLapV1 = (lap) => {
-        const raw = firstValue(lap, ['maxSpeedKmh', 'MaxSpeed_KMH', 'maxSpeed', 'speedKmh']);
-        const value = Number(raw);
-        return Number.isFinite(value) && value > 0 ? value : 0;
-      };
-
-      const uniqueLapKeyV1 = (lap, index) => [
-        firstValue(lap, ['lapId', 'LapId', 'id']),
-        firstValue(lap, ['playerId', 'driverId', 'driver.id', 'PlayerId']),
-        driverNameFromLapV1(lap),
-        carNameFromLapV1(lap),
-        firstValue(lap, ['trackName', 'track.displayName', 'track.name', 'Track']),
-        firstValue(lap, ['lapTimeMs', 'LapTime', 'lapMs', 'lapTime', 'bestLapTime']),
-        firstValue(lap, ['timestamp', 'timestampIso', 'createdAt'])
-      ].filter(Boolean).join('|') || `lap-${index}`;
-
-      const averageV1 = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
-
-      const renderRaceStandoutsV1 = (rowsInput = [], activeTrack = '', activeCars = []) => {
-        const activeCarList = Array.isArray(activeCars) ? activeCars.filter(Boolean) : [];
-        const comboScopedRows = getArray(rowsInput)
-          .filter(Boolean)
-          .filter((row) => rowTrackMatches(row, activeTrack))
-          .filter((row) => rowCarMatches(row, activeCarList));
-
-        const cleanRows = comboScopedRows
-          .filter((row, index, array) => array.findIndex((candidate, candidateIndex) => uniqueLapKeyV1(candidate, candidateIndex) === uniqueLapKeyV1(row, index)) === index);
-
-        const set = (selector, value) => setText(selector, value || '--');
-
-        if (!cleanRows.length) {
-          set('[data-home2-standout-most-laps]', '--');
-          set('[data-home2-standout-best-average]', '--');
-          set('[data-home2-standout-cleanest]', '--');
-          set('[data-home2-standout-vmax]', '--');
-          set('[data-home2-standout-last-driver]', '--');
-          set('[data-home2-standout-duel]', '--');
-          return;
-        }
-
-        const byDriver = new Map();
-
-        cleanRows.forEach((lap) => {
-          const name = driverNameFromLapV1(lap);
-          const key = slugify(name);
-          if (!key) return;
-
-          const lapMs = rankTimeValue(lap);
-          const valid = !isLapInvalidV1(lap);
-          const speed = speedFromLapV1(lap);
-          const date = lapDateFromRow(lap);
-
-          if (!byDriver.has(key)) {
-            byDriver.set(key, {
-              name,
-              laps: 0,
-              valid: 0,
-              invalid: 0,
-              times: [],
-              bestMs: Number.POSITIVE_INFINITY,
-              bestLap: null,
-              maxSpeed: 0,
-              maxSpeedCar: '',
-              lastDate: null,
-              lastLap: null
-            });
-          }
-
-          const item = byDriver.get(key);
-          item.laps += 1;
-          if (valid) item.valid += 1;
-          else item.invalid += 1;
-
-          if (valid && Number.isFinite(lapMs) && lapMs !== Number.POSITIVE_INFINITY) {
-            item.times.push(lapMs);
-            if (lapMs < item.bestMs) {
-              item.bestMs = lapMs;
-              item.bestLap = lap;
-            }
-          }
-
-          if (speed > item.maxSpeed) {
-            item.maxSpeed = speed;
-            item.maxSpeedCar = carNameFromLapV1(lap);
-          }
-
-          if (date && (!item.lastDate || date.getTime() > item.lastDate.getTime())) {
-            item.lastDate = date;
-            item.lastLap = lap;
-          }
-        });
-
-        const drivers = [...byDriver.values()].filter((item) => item.laps > 0);
-
-        const mostLaps = drivers.slice().sort((a, b) => b.laps - a.laps || b.valid - a.valid)[0];
-
-        const averageCandidates = drivers
-          .map((item) => {
-            const top = item.times.slice().sort((a, b) => a - b).slice(0, Math.min(5, Math.max(3, item.times.length)));
-            return { ...item, avg: averageV1(top), samples: top.length };
-          })
-          .filter((item) => item.samples >= 3 && item.avg > 0)
-          .sort((a, b) => a.avg - b.avg);
-
-        const bestAverage = averageCandidates[0];
-
-        const cleanest = drivers
-          .filter((item) => item.laps >= 3)
-          .map((item) => ({ ...item, cleanRate: item.laps ? item.valid / item.laps : 0 }))
-          .sort((a, b) => b.cleanRate - a.cleanRate || b.valid - a.valid || b.laps - a.laps)[0];
-
-        const speedKing = drivers
-          .filter((item) => item.maxSpeed > 0)
-          .sort((a, b) => b.maxSpeed - a.maxSpeed)[0];
-
-        const latest = drivers
-          .filter((item) => item.lastDate)
-          .sort((a, b) => b.lastDate.getTime() - a.lastDate.getTime())[0];
-
-        const bestByDriver = drivers
-          .filter((item) => Number.isFinite(item.bestMs) && item.bestMs !== Number.POSITIVE_INFINITY)
-          .sort((a, b) => a.bestMs - b.bestMs);
-
-        let closest = null;
-        for (let i = 0; i < bestByDriver.length - 1; i += 1) {
-          const a = bestByDriver[i];
-          const b = bestByDriver[i + 1];
-          const gap = Math.abs(b.bestMs - a.bestMs);
-          if (!closest || gap < closest.gap) closest = { a, b, gap };
-        }
-
-        if (mostLaps) {
-          set('[data-home2-standout-most-laps]', mostLaps.name);
-          set('[data-home2-standout-most-laps-meta]', `${mostLaps.laps} vueltas en combo · ${mostLaps.valid} válidas`);
-        }
-
-        if (bestAverage) {
-          set('[data-home2-standout-best-average]', bestAverage.name);
-          set('[data-home2-standout-best-average-meta]', `${formatLap(Math.round(bestAverage.avg))} media top ${bestAverage.samples}`);
-        } else {
-          set('[data-home2-standout-best-average]', bestByDriver[0]?.name || '--');
-          set('[data-home2-standout-best-average-meta]', bestByDriver[0] ? `${formatLap(bestByDriver[0].bestMs)} mejor vuelta` : 'top 5 vueltas');
-        }
-
-        if (cleanest) {
-          set('[data-home2-standout-cleanest]', cleanest.name);
-          set('[data-home2-standout-cleanest-meta]', `${Math.round(cleanest.cleanRate * 100)}% válidas · ${cleanest.laps} vueltas en combo`);
-        }
-
-        if (speedKing) {
-          set('[data-home2-standout-vmax]', speedKing.name);
-          set('[data-home2-standout-vmax-meta]', `${Math.round(speedKing.maxSpeed)} km/h${speedKing.maxSpeedCar ? ' · ' + speedKing.maxSpeedCar : ''}`);
-        }
-
-        if (latest) {
-          set('[data-home2-standout-last-driver]', latest.name);
-          set('[data-home2-standout-last-driver-meta]', latest.lastDate ? `última hace ${formatAgo(latest.lastDate)}` : 'actividad reciente');
-        }
-
-        if (closest) {
-          const a = closest.a.name.split(' ')[0] || closest.a.name;
-          const b = closest.b.name.split(' ')[0] || closest.b.name;
-          set('[data-home2-standout-duel]', `${a} / ${b}`);
-          set('[data-home2-standout-duel-meta]', `gap combo ${(closest.gap / 1000).toFixed(3)} s`);
-        }
-      };
-
       const updateServerAgeFromFirstLap = async (fallbackRows = []) => {
         const { payload } = await fetchJsonFirstWithSource([
           '/api/gc/first-lap',
@@ -2205,17 +1982,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const leaderboardPayload =
           await fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=25') ||
           await fetchJson('/api/gc/leaderboard?scope=currentCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200') ||
+          await fetchJson('/api/gc/leaderboard?scope=all&limit=200') ||
           await fetchJson('/api/gc/recent-laps?limit=200&sort=recent&valid=all') ||
           await fetchJson('/api/hotlaps?limit=200');
-
-        const comboStandoutsPayload =
-          await fetchJson('/api/gc/recent-laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=3000&sort=recent&valid=all');
 
         const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
         if (raceData) {
@@ -2279,15 +2048,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         ];
 
         renderComboRanking(boardCandidates, track, carList);
-
-        renderRaceStandoutsV1([
-          ...getArray(comboStandoutsPayload),
-          ...getArray(leaderboardPayload),
-          ...getArray(combo.laps),
-          ...getArray(combo.bestLaps),
-          ...getArray(combo.leaderboard),
-          ...getArray(recentPayload)
-        ], track, carList);
 
         await Promise.all([
           renderChampionship(),

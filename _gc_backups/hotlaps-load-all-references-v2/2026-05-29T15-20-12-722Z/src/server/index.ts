@@ -11802,12 +11802,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     const globalScopes = ['global', 'all', 'history', 'historico', 'histórico', 'full', 'complete', 'completo'];
     const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
     const wantsRawGlobal = scope === 'global';
-    /* GC_HOTLAPS_LOAD_ALL_REFERENCES_V2_BACKEND */
-    const rawLimit = getQueryString(req, 'limit', wantsRawGlobal ? 'all' : '30').toLowerCase();
-    const wantsAllReferences = wantsRawGlobal && ['all', 'full', 'max', 'none', '0', '-1'].includes(rawLimit);
-    const limit = wantsAllReferences
-      ? Number.POSITIVE_INFINITY
-      : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
+    const limit = gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 3000 : 30, 1, 5000);
 
     if (wantsRawGlobal) {
       const stracker = getSafeStrackerOrRespond(res);
@@ -11836,7 +11831,6 @@ app.get('/api/gc/leaderboard', async (req, res) => {
         stracker,
         count: items.length,
         total: items.length,
-        limitMode: wantsAllReferences ? 'all' : 'limited',
         totalFilteredLaps: filtered.length,
         totalLaps: laps.length,
         items,
@@ -12479,7 +12473,6 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
-
 
 
 

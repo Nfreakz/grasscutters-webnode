@@ -11795,84 +11795,15 @@ app.get('/api/gc/active-combo', async (req, res) => {
 
 app.get('/api/gc/leaderboard', async (req, res) => {
   try {
-    /* GC_HOTLAPS_ALL_TRACKS_SCOPE_FIX_V1_BACKEND */
+    /* GC_DATA_CORE_DISPLAY_NAMES_GUARD_V1 */
     await readDisplayNameStoreAsync();
-
-    const rawScope = getQueryString(req, 'scope', 'activeCombo').toLowerCase();
-    const globalScopes = ['global', 'all', 'history', 'historico', 'histórico', 'full', 'complete', 'completo'];
-    const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
-    const wantsRawGlobal = scope === 'global';
-    /* GC_HOTLAPS_LOAD_ALL_REFERENCES_V2_BACKEND */
-    const rawLimit = getQueryString(req, 'limit', wantsRawGlobal ? 'all' : '30').toLowerCase();
-    const wantsAllReferences = wantsRawGlobal && ['all', 'full', 'max', 'none', '0', '-1'].includes(rawLimit);
-    const limit = wantsAllReferences
-      ? Number.POSITIVE_INFINITY
-      : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
-
-    if (wantsRawGlobal) {
-      const stracker = getSafeStrackerOrRespond(res);
-      if (!stracker?.resolvedPath) return;
-
-      const laps = await readJoinedLaps(stracker.resolvedPath);
-      const filtered = filterLaps(laps, req, { validOnly: false });
-      const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
-      const rows = makeBestHotlaps(filtered, groupMode === 'driver' ? 'driver' : 'all').slice(0, limit);
-      const items = rows.map((lap) => compactLapForCombo(lap));
-
-      const validRows = filtered.filter((lap) => lap.valid);
-      const tracks = new Set(filtered.map((lap) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean));
-      const cars = new Set(filtered.map((lap) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean));
-      const drivers = new Set(filtered.map((lap) => String(lap.driver?.id ?? lap.driver?.name ?? '')).filter(Boolean));
-      const bestLap = validRows.slice().sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
-      const latestLap = filtered.slice().sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))[0] || null;
-
-      res.json({
-        ok: true,
-        mode: 'gc-data-core-v1',
-        generatedAt: new Date().toISOString(),
-        source: 'gc-hotlaps-all-tracks-scope-fix-v1',
-        scope,
-        requestedScope: rawScope,
-        stracker,
-        count: items.length,
-        total: items.length,
-        limitMode: wantsAllReferences ? 'all' : 'limited',
-        totalFilteredLaps: filtered.length,
-        totalLaps: laps.length,
-        items,
-        hotlaps: items,
-        laps: items,
-        leaderboard: items,
-        data: {
-          activeCombo: null,
-          leaderboard: items,
-          laps: items,
-          items,
-          stats: {
-            totalLaps: filtered.length,
-            visibleLaps: items.length,
-            validLaps: validRows.length,
-            invalidLaps: Math.max(0, filtered.length - validRows.length),
-            driversCount: drivers.size,
-            carsCount: cars.size,
-            tracksCount: tracks.size,
-            bestLap: bestLap ? compactLapForCombo(bestLap) : null,
-            latestLap: latestLap ? compactLapForCombo(latestLap) : null
-          }
-        },
-        filters: summarizeFilters(req),
-        message: 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histórico completo.'
-      });
-      return;
-    }
-
+    const scope = getQueryString(req, 'scope', 'activeCombo') === 'global' ? 'global' : 'activeCombo';
+    const limit = gcDataCoreQueryNumber(req, 'limit', 30, 1, 200);
     const payload = await buildGcDataCorePayload(req, {
       scope,
       recentLimit: 1,
       leaderboardLimit: limit
     });
-
-    const leaderboard = payload.data?.leaderboard || [];
 
     res.json({
       ok: payload.ok,
@@ -11880,25 +11811,17 @@ app.get('/api/gc/leaderboard', async (req, res) => {
       generatedAt: payload.generatedAt,
       source: payload.source,
       scope,
-      requestedScope: rawScope,
       stracker: payload.stracker,
-      count: Array.isArray(leaderboard) ? leaderboard.length : 0,
-      items: leaderboard,
-      hotlaps: leaderboard,
-      laps: leaderboard,
-      leaderboard,
       data: payload.data ? {
         activeCombo: payload.data.activeCombo,
         leaderboard: payload.data.leaderboard,
-        items: payload.data.leaderboard,
-        laps: payload.data.leaderboard,
         stats: payload.data.scopedStats
       } : null,
       message: payload.ok ? 'Leaderboard canónico generado desde GC Data Core.' : payload.message
     });
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/leaderboard:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canónico.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudo generar el leaderboard canónico.' });
   }
 });
 
@@ -12479,15 +12402,6 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/logout', (req, res) => {
   void gcLogoutRequest(req, res, true);
 });
-
-
-
-
-
-
-
-
-
 
 
 

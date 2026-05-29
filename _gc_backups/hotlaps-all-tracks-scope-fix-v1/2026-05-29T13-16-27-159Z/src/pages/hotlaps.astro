@@ -874,7 +874,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         els.reload.disabled = true;
 
         try {
-          const res = await fetch('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=all', { cache:'no-store', credentials:'include' });
+          const res = await fetch('/api/gc/leaderboard?scope=all&limit=3000', { cache:'no-store', credentials:'include' });
           if (!res.ok) throw new Error('Endpoint no disponible');
 
           const json = await res.json();
@@ -1345,7 +1345,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           const [snapshot, leaderboard] = await Promise.all([
             fetchCoreJson('/api/gc/snapshot?scope=activeCombo&limit=12').catch(() => null),
             fetchCoreJsonFirst([
-              '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=all',
+              '/api/gc/leaderboard?scope=all&limit=3000',
               '/api/gc/leaderboard?scope=global&limit=3000',
               '/api/gc/recent-laps?limit=3000&sort=recent&valid=all',
               '/api/laps?limit=3000&sort=recent&valid=all',
@@ -1431,8 +1431,6 @@ import AppLayout from '../layouts/AppLayout.astro';
     /* GC_HOTLAPS_PRIMARY_CLEAN_RUNTIME_V1_START */
     (() => {
       document.documentElement.dataset.gcHotlapsRuntime = 'data-core-all-laps-v1';
-      document.documentElement.dataset.gcHotlapsAllTracksScopeFix = 'v1';
-      document.documentElement.dataset.gcHotlapsLoadAllReferences = 'v2';
       window.GCHotlapsRuntimeStatus = () => ({
         runtime: document.documentElement.dataset.gcHotlapsRuntime,
         dataCore: document.documentElement.dataset.gcHotlapsDataCore || null,

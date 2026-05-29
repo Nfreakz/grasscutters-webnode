@@ -555,29 +555,14 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           storagePersistent ? `${storageSource} persistente` : 'La ruta persistente requiere revisión'
         );
 
-        const storageDriver = String(storageSource || storageRoot.driver || storageRoot.source || '').toLowerCase();
-        const isMysqlStorage = storageDriver.includes('mysql');
-        const storageRows = [
-          '<div><span>Usuarios</span><strong>' + esc(files.users?.source || storageRoot.source || storageSource || '-') + '</strong></div>',
-          '<div><span>Nombres</span><strong>' + esc(files.displayNames?.source || storageRoot.source || storageSource || '-') + '</strong></div>',
-          '<div><span>Persistente</span><strong>' + (storagePersistent ? 'Sí' : 'No') + '</strong></div>',
-        ];
-
-        if (isMysqlStorage) {
-          storageRows.push('<div><span>Tipo storage</span><strong>Base de datos MySQL</strong></div>');
-          storageRows.push('<div><span>Rutas JSON</span><strong>No aplica</strong></div>');
-          storageRows.push('<div><span>Estado</span><strong>Persistencia en DB</strong></div>');
-        } else {
-          const dataRoot = storageRoot.dataRoot || files.users?.resolvedPath || '';
-          const usersPath = files.users?.resolvedPath || '';
-          const displayNamesPath = files.displayNames?.resolvedPath || '';
-
-          storageRows.push('<div><span>Data root</span><strong title="' + esc(dataRoot || 'No informado') + '">' + esc(dataRoot ? short(dataRoot) : 'No informado') + '</strong></div>');
-          storageRows.push('<div><span>Users path</span><strong title="' + esc(usersPath || 'No informado') + '">' + esc(usersPath ? short(usersPath) : 'No informado') + '</strong></div>');
-          storageRows.push('<div><span>Display names path</span><strong title="' + esc(displayNamesPath || 'No informado') + '">' + esc(displayNamesPath ? short(displayNamesPath) : 'No informado') + '</strong></div>');
-        }
-
-        els.storageRows.innerHTML = storageRows.join('');
+        els.storageRows.innerHTML = `
+          <div><span>Usuarios</span><strong>${esc(files.users?.source || storageRoot.source || '-')}</strong></div>
+          <div><span>Nombres</span><strong>${esc(files.displayNames?.source || storageRoot.source || '-')}</strong></div>
+          <div><span>Persistente</span><strong>${storagePersistent ? 'Sí' : 'No'}</strong></div>
+          <div><span>Data root</span><strong title="${esc(storageRoot.dataRoot || files.users?.resolvedPath || '-')}">${esc(short(storageRoot.dataRoot || files.users?.resolvedPath || '-'))}</strong></div>
+          <div><span>Users path</span><strong title="${esc(files.users?.resolvedPath || '-')}">${esc(short(files.users?.resolvedPath || '-'))}</strong></div>
+          <div><span>Display names path</span><strong title="${esc(files.displayNames?.resolvedPath || '-')}">${esc(short(files.displayNames?.resolvedPath || '-'))}</strong></div>
+        `;
 
         const stracker = data.admin?.stracker || {};
         const strackerOk = Boolean(stracker.exists && stracker.validSQLite);
