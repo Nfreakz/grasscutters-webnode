@@ -2,20 +2,21 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
+
 <AppLayout title="Archivo Motorsport | Admin GrassCutters">
-  <div class="gc-page gc-admin-page-clean">
+  <div class="gc-page gc-admin-page-clean gc-admin-archive-list-v1">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Archivo Motorsport</span>
-        <h1 class="gc-title">Archivo editable.</h1>
-        <p class="gc-subtitle">Panel unificado MySQL/local para crear, editar, revisar e importar fichas sin rutas antiguas.</p>
+        <h1 class="gc-title">Gestión del Archivo.</h1>
+        <p class="gc-subtitle">Buscador, filtros, paginación y acciones rápidas para trabajar cómodo con 100, 500 o más fichas.</p>
       </div>
       <aside class="gc-live-panel">
         <div class="gc-live-panel__title"><span>Fichas</span><strong id="archiveStatusLabel">Cargando</strong></div>
         <div class="gc-status-list">
           <div class="gc-status-row"><span>Total</span><strong id="archiveTotal">...</strong></div>
           <div class="gc-status-row"><span>Publicadas</span><strong id="archivePublished">...</strong></div>
-          <div class="gc-status-row"><span>Borradores</span><strong id="archiveDrafts">...</strong></div>
+          <div class="gc-status-row"><span>Sin imagen</span><strong id="archiveMissingImages">...</strong></div>
         </div>
       </aside>
     </section>
@@ -24,60 +25,661 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
     <section class="gc-section">
       <div class="gc-section-head">
-        <div><h2>Gestión del archivo</h2><p>Listado directo desde la API unificada.</p></div>
+        <div>
+          <h2>Gestión del archivo</h2>
+          <p>Filtra por tipo, estado, imagen o texto. La lista ya no depende de hacer scroll eterno.</p>
+        </div>
         <div class="gc-admin-actions">
           <a class="gc-btn gc-btn--primary" href="/admin/archivo/nuevo">Nueva ficha</a>
           <a class="gc-btn" href="/admin/archivo/importar">Importar CSV</a>
-          <a class="gc-btn" href="/admin/archivo/imagen-url">Añadir imagen URL</a>
+          <a class="gc-btn" href="/admin/archivo/imagen-url">Imágenes</a>
           <button class="gc-btn" id="refreshArchiveBtn" type="button">Recargar</button>
           <button class="gc-btn" id="demoArchiveBtn" type="button">Crear demo</button>
         </div>
       </div>
-      <div class="gc-slab" id="archiveNotice" hidden><h3 id="archiveNoticeTitle">Aviso</h3><p id="archiveNoticeText"></p></div>
-      <div class="gc-row-list" id="archiveItems"><div class="gc-admin-empty">Cargando fichas...</div></div>
+
+      <div class="gc-slab gc-archive-toolbar-v1">
+        <label class="gc-archive-searchbox-v1">
+          <span>Buscar</span>
+          <input id="archiveSearchInput" type="search" placeholder="Monza, Ferrari, Alonso, GT2, circuito..." autocomplete="off" />
+        </label>
+
+        <div class="gc-archive-filter-grid-v1">
+          <label>
+            <span>Tipo</span>
+            <select id="archiveTypeFilter">
+              <option value="all">Todo</option>
+              <option value="circuitos">Circuitos</option>
+              <option value="vehiculos">Coches</option>
+              <option value="coches">Coches públicos</option>
+              <option value="pilotos">Pilotos</option>
+              <option value="glosario">Glosario</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Estado</span>
+            <select id="archiveStatusFilter">
+              <option value="all">Todo</option>
+              <option value="published">Publicado</option>
+              <option value="draft">Borrador</option>
+              <option value="hidden">Oculto</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Imagen</span>
+            <select id="archiveImageFilter">
+              <option value="all">Todo</option>
+              <option value="with">Con imagen</option>
+              <option value="missing">Sin imagen</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Orden</span>
+            <select id="archiveSortSelect">
+              <option value="updated-desc">Actualizado reciente</option>
+              <option value="title-asc">Título A-Z</option>
+              <option value="title-desc">Título Z-A</option>
+              <option value="type-asc">Tipo</option>
+              <option value="status-asc">Estado</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Por página</span>
+            <select id="archivePageSize">
+              <option value="12">12</option>
+              <option value="24" selected>24</option>
+              <option value="48">48</option>
+              <option value="96">96</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="gc-archive-filter-pills-v1" aria-label="Filtros rápidos">
+          <button type="button" class="is-active" data-quick-type="all">Todo</button>
+          <button type="button" data-quick-type="circuitos">Circuitos</button>
+          <button type="button" data-quick-type="vehiculos">Coches</button>
+          <button type="button" data-quick-type="pilotos">Pilotos</button>
+          <button type="button" data-quick-type="glosario">Glosario</button>
+          <button type="button" data-quick-image="missing">Sin imagen</button>
+        </div>
+
+        <div class="gc-archive-list-summary-v1">
+          <strong id="archiveVisibleCount">0</strong>
+          <span>fichas visibles</span>
+          <button class="gc-btn" id="archiveClearFilters" type="button">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <div class="gc-slab" id="archiveNotice" hidden>
+        <h3 id="archiveNoticeTitle">Aviso</h3>
+        <p id="archiveNoticeText"></p>
+      </div>
+
+      <div class="gc-archive-table-head-v1" aria-hidden="true">
+        <span>Ficha</span>
+        <span>Tipo</span>
+        <span>Estado</span>
+        <span>Imagen</span>
+        <span>Acciones</span>
+      </div>
+
+      <div class="gc-archive-list-v1" id="archiveItems">
+        <div class="gc-admin-empty">Cargando fichas...</div>
+      </div>
+
+      <nav class="gc-archive-pagination-v1" aria-label="Paginación del archivo">
+        <button class="gc-btn" type="button" id="archivePrevPage">Anterior</button>
+        <span id="archivePageInfo">Página 1/1</span>
+        <button class="gc-btn" type="button" id="archiveNextPage">Siguiente</button>
+      </nav>
     </section>
   </div>
+
+  <style is:global>
+    .gc-admin-archive-list-v1 {
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .gc-archive-toolbar-v1 {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .gc-archive-searchbox-v1,
+    .gc-archive-filter-grid-v1 label {
+      display: grid;
+      gap: 7px;
+    }
+
+    .gc-archive-searchbox-v1 span,
+    .gc-archive-filter-grid-v1 span {
+      color: var(--soft, rgba(255,255,255,.72));
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .gc-archive-searchbox-v1 input,
+    .gc-archive-filter-grid-v1 select {
+      width: 100%;
+      min-height: 42px;
+      box-sizing: border-box;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      background: rgba(4,9,6,.62);
+      color: inherit;
+      font: inherit;
+      outline: none;
+    }
+
+    .gc-archive-searchbox-v1 input:focus,
+    .gc-archive-filter-grid-v1 select:focus {
+      border-color: rgba(156,255,63,.36);
+      box-shadow: 0 0 0 4px rgba(156,255,63,.08);
+    }
+
+    .gc-archive-filter-grid-v1 {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 10px;
+    }
+
+    .gc-archive-filter-pills-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .gc-archive-filter-pills-v1 button {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 999px;
+      background: rgba(255,255,255,.035);
+      color: inherit;
+      font-weight: 900;
+      font-size: .74rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .gc-archive-filter-pills-v1 button.is-active {
+      color: #071006;
+      background: var(--accent,#9cff3f);
+      border-color: transparent;
+    }
+
+    .gc-archive-list-summary-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 4px;
+    }
+
+    .gc-archive-list-summary-v1 strong {
+      color: var(--accent,#9cff3f);
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .gc-archive-list-summary-v1 span {
+      margin-right: auto;
+      color: var(--soft, rgba(255,255,255,.72));
+      font-size: .9rem;
+    }
+
+    .gc-archive-table-head-v1 {
+      display: grid;
+      grid-template-columns: minmax(0,1.6fr) 120px 110px 110px 220px;
+      gap: 10px;
+      padding: 0 14px 8px;
+      color: var(--dim, rgba(255,255,255,.52));
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .gc-archive-list-v1 {
+      display: grid;
+      gap: 8px;
+    }
+
+    .gc-archive-row-v1 {
+      display: grid;
+      grid-template-columns: 72px minmax(0,1fr) 120px 110px 110px 220px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 16px;
+      background: rgba(255,255,255,.025);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .gc-archive-row-v1:hover {
+      border-color: rgba(156,255,63,.24);
+      background: rgba(156,255,63,.035);
+    }
+
+    .gc-archive-row-thumb-v1 {
+      width: 72px;
+      aspect-ratio: 16/10;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.10);
+      background:
+        linear-gradient(180deg, rgba(8,14,10,.72), rgba(4,8,5,.8)),
+        url("/ui/home2/gc-home2-grid.svg");
+      background-size: cover;
+    }
+
+    .gc-archive-row-thumb-v1 img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gc-archive-row-main-v1 {
+      min-width: 0;
+    }
+
+    .gc-archive-row-main-v1 strong {
+      display: block;
+      color: var(--text);
+      font-size: 1rem;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .gc-archive-row-main-v1 p {
+      margin: 5px 0 0;
+      color: var(--soft, rgba(255,255,255,.72));
+      font-size: .86rem;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .gc-archive-pill-v1 {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 9px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      color: var(--soft, rgba(255,255,255,.72));
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .gc-archive-pill-v1.is-ok {
+      color: #071006;
+      background: var(--accent,#9cff3f);
+      border-color: transparent;
+    }
+
+    .gc-archive-pill-v1.is-warn {
+      color: #ffe0a3;
+      border-color: rgba(255,194,87,.22);
+      background: rgba(255,194,87,.065);
+    }
+
+    .gc-archive-row-actions-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .gc-archive-row-actions-v1 a {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      background: rgba(255,255,255,.035);
+      color: inherit;
+      text-decoration: none;
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .gc-archive-row-actions-v1 a:first-child {
+      color: #071006;
+      background: var(--accent,#9cff3f);
+      border-color: transparent;
+    }
+
+    .gc-archive-pagination-v1 {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .gc-archive-pagination-v1 span {
+      color: var(--soft, rgba(255,255,255,.72));
+      font-weight: 900;
+      font-size: .82rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 1100px) {
+      .gc-archive-filter-grid-v1 {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+      }
+
+      .gc-archive-table-head-v1 {
+        display: none;
+      }
+
+      .gc-archive-row-v1 {
+        grid-template-columns: 82px minmax(0,1fr);
+      }
+
+      .gc-archive-row-v1 > .gc-archive-pill-v1,
+      .gc-archive-row-actions-v1 {
+        grid-column: 2;
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .gc-archive-filter-grid-v1,
+      .gc-archive-row-v1 {
+        grid-template-columns: 1fr;
+      }
+
+      .gc-archive-row-thumb-v1 {
+        width: 100%;
+      }
+
+      .gc-archive-row-v1 > .gc-archive-pill-v1,
+      .gc-archive-row-actions-v1 {
+        grid-column: auto;
+      }
+    }
+  </style>
 
   <script is:inline>
     (() => {
       const API = '/api/admin/archive/unified';
       const $ = (id) => document.getElementById(id);
+
+      const state = {
+        all: [],
+        filtered: [],
+        page: 1,
+      };
+
+      const els = {
+        status:$('archiveStatusLabel'),
+        total:$('archiveTotal'),
+        published:$('archivePublished'),
+        missing:$('archiveMissingImages'),
+        items:$('archiveItems'),
+        notice:$('archiveNotice'),
+        noticeTitle:$('archiveNoticeTitle'),
+        noticeText:$('archiveNoticeText'),
+        refresh:$('refreshArchiveBtn'),
+        demo:$('demoArchiveBtn'),
+        search:$('archiveSearchInput'),
+        type:$('archiveTypeFilter'),
+        statusFilter:$('archiveStatusFilter'),
+        image:$('archiveImageFilter'),
+        sort:$('archiveSortSelect'),
+        pageSize:$('archivePageSize'),
+        visible:$('archiveVisibleCount'),
+        clear:$('archiveClearFilters'),
+        prev:$('archivePrevPage'),
+        next:$('archiveNextPage'),
+        pageInfo:$('archivePageInfo'),
+      };
+
       const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-      const els = { status:$('archiveStatusLabel'), total:$('archiveTotal'), published:$('archivePublished'), drafts:$('archiveDrafts'), items:$('archiveItems'), notice:$('archiveNotice'), noticeTitle:$('archiveNoticeTitle'), noticeText:$('archiveNoticeText'), refresh:$('refreshArchiveBtn'), demo:$('demoArchiveBtn') };
+      const normalize = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const titleOf = (item) => item.title || item.nombre || item.name || item.titulo || 'Sin título';
+      const slugOf = (item) => item.slug || String(titleOf(item)).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+      const typeOf = (item) => {
+        const raw = String(item.category || item.tipo || item.type || item.categoria_tipo || 'glosario').toLowerCase();
+        if (['coches','coche','vehiculo','vehículo','vehiculos','vehículos','vehicle','car'].includes(raw)) return 'vehiculos';
+        if (['circuito','circuit','track'].includes(raw)) return 'circuitos';
+        if (['piloto','driver','pilot'].includes(raw)) return 'pilotos';
+        if (['glosario','concepto','concept','general'].includes(raw)) return 'glosario';
+        return raw;
+      };
+      const publicTypeOf = (item) => typeOf(item) === 'vehiculos' ? 'coches' : typeOf(item);
+      const statusOf = (item) => item.status || 'draft';
+      const statusLabel = (item) => statusOf(item) === 'published' ? 'Publicado' : statusOf(item) === 'hidden' ? 'Oculto' : 'Borrador';
+      const summaryOf = (item) => item.summary || item.descripcion_corta || item.subtitulo || item.body || 'Sin resumen';
+      const updatedOf = (item) => item.updatedAt || item.updated_at || item.createdAt || item.created_at || '';
+      const mediaOf = (item) => Array.isArray(item.media) ? item.media : [];
+      const imageOf = (item) => {
+        const media = mediaOf(item);
+        const main = media.find((m) => m?.isMain || m?.isPrimary) || media[0];
+        return main?.url || main?.localUrl || item.coverUrl || item.imagen_url || '';
+      };
+      const hasImage = (item) => Boolean(imageOf(item));
+      const editHref = (item, index) => `/admin/archivo/editar/${encodeURIComponent(item.id || item._id || item.slug || index)}`;
+      const publicHref = (item) => `/archivo/${publicTypeOf(item)}/${slugOf(item)}/`;
+      const imageHref = (item) => item.id
+        ? `/admin/archivo/imagen-url?item=${encodeURIComponent(item.id)}`
+        : `/admin/archivo/imagen-url?slug=${encodeURIComponent(slugOf(item))}`;
+
       async function fetchJson(url, options={}) {
         const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{'Content-Type':'application/json'}, ...options });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data.ok === false) throw new Error(data.message || data.error || `HTTP ${response.status}`);
         return data;
       }
-      function showNotice(title, text) { els.notice.hidden = false; els.noticeTitle.textContent = title; els.noticeText.textContent = text; }
-      function clearNotice() { els.notice.hidden = true; }
-      function cat(item) { return item.category || item.type || 'general'; }
-      function statusLabel(item) { return item.status === 'published' ? 'Publicado' : item.status === 'hidden' ? 'Oculto' : 'Borrador'; }
-      function render(items) {
-        els.status.textContent = 'Operativo';
-        els.total.textContent = items.length;
-        els.published.textContent = items.filter((i) => i.status === 'published').length;
-        els.drafts.textContent = items.filter((i) => i.status !== 'published').length;
-        if (!items.length) { els.items.innerHTML = '<div class="gc-admin-empty">Todavía no hay fichas.</div>'; return; }
-        els.items.innerHTML = items.map((item, index) => `
-          <a class="gc-row-link" href="/admin/archivo/editar/${encodeURIComponent(item.id || item.slug || index)}">
-            <span class="gc-row-link__num">${String(index + 1).padStart(2, '0')}</span>
-            <span><strong class="gc-row-link__title">${esc(item.title || 'Sin título')}</strong><br><span class="gc-row-link__desc">${esc(cat(item))} · ${esc(statusLabel(item))} · ${esc(item.summary || 'Sin resumen')}</span></span>
-            <span class="gc-row-link__cta">Editar</span>
-          </a>`).join('');
+
+      function showNotice(title, text) {
+        els.notice.hidden = false;
+        els.noticeTitle.textContent = title;
+        els.noticeText.textContent = text;
       }
+
+      function clearNotice() {
+        els.notice.hidden = true;
+      }
+
+      function updateQuickButtons() {
+        document.querySelectorAll('[data-quick-type]').forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.quickType === els.type.value);
+        });
+        document.querySelectorAll('[data-quick-image]').forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.quickImage === els.image.value);
+        });
+      }
+
+      function applyFilters() {
+        const q = normalize(els.search.value);
+        const type = els.type.value;
+        const status = els.statusFilter.value;
+        const image = els.image.value;
+
+        let result = state.all.filter((item) => {
+          const text = normalize([titleOf(item), summaryOf(item), typeOf(item), item.pais, item.region, item.disciplina, item.tags].join(' '));
+          const typeOk = type === 'all' || typeOf(item) === type || publicTypeOf(item) === type;
+          const statusOk = status === 'all' || statusOf(item) === status;
+          const imageOk = image === 'all' || (image === 'with' ? hasImage(item) : !hasImage(item));
+          const queryOk = !q || text.includes(q);
+          return typeOk && statusOk && imageOk && queryOk;
+        });
+
+        const sort = els.sort.value;
+        result.sort((a, b) => {
+          if (sort === 'title-asc') return titleOf(a).localeCompare(titleOf(b), 'es');
+          if (sort === 'title-desc') return titleOf(b).localeCompare(titleOf(a), 'es');
+          if (sort === 'type-asc') return typeOf(a).localeCompare(typeOf(b), 'es') || titleOf(a).localeCompare(titleOf(b), 'es');
+          if (sort === 'status-asc') return statusOf(a).localeCompare(statusOf(b), 'es') || titleOf(a).localeCompare(titleOf(b), 'es');
+          return String(updatedOf(b)).localeCompare(String(updatedOf(a))) || titleOf(a).localeCompare(titleOf(b), 'es');
+        });
+
+        state.filtered = result;
+        state.page = Math.min(state.page, maxPage());
+        if (state.page < 1) state.page = 1;
+        updateQuickButtons();
+        render();
+      }
+
+      function maxPage() {
+        return Math.max(1, Math.ceil(state.filtered.length / Number(els.pageSize.value || 24)));
+      }
+
+      function render() {
+        const pageSize = Number(els.pageSize.value || 24);
+        const max = maxPage();
+        const start = (state.page - 1) * pageSize;
+        const pageItems = state.filtered.slice(start, start + pageSize);
+
+        els.visible.textContent = String(state.filtered.length);
+        els.pageInfo.textContent = `Página ${state.page}/${max}`;
+        els.prev.disabled = state.page <= 1;
+        els.next.disabled = state.page >= max;
+
+        if (!pageItems.length) {
+          els.items.innerHTML = '<div class="gc-admin-empty">No hay fichas con estos filtros.</div>';
+          return;
+        }
+
+        els.items.innerHTML = pageItems.map((item, index) => {
+          const absoluteIndex = start + index;
+          const image = imageOf(item);
+          const type = typeOf(item);
+          const status = statusOf(item);
+          const isPublished = status === 'published';
+          const imageState = hasImage(item);
+
+          return `
+            <article class="gc-archive-row-v1">
+              <a class="gc-archive-row-thumb-v1" href="${esc(editHref(item, absoluteIndex))}" aria-label="Editar ${esc(titleOf(item))}">
+                ${image ? `<img src="${esc(image)}" alt="" loading="lazy" />` : ''}
+              </a>
+
+              <div class="gc-archive-row-main-v1">
+                <strong>${esc(titleOf(item))}</strong>
+                <p>${esc(summaryOf(item))}</p>
+              </div>
+
+              <span class="gc-archive-pill-v1">${esc(type === 'vehiculos' ? 'coches' : type)}</span>
+              <span class="gc-archive-pill-v1 ${isPublished ? 'is-ok' : 'is-warn'}">${esc(statusLabel(item))}</span>
+              <span class="gc-archive-pill-v1 ${imageState ? 'is-ok' : 'is-warn'}">${imageState ? 'Con imagen' : 'Sin imagen'}</span>
+
+              <div class="gc-archive-row-actions-v1">
+                <a href="${esc(editHref(item, absoluteIndex))}">Editar</a>
+                <a href="${esc(publicHref(item))}" target="_blank" rel="noreferrer">Ver</a>
+                <a href="${esc(imageHref(item))}">Imagen</a>
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
       async function loadArchive() {
-        clearNotice(); els.status.textContent = 'Cargando';
-        try { const data = await fetchJson(`${API}/items`); render(Array.isArray(data.items) ? data.items : []); }
-        catch (error) { els.status.textContent = 'API error'; els.items.innerHTML = '<div class="gc-admin-empty">No se pudieron cargar fichas.</div>'; showNotice('No se pudo leer el Archivo', error.message || 'Error desconocido'); }
+        clearNotice();
+        els.status.textContent = 'Cargando';
+        try {
+          const data = await fetchJson(`${API}/items`);
+          const items = Array.isArray(data.items) ? data.items : [];
+          state.all = items;
+          els.status.textContent = 'Operativo';
+          els.total.textContent = items.length;
+          els.published.textContent = items.filter((i) => statusOf(i) === 'published').length;
+          els.missing.textContent = items.filter((i) => !hasImage(i)).length;
+          state.page = 1;
+          applyFilters();
+        } catch (error) {
+          els.status.textContent = 'API error';
+          els.items.innerHTML = '<div class="gc-admin-empty">No se pudieron cargar fichas.</div>';
+          showNotice('No se pudo leer el Archivo', error.message || 'Error desconocido');
+        }
       }
+
       async function createDemo() {
-        clearNotice(); els.demo.disabled = true; els.demo.textContent = 'Creando...';
-        try { const data = await fetchJson(`${API}/demo`, { method:'POST' }); await loadArchive(); showNotice('Demo creada', `Creadas ${data.created}, omitidas ${data.skipped}.`); }
-        catch (error) { showNotice('No se pudo crear la demo', error.message || 'Error desconocido'); }
-        finally { els.demo.disabled = false; els.demo.textContent = 'Crear demo'; }
+        clearNotice();
+        els.demo.disabled = true;
+        els.demo.textContent = 'Creando...';
+        try {
+          const data = await fetchJson(`${API}/demo`, { method:'POST' });
+          await loadArchive();
+          showNotice('Demo creada', `Creadas ${data.created}, omitidas ${data.skipped}.`);
+        } catch (error) {
+          showNotice('No se pudo crear la demo', error.message || 'Error desconocido');
+        } finally {
+          els.demo.disabled = false;
+          els.demo.textContent = 'Crear demo';
+        }
       }
+
+      [els.search, els.type, els.statusFilter, els.image, els.sort, els.pageSize].forEach((input) => {
+        input?.addEventListener('input', () => { state.page = 1; applyFilters(); });
+        input?.addEventListener('change', () => { state.page = 1; applyFilters(); });
+      });
+
+      document.querySelectorAll('[data-quick-type]').forEach((button) => {
+        button.addEventListener('click', () => {
+          els.type.value = button.dataset.quickType || 'all';
+          state.page = 1;
+          applyFilters();
+        });
+      });
+
+      document.querySelectorAll('[data-quick-image]').forEach((button) => {
+        button.addEventListener('click', () => {
+          els.image.value = els.image.value === button.dataset.quickImage ? 'all' : (button.dataset.quickImage || 'all');
+          state.page = 1;
+          applyFilters();
+        });
+      });
+
+      els.clear?.addEventListener('click', () => {
+        els.search.value = '';
+        els.type.value = 'all';
+        els.statusFilter.value = 'all';
+        els.image.value = 'all';
+        els.sort.value = 'updated-desc';
+        els.pageSize.value = '24';
+        state.page = 1;
+        applyFilters();
+      });
+
+      els.prev?.addEventListener('click', () => {
+        state.page = Math.max(1, state.page - 1);
+        render();
+      });
+
+      els.next?.addEventListener('click', () => {
+        state.page = Math.min(maxPage(), state.page + 1);
+        render();
+      });
+
       els.refresh?.addEventListener('click', loadArchive);
       els.demo?.addEventListener('click', createDemo);
       loadArchive();

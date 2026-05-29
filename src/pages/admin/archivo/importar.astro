@@ -6,113 +6,57 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
 
 <AppLayout title="Importar Archivo | Admin GrassCutters">
-  <div class="gc-page gc-admin-page-clean gc-archive-import-page">
+  <div class="gc-page gc-admin-page-clean gc-archive-import-page-v3">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Archivo</span>
         <h1 class="gc-title">Importar CSV.</h1>
-        <p class="gc-subtitle">
-          Importa fichas por lotes con plantillas PRO preparadas para dossiers completos:
-          historia, contexto, datos técnicos, referencias, imágenes y conexiones.
-        </p>
+        <p class="gc-subtitle">Plantillas con campos exactos para el importador: todas usan la misma cabecera canónica, sin columnas extra ni columnas de menos.</p>
       </div>
 
       <aside class="gc-live-panel">
-        <div class="gc-live-panel__title">
-          <span>Modo seguro</span>
-          <strong>Dry-run</strong>
-        </div>
+        <div class="gc-live-panel__title"><span>Campos exactos</span><strong id="fieldCountLabel">98</strong></div>
         <div class="gc-status-list">
-          <div class="gc-status-row"><span>Taxonomía</span><strong>4 tipos</strong></div>
-          <div class="gc-status-row"><span>Récords</span><strong>Internos</strong></div>
-          <div class="gc-status-row"><span>Campeonatos</span><strong>Internos</strong></div>
+          <div class="gc-status-row"><span>Plantillas</span><strong>4 + master</strong></div>
+          <div class="gc-status-row"><span>Separador</span><strong>;</strong></div>
+          <div class="gc-status-row"><span>Preview</span><strong>Local</strong></div>
         </div>
       </aside>
     </section>
 
     <AdminSubnav />
 
-    <section class="gc-section gc-archive-import-templates">
+    <section class="gc-section">
       <div class="gc-section-head">
         <div>
-          <h2>Plantillas PRO</h2>
-          <p>
-            Descarga una plantilla según el tipo de ficha. Ya incluyen los campos editoriales nuevos
-            para que la ficha pública no quede pobre después de importar.
-          </p>
+          <h2>Plantillas correctas</h2>
+          <p>Todas las plantillas descargables salen de la misma lista <code>ARCHIVE_IMPORT_FIELDS</code>. Cambia el ejemplo, no la cabecera.</p>
         </div>
       </div>
 
       <div class="gc-archive-import-template-grid">
-        <article>
-          <span>Circuitos PRO</span>
-          <h3>Dossier de trazado</h3>
-          <p>Historia, importancia, zonas clave, eventos, récords, referencias y notas de sim racing.</p>
-          <button class="gc-btn gc-btn--primary" type="button" data-template-download="circuitos">Descargar CSV</button>
-        </article>
-
-        <article>
-          <span>Coches PRO</span>
-          <h3>Ficha técnica + historia</h3>
-          <p>Fabricante, specs, variantes, campeonatos, equipos, victorias y contexto competitivo.</p>
-          <button class="gc-btn gc-btn--primary" type="button" data-template-download="vehiculos">Descargar CSV</button>
-        </article>
-
-        <article>
-          <span>Pilotos PRO</span>
-          <h3>Trayectoria completa</h3>
-          <p>Biografía, palmarés, estilo, momentos clave, coches asociados y circuitos asociados.</p>
-          <button class="gc-btn gc-btn--primary" type="button" data-template-download="pilotos">Descargar CSV</button>
-        </article>
-
-        <article>
-          <span>Glosario PRO</span>
-          <h3>Conceptos útiles</h3>
-          <p>Definición, uso práctico, errores comunes, ejemplos, relaciones y notas para sim racing.</p>
-          <button class="gc-btn gc-btn--primary" type="button" data-template-download="glosario">Descargar CSV</button>
-        </article>
-      </div>
-    </section>
-
-    <section class="gc-section gc-archive-import-guide">
-      <div class="gc-section-head">
-        <div>
-          <h2>Reglas de formato</h2>
-          <p>Pequeño mapa para que el CSV salga bien a la primera.</p>
-        </div>
+        <article><span>Circuitos</span><h3>Dossier de trazado</h3><p>Ejemplo de circuito con todos los campos del importador.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="circuitos">Descargar CSV</button></article>
+        <article><span>Coches</span><h3>Ficha técnica + historia</h3><p>Ejemplo de vehículo con todos los campos del importador.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="vehiculos">Descargar CSV</button></article>
+        <article><span>Pilotos</span><h3>Trayectoria completa</h3><p>Ejemplo de piloto con todos los campos del importador.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="pilotos">Descargar CSV</button></article>
+        <article><span>Glosario</span><h3>Conceptos útiles</h3><p>Ejemplo de concepto con todos los campos del importador.</p><button class="gc-btn gc-btn--primary" type="button" data-template-download="glosario">Descargar CSV</button></article>
       </div>
 
-      <div class="gc-archive-import-guide-grid">
-        <article>
-          <strong>Listas</strong>
-          <p>Usa <code>||</code> para separar elementos.</p>
-          <pre>Ferrari||Porsche||BMW</pre>
-        </article>
-        <article>
-          <strong>Pares título + dato</strong>
-          <p>Usa <code>Título::Descripción</code>.</p>
-          <pre>Karussell::Curva peraltada icónica</pre>
-        </article>
-        <article>
-          <strong>Fuentes</strong>
-          <p>Usa el mismo sistema de pares.</p>
-          <pre>Wikipedia::https://...</pre>
-        </article>
-        <article>
-          <strong>No crear categorías antiguas</strong>
-          <p><code>records</code> y <code>campeonatos</code> van dentro de fichas.</p>
-          <pre>records_destacados / campeonatos</pre>
-        </article>
+      <div class="gc-archive-import-actions-top">
+        <button class="gc-btn" type="button" data-template-download="all-fields">Descargar plantilla maestra</button>
+        <button class="gc-btn" type="button" id="copyFieldsBtn">Copiar cabecera exacta</button>
       </div>
+
+      <details class="gc-archive-fields-box">
+        <summary>Ver campos exactos del importador</summary>
+        <pre id="fieldsListBox"></pre>
+      </details>
     </section>
 
     <section class="gc-section">
       <div class="gc-section-head">
         <div>
-          <h2>Subir CSV</h2>
-          <p>
-            Sube uno o varios archivos. Mantén activado “solo probar” hasta que el resumen sea correcto.
-          </p>
+          <h2>Subir y validar CSV</h2>
+          <p>El preview compara la cabecera contra la lista exacta. Si sobran o faltan campos, lo verás antes de importar.</p>
         </div>
       </div>
 
@@ -120,7 +64,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         <label class="gc-field">
           <span>CSV</span>
           <input class="gc-input" id="archivoCsvFiles" type="file" accept=".csv,text/csv" multiple />
-          <small>Admite varios CSV a la vez. Separador recomendado: punto y coma.</small>
+          <small>Admite varios CSV. Separador recomendado: punto y coma.</small>
         </label>
 
         <div class="gc-archive-import-options">
@@ -130,16 +74,13 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         </div>
 
         <div class="gc-archive-import-warning">
-          <strong>Regla actual</strong>
-          <p>
-            Si un CSV trae <code>records</code> o <code>campeonatos</code> como categoría, el backend lo convertirá en
-            <code>general</code>. Usa los campos internos <code>records_destacados</code>, <code>campeonatos</code>,
-            <code>palmares</code> o <code>eventos_destacados</code>.
-          </p>
+          <strong>Regla de plantillas</strong>
+          <p>Las descargas de esta página tienen siempre <code>98</code> columnas exactas. Si editas en Excel/Sheets, no borres ni añadas columnas.</p>
         </div>
 
         <div class="gc-admin-actions">
-          <button class="gc-btn gc-btn--primary" id="archivoImportBtn" type="button">Importar CSV</button>
+          <button class="gc-btn" id="archivoPreviewBtn" type="button">Previsualizar CSV</button>
+          <button class="gc-btn gc-btn--primary" id="archivoImportBtn" type="button">Enviar a importador</button>
           <a class="gc-btn" href="/admin/archivo">Volver</a>
         </div>
 
@@ -147,14 +88,23 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       </div>
     </section>
 
+    <section class="gc-section" id="archivoPreviewSection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <h2>Preview y validación</h2>
+          <p>Valida número de campos, columnas faltantes, columnas sobrantes y datos mínimos.</p>
+        </div>
+      </div>
+      <div class="gc-archive-import-preview" id="archivoPreviewBox"></div>
+    </section>
+
     <section class="gc-section" id="archivoImportSummarySection" hidden>
       <div class="gc-section-head">
         <div>
-          <h2>Resumen</h2>
+          <h2>Resumen de API</h2>
           <p>Resultado legible de la prueba o importación.</p>
         </div>
       </div>
-
       <div class="gc-archive-import-summary" id="archivoImportSummary"></div>
     </section>
 
@@ -170,368 +120,60 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
   </div>
 
   <style is:global>
-    .gc-archive-import-page code{
-      padding:.12rem .32rem;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:7px;
-      background:rgba(0,0,0,.22);
-      color:var(--accent,#9cff3f);
-      font-size:.9em;
-    }
-
-    .gc-archive-import-templates{
-      overflow:visible;
-    }
-
-    .gc-archive-import-template-grid,
-    .gc-archive-import-guide-grid{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:12px;
-    }
-
-    .gc-archive-import-template-grid article,
-    .gc-archive-import-guide-grid article{
-      display:grid;
-      align-content:start;
-      gap:10px;
-      min-height:230px;
-      padding:18px;
-      border:1px solid var(--line);
-      border-radius:22px;
-      background:
-        radial-gradient(circle at 90% 12%, rgba(156,255,63,.10), transparent 36%),
-        rgba(255,255,255,.025);
-    }
-
-    .gc-archive-import-guide-grid article{
-      min-height:0;
-    }
-
-    .gc-archive-import-template-grid span,
-    .gc-field small,
-    .gc-archive-import-summary-card span{
-      color:var(--dim);
-      font-size:.72rem;
-      font-weight:900;
-      letter-spacing:.11em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-import-template-grid h3{
-      margin:0;
-      color:var(--text);
-      font-size:1.35rem;
-      line-height:1.05;
-      letter-spacing:-.04em;
-    }
-
-    .gc-archive-import-template-grid p,
-    .gc-archive-import-warning p,
-    .gc-archive-import-guide-grid p{
-      margin:0;
-      color:var(--soft);
-      line-height:1.55;
-    }
-
-    .gc-archive-import-guide-grid strong{
-      font-size:1.1rem;
-      line-height:1.1;
-    }
-
-    .gc-archive-import-guide-grid pre{
-      margin:0;
-      padding:10px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:12px;
-      background:rgba(0,0,0,.22);
-      color:var(--soft);
-      white-space:pre-wrap;
-      overflow-wrap:anywhere;
-      font-size:.82rem;
-    }
-
-    .gc-import-box{
-      display:grid;
-      gap:16px;
-    }
-
-    .gc-field{
-      display:grid;
-      gap:7px;
-    }
-
-    .gc-field small{
-      display:block;
-      margin-top:2px;
-      line-height:1.35;
-    }
-
-    .gc-archive-import-options{
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
-      align-items:center;
-    }
-
-    .gc-check{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      color:var(--soft);
-      padding:10px 12px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .gc-archive-import-warning{
-      padding:14px;
-      border:1px solid rgba(255,194,87,.22);
-      border-radius:18px;
-      background:rgba(255,194,87,.065);
-    }
-
-    .gc-archive-import-warning strong{
-      display:block;
-      margin-bottom:6px;
-      color:#ffe0a3;
-      font-size:.75rem;
-      font-weight:950;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-archive-import-summary{
-      display:grid;
-      gap:12px;
-    }
-
-    .gc-archive-import-summary-grid{
-      display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .gc-archive-import-summary-card{
-      padding:16px;
-      border:1px solid var(--line);
-      border-radius:18px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .gc-archive-import-summary-card strong{
-      display:block;
-      margin-top:6px;
-      color:var(--text);
-      font-size:clamp(1.6rem,3vw,2.8rem);
-      line-height:1;
-      letter-spacing:-.06em;
-    }
-
-    .gc-archive-import-samples{
-      display:grid;
-      gap:8px;
-    }
-
-    .gc-archive-import-sample{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto auto auto;
-      gap:10px;
-      align-items:center;
-      padding:12px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      background:rgba(0,0,0,.14);
-    }
-
-    .gc-archive-import-sample strong{
-      overflow-wrap:anywhere;
-    }
-
-    .gc-archive-import-sample span{
-      display:inline-flex;
-      align-items:center;
-      min-height:28px;
-      padding:0 9px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:999px;
-      color:var(--soft);
-      font-size:.78rem;
-    }
-
-    .gc-import-result{
-      white-space:pre-wrap;
-      word-break:break-word;
-      padding:16px;
-      border:1px solid var(--line);
-      border-radius:18px;
-      background:rgba(0,0,0,.24);
-      color:var(--soft);
-      max-height:520px;
-      overflow:auto;
-    }
-
-    @media(max-width:1180px){
-      .gc-archive-import-template-grid,
-      .gc-archive-import-guide-grid,
-      .gc-archive-import-summary-grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-    }
-
-    @media(max-width:720px){
-      .gc-archive-import-template-grid,
-      .gc-archive-import-guide-grid,
-      .gc-archive-import-summary-grid,
-      .gc-archive-import-sample{
-        grid-template-columns:1fr;
-      }
-
-      .gc-archive-import-options{
-        display:grid;
-      }
-    }
+    .gc-archive-import-page-v3 code{padding:.12rem .32rem;border:1px solid rgba(255,255,255,.10);border-radius:7px;background:rgba(0,0,0,.22);color:var(--accent,#9cff3f);font-size:.9em}
+    .gc-archive-import-template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-archive-import-template-grid article,.gc-archive-import-preview-card,.gc-archive-import-summary-card{display:grid;gap:10px;padding:18px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.025)}
+    .gc-archive-import-template-grid span,.gc-field small,.gc-archive-import-preview-card span,.gc-archive-import-summary-card span{color:var(--dim);font-size:.72rem;font-weight:900;letter-spacing:.11em;text-transform:uppercase}
+    .gc-archive-import-template-grid h3{margin:0;color:var(--text);font-size:1.28rem;line-height:1.05;letter-spacing:-.04em}
+    .gc-archive-import-template-grid p,.gc-archive-import-warning p{margin:0;color:var(--soft);line-height:1.55}
+    .gc-archive-import-actions-top{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+    .gc-archive-fields-box{margin-top:12px;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(0,0,0,.16);overflow:hidden}
+    .gc-archive-fields-box summary{cursor:pointer;padding:12px 14px;color:var(--soft);font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-archive-fields-box pre{margin:0;padding:14px;border-top:1px solid rgba(255,255,255,.08);color:var(--soft);white-space:pre-wrap;word-break:break-word}
+    .gc-import-box{display:grid;gap:16px}
+    .gc-field{display:grid;gap:7px}
+    .gc-archive-import-options{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+    .gc-check{display:flex;gap:8px;align-items:center;color:var(--soft);padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.025)}
+    .gc-archive-import-warning{padding:14px;border:1px solid rgba(255,194,87,.22);border-radius:18px;background:rgba(255,194,87,.065)}
+    .gc-archive-import-warning strong{display:block;margin-bottom:6px;color:#ffe0a3;font-size:.75rem;font-weight:950;letter-spacing:.12em;text-transform:uppercase}
+    .gc-archive-import-preview{display:grid;gap:12px}
+    .gc-archive-import-preview-grid,.gc-archive-import-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .gc-archive-import-preview-card strong,.gc-archive-import-summary-card strong{display:block;margin-top:6px;color:var(--text);font-size:clamp(1.45rem,2.6vw,2.4rem);line-height:1;letter-spacing:-.06em}
+    .gc-archive-import-errors{display:grid;gap:8px}
+    .gc-archive-import-errors article{padding:10px 12px;border:1px solid rgba(255,90,90,.24);border-radius:14px;background:rgba(255,90,90,.08);color:#ffd0d0}
+    .gc-archive-import-ok{padding:10px 12px;border:1px solid rgba(156,255,63,.22);border-radius:14px;background:rgba(156,255,63,.055);color:#d7ffd4}
+    .gc-archive-import-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .gc-archive-import-table th{text-align:left;color:var(--dim);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+    .gc-archive-import-table td{padding:10px;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.14);color:var(--soft);vertical-align:top}
+    .gc-archive-import-table td:first-child{border-left:1px solid rgba(255,255,255,.08);border-radius:12px 0 0 12px}
+    .gc-archive-import-table td:last-child{border-right:1px solid rgba(255,255,255,.08);border-radius:0 12px 12px 0}
+    .gc-import-result{white-space:pre-wrap;word-break:break-word;padding:16px;border:1px solid var(--line);border-radius:18px;background:rgba(0,0,0,.24);color:var(--soft);max-height:520px;overflow:auto}
+    @media(max-width:1180px){.gc-archive-import-template-grid,.gc-archive-import-preview-grid,.gc-archive-import-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.gc-archive-import-template-grid,.gc-archive-import-preview-grid,.gc-archive-import-summary-grid{grid-template-columns:1fr}.gc-archive-import-options{display:grid}.gc-archive-import-table{font-size:.85rem}}
   </style>
 
   <script is:inline>
     (() => {
       const API = '/api/admin/archive/unified';
+      const TEMPLATE_DATA = {"fields": ["archive_category", "category", "tipo", "title", "nombre", "slug", "status", "summary", "descripcion_corta", "subtitulo", "body", "descripcion_larga", "introduccion", "contexto_historico", "importancia", "pais", "region", "ubicacion", "disciplina", "periodo", "tipo_trazado", "longitud_km", "curvas", "sentido", "recta_principal_km", "fecha_apertura", "arquitecto", "diseniador", "propietario", "desnivel_m", "caracteristicas_trazado", "caracteristicas_conduccion", "zonas_clave", "eventos_destacados", "records_destacados", "referencias_tiempos", "datos_sim_racing", "fabricante", "modelo_base", "constructor", "categoria_competicion", "anos_actividad", "motor", "cilindrada", "potencia", "peso", "traccion", "transmision", "chasis", "aerodinamica", "ficha_tecnica", "caracteristicas_tecnicas", "desarrollo", "historial_competicion", "campeonatos", "equipos_destacados", "victorias_destacadas", "variantes", "nota_identificacion", "nombre_completo", "fecha_nacimiento", "lugar_nacimiento", "nacionalidad", "anos_activo", "disciplinas", "victorias", "podios", "poles", "titulos", "biografia", "trayectoria", "palmares", "momentos_clave", "equipos", "estilo_pilotaje", "estilo_conduccion", "coches_asociados", "circuitos_asociados", "area", "definicion", "uso", "aplicacion_practica", "ejemplos", "errores_comunes", "relacionados", "datos_destacados", "cronologia", "referencias", "anecdotas", "fuentes", "autor", "licencia", "ultima_revision", "imagen_url", "imagen_alt", "seoTitle", "seoDescription", "tags"], "rows": {"circuitos": {"archive_category": "circuitos", "category": "circuitos", "tipo": "circuitos", "title": "Circuit de Spa-Francorchamps", "nombre": "Circuit de Spa-Francorchamps", "slug": "circuit-de-spa-francorchamps", "status": "draft", "summary": "Circuito belga histórico de alta velocidad, desnivel y clima imprevisible, famoso por Eau Rouge-Raidillon.", "descripcion_corta": "Circuito belga histórico de alta velocidad, desnivel y clima imprevisible, famoso por Eau Rouge-Raidillon.", "subtitulo": "Circuito histórico de las Ardenas, rápido, técnico y cambiante.", "body": "Texto de apertura editorial con contexto, conducción, importancia y notas para sim racing.", "descripcion_larga": "Texto de apertura editorial con contexto, conducción, importancia y notas para sim racing.", "introduccion": "Introducción editorial de la ficha.", "contexto_historico": "Historia del circuito, origen, evolución, cambios de trazado y relación con campeonatos.", "importancia": "Valor deportivo, técnico, cultural e histórico dentro del motorsport.", "pais": "Bélgica", "region": "Valonia", "ubicacion": "Stavelot / Francorchamps", "disciplina": "F1 / GT / WEC / Sim racing", "periodo": "1921-presente", "tipo_trazado": "Circuito permanente de carretera", "longitud_km": "7.004", "curvas": "19", "sentido": "Horario", "recta_principal_km": "Kemmel Straight", "fecha_apertura": "1921", "arquitecto": "Jules de Thier y Henri Langlois van Ophem", "desnivel_m": "aprox. 100 m", "caracteristicas_trazado": "Velocidad, desnivel, apoyo largo, clima cambiante y compromiso aerodinámico.", "caracteristicas_conduccion": "Exige confianza en curvas rápidas, precisión en frenada y buena salida en zonas de rebufo.", "zonas_clave": "La Source::Horquilla lenta||Eau Rouge / Raidillon::Compresión y subida icónica||Kemmel::Zona de rebufo", "eventos_destacados": "1924::Inicio de las 24 Horas de Spa||1950::Primera temporada del Mundial de F1", "records_destacados": "F1 carrera::Añadir tiempo verificado con fuente", "referencias_tiempos": "F1::Añadir referencia verificada||GT::Añadir referencia verificada", "datos_sim_racing": "Notas de setup, carga aerodinámica, neumáticos y puntos de error habituales.", "fuentes": "Wikipedia::https://en.wikipedia.org/wiki/Circuit_de_Spa-Francorchamps", "autor": "Redacción del archivo", "licencia": "Texto editorial con fuentes indicadas.", "ultima_revision": "2026-05-29", "imagen_url": "", "imagen_alt": "Circuit de Spa-Francorchamps", "seoTitle": "Circuit de Spa-Francorchamps | Archivo GrassCutters", "seoDescription": "Ficha editorial del Circuit de Spa-Francorchamps dentro del Archivo GrassCutters.", "tags": "Bélgica||F1||GT||WEC||Sim racing"}, "vehiculos": {"archive_category": "vehiculos", "category": "vehiculos", "tipo": "coches", "title": "Ferrari F430 GT2", "nombre": "Ferrari F430 GT2", "slug": "ferrari-f430-gt2", "status": "draft", "summary": "Versión GT2/GTC del Ferrari F430 desarrollada con Michelotto para competir en grandes campeonatos de resistencia.", "descripcion_corta": "Versión GT2/GTC del Ferrari F430 desarrollada con Michelotto para competir en grandes campeonatos de resistencia.", "subtitulo": "Ferrari GT de resistencia desarrollado sobre la base del F430.", "body": "Texto de apertura editorial sobre carácter, conducción, historia y comparación frente a rivales.", "descripcion_larga": "Texto de apertura editorial sobre carácter, conducción, historia y comparación frente a rivales.", "contexto_historico": "Origen del modelo, desarrollo, reglamento, debut, evolución y etapa competitiva.", "importancia": "Relevancia por palmarés, concepto técnico, papel en la categoría y utilidad para comparar estilos de conducción.", "fabricante": "Ferrari", "modelo_base": "Ferrari F430", "constructor": "Ferrari Corse Clienti / Michelotto", "categoria_competicion": "GT2 / GTC", "anos_actividad": "2006-2011 aprox.", "motor": "V8 atmosférico Ferrari 4.0 L", "cilindrada": "4.0 L", "potencia": "aprox. 445-470 hp", "peso": "aprox. 1.100 kg", "traccion": "Trasera", "transmision": "Secuencial de competición", "chasis": "Estructura adaptada para competición GT.", "aerodinamica": "Paquete aerodinámico GT2 con splitter, difusor y alerón.", "ficha_tecnica": "Arquitectura::Motor central trasero||Clase::GT2 / GTC||Constructor::Michelotto", "caracteristicas_tecnicas": "Motor, entrega, peso, aero, frenos, neumáticos y sensibilidad del coche.", "desarrollo": "Desarrollo de la versión de competición y cambios principales frente al coche base.", "historial_competicion": "Dónde compitió, equipos, campeonatos y resultados destacados.", "campeonatos": "ALMS::Participación GT2||FIA GT::Participación GT2", "equipos_destacados": "Risi Competizione||AF Corse||JMB Racing", "victorias_destacadas": "Sebring::Añadir resultado verificado", "variantes": "F430 Challenge::Versión monomarca||F430 GT3::Versión FIA GT3", "nota_identificacion": "Diferenciar GT2/GTC de GT3 y Challenge.", "fuentes": "Wikipedia::https://en.wikipedia.org/wiki/Ferrari_F430", "autor": "Redacción del archivo", "licencia": "Texto editorial con fuentes indicadas.", "ultima_revision": "2026-05-29", "imagen_url": "", "imagen_alt": "Ferrari F430 GT2", "seoTitle": "Ferrari F430 GT2 | Archivo GrassCutters", "seoDescription": "Ficha editorial del Ferrari F430 GT2 dentro del Archivo GrassCutters.", "tags": "Ferrari||GT2||Le Mans||Sim racing"}, "pilotos": {"archive_category": "pilotos", "category": "pilotos", "tipo": "pilotos", "title": "Fernando Alonso", "nombre": "Fernando Alonso", "slug": "fernando-alonso", "status": "draft", "summary": "Piloto español bicampeón del mundo de Fórmula 1, ganador de Le Mans y referente de longevidad competitiva.", "descripcion_corta": "Piloto español bicampeón del mundo de Fórmula 1, ganador de Le Mans y referente de longevidad competitiva.", "subtitulo": "Piloto español con trayectoria en F1, resistencia e Indy.", "body": "Texto de apertura editorial sobre carrera, estilo, contexto e importancia.", "descripcion_larga": "Texto de apertura editorial sobre carrera, estilo, contexto e importancia.", "contexto_historico": "Contexto de carrera: debut, etapas principales, cambios de equipo y evolución.", "importancia": "Relevancia por títulos, impacto, estilo, influencia y valor cultural.", "pais": "España", "nombre_completo": "Fernando Alonso Díaz", "nacionalidad": "España", "fecha_nacimiento": "1981-07-29", "lugar_nacimiento": "Oviedo, Asturias", "anos_activo": "2001, 2003-2018, 2021-presente en F1", "disciplinas": "F1||WEC||Le Mans||IndyCar", "victorias": "Añadir número verificado", "podios": "Añadir número verificado", "poles": "Añadir número verificado", "titulos": "F1::Campeón mundial 2005 y 2006||WEC::Campeón 2018-19", "biografia": "Biografía completa en varios párrafos.", "trayectoria": "Renault::Títulos mundiales||Toyota WEC::Victoria en Le Mans", "palmares": "F1::2 títulos mundiales||Le Mans::2 victorias absolutas", "momentos_clave": "2005 Brasil::Primer título mundial||2018 Le Mans::Primera victoria absoluta en Le Mans", "equipos": "Minardi||Renault||McLaren||Ferrari||Alpine||Aston Martin||Toyota", "estilo_pilotaje": "Lectura de carrera, defensa, adaptación y gestión de neumáticos.", "estilo_conduccion": "Fuerte en ritmo de carrera, lectura táctica y adaptación.", "coches_asociados": "Renault R25||Renault R26||Ferrari F2012||Toyota TS050 Hybrid", "circuitos_asociados": "Hungaroring||Interlagos||Le Mans||Suzuka", "fuentes": "Wikipedia::https://en.wikipedia.org/wiki/Fernando_Alonso", "autor": "Redacción del archivo", "licencia": "Texto editorial con fuentes indicadas.", "ultima_revision": "2026-05-29", "imagen_url": "", "imagen_alt": "Fernando Alonso", "seoTitle": "Fernando Alonso | Archivo GrassCutters", "seoDescription": "Ficha editorial de Fernando Alonso dentro del Archivo GrassCutters.", "tags": "España||F1||Le Mans||WEC"}, "glosario": {"archive_category": "glosario", "category": "glosario", "tipo": "glosario", "title": "Apex", "nombre": "Apex", "slug": "apex", "status": "draft", "summary": "Punto interior de una curva usado como referencia para optimizar trazada, velocidad mínima y salida.", "descripcion_corta": "Punto interior de una curva usado como referencia para optimizar trazada, velocidad mínima y salida.", "subtitulo": "Concepto básico de trazada y técnica de pilotaje.", "body": "Texto de apertura editorial conectado a conducción real y sim racing.", "descripcion_larga": "Texto de apertura editorial conectado a conducción real y sim racing.", "area": "Técnica de pilotaje", "disciplina": "Pilotaje / Sim racing", "definicion": "Punto de la curva donde el coche pasa más cerca del interior.", "uso": "Sirve para decidir cuándo cerrar dirección, mantener velocidad mínima y abrir gas.", "aplicacion_practica": "En curvas lentas suele interesar un apex tardío para mejorar salida.", "ejemplos": "Curva lenta::Apex tardío||Curva rápida::Apex progresivo", "errores_comunes": "Entrar demasiado pronto||Cerrar dirección antes de tiempo", "relacionados": "Trazada||Frenada||Trail braking||Subviraje||Sobreviraje", "datos_destacados": "Sirve como referencia visual y de telemetría.", "cronologia": "Uso tradicional en escuelas de conducción y análisis de trazada.", "referencias": "DrivingFast::https://drivingfast.net/racing-line/", "datos_sim_racing": "Ayuda a comparar telemetría: velocidad mínima, volante, gas y salida.", "fuentes": "DrivingFast::https://drivingfast.net/racing-line/", "autor": "Redacción del archivo", "licencia": "Texto editorial con fuentes indicadas.", "ultima_revision": "2026-05-29", "imagen_url": "", "imagen_alt": "Concepto de apex", "seoTitle": "Apex | Archivo GrassCutters", "seoDescription": "Definición de apex dentro del Archivo GrassCutters.", "tags": "pilotaje||técnica||trazada||sim racing"}}};
+      const ARCHIVE_IMPORT_FIELDS = TEMPLATE_DATA.fields;
+      const TEMPLATE_ROWS = TEMPLATE_DATA.rows;
       const $ = (id) => document.getElementById(id);
+      let lastNormalizedFiles = [];
 
-      const templates = {
-        circuitos: {
-          filename: 'plantilla-pro-archivo-circuitos.csv',
-          rows: [
-            {
-              archive_category: 'circuitos',
-              title: 'Circuit de Spa-Francorchamps',
-              slug: 'circuit-de-spa-francorchamps',
-              summary: 'Circuito belga de 7,004 km y 19 curvas, ubicado en las Ardenas, famoso por Eau Rouge-Raidillon, clima imprevisible, desnivel y una mezcla única de velocidad, apoyo y riesgo.',
-              body: 'Texto de apertura editorial. Explica cómo se siente el circuito, qué exige al piloto, por qué es relevante para carreras reales y sim racing, y qué lo hace diferente frente a otros trazados.',
-              contexto_historico: 'Historia del circuito, origen, evolución, grandes cambios de trazado, etapas importantes y relación con campeonatos o eventos destacados.',
-              importancia: 'Por qué esta ficha importa dentro del archivo: valor deportivo, técnico, cultural, histórico o de aprendizaje para pilotos.',
-              pais: 'Bélgica',
-              ubicacion: 'Stavelot / Francorchamps, Ardenas',
-              region: 'Valonia',
-              tipo_trazado: 'Circuito permanente de carretera',
-              longitud_km: '7.004',
-              curvas: '19',
-              sentido: 'Horario',
-              recta_principal_km: 'Kemmel Straight como principal zona de velocidad',
-              fecha_apertura: '1921',
-              arquitecto: 'Jules de Thier y Henri Langlois van Ophem',
-              desnivel_m: 'aprox. 100 m',
-              disciplina: 'F1 / GT / Resistencia / WEC / Sim racing',
-              categoria: 'Circuito rápido de desnivel y alta carga',
-              caracteristicas_trazado: 'Descripción técnica del trazado: velocidad, apoyo, frenadas, desnivel, zonas de riesgo, compromiso aerodinámico y comportamiento típico.',
-              zonas_clave: 'La Source::Horquilla lenta y punto clásico de adelantamientos||Eau Rouge / Raidillon::Compresión y subida icónica||Kemmel Straight::Zona clave de rebufo||Pouhon::Curva rápida de doble vértice||Blanchimont::Curva rapidísima de confianza',
-              eventos_destacados: '1921::Nacimiento del trazado original||1924::Inicio de las 24 Horas de Spa||1950::Entrada en la primera temporada del Mundial de F1',
-              records_destacados: 'F1 carrera::Añadir vuelta rápida verificada||F1 clasificación::Añadir pole o referencia moderna||Nota::Comparar tiempos por categoría y condiciones',
-              anecdotas: 'Puede llover en un sector y estar seco en otro||Eau Rouge y Raidillon suelen citarse juntos, pero técnicamente forman una secuencia con bajada, compresión y subida',
-              referencias_tiempos: 'F1::Añadir tiempo verificado con fuente||GT/WEC::Añadir tiempo verificado con fuente',
-              datos_sim_racing: 'Notas para pilotos: carga aerodinámica recomendada, zonas que castigan setup, gestión de neumáticos, referencias de frenada o errores frecuentes.',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Circuit_de_Spa-Francorchamps||Web oficial::https://www.spa-francorchamps.be/',
-              imagen_url: '',
-              imagen_alt: 'Circuit de Spa-Francorchamps',
-              tags: 'Bélgica||Ardenas||F1||GT||WEC||Sim racing',
-            },
-          ],
-        },
-        vehiculos: {
-          filename: 'plantilla-pro-archivo-coches.csv',
-          rows: [
-            {
-              archive_category: 'vehiculos',
-              title: 'Ferrari F430 GT2',
-              slug: 'ferrari-f430-gt2',
-              summary: 'Versión GT2/GTC del Ferrari F430 desarrollada con Michelotto para competir en FIA GT, ALMS, Le Mans Series y grandes pruebas de resistencia.',
-              body: 'Texto de apertura editorial. Explica el carácter del coche, cómo se conduce, qué papel tiene dentro de la categoría y cómo se compara con rivales.',
-              contexto_historico: 'Origen del modelo, desarrollo, reglamento, debut, evolución y etapa competitiva.',
-              importancia: 'Por qué el coche es relevante: palmarés, concepto técnico, papel en la categoría, utilidad para comparar estilos de conducción o setups.',
-              fabricante: 'Ferrari',
-              modelo_base: 'Ferrari F430',
-              constructor: 'Ferrari Corse Clienti / Michelotto',
-              categoria_competicion: 'GT2 / GTC',
-              anos_actividad: '2006-2011 aprox.',
-              motor: 'V8 atmosférico Ferrari 4.0 L en configuración GT2',
-              potencia: 'aprox. 445-470 hp según restrictores y reglamento',
-              peso: 'mínimo GT2 alrededor de 1.100 kg según reglamento',
-              traccion: 'Trasera',
-              ficha_tecnica: 'Arquitectura::Motor central trasero y tracción trasera||Motor::V8 Ferrari 4.0 L||Clase::GT2 / GTC||Constructor::Michelotto / Ferrari Corse Clienti',
-              caracteristicas_tecnicas: 'Explicación del comportamiento técnico: motor, entrega, peso, aero, frenos, neumáticos y sensibilidad del coche.',
-              desarrollo: 'Cómo se desarrolló la versión de competición y qué cambios principales tuvo respecto al coche base.',
-              historial_competicion: 'Dónde compitió, con qué equipos y en qué campeonatos o carreras importantes.',
-              campeonatos: 'ALMS::Participación en GT2||FIA GT::Participación en GT2||Le Mans Series::Presencia en GT2',
-              victorias_destacadas: 'Sebring::Añadir victoria verificada||Le Mans::Añadir resultado de clase verificado',
-              equipos_destacados: 'Risi Competizione||AF Corse||JMB Racing',
-              variantes: 'F430 Challenge::Versión monomarca||F430 GT3::Versión FIA GT3||F430 GTC / GT2::Versión de competición GT2',
-              anecdotas: 'Curiosidad técnica o deportiva||Nota de conducción en sim racing||Diferencia frente a rivales',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Ferrari_F430',
-              imagen_url: '',
-              imagen_alt: 'Ferrari F430 GT2',
-              tags: 'Ferrari||GT2||GTC||Michelotto||Le Mans||Sim racing',
-            },
-          ],
-        },
-        pilotos: {
-          filename: 'plantilla-pro-archivo-pilotos.csv',
-          rows: [
-            {
-              archive_category: 'pilotos',
-              title: 'Fernando Alonso',
-              slug: 'fernando-alonso',
-              summary: 'Piloto español bicampeón del mundo de Fórmula 1, ganador de Le Mans y referente de longevidad, lectura de carrera, adaptación y competitividad en varias disciplinas.',
-              body: 'Texto de apertura editorial. Resume el carácter del piloto, por qué importa y qué lo diferencia dentro del motorsport.',
-              contexto_historico: 'Contexto de carrera: debut, etapas principales, cambios de equipo, momento histórico y evolución.',
-              importancia: 'Por qué es relevante: títulos, impacto, estilo, influencia, valor técnico o cultural.',
-              nacionalidad: 'España',
-              fecha_nacimiento: '1981-07-29',
-              lugar_nacimiento: 'Oviedo, Asturias, España',
-              anos_activo: '2001, 2003-2018, 2021-presente en F1',
-              disciplinas: 'Fórmula 1||WEC / Resistencia||24 Horas de Le Mans||IndyCar / Indianapolis 500||Karting',
-              equipos: 'Minardi||Renault||McLaren||Ferrari||Alpine||Aston Martin||Toyota Gazoo Racing',
-              titulos: 'Fórmula 1::Campeón del mundo 2005 y 2006||WEC::Campeón 2018-19||24 Horas de Le Mans::Ganador 2018 y 2019',
-              biografia: 'Biografía completa en varios párrafos si hace falta. Inicio, formación, salto a categorías superiores, llegada a F1 o disciplina principal.',
-              trayectoria: 'Renault::Títulos mundiales||Ferrari::Lucha por campeonatos||Toyota WEC::Victoria en Le Mans||Aston Martin::Regreso al podio',
-              palmares: 'F1::2 campeonatos mundiales||Le Mans::2 victorias absolutas||WEC::1 campeonato mundial',
-              estilo_pilotaje: 'Describe cómo pilota: frenada, defensa, gestión de neumáticos, ritmo de carrera, lluvia, clasificación, adaptación.',
-              momentos_clave: '2003 Hungría::Primera victoria en F1||2005 Brasil::Primer título mundial||2018 Le Mans::Primera victoria absoluta en Le Mans',
-              coches_asociados: 'Renault R25||Renault R26||Ferrari F2012||Toyota TS050 Hybrid||Aston Martin AMR23',
-              circuitos_asociados: 'Hungaroring||Interlagos||Le Mans / Circuit de la Sarthe||Bahrain International Circuit||Suzuka',
-              anecdotas: 'Curiosidad o episodio destacado||Rasgo de personalidad deportiva||Momento recordado por la comunidad',
-              fuentes: 'Wikipedia::https://en.wikipedia.org/wiki/Fernando_Alonso||Formula 1::https://www.formula1.com/',
-              imagen_url: '',
-              imagen_alt: 'Fernando Alonso',
-              tags: 'España||F1||Le Mans||WEC||Renault||Ferrari||Aston Martin',
-            },
-          ],
-        },
-        glosario: {
-          filename: 'plantilla-pro-archivo-glosario.csv',
-          rows: [
-            {
-              archive_category: 'glosario',
-              title: 'Apex',
-              slug: 'apex',
-              summary: 'Punto interior de una curva usado como referencia para optimizar trazada, velocidad mínima y salida.',
-              body: 'Texto de apertura editorial. Explica el concepto con lenguaje claro y conectado a conducción real y sim racing.',
-              area: 'Técnica de pilotaje',
-              definicion: 'El apex es el punto de la curva donde el coche pasa más cerca del interior. Puede ser temprano, medio o tardío según el objetivo de la trazada.',
-              uso: 'Sirve para decidir cuándo cerrar dirección, cuándo mantener velocidad mínima y cuándo abrir gas.',
-              aplicacion_practica: 'En curvas lentas suele interesar un apex tardío para mejorar salida. En curvas rápidas puede buscarse una línea más fluida y menos angular.',
-              ejemplos: 'Curva lenta::Apex tardío para priorizar tracción||Curva rápida::Apex progresivo para mantener velocidad||Curva doble::Primer apex sacrificado para preparar el segundo',
-              errores_comunes: 'Entrar demasiado pronto||Cerrar dirección antes de tiempo||Confundir tocar el piano con hacer una buena trazada',
-              relacionados: 'Trazada||Frenada||Trail braking||Salida de curva||Subviraje||Sobreviraje',
-              datos_sim_racing: 'En simuladores ayuda a comparar telemetría: velocidad mínima, ángulo de volante, punto de gas y salida.',
-              fuentes: 'DrivingFast::https://drivingfast.net/racing-line/',
-              imagen_url: '',
-              imagen_alt: 'Concepto de apex',
-              tags: 'pilotaje||técnica||trazada||sim racing',
-            },
-          ],
-        },
-      };
+      $('fieldsListBox').textContent = ARCHIVE_IMPORT_FIELDS.join(';');
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+      const slugify = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-{2,}/g,'-');
+
+      function normalizeType(value) {
+        const raw = String(value || '').trim().toLowerCase();
+        if (['coches','coche','vehiculo','vehículo','vehiculos','vehículos','vehicle','car'].includes(raw)) return 'vehiculos';
+        if (['circuito','circuit','track'].includes(raw)) return 'circuitos';
+        if (['piloto','driver','pilot'].includes(raw)) return 'pilotos';
+        if (['glosario','concepto','concept','general'].includes(raw)) return 'glosario';
+        return raw || 'glosario';
+      }
 
       function csvEscape(value) {
         const raw = String(value ?? '');
@@ -540,10 +182,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       }
 
       function toCsv(rows) {
-        const headers = Object.keys(rows[0] || {});
         return [
-          headers.join(';'),
-          ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(';')),
+          ARCHIVE_IMPORT_FIELDS.join(';'),
+          ...rows.map((row) => ARCHIVE_IMPORT_FIELDS.map((field) => csvEscape(row[field] ?? '')).join(';')),
         ].join('\n');
       }
 
@@ -559,18 +200,153 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         URL.revokeObjectURL(url);
       }
 
-      async function readFile(file) {
-        return { name: file.name, content: await file.text() };
+      function detectDelimiter(text) {
+        const first = String(text || '').split(/\r?\n/).find(Boolean) || '';
+        const candidates = [';', ',', '\t'];
+        return candidates.map((delimiter) => [delimiter, first.split(delimiter).length]).sort((a,b) => b[1] - a[1])[0][0] || ';';
+      }
+
+      function parseCsv(text, delimiter) {
+        const rows = [];
+        let row = [];
+        let field = '';
+        let quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const next = text[i + 1];
+          if (char === '"') {
+            if (quoted && next === '"') { field += '"'; i++; }
+            else quoted = !quoted;
+            continue;
+          }
+          if (!quoted && char === delimiter) { row.push(field); field = ''; continue; }
+          if (!quoted && (char === '\n' || char === '\r')) {
+            if (char === '\r' && next === '\n') i++;
+            row.push(field);
+            if (row.some((cell) => String(cell).trim() !== '')) rows.push(row);
+            row = [];
+            field = '';
+            continue;
+          }
+          field += char;
+        }
+        row.push(field);
+        if (row.some((cell) => String(cell).trim() !== '')) rows.push(row);
+        return rows;
+      }
+
+      function rowsToObjects(text) {
+        const delimiter = detectDelimiter(text);
+        const rawRows = parseCsv(text.replace(/^\uFEFF/, ''), delimiter);
+        const headers = (rawRows.shift() || []).map((header) => String(header || '').trim());
+        const rows = rawRows.map((cells) => {
+          const item = {};
+          headers.forEach((header, index) => { if (header) item[header] = String(cells[index] ?? '').trim(); });
+          return item;
+        });
+        return { delimiter, headers, rows };
+      }
+
+      function normalizeRow(row) {
+        const item = {};
+        ARCHIVE_IMPORT_FIELDS.forEach((field) => { item[field] = row[field] ?? ''; });
+        item.title = item.title || item.nombre || '';
+        item.nombre = item.nombre || item.title;
+        item.slug = item.slug || slugify(item.title);
+        item.archive_category = normalizeType(item.archive_category || item.category || item.tipo);
+        item.category = normalizeType(item.category || item.archive_category);
+        item.tipo = item.tipo || (item.category === 'vehiculos' ? 'coches' : item.category);
+        item.status = item.status || 'draft';
+        item.summary = item.summary || item.descripcion_corta || '';
+        item.descripcion_corta = item.descripcion_corta || item.summary;
+        item.body = item.body || item.descripcion_larga || item.introduccion || '';
+        item.descripcion_larga = item.descripcion_larga || item.body;
+        return item;
+      }
+
+      function validateFile(fileName, headers, rows) {
+        const errors = [];
+        const missing = ARCHIVE_IMPORT_FIELDS.filter((field) => !headers.includes(field));
+        const extra = headers.filter((field) => !ARCHIVE_IMPORT_FIELDS.includes(field));
+        if (missing.length) errors.push(`${fileName}: faltan columnas: ${missing.join(', ')}`);
+        if (extra.length) errors.push(`${fileName}: sobran columnas: ${extra.join(', ')}`);
+        rows.forEach((row, index) => {
+          const line = index + 2;
+          if (!row.title) errors.push(`${fileName} · línea ${line}: falta title/nombre.`);
+          if (!row.archive_category && !row.category && !row.tipo) errors.push(`${fileName} · línea ${line}: falta categoría.`);
+          if (!row.summary) errors.push(`${fileName} · línea ${line}: falta summary/resumen.`);
+        });
+        return { errors, missing, extra };
+      }
+
+      async function readAndNormalizeFiles() {
+        const files = Array.from($('archivoCsvFiles').files || []);
+        const results = [];
+        const errors = [];
+        for (const file of files) {
+          const content = await file.text();
+          const parsed = rowsToObjects(content);
+          const rows = parsed.rows.map(normalizeRow);
+          const validation = validateFile(file.name, parsed.headers, rows);
+          errors.push(...validation.errors);
+          results.push({ name:file.name, originalRows:parsed.rows.length, delimiter: parsed.delimiter === '\t' ? 'tab' : parsed.delimiter, headers: parsed.headers, rows, validation, content: toCsv(rows) });
+        }
+        lastNormalizedFiles = results.map((file) => ({ name: file.name.replace(/\.csv$/i, '') + '.normalized.csv', content: file.content }));
+        return { files: results, errors };
+      }
+
+      function renderPreview(data) {
+        const section = $('archivoPreviewSection');
+        const box = $('archivoPreviewBox');
+        const files = data.files || [];
+        const rows = files.flatMap((file) => file.rows.map((row) => ({ ...row, __file: file.name })));
+        const exactFiles = files.filter((file) => !file.validation.missing.length && !file.validation.extra.length).length;
+        const categoryCounts = rows.reduce((acc, row) => {
+          const key = normalizeType(row.category || row.archive_category);
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+
+        const errorsHtml = data.errors.length
+          ? `<div class="gc-archive-import-errors">${data.errors.slice(0, 30).map((error) => `<article>${esc(error)}</article>`).join('')}</div>`
+          : '<div class="gc-archive-import-ok">Cabecera exacta y validación básica correcta. Puedes hacer dry-run.</div>';
+
+        box.innerHTML = `
+          <div class="gc-archive-import-preview-grid">
+            <article class="gc-archive-import-preview-card"><span>Archivos</span><strong>${files.length}</strong></article>
+            <article class="gc-archive-import-preview-card"><span>Cabecera exacta</span><strong>${exactFiles}/${files.length}</strong></article>
+            <article class="gc-archive-import-preview-card"><span>Filas</span><strong>${rows.length}</strong></article>
+            <article class="gc-archive-import-preview-card"><span>Circuitos</span><strong>${categoryCounts.circuitos || 0}</strong></article>
+            <article class="gc-archive-import-preview-card"><span>Errores</span><strong>${data.errors.length}</strong></article>
+          </div>
+          ${errorsHtml}
+          <div style="overflow:auto">
+            <table class="gc-archive-import-table">
+              <thead><tr><th>Archivo</th><th>Categoría</th><th>Título</th><th>Slug</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${rows.slice(0, 25).map((row) => `
+                  <tr>
+                    <td>${esc(row.__file)}</td>
+                    <td>${esc(row.category || row.archive_category)}</td>
+                    <td>${esc(row.title || '')}</td>
+                    <td>${esc(row.slug || '')}</td>
+                    <td>${esc(row.status || '')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        section.hidden = false;
       }
 
       async function post(payload) {
         const response = await fetch(`${API}/import-csv`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          method:'POST',
+          credentials:'include',
+          headers: { 'Content-Type':'application/json' },
           body: JSON.stringify(payload),
         });
-
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
         return data;
@@ -579,21 +355,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       function renderSummary(data) {
         const section = $('archivoImportSummarySection');
         const box = $('archivoImportSummary');
-
         const samples = Array.isArray(data.samples) ? data.samples : [];
-        const sampleHtml = samples.length
-          ? `<div class="gc-archive-import-samples">
-              ${samples.map((sample) => `
-                <article class="gc-archive-import-sample">
-                  <strong>${escapeHtml(sample.title || 'Sin título')}</strong>
-                  <span>${escapeHtml(sample.category || 'general')}</span>
-                  <span>${escapeHtml(sample.status || '')}</span>
-                  <span>${escapeHtml(sample.action || '')}</span>
-                </article>
-              `).join('')}
-            </div>`
-          : '<p class="gc-message">No hay muestras para mostrar.</p>';
-
         box.innerHTML = `
           <div class="gc-archive-import-summary-grid">
             <article class="gc-archive-import-summary-card"><span>Leídas</span><strong>${Number(data.readRows || 0)}</strong></article>
@@ -602,58 +364,85 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             <article class="gc-archive-import-summary-card"><span>Omitidas</span><strong>${Number(data.skipped || 0)}</strong></article>
             <article class="gc-archive-import-summary-card"><span>Modo</span><strong>${data.dryRun ? 'Test' : 'Write'}</strong></article>
           </div>
-          <div>
-            <h3>Muestras</h3>
-            ${sampleHtml}
+          <div style="overflow:auto">
+            <table class="gc-archive-import-table">
+              <thead><tr><th>Título</th><th>Categoría</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>
+                ${samples.slice(0, 25).map((sample) => `
+                  <tr><td>${esc(sample.title || 'Sin título')}</td><td>${esc(sample.category || 'general')}</td><td>${esc(sample.status || '')}</td><td>${esc(sample.action || '')}</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
           </div>
         `;
-
         section.hidden = false;
-      }
-
-      function escapeHtml(value) {
-        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;',
-        }[char]));
       }
 
       document.querySelectorAll('[data-template-download]').forEach((button) => {
         button.addEventListener('click', () => {
           const key = button.getAttribute('data-template-download');
-          const template = templates[key];
-          if (!template) return;
-          downloadText(template.filename, toCsv(template.rows));
+          if (key === 'all-fields') {
+            const row = Object.fromEntries(ARCHIVE_IMPORT_FIELDS.map((field) => [field, '']));
+            row.archive_category = 'circuitos';
+            row.category = 'circuitos';
+            row.tipo = 'circuitos';
+            row.title = 'Ejemplo completo';
+            row.nombre = 'Ejemplo completo';
+            row.slug = 'ejemplo-completo';
+            row.status = 'draft';
+            downloadText('plantilla-maestra-archivo-campos-exactos.csv', toCsv([row]));
+            return;
+          }
+          const row = TEMPLATE_ROWS[key];
+          if (!row) return;
+          downloadText(`plantilla-archivo-${key}-campos-exactos.csv`, toCsv([row]));
         });
       });
 
-      $('archivoImportBtn').addEventListener('click', async () => {
-        const files = Array.from($('archivoCsvFiles').files || []);
+      $('copyFieldsBtn').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(ARCHIVE_IMPORT_FIELDS.join(';')).catch(() => null);
+        $('archivoImportMsg').textContent = 'Cabecera copiada.';
+      });
 
-        if (!files.length) {
+      $('archivoPreviewBtn').addEventListener('click', async () => {
+        if (!($('archivoCsvFiles').files || []).length) {
           $('archivoImportMsg').textContent = 'Selecciona al menos un CSV.';
           return;
         }
-
-        $('archivoImportBtn').disabled = true;
-        $('archivoImportMsg').textContent = 'Leyendo CSV...';
-
+        $('archivoImportMsg').textContent = 'Leyendo y validando CSV...';
         try {
+          const preview = await readAndNormalizeFiles();
+          renderPreview(preview);
+          $('archivoImportMsg').textContent = preview.errors.length ? 'Preview generado con avisos.' : 'Preview correcto. Haz dry-run antes de escribir.';
+        } catch (error) {
+          $('archivoImportMsg').textContent = error.message || 'No se pudo leer el CSV.';
+        }
+      });
+
+      $('archivoImportBtn').addEventListener('click', async () => {
+        if (!($('archivoCsvFiles').files || []).length) {
+          $('archivoImportMsg').textContent = 'Selecciona al menos un CSV.';
+          return;
+        }
+        $('archivoImportBtn').disabled = true;
+        $('archivoImportMsg').textContent = 'Preparando CSV normalizado...';
+        try {
+          const preview = await readAndNormalizeFiles();
+          renderPreview(preview);
+          if (preview.errors.length && !$('archivoDryRun').checked) {
+            throw new Error('Hay errores en cabecera/datos. Haz dry-run o corrige el CSV antes de escribir.');
+          }
           const payload = {
-            files: await Promise.all(files.map(readFile)),
+            files: lastNormalizedFiles,
             dryRun: $('archivoDryRun').checked,
             publish: $('archivoPublish').checked,
             force: $('archivoForce').checked,
           };
-
+          $('archivoImportMsg').textContent = 'Enviando a API...';
           const data = await post(payload);
           $('archivoImportMsg').textContent = data.dryRun
-            ? `Prueba completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`
-            : `Importación completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}, estado=${data.forcedStatus}.`;
-
+            ? `Prueba completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}.`
+            : `Importación completada. Crear ${data.created}, actualizar ${data.updated}, omitidas ${data.skipped}.`;
           renderSummary(data);
           $('archivoImportResult').textContent = JSON.stringify(data, null, 2);
           $('archivoImportResultSection').hidden = false;

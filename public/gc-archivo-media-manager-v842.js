@@ -33,19 +33,19 @@
   }
 
   function mediaUrl(media) {
-    return media?.url || media?.localUrl || '/og/grasscutters-og.svg';
+    return media?.url || media?.localUrl || media?.originalUrl || '/og/grasscutters-og.svg';
   }
 
-  function mediaKey(media) {
-    return String(media?.url || media?.localUrl || media?.originalUrl || media?.id || '')
+  function mediaKey(media, index = 0) {
+    return String(media?.id || media?.mediaId || media?.url || media?.localUrl || media?.originalUrl || index)
       .trim()
       .replace(/\/+$/, '');
   }
 
   function uniqueMedia(media) {
     const seen = new Set();
-    return (Array.isArray(media) ? media : []).filter((entry) => {
-      const key = mediaKey(entry);
+    return (Array.isArray(media) ? media : []).filter((entry, index) => {
+      const key = mediaKey(entry, index);
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -90,21 +90,29 @@
         <div class="gc-media-manager-list">
           ${media.length ? media.map((entry, index) => {
             const isCover = Boolean(entry.isMain || entry.isPrimary);
+            const id = mediaKey(entry, index);
+            const url = mediaUrl(entry);
+            const isLocal = Boolean(entry.local || entry.localUrl);
             return `
-              <article class="gc-media-item ${isCover ? 'is-cover' : ''}" data-media-id="${esc(entry.id)}">
+              <article class="gc-media-item ${isCover ? 'is-cover' : ''}" data-media-id="${esc(id)}">
                 <div class="gc-media-thumb">
-                  <img src="${esc(mediaUrl(entry))}" alt="${esc(entry.alt || '')}" loading="lazy" />
+                  <img src="${esc(url)}" alt="${esc(entry.alt || '')}" loading="lazy" data-media-preview />
                   <span>${isCover ? 'Portada' : `Imagen ${index + 1}`}</span>
                 </div>
 
                 <div class="gc-media-item__body">
                   <div class="gc-media-item__top">
                     <strong>${esc(entry.alt || item.title || item.nombre || 'Imagen')}</strong>
-                    <span>${entry.local ? 'Local' : 'Externa'}</span>
+                    <span>${isLocal ? 'Local' : 'Externa'} · ${isCover ? 'Portada' : 'Galería'}</span>
                   </div>
 
-                  <details class="gc-media-details">
-                    <summary>Editar créditos</summary>
+                  <details class="gc-media-details" open>
+                    <summary>Editar imagen</summary>
+
+                    <label>
+                      <small>URL actual de imagen</small>
+                      <input data-media-field="url" data-media-url-input value="${esc(entry.url || entry.localUrl || entry.originalUrl || '')}" />
+                    </label>
 
                     <label>
                       <small>Alt</small>
@@ -129,11 +137,17 @@
                         <input data-media-field="sourceUrl" value="${esc(entry.sourceUrl || '')}" />
                       </label>
                     </div>
+
+                    <div class="gc-media-check-row">
+                      <label><input type="checkbox" data-media-field-checkbox="locked" ${entry.locked ? 'checked' : ''} /> Bloqueada / revisada</label>
+                      <label><input type="checkbox" data-media-field-checkbox="makePrimary" ${isCover ? 'checked' : ''} /> Usar como portada</label>
+                    </div>
                   </details>
 
                   <div class="gc-media-actions">
-                    <button class="gc-btn gc-btn--small" type="button" data-media-save>Guardar</button>
+                    <button class="gc-btn gc-btn--small gc-btn--primary" type="button" data-media-save>Guardar cambios</button>
                     <button class="gc-btn gc-btn--small" type="button" data-media-primary ${isCover ? 'disabled' : ''}>${isCover ? 'Ya es portada' : 'Hacer portada'}</button>
+                    <a class="gc-btn gc-btn--small" href="${esc(url)}" target="_blank" rel="noreferrer">Abrir</a>
                     <button class="gc-admin-danger-button" type="button" data-media-delete>Borrar</button>
                   </div>
                 </div>
@@ -156,13 +170,30 @@
   function collectMediaPayload(card) {
     const payload = {};
     card.querySelectorAll('[data-media-field]').forEach((input) => {
-      payload[input.dataset.mediaField] = input.value;
+      payload[input.dataset.mediaField] = input.value.trim();
     });
+    card.querySelectorAll('[data-media-field-checkbox]').forEach((input) => {
+      payload[input.dataset.mediaFieldCheckbox] = input.checked;
+    });
+
+    if (payload.url) {
+      payload.localUrl = payload.url;
+      payload.originalUrl = payload.url;
+    }
+
     return payload;
   }
 
   function bindManager(root) {
     root.querySelector('[data-refresh-media]')?.addEventListener('click', () => renderManager(true));
+
+    root.querySelectorAll('[data-media-url-input]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const card = input.closest('[data-media-id]');
+        const img = card?.querySelector('[data-media-preview]');
+        if (img && input.value.trim()) img.src = input.value.trim();
+      });
+    });
 
     root.querySelectorAll('[data-media-save]').forEach((button) => {
       button.addEventListener('click', async () => {
@@ -177,7 +208,7 @@
             method: 'PATCH',
             body: JSON.stringify(collectMediaPayload(card)),
           });
-          msg.textContent = 'Imagen guardada.';
+          msg.textContent = 'Imagen actualizada.';
           await renderManager(true);
         } catch (error) {
           msg.textContent = error.message || 'No se pudo guardar.';

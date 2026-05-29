@@ -4,37 +4,132 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../components/AdminSubnav.astro';
 ---
 
-<AppLayout title="Archivo Motorsport · Imágenes">
-  <section class="gc-archive-media-page">
+<AppLayout title="Archivo Motorsport · Biblioteca de imágenes">
+  <section class="gc-archive-media-page gc-archive-image-library-v1">
     <AdminSubnav />
 
     <header class="gc-archive-media-hero">
       <div>
         <p class="gc-archive-kicker">Archivo Motorsport</p>
-        <h1>Imágenes</h1>
+        <h1>Biblioteca de imágenes</h1>
         <p>
-          Primero selecciona la ficha desde el buscador visual. Después añade una imagen por URL o sube material propio.
-          Pensado para trabajar cómodo aunque el Archivo tenga decenas o cientos de fichas.
+          Base de datos visual de todas las imágenes asociadas al Archivo. Busca, filtra, corrige créditos,
+          cambia portadas y añade nuevo material sin perderte ficha por ficha.
         </p>
       </div>
 
       <aside class="gc-archive-media-rules">
         <span>Flujo recomendado</span>
         <ol>
-          <li>Busca la ficha.</li>
-          <li>Selecciona la tarjeta.</li>
-          <li>Añade URL o sube archivo.</li>
-          <li>Marca portada solo si toca.</li>
+          <li>Revisa la biblioteca.</li>
+          <li>Filtra sin alt, sin licencia o sin portada.</li>
+          <li>Edita imagen como una entrada.</li>
+          <li>Añade nuevas imágenes si faltan.</li>
         </ol>
       </aside>
     </header>
+
+    <section class="gc-image-library-panel">
+      <div class="gc-media-picker__head">
+        <div>
+          <span class="gc-archive-kicker">Base de datos visual</span>
+          <h2>Todas las imágenes</h2>
+          <p>La biblioteca se construye leyendo todas las fichas y su array de media.</p>
+        </div>
+        <div class="gc-media-picker__summary">
+          <strong id="imageVisibleCount">0</strong>
+          <span>imágenes visibles</span>
+        </div>
+      </div>
+
+      <div class="gc-image-library-tools">
+        <label class="gc-field">
+          <span>Buscar imagen</span>
+          <input id="imageSearch" type="search" placeholder="Busca por ficha, alt, fuente, autor, licencia..." autocomplete="off" />
+        </label>
+
+        <label class="gc-field">
+          <span>Tipo ficha</span>
+          <select id="imageTypeFilter">
+            <option value="all">Todo</option>
+            <option value="circuitos">Circuitos</option>
+            <option value="vehiculos">Coches</option>
+            <option value="pilotos">Pilotos</option>
+            <option value="glosario">Glosario</option>
+          </select>
+        </label>
+
+        <label class="gc-field">
+          <span>Estado imagen</span>
+          <select id="imageStateFilter">
+            <option value="all">Todo</option>
+            <option value="cover">Portadas</option>
+            <option value="gallery">Galería</option>
+            <option value="missing-alt">Sin alt</option>
+            <option value="missing-license">Sin licencia</option>
+            <option value="missing-source">Sin fuente</option>
+            <option value="external">Externas</option>
+            <option value="local">Locales</option>
+          </select>
+        </label>
+
+        <label class="gc-field">
+          <span>Orden</span>
+          <select id="imageSort">
+            <option value="item-asc">Ficha A-Z</option>
+            <option value="alt-asc">Alt A-Z</option>
+            <option value="source-asc">Fuente A-Z</option>
+            <option value="issues-desc">Más incompletas</option>
+          </select>
+        </label>
+
+        <label class="gc-field">
+          <span>Por página</span>
+          <select id="imagePageSize">
+            <option value="12" selected>12</option>
+            <option value="24">24</option>
+            <option value="48">48</option>
+            <option value="96">96</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="gc-image-library-actions">
+        <button type="button" class="is-active" data-image-state="all">Todo</button>
+        <button type="button" data-image-state="cover">Portadas</button>
+        <button type="button" data-image-state="missing-alt">Sin alt</button>
+        <button type="button" data-image-state="missing-license">Sin licencia</button>
+        <button type="button" data-image-state="missing-source">Sin fuente</button>
+        <button type="button" data-image-state="external">Externas</button>
+        <button type="button" data-image-state="local">Locales</button>
+        <button type="button" id="imageRefreshBtn">Recargar</button>
+      </div>
+
+      <div class="gc-image-library-stats">
+        <article><span>Total</span><strong id="imageTotalCount">0</strong></article>
+        <article><span>Portadas</span><strong id="imageCoverCount">0</strong></article>
+        <article><span>Sin alt</span><strong id="imageMissingAltCount">0</strong></article>
+        <article><span>Sin licencia</span><strong id="imageMissingLicenseCount">0</strong></article>
+        <article><span>Sin imagen en ficha</span><strong id="itemsWithoutImageCount">0</strong></article>
+      </div>
+
+      <div class="gc-image-library-grid" id="imageLibraryGrid" aria-live="polite">
+        <div class="gc-admin-empty">Cargando biblioteca visual...</div>
+      </div>
+
+      <nav class="gc-image-pagination">
+        <button type="button" id="imagePrevPage">Anterior</button>
+        <span id="imagePageInfo">Página 1/1</span>
+        <button type="button" id="imageNextPage">Siguiente</button>
+      </nav>
+    </section>
 
     <section class="gc-media-picker">
       <div class="gc-media-picker__head">
         <div>
           <span class="gc-archive-kicker">Selector de ficha</span>
-          <h2>Elige dónde guardar la imagen.</h2>
-          <p>El desplegable deja de ser el centro del sistema. Ahora manda el buscador visual.</p>
+          <h2>Añadir imagen a una ficha</h2>
+          <p>Este bloque sigue sirviendo para añadir por URL o subir desde PC. La biblioteca superior es para gestionar las ya existentes.</p>
         </div>
 
         <div class="gc-media-picker__summary">
@@ -104,30 +199,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             </div>
           </label>
 
-          <label class="gc-field gc-field--full">
-            <span>Texto alternativo</span>
-            <input id="alt" name="alt" type="text" placeholder="Ej. Fernando Alonso durante..." />
-          </label>
-
-          <label class="gc-field">
-            <span>Fuente</span>
-            <input id="source" name="source" type="text" value="URL externa" />
-          </label>
-
-          <label class="gc-field">
-            <span>URL fuente</span>
-            <input id="sourceUrl" name="sourceUrl" type="url" placeholder="Página de origen o ficha Wikimedia" />
-          </label>
-
-          <label class="gc-field">
-            <span>Autor</span>
-            <input id="author" name="author" type="text" placeholder="Autor si aparece" />
-          </label>
-
-          <label class="gc-field">
-            <span>Licencia</span>
-            <input id="license" name="license" type="text" placeholder="CC BY-SA, dominio público..." />
-          </label>
+          <label class="gc-field gc-field--full"><span>Texto alternativo</span><input id="alt" name="alt" type="text" placeholder="Ej. Fernando Alonso durante..." /></label>
+          <label class="gc-field"><span>Fuente</span><input id="source" name="source" type="text" value="URL externa" /></label>
+          <label class="gc-field"><span>URL fuente</span><input id="sourceUrl" name="sourceUrl" type="url" placeholder="Página de origen o ficha Wikimedia" /></label>
+          <label class="gc-field"><span>Autor</span><input id="author" name="author" type="text" placeholder="Autor si aparece" /></label>
+          <label class="gc-field"><span>Licencia</span><input id="license" name="license" type="text" placeholder="CC BY-SA, dominio público..." /></label>
 
           <label class="gc-field">
             <span>Preset licencia</span>
@@ -192,30 +268,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             </div>
           </div>
 
-          <label class="gc-field gc-field--full">
-            <span>Texto alternativo</span>
-            <input id="uploadAlt" type="text" placeholder="Se autocompleta con el nombre de la ficha si está vacío" />
-          </label>
-
-          <label class="gc-field">
-            <span>Fuente</span>
-            <input id="uploadSource" type="text" value="GrassCutters Racing" />
-          </label>
-
-          <label class="gc-field">
-            <span>URL fuente</span>
-            <input id="uploadSourceUrl" type="url" placeholder="Opcional" />
-          </label>
-
-          <label class="gc-field">
-            <span>Autor</span>
-            <input id="uploadAuthor" type="text" placeholder="Autor o equipo" />
-          </label>
-
-          <label class="gc-field">
-            <span>Licencia</span>
-            <input id="uploadLicense" type="text" value="Imagen propia / GrassCutters Racing" />
-          </label>
+          <label class="gc-field gc-field--full"><span>Texto alternativo</span><input id="uploadAlt" type="text" placeholder="Se autocompleta con el nombre de la ficha si está vacío" /></label>
+          <label class="gc-field"><span>Fuente</span><input id="uploadSource" type="text" value="GrassCutters Racing" /></label>
+          <label class="gc-field"><span>URL fuente</span><input id="uploadSourceUrl" type="url" placeholder="Opcional" /></label>
+          <label class="gc-field"><span>Autor</span><input id="uploadAuthor" type="text" placeholder="Autor o equipo" /></label>
+          <label class="gc-field"><span>Licencia</span><input id="uploadLicense" type="text" value="Imagen propia / GrassCutters Racing" /></label>
 
           <label class="gc-field">
             <span>Preset licencia</span>
@@ -243,24 +300,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       </article>
     </div>
 
-    <section class="gc-media-system-notes">
-      <article>
-        <span>Nuevo flujo</span>
-        <h3>Buscador visual</h3>
-        <p>Ya no dependes de un desplegable eterno. Filtras y seleccionas una tarjeta.</p>
-      </article>
-      <article>
-        <span>Nuevo flujo</span>
-        <h3>URL directa</h3>
-        <p>La página acepta <code>?item=id</code> o <code>?slug=slug</code> para abrir con una ficha preseleccionada.</p>
-      </article>
-      <article>
-        <span>Sistema</span>
-        <h3>Estado visible</h3>
-        <p>Cada tarjeta muestra categoría, estado, número de imágenes y si ya tiene portada.</p>
-      </article>
-    </section>
-
     <div class="gc-actions gc-media-back">
       <a class="gc-button-secondary" href="/admin/archivo">Volver al Archivo</a>
     </div>
@@ -269,623 +308,98 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
   </section>
 
   <style is:global>
-    .gc-archive-media-page{
-      max-width:1280px;
-      margin:0 auto;
-      padding:24px 18px 64px;
-      color:var(--text,#f3f7ef);
-    }
-
+    .gc-archive-media-page{max-width:1380px;margin:0 auto;padding:24px 18px 64px;color:var(--text,#f3f7ef)}
     .gc-archive-media-page *{box-sizing:border-box}
-
-    .gc-archive-media-hero{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(260px,.38fr);
-      gap:18px;
-      margin:18px 0 20px;
-      padding:24px;
-      border:1px solid rgba(137,195,92,.22);
-      border-radius:26px;
-      background:
-        radial-gradient(circle at 10% 0%, rgba(156,255,63,.12), transparent 36%),
-        linear-gradient(135deg,rgba(137,195,92,.10),rgba(255,255,255,.03));
-    }
-
-    .gc-archive-media-hero h1{
-      margin:.2rem 0 .5rem;
-      font-size:clamp(2.4rem,5vw,4.8rem);
-      line-height:.9;
-      letter-spacing:-.075em;
-    }
-
-    .gc-archive-media-hero p{
-      max-width:760px;
-      margin:0;
-      color:rgba(255,255,255,.74);
-      line-height:1.6;
-    }
-
-    .gc-archive-kicker,
-    .gc-media-card-head span,
-    .gc-archive-media-rules span,
-    .gc-media-system-notes span,
-    .gc-field > span,
-    .gc-media-picker__head > div > span{
-      margin:0 0 8px;
-      color:#9cff3f;
-      font-weight:900;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      font-size:.74rem;
-    }
-
-    .gc-archive-media-rules,
-    .gc-media-picker,
-    .gc-media-global-tools{
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:22px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .gc-archive-media-rules{padding:16px;background:rgba(0,0,0,.18)}
-    .gc-archive-media-rules ol{
-      display:grid;
-      gap:7px;
-      margin:0;
-      padding-left:18px;
-      color:rgba(255,255,255,.72);
-      line-height:1.45;
-    }
-
-    .gc-media-picker{
-      margin:0 0 18px;
-      padding:18px;
-      background:
-        radial-gradient(circle at 100% 0%, rgba(156,255,63,.06), transparent 36%),
-        rgba(255,255,255,.025);
-    }
-
-    .gc-media-picker__head{
-      display:flex;
-      align-items:end;
-      justify-content:space-between;
-      gap:18px;
-      margin-bottom:16px;
-    }
-
-    .gc-media-picker__head h2{
-      margin:.2rem 0 .35rem;
-      font-size:clamp(1.8rem,3.3vw,3.3rem);
-      line-height:.92;
-      letter-spacing:-.07em;
-    }
-
-    .gc-media-picker__head p{
-      margin:0;
-      color:rgba(255,255,255,.68);
-      line-height:1.5;
-    }
-
-    .gc-media-picker__summary{
-      min-width:138px;
-      padding:14px;
-      border:1px solid rgba(156,255,63,.18);
-      border-radius:18px;
-      background:rgba(156,255,63,.06);
-      text-align:right;
-    }
-
-    .gc-media-picker__summary strong{
-      display:block;
-      font-size:2rem;
-      line-height:1;
-    }
-
-    .gc-media-picker__summary span{
-      color:rgba(255,255,255,.62);
-      font-size:.82rem;
-    }
-
-    .gc-media-picker__tools{
-      display:grid;
-      grid-template-columns:minmax(260px,.45fr) minmax(0,1fr);
-      gap:14px;
-      align-items:end;
-      margin-bottom:14px;
-    }
-
-    .gc-media-picker__filters{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .gc-media-picker__filters button,
-    .gc-selected-item-main__actions a,
-    .gc-selected-item-main__actions button{
-      min-height:38px;
-      padding:0 13px;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px;
-      background:rgba(255,255,255,.055);
-      color:rgba(255,255,255,.9);
-      font-weight:900;
-      font-size:.78rem;
-      letter-spacing:.07em;
-      text-transform:uppercase;
-      cursor:pointer;
-      text-decoration:none;
-    }
-
-    .gc-media-picker__filters button.is-active{
-      color:#061006;
-      background:#9cff3f;
-      border-color:transparent;
-    }
-
-    .gc-selected-item-main{
-      display:flex;
-      justify-content:space-between;
-      gap:14px;
-      align-items:center;
-      margin-bottom:14px;
-      padding:14px;
-      border:1px solid rgba(156,255,63,.28);
-      border-radius:18px;
-      background:
-        radial-gradient(circle at 100% 0%, rgba(156,255,63,.12), transparent 36%),
-        rgba(156,255,63,.065);
-    }
-
-    .gc-selected-item-main span,
-    .gc-selected-inline span{
-      color:#9cff3f;
-      font-size:.7rem;
-      font-weight:950;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-selected-item-main strong{
-      display:block;
-      margin:.25rem 0;
-      font-size:1.24rem;
-      line-height:1.05;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-selected-item-main p{
-      margin:0;
-      color:rgba(255,255,255,.65);
-      font-size:.9rem;
-    }
-
-    .gc-selected-item-main__actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
-    .gc-media-picker__grid{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:10px;
-      max-height:420px;
-      overflow:auto;
-      padding-right:4px;
-    }
-
-    .gc-picker-card{
-      position:relative;
-      display:grid;
-      min-height:150px;
-      padding:13px;
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:18px;
-      background:rgba(0,0,0,.16);
-      color:inherit;
-      text-align:left;
-      cursor:pointer;
-      transition:transform .16s ease,border-color .16s ease,background .16s ease;
-    }
-
-    .gc-picker-card:hover,
-    .gc-picker-card.is-selected{
-      transform:translateY(-1px);
-      border-color:rgba(156,255,63,.42);
-      background:rgba(156,255,63,.06);
-    }
-
-    .gc-picker-card__top{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      align-items:start;
-      margin-bottom:10px;
-    }
-
-    .gc-picker-card__type{
-      color:#9cff3f;
-      font-size:.68rem;
-      font-weight:950;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-picker-card__status{
-      color:rgba(255,255,255,.55);
-      font-size:.72rem;
-    }
-
-    .gc-picker-card strong{
-      display:block;
-      font-size:1.02rem;
-      line-height:1.08;
-      letter-spacing:-.025em;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-picker-card p{
-      margin:8px 0 0;
-      color:rgba(255,255,255,.55);
-      font-size:.82rem;
-      line-height:1.3;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-picker-card__badges{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin-top:auto;
-      padding-top:12px;
-    }
-
-    .gc-picker-card__badges span{
-      display:inline-flex;
-      min-height:24px;
-      align-items:center;
-      padding:0 8px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px;
-      background:rgba(255,255,255,.035);
-      color:rgba(255,255,255,.62);
-      font-size:.72rem;
-    }
-
-    .gc-media-picker__empty{
-      padding:18px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-media-two-cols{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:18px;
-      align-items:start;
-    }
-
-    .gc-media-card{
-      padding:20px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:24px;
-      background:
-        radial-gradient(circle at 100% 0%, rgba(156,255,63,.055), transparent 34%),
-        rgba(255,255,255,.04);
-      min-width:0;
-    }
-
-    .gc-media-card-head{margin-bottom:18px}
-    .gc-media-card-head h2{margin:0 0 6px;font-size:clamp(1.55rem,2.5vw,2.25rem);letter-spacing:-.045em}
-    .gc-media-card-head p{margin:0;color:rgba(255,255,255,.72);line-height:1.55}
-
-    .gc-archive-url-form{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:16px;
-    }
-
-    .gc-field{
-      display:grid;
-      gap:7px;
-      min-width:0;
-    }
-
+    .gc-archive-media-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.38fr);gap:18px;margin:18px 0 20px;padding:24px;border:1px solid rgba(137,195,92,.22);border-radius:26px;background:linear-gradient(135deg,rgba(137,195,92,.08),rgba(255,255,255,.025))}
+    .gc-archive-kicker{margin:0;color:#9cff3f;font-size:.72rem;font-weight:950;letter-spacing:.14em;text-transform:uppercase}
+    .gc-archive-media-hero h1{margin:.2rem 0 .5rem;font-size:clamp(3rem,7vw,6.4rem);line-height:.88;letter-spacing:-.07em;text-transform:uppercase}
+    .gc-archive-media-hero p{margin:0;color:rgba(255,255,255,.72);line-height:1.55;max-width:760px}
+    .gc-archive-media-rules{padding:18px;border:1px solid rgba(255,255,255,.10);border-radius:22px;background:rgba(0,0,0,.18)}
+    .gc-archive-media-rules span,.gc-media-card-head span,.gc-selected-item-main span,.gc-selected-inline span{color:#9cff3f;font-size:.7rem;font-weight:950;letter-spacing:.12em;text-transform:uppercase}
+    .gc-archive-media-rules ol{margin:10px 0 0;padding-left:1.2em;color:rgba(255,255,255,.72);line-height:1.55}
+    .gc-image-library-panel,.gc-media-picker,.gc-media-card{padding:20px;border:1px solid rgba(255,255,255,.10);border-radius:24px;background:rgba(255,255,255,.025);margin-bottom:18px}
+    .gc-media-picker__head{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}
+    .gc-media-picker__head h2,.gc-media-card-head h2{margin:.2rem 0 .3rem;font-size:clamp(1.55rem,2.5vw,2.25rem);line-height:.98;letter-spacing:-.045em;text-transform:uppercase}
+    .gc-media-picker__head p,.gc-media-card-head p{margin:0;color:rgba(255,255,255,.68);line-height:1.5}
+    .gc-media-picker__summary{min-width:138px;padding:14px;border:1px solid rgba(156,255,63,.18);border-radius:18px;background:rgba(156,255,63,.04);text-align:right}
+    .gc-media-picker__summary strong{display:block;font-size:2rem;line-height:1}
+    .gc-media-picker__summary span{color:rgba(255,255,255,.62);font-size:.82rem}
+    .gc-image-library-tools{display:grid;grid-template-columns:minmax(260px,1fr) repeat(4,minmax(150px,.28fr));gap:12px;align-items:end;margin-bottom:12px}
+    .gc-media-picker__tools{display:grid;grid-template-columns:minmax(260px,.45fr) minmax(0,1fr);gap:14px;align-items:end;margin-bottom:14px}
+    .gc-field{display:grid;gap:7px;min-width:0}
     .gc-field--full{grid-column:1/-1}
-
-    .gc-field input,
-    .gc-field select{
-      width:100%;
-      min-height:46px;
-      box-sizing:border-box;
-      padding:0 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.15);
-      background-color:#07110b;
-      color:#f3f7ef;
-      font:inherit;
-      outline:none;
-    }
-
-    .gc-field input:focus,
-    .gc-field select:focus{
-      border-color:#9cff3f;
-      box-shadow:0 0 0 4px rgba(156,255,63,.08);
-    }
-
-    .gc-field input[type="file"]{
-      display:flex;
-      align-items:center;
-      padding:10px 12px;
-      min-height:52px;
-    }
-
-    .gc-field input::placeholder{color:rgba(255,255,255,.42)}
-
-    .gc-field select{
-      appearance:none;
-      -webkit-appearance:none;
-      padding-right:42px;
-      background-image:
-        linear-gradient(45deg, transparent 50%, #9cff3f 50%),
-        linear-gradient(135deg, #9cff3f 50%, transparent 50%),
-        linear-gradient(to right, rgba(255,255,255,.10), rgba(255,255,255,.10));
-      background-position:
-        calc(100% - 21px) 20px,
-        calc(100% - 15px) 20px,
-        calc(100% - 40px) 10px;
-      background-size:
-        6px 6px,
-        6px 6px,
-        1px 26px;
-      background-repeat:no-repeat;
-    }
-
-    .gc-field select option{
-      background:#07110b;
-      color:#f3f7ef;
-    }
-
-    .gc-commons-meta{
-      padding:14px;
-      border:1px solid rgba(156,255,63,.18);
-      border-radius:16px;
-      background:rgba(156,255,63,.055);
-    }
-
-    .gc-commons-meta strong{
-      display:block;
-      margin-bottom:8px;
-      color:#9cff3f;
-      font-size:.76rem;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-    }
-
-    .gc-commons-meta dl{
-      display:grid;
-      gap:7px;
-      margin:0;
-    }
-
-    .gc-commons-meta div{
-      display:grid;
-      grid-template-columns:110px 1fr;
-      gap:10px;
-      align-items:start;
-    }
-
-    .gc-commons-meta dt{
-      color:rgba(255,255,255,.54);
-      font-size:.78rem;
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-    }
-
-    .gc-commons-meta dd{
-      margin:0;
-      color:rgba(255,255,255,.78);
-      overflow-wrap:anywhere;
-      line-height:1.35;
-    }
-
-    .gc-field small{
-      display:block;
-      color:rgba(255,255,255,.48);
-      font-size:.78rem;
-      line-height:1.35;
-    }
-
-    .gc-selected-inline{
-      padding:12px;
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:16px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-selected-inline.is-ready{
-      border-color:rgba(156,255,63,.22);
-      background:rgba(156,255,63,.055);
-    }
-
-    .gc-selected-inline strong{
-      display:block;
-      margin-bottom:4px;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-selected-inline p{
-      margin:0;
-      color:rgba(255,255,255,.60);
-      font-size:.9rem;
-      line-height:1.4;
-    }
-
-    .gc-url-row{
-      display:grid;
-      grid-template-columns:1fr auto;
-      gap:10px;
-    }
-
-    .gc-button-primary,
-    .gc-button-secondary{
-      border-radius:999px;
-      padding:12px 18px;
-      font-weight:900;
-      text-decoration:none;
-      cursor:pointer;
-      min-height:46px;
-      border:1px solid transparent;
-    }
-
-    .gc-button-primary{background:#9cff3f;color:#061006}
-    .gc-button-primary:disabled{opacity:.55;cursor:not-allowed}
-    .gc-button-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border-color:rgba(255,255,255,.12)}
-
-    .gc-preview-frame{
-      display:grid;
-      place-items:center;
-      aspect-ratio:16/10;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:18px;
-      background:rgba(0,0,0,.28);
-      overflow:hidden;
-      color:rgba(255,255,255,.52);
-    }
-
+    .gc-field span{color:rgba(255,255,255,.68);font-size:.74rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-field input,.gc-field select{width:100%;min-height:44px;box-sizing:border-box;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background-color:#07110b;color:#f3f7ef;font:inherit;outline:none}
+    .gc-field input:focus,.gc-field select:focus{border-color:#9cff3f;box-shadow:0 0 0 4px rgba(156,255,63,.08)}
+    .gc-field input[type="file"]{display:flex;align-items:center;padding:10px 12px;min-height:52px}
+    .gc-field small{display:block;color:rgba(255,255,255,.48);font-size:.78rem;line-height:1.35}
+    .gc-image-library-actions,.gc-media-picker__filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .gc-image-library-actions button,.gc-media-picker__filters button,.gc-selected-item-main__actions a,.gc-selected-item-main__actions button,.gc-image-pagination button{min-height:38px;padding:0 13px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.055);color:rgba(255,255,255,.9);font-weight:900;font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+    .gc-image-library-actions button.is-active,.gc-media-picker__filters button.is-active{color:#061006;background:#9cff3f;border-color:transparent}
+    .gc-image-library-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .gc-image-library-stats article{padding:14px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(0,0,0,.14)}
+    .gc-image-library-stats span{display:block;color:rgba(255,255,255,.52);font-size:.7rem;font-weight:950;letter-spacing:.1em;text-transform:uppercase}
+    .gc-image-library-stats strong{display:block;margin-top:6px;font-size:1.65rem;line-height:1;color:#fff}
+    .gc-image-library-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .gc-image-db-card{display:grid;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(0,0,0,.16);overflow:hidden}
+    .gc-image-db-card.is-cover{border-color:rgba(156,255,63,.28);background:rgba(156,255,63,.035)}
+    .gc-image-db-thumb{position:relative;background:#07110b}
+    .gc-image-db-thumb img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+    .gc-image-db-thumb span{position:absolute;left:10px;bottom:10px;display:inline-flex;min-height:26px;align-items:center;padding:0 9px;border-radius:999px;background:rgba(0,0,0,.66);color:#fff;font-size:.68rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-image-db-body{display:grid;gap:10px;padding:12px}
+    .gc-image-db-body h3{margin:0;font-size:1.04rem;line-height:1.1;overflow-wrap:anywhere}
+    .gc-image-db-body p{margin:0;color:rgba(255,255,255,.62);font-size:.88rem;line-height:1.35;overflow-wrap:anywhere}
+    .gc-image-db-meta{display:flex;flex-wrap:wrap;gap:6px}
+    .gc-image-db-meta span{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.09);border-radius:999px;color:rgba(255,255,255,.66);font-size:.7rem}
+    .gc-image-db-edit{display:grid;gap:8px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(0,0,0,.14);overflow:hidden}
+    .gc-image-db-edit summary{cursor:pointer;padding:10px 12px;color:rgba(255,255,255,.72);font-size:.78rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-image-db-edit[open] summary{border-bottom:1px solid rgba(255,255,255,.08)}
+    .gc-image-db-edit label{display:grid;gap:5px;padding:0 12px 9px}
+    .gc-image-db-edit small{color:rgba(255,255,255,.62);font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .gc-image-db-edit input{width:100%;padding:10px 11px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(0,0,0,.22);color:inherit}
+    .gc-image-db-checks{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 10px;color:rgba(255,255,255,.7);font-size:.82rem}
+    .gc-image-db-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .gc-image-db-actions button,.gc-image-db-actions a,.gc-button-primary,.gc-button-secondary{border-radius:999px;padding:10px 13px;font-weight:900;text-decoration:none;cursor:pointer;min-height:38px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);color:rgba(255,255,255,.9)}
+    .gc-image-db-actions button:first-child,.gc-button-primary{background:#9cff3f;color:#061006;border-color:transparent}
+    .gc-image-db-actions .danger{border-color:rgba(255,90,90,.45);background:rgba(255,90,90,.1);color:#ffd7d7}
+    .gc-image-pagination{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px}
+    .gc-image-pagination span{color:rgba(255,255,255,.72);font-weight:900;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
+    .gc-media-picker__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-height:420px;overflow:auto;padding-right:4px}
+    .gc-picker-card{position:relative;display:grid;min-height:150px;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:rgba(0,0,0,.16);color:inherit;text-align:left;cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+    .gc-picker-card:hover,.gc-picker-card.is-selected{transform:translateY(-1px);border-color:rgba(156,255,63,.42);background:rgba(156,255,63,.06)}
+    .gc-picker-card__top{display:flex;justify-content:space-between;gap:8px;align-items:start;margin-bottom:10px}
+    .gc-picker-card__type{color:#9cff3f;font-size:.68rem;font-weight:950;letter-spacing:.12em;text-transform:uppercase}
+    .gc-picker-card__status{color:rgba(255,255,255,.55);font-size:.72rem}
+    .gc-picker-card strong{display:block;font-size:1.02rem;line-height:1.08;letter-spacing:-.025em;overflow-wrap:anywhere}
+    .gc-picker-card p{margin:8px 0 0;color:rgba(255,255,255,.55);font-size:.82rem;line-height:1.3;overflow-wrap:anywhere}
+    .gc-picker-card__badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:12px}
+    .gc-picker-card__badges span{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.035);color:rgba(255,255,255,.62);font-size:.72rem}
+    .gc-media-picker__empty,.gc-admin-empty{padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(0,0,0,.16)}
+    .gc-selected-item-main{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px;padding:14px;border:1px solid rgba(156,255,63,.22);border-radius:18px;background:rgba(156,255,63,.045)}
+    .gc-selected-item-main strong{display:block;margin:.25rem 0;font-size:1.24rem;line-height:1.05;overflow-wrap:anywhere}
+    .gc-selected-item-main p{margin:0;color:rgba(255,255,255,.65);font-size:.9rem}
+    .gc-selected-item-main__actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .gc-media-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+    .gc-archive-url-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .gc-selected-inline{padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(0,0,0,.16)}
+    .gc-selected-inline.is-ready{border-color:rgba(156,255,63,.22);background:rgba(156,255,63,.055)}
+    .gc-selected-inline strong{display:block;margin-bottom:4px;overflow-wrap:anywhere}
+    .gc-selected-inline p{margin:0;color:rgba(255,255,255,.60);font-size:.9rem;line-height:1.4}
+    .gc-url-row{display:grid;grid-template-columns:1fr auto;gap:10px}
+    .gc-preview-frame{display:grid;place-items:center;aspect-ratio:16/10;border:1px solid rgba(255,255,255,.10);border-radius:18px;background:rgba(0,0,0,.28);overflow:hidden;color:rgba(255,255,255,.52)}
     .gc-preview-frame img{width:100%;height:100%;object-fit:cover}
-
-    .gc-upload-preview{
-      display:grid;
-      grid-template-columns:120px 1fr;
-      gap:14px;
-      align-items:center;
-      padding:12px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.025);
-      border-radius:16px;
-    }
-
-    .gc-upload-preview img{
-      width:100%;
-      aspect-ratio:1/1;
-      object-fit:cover;
-      border-radius:12px;
-      background:rgba(0,0,0,.25);
-    }
-
-    .gc-upload-preview strong{display:block;margin-bottom:5px;overflow-wrap:anywhere}
-    .gc-upload-preview p{margin:0;color:rgba(255,255,255,.58)}
-
-    .gc-status{
-      max-width:1280px;
-      margin:18px auto 0;
-      padding:14px 16px;
-      border-radius:16px;
-      line-height:1.5;
-      overflow-wrap:anywhere;
-    }
-
-    .gc-status.ok{display:block;background:rgba(64,168,96,.15);border:1px solid rgba(64,168,96,.45);color:#c4f4d4}
-    .gc-status.error{display:block;background:rgba(205,61,75,.14);border:1px solid rgba(205,61,75,.45);color:#ffd0d6}
-
-    .gc-checks{
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-    }
-
-    .gc-checks label{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      color:rgba(255,255,255,.76);
-      padding:9px 11px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px;
-      background:rgba(0,0,0,.15);
-    }
-
-    .gc-media-system-notes{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
-      margin-top:18px;
-    }
-
-    .gc-media-system-notes article{
-      padding:16px;
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:20px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .gc-media-system-notes h3{
-      margin:0 0 6px;
-      font-size:1.1rem;
-    }
-
-    .gc-media-system-notes p{
-      margin:0;
-      color:rgba(255,255,255,.68);
-      line-height:1.5;
-    }
-
-    .gc-media-system-notes code{
-      color:#9cff3f;
-      overflow-wrap:anywhere;
-    }
-
+    .gc-upload-preview{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(0,0,0,.16)}
+    .gc-upload-preview img{width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:12px}
+    .gc-checks{display:flex;flex-wrap:wrap;gap:10px;color:rgba(255,255,255,.72)}
+    .gc-commons-meta{padding:14px;border:1px solid rgba(156,255,63,.18);border-radius:16px;background:rgba(156,255,63,.045)}
+    .gc-actions{display:flex;flex-wrap:wrap;gap:10px}
     .gc-media-back{margin-top:18px}
-
-    @media(max-width:1120px){
-      .gc-archive-media-hero,
-      .gc-media-two-cols,
-      .gc-media-system-notes,
-      .gc-media-picker__tools{
-        grid-template-columns:1fr;
-      }
-
-      .gc-media-picker__grid{
-        grid-template-columns:repeat(3,minmax(0,1fr));
-      }
-    }
-
-    @media(max-width:780px){
-      .gc-media-picker__grid{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-
-      .gc-media-picker__head,
-      .gc-selected-item-main{
-        display:grid;
-      }
-
-      .gc-media-picker__summary{
-        text-align:left;
-      }
-    }
-
-    @media(max-width:680px){
-      .gc-archive-url-form,
-      .gc-url-row,
-      .gc-upload-preview,
-      .gc-media-picker__grid{
-        grid-template-columns:1fr;
-      }
-
-      .gc-archive-media-page{
-        padding-inline:12px;
-      }
-
-      .gc-commons-meta div{
-        grid-template-columns:1fr;
-      }
-    }
+    .gc-status{margin-top:18px;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.18)}
+    .gc-status.ok{border-color:rgba(156,255,63,.28);color:#d7ffd4}
+    .gc-status.error{border-color:rgba(255,90,90,.38);color:#ffd7d7}
+    @media(max-width:1180px){.gc-image-library-tools,.gc-archive-media-hero,.gc-media-two-cols,.gc-media-picker__tools{grid-template-columns:1fr}.gc-image-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-media-picker__grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:780px){.gc-media-picker__grid,.gc-image-library-grid,.gc-image-library-stats{grid-template-columns:1fr}.gc-media-picker__head,.gc-selected-item-main{display:grid}.gc-media-picker__summary{text-align:left}}
+    @media(max-width:680px){.gc-archive-url-form,.gc-url-row,.gc-upload-preview{grid-template-columns:1fr}.gc-archive-media-page{padding-inline:12px}}
   </style>
 
   <script is:inline>
@@ -899,34 +413,21 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       let selectedItem = null;
       let activeFilter = 'all';
 
+      let allImages = [];
+      let filteredImages = [];
+      let imagePage = 1;
+
       function esc(value) {
-        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;',
-        }[char]));
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
       }
 
       function normalize(value) {
-        return String(value || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim();
+        return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       }
 
       function categoryLabel(category) {
         const raw = normalize(category);
-        return ({
-          circuitos: 'Circuito',
-          vehiculos: 'Coche',
-          coches: 'Coche',
-          pilotos: 'Piloto',
-          glosario: 'Glosario',
-          general: 'General',
-        })[raw] || category || 'General';
+        return ({circuitos:'Circuito',vehiculos:'Coche',coches:'Coche',pilotos:'Piloto',glosario:'Glosario',general:'General'})[raw] || category || 'General';
       }
 
       function publicHref(item) {
@@ -936,7 +437,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       }
 
       function imageCount(item) {
-        return Array.isArray(item?.media) ? item.media.filter((media) => media?.url || media?.localUrl).length : 0;
+        return Array.isArray(item?.media) ? item.media.filter((media) => media?.url || media?.localUrl || media?.originalUrl).length : 0;
       }
 
       function hasCover(item) {
@@ -944,11 +445,249 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         return Boolean(item?.coverUrl || media.some((entry) => entry?.isMain || entry?.isPrimary));
       }
 
+      function imageUrl(media) {
+        return media?.url || media?.localUrl || media?.originalUrl || '';
+      }
+
+      function mediaId(media, index) {
+        return String(media?.id || media?.mediaId || imageUrl(media) || index).trim();
+      }
+
+      function isLocal(media) {
+        const url = imageUrl(media);
+        return Boolean(media?.local || media?.localUrl || url.startsWith('/'));
+      }
+
+      function issueCount(image) {
+        let count = 0;
+        if (!image.alt) count++;
+        if (!image.license) count++;
+        if (!image.source && !image.sourceUrl) count++;
+        if (!image.url) count++;
+        return count;
+      }
+
       function showStatus(kind, msg) {
         $('status').hidden = false;
         $('status').className = `gc-status ${kind}`;
         $('status').innerHTML = msg;
         $('status').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      async function json(url, opt = {}) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          ...opt,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function flattenImages() {
+        allImages = [];
+        allItems.forEach((item) => {
+          const media = Array.isArray(item.media) ? item.media : [];
+          media.forEach((entry, index) => {
+            const url = imageUrl(entry);
+            if (!url) return;
+            allImages.push({
+              id: mediaId(entry, index),
+              index,
+              url,
+              alt: entry.alt || '',
+              source: entry.source || '',
+              author: entry.author || '',
+              license: entry.license || '',
+              sourceUrl: entry.sourceUrl || '',
+              locked: Boolean(entry.locked),
+              isPrimary: Boolean(entry.isMain || entry.isPrimary),
+              local: isLocal(entry),
+              item,
+              itemId: item.id,
+              itemTitle: item.title || item.nombre || 'Sin título',
+              itemSlug: item.slug || '',
+              itemType: normalize(item.category || item.tipo),
+              itemStatus: item.status || 'draft',
+            });
+          });
+        });
+      }
+
+      function updateLibraryStats() {
+        $('imageTotalCount').textContent = String(allImages.length);
+        $('imageCoverCount').textContent = String(allImages.filter((image) => image.isPrimary).length);
+        $('imageMissingAltCount').textContent = String(allImages.filter((image) => !image.alt).length);
+        $('imageMissingLicenseCount').textContent = String(allImages.filter((image) => !image.license).length);
+        $('itemsWithoutImageCount').textContent = String(allItems.filter((item) => imageCount(item) === 0).length);
+      }
+
+      function imageMatchesState(image, state) {
+        if (state === 'all') return true;
+        if (state === 'cover') return image.isPrimary;
+        if (state === 'gallery') return !image.isPrimary;
+        if (state === 'missing-alt') return !image.alt;
+        if (state === 'missing-license') return !image.license;
+        if (state === 'missing-source') return !image.source && !image.sourceUrl;
+        if (state === 'external') return !image.local;
+        if (state === 'local') return image.local;
+        return true;
+      }
+
+      function filterImages() {
+        const q = normalize($('imageSearch').value);
+        const type = $('imageTypeFilter').value;
+        const state = $('imageStateFilter').value;
+        const sort = $('imageSort').value;
+
+        filteredImages = allImages.filter((image) => {
+          const text = normalize([image.itemTitle, image.itemSlug, image.itemType, image.alt, image.source, image.author, image.license, image.sourceUrl, image.url].join(' '));
+          const typeOk = type === 'all' || image.itemType === type || (type === 'vehiculos' && image.itemType === 'coches');
+          return typeOk && imageMatchesState(image, state) && (!q || text.includes(q));
+        });
+
+        filteredImages.sort((a,b) => {
+          if (sort === 'alt-asc') return String(a.alt || '').localeCompare(String(b.alt || ''), 'es');
+          if (sort === 'source-asc') return String(a.source || '').localeCompare(String(b.source || ''), 'es');
+          if (sort === 'issues-desc') return issueCount(b) - issueCount(a) || a.itemTitle.localeCompare(b.itemTitle, 'es');
+          return a.itemTitle.localeCompare(b.itemTitle, 'es');
+        });
+
+        imagePage = Math.min(imagePage, imageMaxPage());
+        if (imagePage < 1) imagePage = 1;
+        document.querySelectorAll('[data-image-state]').forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.imageState === state);
+        });
+        renderImageLibrary();
+      }
+
+      function imageMaxPage() {
+        return Math.max(1, Math.ceil(filteredImages.length / Number($('imagePageSize').value || 12)));
+      }
+
+      function collectImagePayload(card) {
+        const payload = {};
+        card.querySelectorAll('[data-image-field]').forEach((input) => {
+          payload[input.dataset.imageField] = input.value.trim();
+        });
+        card.querySelectorAll('[data-image-check]').forEach((input) => {
+          payload[input.dataset.imageCheck] = input.checked;
+        });
+        if (payload.url) {
+          payload.localUrl = payload.url;
+          payload.originalUrl = payload.url;
+        }
+        return payload;
+      }
+
+      function renderImageLibrary() {
+        const grid = $('imageLibraryGrid');
+        const pageSize = Number($('imagePageSize').value || 12);
+        const max = imageMaxPage();
+        const start = (imagePage - 1) * pageSize;
+        const pageItems = filteredImages.slice(start, start + pageSize);
+
+        $('imageVisibleCount').textContent = String(filteredImages.length);
+        $('imagePageInfo').textContent = `Página ${imagePage}/${max}`;
+        $('imagePrevPage').disabled = imagePage <= 1;
+        $('imageNextPage').disabled = imagePage >= max;
+
+        if (!pageItems.length) {
+          grid.innerHTML = '<div class="gc-admin-empty">No hay imágenes con estos filtros.</div>';
+          return;
+        }
+
+        grid.innerHTML = pageItems.map((image) => `
+          <article class="gc-image-db-card ${image.isPrimary ? 'is-cover' : ''}" data-item-id="${esc(image.itemId)}" data-media-id="${esc(image.id)}">
+            <div class="gc-image-db-thumb">
+              <img src="${esc(image.url)}" alt="${esc(image.alt || '')}" loading="lazy" data-live-preview />
+              <span>${image.isPrimary ? 'Portada' : 'Galería'}</span>
+            </div>
+            <div class="gc-image-db-body">
+              <div>
+                <h3>${esc(image.itemTitle)}</h3>
+                <p>${esc(image.alt || 'Sin alt')}</p>
+              </div>
+              <div class="gc-image-db-meta">
+                <span>${esc(categoryLabel(image.itemType))}</span>
+                <span>${image.local ? 'Local' : 'Externa'}</span>
+                <span>${image.license ? esc(image.license) : 'Sin licencia'}</span>
+                <span>${issueCount(image)} avisos</span>
+              </div>
+
+              <details class="gc-image-db-edit">
+                <summary>Editar imagen</summary>
+                <label><small>URL imagen</small><input data-image-field="url" data-live-url value="${esc(image.url)}" /></label>
+                <label><small>Alt</small><input data-image-field="alt" value="${esc(image.alt)}" /></label>
+                <label><small>Fuente</small><input data-image-field="source" value="${esc(image.source)}" /></label>
+                <label><small>Autor</small><input data-image-field="author" value="${esc(image.author)}" /></label>
+                <label><small>Licencia</small><input data-image-field="license" value="${esc(image.license)}" /></label>
+                <label><small>URL fuente</small><input data-image-field="sourceUrl" value="${esc(image.sourceUrl)}" /></label>
+                <div class="gc-image-db-checks">
+                  <label><input type="checkbox" data-image-check="locked" ${image.locked ? 'checked' : ''} /> Revisada</label>
+                  <label><input type="checkbox" data-image-check="makePrimary" ${image.isPrimary ? 'checked' : ''} /> Portada</label>
+                </div>
+              </details>
+
+              <div class="gc-image-db-actions">
+                <button type="button" data-image-save>Guardar</button>
+                <a href="/admin/archivo/editar/${encodeURIComponent(image.itemId)}">Ficha</a>
+                <a href="${esc(image.url)}" target="_blank" rel="noreferrer">Abrir</a>
+                <button type="button" class="danger" data-image-delete>Borrar</button>
+              </div>
+            </div>
+          </article>
+        `).join('');
+
+        grid.querySelectorAll('[data-live-url]').forEach((input) => {
+          input.addEventListener('input', () => {
+            const card = input.closest('[data-media-id]');
+            const img = card?.querySelector('[data-live-preview]');
+            if (img && input.value.trim()) img.src = input.value.trim();
+          });
+        });
+
+        grid.querySelectorAll('[data-image-save]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const card = button.closest('[data-media-id]');
+            const itemId = card?.dataset.itemId;
+            const mediaId = card?.dataset.mediaId;
+            try {
+              button.disabled = true;
+              await json(`${API}/items/${encodeURIComponent(itemId)}/media/${encodeURIComponent(mediaId)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(collectImagePayload(card)),
+              });
+              showStatus('ok', 'Imagen guardada.');
+              await loadItems();
+            } catch (error) {
+              showStatus('error', error.message || 'No se pudo guardar la imagen.');
+            } finally {
+              button.disabled = false;
+            }
+          });
+        });
+
+        grid.querySelectorAll('[data-image-delete]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const card = button.closest('[data-media-id]');
+            const itemId = card?.dataset.itemId;
+            const mediaId = card?.dataset.mediaId;
+            if (!confirm('¿Borrar esta imagen de la ficha?')) return;
+            try {
+              button.disabled = true;
+              await json(`${API}/items/${encodeURIComponent(itemId)}/media/${encodeURIComponent(mediaId)}`, { method:'DELETE' });
+              showStatus('ok', 'Imagen borrada.');
+              await loadItems();
+            } catch (error) {
+              showStatus('error', error.message || 'No se pudo borrar.');
+            } finally {
+              button.disabled = false;
+            }
+          });
+        });
       }
 
       function updateUrlParam(item) {
@@ -987,20 +726,14 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         for (const id of ['selectedUrlInfo', 'selectedUploadInfo']) {
           const box = $(id);
           box.classList.add('is-ready');
-          box.innerHTML = `
-            <strong>${esc(selectedItem.title || selectedItem.nombre || 'Sin título')}</strong>
-            <p>${esc(meta)}</p>
-          `;
+          box.innerHTML = `<strong>${esc(selectedItem.title || selectedItem.nombre || 'Sin título')}</strong><p>${esc(meta)}</p>`;
         }
 
         if (!$('alt').value) $('alt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
         if (!$('uploadAlt').value) $('uploadAlt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
 
         updateUrlParam(selectedItem);
-
-        if (scrollToForms) {
-          document.querySelector('.gc-media-two-cols')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        if (scrollToForms) document.querySelector('.gc-media-two-cols')?.scrollIntoView({ behavior:'smooth', block:'start' });
       }
 
       function previewUrl(url) {
@@ -1018,13 +751,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       function renderCommonsMeta(meta) {
         const box = $('commonsMetaBox');
         if (!box) return;
-
         if (!meta || !meta.provider || meta.provider !== 'wikimedia') {
           box.hidden = true;
           box.innerHTML = '';
           return;
         }
-
         box.hidden = false;
         box.innerHTML = `
           <strong>Metadata Wikimedia Commons detectada</strong>
@@ -1035,18 +766,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             <div><dt>Fuente</dt><dd>${esc(meta.sourceUrl || meta.descriptionUrl || '')}</dd></div>
           </dl>
         `;
-      }
-
-      async function json(url, opt = {}) {
-        const response = await fetch(url, {
-          credentials: 'include',
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' },
-          ...opt,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
-        return data;
       }
 
       function passesFilter(item) {
@@ -1060,15 +779,7 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
       function renderPicker() {
         const query = normalize($('itemSearch').value);
         filteredItems = allItems.filter((item) => {
-          const text = normalize([
-            item.title,
-            item.nombre,
-            item.slug,
-            item.category,
-            item.tipo,
-            item.status,
-            item.summary,
-          ].join(' '));
+          const text = normalize([item.title,item.nombre,item.slug,item.category,item.tipo,item.status,item.summary].join(' '));
           return passesFilter(item) && (!query || text.includes(query));
         });
 
@@ -1107,29 +818,47 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const params = new URLSearchParams(window.location.search);
         const wantedItem = params.get('item');
         const wantedSlug = params.get('slug');
-
         let item = null;
         if (wantedItem) item = allItems.find((entry) => String(entry.id) === String(wantedItem));
         if (!item && wantedSlug) item = allItems.find((entry) => String(entry.slug) === String(wantedSlug));
-
         if (item) setSelectedItem(item, false);
       }
 
       async function loadItems() {
         try {
           const data = await json(`${API}/items`);
-          allItems = (data.items || []).sort((a, b) => String(a.title || a.nombre || '').localeCompare(String(b.title || b.nombre || ''), 'es'));
+          allItems = (data.items || []).sort((a,b) => String(a.title || a.nombre || '').localeCompare(String(b.title || b.nombre || ''), 'es'));
+          flattenImages();
+          updateLibraryStats();
+          filterImages();
           renderPicker();
           applyInitialSelection();
         } catch (error) {
           $('itemPickerGrid').innerHTML = '';
+          $('imageLibraryGrid').innerHTML = '<div class="gc-admin-empty">No se pudo cargar la biblioteca.</div>';
           $('pickerEmpty').hidden = false;
           showStatus('error', error.message);
         }
       }
 
-      $('itemSearch').addEventListener('input', renderPicker);
+      ['imageSearch','imageTypeFilter','imageStateFilter','imageSort','imagePageSize'].forEach((id) => {
+        $(id)?.addEventListener('input', () => { imagePage = 1; filterImages(); });
+        $(id)?.addEventListener('change', () => { imagePage = 1; filterImages(); });
+      });
 
+      document.querySelectorAll('[data-image-state]').forEach((button) => {
+        button.addEventListener('click', () => {
+          $('imageStateFilter').value = button.dataset.imageState || 'all';
+          imagePage = 1;
+          filterImages();
+        });
+      });
+
+      $('imagePrevPage').addEventListener('click', () => { imagePage = Math.max(1, imagePage - 1); renderImageLibrary(); });
+      $('imageNextPage').addEventListener('click', () => { imagePage = Math.min(imageMaxPage(), imagePage + 1); renderImageLibrary(); });
+      $('imageRefreshBtn').addEventListener('click', loadItems);
+
+      $('itemSearch').addEventListener('input', renderPicker);
       document.querySelectorAll('[data-picker-filter]').forEach((button) => {
         button.addEventListener('click', () => {
           activeFilter = button.dataset.pickerFilter || 'all';
@@ -1156,11 +885,10 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const url = $('imageUrl').value.trim();
         if (!url) return showStatus('error', 'Pega una URL primero.');
         previewUrl(url);
-
         try {
           const data = await json(`${API}/media/inspect-url`, {
-            method: 'POST',
-            body: JSON.stringify({ imageUrl: url }),
+            method:'POST',
+            body: JSON.stringify({ imageUrl:url }),
           });
           const meta = data.metadata || {};
           $('source').value = meta.source || $('source').value;
@@ -1171,12 +899,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
             $('imageUrl').value = meta.imageUrl;
             previewUrl(meta.imageUrl);
           }
-          if (!$('alt').value) {
-            $('alt').value = meta.alt || meta.description || (selectedItem ? `Imagen de ${selectedItem.title || selectedItem.nombre}` : '');
-          }
+          if (!$('alt').value) $('alt').value = meta.alt || meta.description || (selectedItem ? `Imagen de ${selectedItem.title || selectedItem.nombre}` : '');
           renderCommonsMeta(meta);
-          const origin = meta.provider === 'wikimedia' ? 'Wikimedia Commons' : 'URL';
-          showStatus('ok', `Metadatos leídos desde ${origin}. Revisa autor y licencia antes de guardar.`);
+          showStatus('ok', 'Metadata leída.');
         } catch (error) {
           showStatus('error', error.message || 'No se pudieron leer datos.');
         }
@@ -1187,6 +912,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         const index = allItems.findIndex((item) => item.id === data.item.id);
         if (index >= 0) allItems[index] = data.item;
         else allItems.unshift(data.item);
+        flattenImages();
+        updateLibraryStats();
+        filterImages();
         renderPicker();
         setSelectedItem(data.item, false);
       }
@@ -1195,10 +923,9 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         event.preventDefault();
         const itemId = $('itemIdUrl').value;
         if (!itemId) return showStatus('error', 'Selecciona una ficha desde el buscador visual.');
-
         try {
           const data = await json(`${API}/items/${encodeURIComponent(itemId)}/media/from-url`, {
-            method: 'POST',
+            method:'POST',
             body: JSON.stringify({
               imageUrl: $('imageUrl').value,
               alt: $('alt').value,
@@ -1232,7 +959,6 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           $('uploadPreview').hidden = true;
           return;
         }
-
         const mb = file.size / 1024 / 1024;
         if (mb > MAX_UPLOAD_MB) {
           showStatus('error', `La imagen pesa ${mb.toFixed(2)} MB. Reduce a menos de ${MAX_UPLOAD_MB} MB.`);
@@ -1240,13 +966,11 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
           $('uploadPreview').hidden = true;
           return;
         }
-
         const url = URL.createObjectURL(file);
         $('uploadPreview').hidden = false;
         $('uploadPreviewImg').src = url;
         $('uploadPreviewName').textContent = file.name;
         $('uploadPreviewSize').textContent = `${file.type || 'imagen'} · ${mb.toFixed(2)} MB`;
-
         if (!$('uploadAlt').value && selectedItem) $('uploadAlt').value = `Imagen de ${selectedItem.title || selectedItem.nombre}`;
       });
 
@@ -1254,17 +978,14 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
         event.preventDefault();
         const itemId = $('itemIdUpload').value;
         const file = $('uploadFile').files?.[0];
-
         if (!itemId) return showStatus('error', 'Selecciona una ficha desde el buscador visual.');
         if (!file) return showStatus('error', 'Selecciona una imagen.');
-
         try {
           $('media-upload-form').querySelector('button[type="submit"]').disabled = true;
           showStatus('ok', 'Leyendo imagen...');
           const dataUrl = await fileToDataUrl(file);
-
           const data = await json(`${API}/items/${encodeURIComponent(itemId)}/media/upload`, {
-            method: 'POST',
+            method:'POST',
             body: JSON.stringify({
               dataUrl,
               fileName: file.name,
@@ -1277,9 +998,8 @@ import AdminSubnav from '../../../components/AdminSubnav.astro';
               locked: $('uploadLocked').checked,
             }),
           });
-
           updateItemFromResponse(data);
-          showStatus('ok', `Imagen subida correctamente: <code>${esc(data.publicUrl)}</code>`);
+          showStatus('ok', `Imagen subida correctamente: <code>${esc(data.publicUrl || '')}</code>`);
         } catch (error) {
           showStatus('error', error.message || 'No se pudo subir la imagen.');
         } finally {
