@@ -1,0 +1,219 @@
+/* GC_PUBLIC_HOME2_FONT_AND_LAYOUT_RESET_V2
+   Sistema público alineado con Home2.
+
+   Home2 usa:
+   --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+   --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+   Esta capa aplica esas mismas familias y jerarquía a todo MarketingLayout.
+   /app queda fuera porque usa AppLayout.
+*/
+
+html[data-gc-scope="marketing"] {
+  --bg: #030503;
+  --bg2: #070a07;
+  --panel: rgba(5, 9, 6, .92);
+  --panel-soft: rgba(8, 14, 10, .88);
+  --line: rgba(164, 255, 68, .12);
+  --line-2: rgba(164, 255, 68, .22);
+  --text: #f2f4ef;
+  --soft: #b7c0b2;
+  --muted: #72806d;
+  --green: #96ff2f;
+  --green-2: #80f016;
+  --cyan: #21c8d6;
+  --red: #ec4b4b;
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --gc-public-shell: min(100% - 34px, 1240px);
+  background: #020402 !important;
+}
+
+html[data-gc-scope="marketing"],
+html[data-gc-scope="marketing"] body,
+html[data-gc-scope="marketing"] .gc-public-body,
+html[data-gc-scope="marketing"] .gc-public-main {
+  font-family: var(--sans) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body {
+  color: var(--text) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(150,255,47,.06), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(33,200,214,.03), transparent 24%),
+    linear-gradient(180deg, #020402 0%, #030503 45%, #030503 100%) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-body::before {
+  opacity: 0 !important;
+  background-image: none !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+/* Header público con la misma lógica tipográfica: nav en mono, marca en sans. */
+html[data-gc-scope="marketing"] .gc-public-header {
+  border-bottom: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    linear-gradient(180deg, rgba(3,5,3,.96), rgba(3,5,3,.78)) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.26) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-brand-copy strong {
+  font-family: var(--sans) !important;
+  color: var(--text) !important;
+  font-weight: 900 !important;
+  letter-spacing: -.03em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-brand-copy small,
+html[data-gc-scope="marketing"] .gc-public-nav a,
+html[data-gc-scope="marketing"] .gc-public-link,
+html[data-gc-scope="marketing"] .gc-auth-logout {
+  font-family: var(--mono) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a.is-active {
+  color: #071006 !important;
+  background: linear-gradient(135deg, var(--green), var(--green-2)) !important;
+}
+
+/* Tipografía editorial igual que Home2. */
+html[data-gc-scope="marketing"] .gc-kicker,
+html[data-gc-scope="marketing"] .gc-section-kicker,
+html[data-gc-scope="marketing"] .gc-panel-kicker,
+html[data-gc-scope="marketing"] .gc-card-label,
+html[data-gc-scope="marketing"] .gc-eyebrow {
+  margin: 0 !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+  color: var(--green) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-title,
+html[data-gc-scope="marketing"] .gc-hero h1,
+html[data-gc-scope="marketing"] .gc-page h1 {
+  font-family: var(--sans) !important;
+  color: var(--text) !important;
+  font-size: clamp(58px, 8vw, 86px) !important;
+  font-weight: 900 !important;
+  line-height: .88 !important;
+  letter-spacing: -.055em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-section-title,
+html[data-gc-scope="marketing"] .gc-page h2 {
+  font-family: var(--sans) !important;
+  color: var(--text) !important;
+  font-size: clamp(36px, 4.8vw, 64px) !important;
+  font-weight: 900 !important;
+  line-height: .9 !important;
+  letter-spacing: -.055em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-lead {
+  font-family: var(--sans) !important;
+  color: var(--green) !important;
+  font-size: clamp(18px, 2vw, 22px) !important;
+  font-weight: 800 !important;
+  line-height: 1.08 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-section-lead,
+html[data-gc-scope="marketing"] p {
+  font-family: var(--sans) !important;
+  color: var(--soft) !important;
+}
+
+/* Shell base. */
+html[data-gc-scope="marketing"] .gc-page {
+  width: var(--gc-public-shell) !important;
+}
+
+/* Botones igual que Home2. */
+html[data-gc-scope="marketing"] .gc-btn,
+html[data-gc-scope="marketing"] .gc-btn-primary,
+html[data-gc-scope="marketing"] .gc-btn-plain {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  min-height: 40px !important;
+  padding: 0 20px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--line) !important;
+  background: rgba(6,10,7,.88) !important;
+  color: var(--text) !important;
+  text-decoration: none !important;
+  font-family: var(--sans) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn-primary {
+  color: #071006 !important;
+  background: linear-gradient(135deg, var(--green), var(--green-2)) !important;
+  border-color: rgba(150,255,47,.62) !important;
+  box-shadow: 0 10px 34px rgba(150,255,47,.13) !important;
+}
+
+/* Cards/paneles como módulos Home2, no SaaS. */
+html[data-gc-scope="marketing"] .gc-panel,
+html[data-gc-scope="marketing"] .gc-card,
+html[data-gc-scope="marketing"] .gc-lane,
+html[data-gc-scope="marketing"] .gc-status-card,
+html[data-gc-scope="marketing"] .gc-phone-card,
+html[data-gc-scope="marketing"] .gc-table-wrap,
+html[data-gc-scope="marketing"] .gc-cta-box,
+html[data-gc-scope="marketing"] .gc-policy-card,
+html[data-gc-scope="marketing"] .gc-policy-row,
+html[data-gc-scope="marketing"] .gc-note-panel {
+  position: relative !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--line) !important;
+  background:
+    linear-gradient(180deg, rgba(7,11,8,.95), rgba(5,8,6,.97)),
+    radial-gradient(circle at 20% 0%, rgba(150,255,47,.07), transparent 38%) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.42) !important;
+  overflow: hidden !important;
+}
+
+@media(max-width: 760px) {
+  html[data-gc-scope="marketing"] {
+    --gc-public-shell: min(100% - 24px, 1240px);
+  }
+
+  html[data-gc-scope="marketing"] .gc-title,
+  html[data-gc-scope="marketing"] .gc-hero h1,
+  html[data-gc-scope="marketing"] .gc-page h1 {
+    font-size: clamp(40px, 13vw, 62px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-section-title,
+  html[data-gc-scope="marketing"] .gc-page h2 {
+    font-size: clamp(30px, 10vw, 46px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-lead {
+    font-size: clamp(16px, 5vw, 20px) !important;
+  }
+}

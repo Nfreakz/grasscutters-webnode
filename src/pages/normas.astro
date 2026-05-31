@@ -40,36 +40,38 @@ const voiceChannels = ['Lobby', 'Lobby AC'];
   ogImage="/og/normas-og-v1531.png"
   bodyClass="gc-page-normas-v121"
 >
-  <section class="gc-page gc-hero gc-hero-compact gc-normas-hero-v121">
-    <div>
-      <span class="gc-kicker">Normas GC</span>
-      <h1 class="gc-title">Pocas normas. Buen ambiente. Pista limpia.</h1>
-      <p class="gc-lead">
+  <section class="gc-public-shell gc-public-page-hero gc-normas-hero-v121">
+    <div class="gc-public-page-hero__grid">
+      <div class="gc-public-page-hero__main">
+        <span class="gc-public-kicker">Normas GC</span>
+        <h1 class="gc-public-title">Pocas normas. Buen ambiente. Pista limpia.</h1>
+        <p class="gc-public-description">
         GrassCutters es una comunidad para correr, desconectar y compartir pista sin toxicidad. No buscamos llenar el servidor de sanciones:
         buscamos sentido común, respeto y ganas de sumar.
-      </p>
-      <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Entrar al Discord</a>
-        <a class="gc-btn" href="/comunidad">Ver comunidad</a>
+        </p>
+        <div class="gc-actions">
+          <a class="gc-public-btn gc-public-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Entrar al Discord</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="/comunidad">Ver comunidad</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="gc-page gc-normas-intro-v121">
-    <div class="gc-section-head">
-      <span class="gc-section-kicker">Regla de oro</span>
-      <h2 class="gc-section-title">Primero enfriar. Luego hablar.</h2>
-      <p class="gc-section-lead">
+  <section class="gc-public-shell gc-public-section gc-normas-intro-v121">
+    <div class="gc-public-section-head">
+      <span class="gc-public-kicker">Regla de oro</span>
+      <h2 class="gc-public-section-title">Primero enfriar. Luego hablar.</h2>
+      <p class="gc-public-section-lead">
         Si hay un incidente en pista, no se convierte el chat en dirección de carrera con gasolina en el suelo.
         Se revisa con calma, con contexto y sin ataques personales.
       </p>
     </div>
   </section>
 
-  <section class="gc-page">
+  <section class="gc-public-shell gc-public-section">
     <div class="gc-normas-grid-v121">
       {ruleCards.map(([number, title, text]) => (
-        <article class="gc-normas-card-v121">
+        <article class="gc-normas-card-v121 gc-public-card">
           <span>{number}</span>
           <h2>{title}</h2>
           <p>{text}</p>
@@ -78,10 +80,10 @@ const voiceChannels = ['Lobby', 'Lobby AC'];
     </div>
   </section>
 
-  <section class="gc-page gc-normas-discord-v121">
-    <div class="gc-normas-discord-card-v121">
+  <section class="gc-public-shell gc-public-section gc-normas-discord-v121">
+    <div class="gc-normas-discord-card-v121 gc-public-card">
       <div>
-        <span class="gc-section-kicker">Discord</span>
+        <span class="gc-public-kicker">Discord</span>
         <h2>Un canal para cada cosa.</h2>
         <p>
           El Discord está para organizar la comunidad sin perderse: avisos importantes, combos, setups, mods, clips, votaciones,
@@ -105,140 +107,18 @@ const voiceChannels = ['Lobby', 'Lobby AC'];
     </div>
   </section>
 
-  <section class="gc-page gc-page-narrow gc-normas-cta-v121">
-    <div class="gc-cta-box">
+  <section class="gc-public-shell gc-public-section gc-page-narrow gc-normas-cta-v121">
+    <div class="gc-public-cta">
       <div>
-        <h2>¿Dudas con una norma?</h2>
-        <p>
+        <h2 class="gc-public-cta-title">¿Dudas con una norma?</h2>
+        <p class="gc-public-cta-text">
           Pregunta en Discord con calma. Si hay una carrera, un incidente o un problema de convivencia, mejor resolverlo con contexto que en caliente.
         </p>
       </div>
       <div class="gc-actions">
-        <a class="gc-btn gc-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Ir a Discord</a>
-        <a class="gc-btn" href="/apoyo-servidor">Apoyar servidor</a>
+        <a class="gc-public-btn gc-public-btn-primary" href={discordUrl} target="_blank" rel="noreferrer">Ir a Discord</a>
+        <a class="gc-public-btn gc-public-btn-secondary" href="/apoyo-servidor">Apoyar servidor</a>
       </div>
     </div>
   </section>
-
-  <style is:global>
-    .gc-page-normas-v121 .gc-normas-hero-v121{
-      padding-bottom:clamp(28px,5vw,66px);
-    }
-
-    .gc-page-normas-v121 .gc-normas-intro-v121{
-      padding-top:clamp(12px,2vw,24px);
-    }
-
-    .gc-normas-grid-v121{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:14px;
-    }
-
-    .gc-normas-card-v121,
-    .gc-normas-discord-card-v121{
-      border:1px solid var(--gc-mk-line);
-      border-radius:24px;
-      background:
-        radial-gradient(circle at 10% 0%, color-mix(in srgb,var(--gc-mk-accent) 8%, transparent), transparent 20rem),
-        linear-gradient(180deg,rgba(255,255,255,.066),rgba(255,255,255,.026));
-      box-shadow:0 22px 70px rgba(0,0,0,.22);
-    }
-
-    .gc-normas-card-v121{
-      padding:22px;
-    }
-
-    .gc-normas-card-v121 > span{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width:38px;
-      height:38px;
-      border-radius:14px;
-      color:#07110a;
-      background:linear-gradient(135deg,var(--gc-mk-accent),var(--gc-mk-accent-2));
-      font-weight:1000;
-    }
-
-    .gc-normas-card-v121 h2{
-      margin:18px 0 8px;
-      color:var(--gc-mk-text);
-      font-size:1.18rem;
-      letter-spacing:-.035em;
-    }
-
-    .gc-normas-card-v121 p,
-    .gc-normas-discord-card-v121 p{
-      margin:0;
-      color:var(--gc-mk-muted);
-      line-height:1.62;
-    }
-
-    .gc-normas-discord-card-v121{
-      display:grid;
-      grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr) minmax(220px,.45fr);
-      gap:clamp(18px,3vw,34px);
-      padding:clamp(24px,4vw,42px);
-      align-items:start;
-    }
-
-    .gc-normas-discord-card-v121 h2{
-      margin:12px 0 12px;
-      font-size:clamp(2.1rem,4vw,4.2rem);
-      line-height:.94;
-      letter-spacing:-.075em;
-    }
-
-    .gc-normas-channel-block-v121 h3{
-      margin:0 0 12px;
-      color:var(--gc-mk-text);
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      font-size:.84rem;
-    }
-
-    .gc-normas-channel-list-v121{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .gc-normas-channel-list-v121 span{
-      display:inline-flex;
-      align-items:center;
-      min-height:34px;
-      padding:8px 11px;
-      border:1px solid var(--gc-mk-line-soft);
-      border-radius:999px;
-      color:var(--gc-mk-muted);
-      background:rgba(255,255,255,.032);
-      font-size:.86rem;
-    }
-
-    .gc-normas-channel-list-v121--voice span{
-      color:var(--gc-mk-text);
-      border-color:color-mix(in srgb,var(--gc-mk-accent) 24%, var(--gc-mk-line));
-    }
-
-    .gc-normas-cta-v121 .gc-cta-box{
-      text-align:left;
-    }
-
-    @media(max-width:1080px){
-      .gc-normas-grid-v121{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-
-      .gc-normas-discord-card-v121{
-        grid-template-columns:1fr;
-      }
-    }
-
-    @media(max-width:620px){
-      .gc-normas-grid-v121{
-        grid-template-columns:1fr;
-      }
-    }
-  </style>
 </MarketingLayout>

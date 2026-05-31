@@ -1,12 +1,28 @@
 ---
 import '../styles/marketing.css';
+import '../styles/home2.css';
 
 import '../styles/landing-final.css';
 import '../styles/auth-header-status.css';
-import '../styles/palette-unify-v7.css';
 import '../styles/ui-cleanup-v85.css';
-import ThemeSwitcher from '../components/ThemeSwitcher.astro';
-import PaletteCursor from '../components/PaletteCursor.astro';
+
+/* Public font loading (local, bundled) */
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import '@fontsource/inter/900.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/600.css';
+import '@fontsource/jetbrains-mono/700.css';
+import '@fontsource/jetbrains-mono/800.css';
+
+/* GC Public Style System (central) */
+import '../styles/public/gc-public-theme.css';
+import '../styles/public/gc-public-layout.css';
+import '../styles/public/gc-public-components.css';
+import '../styles/public/gc-public-pages.css';
 import HeroBlendTuner from '../components/HeroBlendTuner.astro';
 import AuthHeader from '../components/AuthHeader.astro';
 
@@ -86,7 +102,6 @@ const navItems = [
 ];
 
 const footerItems = [
-  { href: '/app-android', label: 'App Android' },
   { href: '/normas', label: 'Normas' },
   { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
   { href: '/privacidad', label: 'Privacidad' },
@@ -98,7 +113,7 @@ function isActive(match) {
 }
 ---
 <!doctype html>
-<html lang="es" data-gc-scope="marketing" data-theme="grasscutters">
+<html lang="es" data-gc-scope="marketing">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -134,6 +149,7 @@ function isActive(match) {
     <title>{cleanTitle}</title>
 
     <style is:global>
+      /* GC_MARKETINGLAYOUT_HOME2_BASE_IMPORT_V1 */
       /* GC_LOGO_NO_BOX_FINAL_V15_35_11_PUBLIC */
       html[data-gc-scope="marketing"] .gc-public-brand{
         background:transparent!important;
@@ -185,7 +201,7 @@ function isActive(match) {
       }
     </style>
   </head>
-  <body class={`gc-public-body ${bodyClass}`}>
+  <body class={`gc-public-body gc-public-body--home2-base ${bodyClass}`} data-public-route={path}>
     <a class="gc-skip-link" href="#contenido">Saltar al contenido</a>
 
     <header class="gc-public-header" data-public-header>
@@ -210,7 +226,6 @@ function isActive(match) {
       </nav>
 
       <div class="gc-public-actions">
-        <ThemeSwitcher />
         <span class="gc-public-auth-state" data-auth-status hidden>Conectado</span>
         <a class="gc-public-link" href="/login" data-auth-link>Login</a>
         <button class="gc-auth-logout" type="button" data-auth-logout hidden>Salir</button>
@@ -231,8 +246,8 @@ function isActive(match) {
         <h2>HUD Lite y PRO ya disponibles.</h2>
         <p>Overlay para Assetto Corsa / CSP con timing, relative y clasificación. Si eres miembro de la comunidad, solicita tu versión PRO a cualquier admin.</p>
         <div class="gc-hud-popup__actions">
-          <a class="gc-btn gc-hud-popup__btn gc-hud-popup__btn--overtake" href={hudOvertakeUrl} target="_blank" rel="noreferrer">Descargar en Overtake</a>
-          <a class="gc-btn gc-hud-popup__btn gc-hud-popup__btn--patreon" href={hudPatreonUrl} target="_blank" rel="noreferrer">Patreon</a>
+          <a class="gc-public-btn gc-public-btn-primary gc-hud-popup__btn gc-hud-popup__btn--overtake" href={hudOvertakeUrl} target="_blank" rel="noreferrer">Descargar en Overtake</a>
+          <a class="gc-public-btn gc-hud-popup__btn gc-hud-popup__btn--patreon" href={hudPatreonUrl} target="_blank" rel="noreferrer">Patreon</a>
         </div>
       </div>
     </aside>
@@ -251,7 +266,8 @@ function isActive(match) {
           </a>
         </div>
 
-        <nav class="gc-public-footer-links" aria-label="Enlaces del footer">
+        <nav class="gc-public-footer-links" aria-label="Enlaces del footer GC">
+          <a href="/app-android" data-gc-footer-app-android>App Android</a>
           {footerItems.map((item) => (
             <a href={item.href}>{item.label}</a>
           ))}
@@ -292,14 +308,18 @@ function isActive(match) {
         display:grid;
         place-items:center;
         border-radius:12px;
-        color:#fff;
-        box-shadow:0 10px 30px rgba(0,0,0,.26);
-        transition:transform .18s ease, filter .18s ease;
+        color:rgba(239,247,236,.92);
+        background:rgba(6,10,7,.78);
+        border:1px solid rgba(164,255,68,.14);
+        box-shadow:none;
+        transition:transform .18s ease, background .18s ease, border-color .18s ease, filter .18s ease;
       }
 
       .gc-public-footer--v52 .gc-social-icon:hover{
         transform:translateY(-2px);
-        filter:brightness(1.08);
+        background:rgba(12,18,13,.92);
+        border-color:rgba(164,255,68,.22);
+        filter:none;
       }
 
       .gc-public-footer--v52 .gc-social-icon svg{
@@ -309,9 +329,10 @@ function isActive(match) {
         fill:currentColor;
       }
 
-      .gc-public-footer--v52 .gc-social-icon--whatsapp{ background:linear-gradient(135deg,#25d366,#5cff7e); }
-      .gc-public-footer--v52 .gc-social-icon--discord{ background:linear-gradient(135deg,#5865f2,#7c88ff); }
-      .gc-public-footer--v52 .gc-social-icon--instagram{ background:linear-gradient(135deg,#feda75,#fa7e1e 34%,#d62976 68%,#4f5bd5); }
+      /* No brand gradients in public footer. Keep GC tone. */
+      .gc-public-footer--v52 .gc-social-icon--whatsapp{ background:rgba(6,10,7,.78); }
+      .gc-public-footer--v52 .gc-social-icon--discord{ background:rgba(6,10,7,.78); }
+      .gc-public-footer--v52 .gc-social-icon--instagram{ background:rgba(6,10,7,.78); }
 
       .gc-public-footer--v52 .gc-public-footer-links{
         display:flex;
@@ -505,7 +526,6 @@ function isActive(match) {
       })();
     </script>
 
-    <PaletteCursor />
     <HeroBlendTuner />
     <AuthHeader />
   </body>

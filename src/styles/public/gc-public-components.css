@@ -1,0 +1,334 @@
+/* GC Public Components v1 */
+
+html[data-gc-scope="marketing"] .gc-public-kicker {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+html[data-gc-scope="marketing"] .gc-public-title {
+  margin: 8px 0 0;
+  font-family: var(--sans);
+  font-size: clamp(58px, 8vw, 86px);
+  font-weight: 700;
+  line-height: .88;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* Public lead MUST be sober by default (Archivo/Noticias reference).
+   Accent styling is opt-in via .gc-public-lead--accent (or page-specific selectors). */
+html[data-gc-scope="marketing"] .gc-public-lead {
+  margin: 12px 0 0;
+  font-family: var(--sans);
+  font-size: clamp(15px, 1.2vw, 18px);
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--soft);
+  max-width: 70ch;
+}
+
+html[data-gc-scope="marketing"] .gc-public-lead--accent {
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+@media (max-width: 760px) {
+  html[data-gc-scope="marketing"] .gc-public-title { font-size: clamp(40px, 13vw, 62px); }
+  html[data-gc-scope="marketing"] .gc-public-lead { font-size: 16px; }
+}
+
+html[data-gc-scope="marketing"] .gc-public-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+html[data-gc-scope="marketing"] .gc-public-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding-inline: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--gc-surface-border);
+  background: rgba(9,12,10,.78);
+  color: var(--soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+html[data-gc-scope="marketing"] .gc-public-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: 4px;
+  border: 1px solid var(--gc-surface-border);
+  background: rgba(9,12,10,.88);
+  color: var(--text);
+  text-decoration: none;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  box-shadow: none;
+  transition: transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+html[data-gc-scope="marketing"] .gc-public-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(13,17,14,.96);
+  border-color: var(--gc-surface-border-strong);
+}
+
+html[data-gc-scope="marketing"] .gc-public-btn-primary {
+  color: #071006 !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gc-accent) 93%, #f2f4ef 7%), var(--gc-accent));
+  border-color: rgba(150,255,47,.4);
+  box-shadow: 0 5px 14px rgba(150,255,47,.06);
+  text-shadow: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-btn-secondary {
+  background: rgba(9,12,10,.76);
+  border-color: var(--gc-surface-border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+html[data-gc-scope="marketing"] .gc-public-btn-secondary:hover {
+  border-color: var(--gc-surface-border-strong);
+  background: rgba(14,18,15,.92);
+}
+
+html[data-gc-scope="marketing"] .gc-public-card {
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--gc-surface-border);
+  background: var(--gc-surface-card);
+  box-shadow: var(--gc-surface-glow);
+  overflow: hidden;
+}
+
+html[data-gc-scope="marketing"] .gc-public-panel {
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--gc-surface-border);
+  background: var(--gc-surface-panel);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .38);
+  overflow: hidden;
+}
+
+html[data-gc-scope="marketing"] .gc-public-grid {
+  display: grid;
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-public-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-gc-scope="marketing"] .gc-public-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html[data-gc-scope="marketing"] .gc-public-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (max-width: 980px) {
+  html[data-gc-scope="marketing"] .gc-public-grid--3,
+  html[data-gc-scope="marketing"] .gc-public-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  html[data-gc-scope="marketing"] .gc-public-grid--2,
+  html[data-gc-scope="marketing"] .gc-public-grid--3,
+  html[data-gc-scope="marketing"] .gc-public-grid--4 { grid-template-columns: 1fr; }
+}
+
+/* Card internals */
+html[data-gc-scope="marketing"] .gc-public-card-kicker {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+html[data-gc-scope="marketing"] .gc-public-card-title {
+  margin: 10px 0 8px;
+  font-family: var(--sans);
+  font-size: clamp(18px, 2vw, 32px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+html[data-gc-scope="marketing"] .gc-public-card-title--large {
+  font-size: clamp(22px, 2.6vw, 40px);
+}
+
+html[data-gc-scope="marketing"] .gc-public-card-text {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--soft);
+}
+
+/* CTA container (replaces legacy gc-cta-box) */
+html[data-gc-scope="marketing"] .gc-public-cta {
+  position: relative;
+  border: 1px solid var(--gc-surface-border-strong);
+  border-radius: var(--radius);
+  background: var(--gc-surface-cta);
+  box-shadow: var(--gc-surface-glow);
+  padding: clamp(18px, 2.4vw, 28px);
+  overflow: hidden;
+}
+
+html[data-gc-scope="marketing"] .gc-public-cta-title {
+  margin: 0 0 8px;
+  font-family: var(--sans);
+  font-size: clamp(26px, 3.05vw, 40px);
+  font-weight: 700;
+  line-height: .94;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+html[data-gc-scope="marketing"] .gc-public-cta-text {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--soft);
+}
+
+/* Stats */
+html[data-gc-scope="marketing"] .gc-public-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html[data-gc-scope="marketing"] .gc-public-stat {
+  border: 1px solid var(--gc-surface-border);
+  border-radius: var(--radius-sm);
+  background: rgba(10,13,11,.78);
+  padding: 12px 12px 10px;
+}
+
+html[data-gc-scope="marketing"] .gc-public-stat span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+html[data-gc-scope="marketing"] .gc-public-stat strong {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--sans);
+  font-size: clamp(18px, 2.1vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+/* Public header (final overrides): keep nav/buttons sober, no aggressive gradients. */
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-nav a,
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-link,
+html[data-gc-scope="marketing"] .gc-public-header .gc-auth-logout {
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  font-family: var(--mono) !important;
+  font-size: 10.5px !important;
+  font-weight: 850 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-nav a.is-active,
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-nav a[aria-current="page"] {
+  background: rgba(17,24,18,.92) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--gc-surface-border-strong);
+  box-shadow: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-nav a.is-active::after,
+html[data-gc-scope="marketing"] .gc-public-header .gc-public-nav a[aria-current="page"]::after {
+  display: none !important;
+  content: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-actions [data-auth-link],
+html[data-gc-scope="marketing"] .gc-public-actions .gc-public-link,
+html[data-gc-scope="marketing"] .gc-public-actions [data-auth-logout],
+html[data-gc-scope="marketing"] .gc-public-actions .gc-auth-logout {
+  background: rgba(9,12,10,.76);
+  border: 1px solid var(--gc-surface-border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+html[data-gc-scope="marketing"] .gc-public-actions [data-auth-link]:hover,
+html[data-gc-scope="marketing"] .gc-public-actions .gc-public-link:hover,
+html[data-gc-scope="marketing"] .gc-public-actions [data-auth-logout]:hover,
+html[data-gc-scope="marketing"] .gc-public-actions .gc-auth-logout:hover {
+  border-color: var(--gc-surface-border-strong);
+  background: rgba(14,18,15,.92);
+}
+
+/* Legacy/public overlap guards */
+html[data-gc-scope="marketing"] .gc-phone-card.gc-public-card,
+html[data-gc-scope="marketing"] .gc-policy-card.gc-public-card {
+  border-color: var(--gc-surface-border) !important;
+  background: var(--gc-surface-card) !important;
+  box-shadow: var(--gc-surface-glow) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-table-wrap.gc-public-panel,
+html[data-gc-scope="marketing"] .gc-policy-row.gc-public-panel,
+html[data-gc-scope="marketing"] .gc-note-panel.gc-public-panel {
+  border-color: var(--gc-surface-border) !important;
+  background: var(--gc-surface-panel) !important;
+  box-shadow: var(--gc-surface-glow) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-phone-card.gc-public-card .gc-phone-screen {
+  border-color: var(--gc-surface-border);
+  background: linear-gradient(180deg, rgba(12,16,13,.94), rgba(8,11,9,.98));
+}
+
+html[data-gc-scope="marketing"] .gc-phone-card.gc-public-card .gc-phone-screen div {
+  border-bottom-color: rgba(255,255,255,.05);
+}

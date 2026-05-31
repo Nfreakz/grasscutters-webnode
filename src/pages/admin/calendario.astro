@@ -139,7 +139,297 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
     .gc-calendar-admin-card.is-hidden{opacity:.55}
     .gc-calendar-admin-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
     @media(max-width:900px){.gc-admin-calendar-v30 .gc-grid-2{grid-template-columns:1fr}.gc-calendar-admin-card-head{display:grid}}
-  </style>
+  
+
+    /* GC_CALENDARIO_HOME2_VISUAL_UPGRADE_V1_ADMIN
+       Admin calendario adaptat a Home2:
+       panells foscos, formularis compactes, ACSM més llegible i cards d'events coherents.
+    */
+
+    .gc-admin-calendar-v30 {
+      max-width: 1480px !important;
+      margin: 0 auto !important;
+      display: grid !important;
+      gap: clamp(18px, 2.2vw, 28px) !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-hero {
+      overflow: hidden !important;
+      border: 1px solid rgba(150,255,47,.24) !important;
+      border-radius: 28px !important;
+      background:
+        radial-gradient(circle at 82% 10%, rgba(150,255,47,.075), transparent 23rem),
+        radial-gradient(circle at 18% 0%, rgba(53,211,255,.024), transparent 20rem),
+        linear-gradient(180deg, rgba(7,11,8,.96), rgba(4,7,5,.985)) !important;
+      box-shadow:
+        0 24px 82px rgba(0,0,0,.36),
+        inset 0 0 0 1px rgba(255,255,255,.018) !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-hero .gc-title {
+      font-size: clamp(54px, 7vw, 94px) !important;
+      line-height: .86 !important;
+      letter-spacing: -.06em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-grid-2 {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.12fr) minmax(320px, .48fr) !important;
+      gap: clamp(16px, 2vw, 24px) !important;
+      align-items: start !important;
+    }
+
+    .gc-calendar-admin-form,
+    .gc-calendar-acsm-panel,
+    #calendarListSection {
+      border: 1px solid rgba(150,255,47,.14) !important;
+      border-radius: 28px !important;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.045), transparent 16rem),
+        linear-gradient(180deg, rgba(7,11,8,.96), rgba(4,7,5,.985)) !important;
+      box-shadow:
+        0 18px 64px rgba(0,0,0,.34),
+        inset 0 0 0 1px rgba(255,255,255,.016) !important;
+      overflow: hidden !important;
+    }
+
+    .gc-calendar-admin-form,
+    .gc-calendar-acsm-panel {
+      padding: 0 !important;
+    }
+
+    .gc-calendar-admin-form .gc-section-head,
+    .gc-calendar-acsm-panel .gc-section-head,
+    #calendarListSection .gc-section-head {
+      margin: 0 !important;
+      padding: clamp(18px, 2vw, 26px) clamp(18px, 2.2vw, 28px) 14px !important;
+      border-bottom: 1px solid rgba(255,255,255,.065) !important;
+    }
+
+    .gc-calendar-admin-form .gc-section-head h2,
+    .gc-calendar-acsm-panel .gc-section-head h2,
+    #calendarListSection .gc-section-head h2 {
+      margin: 0 !important;
+      color: var(--text) !important;
+      font-size: clamp(26px, 3.1vw, 42px) !important;
+      line-height: .92 !important;
+      letter-spacing: -.045em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-calendar-admin-form .gc-section-head p,
+    .gc-calendar-acsm-panel .gc-section-head p,
+    #calendarListSection .gc-section-head p {
+      margin: 7px 0 0 !important;
+      color: var(--soft) !important;
+      line-height: 1.42 !important;
+    }
+
+    .gc-calendar-admin-form > input,
+    .gc-calendar-admin-form > .gc-form-grid,
+    .gc-calendar-admin-form > .gc-calendar-checks,
+    .gc-calendar-admin-form > .gc-calendar-quick-actions,
+    .gc-calendar-admin-form > .gc-calendar-repeat-note,
+    .gc-calendar-admin-form > .gc-actions,
+    .gc-calendar-admin-form > .gc-message {
+      margin-left: clamp(18px, 2.2vw, 28px) !important;
+      margin-right: clamp(18px, 2.2vw, 28px) !important;
+    }
+
+    .gc-calendar-admin-form > .gc-form-grid {
+      padding-top: clamp(18px, 2vw, 24px) !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-form-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 12px !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-field {
+      display: grid !important;
+      gap: 7px !important;
+      min-width: 0 !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-field span {
+      color: var(--dim) !important;
+      font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+      font-size: 10px !important;
+      font-weight: 950 !important;
+      letter-spacing: .10em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-input,
+    .gc-admin-calendar-v30 .gc-select,
+    .gc-admin-calendar-v30 textarea.gc-input {
+      width: 100% !important;
+      min-height: 42px !important;
+      border: 1px solid rgba(255,255,255,.10) !important;
+      border-radius: 13px !important;
+      background: rgba(3,5,3,.78) !important;
+      color: var(--text) !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.012) !important;
+      outline: none !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-input:focus,
+    .gc-admin-calendar-v30 .gc-select:focus,
+    .gc-admin-calendar-v30 textarea.gc-input:focus {
+      border-color: rgba(150,255,47,.42) !important;
+      box-shadow:
+        0 0 0 4px rgba(150,255,47,.08),
+        inset 0 0 0 1px rgba(255,255,255,.018) !important;
+    }
+
+    .gc-calendar-checks,
+    .gc-calendar-quick-actions {
+      gap: 8px !important;
+    }
+
+    .gc-calendar-checks label {
+      border-color: rgba(255,255,255,.10) !important;
+      border-radius: 999px !important;
+      background: rgba(255,255,255,.018) !important;
+      color: var(--soft) !important;
+      font-size: 12px !important;
+      font-weight: 800 !important;
+    }
+
+    .gc-calendar-repeat-note {
+      color: var(--dim) !important;
+      font-size: .84rem !important;
+      line-height: 1.42 !important;
+    }
+
+    .gc-calendar-admin-form > .gc-actions,
+    .gc-calendar-acsm-panel > .gc-actions {
+      padding-bottom: clamp(18px, 2.2vw, 28px) !important;
+    }
+
+    .gc-calendar-acsm-panel .gc-slab-list,
+    .gc-calendar-acsm-panel .gc-actions,
+    .gc-calendar-acsm-panel .gc-message {
+      margin-left: clamp(18px, 2.2vw, 28px) !important;
+      margin-right: clamp(18px, 2.2vw, 28px) !important;
+    }
+
+    .gc-calendar-acsm-panel .gc-slab-list {
+      display: grid !important;
+      gap: 8px !important;
+      padding-top: clamp(18px, 2vw, 24px) !important;
+    }
+
+    .gc-calendar-acsm-panel .gc-slab-list > div {
+      display: flex !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+      min-height: 46px !important;
+      padding: 11px 12px !important;
+      border: 1px solid rgba(255,255,255,.075) !important;
+      border-radius: 14px !important;
+      background: rgba(255,255,255,.016) !important;
+    }
+
+    .gc-calendar-acsm-panel .gc-slab-list span {
+      color: var(--dim) !important;
+      font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+      font-size: 10px !important;
+      font-weight: 950 !important;
+      letter-spacing: .09em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-calendar-acsm-panel .gc-slab-list strong {
+      color: var(--accent) !important;
+      text-align: right !important;
+    }
+
+    #calendarListSection .gc-toolbar {
+      display: grid !important;
+      grid-template-columns: minmax(260px, 1fr) minmax(180px, .28fr) !important;
+      gap: 12px !important;
+      padding: clamp(18px, 2vw, 24px) clamp(18px, 2.2vw, 28px) 0 !important;
+    }
+
+    .gc-calendar-admin-list {
+      display: grid !important;
+      gap: 10px !important;
+      padding: clamp(16px, 2vw, 24px) clamp(18px, 2.2vw, 28px) clamp(18px, 2.2vw, 28px) !important;
+    }
+
+    .gc-calendar-admin-card {
+      border: 1px solid rgba(255,255,255,.075) !important;
+      border-left: 3px solid var(--accent) !important;
+      border-radius: 18px !important;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.045), transparent 12rem),
+        linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,.012)) !important;
+      box-shadow: none !important;
+    }
+
+    .gc-calendar-admin-card h3 {
+      color: var(--text) !important;
+      font-size: clamp(18px, 1.65vw, 24px) !important;
+      line-height: 1 !important;
+      letter-spacing: -.035em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-calendar-admin-card p {
+      color: var(--soft) !important;
+      line-height: 1.42 !important;
+    }
+
+    .gc-calendar-admin-card small {
+      color: var(--dim) !important;
+    }
+
+    .gc-calendar-admin-actions .gc-btn,
+    .gc-admin-calendar-v30 .gc-btn {
+      border-radius: 999px !important;
+      font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+      font-size: 10.5px !important;
+      font-weight: 950 !important;
+      letter-spacing: .075em !important;
+      text-transform: uppercase !important;
+    }
+
+    .gc-admin-calendar-v30 .gc-btn--primary {
+      color: #071006 !important;
+      background: linear-gradient(135deg, var(--accent), var(--green-2, #78ff1f)) !important;
+      border-color: rgba(150,255,47,.62) !important;
+    }
+
+    @media(max-width: 980px) {
+      .gc-admin-calendar-v30 .gc-grid-2,
+      .gc-admin-calendar-v30 .gc-form-grid,
+      #calendarListSection .gc-toolbar {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    @media(max-width: 640px) {
+      .gc-admin-calendar-v30 {
+        width: min(100% - 20px, 1480px) !important;
+      }
+
+      .gc-calendar-admin-card-head {
+        display: grid !important;
+      }
+
+      .gc-calendar-admin-actions {
+        width: 100% !important;
+      }
+
+      .gc-calendar-admin-actions .gc-btn {
+        flex: 1 1 auto !important;
+      }
+    }
+
+</style>
 
   <script is:inline>
     (() => {

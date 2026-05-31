@@ -116,7 +116,7 @@ html[data-gc-scope="marketing"] body,
 
 .gc-public-nav a,
 .gc-public-link,
-.gc-public-cta {
+.gc-auth-logout {
   color: var(--gc-mk-muted);
   text-decoration: none;
   border-radius: 999px;
@@ -137,12 +137,6 @@ html[data-gc-scope="marketing"] body,
   background: var(--gc-mk-accent);
 }
 
-.gc-public-cta {
-  color: #101410;
-  background: var(--gc-mk-text);
-}
-
-.gc-public-cta:hover,
 .gc-public-nav a.is-active:hover {
   transform: translateY(-1px);
 }
@@ -208,9 +202,7 @@ html[data-gc-scope="marketing"] body,
 
 .gc-title,
 .gc-section-title,
-.gc-hero h1,
-.gc-page h1,
-.gc-page h2 {
+.gc-hero h1 {
   margin: 12px 0 0;
   color: var(--gc-mk-text);
   font-weight: 950;
@@ -220,13 +212,12 @@ html[data-gc-scope="marketing"] body,
 
 .gc-title,
 .gc-hero h1,
-.gc-page h1 { font-size: clamp(2.55rem, 7vw, 5.75rem); }
+.gc-hero h1 { font-size: clamp(2.55rem, 7vw, 5.75rem); }
 .gc-section-title,
-.gc-page h2 { font-size: clamp(2rem, 4.6vw, 4.25rem); }
+.gc-section-title { font-size: clamp(2rem, 4.6vw, 4.25rem); }
 
 .gc-lead,
-.gc-section-lead,
-.gc-page p {
+.gc-section-lead {
   color: var(--gc-mk-muted);
 }
 
@@ -747,4 +738,511 @@ html[data-gc-scope="marketing"] body,
   height:42px;
   object-fit:contain;
   filter:drop-shadow(0 0 14px rgba(155,245,66,.18));
+}
+
+
+/* GC_PUBLIC_MARKETING_HOME2_BASE_V1
+   Base visual pública inspirada en Home2.
+   Scope: MarketingLayout / html[data-gc-scope="marketing"].
+   No afecta a /app porque /app usa AppLayout.
+*/
+
+html[data-gc-scope="marketing"] {
+  --gc-mk-bg: #020402;
+  --gc-mk-bg-2: #050805;
+  --gc-mk-panel: rgba(255,255,255,.026);
+  --gc-mk-panel-strong: rgba(255,255,255,.044);
+  --gc-mk-line: rgba(150,255,47,.145);
+  --gc-mk-line-soft: rgba(255,255,255,.07);
+  --gc-mk-text: #f2fff0;
+  --gc-mk-muted: rgba(230,249,224,.70);
+  --gc-mk-soft: rgba(212,236,204,.52);
+  --gc-mk-accent: #9cff3f;
+  --gc-mk-accent-2: #74ff21;
+  --gc-mk-danger: #ff6868;
+  --gc-mk-warning: #ffc46b;
+  --gc-mk-radius: 28px;
+  --gc-mk-radius-sm: 16px;
+  --gc-mk-shadow: 0 22px 72px rgba(0,0,0,.38);
+  --gc-mk-max: 1480px;
+  background: #020402 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body--home2-base,
+html[data-gc-scope="marketing"] .gc-public-body {
+  color: var(--gc-mk-text) !important;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(150,255,47,.055), transparent 30rem),
+    radial-gradient(circle at 82% 8%, rgba(53,211,255,.026), transparent 26rem),
+    linear-gradient(180deg, #020402 0%, #030503 42%, #020402 100%) !important;
+}
+
+/* Fuera la rejilla pública vieja. Algunas páginas tendrán su propia textura si la necesitan. */
+html[data-gc-scope="marketing"] .gc-public-body::before {
+  opacity: 0 !important;
+  background-image: none !important;
+  mask-image: none !important;
+}
+
+/* Header público: más Home2, menos SaaS. */
+html[data-gc-scope="marketing"] .gc-public-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 80 !important;
+  min-height: 70px !important;
+  padding: 12px clamp(18px, 3vw, 46px) !important;
+  border-bottom: 1px solid rgba(150,255,47,.16) !important;
+  background:
+    linear-gradient(180deg, rgba(3,5,3,.94), rgba(3,5,3,.78)) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.08) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.26) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-brand-copy strong {
+  color: var(--gc-mk-text) !important;
+  font-size: .95rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -.03em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-brand-copy small {
+  color: var(--gc-mk-soft) !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: .62rem !important;
+  font-weight: 950 !important;
+  letter-spacing: .13em !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav {
+  gap: 4px !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a,
+html[data-gc-scope="marketing"] .gc-public-link,
+html[data-gc-scope="marketing"] .gc-auth-logout {
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  color: var(--gc-mk-muted) !important;
+  background: transparent !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: 10.5px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a:hover,
+html[data-gc-scope="marketing"] .gc-public-link:hover,
+html[data-gc-scope="marketing"] .gc-auth-logout:hover {
+  color: var(--gc-mk-text) !important;
+  border-color: rgba(255,255,255,.09) !important;
+  background: rgba(255,255,255,.025) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a.is-active {
+  color: var(--gc-mk-text) !important;
+  border-color: rgba(164,255,68,.18) !important;
+  background: rgba(150,255,47,.10) !important;
+  box-shadow: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-actions {
+  gap: 6px !important;
+}
+
+/* Layout público base */
+html[data-gc-scope="marketing"] .gc-public-main {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page {
+  width: min(100% - 48px, var(--gc-mk-max)) !important;
+  padding: clamp(42px, 6vw, 86px) 0 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page + .gc-page {
+  padding-top: 0 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-narrow {
+  width: min(100% - 48px, 980px) !important;
+}
+
+/* Hero público por defecto. Home2 mantiene sus clases propias. */
+html[data-gc-scope="marketing"] .gc-hero:not(.gc-home2-hero) {
+  gap: clamp(22px, 3.5vw, 54px) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-hero-compact:not(.gc-home2-hero),
+html[data-gc-scope="marketing"] .gc-hero.gc-hero-compact:not(.gc-home2-hero) {
+  min-height: 320px !important;
+  padding: clamp(46px, 6vw, 82px) clamp(22px, 4vw, 52px) !important;
+  border: 1px solid rgba(150,255,47,.22) !important;
+  border-radius: 28px !important;
+  background:
+    linear-gradient(90deg, rgba(3,5,3,.92) 0%, rgba(3,5,3,.62) 48%, rgba(3,5,3,.18) 76%, rgba(3,5,3,.82) 100%),
+    radial-gradient(circle at 82% 12%, rgba(150,255,47,.07), transparent 24rem),
+    linear-gradient(180deg, rgba(7,11,8,.96), rgba(4,7,5,.985)) !important;
+  box-shadow:
+    0 24px 82px rgba(0,0,0,.36),
+    inset 0 0 0 1px rgba(255,255,255,.018) !important;
+  overflow: hidden !important;
+}
+
+/* Legacy marketing typography (pre gc-public-* system).
+   Keep this limited to explicit legacy classes. Do NOT target .gc-page h1/h2 or other broad page selectors,
+   otherwise migrated pages using MarketingLayout but gc-public-* get forced into the legacy scale. */
+html[data-gc-scope="marketing"] .gc-kicker,
+html[data-gc-scope="marketing"] .gc-section-kicker,
+html[data-gc-scope="marketing"] .gc-panel-kicker {
+  color: var(--gc-mk-accent) !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: 10.5px !important;
+  font-weight: 950 !important;
+  letter-spacing: .16em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-title,
+html[data-gc-scope="marketing"] .gc-section-title,
+html[data-gc-scope="marketing"] .gc-hero h1 {
+  color: var(--gc-mk-text) !important;
+  font-weight: 950 !important;
+  text-transform: uppercase !important;
+  letter-spacing: -.065em !important;
+}
+
+html[data-gc-scope="marketing"] .gc-title,
+html[data-gc-scope="marketing"] .gc-hero h1 {
+  font-size: clamp(54px, 8vw, 108px) !important;
+  line-height: .86 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-section-title,
+/* do not target .gc-page h2 here; migrated pages use explicit section classes */
+html[data-gc-scope="marketing"] .gc-section-title {
+  font-size: clamp(34px, 4.8vw, 64px) !important;
+  line-height: .9 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-lead,
+html[data-gc-scope="marketing"] .gc-section-lead {
+  color: var(--gc-mk-muted) !important;
+  font-size: clamp(15px, 1.25vw, 18px) !important;
+  line-height: 1.58 !important;
+}
+
+/* Botones base */
+html[data-gc-scope="marketing"] .gc-btn,
+html[data-gc-scope="marketing"] .gc-btn-primary,
+html[data-gc-scope="marketing"] .gc-btn-plain {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn {
+  border-color: rgba(255,255,255,.10) !important;
+  color: var(--gc-mk-text) !important;
+  background: rgba(255,255,255,.025) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn:hover {
+  border-color: rgba(150,255,47,.28) !important;
+  background: rgba(150,255,47,.045) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn-primary {
+  color: #071006 !important;
+  border-color: rgba(150,255,47,.65) !important;
+  background: linear-gradient(135deg, var(--gc-mk-accent), var(--gc-mk-accent-2)) !important;
+}
+
+/* Paneles, cards y tablas públicas */
+html[data-gc-scope="marketing"] .gc-panel,
+html[data-gc-scope="marketing"] .gc-card,
+html[data-gc-scope="marketing"] .gc-lane,
+html[data-gc-scope="marketing"] .gc-status-card,
+html[data-gc-scope="marketing"] .gc-phone-card,
+html[data-gc-scope="marketing"] .gc-table-wrap,
+html[data-gc-scope="marketing"] .gc-cta-box,
+html[data-gc-scope="marketing"] .gc-policy-card,
+html[data-gc-scope="marketing"] .gc-policy-row,
+html[data-gc-scope="marketing"] .gc-note-panel {
+  border: 1px solid rgba(150,255,47,.14) !important;
+  border-radius: var(--gc-mk-radius) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.04), transparent 16rem),
+    linear-gradient(180deg, rgba(7,11,8,.96), rgba(4,7,5,.985)) !important;
+  box-shadow:
+    0 18px 64px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(255,255,255,.016) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-card h2,
+html[data-gc-scope="marketing"] .gc-panel h2,
+html[data-gc-scope="marketing"] .gc-lane h3,
+html[data-gc-scope="marketing"] .gc-status-card h3,
+html[data-gc-scope="marketing"] .gc-policy-card h2 {
+  color: var(--gc-mk-text) !important;
+  text-transform: uppercase !important;
+  letter-spacing: -.035em !important;
+}
+
+html[data-gc-scope="marketing"] .gc-panel p,
+html[data-gc-scope="marketing"] .gc-card p,
+html[data-gc-scope="marketing"] .gc-lane p,
+html[data-gc-scope="marketing"] .gc-status-card p,
+html[data-gc-scope="marketing"] .gc-policy-card p,
+html[data-gc-scope="marketing"] .gc-policy-row p,
+html[data-gc-scope="marketing"] .gc-note-panel p {
+  color: var(--gc-mk-muted) !important;
+}
+
+/* Métricas y filas */
+html[data-gc-scope="marketing"] .gc-metrics {
+  width: min(100% - 48px, var(--gc-mk-max)) !important;
+  padding-inline: 0 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-metric {
+  border-color: rgba(150,255,47,.14) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.04), transparent 10rem),
+    rgba(255,255,255,.014) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-metric span,
+html[data-gc-scope="marketing"] .gc-panel-row span {
+  color: var(--gc-mk-soft) !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-metric strong,
+html[data-gc-scope="marketing"] .gc-panel-row strong {
+  color: var(--gc-mk-text) !important;
+}
+
+/* Formularios públicos si aparecen */
+html[data-gc-scope="marketing"] input,
+html[data-gc-scope="marketing"] select,
+html[data-gc-scope="marketing"] textarea {
+  border-color: rgba(255,255,255,.10) !important;
+  background-color: rgba(3,5,3,.78) !important;
+  color: var(--gc-mk-text) !important;
+}
+
+html[data-gc-scope="marketing"] input:focus,
+html[data-gc-scope="marketing"] select:focus,
+html[data-gc-scope="marketing"] textarea:focus {
+  outline: none !important;
+  border-color: rgba(150,255,47,.42) !important;
+  box-shadow: 0 0 0 4px rgba(150,255,47,.08) !important;
+}
+
+/* Tablas */
+html[data-gc-scope="marketing"] .gc-public-table th {
+  color: var(--gc-mk-soft) !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-table th,
+html[data-gc-scope="marketing"] .gc-public-table td {
+  border-color: rgba(255,255,255,.065) !important;
+}
+
+/* Footer alineado con Home2 */
+html[data-gc-scope="marketing"] .gc-public-footer,
+html[data-gc-scope="marketing"] .gc-public-footer--v52 {
+  border-top: 1px solid rgba(150,255,47,.14) !important;
+  background:
+    radial-gradient(circle at 8% 30%, rgba(150,255,47,.055), transparent 20rem),
+    linear-gradient(180deg, rgba(3,5,3,.98), #020402) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-footer--v52 .gc-public-footer-links a {
+  color: var(--gc-mk-muted) !important;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace) !important;
+  font-size: 10px !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-footer--v52 .gc-public-footer-links a:hover {
+  color: var(--gc-mk-accent) !important;
+}
+
+/* Menú móvil */
+@media (max-width: 1080px) {
+  html[data-gc-scope="marketing"] .gc-public-header {
+    grid-template-columns: auto auto !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-menu-toggle {
+    border-color: rgba(150,255,47,.18) !important;
+    background: rgba(255,255,255,.025) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-menu-open .gc-public-nav,
+  html[data-gc-scope="marketing"] .gc-public-menu-open .gc-public-actions {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+    padding-top: 12px !important;
+    border-top: 1px solid rgba(255,255,255,.06) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html[data-gc-scope="marketing"] .gc-page,
+  html[data-gc-scope="marketing"] .gc-page-narrow,
+  html[data-gc-scope="marketing"] .gc-metrics {
+    width: min(100% - 24px, var(--gc-mk-max)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-hero-compact:not(.gc-home2-hero),
+  html[data-gc-scope="marketing"] .gc-hero.gc-hero-compact:not(.gc-home2-hero) {
+    padding: 36px 20px !important;
+    border-radius: 22px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-title,
+  html[data-gc-scope="marketing"] .gc-hero h1 {
+    font-size: clamp(42px, 14vw, 64px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-section-title {
+    font-size: clamp(30px, 10vw, 48px) !important;
+  }
+}
+
+
+/* GC_PROMOTE_HOME2_TO_MAIN_HOME_V1_MARKETING_BASE
+   MarketingLayout adopta Home2 como lenguaje visual público.
+   /app queda fuera porque usa AppLayout.
+*/
+
+html[data-gc-scope="marketing"] {
+  --gc-mk-bg: #020402;
+  --gc-mk-bg-2: #030503;
+  --gc-mk-panel: rgba(5, 9, 6, .92);
+  --gc-mk-panel-strong: rgba(8, 14, 10, .88);
+  --gc-mk-line: rgba(164,255,68,.12);
+  --gc-mk-line-soft: rgba(255,255,255,.07);
+  --gc-mk-text: #f2f4ef;
+  --gc-mk-muted: #b7c0b2;
+  --gc-mk-soft: #72806d;
+  --gc-mk-accent: #96ff2f;
+  --gc-mk-accent-2: #80f016;
+  --gc-mk-radius: 8px;
+  --gc-mk-radius-sm: 5px;
+  --gc-mk-max: 1240px;
+  background: #020402 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(150,255,47,.06), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(33,200,214,.03), transparent 24%),
+    linear-gradient(180deg, #020402 0%, #030503 45%, #030503 100%) !important;
+  color: var(--gc-mk-text) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-body::before {
+  opacity: 0 !important;
+  background-image: none !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-main {
+  background: transparent !important;
+}
+
+/* Header público más cercano al tono de Home2. */
+html[data-gc-scope="marketing"] .gc-public-header {
+  min-height: 68px !important;
+  border-bottom: 1px solid rgba(255,255,255,.055) !important;
+  background:
+    linear-gradient(180deg, rgba(3,5,3,.96), rgba(3,5,3,.78)) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.26) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a,
+html[data-gc-scope="marketing"] .gc-public-link,
+html[data-gc-scope="marketing"] .gc-auth-logout {
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase !important;
+  color: var(--gc-mk-muted) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-nav a.is-active {
+  color: var(--gc-mk-text) !important;
+  background: rgba(150,255,47,.10) !important;
+}
+
+/* Cuando la home principal sea Home2, no queremos padding extra del main antiguo. */
+html[data-gc-scope="marketing"] .gc-home2--main-home {
+  margin-top: 0 !important;
+}
+
+/* Páginas públicas no-Home2 siguen la paleta Home2. */
+html[data-gc-scope="marketing"] .gc-panel,
+html[data-gc-scope="marketing"] .gc-card,
+html[data-gc-scope="marketing"] .gc-lane,
+html[data-gc-scope="marketing"] .gc-status-card,
+html[data-gc-scope="marketing"] .gc-phone-card,
+html[data-gc-scope="marketing"] .gc-table-wrap,
+html[data-gc-scope="marketing"] .gc-cta-box,
+html[data-gc-scope="marketing"] .gc-policy-card,
+html[data-gc-scope="marketing"] .gc-policy-row,
+html[data-gc-scope="marketing"] .gc-note-panel {
+  border-color: rgba(164,255,68,.12) !important;
+  border-radius: 8px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(150,255,47,.04), transparent 16rem),
+    linear-gradient(180deg, rgba(5,9,6,.92), rgba(3,5,3,.98)) !important;
+  box-shadow:
+    0 18px 64px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(255,255,255,.016) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn {
+  border-radius: 4px !important;
+  border-color: rgba(164,255,68,.16) !important;
+  background: rgba(6,10,7,.75) !important;
+  color: var(--gc-mk-text) !important;
+  font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: .09em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-gc-scope="marketing"] .gc-btn-primary {
+  color: #071006 !important;
+  background: linear-gradient(135deg, var(--gc-mk-accent), var(--gc-mk-accent-2)) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-public-footer,
+html[data-gc-scope="marketing"] .gc-public-footer--v52 {
+  border-top: 1px solid rgba(255,255,255,.055) !important;
+  background: #020402 !important;
+}
+
+@media(max-width: 760px) {
+  html[data-gc-scope="marketing"] .gc-public-header {
+    min-height: 64px !important;
+  }
 }

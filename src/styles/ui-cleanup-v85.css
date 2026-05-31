@@ -316,18 +316,8 @@ html[data-gc-scope="marketing"] .gc-status-card {
 
 
 
-/* Comunidad nav active + text polish v8.6.6 */
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active,
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"] {
-  color: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) !important;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) 34%, transparent) !important;
-}
-
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active::after,
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"]::after {
-  background: var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) !important;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--gc-mk-accent, var(--gc-mk-accent, #9cff3f)) 40%, transparent);
-}
+/* Public header active states are owned by the gc-public-* system now.
+   Keep ui-cleanup from adding neon/glow states to the main navigation. */
 
 .gc-page-comunidad .gc-community-philosophy .gc-section-title {
   max-width: 920px;
@@ -1127,7 +1117,7 @@ html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="p
 }
 
 
-/* Palette sync v8.7.5 */
+/* Theme sync v8.7.5 */
 html[data-gc-scope="marketing"] {
   --gc-accent-live: var(--gc-mk-accent, #9cff3f);
   --gc-accent-soft-04: color-mix(in srgb, var(--gc-accent-live) 4%, transparent);
@@ -1138,18 +1128,7 @@ html[data-gc-scope="marketing"] {
   --gc-accent-soft-34: color-mix(in srgb, var(--gc-accent-live) 34%, transparent);
 }
 
-/* Menú activo: mismo color que la paleta, nunca negro ni lima fija. */
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active,
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"] {
-  color: var(--gc-accent-live) !important;
-  text-shadow: 0 0 18px var(--gc-accent-soft-34) !important;
-}
-
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a.is-active::after,
-html[data-gc-scope="marketing"] .gc-public-body .gc-public-nav a[aria-current="page"]::after {
-  background: var(--gc-accent-live) !important;
-  box-shadow: 0 0 18px var(--gc-accent-soft-34) !important;
-}
+/* Menú activo: el sistema gc-public-* lo controla. No añadir glow desde ui-cleanup. */
 
 /* Botón principal: mantiene texto oscuro, pero el degradado sigue la paleta. */
 html[data-gc-scope="marketing"] .gc-public-body .gc-btn-primary {
@@ -1162,7 +1141,7 @@ html[data-gc-scope="marketing"] .gc-public-body .gc-btn-primary {
   border-color: color-mix(in srgb, var(--gc-accent-live) 70%, transparent) !important;
 }
 
-/* Home hero: scrim y efectos con paleta activa. */
+/* Home hero: scrim y efectos con tema activo. */
 .gc-public-body .gc-home-hero-scrim {
   background:
     radial-gradient(circle at 14% 22%, var(--gc-accent-soft-18), transparent 38%),
@@ -1204,7 +1183,7 @@ html[data-gc-scope="marketing"] .gc-public-body .gc-btn-primary {
     drop-shadow(0 0 100px var(--gc-accent-soft-26)) !important;
 }
 
-/* Comunidad hero y cards con paleta activa. */
+/* Comunidad hero y cards con tema activo. */
 .gc-page-comunidad .gc-community-hero-scrim {
   background:
     radial-gradient(circle at 16% 22%, var(--gc-accent-soft-18), transparent 38%),
@@ -1871,4 +1850,3 @@ html[data-gc-scope="marketing"] .gc-status-card {
   }
 }
 /* GC HUD popup visual polish v8.9.0 - END */
-

@@ -1,0 +1,673 @@
+/* GC Public Pages v1
+   Page-specific glue that should not live in theme/components. */
+
+/* Comunidad: hero con video abierto (no card). */
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero {
+  min-height: clamp(620px, 78vh, 900px);
+  border-bottom: 0;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: 1;
+  height: clamp(180px, 24vh, 310px);
+  background: linear-gradient(180deg, rgba(3,5,3,0), rgba(3,5,3,.72) 48%, #020402 100%);
+  pointer-events: none;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__inner {
+  grid-template-columns: 1fr;
+  align-items: start;
+  padding: 78px 0 62px;
+  min-height: auto;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-actions .gc-public-btn {
+  min-width: 138px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+
+/* Comunidad: social buttons must stay in GC palette (no external brand gradients). */
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-btn {
+  background: rgba(9,12,10,.88);
+  border: 1px solid var(--gc-surface-border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-btn:hover {
+  border-color: var(--gc-surface-border-strong);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pilots-btn {
+  background: rgba(9,12,10,.76);
+}
+
+@media (max-width: 620px) {
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-social-actions .gc-public-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Comunidad: layout y paneles (centralizado, sin CSS inline en la pagina). */
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-v104 {
+  padding-top: clamp(26px, 5vw, 64px);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-grid-v104,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-rules-grid-v104,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-support-grid-v104 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(320px, .72fr);
+  gap: clamp(20px, 4vw, 54px);
+  align-items: stretch;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-rules-copy-v104.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-panel-v104.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104.gc-public-panel,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-daily-card-v104.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-support-grid-v104 > article.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-support-grid-v104 > aside.gc-public-panel,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-final-card-v104.gc-public-cta,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 > article.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 > article.gc-public-card {
+  padding: clamp(18px, 2.4vw, 28px);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-rules-copy-v104 {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 {
+  padding: 24px;
+  display: grid;
+  align-content: space-between;
+  gap: 22px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-top-v105 {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: clamp(120px, 16vw, 210px);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-top-v105 img {
+  width: clamp(150px, 15vw, 230px);
+  max-height: clamp(112px, 13vw, 190px);
+  height: auto;
+  object-fit: contain;
+  opacity: .94;
+  filter:
+    drop-shadow(0 18px 34px rgba(0,0,0,.42))
+    drop-shadow(0 0 24px rgba(150,255,47,.20));
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  border-top: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 li {
+  display: grid;
+  grid-template-columns: minmax(110px, .34fr) 1fr;
+  gap: 12px;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 li:last-child { border-bottom: 0; }
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 strong {
+  font-family: var(--mono);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 span {
+  color: var(--soft);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 article > span,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 article > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  color: #071006;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  font-family: var(--mono);
+  font-weight: 1000;
+  letter-spacing: .02em;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 h3,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 h3,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-head-v104 h3,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104 h3,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-support-grid-v104 h3 {
+  margin: 16px 0 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 p,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 p,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-v104 p,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104 p {
+  margin: 0;
+  color: var(--soft);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 {
+  display: grid;
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 article {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-discord-layout-v104 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 12px;
+  align-items: start;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-head-v104 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-head-v104 span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-list-v104 {
+  display: grid;
+  gap: 10px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-v104 {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(11,14,12,.72);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-v104 > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.025);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-channel-v104 strong {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-side-stack-v104 { display: grid; gap: 12px; }
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104 > span {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104 .gc-public-btn,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-note-v104 .gc-btn {
+  margin-top: 12px;
+}
+
+@media (max-width: 980px) {
+  html[data-gc-scope="marketing"] .gc-page-comunidad { --shell: min(100% - 24px, 1240px); }
+
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-grid-v104,
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-rules-grid-v104,
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-discord-layout-v104,
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-support-grid-v104 {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Calendario: hereda tipografia/paleta publica, sin radios grandes. */
+html[data-gc-scope="marketing"] .gc-calendar-shell { padding-top: 0; }
+
+html[data-gc-scope="marketing"] .gc-calendar-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-top h2 {
+  margin: 6px 0 0;
+  font-size: clamp(2rem, 4.5vw, 4rem);
+  letter-spacing: -0.07em;
+  text-transform: uppercase;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-top p { margin: 6px 0 0; color: var(--soft); }
+
+html[data-gc-scope="marketing"] .gc-calendar-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--gc-surface-border);
+  border-left: 3px solid var(--green);
+  border-radius: 4px;
+  color: var(--soft);
+  background: rgba(10,13,11,.82);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-legend [data-type="race_lfm"] { border-left-color: #35d3ff; }
+html[data-gc-scope="marketing"] .gc-calendar-legend [data-type="race_gc"] { border-left-color: #ffc46b; }
+html[data-gc-scope="marketing"] .gc-calendar-legend [data-type="range"] { border-left-color: #b585ff; }
+
+html[data-gc-scope="marketing"] .gc-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: rgba(9,12,10,.52);
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-head,
+html[data-gc-scope="marketing"] .gc-calendar-day {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-head {
+  padding: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  background: rgba(10,13,11,.84);
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-day { min-height: 148px; padding: 10px; background: rgba(6,8,7,.86); }
+html[data-gc-scope="marketing"] .gc-calendar-day.is-muted { opacity: .42; }
+html[data-gc-scope="marketing"] .gc-calendar-day.is-today { box-shadow: inset 0 0 0 2px var(--green); }
+
+html[data-gc-scope="marketing"] .gc-calendar-day-number {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text);
+  font-weight: 800;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-day-number small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-events { display: grid; gap: 6px; margin-top: 8px; }
+
+html[data-gc-scope="marketing"] .gc-calendar-event {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius-sm);
+  background: rgba(10,13,11,.78);
+  text-decoration: none;
+}
+
+html[data-gc-scope="marketing"] .gc-calendar-event[data-type="race_lfm"] { border-left-color: #35d3ff; }
+html[data-gc-scope="marketing"] .gc-calendar-event[data-type="race_gc"] { border-left-color: #ffc46b; }
+html[data-gc-scope="marketing"] .gc-calendar-event.is-range { background: linear-gradient(135deg, rgba(18,27,18,.9), rgba(10,13,11,.78)); }
+
+html[data-gc-scope="marketing"] .gc-calendar-event strong { color: var(--text); font-size: .8rem; line-height: 1.2; }
+
+/* Apoyo al servidor (v121) */
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-grid-v121 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 34px);
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-card-v121,
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 article {
+  border: 1px solid var(--gc-surface-border);
+  border-radius: var(--radius);
+  background: var(--gc-surface-card);
+  box-shadow: var(--gc-surface-glow);
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-card-v121 {
+  padding: clamp(18px, 2.4vw, 28px);
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-card-v121 h2 {
+  margin: 10px 0 6px;
+  font-family: var(--sans);
+  color: var(--text);
+  font-size: clamp(18px, 2vw, 32px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-card-v121 p,
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 p {
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.55;
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 article {
+  padding: 18px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 980px) {
+  html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-grid-v121,
+  html[data-gc-scope="marketing"] .gc-page-apoyo-v121 .gc-apoyo-ways-grid-v121 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Privacidad (v122) */
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122 {
+  border: 1px solid var(--gc-surface-border);
+  border-radius: var(--radius);
+  background: var(--gc-surface-card);
+  box-shadow: var(--gc-surface-glow);
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-row-v122 {
+  border: 1px solid var(--gc-surface-border);
+  border-radius: var(--radius);
+  background: var(--gc-surface-panel);
+  box-shadow: var(--gc-surface-glow);
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122 { padding: clamp(18px, 2.4vw, 28px); }
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122--wide { max-width: 1040px; }
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122 > span:not(.gc-section-kicker) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  color: #071006;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  font-family: var(--mono);
+  font-weight: 1000;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122 h2 {
+  margin: 12px 0 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: clamp(1.45rem, 2.5vw, 2.35rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122--wide h2 {
+  font-size: clamp(26px, 3.05vw, 40px);
+  line-height: .94;
+  letter-spacing: -0.04em;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-card-v122 p,
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-row-v122 p {
+  color: var(--soft);
+  line-height: 1.55;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-note-v122 { margin-top: 14px; font-size: .94rem; }
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-grid-v122 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-stack-v122 {
+  display: grid;
+  gap: 12px;
+  max-width: 1180px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-row-v122 { padding: 18px; }
+
+html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-row-v122 strong {
+  display: block;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 1.08rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 980px) {
+  html[data-gc-scope="marketing"] .gc-page-privacidad-v122 .gc-privacy-grid-v122 { grid-template-columns: 1fr; }
+}
+
+/* Normas (v121) */
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-grid-v121 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-card-v121,
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-discord-card-v121 {
+  border: 1px solid var(--gc-surface-border);
+  border-radius: var(--radius);
+  background: var(--gc-surface-card);
+  box-shadow: var(--gc-surface-glow);
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-card-v121 { padding: 18px; }
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-card-v121 > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  color: #071006;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  font-family: var(--mono);
+  font-weight: 1000;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-card-v121 h2 {
+  margin: 16px 0 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-card-v121 p,
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-discord-card-v121 p {
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.55;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-discord-card-v121 {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) minmax(220px, .45fr);
+  gap: clamp(18px, 3vw, 34px);
+  padding: clamp(18px, 2.4vw, 28px);
+  align-items: start;
+  background: var(--gc-surface-panel);
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-discord-card-v121 h2 {
+  margin: 10px 0 10px;
+  font-size: clamp(26px, 3.05vw, 40px);
+  line-height: .94;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-channel-block-v121 h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-channel-list-v121 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-channel-list-v121 span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 999px;
+  color: var(--soft);
+  background: rgba(10,13,11,.76);
+  font-size: .86rem;
+}
+
+html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-channel-list-v121--voice span {
+  color: var(--text);
+  border-color: rgba(164,255,68,.18);
+}
+
+@media (max-width: 1080px) {
+  html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-grid-v121 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-discord-card-v121 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  html[data-gc-scope="marketing"] .gc-page-normas-v121 .gc-normas-grid-v121 { grid-template-columns: 1fr; }
+}

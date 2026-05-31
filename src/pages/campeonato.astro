@@ -8,9 +8,9 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   bodyClass="gc-page-acsr"
   canonicalPath="/campeonato"
 >
-  <section class="gc-hero gc-hero-compact gc-acsr-hero gc-acsr-hero-video">
+  <section class="gc-public-hero gc-acsr-hero gc-acsr-hero-video" aria-labelledby="gc-campeonato-title">
     <video
-      class="gc-acsr-hero-bg-video"
+      class="gc-public-hero__media gc-acsr-hero-bg-video"
       src="/videos/campeonato.mp4"
       autoplay
       muted
@@ -19,56 +19,56 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       preload="metadata"
       aria-hidden="true"
     ></video>
-    <div class="gc-acsr-hero-scrim" aria-hidden="true"></div>
+    <div class="gc-public-hero__scrim gc-acsr-hero-scrim" aria-hidden="true"></div>
 
-    <div class="gc-page gc-acsr-hero-inner">
+    <div class="gc-public-shell gc-public-hero__inner gc-acsr-hero-inner">
       <div>
-        <span class="gc-kicker">Campeonato ACSR</span>
-        <h1 class="gc-title">Combos semanales con clasificación.</h1>
-        <p class="gc-lead">
+        <span class="gc-public-kicker">Campeonato ACSR</span>
+        <h1 id="gc-campeonato-title" class="gc-public-title">Combos semanales con clasificación.</h1>
+        <p class="gc-public-description">
           Inscripción Steam, próxima ronda, calendario, clasificación y pilotos registrados del campeonato.
         </p>
         <div class="gc-actions">
-          <a class="gc-btn gc-btn-primary" href="#" id="acsrSignupHero" target="_blank" rel="noreferrer">Inscribirse con Steam</a>
-          <a class="gc-btn" href="/discord">Discord</a>
+          <a class="gc-public-btn gc-public-btn-primary" href="#" id="acsrSignupHero" target="_blank" rel="noreferrer">Inscribirse con Steam</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="/discord">Discord</a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="gc-page gc-community-championship" data-acsr-championship>
-    <div class="gc-section-head">
-      <span class="gc-section-kicker">Campeonato</span>
-      <h2 class="gc-section-title">Campeonato de combos semanales.</h2>
-      <p class="gc-section-lead" id="acsrChampionshipLead">
+  <section class="gc-public-shell gc-public-section gc-community-championship" data-acsr-championship>
+    <div class="gc-public-section-head">
+      <span class="gc-public-kicker">Campeonato</span>
+      <h2 class="gc-public-section-title">Campeonato de combos semanales.</h2>
+      <p class="gc-public-section-lead" id="acsrChampionshipLead">
         Cargando campeonato...
       </p>
     </div>
 
     <div class="gc-acsr-grid">
-      <article class="gc-acsr-main-card">
-        <span class="gc-panel-kicker">Estado</span>
-        <h3 id="acsrChampionshipName">Campeonato ACSR</h3>
-        <p id="acsrChampionshipMeta">Conectando con Assetto Corsa Server Manager.</p>
+      <article class="gc-acsr-main-card gc-public-card">
+        <span class="gc-public-kicker">Estado</span>
+        <h3 id="acsrChampionshipName" class="gc-public-card-title">Campeonato ACSR</h3>
+        <p id="acsrChampionshipMeta" class="gc-public-card-text">Conectando con Assetto Corsa Server Manager.</p>
 
-        <div class="gc-acsr-stats">
-          <div><span>Eventos</span><strong id="acsrStatEvents">--</strong></div>
-          <div><span>Completados</span><strong id="acsrStatCompleted">--</strong></div>
-          <div><span>Clases</span><strong id="acsrStatClasses">--</strong></div>
-          <div><span>Inscritos</span><strong id="acsrStatEntrants">--</strong></div>
+        <div class="gc-acsr-stats gc-public-stat-grid">
+          <div class="gc-public-stat"><span>Eventos</span><strong id="acsrStatEvents">--</strong></div>
+          <div class="gc-public-stat"><span>Completados</span><strong id="acsrStatCompleted">--</strong></div>
+          <div class="gc-public-stat"><span>Clases</span><strong id="acsrStatClasses">--</strong></div>
+          <div class="gc-public-stat"><span>Inscritos</span><strong id="acsrStatEntrants">--</strong></div>
         </div>
 
         <div class="gc-actions">
-          <a class="gc-btn gc-btn-primary" href="#" id="acsrSignupLink" target="_blank" rel="noreferrer">Inscribirse al campeonato</a>
-          <a class="gc-btn" href="#" id="acsrOfficialLink" target="_blank" rel="noreferrer">Ver campeonato oficial</a>
-          <button class="gc-btn" type="button" id="acsrRefresh">Actualizar</button>
+          <a class="gc-public-btn gc-public-btn-primary" href="#" id="acsrSignupLink" target="_blank" rel="noreferrer">Inscribirse al campeonato</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="#" id="acsrOfficialLink" target="_blank" rel="noreferrer">Ver campeonato oficial</a>
+          <button class="gc-public-btn gc-public-btn-secondary" type="button" id="acsrRefresh">Actualizar</button>
         </div>
       </article>
 
-      <article class="gc-acsr-next-card">
-        <span class="gc-panel-kicker">Próxima ronda</span>
-        <h3 id="acsrNextTitle">Por confirmar</h3>
-        <p id="acsrNextMeta">Cuando ACSM tenga la siguiente ronda, aparecerá aquí.</p>
+      <article class="gc-acsr-next-card gc-public-card">
+        <span class="gc-public-kicker">Próxima ronda</span>
+        <h3 id="acsrNextTitle" class="gc-public-card-title">Por confirmar</h3>
+        <p id="acsrNextMeta" class="gc-public-card-text">Cuando ACSM tenga la siguiente ronda, aparecerá aquí.</p>
         <div class="gc-acsr-track" id="acsrNextTrack">Circuito pendiente</div>
         <figure class="gc-acsr-track-media" id="acsrTrackFigure" hidden>
           <img id="acsrTrackImage" src="" alt="" loading="lazy" />
@@ -77,9 +77,9 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     </div>
 
     <div class="gc-acsr-events-shell">
-      <div class="gc-section-head">
-        <span class="gc-section-kicker">Rondas</span>
-        <h2 class="gc-section-title">Calendario del campeonato.</h2>
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Rondas</span>
+        <h2 class="gc-public-section-title">Calendario del campeonato.</h2>
       </div>
       <div class="gc-acsr-events" id="acsrEventsList">
         <article class="gc-acsr-event"><strong>Cargando rondas...</strong></article>
@@ -87,10 +87,10 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     </div>
 
     <div class="gc-acsr-standings-shell">
-      <div class="gc-section-head">
-        <span class="gc-section-kicker">Clasificación</span>
-        <h2 class="gc-section-title">Clasificación del campeonato.</h2>
-        <p class="gc-section-lead" id="acsrStandingsLead">Posiciones, puntos y pilotos del campeonato.</p>
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Clasificación</span>
+        <h2 class="gc-public-section-title">Clasificación del campeonato.</h2>
+        <p class="gc-public-section-lead" id="acsrStandingsLead">Posiciones, puntos y pilotos del campeonato.</p>
       </div>
 
       <div class="gc-acsr-standings-table-wrap">
@@ -112,10 +112,10 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     </div>
 
     <div class="gc-acsr-drivers-shell">
-      <div class="gc-section-head">
-        <span class="gc-section-kicker">Inscritos</span>
-        <h2 class="gc-section-title">Pilotos registrados.</h2>
-        <p class="gc-section-lead">Pilotos inscritos actualmente en el campeonato.</p>
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Inscritos</span>
+        <h2 class="gc-public-section-title">Pilotos registrados.</h2>
+        <p class="gc-public-section-lead">Pilotos inscritos actualmente en el campeonato.</p>
       </div>
       <div class="gc-acsr-drivers" id="acsrDriversList">
         <article class="gc-acsr-driver"><strong>Cargando pilotos...</strong></article>
@@ -123,19 +123,19 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     </div>
   </section>
 
-  <section class="gc-page gc-acsr-note">
-    <div class="gc-grid-3">
-      <article class="gc-card">
+  <section class="gc-public-shell gc-public-section gc-acsr-note">
+    <div class="gc-public-grid gc-public-grid--3">
+      <article class="gc-public-card">
         <code>01</code>
         <h3>Inscripción</h3>
         <p>Registro rápido con Steam para participar en el campeonato.</p>
       </article>
-      <article class="gc-card">
+      <article class="gc-public-card">
         <code>02</code>
         <h3>Clasificación</h3>
         <p>Seguimiento de pilotos, puntos y próximas rondas.</p>
       </article>
-      <article class="gc-card">
+      <article class="gc-public-card">
         <code>03</code>
         <h3>Comunidad</h3>
         <p>El Discord sigue siendo el paddock principal para avisos y comentarios.</p>
@@ -228,11 +228,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       max-width:760px!important;
     }
 
-    .gc-acsr-hero .gc-title{
+    .gc-acsr-hero .gc-public-title{
       text-shadow:0 18px 62px rgba(0,0,0,.50);
     }
 
-    .gc-acsr-hero .gc-lead{
+    .gc-acsr-hero .gc-public-description{
       text-shadow:0 10px 34px rgba(0,0,0,.42);
     }
 
@@ -251,75 +251,41 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       align-items:stretch;
     }
 
-    .gc-acsr-main-card,
-    .gc-acsr-next-card,
     .gc-acsr-event{
       position:relative;
       overflow:hidden;
       padding:clamp(18px,2.2vw,28px);
       border:1px solid var(--gc-mk-line);
-      border-top:2px solid var(--gc-mk-accent);
-      border-radius:24px;
-      background:
-        radial-gradient(circle at 12% 10%, color-mix(in srgb,var(--gc-mk-accent) 12%, transparent), transparent 26rem),
-        linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
-      box-shadow:0 20px 80px rgba(0,0,0,.18);
+      border-radius:var(--radius, 8px);
+      background:rgba(255,255,255,.02);
+      box-shadow:none;
     }
 
-    .gc-acsr-main-card h3,
-    .gc-acsr-next-card h3{
-      margin:.45rem 0;
-      color:var(--gc-mk-text);
-      font-size:clamp(1.8rem,3.8vw,3.6rem);
-      line-height:.9;
-      letter-spacing:-.07em;
-      text-transform:uppercase;
+    .gc-acsr-main-card.gc-public-card,
+    .gc-acsr-next-card.gc-public-card{
+      position:relative;
+      overflow:hidden;
+      padding:clamp(18px,2.2vw,28px);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:var(--panel);
+      box-shadow:0 20px 60px rgba(0,0,0,.32);
     }
 
-    .gc-acsr-main-card p,
-    .gc-acsr-next-card p{
-      color:var(--gc-mk-muted);
-      line-height:1.5;
-    }
+    /* Card typography is handled via .gc-public-card-title / .gc-public-card-text */
 
     .gc-acsr-stats{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:8px;
+      grid-template-columns:repeat(2,minmax(0,1fr));
       margin:18px 0;
-    }
-
-    .gc-acsr-stats div{
-      padding:12px;
-      border:1px solid var(--gc-mk-line);
-      border-radius:14px;
-      background:rgba(0,0,0,.16);
-    }
-
-    .gc-acsr-stats span{
-      display:block;
-      color:var(--gc-mk-soft);
-      font-size:.66rem;
-      font-weight:950;
-      text-transform:uppercase;
-      letter-spacing:.09em;
-    }
-
-    .gc-acsr-stats strong{
-      display:block;
-      margin-top:6px;
-      color:var(--gc-mk-text);
-      font-size:1.35rem;
-      line-height:1;
     }
 
     .gc-acsr-track{
       margin-top:16px;
       padding:12px;
-      border:1px solid var(--gc-mk-line);
-      border-radius:14px;
+      border:1px solid var(--line);
+      border-radius:var(--radius-sm);
       color:var(--gc-mk-accent);
-      font-weight:950;
+      font-weight:800;
       text-transform:uppercase;
       letter-spacing:.05em;
       background:rgba(255,255,255,.035);
@@ -327,8 +293,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
     .gc-acsr-track-media{
       margin:16px 0 0;
-      border:1px solid var(--gc-mk-line);
-      border-radius:18px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
       overflow:hidden;
       background:rgba(0,0,0,.18);
     }

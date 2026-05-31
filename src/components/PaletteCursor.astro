@@ -131,7 +131,8 @@
   */
   .gc-btn-primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
   .gc-btn--primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]),
-  .gc-public-cta{
+  header.gc-public-header .gc-public-actions .gc-public-cta,
+  header.gc-public-header a.gc-public-cta{
     color: #07110a !important;
     border-color: transparent !important;
     background:
@@ -144,7 +145,8 @@
 
   .gc-btn-primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):hover,
   .gc-btn--primary:not(.gc-community-social-btn):not(.gc-social-btn):not([href*="discord.gg"]):not([href*="whatsapp.com"]):not([href*="instagram.com"]):hover,
-  .gc-public-cta:hover{
+  header.gc-public-header .gc-public-actions .gc-public-cta:hover,
+  header.gc-public-header a.gc-public-cta:hover{
     color: #07110a !important;
     filter: brightness(1.06) saturate(1.04);
     border-color: transparent !important;
@@ -586,19 +588,6 @@
     ensureIcon('shortcut icon', '/favicon.ico', 'image/x-icon');
     ensureIcon('apple-touch-icon', '/icon-192.png', 'image/png');
 
-    const footer = document.querySelector('.gc-public-footer-links');
-    if (footer && footer.dataset.gcFooterClean !== 'true') {
-      const links = [
-        { href: '/normas', label: 'Normas' },
-        { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
-        { href: '/privacidad', label: 'Privacidad' },
-      ];
-
-      footer.dataset.gcFooterClean = 'true';
-      footer.innerHTML = links
-        .map((item) => `<a href="${item.href}">${item.label}</a>`)
-        .join('');
-    }
   })();
 </script>
 
