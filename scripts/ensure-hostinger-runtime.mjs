@@ -15,6 +15,7 @@ if (!fs.existsSync(serverPath)) {
 }
 
 let source = fs.readFileSync(serverPath, 'utf8');
+const originalSource = source;
 
 function ensureImport() {
   if (source.includes('pathToFileURL')) return;
@@ -253,6 +254,11 @@ await mountAstroRuntime();
 
 `;
 
+if (source.includes(markerV3)) {
+  console.log('[GC patch] Runtime Hostinger/Astro V3 ya estaba aplicado.');
+  process.exit(0);
+}
+
 ensureImport();
 removeOldRuntimeBlocks();
 removeOldGrasscuttersFallback();
@@ -264,6 +270,8 @@ if (listenIndex === -1) {
 }
 
 source = source.slice(0, listenIndex) + runtimeBlock + source.slice(listenIndex);
-fs.writeFileSync(serverPath, source, 'utf8');
+if (source !== originalSource) {
+  fs.writeFileSync(serverPath, source, 'utf8');
+}
 
 console.log('[GC patch] Runtime Hostinger/Astro V3 aplicado en src/server/index.ts');
