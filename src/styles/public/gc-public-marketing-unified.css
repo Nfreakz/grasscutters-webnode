@@ -158,12 +158,14 @@ html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"])
   line-height:1.58;
 }
 
-/* Cards y paneles: mismo material oscuro de /. */
+/* Cards y paneles: mismo material oscuro de /.
+   Ojo: NO usar [class*="-card"] global a pelo. Eso cazaba títulos/textos
+   como .gc-public-card-title y pintaba rectángulos dentro del contenido. */
 html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card,
 html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-panel,
 html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-cta,
-html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) [class*="-card"],
-html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) [class*="-panel"]{
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) :where(article,aside,section,div)[class*="-card"]:not([class*="title"]):not([class*="text"]):not([class*="meta"]):not([class*="actions"]):not([class*="__"]),
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) :where(article,aside,section,div)[class*="-panel"]:not([class*="title"]):not([class*="text"]):not([class*="meta"]):not([class*="actions"]):not([class*="__"]){
   border-radius:var(--gc-unified-radius) !important;
   border:1px solid var(--gc-unified-border-soft) !important;
   background:
@@ -263,6 +265,122 @@ html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104
   min-height:164px;
 }
 
+/* GC_COMMUNITY_PANEL_ALIGNMENT_V30
+   Repaso de los bloques principales de Comunidad: alineación, jerarquía y
+   paneles sin cajas internas accidentales. */
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-grid-v104{
+  grid-template-columns:minmax(0,1.02fr) minmax(360px,.84fr) !important;
+  gap:clamp(26px,3.8vw,56px) !important;
+  align-items:stretch !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104.gc-public-card,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104.gc-public-panel{
+  position:relative;
+  overflow:hidden;
+  min-height:clamp(360px,28vw,430px);
+  padding:clamp(30px,3.6vw,48px) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104.gc-public-card{
+  display:flex !important;
+  flex-direction:column;
+  justify-content:center;
+  gap:16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(140,255,0,.105), transparent 36%),
+    linear-gradient(135deg, rgba(8,16,9,.93), rgba(3,6,4,.94) 64%, rgba(5,12,7,.88)) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104.gc-public-card::after{
+  content:"";
+  position:absolute;
+  left:clamp(24px,3vw,46px);
+  right:clamp(24px,3vw,46px);
+  bottom:clamp(20px,2.4vw,34px);
+  height:42px;
+  opacity:.34;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg, rgba(140,255,0,.28), transparent 24%, rgba(140,255,0,.12) 54%, transparent),
+    repeating-linear-gradient(90deg, rgba(140,255,0,.2) 0 1px, transparent 1px 42px);
+  mask-image:linear-gradient(90deg, transparent, #000 16%, #000 76%, transparent);
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104 .gc-public-kicker{
+  margin:0 0 2px !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104 .gc-public-card-title{
+  max-width:720px !important;
+  margin:0 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104 .gc-public-card-text{
+  max-width:74ch;
+  margin:0 !important;
+  font-size:clamp(1rem,1.04vw,1.12rem) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104{
+  display:grid !important;
+  grid-template-rows:minmax(110px,.76fr) auto;
+  align-content:stretch !important;
+  gap:clamp(18px,2.2vw,30px) !important;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(140,255,0,.16), transparent 34%),
+    linear-gradient(180deg, rgba(8,14,9,.9), rgba(3,6,4,.96)) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-top-v105{
+  min-height:clamp(120px,15vw,190px) !important;
+  display:grid !important;
+  place-items:center !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-top-v105 img{
+  width:clamp(170px,16vw,250px) !important;
+  max-height:clamp(108px,12vw,178px) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 ul{
+  align-self:end;
+  gap:0;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 li{
+  grid-template-columns:minmax(90px,.28fr) minmax(0,1fr) !important;
+  align-items:center;
+  min-height:52px;
+  padding:12px 0 !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 strong{
+  color:var(--gc-unified-text) !important;
+  opacity:.9;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104 span{
+  color:var(--gc-unified-soft) !important;
+  font-size:clamp(.96rem,1vw,1.08rem);
+  line-height:1.32;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-how-v104 .gc-public-section-head,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-rules-v104 .gc-community-rules-copy-v104{
+  max-width:960px;
+}
+
+@media (max-width:980px){
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-grid-v104{
+    grid-template-columns:1fr !important;
+  }
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-copy-v104.gc-public-card,
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104.gc-public-panel{
+    min-height:0;
+  }
+}
+
 /* Noticias, archivo y paginas similares: mas cerca de la home. */
 html[data-gc-scope="marketing"] body[data-public-route^="/noticias"] .gc-public-main,
 html[data-gc-scope="marketing"] body[data-public-route^="/archivo"] .gc-public-main,
@@ -298,5 +416,390 @@ html[data-gc-scope="marketing"] body[data-public-route^="/archivo"] img{
   html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__inner{
     padding-top:92px !important;
     padding-bottom:88px !important;
+  }
+}
+
+/* GC_MARKETING_HERO_TYPOGRAPHY_V28
+   Contrato único de hero para toda la web pública/marketing.
+   Usa como referencia el tamaño visual de Inicio / Archivo / Noticias. */
+html[data-gc-scope="marketing"]{
+  --gc-hero-title-size:clamp(58px,8vw,86px);
+  --gc-hero-title-size-mobile:clamp(40px,13vw,62px);
+  --gc-hero-title-line:.88;
+  --gc-hero-title-track:-.055em;
+  --gc-hero-title-weight:950;
+  --gc-hero-title-shadow:
+    0 18px 54px rgba(0,0,0,.52),
+    0 0 22px rgba(244,255,241,.035);
+  --gc-hero-kicker-size:11px;
+  --gc-hero-kicker-track:.12em;
+  --gc-hero-lead-size:clamp(15px,1.2vw,18px);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body .gc-home2 .gc-home2-hero__copy h1,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-hero .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-page-hero .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-archive-race-hero h1,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/archivo"] .gc-archive-race-hero h1,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/noticias"] .gc-archive-race-hero h1,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/campeonato"] .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/comunidad"] .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/normas"] .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/apoyo-servidor"] .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/privacidad"] .gc-public-title{
+  max-width:680px!important;
+  margin:8px 0 0!important;
+  color:var(--gc-unified-text,#f4fff1)!important;
+  font-family:var(--sans,Inter,system-ui,sans-serif)!important;
+  font-size:var(--gc-hero-title-size)!important;
+  font-weight:var(--gc-hero-title-weight)!important;
+  line-height:var(--gc-hero-title-line)!important;
+  letter-spacing:var(--gc-hero-title-track)!important;
+  text-transform:uppercase!important;
+  text-wrap:balance!important;
+  text-shadow:var(--gc-hero-title-shadow)!important;
+  font-kerning:normal!important;
+  font-feature-settings:"kern" 1,"liga" 1!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/noticias"] .gc-news-archive-style-v2 .gc-archive-race-hero h1,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/archivo"] .gc-archive-home2 .gc-archive-race-hero h1{
+  max-width:680px!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body .gc-home2-kicker,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-hero .gc-public-kicker,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-page-hero .gc-public-kicker,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-archive-race-hero .gc-archive-kicker{
+  color:var(--gc-unified-green,#8cff00)!important;
+  font-family:var(--mono,'JetBrains Mono',monospace)!important;
+  font-size:var(--gc-hero-kicker-size)!important;
+  font-weight:950!important;
+  letter-spacing:var(--gc-hero-kicker-track)!important;
+  text-transform:uppercase!important;
+  text-shadow:0 0 18px rgba(140,255,0,.18)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body .gc-home2-lead,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-hero .gc-public-description,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-page-hero .gc-public-lead,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-page-hero .gc-public-description,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-archive-race-hero .gc-archive-race-hero__lead{
+  font-size:var(--gc-hero-lead-size)!important;
+  line-height:1.45!important;
+  color:var(--gc-unified-soft,rgba(244,255,241,.72))!important;
+  text-shadow:0 12px 32px rgba(0,0,0,.42)!important;
+}
+
+/* Evita que estilos inline/globales de paginas concretas creen otra escala de hero. */
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/campeonato"] .gc-acsr-hero .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/comunidad"] .gc-community-hero .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/noticias"] .gc-news-archive-style-v2 .gc-archive-race-hero h1,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/archivo"] .gc-archive-race-hero h1{
+  font-size:var(--gc-hero-title-size)!important;
+  line-height:var(--gc-hero-title-line)!important;
+  letter-spacing:var(--gc-hero-title-track)!important;
+}
+
+@media (max-width:760px){
+  html[data-gc-scope="marketing"] body.gc-public-body .gc-home2 .gc-home2-hero__copy h1,
+  html[data-gc-scope="marketing"] body.gc-public-body .gc-public-hero .gc-public-title,
+  html[data-gc-scope="marketing"] body.gc-public-body .gc-public-page-hero .gc-public-title,
+  html[data-gc-scope="marketing"] body.gc-public-body .gc-archive-race-hero h1{
+    max-width:100%!important;
+    font-size:var(--gc-hero-title-size-mobile)!important;
+    line-height:.9!important;
+    letter-spacing:-.055em!important;
+  }
+}
+
+/* GC_CALENDAR_EVENT_SYSTEM_V29
+   Recupera la marca visual por tipo de evento y mejora la lista inferior. */
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"]{
+  --gc-cal-combo:#8cff00;
+  --gc-cal-lfm:#35d3ff;
+  --gc-cal-gc:#ffc46b;
+  --gc-cal-range:#b585ff;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend span,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card{
+  --gc-cal-color:var(--gc-cal-combo);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend [data-type="race_lfm"],
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event[data-type="race_lfm"],
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card[data-type="race_lfm"]{
+  --gc-cal-color:var(--gc-cal-lfm);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend [data-type="race_gc"],
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event[data-type="race_gc"],
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card[data-type="race_gc"]{
+  --gc-cal-color:var(--gc-cal-gc);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend [data-type="range"],
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event.is-range{
+  --gc-cal-color:var(--gc-cal-range);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend{
+  align-items:center;
+  gap:10px!important;
+  margin:20px 0 22px!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend span{
+  position:relative;
+  min-height:34px!important;
+  padding:0 13px 0 34px!important;
+  border:1px solid color-mix(in srgb,var(--gc-cal-color) 32%, transparent)!important;
+  border-left:1px solid color-mix(in srgb,var(--gc-cal-color) 32%, transparent)!important;
+  border-radius:4px!important;
+  color:var(--gc-unified-text)!important;
+  background:linear-gradient(180deg, color-mix(in srgb,var(--gc-cal-color) 9%, rgba(5,9,6,.86)), rgba(4,7,5,.88))!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.018)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-legend span::before{
+  content:"";
+  position:absolute;
+  left:12px;
+  top:50%;
+  width:10px;
+  height:10px;
+  transform:translateY(-50%);
+  border-radius:999px;
+  background:var(--gc-cal-color);
+  box-shadow:0 0 14px color-mix(in srgb,var(--gc-cal-color) 54%, transparent);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-grid{
+  border-color:rgba(140,255,0,.16)!important;
+  background:rgba(1,4,2,.82)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-day{
+  background:linear-gradient(180deg, rgba(4,8,5,.92), rgba(2,4,3,.9))!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event{
+  position:relative!important;
+  overflow:hidden!important;
+  padding:9px 9px 9px 15px!important;
+  border:1px solid color-mix(in srgb,var(--gc-cal-color) 23%, rgba(255,255,255,.06))!important;
+  border-left:0!important;
+  border-radius:4px!important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb,var(--gc-cal-color) 10%, transparent), transparent 58%),
+    rgba(5,9,6,.82)!important;
+  box-shadow:none!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:var(--gc-cal-color);
+  box-shadow:0 0 18px color-mix(in srgb,var(--gc-cal-color) 48%, transparent);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--gc-cal-color) 44%, transparent)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event strong{
+  color:var(--gc-unified-text)!important;
+  font-weight:950!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event small,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event-repeat{
+  color:var(--gc-unified-soft)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-list-section .gc-public-section-head{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(260px,.42fr);
+  gap:clamp(18px,3vw,34px);
+  align-items:end;
+  padding-bottom:18px;
+  border-bottom:1px solid rgba(140,255,0,.14);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-list-section .gc-public-section-lead{
+  max-width:520px;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event-list{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px!important;
+  margin-top:22px;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:78px minmax(0,1fr) auto;
+  gap:16px!important;
+  align-items:start!important;
+  overflow:hidden!important;
+  min-height:0!important;
+  padding:18px!important;
+  border:1px solid color-mix(in srgb,var(--gc-cal-color) 28%, transparent)!important;
+  border-radius:6px!important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb,var(--gc-cal-color) 13%, transparent), transparent 34%),
+    linear-gradient(180deg, rgba(8,14,9,.92), rgba(2,5,3,.92))!important;
+  box-shadow:0 20px 54px rgba(0,0,0,.32)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:5px;
+  background:var(--gc-cal-color);
+  box-shadow:0 0 22px color-mix(in srgb,var(--gc-cal-color) 55%, transparent);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-date{
+  display:grid!important;
+  place-items:center!important;
+  align-content:center!important;
+  width:68px!important;
+  min-height:78px!important;
+  border:1px solid color-mix(in srgb,var(--gc-cal-color) 26%, transparent)!important;
+  border-radius:4px!important;
+  background:rgba(1,4,2,.62)!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-date span{
+  color:var(--gc-cal-color)!important;
+  font-family:var(--sans,Inter,system-ui,sans-serif)!important;
+  font-size:clamp(30px,3vw,44px)!important;
+  line-height:.82!important;
+  font-weight:1000!important;
+  letter-spacing:-.07em!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-date small,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-meta dt{
+  color:var(--gc-unified-muted)!important;
+  font-family:var(--mono,'JetBrains Mono',monospace)!important;
+  font-size:10px!important;
+  font-weight:950!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-main{
+  min-width:0;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-head{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-bottom:8px;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-type,
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-repeat{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:24px!important;
+  padding:0 9px!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--gc-cal-color) 24%, transparent)!important;
+  color:var(--gc-cal-color)!important;
+  background:color-mix(in srgb,var(--gc-cal-color) 8%, transparent)!important;
+  font-family:var(--mono,'JetBrains Mono',monospace)!important;
+  font-size:10px!important;
+  font-weight:950!important;
+  letter-spacing:.1em!important;
+  text-transform:uppercase!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card h3{
+  margin:0 0 12px!important;
+  color:var(--gc-unified-text)!important;
+  font-family:var(--sans,Inter,system-ui,sans-serif)!important;
+  font-size:clamp(20px,2vw,30px)!important;
+  line-height:.94!important;
+  letter-spacing:-.055em!important;
+  text-transform:uppercase!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-meta{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:0;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-meta div{
+  min-width:0;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:4px;
+  background:rgba(1,4,2,.42);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-meta dd{
+  margin:4px 0 0;
+  color:var(--gc-unified-text);
+  font-size:.9rem;
+  line-height:1.25;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-description{
+  margin:12px 0 0!important;
+  color:var(--gc-unified-soft)!important;
+  line-height:1.5!important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card > .gc-public-btn{
+  align-self:start;
+  white-space:nowrap;
+}
+
+@media (max-width:980px){
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-event-list,
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-list-section .gc-public-section-head{
+    grid-template-columns:1fr;
+  }
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card{
+    grid-template-columns:70px minmax(0,1fr);
+  }
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-card > .gc-public-btn{
+    grid-column:2;
+    justify-self:start;
+  }
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-upcoming-meta{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:720px){
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-grid{
+    overflow-x:auto;
+    display:block!important;
+    white-space:normal;
+  }
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-head,
+  html[data-gc-scope="marketing"] body.gc-public-body[data-public-route^="/calendario"] .gc-calendar-day{
+    min-width:180px;
   }
 }

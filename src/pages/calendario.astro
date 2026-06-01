@@ -214,8 +214,35 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         upcoming.innerHTML = list.length ? list.map((event) => {
           const d = eventDate(event);
           const end = parseDate(event.occurrenceEndDate || event.endDate);
+          const type = String(event.type || 'combo');
           const rangeText = end && keyOf(end) !== keyOf(d) ? `Del ${keyOf(d)} al ${keyOf(end)}` : keyOf(d);
-          return `<article class="gc-calendar-upcoming-card gc-track-image-card" data-track-image data-track-name="${escapeHtml(event.trackName || event.track || '')}"><div class="gc-calendar-upcoming-date"><span>${pad(d.getDate())}</span><small>${monthNames[d.getMonth()].slice(0,3)}</small></div><div><span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[event.type] || 'Combo semanal')}</span><h3>${escapeHtml(event.title || 'Evento')}</h3><p>${escapeHtml([rangeText, fmtEventTime(event), event.trackName, event.carNames].filter(Boolean).join(' · '))}</p>${event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : ''}${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}</div>${event.linkUrl ? `<a class="gc-public-btn gc-public-btn-secondary" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : ''}</article>`;
+          const timeText = fmtEventTime(event);
+          const trackText = [event.trackName || event.track, event.carNames].filter(Boolean).join(' · ');
+          const repeatTag = event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : '';
+          const description = event.description ? `<p class="gc-calendar-upcoming-description">${escapeHtml(event.description)}</p>` : '';
+          const action = event.linkUrl ? `<a class="gc-public-btn gc-public-btn-secondary" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : '';
+          return `
+            <article class="gc-calendar-upcoming-card gc-track-image-card" data-track-image data-track-name="${escapeHtml(event.trackName || event.track || '')}" data-type="${escapeHtml(type)}">
+              <div class="gc-calendar-upcoming-date">
+                <span>${pad(d.getDate())}</span>
+                <small>${monthNames[d.getMonth()].slice(0,3)}</small>
+              </div>
+              <div class="gc-calendar-upcoming-main">
+                <div class="gc-calendar-upcoming-head">
+                  <span class="gc-calendar-upcoming-type">${escapeHtml(typeLabels[type] || 'Combo semanal')}</span>
+                  ${repeatTag}
+                </div>
+                <h3>${escapeHtml(event.title || 'Evento')}</h3>
+                <dl class="gc-calendar-upcoming-meta">
+                  <div><dt>Fecha</dt><dd>${escapeHtml(rangeText)}</dd></div>
+                  <div><dt>Hora</dt><dd>${escapeHtml(timeText)}</dd></div>
+                  ${trackText ? `<div><dt>Combo</dt><dd>${escapeHtml(trackText)}</dd></div>` : ''}
+                </dl>
+                ${description}
+              </div>
+              ${action}
+            </article>
+          `;
         }).join('') : '<div class="gc-public-panel"><p>No hay próximos eventos visibles todavía.</p></div>';
       }
 
