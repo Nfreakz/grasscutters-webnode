@@ -260,12 +260,24 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     .gc-acsr-track-media[hidden],
     .gc-acsr-event-media[hidden]{ display:none!important; }
 
-    .gc-acsr-track-media img,
-    .gc-acsr-event-media img{
+    .gc-acsr-track-media img{
       display:block;
       width:100%;
       height:clamp(170px,18vw,260px);
       object-fit:cover;
+    }
+
+    .gc-acsr-event-media{
+      margin:0 0 4px;
+      border-radius:13px;
+    }
+
+    .gc-acsr-event-media img{
+      display:block;
+      width:100%;
+      height:clamp(105px,8.5vw,138px);
+      object-fit:cover;
+      filter:saturate(1.04) contrast(1.04) brightness(.9);
     }
 
     .gc-acsr-podium{
@@ -308,23 +320,26 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
     .gc-acsr-events{
       display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:16px;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+      align-items:stretch;
     }
 
     .gc-acsr-event{
       position:relative;
       display:grid;
-      gap:12px;
+      grid-template-rows:auto auto auto 1fr auto;
+      gap:9px;
       overflow:hidden;
-      padding:clamp(18px,2.2vw,28px);
+      padding:12px;
       border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
-      border-radius:var(--radius,18px);
+      border-radius:16px;
       background:rgba(255,255,255,.025);
       color:inherit;
       text-decoration:none;
       box-shadow:none;
       transition:transform .18s ease, border-color .18s ease, background .18s ease;
+      min-height:100%;
     }
 
     a.gc-acsr-event:hover{
@@ -345,21 +360,23 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
     .gc-acsr-event strong{
       display:block;
-      margin-top:4px;
-      font-size:clamp(1.05rem,1.6vw,1.45rem);
+      margin-top:3px;
+      font-size:clamp(.96rem,1.05vw,1.12rem);
       line-height:1.05;
     }
 
     .gc-acsr-event p{
       margin:0;
       color:var(--gc-mk-muted,#9ca59a);
+      font-size:.88rem;
+      line-height:1.35;
     }
 
     .gc-acsr-event__meta{
       display:flex;
       flex-wrap:wrap;
-      gap:8px;
-      margin-top:4px;
+      gap:6px;
+      margin-top:2px;
     }
 
     .gc-acsr-chip{
@@ -367,11 +384,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       align-items:center;
       width:max-content;
       max-width:100%;
-      padding:5px 8px;
+      padding:4px 7px;
       border:1px solid rgba(126,255,39,.18);
       border-radius:999px;
       color:var(--gc-mk-muted,#9ca59a);
-      font-size:.78rem;
+      font-size:.68rem;
       font-weight:800;
       text-transform:uppercase;
       letter-spacing:.05em;
@@ -451,6 +468,10 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         grid-column:1/-1;
       }
 
+      .gc-acsr-events{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+
       .gc-acsr-drivers{
         grid-template-columns:repeat(3,minmax(0,1fr));
       }
@@ -463,28 +484,39 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       }
 
       .gc-acsr-grid,
-      .gc-acsr-grid--hub,
-      .gc-acsr-events{
+      .gc-acsr-grid--hub{
         grid-template-columns:1fr;
+      }
+
+      .gc-acsr-events{
+        grid-template-columns:repeat(2,minmax(0,1fr));
       }
 
       .gc-acsr-drivers{
         grid-template-columns:repeat(2,minmax(0,1fr));
       }
 
-      .gc-acsr-track-media img,
-      .gc-acsr-event-media img{
+      .gc-acsr-track-media img{
         height:210px;
+      }
+
+      .gc-acsr-event-media img{
+        height:128px;
       }
     }
 
     @media (max-width:560px){
+      .gc-acsr-events,
       .gc-acsr-drivers{
         grid-template-columns:1fr;
       }
 
       .gc-acsr-stats{
         grid-template-columns:1fr 1fr;
+      }
+
+      .gc-acsr-event-media img{
+        height:150px;
       }
 
       .gc-acsr-standings-table{
@@ -590,6 +622,56 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         return [...new Set(out)];
       };
 
+      const localTrackPhotoCandidates = (event) => {
+        const labels = [...new Set([
+          event?.trackRaw,
+          event?.track,
+          event?.name,
+          normalizeTrackSlug(event?.trackRaw),
+          normalizeTrackSlug(event?.track)
+        ].filter(Boolean).map(String))];
+
+        const out = [];
+        const helper = window.GCTrackImages;
+
+        if (helper?.bestAsset) {
+          labels.forEach((label) => {
+            const match = helper.bestAsset(label);
+            if (match?.url && !/_mapa\.|_map\./i.test(match.url)) out.push(match.url);
+          });
+        }
+
+        const names = [...new Set([
+          normalizeTrackSlug(event?.trackRaw),
+          normalizeTrackSlug(event?.track),
+          slugify(event?.trackRaw),
+          slugify(event?.track),
+          slugify(event?.name)
+        ].filter(Boolean))];
+
+        const bases = [...new Set([
+          ...names,
+          ...names.map((name) => `${name}_photo`),
+          ...names.map((name) => `${name}_foto`)
+        ])];
+
+        const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
+        const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif', 'WEBP', 'JPG', 'JPEG', 'PNG', 'AVIF'];
+
+        bases.forEach((base) => {
+          if (/_mapa$|_map$/i.test(base)) return;
+          roots.forEach((root) => {
+            exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+          });
+        });
+
+        if (!out.length && helper?.placeholderUrl) {
+          out.push(helper.placeholderUrl(event?.track || event?.name || 'Track image pending'));
+        }
+
+        return [...new Set(out.filter((url) => !/_mapa\.|_map\./i.test(url)))];
+      };
+
       const setImageWithFallback = (img, figure, candidates) => {
         const cleanCandidates = (Array.isArray(candidates) ? candidates : []).filter(Boolean);
         if (!img || !figure || !cleanCandidates.length) {
@@ -616,17 +698,18 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       };
 
       const eventImageHtml = (event) => {
-        const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
+        const candidates = localTrackPhotoCandidates(event);
         const primary = candidates[0] || '';
         const fallbacks = candidates.slice(1).join('|');
         if (!primary) return '';
 
         return `
-          <figure class="gc-acsr-event-media">
+          <figure class="gc-acsr-event-media gc-acsr-event-media--photo">
             <img
               src="${escapeHtml(primary)}"
               alt="${escapeHtml(event.track || event.name || '')}"
               loading="lazy"
+              data-track-name="${escapeHtml(event.track || event.trackRaw || event.name || '')}"
               data-fallbacks="${escapeHtml(fallbacks)}"
               data-fallback-index="0"
               onerror="const list=(this.dataset.fallbacks||'').split('|').filter(Boolean);const i=Number(this.dataset.fallbackIndex||0);if(list[i]){this.dataset.fallbackIndex=String(i+1);this.src=list[i];}else{this.closest('figure')?.setAttribute('hidden','');this.style.display='none';}"
@@ -782,7 +865,9 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           `;
         }).join('') || '<article class="gc-acsr-event"><strong>Sin rondas</strong><p>Todavía no hay rondas visibles.</p></article>';
 
-        console.info('[GC campeonato ACSR hub v16]', {
+        window.GCTrackImages?.applyAll?.(els.list);
+
+        console.info('[GC campeonato ACSR hub v17 calendar cards]', {
           ok: true,
           events: events.length,
           standings: standings.length,
@@ -794,6 +879,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         els.lead.textContent = refresh ? 'Actualizando campeonato...' : 'Cargando campeonato...';
 
         try {
+          await window.GCTrackImages?.load?.();
           const response = await fetch(`/api/community/acsr-championship${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' });
           const data = await response.json();
           render(data);
