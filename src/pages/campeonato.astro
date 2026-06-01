@@ -1,9 +1,10 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
+
 <MarketingLayout
   title="Campeonato ACSR | GrassCutters Racing"
-  description="Campeonato ACSR de GrassCutters Racing: inscripción, próximas rondas, clasificación y pilotos registrados."
+  description="Campeonato ACSR semanal de GrassCutters Racing: próxima carrera, resultados, clasificación y calendario de rondas."
   ogImage="/og/campeonato-og-v1531.png"
   bodyClass="gc-page-acsr"
   canonicalPath="/campeonato"
@@ -26,47 +27,47 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         <span class="gc-public-kicker">Campeonato ACSR</span>
         <h1 id="gc-campeonato-title" class="gc-public-title">Combos semanales con clasificación.</h1>
         <p class="gc-public-description">
-          Inscripción Steam, próxima ronda, calendario, clasificación y pilotos registrados del campeonato.
+          Carrera del campeonato cada domingo. Consulta la próxima ronda, resultados anteriores y clasificación general.
         </p>
         <div class="gc-actions">
           <a class="gc-public-btn gc-public-btn-primary" href="#" id="acsrSignupHero" target="_blank" rel="noreferrer">Inscribirse con Steam</a>
-          <a class="gc-public-btn gc-public-btn-secondary" href="/discord">Discord</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="#acsrStandings">Ver clasificación</a>
         </div>
       </div>
     </div>
   </section>
 
   <section class="gc-public-shell gc-public-section gc-community-championship" data-acsr-championship>
-    <div class="gc-public-section-head">
-      <span class="gc-public-kicker">Campeonato</span>
-      <h2 class="gc-public-section-title">Campeonato de combos semanales.</h2>
-      <p class="gc-public-section-lead" id="acsrChampionshipLead">
-        Cargando campeonato...
-      </p>
+    <div class="gc-public-section-head gc-acsr-head-row">
+      <div>
+        <span class="gc-public-kicker">Campeonato</span>
+        <h2 class="gc-public-section-title">Campeonato semanal ACSM.</h2>
+        <p class="gc-public-section-lead" id="acsrChampionshipLead">Cargando campeonato...</p>
+      </div>
+      <button class="gc-public-btn gc-public-btn-secondary" type="button" id="acsrRefresh">Actualizar</button>
     </div>
 
-    <div class="gc-acsr-grid">
+    <div class="gc-acsr-grid gc-acsr-grid--hub">
       <article class="gc-acsr-main-card gc-public-card">
         <span class="gc-public-kicker">Estado</span>
         <h3 id="acsrChampionshipName" class="gc-public-card-title">Campeonato ACSR</h3>
         <p id="acsrChampionshipMeta" class="gc-public-card-text">Conectando con Assetto Corsa Server Manager.</p>
 
         <div class="gc-acsr-stats gc-public-stat-grid">
-          <div class="gc-public-stat"><span>Eventos</span><strong id="acsrStatEvents">--</strong></div>
-          <div class="gc-public-stat"><span>Completados</span><strong id="acsrStatCompleted">--</strong></div>
-          <div class="gc-public-stat"><span>Clases</span><strong id="acsrStatClasses">--</strong></div>
+          <div class="gc-public-stat"><span>Rondas</span><strong id="acsrStatEvents">--</strong></div>
+          <div class="gc-public-stat"><span>Completadas</span><strong id="acsrStatCompleted">--</strong></div>
           <div class="gc-public-stat"><span>Inscritos</span><strong id="acsrStatEntrants">--</strong></div>
+          <div class="gc-public-stat"><span>Clasificados</span><strong id="acsrStatStandings">--</strong></div>
         </div>
 
         <div class="gc-actions">
           <a class="gc-public-btn gc-public-btn-primary" href="#" id="acsrSignupLink" target="_blank" rel="noreferrer">Inscribirse al campeonato</a>
-          <a class="gc-public-btn gc-public-btn-secondary" href="#" id="acsrOfficialLink" target="_blank" rel="noreferrer">Ver campeonato oficial</a>
-          <button class="gc-public-btn gc-public-btn-secondary" type="button" id="acsrRefresh">Actualizar</button>
+          <a class="gc-public-btn gc-public-btn-secondary" href="#" id="acsrOfficialLink" target="_blank" rel="noreferrer">Ver ACSM oficial</a>
         </div>
       </article>
 
       <article class="gc-acsr-next-card gc-public-card">
-        <span class="gc-public-kicker">Próxima ronda</span>
+        <span class="gc-public-kicker">Próximo domingo</span>
         <h3 id="acsrNextTitle" class="gc-public-card-title">Por confirmar</h3>
         <p id="acsrNextMeta" class="gc-public-card-text">Cuando ACSM tenga la siguiente ronda, aparecerá aquí.</p>
         <div class="gc-acsr-track" id="acsrNextTrack">Circuito pendiente</div>
@@ -74,23 +75,21 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           <img id="acsrTrackImage" src="" alt="" loading="lazy" />
         </figure>
       </article>
+
+      <article class="gc-acsr-last-card gc-public-card" id="acsrLastCard">
+        <span class="gc-public-kicker">Última carrera</span>
+        <h3 id="acsrLastTitle" class="gc-public-card-title">Sin resultados todavía</h3>
+        <p id="acsrLastMeta" class="gc-public-card-text">Cuando termine una carrera, tendrás aquí el resumen.</p>
+        <div class="gc-acsr-podium" id="acsrLastPodium"></div>
+        <a class="gc-public-btn gc-public-btn-secondary gc-acsr-last-link" href="#" id="acsrLastLink">Ver resultados</a>
+      </article>
     </div>
 
-    <div class="gc-acsr-events-shell">
-      <div class="gc-public-section-head">
-        <span class="gc-public-kicker">Rondas</span>
-        <h2 class="gc-public-section-title">Calendario del campeonato.</h2>
-      </div>
-      <div class="gc-acsr-events" id="acsrEventsList">
-        <article class="gc-acsr-event"><strong>Cargando rondas...</strong></article>
-      </div>
-    </div>
-
-    <div class="gc-acsr-standings-shell">
+    <div class="gc-acsr-standings-shell" id="acsrStandings">
       <div class="gc-public-section-head">
         <span class="gc-public-kicker">Clasificación</span>
-        <h2 class="gc-public-section-title">Clasificación del campeonato.</h2>
-        <p class="gc-public-section-lead" id="acsrStandingsLead">Posiciones, puntos y pilotos del campeonato.</p>
+        <h2 class="gc-public-section-title">Clasificación general.</h2>
+        <p class="gc-public-section-lead" id="acsrStandingsLead">Puntos calculados desde los resultados de carrera de ACSM.</p>
       </div>
 
       <div class="gc-acsr-standings-table-wrap">
@@ -99,15 +98,27 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             <tr>
               <th>#</th>
               <th>Piloto</th>
-              <th>Clase</th>
-              <th>Coche</th>
               <th>Puntos</th>
+              <th>Victorias</th>
+              <th>Podios</th>
+              <th>Último resultado</th>
             </tr>
           </thead>
           <tbody id="acsrStandingsBody">
-            <tr><td colspan="5">Cargando clasificación...</td></tr>
+            <tr><td colspan="6">Cargando clasificación...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="gc-acsr-events-shell">
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Rondas</span>
+        <h2 class="gc-public-section-title">Calendario del campeonato.</h2>
+        <p class="gc-public-section-lead">Cada card abre la página de resultados de esa carrera.</p>
+      </div>
+      <div class="gc-acsr-events" id="acsrEventsList">
+        <article class="gc-acsr-event"><strong>Cargando rondas...</strong></article>
       </div>
     </div>
 
@@ -115,31 +126,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       <div class="gc-public-section-head">
         <span class="gc-public-kicker">Inscritos</span>
         <h2 class="gc-public-section-title">Pilotos registrados.</h2>
-        <p class="gc-public-section-lead">Pilotos inscritos actualmente en el campeonato.</p>
+        <p class="gc-public-section-lead">Lista limpia de pilotos inscritos en el campeonato semanal.</p>
       </div>
       <div class="gc-acsr-drivers" id="acsrDriversList">
         <article class="gc-acsr-driver"><strong>Cargando pilotos...</strong></article>
       </div>
-    </div>
-  </section>
-
-  <section class="gc-public-shell gc-public-section gc-acsr-note">
-    <div class="gc-public-grid gc-public-grid--3">
-      <article class="gc-public-card">
-        <code>01</code>
-        <h3>Inscripción</h3>
-        <p>Registro rápido con Steam para participar en el campeonato.</p>
-      </article>
-      <article class="gc-public-card">
-        <code>02</code>
-        <h3>Clasificación</h3>
-        <p>Seguimiento de pilotos, puntos y próximas rondas.</p>
-      </article>
-      <article class="gc-public-card">
-        <code>03</code>
-        <h3>Comunidad</h3>
-        <p>El Discord sigue siendo el paddock principal para avisos y comentarios.</p>
-      </article>
     </div>
   </section>
 
@@ -162,12 +153,10 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       inset:0!important;
       width:100%!important;
       height:100%!important;
-      min-height:100%!important;
       object-fit:cover!important;
       z-index:0!important;
       opacity:.50!important;
       filter:saturate(1.05) contrast(1.04) brightness(.78)!important;
-      transform:none!important;
       pointer-events:none!important;
     }
 
@@ -178,7 +167,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       pointer-events:none!important;
       background:
         radial-gradient(circle at 70% 18%, color-mix(in srgb,var(--gc-mk-accent) 22%, transparent), transparent 28rem),
-        radial-gradient(circle at 28% 74%, color-mix(in srgb,var(--gc-mk-accent-2) 12%, transparent), transparent 30rem),
         linear-gradient(90deg, rgba(1,7,4,.96) 0%, rgba(1,7,4,.68) 44%, rgba(1,7,4,.93) 100%),
         linear-gradient(180deg, rgba(1,7,4,.14) 0%, rgba(1,7,4,.38) 58%, var(--gc-mk-bg,#070a08) 100%)!important;
     }
@@ -190,28 +178,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       height:clamp(250px,29vw,440px)!important;
       z-index:2!important;
       pointer-events:none!important;
-      background:
-        linear-gradient(180deg,
-          rgba(7,10,8,0) 0%,
-          rgba(7,10,8,.44) 36%,
-          rgba(7,10,8,.84) 72%,
-          var(--gc-mk-bg,#070a08) 100%
-        )!important;
-    }
-
-    .gc-acsr-hero::after{
-      content:""!important;
-      position:absolute!important;
-      left:50%!important;
-      bottom:clamp(44px,5vw,82px)!important;
-      width:min(1060px,90vw)!important;
-      height:230px!important;
-      transform:translateX(-50%)!important;
-      z-index:2!important;
-      pointer-events:none!important;
-      background:radial-gradient(ellipse at center, color-mix(in srgb,var(--gc-mk-accent) 13%, transparent), transparent 68%)!important;
-      filter:blur(48px)!important;
-      opacity:.46!important;
+      background:linear-gradient(180deg, rgba(7,10,8,0) 0%, rgba(7,10,8,.44) 36%, rgba(7,10,8,.84) 72%, var(--gc-mk-bg,#070a08) 100%)!important;
     }
 
     .gc-acsr-hero-inner{
@@ -224,55 +191,45 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       padding-bottom:clamp(54px,6vw,94px)!important;
     }
 
-    .gc-acsr-hero-inner > div{
-      max-width:760px!important;
-    }
-
-    .gc-acsr-hero .gc-public-title{
-      text-shadow:0 18px 62px rgba(0,0,0,.50);
-    }
-
-    .gc-acsr-hero .gc-public-description{
-      text-shadow:0 10px 34px rgba(0,0,0,.42);
-    }
+    .gc-acsr-hero-inner > div{ max-width:820px!important; }
 
     .gc-community-championship{
       position:relative;
       z-index:5;
       display:grid;
-      gap:clamp(18px,2.5vw,30px);
+      gap:clamp(22px,3vw,38px);
       padding-top:clamp(34px,5vw,70px);
+    }
+
+    .gc-acsr-head-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:end;
+      gap:18px;
     }
 
     .gc-acsr-grid{
       display:grid;
-      grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);
+      grid-template-columns:minmax(0,1.05fr) minmax(280px,.82fr);
       gap:16px;
       align-items:stretch;
     }
 
-    .gc-acsr-event{
-      position:relative;
-      overflow:hidden;
-      padding:clamp(18px,2.2vw,28px);
-      border:1px solid var(--gc-mk-line);
-      border-radius:var(--radius, 8px);
-      background:rgba(255,255,255,.02);
-      box-shadow:none;
+    .gc-acsr-grid--hub{
+      grid-template-columns:minmax(0,1.05fr) minmax(280px,.78fr) minmax(280px,.82fr);
     }
 
     .gc-acsr-main-card.gc-public-card,
-    .gc-acsr-next-card.gc-public-card{
+    .gc-acsr-next-card.gc-public-card,
+    .gc-acsr-last-card.gc-public-card{
       position:relative;
       overflow:hidden;
       padding:clamp(18px,2.2vw,28px);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      background:var(--panel);
+      border:1px solid var(--line,var(--gc-mk-line,rgba(126,255,39,.22)));
+      border-radius:var(--radius,18px);
+      background:var(--panel,rgba(255,255,255,.025));
       box-shadow:0 20px 60px rgba(0,0,0,.32);
     }
-
-    /* Card typography is handled via .gc-public-card-title / .gc-public-card-text */
 
     .gc-acsr-stats{
       grid-template-columns:repeat(2,minmax(0,1fr));
@@ -282,233 +239,266 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     .gc-acsr-track{
       margin-top:16px;
       padding:12px;
-      border:1px solid var(--line);
-      border-radius:var(--radius-sm);
-      color:var(--gc-mk-accent);
-      font-weight:800;
+      border:1px solid var(--line,var(--gc-mk-line,rgba(126,255,39,.22)));
+      border-radius:var(--radius-sm,10px);
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:900;
       text-transform:uppercase;
       letter-spacing:.05em;
       background:rgba(255,255,255,.035);
     }
 
-    .gc-acsr-track-media{
+    .gc-acsr-track-media,
+    .gc-acsr-event-media{
       margin:16px 0 0;
-      border:1px solid var(--line);
-      border-radius:var(--radius);
+      border:1px solid var(--line,var(--gc-mk-line,rgba(126,255,39,.22)));
+      border-radius:var(--radius,18px);
       overflow:hidden;
       background:rgba(0,0,0,.18);
     }
 
     .gc-acsr-track-media[hidden],
-    .gc-acsr-event-media[hidden]{
-      display:none;
-    }
+    .gc-acsr-event-media[hidden]{ display:none!important; }
 
-    .gc-acsr-track-media img{
-      display:block;
-      width:100%;
-      aspect-ratio:16/9;
-      object-fit:cover;
-      background:rgba(0,0,0,.28);
-    }
-
-    .gc-acsr-event-media{
-      margin:calc(clamp(18px,2.2vw,28px) * -1) calc(clamp(18px,2.2vw,28px) * -1) 14px;
-      border-bottom:1px solid var(--gc-mk-line);
-      background:rgba(0,0,0,.22);
-      overflow:hidden;
-    }
-
+    .gc-acsr-track-media img,
     .gc-acsr-event-media img{
       display:block;
       width:100%;
-      aspect-ratio:16/7;
+      height:clamp(170px,18vw,260px);
       object-fit:cover;
-      opacity:.92;
-      filter:saturate(1.04) contrast(1.03);
     }
+
+    .gc-acsr-podium{
+      display:grid;
+      gap:8px;
+      margin:18px 0;
+    }
+
+    .gc-acsr-podium-row{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border:1px solid rgba(126,255,39,.16);
+      border-radius:12px;
+      background:rgba(126,255,39,.045);
+    }
+
+    .gc-acsr-podium-row span{
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:900;
+      font-family:var(--font-mono,monospace);
+    }
+
+    .gc-acsr-podium-row small{
+      color:var(--gc-mk-muted,#8d968c);
+      text-align:right;
+      font-family:var(--font-mono,monospace);
+    }
+
+    .gc-acsr-last-link[hidden]{ display:none!important; }
 
     .gc-acsr-events-shell,
     .gc-acsr-standings-shell,
     .gc-acsr-drivers-shell{
       display:grid;
-      gap:14px;
+      gap:16px;
     }
 
     .gc-acsr-events{
       display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
     }
 
     .gc-acsr-event{
-      min-height:170px;
+      position:relative;
       display:grid;
-      align-content:space-between;
       gap:12px;
-      border-top:1px solid var(--gc-mk-line);
-      border-left:3px solid var(--gc-mk-accent);
-      border-radius:18px;
+      overflow:hidden;
+      padding:clamp(18px,2.2vw,28px);
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:var(--radius,18px);
+      background:rgba(255,255,255,.025);
+      color:inherit;
+      text-decoration:none;
       box-shadow:none;
+      transition:transform .18s ease, border-color .18s ease, background .18s ease;
     }
 
-    .gc-acsr-event[data-status="completed"]{
-      border-left-color:#7e8b7c;
-      opacity:.76;
+    a.gc-acsr-event:hover{
+      transform:translateY(-2px);
+      border-color:rgba(126,255,39,.48);
+      background:rgba(126,255,39,.055);
     }
 
-    .gc-acsr-event[data-status="in_progress"]{
-      border-left-color:#ffc46b;
+    .gc-acsr-event span,
+    .gc-acsr-driver span{
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
     }
 
     .gc-acsr-event strong{
       display:block;
-      color:var(--gc-mk-text);
-      font-size:1.15rem;
-      line-height:1.08;
-      letter-spacing:-.03em;
-    }
-
-    .gc-acsr-event span{
-      display:inline-flex;
-      width:max-content;
-      min-height:26px;
-      align-items:center;
-      padding:0 8px;
-      border:1px solid var(--gc-mk-line);
-      color:var(--gc-mk-soft);
-      font-size:.66rem;
-      font-weight:950;
-      text-transform:uppercase;
-      letter-spacing:.09em;
-      background:rgba(255,255,255,.028);
+      margin-top:4px;
+      font-size:clamp(1.05rem,1.6vw,1.45rem);
+      line-height:1.05;
     }
 
     .gc-acsr-event p{
       margin:0;
-      color:var(--gc-mk-muted);
-      line-height:1.42;
+      color:var(--gc-mk-muted,#9ca59a);
+    }
+
+    .gc-acsr-event__meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:4px;
+    }
+
+    .gc-acsr-chip{
+      display:inline-flex;
+      align-items:center;
+      width:max-content;
+      max-width:100%;
+      padding:5px 8px;
+      border:1px solid rgba(126,255,39,.18);
+      border-radius:999px;
+      color:var(--gc-mk-muted,#9ca59a);
+      font-size:.78rem;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.05em;
     }
 
     .gc-acsr-standings-table-wrap{
       overflow:auto;
-      border:1px solid var(--gc-mk-line);
-      border-radius:20px;
-      background:rgba(255,255,255,.025);
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:18px;
+      background:rgba(255,255,255,.018);
     }
 
     .gc-acsr-standings-table{
       width:100%;
-      min-width:860px;
       border-collapse:collapse;
+      min-width:860px;
     }
 
     .gc-acsr-standings-table th,
     .gc-acsr-standings-table td{
-      padding:12px 14px;
-      border-bottom:1px solid var(--gc-mk-line);
+      padding:14px 16px;
+      border-bottom:1px solid rgba(126,255,39,.12);
       text-align:left;
-      vertical-align:top;
+      vertical-align:middle;
     }
 
     .gc-acsr-standings-table th{
-      color:var(--gc-mk-soft);
-      font-size:.68rem;
-      font-weight:950;
+      color:var(--gc-mk-muted,#9ca59a);
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
       text-transform:uppercase;
-      letter-spacing:.09em;
-      background:rgba(255,255,255,.035);
+      letter-spacing:.08em;
+      background:rgba(126,255,39,.055);
     }
 
-    .gc-acsr-standings-table td{
-      color:var(--gc-mk-text);
+    .gc-acsr-standings-table tr:last-child td{ border-bottom:0; }
+
+    .gc-acsr-standings-table td strong{
+      font-weight:900;
     }
 
-    .gc-acsr-standings-table small{
-      display:block;
-      margin-top:3px;
-      color:var(--gc-mk-muted);
-      font-size:.76rem;
+    .gc-acsr-points{
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:950;
+      font-family:var(--font-mono,monospace);
     }
 
     .gc-acsr-drivers{
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:10px;
+      gap:14px;
     }
 
     .gc-acsr-driver{
       display:grid;
-      gap:7px;
-      min-height:112px;
-      padding:14px;
-      border:1px solid var(--gc-mk-line);
-      border-radius:18px;
-      background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.016));
+      gap:8px;
+      padding:16px;
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:16px;
+      background:rgba(255,255,255,.025);
     }
 
     .gc-acsr-driver strong{
-      color:var(--gc-mk-text);
-      line-height:1.1;
-      letter-spacing:-.025em;
-    }
-
-    .gc-acsr-driver span{
-      color:var(--gc-mk-accent);
-      font-size:.68rem;
-      font-weight:950;
-      text-transform:uppercase;
-      letter-spacing:.08em;
+      font-size:1.02rem;
     }
 
     .gc-acsr-driver small{
-      color:var(--gc-mk-muted);
-      line-height:1.35;
+      color:var(--gc-mk-muted,#9ca59a);
     }
 
-    .gc-acsr-note{
-      padding-top:0;
+    @media (max-width:1180px){
+      .gc-acsr-grid--hub{
+        grid-template-columns:1fr 1fr;
+      }
+
+      .gc-acsr-main-card{
+        grid-column:1/-1;
+      }
+
+      .gc-acsr-drivers{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
     }
 
-    @media(max-width:1050px){
+    @media (max-width:860px){
+      .gc-acsr-head-row{
+        align-items:start;
+        flex-direction:column;
+      }
+
       .gc-acsr-grid,
-      .gc-acsr-events,
+      .gc-acsr-grid--hub,
+      .gc-acsr-events{
+        grid-template-columns:1fr;
+      }
+
+      .gc-acsr-drivers{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .gc-acsr-track-media img,
+      .gc-acsr-event-media img{
+        height:210px;
+      }
+    }
+
+    @media (max-width:560px){
       .gc-acsr-drivers{
         grid-template-columns:1fr;
       }
 
       .gc-acsr-stats{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-    }
-
-    @media(max-width:860px){
-      .gc-acsr-hero{
-        padding-top:clamp(54px,12vw,82px)!important;
-        padding-bottom:clamp(54px,12vw,88px)!important;
+        grid-template-columns:1fr 1fr;
       }
 
-      .gc-acsr-hero-inner{
-        min-height:clamp(430px,78vh,620px)!important;
-        padding-top:clamp(28px,7vw,48px)!important;
-        padding-bottom:clamp(44px,10vw,72px)!important;
-      }
-
-      .gc-acsr-hero::before{
-        height:clamp(220px,45vw,360px)!important;
-      }
-    }
-
-    @media(max-width:640px){
-      .gc-acsr-stats{
-        grid-template-columns:1fr;
+      .gc-acsr-standings-table{
+        min-width:720px;
       }
     }
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
-  <script is:inline>
+  <script>
     (() => {
+      const root = document.querySelector('[data-acsr-championship]');
+      if (!root) return;
+
       const $ = (id) => document.getElementById(id);
       const els = {
         lead: $('acsrChampionshipLead'),
@@ -516,8 +506,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         meta: $('acsrChampionshipMeta'),
         events: $('acsrStatEvents'),
         completed: $('acsrStatCompleted'),
-        classes: $('acsrStatClasses'),
         entrants: $('acsrStatEntrants'),
+        standings: $('acsrStatStandings'),
         official: $('acsrOfficialLink'),
         signup: $('acsrSignupLink'),
         signupHero: $('acsrSignupHero'),
@@ -527,6 +517,10 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         nextTrack: $('acsrNextTrack'),
         trackFigure: $('acsrTrackFigure'),
         trackImage: $('acsrTrackImage'),
+        lastTitle: $('acsrLastTitle'),
+        lastMeta: $('acsrLastMeta'),
+        lastPodium: $('acsrLastPodium'),
+        lastLink: $('acsrLastLink'),
         list: $('acsrEventsList'),
         drivers: $('acsrDriversList'),
         standingsBody: $('acsrStandingsBody'),
@@ -538,7 +532,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         if (!value) return 'Fecha por confirmar';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
-        return date.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        return date.toLocaleString('es-ES', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
       };
 
       const statusLabel = {
@@ -549,91 +543,65 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         cancelled: 'Cancelada'
       };
 
-      const cleanTrackText = (value) => {
-        if (value === undefined || value === null) return '';
-        if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
-        if (typeof value === 'object') {
-          return cleanTrackText(
-            value.track ||
-            value.Track ||
-            value.trackName ||
-            value.TrackName ||
-            value.name ||
-            value.Name ||
-            value.id ||
-            value.ID ||
-            ''
-          );
-        }
-        return '';
+      const sessionLabel = {
+        PRACTICE: 'Práctica',
+        QUALIFY: 'Qualy',
+        QUALIFICATION: 'Qualy',
+        RACE: 'Carrera'
       };
 
-      const trackImageCandidates = (trackName) => {
-        const clean = cleanTrackText(trackName);
-        const helper = window.GCTrackImages;
+      const slugify = (value) => String(value || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
 
-        if (helper?.candidates) {
-          return helper.candidates(clean).filter((url) => !url.includes('object_object'));
-        }
-
-        const slug = clean
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '');
-
-        return [
-          `/images/tracks/${slug}.webp`,
-          `/images/tracks/${slug}.jpg`,
-          `/images/tracks/${slug}.png`,
-          `/imagenes/tracks/${slug}.webp`,
-          `/imagenes/tracks/${slug}.jpg`
-        ];
+      const normalizeTrackSlug = (value) => {
+        const raw = slugify(value);
+        return raw
+          .replace(/^(fn|ks|rt|mx|acu|nrms)_/, '')
+          .replace(/_?(circuit|circuito|track|spain|italy|italia)$/g, '')
+          .replace(/^_+|_+$/g, '') || raw;
       };
 
-      const imageErrorHandler = (list) => {
-        const safeList = (Array.isArray(list) ? list : []).filter(Boolean).map((item) => String(item).replace(/"/g, '&quot;')).join('|');
-        return `const list=(this.dataset.fallbacks||'').split('|').filter(Boolean); const i=Number(this.dataset.fallbackIndex||0); if(list[i]){this.dataset.fallbackIndex=String(i+1); this.src=list[i];} else { this.closest('figure')?.setAttribute('hidden',''); this.style.display='none'; }`;
+      const localTrackMapCandidates = (event) => {
+        const names = [...new Set([
+          normalizeTrackSlug(event?.trackRaw),
+          normalizeTrackSlug(event?.track),
+          slugify(event?.trackRaw),
+          slugify(event?.track)
+        ].filter(Boolean))];
+
+        const bases = [...new Set([
+          ...names.map((name) => `${name}_mapa`),
+          ...names.map((name) => `${name}_map`)
+        ])];
+
+        const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
+        const exts = ['webp', 'png', 'jpg', 'jpeg', 'svg', 'WEBP', 'PNG', 'JPG', 'JPEG', 'SVG'];
+
+        const out = [];
+        bases.forEach((base) => {
+          roots.forEach((root) => {
+            exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+          });
+        });
+
+        return [...new Set(out)];
       };
 
-      const renderTrackFigureHtml = (trackName, className = 'gc-acsr-event-media') => {
-        const clean = cleanTrackText(trackName);
-        const candidates = trackImageCandidates(clean);
-        const primary = candidates[0] || '';
-        const fallbacks = candidates.slice(1).join('|');
-
-        if (!clean || !primary) return '';
-
-        return `
-          <figure class="${className}" data-track-name="${escapeHtml(clean)}">
-            <img
-              src="${escapeHtml(primary)}"
-              alt="${escapeHtml(clean)}"
-              loading="lazy"
-              data-fallbacks="${escapeHtml(fallbacks)}"
-              data-fallback-index="0"
-              onerror="${imageErrorHandler(candidates.slice(1))}"
-            />
-          </figure>
-        `;
-      };
-
-      function renderTrackImage(trackName) {
-        const clean = cleanTrackText(trackName);
-        const candidates = trackImageCandidates(clean);
-
-        if (!clean || !candidates.length || !els.trackImage || !els.trackFigure) {
-          if (els.trackFigure) els.trackFigure.hidden = true;
+      const setImageWithFallback = (img, figure, candidates) => {
+        const cleanCandidates = (Array.isArray(candidates) ? candidates : []).filter(Boolean);
+        if (!img || !figure || !cleanCandidates.length) {
+          if (figure) figure.hidden = true;
           return;
         }
 
-        els.trackFigure.hidden = false;
-        els.trackImage.style.display = '';
-        els.trackImage.alt = clean;
-        els.trackImage.dataset.fallbacks = candidates.slice(1).join('|');
-        els.trackImage.dataset.fallbackIndex = '0';
-        els.trackImage.onerror = function () {
+        figure.hidden = false;
+        img.style.display = '';
+        img.dataset.fallbackIndex = '0';
+        img.dataset.fallbacks = cleanCandidates.slice(1).join('|');
+        img.onerror = function () {
           const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
           const index = Number(this.dataset.fallbackIndex || 0);
           if (list[index]) {
@@ -641,12 +609,37 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             this.src = list[index];
             return;
           }
-
           this.closest('figure')?.setAttribute('hidden', '');
           this.style.display = 'none';
         };
-        els.trackImage.src = candidates[0];
-      }
+        img.src = cleanCandidates[0];
+      };
+
+      const eventImageHtml = (event) => {
+        const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
+        const primary = candidates[0] || '';
+        const fallbacks = candidates.slice(1).join('|');
+        if (!primary) return '';
+
+        return `
+          <figure class="gc-acsr-event-media">
+            <img
+              src="${escapeHtml(primary)}"
+              alt="${escapeHtml(event.track || event.name || '')}"
+              loading="lazy"
+              data-fallbacks="${escapeHtml(fallbacks)}"
+              data-fallback-index="0"
+              onerror="const list=(this.dataset.fallbacks||'').split('|').filter(Boolean);const i=Number(this.dataset.fallbackIndex||0);if(list[i]){this.dataset.fallbackIndex=String(i+1);this.src=list[i];}else{this.closest('figure')?.setAttribute('hidden','');this.style.display='none';}"
+            />
+          </figure>
+        `;
+      };
+
+      const renderTrackImage = (event) => {
+        const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
+        if (els.trackImage) els.trackImage.alt = event?.track || event?.name || '';
+        setImageWithFallback(els.trackImage, els.trackFigure, candidates);
+      };
 
       function renderDrivers(rows) {
         const drivers = Array.isArray(rows) ? rows : [];
@@ -656,36 +649,59 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           return;
         }
 
-        els.drivers.innerHTML = drivers.slice(0, 48).map((driver) => {
-          const details = [driver.team, driver.model].filter(Boolean).join(' · ');
-          return `
-            <article class="gc-acsr-driver">
-              <span>${escapeHtml(driver.className || 'General')}</span>
-              <strong>${escapeHtml(driver.name || 'Piloto sin nombre')}</strong>
-              <small>${escapeHtml(details || 'Inscrito')}</small>
-            </article>
-          `;
-        }).join('');
+        els.drivers.innerHTML = drivers.slice(0, 48).map((driver) => `
+          <article class="gc-acsr-driver">
+            <span>${escapeHtml(driver.className || 'General')}</span>
+            <strong>${escapeHtml(driver.name || 'Piloto')}</strong>
+            <small>${escapeHtml(driver.model || driver.team || 'Inscrito')}</small>
+          </article>
+        `).join('');
       }
 
       function renderStandings(rows) {
         const standings = Array.isArray(rows) ? rows : [];
 
         els.standingsLead.textContent = standings.length
-          ? `${standings.length} pilotos en la clasificación.`
-          : 'La clasificación se actualizará cuando haya datos disponibles.';
+          ? `${standings.length} pilotos en la clasificación. Puntos calculados desde RACE.Results.Result.`
+          : 'La clasificación se actualizará cuando haya resultados de carrera.';
 
-        els.standingsBody.innerHTML = standings.length ? standings.slice(0, 80).map((driver, index) => `
+        els.standingsBody.innerHTML = standings.length ? standings.slice(0, 80).map((driver) => `
           <tr>
-            <td><strong>${escapeHtml(driver.position || index + 1)}</strong></td>
+            <td><strong>${escapeHtml(driver.position)}</strong></td>
             <td>
-              <strong>${escapeHtml(driver.name || 'Piloto sin nombre')}</strong>
+              <strong>${escapeHtml(driver.name || 'Piloto')}</strong>
+              <br><small>${escapeHtml(driver.model || '')}</small>
             </td>
-            <td>${escapeHtml(driver.className || 'General')}</td>
-            <td>${escapeHtml(driver.model || 'Sin coche')}</td>
-            <td><strong>${escapeHtml(driver.points ?? 0)}</strong></td>
+            <td><span class="gc-acsr-points">${escapeHtml(driver.points ?? 0)}</span></td>
+            <td>${escapeHtml(driver.wins ?? 0)}</td>
+            <td>${escapeHtml(driver.podiums ?? 0)}</td>
+            <td>${driver.lastResult ? `${escapeHtml(driver.lastResult.eventName)} · P${escapeHtml(driver.lastResult.position)} · ${escapeHtml(driver.lastResult.points)} pts` : 'Sin carrera completada'}</td>
           </tr>
-        `).join('') : '<tr><td colspan="5">La clasificación se actualizará cuando haya resultados disponibles.</td></tr>';
+        `).join('') : '<tr><td colspan="6">La clasificación se actualizará cuando haya resultados de carrera.</td></tr>';
+      }
+
+      function renderLastCompleted(event) {
+        if (!event) {
+          els.lastTitle.textContent = 'Sin resultados todavía';
+          els.lastMeta.textContent = 'Cuando termine una carrera, tendrás aquí el resumen.';
+          els.lastPodium.innerHTML = '';
+          els.lastLink.hidden = true;
+          return;
+        }
+
+        els.lastTitle.textContent = event.name || `Ronda ${event.index}`;
+        els.lastMeta.textContent = `${fmtDate(event.completedAt || event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}`;
+        els.lastLink.href = event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`;
+        els.lastLink.hidden = false;
+
+        const podium = Array.isArray(event.podium) ? event.podium : [];
+        els.lastPodium.innerHTML = podium.length ? podium.map((driver) => `
+          <div class="gc-acsr-podium-row">
+            <span>P${escapeHtml(driver.position)}</span>
+            <strong>${escapeHtml(driver.name)}</strong>
+            <small>${escapeHtml(driver.points)} pts</small>
+          </div>
+        `).join('') : '<p>No hay podio disponible.</p>';
       }
 
       function renderError(data) {
@@ -694,6 +710,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         els.list.innerHTML = `<article class="gc-acsr-event"><strong>No se pudo cargar el campeonato</strong><p>${escapeHtml(data?.message || 'Error desconocido')}</p></article>`;
         renderStandings([]);
         renderDrivers([]);
+        renderLastCompleted(null);
+
         if (data?.acsm?.championshipUrl) els.official.href = data.acsm.championshipUrl;
         if (data?.acsm?.signUpUrl) {
           els.signup.href = data.acsm.signUpUrl;
@@ -709,6 +727,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
         const championship = data.championship;
         const next = championship.nextEvent;
+        const last = championship.lastCompletedEvent;
         const events = Array.isArray(championship.events) ? championship.events : [];
         const standings = Array.isArray(championship.standings) ? championship.standings : [];
         const drivers = Array.isArray(championship.registeredDrivers) ? championship.registeredDrivers : [];
@@ -719,8 +738,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         els.meta.textContent = `ID ${championship.id} · ${championship.acsrEnabled ? 'ACSR activo' : 'ACSR no marcado'} · actualizado ${fmtDate(championship.updatedAt)}`;
         els.events.textContent = String(stats.events ?? events.length ?? '--');
         els.completed.textContent = String(stats.completedEvents ?? '--');
-        els.classes.textContent = String(stats.classes ?? '--');
         els.entrants.textContent = String(stats.entrants ?? drivers.length ?? '--');
+        els.standings.textContent = String(stats.standings ?? standings.length ?? '--');
 
         if (data.acsm?.championshipUrl) els.official.href = data.acsm.championshipUrl;
         if (data.acsm?.signUpUrl) {
@@ -731,34 +750,39 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         if (next) {
           els.nextTitle.textContent = next.name || `Ronda ${next.index}`;
           els.nextMeta.textContent = `${fmtDate(next.scheduledAt)} · ${statusLabel[next.status] || next.status || 'Pendiente'}`;
-          const nextTrackName = cleanTrackText(next.track || next.trackName);
-          els.nextTrack.textContent = [nextTrackName, next.carSummary].filter(Boolean).join(' · ') || 'Circuito pendiente';
-          renderTrackImage(nextTrackName);
+          els.nextTrack.textContent = [next.track, next.carSummary].filter(Boolean).join(' · ') || 'Circuito pendiente';
+          renderTrackImage(next);
         } else {
           els.nextTitle.textContent = 'Sin próxima ronda';
           els.nextMeta.textContent = 'Todas las rondas parecen completadas o no hay eventos programados.';
           els.nextTrack.textContent = 'Campeonato sin próxima fecha';
-          renderTrackImage('');
+          renderTrackImage(null);
         }
 
-        els.list.innerHTML = events.slice(0, 12).map((event) => {
-          const eventTrackName = cleanTrackText(event.track || event.trackName);
+        renderLastCompleted(last);
+        renderStandings(standings);
+        renderDrivers(drivers);
+
+        els.list.innerHTML = events.slice(0, 24).map((event) => {
+          const winner = event.winner ? `${event.winner.name} · ${event.winner.points} pts` : 'Resultados pendientes';
           return `
-            <article class="gc-acsr-event" data-status="${escapeHtml(event.status || 'pending')}">
-              ${renderTrackFigureHtml(eventTrackName)}
+            <a class="gc-acsr-event" href="${escapeHtml(event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`)}" data-status="${escapeHtml(event.status || 'pending')}">
+              ${eventImageHtml(event)}
               <div>
                 <span>${escapeHtml(statusLabel[event.status] || event.status || 'Pendiente')}</span>
                 <strong>${escapeHtml(event.name || `Ronda ${event.index}`)}</strong>
               </div>
               <p>${escapeHtml(fmtDate(event.scheduledAt))}</p>
-              <p>${escapeHtml([eventTrackName, event.carSummary].filter(Boolean).join(' · ') || 'Combo por confirmar')}</p>
-            </article>
+              <p>${escapeHtml([event.track, event.carSummary].filter(Boolean).join(' · ') || 'Combo por confirmar')}</p>
+              <div class="gc-acsr-event__meta">
+                <span class="gc-acsr-chip">${escapeHtml(event.raceResults?.length ? `${event.raceResults.length} pilotos` : 'Sin resultados')}</span>
+                <span class="gc-acsr-chip">${escapeHtml(winner)}</span>
+              </div>
+            </a>
           `;
         }).join('') || '<article class="gc-acsr-event"><strong>Sin rondas</strong><p>Todavía no hay rondas visibles.</p></article>';
 
-        renderStandings(standings.length ? standings : drivers);
-        renderDrivers(drivers);
-        console.info('[GC campeonato ACSR v5.4 hero video]', {
+        console.info('[GC campeonato ACSR hub v16]', {
           ok: true,
           events: events.length,
           standings: standings.length,

@@ -1,0 +1,458 @@
+---
+export const prerender = false;
+import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+
+const eventId = Astro.params.eventId ?? '';
+---
+
+<MarketingLayout
+  title="Resultados de ronda | Campeonato ACSR"
+  description="Resultados detallados de una ronda del campeonato semanal ACSR de GrassCutters Racing."
+  ogImage="/og/campeonato-og-v1531.png"
+  bodyClass="gc-page-acsr gc-page-acsr-round"
+  canonicalPath={`/campeonato/ronda/${eventId}`}
+>
+  <section class="gc-public-shell gc-public-section gc-acsr-round-page" data-acsr-round>
+    <a class="gc-acsr-back" href="/campeonato">← Volver al campeonato</a>
+
+    <header class="gc-acsr-round-hero">
+      <div>
+        <span class="gc-public-kicker" id="acsrRoundStatus">Ronda</span>
+        <h1 class="gc-public-title" id="acsrRoundTitle">Cargando resultados...</h1>
+        <p class="gc-public-description" id="acsrRoundMeta">Consultando ACSM.</p>
+      </div>
+      <figure class="gc-acsr-round-map" id="acsrRoundMapFigure" hidden>
+        <img id="acsrRoundMap" src="" alt="" loading="lazy" />
+      </figure>
+    </header>
+
+    <section class="gc-acsr-round-summary">
+      <article class="gc-public-card">
+        <span class="gc-public-kicker">Ganador</span>
+        <h2 id="acsrRoundWinner">--</h2>
+        <p id="acsrRoundWinnerMeta">Pendiente</p>
+      </article>
+      <article class="gc-public-card">
+        <span class="gc-public-kicker">Vuelta rápida</span>
+        <h2 id="acsrRoundFastestLap">--</h2>
+        <p id="acsrRoundFastestLapMeta">Pendiente</p>
+      </article>
+      <article class="gc-public-card">
+        <span class="gc-public-kicker">Participantes</span>
+        <h2 id="acsrRoundEntrants">--</h2>
+        <p id="acsrRoundEntrantsMeta">Resultados de carrera</p>
+      </article>
+    </section>
+
+    <section class="gc-acsr-round-block">
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Carrera</span>
+        <h2 class="gc-public-section-title">Resultados de carrera.</h2>
+      </div>
+      <div class="gc-acsr-table-wrap">
+        <table class="gc-acsr-round-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Vueltas</th>
+              <th>Mejor vuelta</th>
+              <th>Tiempo total</th>
+              <th>Puntos</th>
+            </tr>
+          </thead>
+          <tbody id="acsrRaceBody">
+            <tr><td colspan="7">Cargando carrera...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="gc-acsr-round-block">
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Qualy</span>
+        <h2 class="gc-public-section-title">Clasificación.</h2>
+      </div>
+      <div class="gc-acsr-table-wrap">
+        <table class="gc-acsr-round-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Vueltas</th>
+              <th>Mejor vuelta</th>
+              <th>Grid</th>
+            </tr>
+          </thead>
+          <tbody id="acsrQualyBody">
+            <tr><td colspan="6">Cargando qualy...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="gc-acsr-round-block">
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Sesiones</span>
+        <h2 class="gc-public-section-title">Resumen de sesiones.</h2>
+      </div>
+      <div class="gc-acsr-session-grid" id="acsrSessionGrid">
+        <article class="gc-public-card"><strong>Cargando sesiones...</strong></article>
+      </div>
+    </section>
+  </section>
+
+  <style is:global>
+    .gc-page-acsr-round{
+      background:var(--gc-mk-bg,#070a08);
+    }
+
+    .gc-acsr-round-page{
+      display:grid;
+      gap:clamp(24px,3vw,42px);
+      padding-top:clamp(110px,12vw,170px);
+    }
+
+    .gc-acsr-back{
+      display:inline-flex;
+      width:max-content;
+      color:var(--gc-mk-accent,#80ff1f);
+      text-decoration:none;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      font-family:var(--font-mono,monospace);
+    }
+
+    .gc-acsr-round-hero{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);
+      gap:clamp(18px,3vw,34px);
+      align-items:stretch;
+      padding:clamp(20px,3vw,36px);
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:24px;
+      background:
+        radial-gradient(circle at 80% 20%, rgba(126,255,39,.12), transparent 26rem),
+        rgba(255,255,255,.024);
+      box-shadow:0 22px 80px rgba(0,0,0,.35);
+    }
+
+    .gc-acsr-round-map{
+      margin:0;
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:20px;
+      overflow:hidden;
+      background:rgba(0,0,0,.28);
+      min-height:260px;
+    }
+
+    .gc-acsr-round-map[hidden]{ display:none!important; }
+
+    .gc-acsr-round-map img{
+      display:block;
+      width:100%;
+      height:100%;
+      min-height:260px;
+      object-fit:cover;
+    }
+
+    .gc-acsr-round-summary{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .gc-acsr-round-summary .gc-public-card{
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      background:rgba(255,255,255,.025);
+      border-radius:18px;
+      padding:clamp(18px,2.2vw,28px);
+    }
+
+    .gc-acsr-round-summary h2{
+      margin:.35rem 0;
+      color:var(--gc-mk-text,#f2f6ef);
+      font-size:clamp(1.5rem,3vw,2.5rem);
+      line-height:.95;
+    }
+
+    .gc-acsr-round-summary p{
+      margin:0;
+      color:var(--gc-mk-muted,#9ca59a);
+    }
+
+    .gc-acsr-round-block{
+      display:grid;
+      gap:16px;
+    }
+
+    .gc-acsr-table-wrap{
+      overflow:auto;
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:18px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-acsr-round-table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:860px;
+    }
+
+    .gc-acsr-round-table th,
+    .gc-acsr-round-table td{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(126,255,39,.12);
+      text-align:left;
+      vertical-align:middle;
+    }
+
+    .gc-acsr-round-table th{
+      color:var(--gc-mk-muted,#9ca59a);
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      background:rgba(126,255,39,.055);
+    }
+
+    .gc-acsr-round-table tr:last-child td{ border-bottom:0; }
+
+    .gc-acsr-round-table strong{
+      font-weight:900;
+    }
+
+    .gc-acsr-points{
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:950;
+      font-family:var(--font-mono,monospace);
+    }
+
+    .gc-acsr-session-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .gc-acsr-session-grid .gc-public-card{
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      background:rgba(255,255,255,.025);
+      border-radius:18px;
+      padding:18px;
+    }
+
+    .gc-acsr-session-grid span{
+      display:block;
+      color:var(--gc-mk-accent,#80ff1f);
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
+      margin-bottom:8px;
+    }
+
+    .gc-acsr-session-grid p{
+      margin:.35rem 0 0;
+      color:var(--gc-mk-muted,#9ca59a);
+    }
+
+    @media (max-width:920px){
+      .gc-acsr-round-hero,
+      .gc-acsr-round-summary,
+      .gc-acsr-session-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:560px){
+      .gc-acsr-round-page{
+        padding-top:96px;
+      }
+
+      .gc-acsr-round-table{
+        min-width:760px;
+      }
+    }
+  </style>
+
+  <script is:inline define:vars={{ eventId }}>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        status: $('acsrRoundStatus'),
+        title: $('acsrRoundTitle'),
+        meta: $('acsrRoundMeta'),
+        mapFigure: $('acsrRoundMapFigure'),
+        map: $('acsrRoundMap'),
+        winner: $('acsrRoundWinner'),
+        winnerMeta: $('acsrRoundWinnerMeta'),
+        fastestLap: $('acsrRoundFastestLap'),
+        fastestLapMeta: $('acsrRoundFastestLapMeta'),
+        entrants: $('acsrRoundEntrants'),
+        entrantsMeta: $('acsrRoundEntrantsMeta'),
+        raceBody: $('acsrRaceBody'),
+        qualyBody: $('acsrQualyBody'),
+        sessionGrid: $('acsrSessionGrid')
+      };
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const fmtDate = (value) => {
+        if (!value) return 'Fecha por confirmar';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
+        return date.toLocaleString('es-ES', { weekday:'long', day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit' });
+      };
+
+      const statusLabel = {
+        pending: 'Pendiente',
+        scheduled: 'Programada',
+        in_progress: 'En curso',
+        completed: 'Completada',
+        cancelled: 'Cancelada'
+      };
+
+      const sessionLabel = {
+        PRACTICE: 'Práctica',
+        QUALIFY: 'Qualy',
+        QUALIFICATION: 'Qualy',
+        RACE: 'Carrera'
+      };
+
+      const setImageWithFallback = (img, figure, candidates) => {
+        const cleanCandidates = (Array.isArray(candidates) ? candidates : []).filter(Boolean);
+        if (!img || !figure || !cleanCandidates.length) {
+          if (figure) figure.hidden = true;
+          return;
+        }
+
+        figure.hidden = false;
+        img.style.display = '';
+        img.dataset.fallbackIndex = '0';
+        img.dataset.fallbacks = cleanCandidates.slice(1).join('|');
+        img.onerror = function () {
+          const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+          const index = Number(this.dataset.fallbackIndex || 0);
+          if (list[index]) {
+            this.dataset.fallbackIndex = String(index + 1);
+            this.src = list[index];
+            return;
+          }
+          this.closest('figure')?.setAttribute('hidden', '');
+          this.style.display = 'none';
+        };
+        img.src = cleanCandidates[0];
+      };
+
+      const renderResults = (tbody, rows, type) => {
+        const list = Array.isArray(rows) ? rows : [];
+        const colspan = type === 'race' ? 7 : 6;
+
+        if (!list.length) {
+          tbody.innerHTML = `<tr><td colspan="${colspan}">No hay resultados disponibles para esta sesión.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = list.map((row) => {
+          if (type === 'race') {
+            return `
+              <tr>
+                <td><strong>${escapeHtml(row.position)}</strong></td>
+                <td><strong>${escapeHtml(row.name)}</strong></td>
+                <td>${escapeHtml(row.model || '')}</td>
+                <td>${escapeHtml(row.numLaps ?? 0)}</td>
+                <td>${escapeHtml(row.bestLap || '--')}</td>
+                <td>${escapeHtml(row.totalTime || '--')}</td>
+                <td><span class="gc-acsr-points">${escapeHtml(row.points ?? 0)}</span></td>
+              </tr>
+            `;
+          }
+
+          return `
+            <tr>
+              <td><strong>${escapeHtml(row.position)}</strong></td>
+              <td><strong>${escapeHtml(row.name)}</strong></td>
+              <td>${escapeHtml(row.model || '')}</td>
+              <td>${escapeHtml(row.numLaps ?? 0)}</td>
+              <td>${escapeHtml(row.bestLap || '--')}</td>
+              <td>${escapeHtml(row.gridPosition || row.position || '--')}</td>
+            </tr>
+          `;
+        }).join('');
+      };
+
+      const renderError = (message) => {
+        els.title.textContent = 'No se pudo cargar la ronda';
+        els.meta.textContent = message || 'Error desconocido.';
+        els.raceBody.innerHTML = `<tr><td colspan="7">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
+        els.qualyBody.innerHTML = `<tr><td colspan="6">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
+        els.sessionGrid.innerHTML = '<article class="gc-public-card"><strong>Sin datos</strong></article>';
+      };
+
+      const render = (data) => {
+        if (!data?.ok || !data?.championship) {
+          renderError(data?.message || 'No se pudo cargar el campeonato.');
+          return;
+        }
+
+        const events = Array.isArray(data.championship.events) ? data.championship.events : [];
+        const decodedId = decodeURIComponent(String(eventId || ''));
+        const event = events.find((item) => String(item.id) === decodedId || String(item.index) === decodedId || String(item.slug) === decodedId);
+
+        if (!event) {
+          renderError('No se encontró esta ronda dentro del campeonato.');
+          return;
+        }
+
+        const raceResults = Array.isArray(event.raceResults) ? event.raceResults : [];
+        const qualyResults = Array.isArray(event.qualifyingResults) ? event.qualifyingResults : [];
+        const winner = event.winner || raceResults[0] || null;
+        const fastest = event.fastestLap || null;
+
+        els.status.textContent = statusLabel[event.status] || event.status || 'Ronda';
+        els.title.textContent = event.name || `Ronda ${event.index}`;
+        els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
+
+        if (els.map) els.map.alt = event.track || event.name || '';
+        setImageWithFallback(els.map, els.mapFigure, event.trackMapCandidates || []);
+
+        els.winner.textContent = winner ? winner.name : '--';
+        els.winnerMeta.textContent = winner ? `P${winner.position} · ${winner.points || 0} puntos · ${winner.model || ''}` : 'Sin resultado de carrera';
+
+        els.fastestLap.textContent = fastest ? fastest.lapTime : '--';
+        els.fastestLapMeta.textContent = fastest ? `${fastest.driverName || 'Piloto'} · ${fastest.carModel || ''}` : 'Sin vuelta rápida';
+
+        els.entrants.textContent = String(raceResults.length || qualyResults.length || 0);
+        els.entrantsMeta.textContent = raceResults.length ? 'Pilotos con resultado de carrera' : 'Sin carrera completada';
+
+        renderResults(els.raceBody, raceResults, 'race');
+        renderResults(els.qualyBody, qualyResults, 'qualy');
+
+        const sessions = Array.isArray(event.sessions) ? event.sessions : [];
+        els.sessionGrid.innerHTML = sessions.length ? sessions.map((session) => `
+          <article class="gc-public-card">
+            <span>${escapeHtml(sessionLabel[session.type] || session.type || session.key)}</span>
+            <strong>${escapeHtml(session.resultCount || 0)} resultados</strong>
+            <p>${escapeHtml(session.lapCount || 0)} vueltas registradas</p>
+            <p>${escapeHtml(session.fastestLap ? `Vuelta rápida: ${session.fastestLap.lapTime} · ${session.fastestLap.driverName}` : 'Sin vuelta rápida')}</p>
+          </article>
+        `).join('') : '<article class="gc-public-card"><strong>Sin sesiones registradas</strong></article>';
+      };
+
+      async function load() {
+        try {
+          const response = await fetch('/api/community/acsr-championship?refresh=1', { cache: 'no-store' });
+          const data = await response.json();
+          render(data);
+        } catch (error) {
+          renderError(error?.message || String(error));
+        }
+      }
+
+      load();
+    })();
+  </script>
+</MarketingLayout>

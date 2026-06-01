@@ -15,7 +15,6 @@ let cachedChampionship: ChampionshipCache | null = null;
 
 function textValue(value: unknown, fallback = '') {
   if (value === undefined || value === null) return fallback;
-
   if (typeof value === 'object') {
     const obj = value as PlainObject;
     return textValue(
@@ -25,6 +24,7 @@ function textValue(value: unknown, fallback = '') {
       obj.PlayerName ?? obj.playerName ??
       obj.Username ?? obj.username ??
       obj.UserName ?? obj.userName ??
+      obj.Guid ?? obj.GUID ?? obj.guid ??
       obj.ID ?? obj.Id ?? obj.id ??
       '',
       fallback
@@ -46,12 +46,39 @@ function boolValue(value: unknown) {
   return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true';
 }
 
-function arrayValue(value: unknown): PlainObject[] {
-  return Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') as PlainObject[] : [];
-}
-
 function objectValue(value: unknown): PlainObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as PlainObject : {};
+}
+
+function arrayValue(value: unknown): PlainObject[] {
+  if (Array.isArray(value)) return value.filter((item) => item && typeof item === 'object') as PlainObject[];
+  return [];
+}
+
+function collectionValue(value: unknown): PlainObject[] {
+  if (Array.isArray(value)) return arrayValue(value);
+  if (value && typeof value === 'object') {
+    return Object.values(value as PlainObject).filter((item) => item && typeof item === 'object') as PlainObject[];
+  }
+  return [];
+}
+
+function pick(source: PlainObject | null | undefined, paths: string[], fallback: any = '') {
+  if (!source) return fallback;
+
+  for (const path of paths) {
+    const parts = path.split('.');
+    let cursor: any = source;
+
+    for (const part of parts) {
+      if (cursor === undefined || cursor === null) break;
+      cursor = cursor[part] ?? cursor[part.charAt(0).toUpperCase() + part.slice(1)] ?? cursor[part.toLowerCase()];
+    }
+
+    if (cursor !== undefined && cursor !== null && cursor !== '') return cursor;
+  }
+
+  return fallback;
 }
 
 function cleanAcsmBaseUrl() {
@@ -66,6 +93,7 @@ function getAcsmChampionshipId() {
 function getAcsmChampionshipConfig() {
   const baseUrl = cleanAcsmBaseUrl();
   const championshipId = getAcsmChampionshipId();
+
   return {
     enabled: String(process.env.ACSM_CHAMPIONSHIP_ENABLED ?? 'true').toLowerCase() !== 'false',
     baseUrl,
@@ -136,398 +164,6 @@ function isoOrNull(value: unknown) {
   return ms ? new Date(ms).toISOString() : null;
 }
 
-function prettifyName(value: unknown, fallback = '-') {
-  const text = textValue(value, fallback);
-  return text.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
-}
-
-function pick(source: PlainObject | null | undefined, paths: string[], fallback: any = '') {
-  if (!source) return fallback;
-
-  for (const path of paths) {
-    const parts = path.split('.');
-    let cursor: any = source;
-    for (const part of parts) {
-      if (cursor === undefined || cursor === null) break;
-      cursor = cursor[part];
-    }
-    if (cursor !== undefined && cursor !== null && cursor !== '') return cursor;
-  }
-
-  return fallback;
-}
-
-function pathGet(source: PlainObject, key: string) {
-  return source?.[key] ?? source?.[key.charAt(0).toUpperCase() + key.slice(1)] ?? source?.[key.toLowerCase()];
-}
-
-function extractCarsFromRaceSetup(raceSetup: PlainObject) {
-  const cars = [
-    ...arrayValue(pick(raceSetup, ['Cars', 'cars', 'EntryList', 'entryList'], [])),
-    ...arrayValue(pick(raceSetup, ['CarModels', 'carModels', 'Models', 'models'], []))
-  ];
-
-  const names = cars
-    .map((car) => prettifyName(pick(car, ['Model', 'model', 'Car', 'car', 'Name', 'name', 'ID', 'id'], '')))
-    .filter(Boolean)
-    .filter((item) => item !== '-');
-
-  const single = prettifyName(pick(raceSetup, ['Car', 'car', 'CarModel', 'carModel'], ''), '');
-  if (single && single !== '-') names.push(single);
-
-  return [...new Set(names)].filter(Boolean);
-}
-
-function normalizeEvent(event: PlainObject, index: number) {
-  const raceSetup = objectValue(pick(event, ['RaceSetup', 'raceSetup'], {}));
-  const sessions = objectValue(pick(event, ['Sessions', 'sessions'], {}));
-  const trackRaw = pick(raceSetup, ['Track', 'track', 'TrackName', 'trackName'], pick(event, ['Track', 'track', 'TrackName', 'trackName'], 'Circuito por confirmar'));
-  const track = prettifyName(trackRaw, 'Circuito por confirmar');
-  const cars = extractCarsFromRaceSetup(raceSetup);
-  const scheduled = isoOrNull(pick(event, ['Scheduled', 'scheduled', 'ScheduledTime', 'scheduledTime', 'ScheduledAt', 'scheduledAt', 'Date', 'date']));
-  const started = isoOrNull(pick(event, ['StartedTime', 'startedTime', 'Started', 'started']));
-  const completed = isoOrNull(pick(event, ['CompletedTime', 'completedTime', 'Completed', 'completed', 'Finished', 'finished']));
-  const cancelled = boolValue(pick(event, ['Cancelled', 'cancelled'], false));
-  const sessionKeys = sessions && typeof sessions === 'object' ? Object.keys(sessions) : [];
-
-  let status = 'pending';
-  if (cancelled) status = 'cancelled';
-  else if (completed) status = 'completed';
-  else if (started) status = 'in_progress';
-  else if (scheduled && dateMs(scheduled) > Date.now()) status = 'scheduled';
-
-  return {
-    index: index + 1,
-    id: textValue(pick(event, ['ID', 'Id', 'id'], `event-${index + 1}`)),
-    name: textValue(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
-    track,
-    trackRaw: textValue(trackRaw, ''),
-    cars,
-    carSummary: cars.length ? cars.slice(0, 4).join(' + ') + (cars.length > 4 ? ` +${cars.length - 4}` : '') : '',
-    scheduledAt: scheduled,
-    startedAt: started,
-    completedAt: completed,
-    status,
-    laps: numberValue(pick(raceSetup, ['Laps', 'laps', 'RaceLaps', 'raceLaps'], 0)),
-    durationMinutes: numberValue(pick(raceSetup, ['Time', 'time', 'RaceDuration', 'raceDuration'], 0)),
-    sessions: sessionKeys,
-    rawHasResults: sessionKeys.some((key) => Boolean(sessions?.[key]?.Results || sessions?.[key]?.results))
-  };
-}
-
-function entrantSourceArrays(source: PlainObject, sourcePath: string) {
-  const keys = [
-    'Entrants',
-    'entrants',
-    'EntryList',
-    'entryList',
-    'Entries',
-    'entries',
-    'Drivers',
-    'drivers',
-    'Participants',
-    'participants',
-    'RegisteredDrivers',
-    'registeredDrivers',
-    'SignUps',
-    'signUps',
-    'Signups',
-    'signups',
-    'ACSRSignups',
-    'acsrSignups',
-    'ChampionshipEntrants',
-    'championshipEntrants',
-    'Leaderboard',
-    'leaderboard',
-    'Standings',
-    'standings',
-    'Results',
-    'results'
-  ];
-
-  const rows: { path: string; items: PlainObject[] }[] = [];
-  for (const key of keys) {
-    const value = pathGet(source, key);
-    const items = arrayValue(value);
-    if (items.length) rows.push({ path: `${sourcePath}.${key}`, items });
-  }
-  return rows;
-}
-
-function firstObject(...values: unknown[]) {
-  for (const value of values) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) return value as PlainObject;
-  }
-  return {};
-}
-
-function normalizeEntrant(item: PlainObject, source: string, className = '') {
-  const driver = firstObject(
-    pick(item, ['Driver', 'driver'], null),
-    pick(item, ['Player', 'player'], null),
-    pick(item, ['User', 'user'], null),
-    pick(item, ['Entrant', 'entrant'], null),
-    pick(item, ['Registration', 'registration'], null)
-  );
-
-  const car = firstObject(
-    pick(item, ['Car', 'car'], null),
-    pick(item, ['Model', 'model'], null),
-    pick(item, ['Vehicle', 'vehicle'], null),
-    pick(item, ['Entry.Car', 'entry.car'], null)
-  );
-
-  const name = prettifyName(pick(item, [
-    'Name',
-    'name',
-    'DisplayName',
-    'displayName',
-    'DriverName',
-    'driverName',
-    'PlayerName',
-    'playerName',
-    'SteamName',
-    'steamName',
-    'Username',
-    'username',
-    'UserName',
-    'userName',
-    'Driver.Name',
-    'driver.Name',
-    'Driver.DisplayName',
-    'driver.displayName',
-    'Player.Name',
-    'player.name',
-    'User.Name',
-    'user.name'
-  ], pick(driver, [
-    'Name',
-    'name',
-    'DisplayName',
-    'displayName',
-    'DriverName',
-    'driverName',
-    'PlayerName',
-    'playerName',
-    'SteamName',
-    'steamName',
-    'Username',
-    'username'
-  ], '')), '');
-
-  const guid = textValue(pick(item, [
-    'GUID',
-    'Guid',
-    'guid',
-    'DriverGUID',
-    'driverGuid',
-    'SteamID',
-    'SteamId',
-    'steamId',
-    'SteamGUID',
-    'steamGuid',
-    'Driver.GUID',
-    'driver.GUID',
-    'Driver.Guid',
-    'driver.Guid',
-    'Driver.SteamID',
-    'driver.steamId',
-    'Player.GUID',
-    'player.GUID',
-    'User.GUID',
-    'user.GUID'
-  ], pick(driver, ['GUID', 'Guid', 'guid', 'SteamID', 'SteamId', 'steamId'], '')));
-
-  const team = prettifyName(pick(item, [
-    'Team',
-    'team',
-    'TeamName',
-    'teamName',
-    'Driver.Team',
-    'driver.Team',
-    'Player.Team',
-    'player.Team'
-  ], pick(driver, ['Team', 'team', 'TeamName', 'teamName'], '')), '');
-
-  const model = prettifyName(pick(item, [
-    'Model',
-    'model',
-    'Car',
-    'car',
-    'CarModel',
-    'carModel',
-    'Vehicle',
-    'vehicle',
-    'Entry.Car.Model',
-    'entry.car.model'
-  ], pick(car, ['Model', 'model', 'Name', 'name', 'ID', 'id'], '')), '');
-
-  const points = numberValue(pick(item, [
-    'Points',
-    'points',
-    'TotalPoints',
-    'totalPoints',
-    'Score',
-    'score',
-    'ChampionshipPoints',
-    'championshipPoints'
-  ], 0), 0);
-
-  const position = numberValue(pick(item, [
-    'Position',
-    'position',
-    'Rank',
-    'rank',
-    'Place',
-    'place'
-  ], 0), 0);
-
-  const registeredAt = isoOrNull(pick(item, [
-    'Created',
-    'created',
-    'CreatedAt',
-    'createdAt',
-    'Registered',
-    'registered',
-    'RegisteredAt',
-    'registeredAt',
-    'SignedUpAt',
-    'signedUpAt'
-  ], ''));
-
-  const key = guid || `${name}|${team}|${model}` || `${source}|${Math.random()}`;
-
-  return {
-    name,
-    guid,
-    team,
-    model,
-    points,
-    position,
-    className,
-    source,
-    registeredAt,
-    key
-  };
-}
-
-function isProbablyDriver(row: ReturnType<typeof normalizeEntrant>) {
-  if (!row.name && !row.guid && !row.model) return false;
-  if (row.name && row.name.length > 80) return false;
-  if (['-', 'true', 'false', '0'].includes(String(row.name).toLowerCase())) return false;
-  return true;
-}
-
-function collectEntrantsFromKnownSources(raw: PlainObject, results: unknown) {
-  const rows: ReturnType<typeof normalizeEntrant>[] = [];
-
-  arrayValue(raw.Classes).forEach((classItem, classIndex) => {
-    const className = prettifyName(pick(classItem, ['Name', 'name'], `Clase ${classIndex + 1}`), `Clase ${classIndex + 1}`);
-    entrantSourceArrays(classItem, `Classes[${classIndex}]`).forEach((source) => {
-      source.items.forEach((item) => rows.push(normalizeEntrant(item, source.path, className)));
-    });
-  });
-
-  entrantSourceArrays(raw, 'root').forEach((source) => {
-    source.items.forEach((item) => rows.push(normalizeEntrant(item, source.path, 'General')));
-  });
-
-  if (results && typeof results === 'object' && !Array.isArray(results)) {
-    const obj = results as PlainObject;
-    entrantSourceArrays(obj, 'export-results').forEach((source) => {
-      source.items.forEach((item) => rows.push(normalizeEntrant(item, source.path, 'Resultados')));
-    });
-  }
-
-  return rows.filter(isProbablyDriver);
-}
-
-function deepScanEntrants(source: unknown, path = 'root', depth = 0, output: ReturnType<typeof normalizeEntrant>[] = [], diagnostics: PlainObject[] = []) {
-  if (!source || depth > 6) return output;
-
-  if (Array.isArray(source)) {
-    const lowerPath = path.toLowerCase();
-    const looksRelevant = /(entrant|entry|entries|driver|drivers|participant|signup|signups|standing|leaderboard|result|classification)/.test(lowerPath);
-    if (looksRelevant) {
-      const normalized = source
-        .filter((item) => item && typeof item === 'object')
-        .map((item) => normalizeEntrant(item as PlainObject, path, 'Detectado'))
-        .filter(isProbablyDriver);
-
-      if (normalized.length) {
-        diagnostics.push({ path, count: normalized.length, sample: normalized.slice(0, 3).map((row) => ({ name: row.name, guid: row.guid, model: row.model, points: row.points })) });
-        output.push(...normalized);
-      }
-    }
-
-    source.forEach((item, index) => deepScanEntrants(item, `${path}[${index}]`, depth + 1, output, diagnostics));
-    return output;
-  }
-
-  if (typeof source === 'object') {
-    Object.entries(source as PlainObject).forEach(([key, value]) => deepScanEntrants(value, `${path}.${key}`, depth + 1, output, diagnostics));
-  }
-
-  return output;
-}
-
-function uniqueDrivers(rows: ReturnType<typeof normalizeEntrant>[]) {
-  const seen = new Map<string, ReturnType<typeof normalizeEntrant>>();
-
-  rows.forEach((row) => {
-    const key = row.guid || row.name.toLowerCase() || row.key;
-    if (!key) return;
-
-    const existing = seen.get(key);
-    if (!existing) {
-      seen.set(key, row);
-      return;
-    }
-
-    seen.set(key, {
-      ...existing,
-      name: existing.name || row.name,
-      guid: existing.guid || row.guid,
-      team: existing.team || row.team,
-      model: existing.model || row.model,
-      points: Math.max(existing.points || 0, row.points || 0),
-      position: existing.position || row.position,
-      className: existing.className && existing.className !== 'Detectado' ? existing.className : row.className,
-      source: [...new Set([existing.source, row.source].filter(Boolean))].join(' | '),
-      registeredAt: existing.registeredAt || row.registeredAt
-    });
-  });
-
-  return [...seen.values()]
-    .sort((a, b) => {
-      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
-      if ((a.position || 0) && (b.position || 0)) return (a.position || 0) - (b.position || 0);
-      return String(a.name).localeCompare(String(b.name));
-    })
-    .map((row, index) => ({
-      ...row,
-      position: row.position || index + 1
-    }));
-}
-
-function normalizeClass(classItem: PlainObject, index: number, allDrivers: ReturnType<typeof uniqueDrivers>) {
-  const className = prettifyName(pick(classItem, ['Name', 'name'], `Clase ${index + 1}`), `Clase ${index + 1}`);
-
-  const classDrivers = collectEntrantsFromKnownSources({ Classes: [classItem] }, null)
-    .map((driver) => ({ ...driver, className }));
-
-  const drivers = uniqueDrivers(classDrivers);
-
-  return {
-    id: textValue(pick(classItem, ['ID', 'Id', 'id'], `class-${index + 1}`)),
-    name: className,
-    color: textValue(pick(classItem, ['Color', 'color'], '')),
-    entrantsCount: drivers.length,
-    drivers: drivers.slice(0, 100)
-  };
-}
-
-
 function htmlDecode(value: string) {
   return String(value || '')
     .replace(/&nbsp;/g, ' ')
@@ -555,6 +191,163 @@ function extractAttr(value: string, attr: string) {
   return match ? htmlDecode(match[1]) : '';
 }
 
+function slugify(value: unknown) {
+  return textValue(value)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function normalizeTrackSlug(value: unknown) {
+  const raw = slugify(value);
+  return raw
+    .replace(/^(fn|ks|rt|mx|acu|nrms)_/, '')
+    .replace(/_?(circuit|circuito|track|spain|italy|italia)$/g, '')
+    .replace(/^_+|_+$/g, '') || raw;
+}
+
+function trackMapCandidates(trackName: unknown, trackRaw?: unknown) {
+  const names = [...new Set([
+    normalizeTrackSlug(trackRaw),
+    normalizeTrackSlug(trackName),
+    slugify(trackRaw),
+    slugify(trackName)
+  ].filter(Boolean))];
+
+  const bases = [...new Set([
+    ...names.map((name) => `${name}_mapa`),
+    ...names.map((name) => `${name}_map`)
+  ])];
+
+  const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
+  const exts = ['webp', 'png', 'jpg', 'jpeg', 'svg', 'WEBP', 'PNG', 'JPG', 'JPEG', 'SVG'];
+
+  const out: string[] = [];
+  bases.forEach((base) => {
+    roots.forEach((root) => {
+      exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+    });
+  });
+
+  return [...new Set(out)];
+}
+
+function prettifyName(value: unknown, fallback = '-') {
+  const text = textValue(value, fallback);
+  return text.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+}
+
+function prettifyCarModel(value: unknown, fallback = '') {
+  const raw = textValue(value, fallback);
+  if (!raw) return fallback;
+
+  const known: Record<string, string> = {
+    rss_formula_rss_4_2024: 'RSS Formula RSS 4 2024',
+    ts_bmw_m3_gt2: 'BMW M3 GT2',
+    ts_spyker_c8_laviolette_gt2r: 'Spyker C8 Laviolette GT2R',
+    ts_ferrari_f430_gt2: 'Ferrari F430 GT2',
+    doran_ford_gt40_gt2: 'Doran Ford GT40 GT2',
+    ts_porsche_997r: 'Porsche 997R'
+  };
+
+  const key = raw.trim().toLowerCase();
+  if (known[key]) return known[key];
+
+  return raw
+    .replace(/^ks_/i, '')
+    .replace(/^ts_/i, '')
+    .replace(/^rss_/i, 'RSS ')
+    .replace(/_/g, ' ')
+    .replace(/\bgt2\b/gi, 'GT2')
+    .replace(/\brss\b/gi, 'RSS')
+    .replace(/\bbmw\b/gi, 'BMW')
+    .replace(/\bf430\b/gi, 'F430')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function formatLapMs(value: unknown) {
+  const ms = numberValue(value, 0);
+  if (!ms || ms <= 0) return '';
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const millis = Math.floor(ms % 1000);
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+function extractCarsFromRaceSetup(raceSetup: PlainObject) {
+  const rawCars = pick(raceSetup, ['Cars', 'cars', 'Car', 'car', 'CarModel', 'carModel'], '');
+  const names: string[] = [];
+
+  if (typeof rawCars === 'string') {
+    rawCars.split(/[;,]+/).map((item) => item.trim()).filter(Boolean).forEach((item) => names.push(prettifyCarModel(item, item)));
+  } else {
+    collectionValue(rawCars).forEach((car) => {
+      const name = prettifyCarModel(pick(car, ['Model', 'model', 'Car', 'car', 'Name', 'name', 'ID', 'id'], ''), '');
+      if (name) names.push(name);
+    });
+  }
+
+  return [...new Set(names)].filter(Boolean);
+}
+
+function normalizeDriverIdentity(name: unknown) {
+  return prettifyName(name, '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+}
+
+function driverMapKey(driver: PlainObject) {
+  const guid = textValue(driver.guid ?? driver.DriverGuid ?? driver.DriverGUID ?? driver.Guid ?? driver.GUID);
+  if (guid) return `guid:${guid}`;
+  const nameKey = normalizeDriverIdentity(driver.name ?? driver.DriverName ?? driver.Name);
+  return nameKey ? `name:${nameKey}` : '';
+}
+
+function mergeDriver(base: PlainObject, next: PlainObject) {
+  const merged = {
+    ...base,
+    ...Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined && value !== null && value !== ''))
+  };
+
+  merged.points = numberValue(base.points, 0) + numberValue(next.pointsDelta ?? next.points, 0);
+  merged.events = Math.max(numberValue(base.events, 0), numberValue(next.events, 0));
+  merged.wins = numberValue(base.wins, 0) + numberValue(next.wins, 0);
+  merged.podiums = numberValue(base.podiums, 0) + numberValue(next.podiums, 0);
+
+  const baseFinish = numberValue(base.bestFinish, 0);
+  const nextFinish = numberValue(next.bestFinish, 0);
+  merged.bestFinish = baseFinish && nextFinish ? Math.min(baseFinish, nextFinish) : (baseFinish || nextFinish || 0);
+
+  return merged;
+}
+
+function upsertDriver(map: Map<string, PlainObject>, nameIndex: Map<string, string>, driver: PlainObject) {
+  const nameKey = normalizeDriverIdentity(driver.name);
+  const guidKey = driver.guid ? `guid:${driver.guid}` : '';
+  const nameOnlyKey = nameKey ? `name:${nameKey}` : '';
+
+  let key = guidKey && map.has(guidKey) ? guidKey : '';
+  if (!key && nameKey && nameIndex.has(nameKey)) key = nameIndex.get(nameKey) || '';
+  if (!key) key = guidKey || nameOnlyKey;
+  if (!key) return;
+
+  const existing = map.get(key);
+  const merged = existing ? mergeDriver(existing, driver) : { ...driver, points: numberValue(driver.points ?? driver.pointsDelta, 0) };
+
+  const finalKey = merged.guid ? `guid:${merged.guid}` : key;
+
+  if (finalKey !== key) {
+    map.delete(key);
+  }
+
+  map.set(finalKey, merged);
+  if (nameKey) nameIndex.set(nameKey, finalKey);
+}
+
 function parsePublicEntrantsFromHtml(html: string) {
   const text = String(html || '');
   if (!text) return [];
@@ -567,7 +360,7 @@ function parsePublicEntrantsFromHtml(html: string) {
   const block = end > 0 ? rest.slice(0, end) : rest;
 
   const rows = [...block.matchAll(/<tr\b[\s\S]*?<\/tr>/gi)].map((match) => match[0]);
-  const output: ReturnType<typeof normalizeEntrant>[] = [];
+  const output: PlainObject[] = [];
 
   rows.forEach((row, index) => {
     const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((match) => stripHtml(match[1]));
@@ -580,88 +373,336 @@ function parsePublicEntrantsFromHtml(html: string) {
     const numericIndex = cells.findIndex((cell) => /^\d+/.test(cell));
     if (numericIndex < 0) return;
 
-    const className = numericIndex > 0 ? cells[numericIndex - 1] : 'General';
     const position = Number.parseInt(cells[numericIndex], 10) || index + 1;
-
     const attendanceIndex = cells.findIndex((cell) => /\d+\s*\/\s*\d+/.test(cell));
     const carIndex = cells.findIndex((cell, cellIndex) => cellIndex > numericIndex && /\s\/\s/.test(cell) && cellIndex !== attendanceIndex);
     const driverIndex = numericIndex + 1;
 
-    const name = cells[driverIndex] || '';
+    const name = prettifyName(cells[driverIndex] || '', '');
     if (!name || /^rating$/i.test(name) || /^car$/i.test(name)) return;
 
-    const model = carIndex >= 0 ? cells[carIndex].split('/')[0].trim() : '';
+    const model = carIndex >= 0 ? prettifyCarModel(cells[carIndex].split('/')[0].trim(), '') : '';
     const teamCandidates = cells.slice(driverIndex + 1, carIndex >= 0 ? carIndex : Math.max(driverIndex + 1, cells.length - 1));
     const team = teamCandidates.find((cell) => cell && !/\d+\s*\/\s*\d+/.test(cell) && !/^[A-F0-9]{6,}$/i.test(cell)) || '';
 
-    const guid = extractAttr(row, 'data-guid') || extractAttr(row, 'data-driver-guid');
-
     output.push({
-      key: guid || `${name}-${position}`,
-      name: prettifyName(name, name),
-      guid,
+      key: `public:${name}:${position}`,
+      name,
+      guid: extractAttr(row, 'data-guid') || extractAttr(row, 'data-driver-guid'),
       team: prettifyName(team, ''),
-      model: prettifyName(model, ''),
+      model,
       position,
       points: 0,
-      className: prettifyName(className, className || 'General'),
+      className: 'General',
       source: 'public-html-entrants'
     });
   });
 
-  return output.filter(isProbablyDriver);
+  return output;
 }
 
+function collectRegisteredDrivers(raw: PlainObject, publicHtml = '') {
+  const rows: PlainObject[] = [];
 
-function createDiagnostics(raw: PlainObject, results: unknown, knownRows: ReturnType<typeof normalizeEntrant>[], deepDiagnostics: PlainObject[], publicRows: ReturnType<typeof normalizeEntrant>[]) {
+  collectionValue(raw.Classes).forEach((classItem, classIndex) => {
+    const className = prettifyName(pick(classItem, ['Name', 'name'], ''), '') || 'General';
+
+    collectionValue(pick(classItem, ['Entrants', 'entrants'], {})).forEach((entrant) => {
+      const name = prettifyName(pick(entrant, ['Name', 'name', 'DriverName', 'driverName'], ''), '');
+      const guid = textValue(pick(entrant, ['GUID', 'Guid', 'guid', 'DriverGuid', 'driverGuid', 'SteamID', 'SteamId', 'steamId'], ''));
+      const modelRaw = textValue(pick(entrant, ['Model', 'model', 'CarModel', 'carModel'], ''));
+      if (!name && !guid) return;
+      if (modelRaw === 'any_car_model' && !name) return;
+
+      rows.push({
+        key: guid ? `guid:${guid}` : `class-${classIndex}:${name}`,
+        name,
+        guid,
+        team: prettifyName(pick(entrant, ['Team', 'team'], ''), ''),
+        model: modelRaw && modelRaw !== 'any_car_model' ? prettifyCarModel(modelRaw, '') : '',
+        className,
+        source: 'class-entrants',
+        points: 0
+      });
+    });
+  });
+
+  rows.push(...parsePublicEntrantsFromHtml(publicHtml));
+
+  const map = new Map<string, PlainObject>();
+  const nameIndex = new Map<string, string>();
+
+  rows.forEach((driver) => upsertDriver(map, nameIndex, driver));
+
+  return [...map.values()]
+    .filter((driver) => driver.name || driver.guid)
+    .sort((a, b) => String(a.name || a.guid).localeCompare(String(b.name || b.guid)))
+    .map((driver, index) => ({
+      key: driverMapKey(driver) || `registered-${index + 1}`,
+      name: driver.name || `Piloto ${index + 1}`,
+      guid: driver.guid || '',
+      team: driver.team || '',
+      model: driver.model || '',
+      className: driver.className || 'General',
+      position: index + 1,
+      points: 0,
+      source: driver.source || 'registered'
+    }));
+}
+
+function classPointsFor(raw: PlainObject, classId = '') {
+  const classes = collectionValue(raw.Classes);
+  const hit = classes.find((item) => textValue(pick(item, ['ID', 'Id', 'id'], '')) === classId) || classes[0] || {};
+  const points = pick(hit, ['Points.Places', 'points.places'], []);
+  return Array.isArray(points) ? points.map((item) => numberValue(item, 0)) : [];
+}
+
+function normalizeResultRow(row: PlainObject, position: number, sessionType: string, points = 0) {
+  const driver = objectValue(pick(row, ['Driver', 'driver'], {}));
+  const name = prettifyName(pick(row, ['DriverName', 'driverName', 'Name', 'name'], pick(driver, ['Name', 'name'], '')), '');
+  const guid = textValue(pick(row, ['DriverGuid', 'driverGuid', 'DriverGUID', 'driverGUID', 'GUID', 'Guid', 'guid'], pick(driver, ['Guid', 'GUID', 'guid'], '')));
+  const model = prettifyCarModel(pick(row, ['CarModel', 'carModel', 'Model', 'model'], ''), '');
+  if (!name && !guid) return null;
+
+  const bestLapMs = numberValue(pick(row, ['BestLap', 'bestLap'], 0), 0);
+  const totalTimeMs = numberValue(pick(row, ['TotalTime', 'totalTime'], 0), 0);
+  const numLaps = numberValue(pick(row, ['NumLaps', 'numLaps', 'Laps', 'laps'], 0), 0);
+  const disqualified = boolValue(pick(row, ['Disqualified', 'disqualified'], false));
+
+  return {
+    position,
+    name,
+    guid,
+    model,
+    carModel: model,
+    classId: textValue(pick(row, ['ClassID', 'classId', 'ClassId'], pick(driver, ['ClassID', 'classId', 'ClassId'], ''))),
+    bestLapMs,
+    bestLap: formatLapMs(bestLapMs),
+    totalTimeMs,
+    totalTime: formatLapMs(totalTimeMs),
+    numLaps,
+    gridPosition: numberValue(pick(row, ['GridPosition', 'gridPosition'], 0), 0),
+    hasPenalty: boolValue(pick(row, ['HasPenalty', 'hasPenalty'], false)),
+    penaltyTimeMs: numberValue(pick(row, ['PenaltyTime', 'penaltyTime'], 0), 0),
+    lapPenalty: numberValue(pick(row, ['LapPenalty', 'lapPenalty'], 0), 0),
+    disqualified,
+    status: disqualified ? 'DSQ' : (sessionType === 'RACE' && numLaps <= 0 ? 'DNF' : 'Clasificado'),
+    points: disqualified ? 0 : points,
+    pointsDelta: disqualified ? 0 : points
+  };
+}
+
+function normalizeSession(raw: PlainObject, key: string, event: PlainObject, championshipRaw: PlainObject) {
+  const resultsRaw = objectValue(pick(raw, ['Results', 'results'], {}));
+  const rows = arrayValue(pick(resultsRaw, ['Result', 'result'], []));
+  const type = textValue(pick(resultsRaw, ['Type', 'type'], key)).toUpperCase() || key.toUpperCase();
+  const pointsMultiplier = Math.max(0, numberValue(pick(event, ['PointsMultiplier', 'pointsMultiplier'], 1), 1));
+  const firstClassId = textValue(pick(rows[0] || {}, ['ClassID', 'ClassId', 'classId'], ''));
+  const classPoints = type === 'RACE' ? classPointsFor(championshipRaw, firstClassId) : [];
+
+  const results = rows
+    .map((row, index) => normalizeResultRow(row, index + 1, type, numberValue(classPoints[index], 0) * pointsMultiplier))
+    .filter(Boolean) as PlainObject[];
+
+  const laps = arrayValue(pick(resultsRaw, ['Laps', 'laps'], []))
+    .filter((lap) => textValue(pick(lap, ['DriverName', 'driverName', 'DriverGuid', 'driverGuid'], '')))
+    .map((lap) => ({
+      driverName: prettifyName(pick(lap, ['DriverName', 'driverName'], ''), ''),
+      driverGuid: textValue(pick(lap, ['DriverGuid', 'driverGuid'], '')),
+      carModel: prettifyCarModel(pick(lap, ['CarModel', 'carModel'], ''), ''),
+      lapTimeMs: numberValue(pick(lap, ['LapTime', 'lapTime'], 0), 0),
+      lapTime: formatLapMs(pick(lap, ['LapTime', 'lapTime'], 0)),
+      cuts: numberValue(pick(lap, ['Cuts', 'cuts'], 0), 0),
+      tyre: textValue(pick(lap, ['Tyre', 'tyre'], '')),
+      timestamp: numberValue(pick(lap, ['Timestamp', 'timestamp'], 0), 0),
+      fastest: boolValue(pick(lap, ['ContributedToFastestLap', 'contributedToFastestLap'], false))
+    }))
+    .filter((lap) => lap.lapTimeMs > 0);
+
+  const fastestLap = [...laps].sort((a, b) => a.lapTimeMs - b.lapTimeMs)[0] || null;
+
+  return {
+    key,
+    type,
+    name: prettifyName(pick(raw, ['Name', 'name'], pick(resultsRaw, ['Type', 'type'], key)), key),
+    startedAt: isoOrNull(pick(raw, ['StartedTime', 'startedTime', 'Started', 'started'], '')),
+    completedAt: isoOrNull(pick(raw, ['CompletedTime', 'completedTime', 'Completed', 'completed'], '')),
+    trackName: prettifyName(pick(resultsRaw, ['TrackName', 'trackName'], pick(event, ['RaceSetup.Track', 'raceSetup.track'], '')), ''),
+    resultCount: results.length,
+    lapCount: laps.length,
+    results,
+    laps: laps.slice(0, 400),
+    fastestLap
+  };
+}
+
+function normalizeEvent(event: PlainObject, index: number, championshipRaw: PlainObject) {
+  const raceSetup = objectValue(pick(event, ['RaceSetup', 'raceSetup'], {}));
+  const sessionsRaw = objectValue(pick(event, ['Sessions', 'sessions'], {}));
+  const trackRaw = pick(raceSetup, ['Track', 'track', 'TrackName', 'trackName'], pick(event, ['Track', 'track', 'TrackName', 'trackName'], 'Circuito por confirmar'));
+  const track = prettifyName(trackRaw, 'Circuito por confirmar');
+  const cars = extractCarsFromRaceSetup(raceSetup);
+  const scheduled = isoOrNull(pick(event, ['Scheduled', 'scheduled', 'ScheduledTime', 'scheduledTime', 'ScheduledAt', 'scheduledAt', 'Date', 'date']));
+  const started = isoOrNull(pick(event, ['StartedTime', 'startedTime', 'Started', 'started']));
+  const completed = isoOrNull(pick(event, ['CompletedTime', 'completedTime', 'Completed', 'completed', 'Finished', 'finished']));
+  const cancelled = boolValue(pick(event, ['Cancelled', 'cancelled'], false));
+
+  let status = 'pending';
+  if (cancelled) status = 'cancelled';
+  else if (completed) status = 'completed';
+  else if (started) status = 'in_progress';
+  else if (scheduled && dateMs(scheduled) > Date.now()) status = 'scheduled';
+
+  const sessions = Object.entries(sessionsRaw)
+    .filter(([, session]) => session && typeof session === 'object')
+    .map(([key, session]) => normalizeSession(session as PlainObject, key, event, championshipRaw));
+
+  const sessionByType = new Map(sessions.map((session) => [String(session.type).toUpperCase(), session]));
+  const raceSession = sessionByType.get('RACE') || null;
+  const qualifySession = sessionByType.get('QUALIFY') || sessionByType.get('QUALIFICATION') || null;
+  const practiceSession = sessionByType.get('PRACTICE') || null;
+  const raceResults = raceSession?.results || [];
+  const qualifyingResults = qualifySession?.results || [];
+  const practiceResults = practiceSession?.results || [];
+  const fastestLap = raceSession?.fastestLap || qualifySession?.fastestLap || practiceSession?.fastestLap || null;
+  const winner = raceResults[0] || null;
+  const podium = raceResults.slice(0, 3);
+
+  const id = textValue(pick(event, ['ID', 'Id', 'id'], `event-${index + 1}`));
+
+  return {
+    index: index + 1,
+    id,
+    slug: id,
+    href: `/campeonato/ronda/${encodeURIComponent(id)}`,
+    name: textValue(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
+    track,
+    trackRaw: textValue(trackRaw, ''),
+    trackSlug: normalizeTrackSlug(trackRaw),
+    trackMapCandidates: trackMapCandidates(track, trackRaw),
+    cars,
+    carSummary: cars.length ? cars.slice(0, 4).join(' + ') + (cars.length > 4 ? ` +${cars.length - 4}` : '') : '',
+    scheduledAt: scheduled,
+    startedAt: started,
+    completedAt: completed,
+    status,
+    laps: numberValue(pick(raceSetup, ['Laps', 'laps', 'RaceLaps', 'raceLaps'], 0)),
+    durationMinutes: numberValue(pick(raceSetup, ['Time', 'time', 'RaceDuration', 'raceDuration'], 0), 0),
+    sessions,
+    rawHasResults: sessions.some((session) => session.resultCount > 0),
+    raceResults,
+    qualifyingResults,
+    practiceResults,
+    fastestLap,
+    winner,
+    podium,
+    pointsAwarded: raceResults.map((driver: PlainObject) => ({
+      name: driver.name,
+      guid: driver.guid,
+      points: driver.points,
+      position: driver.position
+    }))
+  };
+}
+
+function buildStandings(registeredDrivers: PlainObject[], events: PlainObject[]) {
+  const map = new Map<string, PlainObject>();
+  const nameIndex = new Map<string, string>();
+
+  registeredDrivers.forEach((driver) => {
+    upsertDriver(map, nameIndex, {
+      ...driver,
+      points: 0,
+      events: 0,
+      wins: 0,
+      podiums: 0,
+      bestFinish: 0
+    });
+  });
+
+  events
+    .filter((event) => event.status === 'completed')
+    .forEach((event) => {
+      (event.raceResults || []).forEach((row: PlainObject) => {
+        upsertDriver(map, nameIndex, {
+          name: row.name,
+          guid: row.guid,
+          model: row.model,
+          carModel: row.carModel,
+          className: row.className || 'General',
+          pointsDelta: numberValue(row.points, 0),
+          events: 1,
+          wins: row.position === 1 ? 1 : 0,
+          podiums: row.position <= 3 ? 1 : 0,
+          bestFinish: row.position,
+          lastResult: {
+            eventId: event.id,
+            eventName: event.name,
+            position: row.position,
+            points: row.points,
+            bestLap: row.bestLap,
+            numLaps: row.numLaps
+          }
+        });
+      });
+    });
+
+  return [...map.values()]
+    .filter((driver) => driver.name || driver.guid)
+    .sort((a, b) => {
+      if (numberValue(b.points, 0) !== numberValue(a.points, 0)) return numberValue(b.points, 0) - numberValue(a.points, 0);
+      const aFinish = numberValue(a.bestFinish, 999);
+      const bFinish = numberValue(b.bestFinish, 999);
+      if (aFinish !== bFinish) return aFinish - bFinish;
+      return String(a.name || a.guid).localeCompare(String(b.name || b.guid));
+    })
+    .map((driver, index) => ({
+      key: driverMapKey(driver) || `standing-${index + 1}`,
+      position: index + 1,
+      name: driver.name || `Piloto ${index + 1}`,
+      guid: driver.guid || '',
+      team: driver.team || '',
+      model: driver.model || driver.carModel || '',
+      className: driver.className || 'General',
+      points: numberValue(driver.points, 0),
+      events: numberValue(driver.events, 0),
+      wins: numberValue(driver.wins, 0),
+      podiums: numberValue(driver.podiums, 0),
+      bestFinish: numberValue(driver.bestFinish, 0),
+      lastResult: driver.lastResult || null
+    }));
+}
+
+function createDiagnostics(raw: PlainObject, results: unknown, registeredDrivers: PlainObject[], events: PlainObject[], standings: PlainObject[]) {
   const topLevelKeys = Object.keys(raw || {}).sort();
   const resultKeys = results && typeof results === 'object' && !Array.isArray(results) ? Object.keys(results as PlainObject).sort() : [];
-
-  const likelyArrays: PlainObject[] = [];
-  function walkArrays(source: unknown, path = 'root', depth = 0) {
-    if (!source || depth > 4) return;
-    if (Array.isArray(source)) {
-      likelyArrays.push({ path, count: source.length, firstKeys: source[0] && typeof source[0] === 'object' ? Object.keys(source[0] as PlainObject).slice(0, 15) : [] });
-      source.slice(0, 2).forEach((item, index) => walkArrays(item, `${path}[${index}]`, depth + 1));
-      return;
-    }
-    if (typeof source === 'object') {
-      Object.entries(source as PlainObject).forEach(([key, value]) => walkArrays(value, `${path}.${key}`, depth + 1));
-    }
-  }
-
-  walkArrays(raw);
-  if (results && typeof results === 'object') walkArrays(results, 'export-results');
 
   return {
     topLevelKeys,
     resultKeys,
-    likelyArrays: likelyArrays
-      .filter((item) => item.count > 0)
-      .slice(0, 60),
-    detectedEntrantSources: deepDiagnostics.slice(0, 40),
-    knownRowsCount: knownRows.length,
-    publicHtmlEntrantsCount: publicRows.length,
-    publicHtmlEntrantsSample: publicRows.slice(0, 5).map((row) => ({
-      name: row.name,
-      className: row.className,
-      model: row.model,
-      source: row.source
+    registeredDriversCount: registeredDrivers.length,
+    eventsCount: events.length,
+    completedEventsCount: events.filter((event) => event.status === 'completed').length,
+    sessionsWithResults: events.flatMap((event) => (event.sessions || []).filter((session: PlainObject) => session.resultCount > 0).map((session: PlainObject) => ({
+      event: event.name,
+      type: session.type,
+      results: session.resultCount,
+      laps: session.lapCount
+    }))),
+    standingsSample: standings.slice(0, 8).map((driver) => ({
+      position: driver.position,
+      name: driver.name,
+      points: driver.points,
+      events: driver.events,
+      bestFinish: driver.bestFinish
     }))
   };
 }
 
 function normalizeChampionship(raw: PlainObject, results: unknown, config: ReturnType<typeof getAcsmChampionshipConfig>, publicHtml = '') {
-  const events = arrayValue(raw.Events).map(normalizeEvent);
-
-  const publicRows = parsePublicEntrantsFromHtml(publicHtml);
-  const knownRows = [...collectEntrantsFromKnownSources(raw, results), ...publicRows];
-  const deepDiagnostics: PlainObject[] = [];
-  const deepRows = deepScanEntrants(raw, 'root', 0, [], deepDiagnostics);
-  if (results && typeof results === 'object') deepScanEntrants(results, 'export-results', 0, deepRows, deepDiagnostics);
-
-  const registeredDrivers = uniqueDrivers([...knownRows, ...deepRows]);
-  const classes = arrayValue(raw.Classes).map((classItem, index) => normalizeClass(classItem, index, registeredDrivers));
+  const events = collectionValue(raw.Events).map((event, index) => normalizeEvent(event, index, raw));
+  const registeredDrivers = collectRegisteredDrivers(raw, publicHtml);
+  const standings = buildStandings(registeredDrivers, events);
 
   const now = Date.now();
   const upcomingEvents = events
@@ -672,21 +713,14 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
       return left - right || a.index - b.index;
     });
 
-  const completedEvents = events.filter((event) => event.status === 'completed');
+  const completedEvents = events
+    .filter((event) => event.status === 'completed')
+    .sort((a, b) => (dateMs(b.completedAt) || 0) - (dateMs(a.completedAt) || 0));
+
   const nextEvent = upcomingEvents.find((event) => !event.scheduledAt || dateMs(event.scheduledAt) >= now) || upcomingEvents[0] || null;
+  const lastCompletedEvent = completedEvents[0] || null;
   const completedCount = completedEvents.length;
   const progressPercent = events.length ? Math.round((completedCount / events.length) * 100) : 0;
-
-  const standings = registeredDrivers
-    .filter((driver) => driver.name || driver.guid)
-    .sort((a, b) => {
-      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
-      return String(a.name).localeCompare(String(b.name));
-    })
-    .map((driver, index) => ({
-      ...driver,
-      position: driver.position || index + 1
-    }));
 
   return {
     id: textValue(raw.ID || raw.Id || raw.id || config.championshipId),
@@ -701,16 +735,22 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
       events: events.length,
       completedEvents: completedCount,
       upcomingEvents: upcomingEvents.length,
-      classes: classes.length,
+      classes: collectionValue(raw.Classes).length,
       entrants: registeredDrivers.length,
       standings: standings.length
     },
     nextEvent,
+    lastCompletedEvent,
     events,
-    classes,
+    classes: collectionValue(raw.Classes).map((classItem, index) => ({
+      id: textValue(pick(classItem, ['ID', 'Id', 'id'], `class-${index + 1}`)),
+      name: prettifyName(pick(classItem, ['Name', 'name'], ''), '') || 'General',
+      color: textValue(pick(classItem, ['Color', 'color', 'UIColor', 'uiColor'], '')),
+      points: pick(classItem, ['Points.Places', 'points.places'], [])
+    })),
     registeredDrivers,
     standings,
-    diagnostics: createDiagnostics(raw, results, knownRows, deepDiagnostics, publicRows)
+    diagnostics: createDiagnostics(raw, results, registeredDrivers, events, standings)
   };
 }
 
@@ -722,7 +762,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
       res.json({
         ok: true,
         enabled: false,
-        source: 'acsm-championship-v4.6',
+        source: 'acsm-championship-v16',
         message: 'Integración ACSM championship desactivada por ACSM_CHAMPIONSHIP_ENABLED=false.'
       });
       return;
@@ -753,7 +793,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
       const payload = {
         ok: true,
         enabled: true,
-        source: 'acsm-championship-v4.6',
+        source: 'acsm-championship-v16',
         fetchedAt: new Date().toISOString(),
         acsm: {
           baseUrl: config.baseUrl,
@@ -767,7 +807,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
         championship,
         raw: String(req.query.raw || '') === '1' ? raw : undefined,
         resultsRaw: String(req.query.raw || '') === '1' ? results : undefined,
-        message: 'Campeonato leído desde ACSM export + export-results + HTML público de entrants.'
+        message: 'Campeonato leído desde ACSM export. Clasificación calculada solo desde RACE.Results.Result y puntos de Classes.Points.Places.'
       };
 
       cachedChampionship = { fetchedAt: now, payload };
@@ -777,7 +817,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
       res.status(200).json({
         ok: false,
         enabled: true,
-        source: 'acsm-championship-v4.6',
+        source: 'acsm-championship-v16',
         acsm: {
           baseUrl: config.baseUrl,
           championshipId: config.championshipId,
@@ -831,7 +871,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
 
     res.json({
       ok: true,
-      source: 'acsm-championship-probe-v4.4',
+      source: 'acsm-championship-probe-v16',
       config,
       results
     });
@@ -849,7 +889,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
 
       res.json({
         ok: true,
-        source: 'acsm-championship-inspect-v4.6',
+        source: 'acsm-championship-inspect-v16',
         acsm: {
           championshipUrl: config.championshipUrl,
           signUpUrl: config.signUpUrl,
@@ -858,6 +898,8 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
           icsUrl: config.icsUrl
         },
         stats: championship.stats,
+        nextEvent: championship.nextEvent,
+        lastCompletedEvent: championship.lastCompletedEvent,
         registeredDrivers: championship.registeredDrivers,
         standings: championship.standings,
         diagnostics: championship.diagnostics
@@ -865,7 +907,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
     } catch (error) {
       res.status(200).json({
         ok: false,
-        source: 'acsm-championship-inspect-v4.6',
+        source: 'acsm-championship-inspect-v16',
         message: error instanceof Error ? error.message : String(error)
       });
     }
