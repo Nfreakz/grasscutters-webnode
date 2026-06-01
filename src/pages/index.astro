@@ -665,6 +665,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
   </main>
 
   <script is:inline src="/js/gc-track-images.js"></script>
+  <script is:inline src="/js/gc-home-track-resolver.js"></script>
   <script is:inline define:vars={{ home2ArchiveSeed }}>
     window.__GC_HOME2_ARCHIVE__ = home2ArchiveSeed;
   </script>
@@ -947,6 +948,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const img = $('[data-home2-track-image]');
         if (!img || !trackName) return;
 
+        // GC_HOME_TRACK_RESOLVER_V2_PHOTO
+        if (window.GCHomeTrackResolver?.setTrackImage) {
+          const resolved = await window.GCHomeTrackResolver.setTrackImage(img, trackName, 'photo');
+          if (resolved) return;
+        }
+
         if (window.GCTrackImages && typeof window.GCTrackImages.bestAsset === 'function') {
           try {
             const asset = window.GCTrackImages.bestAsset(trackName);
@@ -986,6 +993,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const img = $('[data-home2-track-map]');
         if (!img || !trackName) return;
         const slug = slugify(trackName);
+
+        // GC_HOME_TRACK_RESOLVER_V2_MAP
+        if (window.GCHomeTrackResolver?.setTrackImage) {
+          const resolved = await window.GCHomeTrackResolver.setTrackImage(img, trackName, 'map');
+          if (resolved) return;
+        }
         const compact = slug.replace(/^rt_/, '').replace(/^mx_/, '').replace(/^nrms_/, '');
         const candidates = [
           `/images/tracks/${slug}_mapa.png`,
@@ -1044,8 +1057,14 @@ const home2ArchiveSeed = (archiveStats.items || [])
         if (!trackName) return true;
         const rowTrack = firstValue(row, ['trackName', 'trackDisplayName', 'trackVisibleName', 'track.name', 'track.displayName', 'Track', 'track']);
         if (!rowTrack) return true;
-        const a = slugify(rowTrack).replace(/^(ks_|rt_|mx_|nrms_)/, '');
-        const b = slugify(trackName).replace(/^(ks_|rt_|mx_|nrms_)/, '');
+        // GC_HOME_TRACK_RESOLVER_V3_MATCHES
+        if (window.GCHomeTrackResolver?.matchesTrack) {
+          try {
+            if (window.GCHomeTrackResolver.matchesTrack(rowTrack, trackName)) return true;
+          } catch (_) {}
+        }
+        const a = slugify(rowTrack).replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
+        const b = slugify(trackName).replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
         return a.includes(b) || b.includes(a);
       };
 
@@ -1972,7 +1991,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
         const wanted = [activeTrack, ...activeCars].filter(Boolean).map((value) => slugify(value));
-        const activeTrackSlug = slugify(activeTrack).replace(/^(ks_|rt_|mx_|nrms_)/, '');
+        const activeTrackSlug = slugify(activeTrack).replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
 
         const visiblePool = items
           .filter((item) => {
@@ -2002,7 +2021,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
             wanted.forEach((needle) => {
               if (!needle) return;
-              const shortNeedle = needle.replace(/^(ks_|rt_|mx_|nrms_)/, '');
+              const shortNeedle = needle.replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
               if (compact.includes(needle) || needle.includes(compact)) score += 120;
               if (shortNeedle && compact.includes(shortNeedle)) score += 90;
               if (slugify(title).includes(shortNeedle) || slugify(slug).includes(shortNeedle)) score += 80;
@@ -2171,19 +2190,27 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
           const champTrackImage = $('[data-home2-champ-track-image]');
           if (champTrackImage && track) {
-            const candidates = publicImageCandidates({ title: track, slug: track, tipo: 'circuito' });
-            if (candidates.length) {
-              champTrackImage.dataset.fallbacks = candidates.slice(1).join('|');
-              champTrackImage.dataset.fallbackIndex = '0';
-              champTrackImage.onerror = function () {
-                const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
-                const i = Number(this.dataset.fallbackIndex || 0);
-                if (list[i]) {
-                  this.dataset.fallbackIndex = String(i + 1);
-                  this.src = list[i];
-                }
-              };
-              champTrackImage.src = candidates[0];
+            // GC_HOME_TRACK_RESOLVER_V2_CHAMP_IMAGE
+            const helper = window.GCHomeTrackResolver || null;
+            let resolved = false;
+            if (helper?.setTrackImage) {
+              resolved = await helper.setTrackImage(champTrackImage, track, 'photo');
+            }
+            if (!resolved) {
+              const candidates = publicImageCandidates({ title: track, slug: track, tipo: 'circuito' });
+              if (candidates.length) {
+                champTrackImage.dataset.fallbacks = candidates.slice(1).join('|');
+                champTrackImage.dataset.fallbackIndex = '0';
+                champTrackImage.onerror = function () {
+                  const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+                  const i = Number(this.dataset.fallbackIndex || 0);
+                  if (list[i]) {
+                    this.dataset.fallbackIndex = String(i + 1);
+                    this.src = list[i];
+                  }
+                };
+                champTrackImage.src = candidates[0];
+              }
             }
           }
         } else {
@@ -2229,7 +2256,10 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
         const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
-        const track = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
+        const rawTrackName = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
+        const trackHelper = window.GCHomeTrackResolver || null;
+        const track = trackHelper?.displayName ? trackHelper.displayName(rawTrackName) : rawTrackName;
+        const trackAssetName = trackHelper?.assetName ? trackHelper.assetName(rawTrackName) : rawTrackName;
         const cars = firstValue(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']);
         const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
         const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
@@ -2243,6 +2273,21 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const inferredCountry = inferTrackCountry(track, combo) || '--';
         setText('[data-home2-track-country]', inferredCountry);
         setText('[data-home2-now-country]', inferredCountry);
+        // GC_HOME_TRACK_RESOLVER_V2_DISTANCE
+        const rawTrackDistance = firstValue(combo, [
+          'trackDistanceKm',
+          'distanceKm',
+          'track.distanceKm',
+          'track.lengthKm',
+          'lengthKm',
+          'trackLengthKm',
+          'trackLength',
+          'track.distance',
+          'distance'
+        ]);
+        const directDistance = trackHelper?.formatDistance ? trackHelper.formatDistance(rawTrackDistance) : rawTrackDistance;
+        const fallbackDistance = trackHelper?.distance ? (trackHelper.distance(rawTrackName) || trackHelper.distance(track)) : '';
+        setText('[data-home2-now-distance]', directDistance || fallbackDistance || '--');
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
         setText('[data-home2-now-cars]', String(carList.length || '--'));
         setText('[data-home2-best-driver]', bestDriver);
@@ -2257,8 +2302,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
-        await setTrackImage(track);
-        await setTrackMap(track);
+        await setTrackImage(trackAssetName || track);
+        await setTrackMap(trackAssetName || track);
 
         const champTrackImageFallback = $('[data-home2-champ-track-image]');
         const heroTrackImage = $('[data-home2-track-image]');
@@ -2278,7 +2323,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           ...getArray(recentPayload)
         ];
 
-        renderComboRanking(boardCandidates, track, carList);
+        renderComboRanking(boardCandidates, trackAssetName || rawTrackName || track, carList);
 
         renderRaceStandoutsV1([
           ...getArray(comboStandoutsPayload),
@@ -2287,7 +2332,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           ...getArray(combo.bestLaps),
           ...getArray(combo.leaderboard),
           ...getArray(recentPayload)
-        ], track, carList);
+        ], trackAssetName || rawTrackName || track, carList);
 
         await Promise.all([
           renderChampionship(),
