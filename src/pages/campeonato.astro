@@ -632,14 +632,9 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         ].filter(Boolean).map(String))];
 
         const out = [];
-        const helper = window.GCTrackImages;
-
-        if (helper?.bestAsset) {
-          labels.forEach((label) => {
-            const match = helper.bestAsset(label);
-            if (match?.url && !/_mapa\.|_map\./i.test(match.url)) out.push(match.url);
-          });
-        }
+        // Fotos de calendario: no usamos GCTrackImages aquí para evitar que una foto
+        // se convierta accidentalmente en mapa o en el placeholder "Track image pending".
+        // Primero probamos las rutas locales reales por convención.
 
         const names = [...new Set([
           normalizeTrackSlug(event?.trackRaw),
@@ -698,7 +693,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       };
 
       const eventImageHtml = (event) => {
-        const candidates = localTrackPhotoCandidates(event);
+        const candidates = event?.trackPhotoCandidates?.length ? event.trackPhotoCandidates : localTrackPhotoCandidates(event);
         const primary = candidates[0] || '';
         const fallbacks = candidates.slice(1).join('|');
         if (!primary) return '';
@@ -709,7 +704,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
               src="${escapeHtml(primary)}"
               alt="${escapeHtml(event.track || event.name || '')}"
               loading="lazy"
-              data-track-name="${escapeHtml(event.track || event.trackRaw || event.name || '')}"
               data-fallbacks="${escapeHtml(fallbacks)}"
               data-fallback-index="0"
               onerror="const list=(this.dataset.fallbacks||'').split('|').filter(Boolean);const i=Number(this.dataset.fallbackIndex||0);if(list[i]){this.dataset.fallbackIndex=String(i+1);this.src=list[i];}else{this.closest('figure')?.setAttribute('hidden','');this.style.display='none';}"
@@ -865,7 +859,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           `;
         }).join('') || '<article class="gc-acsr-event"><strong>Sin rondas</strong><p>Todavía no hay rondas visibles.</p></article>';
 
-        window.GCTrackImages?.applyAll?.(els.list);
+        // No aplicar GCTrackImages sobre las cards: ya llevan fallbacks locales estables.
 
         console.info('[GC campeonato ACSR hub v17 calendar cards]', {
           ok: true,

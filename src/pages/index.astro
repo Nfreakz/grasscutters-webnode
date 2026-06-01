@@ -1217,16 +1217,11 @@ const home2ArchiveSeed = (archiveStats.items || [])
           }
         }
 
-        if (window.GCHomeTrackResolver?.setTrackImage) {
-          for (const name of trackNames.flat(Infinity).filter(Boolean)) {
-            const before = String(img.getAttribute('src') || '');
-            const resolved = await window.GCHomeTrackResolver.setTrackImage(img, name, 'map');
-            const resolvedSrc = String(img.getAttribute('src') || '');
-            if (resolved && resolvedSrc && resolvedSrc !== before && !/track-fallback|track-outline|fallback/i.test(resolvedSrc)) return;
-          }
-        }
-
+        // Mapas: no usamos GCTrackImages ni GCHomeTrackResolver aquí.
+        // Esos resolvers son para fotos y pueden devolver el placeholder "Track image pending".
+        // La regla estable para mapas es solo: nombre_normalizado + _mapa / _map.
         img.src = '/ui/home2/gc-home2-track-outline.svg';
+        img.dataset.resolvedMap = 'fallback-outline';
       };
 
       const renderRows = (selector, rows) => {

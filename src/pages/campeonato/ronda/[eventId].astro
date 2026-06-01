@@ -21,7 +21,7 @@ const eventId = Astro.params.eventId ?? '';
         <h1 class="gc-public-title" id="acsrRoundTitle">Cargando resultados...</h1>
         <p class="gc-public-description" id="acsrRoundMeta">Consultando ACSM.</p>
       </div>
-      <figure class="gc-acsr-round-map" id="acsrRoundMapFigure" hidden>
+      <figure class="gc-acsr-round-map gc-acsr-round-photo" id="acsrRoundMapFigure" hidden>
         <img id="acsrRoundMap" src="" alt="" loading="lazy" />
       </figure>
     </header>
@@ -417,7 +417,7 @@ const eventId = Astro.params.eventId ?? '';
         els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
 
         if (els.map) els.map.alt = event.track || event.name || '';
-        setImageWithFallback(els.map, els.mapFigure, event.trackMapCandidates || []);
+        setImageWithFallback(els.map, els.mapFigure, event.trackPhotoCandidates || event.trackMapCandidates || []);
 
         els.winner.textContent = winner ? winner.name : '--';
         els.winnerMeta.textContent = winner ? `P${winner.position} · ${winner.points || 0} puntos · ${winner.model || ''}` : 'Sin resultado de carrera';

@@ -207,13 +207,34 @@ function normalizeTrackSlug(value: unknown) {
     .replace(/^_+|_+$/g, '') || raw;
 }
 
-function trackMapCandidates(trackName: unknown, trackRaw?: unknown) {
+function trackBaseNames(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
   const names = [...new Set([
     normalizeTrackSlug(trackRaw),
     normalizeTrackSlug(trackName),
+    normalizeTrackSlug(eventName),
     slugify(trackRaw),
-    slugify(trackName)
+    slugify(trackName),
+    slugify(eventName)
   ].filter(Boolean))];
+
+  const hasJerez = names.some((name) => /jerez|angel_nieto/.test(name));
+  if (hasJerez) {
+    names.push(
+      'jerez',
+      'fn_jerez',
+      'circuito_de_jerez',
+      'circuito_de_jerez_spain',
+      'circuito_de_jerez_angel_nieto',
+      'jerez_angel_nieto',
+      'angel_nieto_jerez'
+    );
+  }
+
+  return [...new Set(names.filter(Boolean))];
+}
+
+function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
+  const names = trackBaseNames(trackName, trackRaw, eventName);
 
   const bases = [...new Set([
     ...names.map((name) => `${name}_mapa`),
@@ -231,6 +252,29 @@ function trackMapCandidates(trackName: unknown, trackRaw?: unknown) {
   });
 
   return [...new Set(out)];
+}
+
+function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
+  const names = trackBaseNames(trackName, trackRaw, eventName);
+
+  const bases = [...new Set([
+    ...names,
+    ...names.map((name) => `${name}_foto`),
+    ...names.map((name) => `${name}_photo`),
+    ...names.map((name) => `${name}_imagen`)
+  ])].filter((base) => !/_?(mapa|map|outline)$/i.test(base));
+
+  const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
+  const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif', 'WEBP', 'JPG', 'JPEG', 'PNG', 'AVIF'];
+
+  const out: string[] = [];
+  bases.forEach((base) => {
+    roots.forEach((root) => {
+      exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+    });
+  });
+
+  return [...new Set(out.filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
 }
 
 function prettifyName(value: unknown, fallback = '-') {
@@ -579,7 +623,8 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     track,
     trackRaw: textValue(trackRaw, ''),
     trackSlug: normalizeTrackSlug(trackRaw),
-    trackMapCandidates: trackMapCandidates(track, trackRaw),
+    trackMapCandidates: trackMapCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
+    trackPhotoCandidates: trackPhotoCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
     cars,
     carSummary: cars.length ? cars.slice(0, 4).join(' + ') + (cars.length > 4 ? ` +${cars.length - 4}` : '') : '',
     scheduledAt: scheduled,
