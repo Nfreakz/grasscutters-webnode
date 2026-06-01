@@ -1,0 +1,302 @@
+/* GC_MARKETING_UNIFIED_SYSTEM_V27
+   Capa final para unificar la web publica/marketing sin tocar /app ni /admin.
+   Importar al final desde MarketingLayout.astro. */
+
+html[data-gc-scope="marketing"]{
+  --gc-unified-bg:#020402;
+  --gc-unified-bg-2:#050805;
+  --gc-unified-panel:rgba(4,8,5,.82);
+  --gc-unified-panel-2:rgba(7,12,8,.88);
+  --gc-unified-border:rgba(140,255,0,.18);
+  --gc-unified-border-soft:rgba(140,255,0,.11);
+  --gc-unified-border-strong:rgba(140,255,0,.32);
+  --gc-unified-grid:rgba(140,255,0,.035);
+  --gc-unified-text:#f4fff1;
+  --gc-unified-soft:rgba(244,255,241,.72);
+  --gc-unified-muted:rgba(244,255,241,.48);
+  --gc-unified-green:var(--gc-mk-accent,var(--green,#8cff00));
+  --gc-unified-cyan:var(--gc-mk-accent-2,var(--green-2,#23f0cf));
+  --gc-unified-radius:6px;
+  --gc-unified-radius-sm:4px;
+  --gc-unified-shadow:0 24px 70px rgba(0,0,0,.34);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]){
+  background:
+    radial-gradient(circle at 18% 0%, rgba(140,255,0,.055), transparent 28%),
+    radial-gradient(circle at 78% 12%, rgba(35,240,207,.035), transparent 30%),
+    linear-gradient(180deg, #020402 0%, #020402 34%, #030603 100%) !important;
+  color:var(--gc-unified-text);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-main{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-main::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(140,255,0,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,255,0,.018) 1px, transparent 1px);
+  background-size:64px 64px;
+  opacity:.52;
+  mask-image:radial-gradient(circle at 50% 20%, #000 0%, transparent 72%);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-main::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:linear-gradient(90deg, rgba(0,0,0,.22), transparent 20%, transparent 80%, rgba(0,0,0,.28));
+}
+
+/* Header activo: no dependemos de la raya si algun CSS la pisa; se pinta en verde. */
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a{
+  color:rgba(244,255,241,.78) !important;
+}
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a:hover,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a:focus-visible,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a.is-active{
+  color:var(--gc-unified-green) !important;
+  text-shadow:0 0 16px rgba(140,255,0,.22);
+}
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a.is-active{
+  font-size:calc(clamp(.82rem,.66vw,.92rem) + 1px) !important;
+}
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a::after{
+  content:"" !important;
+  position:absolute !important;
+  left:2px !important;
+  right:2px !important;
+  bottom:2px !important;
+  height:2px !important;
+  display:block !important;
+  opacity:0 !important;
+  transform:scaleX(.7) !important;
+  transform-origin:center !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg,var(--gc-unified-green),var(--gc-unified-cyan)) !important;
+  box-shadow:0 0 16px rgba(140,255,0,.34) !important;
+  transition:opacity .18s ease, transform .18s ease !important;
+}
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a:hover::after,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a:focus-visible::after,
+html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav a.is-active::after{
+  opacity:1 !important;
+  transform:scaleX(1) !important;
+}
+
+/* Secciones publicas: misma respiracion y anchura que la home. */
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-shell{
+  width:min(100% - 32px, 1280px) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section{
+  position:relative;
+  padding-top:clamp(46px,5.4vw,86px) !important;
+  padding-bottom:clamp(18px,3vw,46px) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section + .gc-public-section{
+  margin-top:clamp(4px,1.2vw,18px);
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-kicker,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section-head .gc-public-kicker,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card .gc-public-kicker{
+  color:var(--gc-unified-green) !important;
+  font-family:var(--mono, 'JetBrains Mono', monospace) !important;
+  font-size:clamp(10px,.68vw,12px) !important;
+  font-weight:950 !important;
+  letter-spacing:.16em !important;
+  text-transform:uppercase !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-title,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section-title,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card-title,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-cta-title{
+  color:var(--gc-unified-text) !important;
+  font-family:var(--sans, Inter, system-ui, sans-serif) !important;
+  font-weight:1000 !important;
+  text-transform:uppercase !important;
+  letter-spacing:-.065em !important;
+  text-wrap:balance;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-title{
+  max-width:920px;
+  font-size:clamp(54px,7.2vw,118px) !important;
+  line-height:.82 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section-title{
+  max-width:900px;
+  font-size:clamp(34px,4.6vw,72px) !important;
+  line-height:.88 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card-title--large{
+  font-size:clamp(28px,3.6vw,54px) !important;
+  line-height:.88 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-description,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section-lead,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card-text,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-cta-text{
+  color:var(--gc-unified-soft) !important;
+  font-size:clamp(.98rem,1.08vw,1.12rem);
+  line-height:1.58;
+}
+
+/* Cards y paneles: mismo material oscuro de /. */
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-panel,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-cta,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) [class*="-card"],
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) [class*="-panel"]{
+  border-radius:var(--gc-unified-radius) !important;
+  border:1px solid var(--gc-unified-border-soft) !important;
+  background:
+    linear-gradient(180deg, rgba(10,18,11,.82), rgba(3,6,4,.9)),
+    linear-gradient(90deg, rgba(140,255,0,.035), transparent 44%) !important;
+  box-shadow:var(--gc-unified-shadow) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-card:hover,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-panel:hover,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-cta:hover{
+  border-color:var(--gc-unified-border) !important;
+}
+
+/* Botones publicos con lenguaje / home. */
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-btn,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-btn{
+  min-height:40px;
+  border-radius:var(--gc-unified-radius-sm) !important;
+  font-family:var(--mono, 'JetBrains Mono', monospace) !important;
+  font-size:11px !important;
+  font-weight:950 !important;
+  letter-spacing:.095em !important;
+  text-transform:uppercase !important;
+  box-shadow:none !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-btn-primary,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-btn-primary{
+  color:#061006 !important;
+  border-color:transparent !important;
+  background:linear-gradient(135deg,var(--gc-unified-green),#b7ff42) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-btn-secondary,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-btn-secondary,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-community-social-btn{
+  color:var(--gc-unified-text) !important;
+  border:1px solid var(--gc-unified-border-soft) !important;
+  background:rgba(5,9,6,.76) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-btn:hover,
+html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-btn:hover{
+  transform:translateY(-1px);
+  border-color:var(--gc-unified-border-strong) !important;
+}
+
+/* Comunidad: transicion del video al fondo inferior, sin linea de corte. */
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero{
+  min-height:clamp(640px,78vh,900px) !important;
+  background:#020402 !important;
+  overflow:hidden !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-hero-bg-video,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__media{
+  filter:saturate(.78) contrast(1.08) brightness(.68) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__scrim,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-hero-scrim{
+  background:
+    radial-gradient(circle at 28% 34%, rgba(0,0,0,.05), rgba(0,0,0,.46) 48%, rgba(0,0,0,.8) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.42) 48%, rgba(0,0,0,.86)),
+    linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.45) 58%, #020402 100%) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero::after{
+  height:clamp(260px,32vh,430px) !important;
+  bottom:-2px !important;
+  background:
+    linear-gradient(180deg, rgba(2,4,2,0) 0%, rgba(2,4,2,.62) 42%, #020402 72%, #020402 100%),
+    radial-gradient(ellipse at 50% 100%, rgba(140,255,0,.05), transparent 60%) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__inner{
+  padding-top:clamp(106px,11vh,152px) !important;
+  padding-bottom:clamp(110px,16vh,190px) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-first-after-hero-v113,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-v104{
+  margin-top:clamp(-70px,-5.5vw,-28px) !important;
+  position:relative;
+  z-index:3;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-pitwall-v104{
+  background:
+    radial-gradient(circle at 52% 20%, rgba(140,255,0,.11), transparent 38%),
+    linear-gradient(180deg, rgba(8,14,9,.86), rgba(3,6,4,.95)) !important;
+}
+
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-steps-v104 > article,
+html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-principles-v104 > article{
+  min-height:164px;
+}
+
+/* Noticias, archivo y paginas similares: mas cerca de la home. */
+html[data-gc-scope="marketing"] body[data-public-route^="/noticias"] .gc-public-main,
+html[data-gc-scope="marketing"] body[data-public-route^="/archivo"] .gc-public-main,
+html[data-gc-scope="marketing"] body[data-public-route^="/calendario"] .gc-public-main,
+html[data-gc-scope="marketing"] body[data-public-route^="/normas"] .gc-public-main,
+html[data-gc-scope="marketing"] body[data-public-route^="/apoyo-servidor"] .gc-public-main,
+html[data-gc-scope="marketing"] body[data-public-route^="/privacidad"] .gc-public-main{
+  padding-top:clamp(40px,5vw,76px);
+}
+
+html[data-gc-scope="marketing"] body[data-public-route^="/noticias"] img,
+html[data-gc-scope="marketing"] body[data-public-route^="/archivo"] img{
+  border-radius:var(--gc-unified-radius-sm) !important;
+}
+
+@media (max-width:980px){
+  html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-title{
+    font-size:clamp(46px,12vw,72px) !important;
+  }
+  html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-section-title{
+    font-size:clamp(30px,8vw,48px) !important;
+  }
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-first-after-hero-v113,
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-community-manifest-v104{
+    margin-top:0 !important;
+  }
+}
+
+@media (max-width:620px){
+  html[data-gc-scope="marketing"] body.gc-public-body:not([data-public-route="/"]) .gc-public-shell{
+    width:min(100% - 22px, 1280px) !important;
+  }
+  html[data-gc-scope="marketing"] .gc-page-comunidad .gc-public-hero__inner{
+    padding-top:92px !important;
+    padding-bottom:88px !important;
+  }
+}
