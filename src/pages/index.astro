@@ -218,8 +218,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </dl>
 
         <div class="gc-home2-panel__footer">
-          <a href="/combos" class="gc-home2-btn gc-home2-btn--small">Ver combo →</a>
-          <a href="/hotlaps" class="gc-home2-btn gc-home2-btn--small">Ver hotlaps →</a>
+          <a href={home2ToolLinks.carsDrive} target="_blank" rel="noreferrer" class="gc-home2-btn gc-home2-btn--small">Descargar coche →</a>
+          <a href={home2ToolLinks.tracksDrive} target="_blank" rel="noreferrer" class="gc-home2-btn gc-home2-btn--small">Descargar circuito →</a>
         </div>
       </article>
 
@@ -357,6 +357,14 @@ const home2ArchiveSeed = (archiveStats.items || [])
           <div>
             <dt>Hotlaps</dt>
             <dd data-home2-server-hotlaps>--</dd>
+          </div>
+          <div>
+            <dt>Coches combo</dt>
+            <dd data-home2-server-active-cars>--</dd>
+          </div>
+          <div>
+            <dt>Mejor combo</dt>
+            <dd data-home2-server-best-time>--</dd>
           </div>
           <div>
             <dt>Última vuelta</dt>
@@ -742,39 +750,166 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return normalized.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
       };
 
+      const countryCodeFromValue = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+
+        const slug = slugify(raw);
+        const map = {
+          espana: 'ES',
+          spain: 'ES',
+          españa: 'ES',
+          italia: 'IT',
+          italy: 'IT',
+          francia: 'FR',
+          france: 'FR',
+          belgium: 'BE',
+          belgica: 'BE',
+          bélgica: 'BE',
+          germany: 'DE',
+          alemania: 'DE',
+          united_kingdom: 'GB',
+          reino_unido: 'GB',
+          great_britain: 'GB',
+          japan: 'JP',
+          japon: 'JP',
+          japón: 'JP',
+          australia: 'AU',
+          austria: 'AT',
+          netherlands: 'NL',
+          paises_bajos: 'NL',
+          países_bajos: 'NL',
+          usa: 'US',
+          united_states: 'US',
+          estados_unidos: 'US',
+          brazil: 'BR',
+          brasil: 'BR'
+        };
+
+        return map[slug] || '';
+      };
+
+      const countryDisplayFromValue = (value) => {
+        const code = countryCodeFromValue(value);
+        return code ? (countryFlag(code) || code) : '';
+      };
+
+      const cleanTrackKey = (value) => slugify(value)
+        .replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '')
+        .replace(/_?(layout|gp|club|international|national)$/, '');
+
+      const archiveCountryForTrack = (trackName) => {
+        const wanted = cleanTrackKey(trackName);
+        if (!wanted) return '';
+
+        const archive = Array.isArray(window.__GC_HOME2_ARCHIVE__) ? window.__GC_HOME2_ARCHIVE__ : [];
+        const circuits = archive.filter((item) => {
+          const type = normalizeArchiveType(firstValue(item, ['tipo', 'type', 'category', 'categoria', 'kind']) || '');
+          return type === 'circuitos';
+        });
+
+        const hit = circuits.find((item) => {
+          const raw = [
+            item.slug,
+            item.nombre,
+            item.title,
+            item.name,
+            item.search,
+            item.circuitName,
+            item.trackName
+          ].filter(Boolean).join(' ');
+          const key = cleanTrackKey(raw);
+          return key.includes(wanted) || wanted.includes(key);
+        });
+
+        if (!hit) return '';
+
+        return countryDisplayFromValue(firstValue(hit, [
+          'countryCode',
+          'country_code',
+          'pais',
+          'país',
+          'country',
+          'nacionalidad',
+          'ubicacion',
+          'location'
+        ]));
+      };
+
+      /* GC_HOME2_RACECONTROL_REVIEW_V5_JS */
       const inferTrackCountry = (trackName, combo = {}) => {
+        const normalizeCountryCode = (value) => {
+          const raw = String(value || '').trim();
+          if (!raw) return '';
+          const slug = slugify(raw);
+          const nameMap = {
+            spain: 'ES', espana: 'ES', espanya: 'ES', es: 'ES', esp: 'ES',
+            italy: 'IT', italia: 'IT', it: 'IT',
+            belgium: 'BE', belgica: 'BE', belgique: 'BE', be: 'BE',
+            united_kingdom: 'GB', uk: 'GB', great_britain: 'GB', england: 'GB', gb: 'GB',
+            united_states: 'US', usa: 'US', eeuu: 'US', us: 'US',
+            germany: 'DE', alemania: 'DE', deutschland: 'DE', de: 'DE',
+            netherlands: 'NL', holanda: 'NL', paises_bajos: 'NL', nl: 'NL',
+            japan: 'JP', japon: 'JP', jp: 'JP',
+            australia: 'AU', au: 'AU',
+            austria: 'AT', at: 'AT',
+            france: 'FR', francia: 'FR', fr: 'FR',
+            brazil: 'BR', brasil: 'BR', br: 'BR'
+          };
+          if (nameMap[slug]) return nameMap[slug];
+          const upper = raw.toUpperCase();
+          return /^[A-Z]{2}$/.test(upper) ? upper : '';
+        };
+
         const direct = firstValue(combo, [
           'track.countryCode',
+          'track.country_code',
           'track.country',
+          'track.location.country',
           'countryCode',
+          'country_code',
           'country',
+          'pais',
+          'país',
           'trackCountry',
           'trackCountryCode'
         ]);
-        if (direct) {
-          const code = String(direct).trim().slice(0, 2).toUpperCase();
-          return countryFlag(code) || code;
-        }
 
-        const slug = slugify(trackName);
+        const candidatesText = [
+          trackName,
+          firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']),
+          firstValue(combo, ['track.displayName', 'track.name', 'track.slug', 'track.id']),
+          firstValue(combo, ['slug', 'trackSlug']),
+          direct
+        ].filter(Boolean).map((value) => slugify(value)).join(' ');
+
+        // Primero manda el nombre del circuito. Algunos endpoints devuelven país erróneo
+        // o un código heredado del piloto/servidor; Jerez debe resolver ES, no BE.
         const countryMap = [
+          [['jerez', 'circuito_de_jerez', 'angel_nieto'], 'ES'],
+          [['jarama', 'barcelona', 'catalunya', 'montmelo', 'valencia', 'motorland', 'aragon', 'navarra', 'ricardo_tormo'], 'ES'],
           [['mugello', 'monza', 'imola', 'vallelunga', 'misano'], 'IT'],
-          [['spa', 'zolder'], 'BE'],
-          [['silverstone', 'brands_hatch', 'donington', 'oulton'], 'GB'],
-          [['sebring', 'laguna_seca', 'road_america', 'road_atlanta', 'watkins', 'daytona'], 'US'],
-          [['nurburgring', 'nordschleife', 'hockenheim', 'lausitz'], 'DE'],
-          [['barcelona', 'valencia', 'jarama', 'jerez'], 'ES'],
+          [['spa', 'francorchamps', 'zolder'], 'BE'],
+          [['silverstone', 'brands_hatch', 'donington', 'oulton', 'snetterton'], 'GB'],
+          [['sebring', 'laguna_seca', 'road_america', 'road_atlanta', 'watkins', 'daytona', 'vir'], 'US'],
+          [['nurburgring', 'nordschleife', 'hockenheim', 'lausitz', 'sachsenring', 'oschersleben'], 'DE'],
           [['zandvoort', 'assen'], 'NL'],
-          [['suzuka', 'fuji', 'okayama'], 'JP'],
-          [['phillip_island', 'mount_panorama', 'bathurst'], 'AU'],
-          [['red_bull', 'spielberg'], 'AT'],
-          [['paul_ricard', 'magny'], 'FR'],
-          [['interlagos'], 'BR']
+          [['suzuka', 'fuji', 'okayama', 'motegi'], 'JP'],
+          [['phillip_island', 'mount_panorama', 'bathurst', 'adelaide'], 'AU'],
+          [['red_bull', 'spielberg', 'salzburgring'], 'AT'],
+          [['paul_ricard', 'magny', 'lemans', 'le_mans', 'dijon'], 'FR'],
+          [['interlagos', 'goiania', 'curitiba'], 'BR']
         ];
 
-        const hit = countryMap.find(([names]) => names.some((name) => slug.includes(name)));
-        return hit ? countryFlag(hit[1]) : '';
+        const hit = countryMap.find(([names]) => names.some((name) => candidatesText.includes(name)));
+        if (hit) return countryFlag(hit[1]) || hit[1];
+
+        const directCode = normalizeCountryCode(direct);
+        return directCode ? (countryFlag(directCode) || directCode) : '';
       };
+
 
       const normalizeArchiveType = (value) => {
         const raw = slugify(value || 'archivo');
@@ -782,7 +917,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         if (['coche', 'coches', 'car', 'cars', 'vehiculo', 'vehiculos', 'vehicle'].includes(raw)) return 'coches';
         if (['piloto', 'pilotos', 'driver', 'drivers'].includes(raw)) return 'pilotos';
         if (raw.endsWith('s')) return raw;
-        return `${raw}s`;
+        return raw + 's';
       };
 
       const archiveImage = (item, index = 0) => {
@@ -1026,7 +1161,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
       const renderRows = (selector, rows) => {
         const host = $(selector);
         if (!host) return;
-        const cleanRows = rows.slice(0, 11);
+        const cleanRows = rows.slice(0, 10);
         if (!cleanRows.length) return;
         host.innerHTML = cleanRows.map((lap) => {
           const driver = firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'player.name']) || 'Piloto';
@@ -1086,15 +1221,45 @@ const home2ArchiveSeed = (archiveStats.items || [])
           .filter((row) => rowCarMatches(row, activeCars));
 
         const byDriver = new Map();
+
         allRows.forEach((row) => {
-          const driver = firstValue(row, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'player.name']) || 'Piloto';
-          const key = slugify(driver);
+          const driver = firstValue(row, [
+            'driverName',
+            'pilotName',
+            'playerName',
+            'name',
+            'driver.displayName',
+            'driver.name',
+            'player.name',
+            'DriverName',
+            'steamName'
+          ]) || 'Piloto';
+
+          const guid = firstValue(row, [
+            'playerId',
+            'driverId',
+            'pilotId',
+            'steamGuid',
+            'guid',
+            'driver.guid',
+            'player.guid',
+            'DriverGuid'
+          ]);
+
+          // Un piloto debe salir una sola vez en Mejores tiempos.
+          // Si no hay GUID fiable, usamos nombre normalizado. Así evitamos Don Bixi / Don Bixi duplicado.
+          const key = slugify(guid || driver);
+          if (!key) return;
+
           const current = byDriver.get(key);
-          if (!current || rankTimeValue(row) < rankTimeValue(current)) byDriver.set(key, row);
+          if (!current || rankTimeValue(row) < rankTimeValue(current)) {
+            byDriver.set(key, row);
+          }
         });
 
         return [...byDriver.values()].sort((a, b) => rankTimeValue(a) - rankTimeValue(b));
       };
+
 
       const syncBestFromRow = (row) => {
         if (!row) return;
@@ -1129,22 +1294,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
         syncBestFromRow(cleanRows[0]);
 
         host.innerHTML = cleanRows.map((lap, index) => {
-          const driver = firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'player.name']) || 'Piloto';
-          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'vehicle', 'car.displayName']) || 'Coche';
-          const rawTime = firstValue(lap, ['lapTimeFormatted', 'timeFormatted', 'formattedLapTime', 'lapTime', 'lapMs', 'time', 'bestLap', 'bestLapTime']);
+          const driver = firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'driver.name', 'player.name', 'DriverName', 'steamName']) || 'Piloto';
+          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'carVisibleName', 'vehicle', 'car.displayName', 'car.name', 'Car']) || 'Coche';
+          const rawTime = firstValue(lap, ['lapTimeFormatted', 'timeFormatted', 'formattedLapTime', 'bestLapTimeFormatted', 'lapTime', 'lapMs', 'lapTimeMs', 'time', 'bestLap', 'bestLapTime']);
           const avatar = pilotAvatarUrl(lap);
-          return `
-            <div class="gc-home2-combo-rank ${index >= 3 ? 'gc-home2-combo-rank--compact' : ''}">
-              ${comboRankBadge(index)}
-              <div><strong>${driver}</strong><small>${car}</small></div>
-              <img class="gc-home2-combo-rank__avatar" src="${avatar}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" />
-              <em>${formatLap(rawTime)}</em>
-            </div>
-          `;
+          const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
+
+          return '<div class="gc-home2-combo-rank' + compactClass + '">' +
+            comboRankBadge(index) +
+            '<div><strong>' + driver + '</strong><small>' + car + '</small></div>' +
+            '<img class="gc-home2-combo-rank__avatar" src="' + avatar + '" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'/images/pilot-avatar-default.png\';" />' +
+            '<em>' + formatLap(rawTime) + '</em>' +
+          '</div>';
         }).join('');
 
         return cleanRows;
       };
+
 
 
 
@@ -2298,6 +2464,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
         setText('[data-home2-reference-time]', bestTime);
         if (totalComboLaps) setText('[data-home2-laps]', totalComboLaps);
         if (comboDrivers) setText('[data-home2-drivers]', comboDrivers);
+
+        setText('[data-home2-server-active-cars]', String(carList.length || '--'));
+        setText('[data-home2-server-best-time]', bestTime || '--');
 
         const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
