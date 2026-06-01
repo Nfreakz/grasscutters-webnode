@@ -747,7 +747,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
       const countryFlag = (code) => {
         const normalized = String(code || '').trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(normalized)) return '';
-        return normalized.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
+        // Home2 muestra código corto estable (ES, IT, BE...).
+        // Evita que en móvil el badge del país se comporte como contenido visual raro.
+        return normalized;
       };
 
       const countryCodeFromValue = (value) => {
@@ -1081,27 +1083,37 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
       const uniqueValues = (values) => [...new Set(values.filter(Boolean).map((value) => String(value).trim()).filter(Boolean))];
 
-      const trackSlugVariants = (trackName) => {
-        const slug = slugify(trackName);
-        const compact = slug
-          .replace(/^rt_/, '')
-          .replace(/^mx_/, '')
-          .replace(/^nrms_/, '')
+      const normalizeTrackMapBase = (value) => {
+        let slug = slugify(value)
+          .replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '')
           .replace(/_online$/, '')
-          .replace(/_gp$/, '');
+          .replace(/_?(layout|gp|club|international|national)$/, '')
+          .replace(/_(spain|espana|espanya|italy|italia|belgium|belgica|france|francia|germany|alemania|uk|gb|usa|united_states|australia|japan|japon)$/g, '')
+          .replace(/_?(mapa|map|outline)$/g, '')
+          .replace(/^_+|_+$/g, '');
+        return slug;
+      };
 
-        const variants = [slug, compact];
+      const trackSlugVariants = (...trackNames) => {
+        const sourceValues = trackNames.flat(Infinity).filter(Boolean);
+        const variants = [];
 
-        if (slug.includes('jerez') || slug.includes('angel_nieto')) {
-          variants.push(
-            'jerez',
-            'fn_jerez',
-            'circuito_de_jerez',
-            'circuito_de_jerez_spain',
-            'circuito_de_jerez_angel_nieto',
-            'jerez_angel_nieto',
-            'angel_nieto_jerez'
-          );
+        for (const value of sourceValues) {
+          const slug = slugify(value);
+          const compact = normalizeTrackMapBase(value);
+          variants.push(slug, compact);
+
+          if (slug.includes('jerez') || slug.includes('angel_nieto') || compact.includes('jerez') || compact.includes('angel_nieto')) {
+            variants.push(
+              'jerez',
+              'fn_jerez',
+              'circuito_de_jerez',
+              'circuito_de_jerez_spain',
+              'circuito_de_jerez_angel_nieto',
+              'jerez_angel_nieto',
+              'angel_nieto_jerez'
+            );
+          }
         }
 
         return uniqueValues(variants);
@@ -1152,43 +1164,69 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
       };
 
-      const setTrackMap = async (trackName) => {
+      const setTrackMap = async (...trackNames) => {
         const img = $('[data-home2-track-map]');
-        if (!img || !trackName) return;
+        if (!img) return;
 
-        // GC_HOME_TRACK_MAP_RESOLVER_V12
-        if (window.GCHomeTrackResolver?.setTrackImage) {
-          const resolved = await window.GCHomeTrackResolver.setTrackImage(img, trackName, 'map');
-          const resolvedSrc = String(img.getAttribute('src') || '');
-          if (resolved && !/track-fallback|track-outline|fallback/i.test(resolvedSrc)) return;
-        }
+        // GC_HOME_TRACK_MAP_RESOLVER_V14_AUTO_MAPA
+        // Convención oficial: cada trazado usa nombre_normalizado + _mapa.ext
+        // Ejemplos: jerez_mapa.png, mugello_mapa.webp, spa_mapa.jpg.
+        const variants = trackSlugVariants(trackNames);
+        if (!variants.length) return;
 
-        const variants = trackSlugVariants(trackName);
-        const candidates = uniqueValues([
+        const hasJerez = variants.some((variant) => variant.includes('jerez') || variant.includes('angel_nieto'));
+        const extensions = ['webp', 'png', 'jpg', 'jpeg', 'svg', 'WEBP', 'PNG', 'JPG', 'JPEG', 'SVG'];
+        const mapNames = uniqueValues([
+          ...(hasJerez ? [
+            'jerez_mapa',
+            'jerez-mapa',
+            'fn_jerez_mapa',
+            'fn-jerez-mapa',
+            'circuito_de_jerez_mapa',
+            'circuito-de-jerez-mapa',
+            'jerez_map',
+            'jerez-outline',
+            'jerez_outline'
+          ] : []),
           ...variants.flatMap((variant) => [
-            `/images/tracks/${variant}_mapa.png`,
-            `/images/tracks/${variant}-mapa.png`,
-            `/images/tracks/${variant}_map.png`,
-            `/images/tracks/${variant}-map.png`,
-            `/images/tracks/mapa_${variant}.png`,
-            `/images/tracks/map_${variant}.png`,
-            `/images/tracks/${variant}_outline.svg`,
-            `/images/tracks/${variant}-outline.svg`,
-            `/imagenes/tracks/${variant}_mapa.png`,
-            `/imagenes/tracks/${variant}-mapa.png`,
-            `/imagenes/tracks/${variant}_map.png`,
-            `/imagenes/tracks/${variant}-map.png`,
-          ]),
-          '/ui/home2/gc-home2-track-outline.svg'
+            `${variant}_mapa`,
+            `${variant}-mapa`,
+            `${variant}_map`,
+            `${variant}-map`,
+            `mapa_${variant}`,
+            `map_${variant}`,
+            `${variant}_outline`,
+            `${variant}-outline`,
+          ])
         ]);
+
+        const candidates = uniqueValues(mapNames.flatMap((name) => extensions.flatMap((ext) => [
+          `/images/tracks/${name}.${ext}`,
+          `/imagenes/tracks/${name}.${ext}`,
+          `/images/${name}.${ext}`,
+          `/imagenes/${name}.${ext}`,
+          `/ui/home2/${name}.${ext}`,
+        ])));
 
         for (const candidate of candidates) {
           const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
+            img.dataset.resolvedMap = ok;
             return;
           }
         }
+
+        if (window.GCHomeTrackResolver?.setTrackImage) {
+          for (const name of trackNames.flat(Infinity).filter(Boolean)) {
+            const before = String(img.getAttribute('src') || '');
+            const resolved = await window.GCHomeTrackResolver.setTrackImage(img, name, 'map');
+            const resolvedSrc = String(img.getAttribute('src') || '');
+            if (resolved && resolvedSrc && resolvedSrc !== before && !/track-fallback|track-outline|fallback/i.test(resolvedSrc)) return;
+          }
+        }
+
+        img.src = '/ui/home2/gc-home2-track-outline.svg';
       };
 
       const renderRows = (selector, rows) => {
@@ -2176,7 +2214,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
           return `
             <article class="gc-home2-news-card">
-              <img src="${escapeAttr(image)}" alt="" width="380" height="216" loading="lazy" decoding="async" />
+              <img class="gc-home2-news-card__image" src="${escapeAttr(image)}" alt="" width="380" height="216" loading="lazy" decoding="async" />
               <div class="gc-home2-news-card__body">
                 <span class="gc-home2-tag">${escapeAttr(item.category || 'Paddock')}</span>
                 <time>${escapeAttr(item.date || item.publishedAt || '')}</time>
@@ -2533,7 +2571,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
         await setTrackImage(trackAssetName || track);
-        await setTrackMap(trackAssetName || track);
+        await setTrackMap(
+          rawTrackName,
+          trackAssetName,
+          track,
+          firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
+        );
 
         const champTrackImageFallback = $('[data-home2-champ-track-image]');
         const heroTrackImage = $('[data-home2-track-image]');

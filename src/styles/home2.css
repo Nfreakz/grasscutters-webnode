@@ -5267,3 +5267,110 @@
   font-size: 10px !important;
 }
 
+
+
+/* GC_HOME2_NEWS_CARD_IMAGE_LOCK_V13 - START
+   Mantiene todas las imágenes de noticias con la misma altura y evita que logos
+   o imágenes verticales descompensen la parrilla. */
+.gc-home2 .gc-home2-news-grid {
+  align-items: stretch;
+}
+
+.gc-home2 .gc-home2-news-card {
+  height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.gc-home2 .gc-home2-news-card > img,
+.gc-home2 .gc-home2-news-card__image {
+  display: block !important;
+  width: 100% !important;
+  height: clamp(178px, 13.4vw, 214px) !important;
+  min-height: clamp(178px, 13.4vw, 214px) !important;
+  max-height: clamp(178px, 13.4vw, 214px) !important;
+  aspect-ratio: 16 / 9;
+  object-fit: cover !important;
+  object-position: center center !important;
+  flex: 0 0 clamp(178px, 13.4vw, 214px) !important;
+  background: #050905 !important;
+}
+
+.gc-home2 .gc-home2-news-card__body {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+}
+
+.gc-home2 .gc-home2-news-card__body .gc-home2-link {
+  margin-top: auto !important;
+}
+
+@media (max-width: 720px) {
+  .gc-home2 .gc-home2-news-card > img,
+  .gc-home2 .gc-home2-news-card__image {
+    height: 180px !important;
+    min-height: 180px !important;
+    max-height: 180px !important;
+    flex-basis: 180px !important;
+  }
+}
+/* GC_HOME2_NEWS_CARD_IMAGE_LOCK_V13 - END */
+
+
+/* GC_HOME2_NOW_RACING_MOBILE_COUNTRY_FIX_V14 - START
+   Mantiene el badge de país como texto corto (ES, IT, BE...) también en móvil.
+   El mapa queda únicamente dentro de .gc-home2-trackbox. */
+.gc-home2-panel--now [data-home2-track-country] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 34px !important;
+  max-width: none !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 9px !important;
+  border: 1px solid rgba(150,255,47,.22) !important;
+  border-radius: 999px !important;
+  background: rgba(8, 18, 7, .82) !important;
+  color: var(--green) !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.gc-home2-panel--now [data-home2-track-country]::before,
+.gc-home2-panel--now [data-home2-track-country]::after {
+  content: none !important;
+  display: none !important;
+}
+
+.gc-home2-panel--now [data-home2-track-country] img,
+.gc-home2-panel--now [data-home2-track-country] picture,
+.gc-home2-panel--now [data-home2-track-country] svg {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .gc-home2-panel--now .gc-home2-panel__head {
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .gc-home2-panel--now [data-home2-track-country] {
+    flex: 0 0 auto !important;
+    margin-top: 2px !important;
+  }
+
+  .gc-home2-panel--now .gc-home2-trackbox {
+    clear: both !important;
+    width: 100% !important;
+  }
+}
+/* GC_HOME2_NOW_RACING_MOBILE_COUNTRY_FIX_V14 - END */
