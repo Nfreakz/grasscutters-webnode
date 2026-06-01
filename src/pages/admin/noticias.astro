@@ -251,7 +251,14 @@ const categories = ['Update', 'Sim racing', 'Motorsport', 'Herramientas', 'Grass
       function hasImage(post) { return Boolean(post.image); }
       function publicHref(post) { return post.href || `/noticias/${post.slug}`; }
       function isPublicPost(post) { return post?.status === 'published'; }
-      function publicActionHtml(post) { return isPublicPost(post) ? `${publicActionHtml(post)}` : `<span class="gc-news-row-disabled-v1">${post.status === 'hidden' ? 'Oculta' : 'Borrador'}</span>`; }
+      function publicActionHtml(post) {
+        if (!isPublicPost(post)) {
+          return `<span class="gc-news-row-disabled-v1">${post.status === 'hidden' ? 'Oculta' : 'Borrador'}</span>`;
+        }
+
+        const href = publicHref(post);
+        return `<a href="${esc(href)}" target="_blank" rel="noreferrer">Ver</a>`;
+      }
       function statusLabel(status) { if (status === 'published') return 'Publicado'; if (status === 'hidden') return 'Oculto'; return 'Borrador'; }
       function categoryLabel(category) { return CATEGORIES.find((item) => normalize(item) === normalize(category)) || 'Update'; }
 
