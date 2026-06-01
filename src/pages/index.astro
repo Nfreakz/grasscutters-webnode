@@ -1083,6 +1083,38 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
       const uniqueValues = (values) => [...new Set(values.filter(Boolean).map((value) => String(value).trim()).filter(Boolean))];
 
+      // GC_TRACK_ASSETS_SINGLE_SOURCE_V19
+      // Las imágenes reales están en public/images/tracks.
+      // Foto y mapa se resuelven aquí antes de tocar resolvers difusos o manifests viejos.
+      const TRACK_ASSET_REGISTRY = {
+        jerez: {
+          keys: ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'],
+          photo: '/images/tracks/jerez.png',
+          map: '/images/tracks/jerez_mapa.png'
+        },
+        mugello: {
+          keys: ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'],
+          photo: '/images/tracks/mugello.webp',
+          map: '/images/tracks/mugello_mapa.png'
+        },
+        bathurst: { keys: ['bathurst', 'mount_panorama'], photo: '/images/tracks/bathurst.png' },
+        brands_hatch: { keys: ['brands_hatch', 'ks_brands_hatch'], photo: '/images/tracks/brands_hatch.webp' },
+        estoril: { keys: ['estoril'], photo: '/images/tracks/estoril.webp' },
+        hockenheim: { keys: ['hockenheim', 'ks_hockenheim', 've_hockenheim_gp', 'hockenheimring'], photo: '/images/tracks/hockenheim.png' },
+        imola: { keys: ['imola', 'autodromo_internazionale_enzo_e_dino_ferrari'], photo: '/images/tracks/imola.webp' },
+        nordschleife: { keys: ['nordschleife', 'nurburgring_nordschleife'], photo: '/images/tracks/nordschleife.webp' },
+        nurburgring: { keys: ['nurburgring', 'ks_nurburgring'], photo: '/images/tracks/nurburgring.jpg' },
+        okayama: { keys: ['okayama', 'okayama_international', 'okayama_circuit'], photo: '/images/tracks/okayama.jpg' },
+        phillip_island: { keys: ['phillip_island', 'phillipisland', 'phillip_island_2013', 'phillip_island_circuit'], photo: '/images/tracks/phillip_island.png' },
+        road_atlanta: { keys: ['road_atlanta'], photo: '/images/tracks/road_atlanta.webp' },
+        salzburgring: { keys: ['salzburgring', 'salzburg_ring', 'salzburg'], photo: '/images/tracks/salzburgring.png' },
+        sebring: { keys: ['sebring', 'mx_sb_day_standing', 'sebring_international'], photo: '/images/tracks/sebring.png' },
+        spa: { keys: ['spa', 'ks_spa', 'rt_spa', 'spa_francorchamps', 'circuit_de_spa_francorchamps'], photo: '/images/tracks/spa.png' },
+        suzuka: { keys: ['suzuka', 'ks_suzuka', 'suzuka_circuit'], photo: '/images/tracks/suzuka.png' },
+        vallelunga: { keys: ['vallelunga', 'ks_vallelunga'], photo: '/images/tracks/vallelunga.webp' },
+        zolder: { keys: ['zolder', 'rt_zolder', 'circuit_zolder', 'nrs_z_der2017online'], photo: '/images/tracks/zolder.webp' }
+      };
+
       const normalizeTrackMapBase = (value) => {
         let slug = slugify(value)
           .replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '')
@@ -1103,112 +1135,82 @@ const home2ArchiveSeed = (archiveStats.items || [])
           const compact = normalizeTrackMapBase(value);
           variants.push(slug, compact);
 
-          if (slug.includes('jerez') || slug.includes('angel_nieto') || compact.includes('jerez') || compact.includes('angel_nieto')) {
-            variants.push(
-              'jerez',
-              'fn_jerez',
-              'circuito_de_jerez',
-              'circuito_de_jerez_spain',
-              'circuito_de_jerez_angel_nieto',
-              'jerez_angel_nieto',
-              'angel_nieto_jerez'
-            );
-          }
+          Object.values(TRACK_ASSET_REGISTRY).forEach((track) => {
+            const keys = track.keys || [];
+            if (keys.some((key) => slug === key || compact === key || slug.includes(key) || compact.includes(key) || key.includes(slug) || key.includes(compact))) {
+              variants.push(track.keys[0], ...keys);
+            }
+          });
         }
 
         return uniqueValues(variants);
+      };
+
+      const findRegisteredTrackAsset = (...trackNames) => {
+        const variants = trackSlugVariants(trackNames);
+        return Object.values(TRACK_ASSET_REGISTRY).find((track) => {
+          const keys = track.keys || [];
+          return keys.some((key) => variants.some((variant) => variant === key || variant.includes(key) || key.includes(variant)));
+        }) || null;
+      };
+
+      const trackImageCandidates = (kind, ...trackNames) => {
+        const variants = trackSlugVariants(trackNames);
+        const match = findRegisteredTrackAsset(trackNames);
+        const exact = match?.[kind] ? [match[kind]] : [];
+        const roots = ['/images/tracks', '/imagenes/tracks'];
+        const photoExts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
+        const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
+        const generated = [];
+
+        if (kind === 'map') {
+          variants.forEach((variant) => {
+            ['_mapa', '_map'].forEach((suffix) => {
+              roots.forEach((root) => {
+                mapExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
+              });
+            });
+          });
+          return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-outline.svg']);
+        }
+
+        variants.forEach((variant) => {
+          ['', '_photo', '_foto', '_hero'].forEach((suffix) => {
+            roots.forEach((root) => {
+              photoExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
+            });
+          });
+        });
+
+        return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-fallback.svg']);
       };
 
       const setTrackImage = async (trackName) => {
         const img = $('[data-home2-track-image]');
         if (!img || !trackName) return;
 
-        // GC_HOME_TRACK_RESOLVER_V2_PHOTO
-        if (window.GCHomeTrackResolver?.setTrackImage) {
-          const resolved = await window.GCHomeTrackResolver.setTrackImage(img, trackName, 'photo');
-          if (resolved) return;
-        }
-
-        if (window.GCTrackImages && typeof window.GCTrackImages.bestAsset === 'function') {
-          try {
-            const asset = window.GCTrackImages.bestAsset(trackName);
-            if (asset && asset.url) {
-              img.src = asset.url;
-              return;
-            }
-          } catch (_) {}
-        }
-
-        const slug = slugify(trackName);
-        const compact = slug.replace(/^rt_/, '').replace(/^mx_/, '').replace(/^nrms_/, '');
-        const candidates = [
-          `/images/tracks/${slug}.webp`,
-          `/images/tracks/${compact}.webp`,
-          `/images/tracks/${slug}.png`,
-          `/images/tracks/${compact}.png`,
-          `/images/tracks/${slug}.jpg`,
-          `/images/tracks/${compact}.jpg`,
-          `/imagenes/tracks/${slug}.webp`,
-          `/imagenes/tracks/${compact}.webp`,
-          `/imagenes/tracks/${slug}.png`,
-          `/imagenes/tracks/${compact}.png`,
-          '/ui/home2/gc-home2-track-fallback.svg'
-        ];
-
-        for (const candidate of candidates) {
+        // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_PHOTO
+        // Primero rutas reales conocidas. No usamos GCTrackImages aquí porque su manifest puede ir por detrás.
+        for (const candidate of trackImageCandidates('photo', trackName)) {
           const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
+            img.dataset.resolvedPhoto = ok;
             return;
           }
         }
+
+        img.src = '/ui/home2/gc-home2-track-fallback.svg';
+        img.dataset.resolvedPhoto = 'fallback-photo';
       };
 
       const setTrackMap = async (...trackNames) => {
         const img = $('[data-home2-track-map]');
         if (!img) return;
 
-        // GC_HOME_TRACK_MAP_RESOLVER_V14_AUTO_MAPA
-        // Convención oficial: cada trazado usa nombre_normalizado + _mapa.ext
-        // Ejemplos: jerez_mapa.png, mugello_mapa.webp, spa_mapa.jpg.
-        const variants = trackSlugVariants(trackNames);
-        if (!variants.length) return;
-
-        const hasJerez = variants.some((variant) => variant.includes('jerez') || variant.includes('angel_nieto'));
-        const extensions = ['webp', 'png', 'jpg', 'jpeg', 'svg', 'WEBP', 'PNG', 'JPG', 'JPEG', 'SVG'];
-        const mapNames = uniqueValues([
-          ...(hasJerez ? [
-            'jerez_mapa',
-            'jerez-mapa',
-            'fn_jerez_mapa',
-            'fn-jerez-mapa',
-            'circuito_de_jerez_mapa',
-            'circuito-de-jerez-mapa',
-            'jerez_map',
-            'jerez-outline',
-            'jerez_outline'
-          ] : []),
-          ...variants.flatMap((variant) => [
-            `${variant}_mapa`,
-            `${variant}-mapa`,
-            `${variant}_map`,
-            `${variant}-map`,
-            `mapa_${variant}`,
-            `map_${variant}`,
-            `${variant}_outline`,
-            `${variant}-outline`,
-          ])
-        ]);
-
-        const candidates = uniqueValues(mapNames.flatMap((name) => extensions.flatMap((ext) => [
-          `/images/tracks/${name}.${ext}`,
-          `/imagenes/tracks/${name}.${ext}`,
-          `/images/${name}.${ext}`,
-          `/imagenes/${name}.${ext}`,
-          `/ui/home2/${name}.${ext}`,
-        ])));
-
-        for (const candidate of candidates) {
+        // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_MAP
+        // Mapas: rutas reales conocidas primero. Nada de GCTrackImages ni manifests aquí.
+        for (const candidate of trackImageCandidates('map', trackNames)) {
           const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
@@ -1217,9 +1219,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
           }
         }
 
-        // Mapas: no usamos GCTrackImages ni GCHomeTrackResolver aquí.
-        // Esos resolvers son para fotos y pueden devolver el placeholder "Track image pending".
-        // La regla estable para mapas es solo: nombre_normalizado + _mapa / _map.
         img.src = '/ui/home2/gc-home2-track-outline.svg';
         img.dataset.resolvedMap = 'fallback-outline';
       };
@@ -2450,27 +2449,20 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
           const champTrackImage = $('[data-home2-champ-track-image]');
           if (champTrackImage && track) {
-            // GC_HOME_TRACK_RESOLVER_V2_CHAMP_IMAGE
-            const helper = window.GCHomeTrackResolver || null;
-            let resolved = false;
-            if (helper?.setTrackImage) {
-              resolved = await helper.setTrackImage(champTrackImage, track, 'photo');
-            }
-            if (!resolved) {
-              const candidates = publicImageCandidates({ title: track, slug: track, tipo: 'circuito' });
-              if (candidates.length) {
-                champTrackImage.dataset.fallbacks = candidates.slice(1).join('|');
-                champTrackImage.dataset.fallbackIndex = '0';
-                champTrackImage.onerror = function () {
-                  const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
-                  const i = Number(this.dataset.fallbackIndex || 0);
-                  if (list[i]) {
-                    this.dataset.fallbackIndex = String(i + 1);
-                    this.src = list[i];
-                  }
-                };
-                champTrackImage.src = candidates[0];
-              }
+            // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_CHAMP_IMAGE
+            const candidates = trackImageCandidates('photo', track);
+            if (candidates.length) {
+              champTrackImage.dataset.fallbacks = candidates.slice(1).join('|');
+              champTrackImage.dataset.fallbackIndex = '0';
+              champTrackImage.onerror = function () {
+                const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
+                const i = Number(this.dataset.fallbackIndex || 0);
+                if (list[i]) {
+                  this.dataset.fallbackIndex = String(i + 1);
+                  this.src = list[i];
+                }
+              };
+              champTrackImage.src = candidates[0];
             }
           }
         } else {

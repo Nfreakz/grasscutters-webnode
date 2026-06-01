@@ -417,7 +417,8 @@ const eventId = Astro.params.eventId ?? '';
         els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
 
         if (els.map) els.map.alt = event.track || event.name || '';
-        setImageWithFallback(els.map, els.mapFigure, event.trackPhotoCandidates || event.trackMapCandidates || []);
+        const heroCandidates = event.trackPhotoCandidates?.length ? event.trackPhotoCandidates : (event.trackMapCandidates || []);
+        setImageWithFallback(els.map, els.mapFigure, heroCandidates);
 
         els.winner.textContent = winner ? winner.name : '--';
         els.winnerMeta.textContent = winner ? `P${winner.position} · ${winner.points || 0} puntos · ${winner.model || ''}` : 'Sin resultado de carrera';

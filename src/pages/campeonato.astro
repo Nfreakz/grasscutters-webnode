@@ -525,7 +525,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     }
   </style>
 
-  <script is:inline src="/js/gc-track-images.js"></script>
   <script>
     (() => {
       const root = document.querySelector('[data-acsr-championship]');
@@ -596,75 +595,75 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           .replace(/^_+|_+$/g, '') || raw;
       };
 
+      // GC_TRACK_ASSETS_SINGLE_SOURCE_V19
+      // Fuente estable para fotos/mapas de calendario. No depende de GCTrackImages ni de manifests.
+      const TRACK_ASSET_REGISTRY = {
+        jerez: { keys: ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'], photo: '/images/tracks/jerez.png', map: '/images/tracks/jerez_mapa.png' },
+        mugello: { keys: ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'], photo: '/images/tracks/mugello.webp', map: '/images/tracks/mugello_mapa.png' },
+        bathurst: { keys: ['bathurst', 'mount_panorama'], photo: '/images/tracks/bathurst.png' },
+        brands_hatch: { keys: ['brands_hatch', 'ks_brands_hatch'], photo: '/images/tracks/brands_hatch.webp' },
+        estoril: { keys: ['estoril'], photo: '/images/tracks/estoril.webp' },
+        hockenheim: { keys: ['hockenheim', 'ks_hockenheim', 've_hockenheim_gp', 'hockenheimring'], photo: '/images/tracks/hockenheim.png' },
+        imola: { keys: ['imola'], photo: '/images/tracks/imola.webp' },
+        nordschleife: { keys: ['nordschleife', 'nurburgring_nordschleife'], photo: '/images/tracks/nordschleife.webp' },
+        nurburgring: { keys: ['nurburgring', 'ks_nurburgring'], photo: '/images/tracks/nurburgring.jpg' },
+        okayama: { keys: ['okayama', 'okayama_international', 'okayama_circuit'], photo: '/images/tracks/okayama.jpg' },
+        phillip_island: { keys: ['phillip_island', 'phillipisland', 'phillip_island_2013'], photo: '/images/tracks/phillip_island.png' },
+        road_atlanta: { keys: ['road_atlanta'], photo: '/images/tracks/road_atlanta.webp' },
+        salzburgring: { keys: ['salzburgring', 'salzburg_ring', 'salzburg'], photo: '/images/tracks/salzburgring.png' },
+        sebring: { keys: ['sebring', 'mx_sb_day_standing'], photo: '/images/tracks/sebring.png' },
+        spa: { keys: ['spa', 'ks_spa', 'rt_spa', 'spa_francorchamps'], photo: '/images/tracks/spa.png' },
+        suzuka: { keys: ['suzuka', 'ks_suzuka'], photo: '/images/tracks/suzuka.png' },
+        vallelunga: { keys: ['vallelunga', 'ks_vallelunga'], photo: '/images/tracks/vallelunga.webp' },
+        zolder: { keys: ['zolder', 'rt_zolder', 'circuit_zolder'], photo: '/images/tracks/zolder.webp' }
+      };
+
+      const trackAssetNames = (event) => {
+        const raw = [event?.trackRaw, event?.track, event?.name].filter(Boolean);
+        const names = [...new Set(raw.flatMap((value) => [slugify(value), normalizeTrackSlug(value)]).filter(Boolean))];
+        Object.values(TRACK_ASSET_REGISTRY).forEach((track) => {
+          if ((track.keys || []).some((key) => names.some((name) => name === key || name.includes(key) || key.includes(name)))) {
+            names.push(...track.keys);
+          }
+        });
+        return [...new Set(names.filter(Boolean))];
+      };
+
+      const registeredTrackAsset = (event) => {
+        const names = trackAssetNames(event);
+        return Object.values(TRACK_ASSET_REGISTRY).find((track) => (track.keys || []).some((key) => names.some((name) => name === key || name.includes(key) || key.includes(name)))) || null;
+      };
+
       const localTrackMapCandidates = (event) => {
-        const names = [...new Set([
-          normalizeTrackSlug(event?.trackRaw),
-          normalizeTrackSlug(event?.track),
-          slugify(event?.trackRaw),
-          slugify(event?.track)
-        ].filter(Boolean))];
-
-        const bases = [...new Set([
-          ...names.map((name) => `${name}_mapa`),
-          ...names.map((name) => `${name}_map`)
-        ])];
-
-        const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
-        const exts = ['webp', 'png', 'jpg', 'jpeg', 'svg', 'WEBP', 'PNG', 'JPG', 'JPEG', 'SVG'];
-
+        const names = trackAssetNames(event);
+        const exact = registeredTrackAsset(event)?.map ? [registeredTrackAsset(event).map] : [];
+        const roots = ['/images/tracks', '/imagenes/tracks'];
+        const exts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
         const out = [];
-        bases.forEach((base) => {
-          roots.forEach((root) => {
-            exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+        names.forEach((name) => {
+          ['_mapa', '_map'].forEach((suffix) => {
+            roots.forEach((root) => {
+              exts.forEach((ext) => out.push(`${root}/${name}${suffix}.${ext}`));
+            });
           });
         });
-
-        return [...new Set(out)];
+        return [...new Set([...exact, ...out])];
       };
 
       const localTrackPhotoCandidates = (event) => {
-        const labels = [...new Set([
-          event?.trackRaw,
-          event?.track,
-          event?.name,
-          normalizeTrackSlug(event?.trackRaw),
-          normalizeTrackSlug(event?.track)
-        ].filter(Boolean).map(String))];
-
+        const names = trackAssetNames(event);
+        const exact = registeredTrackAsset(event)?.photo ? [registeredTrackAsset(event).photo] : [];
+        const roots = ['/images/tracks', '/imagenes/tracks'];
+        const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
         const out = [];
-        // Fotos de calendario: no usamos GCTrackImages aquí para evitar que una foto
-        // se convierta accidentalmente en mapa o en el placeholder "Track image pending".
-        // Primero probamos las rutas locales reales por convención.
-
-        const names = [...new Set([
-          normalizeTrackSlug(event?.trackRaw),
-          normalizeTrackSlug(event?.track),
-          slugify(event?.trackRaw),
-          slugify(event?.track),
-          slugify(event?.name)
-        ].filter(Boolean))];
-
-        const bases = [...new Set([
-          ...names,
-          ...names.map((name) => `${name}_photo`),
-          ...names.map((name) => `${name}_foto`)
-        ])];
-
-        const roots = ['/images/tracks', '/imagenes/tracks', '/images', '/imagenes', '/ui/home2'];
-        const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif', 'WEBP', 'JPG', 'JPEG', 'PNG', 'AVIF'];
-
-        bases.forEach((base) => {
-          if (/_mapa$|_map$/i.test(base)) return;
-          roots.forEach((root) => {
-            exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
+        names.forEach((name) => {
+          ['', '_photo', '_foto', '_hero'].forEach((suffix) => {
+            roots.forEach((root) => {
+              exts.forEach((ext) => out.push(`${root}/${name}${suffix}.${ext}`));
+            });
           });
         });
-
-        if (!out.length && helper?.placeholderUrl) {
-          out.push(helper.placeholderUrl(event?.track || event?.name || 'Track image pending'));
-        }
-
-        return [...new Set(out.filter((url) => !/_mapa\.|_map\./i.test(url)))];
+        return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
       };
 
       const setImageWithFallback = (img, figure, candidates) => {
@@ -873,7 +872,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         els.lead.textContent = refresh ? 'Actualizando campeonato...' : 'Cargando campeonato...';
 
         try {
-          await window.GCTrackImages?.load?.();
           const response = await fetch(`/api/community/acsr-championship${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' });
           const data = await response.json();
           render(data);
