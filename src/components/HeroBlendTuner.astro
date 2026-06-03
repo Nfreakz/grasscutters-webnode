@@ -144,13 +144,16 @@
     }
   }
 
-  /* GC_HOME2_TIMING_COLORS_V23_4
+  /* GC_HOME2_TIMING_COLORS_V23_6
      Ajuste pedido:
      - Combo activo: rojo #ff5757
-     - Piloto Timing Sheet: blanco otra vez
-     - Coche Timing Sheet: azul #2d58fc
-     - Tiempo Timing Sheet: morado #b544e2
-     - Hace Timing Sheet: mismo rojo que Combo activo
+     - Timing Sheet:
+       - Piloto: blanco, MAYÚSCULAS, strong y tamaño reducido tipo Top Combo
+       - Coche: azul #5581E7
+       - Tiempo: morado #b544e2
+       - Hace: rojo #ff5757
+     - Now Racing:
+       - Acortar botones visualmente a COCHE y CIRCUITO
   */
 
   html[data-gc-scope="marketing"] .gc-home2-combo-card__label{
@@ -160,11 +163,15 @@
 
   html[data-gc-scope="marketing"] .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) > span:first-child{
     color:#f2f4ef !important;
-    font-weight:800 !important;
+    font-weight:900 !important;
+    font-size:12px !important;
+    line-height:1.05 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.02em !important;
   }
 
   html[data-gc-scope="marketing"] .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) > span:nth-child(2){
-    color:#2d58fc !important;
+    color:#5581E7 !important;
     font-weight:800 !important;
   }
 
@@ -177,4 +184,55 @@
     color:#ff5757 !important;
     font-weight:800 !important;
   }
+
+  /* Now Racing buttons: shrink labels visually so they fit cleanly inside the buttons.
+     This avoids touching page structure and keeps the pack as a simple copy-overwrite.
+     If the repo later changes the DOM, these selectors may need to be moved to index.astro. */
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn{
+    white-space:nowrap !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type,
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2){
+    position:relative !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type{
+    color:transparent !important;
+    font-size:0 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type::after{
+    content:"COCHE" !important;
+    color:#f2f4ef !important;
+    font-size:clamp(.70rem,.82vw,.78rem) !important;
+    font-weight:800 !important;
+    letter-spacing:.08em !important;
+    line-height:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2){
+    color:transparent !important;
+    font-size:0 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2)::after{
+    content:"CIRCUITO" !important;
+    color:#f2f4ef !important;
+    font-size:clamp(.68rem,.78vw,.75rem) !important;
+    font-weight:800 !important;
+    letter-spacing:.06em !important;
+    line-height:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type:hover::after,
+  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2):hover::after{
+    color:#f2f4ef !important;
+  }
+
 </style>
