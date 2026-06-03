@@ -915,13 +915,31 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         });
       }
 
+      async function fetchJson(url) {
+        const response = await fetch(url, { cache: 'no-store' });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.message || `HTTP ${response.status}`);
+        return data;
+      }
+
       async function load(refresh = false) {
         els.lead.textContent = refresh ? 'Actualizando campeonato...' : 'Cargando campeonato...';
 
+        const suffix = refresh ? '?refresh=1' : '';
         try {
-          const response = await fetch(`/api/gc/ratings/championship${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' });
-          const data = await response.json();
-          render(data);
+          const ratingsData = await fetchJson(`/api/gc/ratings/championship${suffix}`);
+          if (ratingsData?.ok && ratingsData?.championship) {
+            render(ratingsData);
+            return;
+          }
+          console.warn('[GC campeonato] Ratings no disponible, usando ACSM base.', ratingsData);
+        } catch (error) {
+          console.warn('[GC campeonato] Falló ratings, usando ACSM base.', error);
+        }
+
+        try {
+          const acsmData = await fetchJson(`/api/community/acsr-championship${suffix}`);
+          render(acsmData);
         } catch (error) {
           renderError({ message: error?.message || String(error) });
         }
