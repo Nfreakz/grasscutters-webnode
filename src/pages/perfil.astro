@@ -969,6 +969,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         const summary = data.summary || {};
         const user = data.user || {};
         const pilot = data.pilot || {};
+        const ratingDriver = data.ratings?.driver || {};
+        const ratingStats = data.ratings?.stats || {};
 
         updatePilotLinkControls(data);
 
@@ -983,12 +985,15 @@ import AppLayout from '../layouts/AppLayout.astro';
         $('profileBadges').innerHTML =
           `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span>` +
           `<span class="gc-chip">${escapeHtml(pilotName(pilot))}</span>` +
-          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>`;
+          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>` +
+          `<span class="gc-chip">SR ${escapeHtml(ratingDriver.srScore ?? '--')} ${escapeHtml(ratingDriver.srClass || '')}</span>` +
+          `<span class="gc-chip">GSR ${escapeHtml(ratingDriver.gsrRating ?? '--')} ${escapeHtml(ratingDriver.gsrClass || '')}</span>`;
 
         $('profileMeta').innerHTML =
           `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div>` +
           `<div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(cleanName(user.role,'pilot'))}</strong></div>` +
-          `<div class="gc-status-row"><span>Última actividad</span><strong>${escapeHtml(fmtDate(summary.lastSeenAt || summary.lastActivityAt || summary.latestLapAt))}</strong></div>`;
+          `<div class="gc-status-row"><span>Última actividad</span><strong>${escapeHtml(fmtDate(summary.lastSeenAt || summary.lastActivityAt || summary.latestLapAt))}</strong></div>` +
+          `<div class="gc-status-row"><span>Ratings</span><strong>SR ${escapeHtml(ratingDriver.srScore ?? '--')} · GSR ${escapeHtml(ratingDriver.gsrRating ?? '--')}</strong></div>`;
 
         const rank = summary.bestRank ? `${summary.bestRank.position}/${summary.bestRank.total}` : '--';
 
@@ -997,10 +1002,15 @@ import AppLayout from '../layouts/AppLayout.astro';
         setMetric('metricValid', `${summary.validLaps || 0}/${summary.totalLaps || 0}`);
         setMetric('metricConsistency', summary.consistency || '--');
 
-        $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos`;
+        $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos · ${ratingStats.races || 0} carreras rating`;
 
         $('summaryRows').innerHTML =
+          `<div><span>Safety Rating</span><strong>${escapeHtml(ratingDriver.srScore ?? '--')} ${escapeHtml(ratingDriver.srClass || '')}</strong></div>` +
+          `<div><span>Skill Rating</span><strong>${escapeHtml(ratingDriver.gsrRating ?? '--')} ${escapeHtml(ratingDriver.gsrClass || '')}</strong></div>` +
           `<div><span>Limpieza</span><strong>${escapeHtml(summary.cleanRate ?? summary.validityRate ?? 0)}%</strong></div>` +
+          `<div><span>Carreras limpias</span><strong>${escapeHtml(ratingStats.cleanRaces ?? 0)}</strong></div>` +
+          `<div><span>Incid./carrera</span><strong>${escapeHtml(ratingStats.incidentsPerRace ?? '--')}</strong></div>` +
+          `<div><span>Victorias / Podios</span><strong>${escapeHtml(ratingStats.wins ?? 0)} / ${escapeHtml(ratingStats.podiums ?? 0)}</strong></div>` +
           `<div><span>Media mejores 10</span><strong>${escapeHtml(summary.best10Average || '--')}</strong></div>` +
           `<div><span>Delta top 10</span><strong>${escapeHtml(summary.best10Delta || '--')}</strong></div>` +
           `<div><span>Vmax</span><strong>${escapeHtml(fmtSpeed(summary.maxSpeedKmh))}</strong></div>` +

@@ -48,11 +48,18 @@ gc-local-persistent/
 /public/archive-media/
 
 # Stracker local DB/backups
+/data/stracker/
 /data/stracker/*.db3
 /data/stracker/*.sqlite
 /data/stracker/*.sqlite3
 /data/stracker/*.bak
 /data/stracker/*.backup
+stracker.db3
+*.db3
+
+# GC local/generated rating data
+data/gc-ratings/rating-store.json
+data/gc-ratings/*.tmp.json
 
 # Backups / patch leftovers
 *.backup
@@ -104,3 +111,43 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+
+
+# ==============================
+# GC SR/GSR cleanup additions
+# ==============================
+# GC SR/GSR local generated data
+data/gc-ratings/*.bak.json
+
+# Local SQLite / STRacker databases
+*.sqlite
+*.sqlite3
+
+# Temporary delivery folders / generated packs
+files/
+snippets/
+*_pack*/
+*_Pack*/
+GC_SafetyRating_*/
+gc_safety_rating_*/
+gc_stracker_safety_rating_*/
+
+# Local helper scripts from previous SR/GSR patch packs
+scripts/check-stracker-safety-endpoint.mjs
+scripts/fix-stracker-safety-order.mjs
+scripts/inspect-stracker-safety.mjs
+scripts/verify-stracker-db.mjs
+scripts/patch-gc-safety-lab-v2.mjs
+scripts/patch-public-round-safety-from-lab-v2.mjs
+scripts/patch-stracker-championship-safety.mjs
+scripts/patch-stracker-safety-details-ui.mjs
+scripts/patch-championship-safety-rating.mjs
+
+# Old SR/GSR temporary docs
+docs/2026-06-03_GC_WebNode_SafetyRating_CleanPack_Contexto.md
+docs/GC_CHAMPIONSHIP_SAFETY_RATING.md
+docs/GC_STRACKER_SAFETY_RATING.md
+docs/GC_STRACKER_SAFETY_RATING_V1_*.md
+
+# Old SR bridge
+src/server/stracker-championship-safety-routes.ts

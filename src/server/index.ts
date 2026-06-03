@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import { registerAcsmChampionshipRoutes } from './acsm-championship-routes';
+import { registerStrackerChampionshipSafetyRoutes } from './stracker-championship-safety-routes';
 import crypto from 'node:crypto';
 import { DEFAULT_PILOT_AVATAR_URL, readAvatarImage } from '../lib/pilot-avatars';
 
@@ -19,6 +20,8 @@ import { registerMotorsportArchiveUnifiedAdminRoutes } from './motorsport-archiv
 import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-archive-local-image-upload-routes';
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
 import { registerNewsRoutes } from './news-routes';
+import { getGcRatingsService } from './gc-ratings/ratingService';
+import { registerGcRatingRoutes } from './gc-ratings/routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -4313,7 +4316,15 @@ app.use((req, res, next) => {
 });
 
 // GC ACSR/ACSM championship community integration v3.1
+/* GC_STRACKER_CHAMPIONSHIP_SAFETY_REGISTER_V1 */
+registerStrackerChampionshipSafetyRoutes(app);
 registerAcsmChampionshipRoutes(app);
+registerGcRatingRoutes(app, {
+  isAdmin: async (req) => {
+    const context = await getAuthContextAsync(req);
+    return context?.user?.role === 'admin';
+  }
+});
 
 /* GC Archivo Motorsport persistent archive-media static mount v8.4.1 */
 {
@@ -5878,6 +5889,7 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
   try {
     const allLaps = await readJoinedLaps(stracker.resolvedPath);
     const profile = buildPublicPilotProfile(playerId, allLaps);
+    const ratings = await getGcRatingsService().resolveDriverProfileByPlayerId(playerId).catch(() => null);
 
     if (!profile) {
       res.status(404).json({
@@ -5891,6 +5903,7 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
 
     res.json({
       ...profile,
+      ratings,
       stracker: {
         exists: stracker.exists,
         sizeBytes: stracker.sizeBytes,
@@ -5926,7 +5939,10 @@ app.get('/api/profile', async (req, res) => {
   const stracker = getStrackerConfig();
 
   if (!context.user.pilotLink) {
-    res.json(buildPilotProProfile(context.user, context.session, []));
+    res.json({
+      ...buildPilotProProfile(context.user, context.session, []),
+      ratings: null
+    });
     return;
   }
 
@@ -5946,8 +5962,10 @@ app.get('/api/profile', async (req, res) => {
 
   try {
     const allLaps = await readJoinedLaps(stracker.resolvedPath);
+    const ratings = await getGcRatingsService().resolveDriverProfileByPlayerId(Number(context.user.pilotLink.playerId)).catch(() => null);
     res.json({
       ...buildPilotProProfile(context.user, context.session, allLaps),
+      ratings,
       stracker: {
         exists: stracker.exists,
         sizeBytes: stracker.sizeBytes,
@@ -11075,6 +11093,9 @@ app.get('/api/gc/identity/me', async (req, res) => {
       const profile = await gcIdentityReadPilotProfileV1(playerId);
       linkedPilot = profile.ok ? profile.pilot : null;
     }
+    const ratings = Number.isFinite(playerId) && playerId > 0
+      ? await getGcRatingsService().resolveDriverProfileByPlayerId(playerId).catch(() => null)
+      : null;
 
     res.json({
       ok: true,
@@ -11084,6 +11105,7 @@ app.get('/api/gc/identity/me', async (req, res) => {
       authenticated: true,
       user,
       linkedPilot,
+      ratings,
       endpoints: {
         me: '/api/gc/identity/me',
         publicProfile: Number.isFinite(playerId) && playerId > 0 ? '/api/gc/pilots/' + encodeURIComponent(String(playerId)) + '/profile' : null
@@ -11120,6 +11142,7 @@ app.get('/api/gc/pilots/:playerId/profile', async (req, res) => {
     }
 
     const profile = await gcIdentityReadPilotProfileV1(playerId);
+    const ratings = await getGcRatingsService().resolveDriverProfileByPlayerId(playerId).catch(() => null);
 
     res.json({
       ok: profile.ok,
@@ -11130,6 +11153,7 @@ app.get('/api/gc/pilots/:playerId/profile', async (req, res) => {
       playerId,
       linkedUser: profile.linkedUser ?? null,
       pilot: profile.pilot,
+      ratings,
       stracker: profile.stracker,
       separatedFromRaceDataCore: true,
       message: profile.ok

@@ -60,6 +60,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         <select class="gc-select" id="pilotSort">
           <option value="recent">Última actividad</option>
           <option value="laps">Más vueltas</option>
+          <option value="sr">Mejor SR</option>
+          <option value="gsr">Mejor GSR</option>
           <option value="age">Más antigüedad</option>
           <option value="name">Nombre</option>
         </select>
@@ -410,6 +412,44 @@ import AppLayout from '../layouts/AppLayout.astro';
       min-height:2.35em;
     }
 
+    .gc-pilot-card-v9__ratings,
+    .gc-piloto-ratings-v10{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+
+    .gc-rating-badge-v10{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-height:28px;
+      padding:0 10px;
+      border:1px solid rgba(157,255,0,.18);
+      border-radius:999px;
+      background:rgba(255,255,255,.03);
+      color:var(--text);
+      font-size:.72rem;
+      font-weight:900;
+      line-height:1;
+      white-space:nowrap;
+    }
+
+    .gc-rating-badge-v10 strong{
+      color:var(--accent);
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
+      letter-spacing:.03em;
+    }
+
+    .gc-rating-badge-v10 small{
+      color:var(--muted);
+      font-size:.68rem;
+      font-weight:800;
+      letter-spacing:.04em;
+    }
+
     .gc-pilot-card-v9__actions{
       display:flex;
       align-items:center;
@@ -645,6 +685,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       let pilots = [];
       let firstLapByPilot = new Map();
+      let ratingsByKey = new Map();
 
       const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
         '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
@@ -788,6 +829,48 @@ import AppLayout from '../layouts/AppLayout.astro';
         return id ? `/pilotos/${encodeURIComponent(id)}` : '';
       };
 
+      const ratingLookupKeys = (pilot) => {
+        const keys = [];
+        const id = pilotId(pilot);
+        const guid = pilotGuid(pilot);
+        const name = pilotName(pilot);
+        if (id) keys.push(`player:${id}`);
+        if (guid) keys.push(`steam:${guid}`);
+        if (name) keys.push(`name:${normalize(name).replace(/[^a-z0-9]+/g, '_')}`);
+        if (id) keys.push(String(id));
+        if (guid) keys.push(String(guid));
+        if (name) keys.push(normalize(name));
+        return [...new Set(keys.filter(Boolean))];
+      };
+
+      const pilotRatings = (pilot) => {
+        for (const key of ratingLookupKeys(pilot)) {
+          const hit = ratingsByKey.get(String(key));
+          if (hit) return hit;
+        }
+        return null;
+      };
+
+      const srValue = (pilot) => {
+        const rating = pilotRatings(pilot);
+        return rating ? `${rating.srClass || '--'} ${Number(rating.sr ?? 0).toFixed(1)}` : '--';
+      };
+
+      const gsrValue = (pilot) => {
+        const rating = pilotRatings(pilot);
+        return rating ? `${Math.round(Number(rating.gsr ?? 0))}` : '--';
+      };
+
+      const ratingBadges = (pilot) => {
+        const rating = pilotRatings(pilot);
+        return `
+          <div class="gc-pilot-card-v9__ratings">
+            <span class="gc-rating-badge-v10"><small>SR</small><strong>${escapeHtml(rating ? `${rating.srClass || '--'} ${Number(rating.sr ?? 0).toFixed(1)}` : '--')}</strong></span>
+            <span class="gc-rating-badge-v10"><small>GSR</small><strong>${escapeHtml(rating ? Math.round(Number(rating.gsr ?? 0)) : '--')}</strong></span>
+          </div>
+        `;
+      };
+
       const pilotAvatarUrl = (pilot) => {
         const direct = firstValue(pilot, ['avatarUrl','avatar_url','imageUrl','image','driver.avatarUrl','player.avatarUrl','pilot.avatarUrl']);
         if (direct) return String(direct);
@@ -806,6 +889,18 @@ import AppLayout from '../layouts/AppLayout.astro';
           next.sort((a,b) => pilotName(a).localeCompare(pilotName(b), 'es', { sensitivity:'base' }));
         } else if (mode === 'laps') {
           next.sort((a,b) => totalLaps(b) - totalLaps(a) || dateMs(lastSeenRaw(b)) - dateMs(lastSeenRaw(a)));
+        } else if (mode === 'sr') {
+          next.sort((a,b) => {
+            const av = Number(pilotRatings(a)?.sr ?? -1);
+            const bv = Number(pilotRatings(b)?.sr ?? -1);
+            return bv - av || totalLaps(b) - totalLaps(a);
+          });
+        } else if (mode === 'gsr') {
+          next.sort((a,b) => {
+            const av = Number(pilotRatings(a)?.gsr ?? -1);
+            const bv = Number(pilotRatings(b)?.gsr ?? -1);
+            return bv - av || totalLaps(b) - totalLaps(a);
+          });
         } else if (mode === 'age') {
           next.sort((a,b) => {
             const av = firstLapMs(a) || Number.MAX_SAFE_INTEGER;
@@ -865,6 +960,8 @@ import AppLayout from '../layouts/AppLayout.astro';
                 <div class="gc-pilot-card-v9__metric"><span>Última conexión</span><strong>${escapeHtml(dateText(lastSeenRaw(pilot)))}</strong></div>
               </div>
 
+              ${ratingBadges(pilot)}
+
               <p class="gc-pilot-card-v9__last">${escapeHtml(ageText(firstLapMs(pilot)))} en el servidor</p>
 
               <div class="gc-pilot-card-v9__actions">
@@ -893,7 +990,13 @@ import AppLayout from '../layouts/AppLayout.astro';
               <td><span class="gc-chip ${stateClass(pilot) ? 'gc-chip--accent' : ''}">${escapeHtml(stateText(pilot))}</span></td>
               <td><strong>${escapeHtml(totalLaps(pilot).toLocaleString('es-ES'))}</strong></td>
               <td>${escapeHtml(ageText(firstLapMs(pilot)))}</td>
-              <td>${escapeHtml(dateText(lastSeenRaw(pilot)))}</td>
+              <td>
+                <strong>${escapeHtml(dateText(lastSeenRaw(pilot)))}</strong>
+                <div class="gc-piloto-ratings-v10">
+                  <span class="gc-rating-badge-v10"><small>SR</small><strong>${escapeHtml(srValue(pilot))}</strong></span>
+                  <span class="gc-rating-badge-v10"><small>GSR</small><strong>${escapeHtml(gsrValue(pilot))}</strong></span>
+                </div>
+              </td>
               <td>${url ? `<a class="gc-btn gc-btn--mini" href="${escapeHtml(url)}">Abrir ficha</a>` : '<span class="gc-muted-text">Sin ficha</span>'}</td>
             </tr>
           `;
@@ -944,6 +1047,44 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
       }
 
+      async function loadRatingsIndex() {
+        ratingsByKey = new Map();
+
+        try {
+          const response = await fetch('/api/gc/ratings/leaderboard', { cache:'no-store', credentials:'include' });
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data?.ok) return;
+
+          const srRows = Array.isArray(data.leaderboard?.sr) ? data.leaderboard.sr : [];
+          const gsrRows = Array.isArray(data.leaderboard?.gsr) ? data.leaderboard.gsr : [];
+          const gsrByKey = new Map(gsrRows.map((row) => [String(row.driverKey || ''), row]));
+
+          srRows.forEach((row) => {
+            const driverKey = String(row.driverKey || '');
+            const gsr = gsrByKey.get(driverKey) || null;
+            const merged = {
+              driverKey,
+              driver: row.driver,
+              sr: row.sr,
+              srClass: row.srClass,
+              gsr: gsr?.gsr ?? null,
+              gsrClass: gsr?.gsrClass ?? null
+            };
+
+            ratingsByKey.set(driverKey, merged);
+            const playerMatch = driverKey.match(/^player:(.+)$/);
+            if (playerMatch) ratingsByKey.set(playerMatch[1], merged);
+            if (row.driver) {
+              ratingsByKey.set(normalize(row.driver), merged);
+              ratingsByKey.set(`name:${normalize(row.driver).replace(/[^a-z0-9]+/g, '_')}`, merged);
+            }
+          });
+        } catch (error) {
+          console.warn('[GC pilotos v2.5] No se pudo cargar índice de ratings', error);
+        }
+      }
+
       async function load() {
         reloadEl.disabled = true;
         rowsEl.innerHTML = '<tr><td colspan="7">Cargando pilotos...</td></tr>';
@@ -954,7 +1095,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
           const data = await response.json();
           pilots = Array.isArray(data) ? data : (data.items || data.pilots || data.drivers || data.data || []);
-          await loadFirstLapIndex();
+          await Promise.all([loadFirstLapIndex(), loadRatingsIndex()]);
 
           countEl.textContent = String(data.total ?? data.count ?? pilots.length);
           updatedEl.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });

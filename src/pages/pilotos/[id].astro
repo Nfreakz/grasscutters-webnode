@@ -240,6 +240,36 @@ const pageTitle = pilotSeo.title;
     </div>
 
     <section id="pilotContent" class="gc-pilot-content-v20 is-hidden" aria-live="polite">
+      <section class="gc-pilot-rating-summary-v21" id="pilotRatingSummary">
+        <article class="gc-section gc-pilot-section-v20 gc-pilot-rating-card-v21">
+          <span class="gc-kicker">Safety Rating</span>
+          <h2 id="pilotSrMain">SR --</h2>
+          <p id="pilotSrMeta">Cargando SR...</p>
+        </article>
+        <article class="gc-section gc-pilot-section-v20 gc-pilot-rating-card-v21">
+          <span class="gc-kicker">Skill Rating</span>
+          <h2 id="pilotGsrMain">GSR --</h2>
+          <p id="pilotGsrMeta">Cargando GSR...</p>
+        </article>
+        <article class="gc-section gc-pilot-section-v20 gc-pilot-rating-card-v21">
+          <span class="gc-kicker">Última carrera</span>
+          <h2 id="pilotLastRaceMain">Sin datos</h2>
+          <p id="pilotLastRaceMeta">Esperando historial de rating...</p>
+        </article>
+      </section>
+
+      <section class="gc-section gc-pilot-section-v20 gc-pilot-rating-history-v21">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Últimas carreras</span>
+            <h2>Movimiento reciente de rating</h2>
+          </div>
+        </div>
+        <div class="gc-pilot-rating-races-v21" id="pilotRecentRacesTop">
+          <div class="gc-pilot-empty-v20">Cargando historial reciente...</div>
+        </div>
+      </section>
+
       <section class="gc-metrics gc-pilot-metrics-v20" id="pilotMetrics"></section>
 
       <section class="gc-pilot-top-grid-v20">
@@ -457,6 +487,63 @@ const pageTitle = pilotSeo.title;
       gap:clamp(18px,2.3vw,28px);
     }
 
+    .gc-pilot-rating-summary-v21{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:clamp(16px,2vw,24px);
+    }
+
+    .gc-pilot-rating-card-v21{
+      padding:20px;
+      border-radius:22px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb,var(--accent,#9dff00) 8%,transparent), transparent 12rem),
+        linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.018));
+    }
+
+    .gc-pilot-rating-card-v21 h2{
+      margin:.45rem 0;
+      font-size:clamp(1.7rem,3vw,2.6rem);
+      line-height:.92;
+      letter-spacing:-.05em;
+      color:var(--text);
+    }
+
+    .gc-pilot-rating-card-v21 p{
+      margin:0;
+      color:var(--soft);
+    }
+
+    .gc-pilot-rating-history-v21{
+      padding:0 0 18px;
+    }
+
+    .gc-pilot-rating-races-v21{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+      padding:0 18px;
+    }
+
+    .gc-pilot-rating-race-v21{
+      padding:14px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .gc-pilot-rating-race-v21 strong{
+      display:block;
+      color:var(--text);
+    }
+
+    .gc-pilot-rating-race-v21 span{
+      display:block;
+      margin-top:6px;
+      color:var(--soft);
+      font-size:.82rem;
+    }
+
     .gc-pilot-metrics-v20{
       margin:0;
     }
@@ -598,6 +685,8 @@ const pageTitle = pilotSeo.title;
     }
 
     @media(max-width:1180px){
+      .gc-pilot-rating-summary-v21,
+      .gc-pilot-rating-races-v21,
       .gc-pilot-top-grid-v20,
       .gc-pilot-grid-2-v20{
         grid-template-columns:1fr;
@@ -644,6 +733,13 @@ const pageTitle = pilotSeo.title;
       const subtitleEl = document.getElementById('pilotSubtitle');
       const guidEl = document.getElementById('pilotGuidValue');
       const metricsEl = document.getElementById('pilotMetrics');
+      const pilotSrMain = document.getElementById('pilotSrMain');
+      const pilotSrMeta = document.getElementById('pilotSrMeta');
+      const pilotGsrMain = document.getElementById('pilotGsrMain');
+      const pilotGsrMeta = document.getElementById('pilotGsrMeta');
+      const pilotLastRaceMain = document.getElementById('pilotLastRaceMain');
+      const pilotLastRaceMeta = document.getElementById('pilotLastRaceMeta');
+      const pilotRecentRacesTop = document.getElementById('pilotRecentRacesTop');
       const combosBody = document.getElementById('combosBody');
       const recentBody = document.getElementById('recentBody');
       const garageRows = document.getElementById('garageRows');
@@ -744,19 +840,24 @@ const pageTitle = pilotSeo.title;
 
       function renderMetrics(data) {
         const s = data.summary || {};
+        const ratingDriver = data.ratings?.driver || {};
+        const ratingStats = data.ratings?.stats || {};
+        const recentRace = Array.isArray(data.ratings?.recentRaces) ? data.ratings.recentRaces[0] : null;
         const best = firstValue(s.bestLap, data.bestLap);
         const rank = firstValue(s.bestRank, data.bestRank, s.ranking, data.ranking);
         const rankValue = typeof rank === 'object' ? firstValue(rank.position, rank.rank, rank.globalRank) : rank;
         const vmax = firstValue(s.maxSpeedKmh, s.maxSpeed, best?.maxSpeedKmh, data.maxSpeedKmh);
 
         const metrics = [
+          ['Safety Rating', ratingDriver.srScore ?? '--', ratingDriver.srClass || 'SR'],
+          ['Skill Rating', ratingDriver.gsrRating ?? '--', ratingDriver.gsrClass || 'GSR'],
           ['Mejor vuelta', best ? lapTime(best) : '--', 'referencia'],
           ['Ranking global', rankValue ? `#${rankValue}` : '--', 'posición'],
           ['Vueltas válidas', fmtNumber(s.validLaps), 'limpias'],
-          ['Limpieza', fmtPercent(s.validityRate), 'ratio'],
-          ['Coches', fmtNumber(s.carsCount), 'garaje'],
-          ['Circuitos', fmtNumber(s.tracksCount), 'pistas'],
-          ['Combos', fmtNumber(s.combosCount), 'detectados'],
+          ['Carreras limpias', fmtNumber(ratingStats.cleanRaces), 'rating'],
+          ['Incid./carrera', ratingStats.incidentsPerRace ?? '--', 'rating'],
+          ['Victorias', fmtNumber(ratingStats.wins), 'GSR'],
+          ['Podios', fmtNumber(ratingStats.podiums), 'GSR'],
           ['Vmax', fmtSpeed(vmax), 'máxima']
         ];
 
@@ -767,6 +868,27 @@ const pageTitle = pilotSeo.title;
             <small>${escapeHtml(sub)}</small>
           </div>
         `).join('');
+
+        if (pilotSrMain) pilotSrMain.textContent = `SR ${ratingDriver.srClass || '--'} ${ratingDriver.srScore ?? '--'}`;
+        if (pilotSrMeta) pilotSrMeta.textContent = `${fmtNumber(ratingStats.cleanRaces)} carreras limpias · ${ratingStats.incidentsPerRace ?? '--'} incidentes/carrera`;
+        if (pilotGsrMain) pilotGsrMain.textContent = `GSR ${ratingDriver.gsrRating ?? '--'}`;
+        if (pilotGsrMeta) pilotGsrMeta.textContent = `${ratingDriver.gsrClass || 'Sin rango'} · ${fmtNumber(ratingStats.races)} carreras computadas`;
+        if (pilotLastRaceMain) pilotLastRaceMain.textContent = recentRace ? recentRace.eventName || 'Última carrera' : 'Sin datos';
+        if (pilotLastRaceMeta) {
+          pilotLastRaceMeta.textContent = recentRace
+            ? `ΔSR ${(recentRace.deltaSr ?? 0) > 0 ? '+' : ''}${recentRace.deltaSr ?? 0} · ΔGSR ${(recentRace.deltaGsr ?? 0) > 0 ? '+' : ''}${recentRace.deltaGsr ?? 0} · ${(recentRace.incidents || []).length} incidentes`
+            : 'Esperando historial de rating...';
+        }
+        if (pilotRecentRacesTop) {
+          const races = Array.isArray(data.ratings?.recentRaces) ? data.ratings.recentRaces.slice(0, 3) : [];
+          pilotRecentRacesTop.innerHTML = races.length ? races.map((race) => `
+            <article class="gc-pilot-rating-race-v21">
+              <strong>${escapeHtml(race.eventName || 'Carrera')}</strong>
+              <span>ΔSR ${(race.deltaSr ?? 0) > 0 ? '+' : ''}${escapeHtml(race.deltaSr ?? 0)} · ΔGSR ${(race.deltaGsr ?? 0) > 0 ? '+' : ''}${escapeHtml(race.deltaGsr ?? 0)}</span>
+              <span>${escapeHtml((race.incidents || []).length)} incidentes · ${escapeHtml(race.position ? `P${race.position}` : 'Sin posición')}</span>
+            </article>
+          `).join('') : '<div class="gc-pilot-empty-v20">Sin historial reciente de rating.</div>';
+        }
       }
 
       function renderCombos(data) {
@@ -845,14 +967,15 @@ const pageTitle = pilotSeo.title;
       function render(data) {
         const pilot = firstValue(data.pilot, data.driver) || {};
         const summary = data.summary || {};
+        const ratingDriver = data.ratings?.driver || {};
         const name = pilotName(pilot, data);
         const guid = firstValue(pilot.steamGuid, pilot.guid, data.pilotLink?.steamGuid);
         const latest = firstValue(summary.latestLap, data.latestLap);
 
         titleEl.textContent = name;
         subtitleEl.textContent = latest
-          ? `Última actividad: ${fmtDate(latest.timestampIso)} · datos generados desde stracker.db3.`
-          : `Ficha pública del piloto #${playerId}. Datos generados desde stracker.db3.`;
+          ? `Última actividad: ${fmtDate(latest.timestampIso)} · SR ${ratingDriver.srScore ?? '--'} · GSR ${ratingDriver.gsrRating ?? '--'}.`
+          : `Ficha pública del piloto #${playerId}. SR ${ratingDriver.srScore ?? '--'} · GSR ${ratingDriver.gsrRating ?? '--'}.`;
 
         guidEl.textContent = guid ? `${String(guid).slice(0,18)}...${String(guid).slice(-8)}` : '--';
         guidEl.title = guid || '';

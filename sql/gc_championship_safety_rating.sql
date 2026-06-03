@@ -1,0 +1,60 @@
+-- GrassCutters Championship Safety Rating
+-- Opcional: el módulo crea estas tablas automáticamente si MySQL está configurado.
+-- Úsalo manualmente solo si quieres preparar la BD antes del primer arranque.
+
+CREATE TABLE IF NOT EXISTS gc_championship_results (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  championship_id VARCHAR(191) NOT NULL,
+  event_id VARCHAR(191) NOT NULL,
+  event_index INT NOT NULL DEFAULT 0,
+  event_name VARCHAR(255) NOT NULL,
+  event_completed_at DATETIME(3) NULL,
+  driver_key VARCHAR(191) NOT NULL,
+  driver_guid VARCHAR(191) NULL,
+  driver_name VARCHAR(255) NOT NULL,
+  car_model VARCHAR(255) NULL,
+  position INT NOT NULL DEFAULT 0,
+  num_laps INT NOT NULL DEFAULT 0,
+  best_lap_ms INT NOT NULL DEFAULT 0,
+  total_time_ms BIGINT NOT NULL DEFAULT 0,
+  base_points DECIMAL(10,2) NOT NULL DEFAULT 0,
+  points DECIMAL(10,2) NOT NULL DEFAULT 0,
+  cuts INT NOT NULL DEFAULT 0,
+  clean_laps INT NOT NULL DEFAULT 0,
+  penalty_time_ms INT NOT NULL DEFAULT 0,
+  lap_penalty INT NOT NULL DEFAULT 0,
+  disqualified TINYINT(1) NOT NULL DEFAULT 0,
+  dnf TINYINT(1) NOT NULL DEFAULT 0,
+  safety_incidents INT NOT NULL DEFAULT 0,
+  sr_before DECIMAL(5,2) NOT NULL DEFAULT 80,
+  sr_after DECIMAL(5,2) NOT NULL DEFAULT 80,
+  sr_delta DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sr_class VARCHAR(8) NOT NULL DEFAULT 'B',
+  source VARCHAR(40) NOT NULL DEFAULT 'acsm-sync',
+  synced_at DATETIME(3) NOT NULL,
+  UNIQUE KEY uniq_gc_championship_result (championship_id, event_id, driver_key),
+  KEY idx_gc_championship_results_event (championship_id, event_id, position),
+  KEY idx_gc_championship_results_driver (championship_id, driver_key),
+  KEY idx_gc_championship_results_points (championship_id, points)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS gc_championship_safety (
+  championship_id VARCHAR(191) NOT NULL,
+  driver_key VARCHAR(191) NOT NULL,
+  driver_guid VARCHAR(191) NULL,
+  driver_name VARCHAR(255) NOT NULL,
+  car_model VARCHAR(255) NULL,
+  sr_score DECIMAL(5,2) NOT NULL DEFAULT 80,
+  sr_class VARCHAR(8) NOT NULL DEFAULT 'B',
+  total_races INT NOT NULL DEFAULT 0,
+  clean_races INT NOT NULL DEFAULT 0,
+  total_cuts INT NOT NULL DEFAULT 0,
+  total_penalty_ms BIGINT NOT NULL DEFAULT 0,
+  total_incidents INT NOT NULL DEFAULT 0,
+  last_event_id VARCHAR(191) NULL,
+  last_event_name VARCHAR(255) NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (championship_id, driver_key),
+  KEY idx_gc_championship_safety_score (championship_id, sr_score),
+  KEY idx_gc_championship_safety_guid (driver_guid)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
