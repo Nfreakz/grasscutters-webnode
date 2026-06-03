@@ -21,6 +21,7 @@ import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archiv
 import { registerNewsRoutes } from './news-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
+import { startStrackerBackupRetention } from './stracker-backup-retention';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -3977,6 +3978,7 @@ const mockPilots = [
 ];
 
 const app = express();
+startStrackerBackupRetention();
 
 /* GC_SECURITY_CORE_V15_32 START */
 type GcRateEntryV1532 = {
