@@ -15,6 +15,15 @@ function mysqlToIso(value: unknown) {
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
 }
 
+function mysqlNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mysqlInt(value: unknown, fallback = 0) {
+  return Math.round(mysqlNumber(value, fallback));
+}
+
 export class MysqlRatingStore implements RatingStore {
   kind = 'mysql' as const;
   private poolPromise: Promise<Pool> | null = null;
@@ -332,19 +341,19 @@ export class MysqlRatingStore implements RatingStore {
           driver.steamGuid,
           driver.strackerPlayerId,
           driver.displayName,
-          driver.srScore,
+          mysqlNumber(driver.srScore),
           driver.srClass,
-          driver.gsrMu,
-          driver.gsrSigma,
-          driver.gsrRating,
+          mysqlNumber(driver.gsrMu),
+          mysqlNumber(driver.gsrSigma),
+          mysqlInt(driver.gsrRating),
           driver.gsrClass,
-          driver.racesCount,
-          driver.cleanRaces,
-          driver.wins,
-          driver.podiums,
-          driver.incidentPointsTotal,
-          driver.lastDeltaSr,
-          driver.lastDeltaGsr,
+          mysqlInt(driver.racesCount),
+          mysqlInt(driver.cleanRaces),
+          mysqlInt(driver.wins),
+          mysqlInt(driver.podiums),
+          mysqlNumber(driver.incidentPointsTotal),
+          mysqlNumber(driver.lastDeltaSr),
+          mysqlInt(driver.lastDeltaGsr),
           driver.lastEventId,
           isoToMysql(driver.lastRaceAt),
           isoToMysql(driver.createdAt),
@@ -368,30 +377,30 @@ export class MysqlRatingStore implements RatingStore {
           result.strackerPlayerId,
           result.displayName,
           result.car,
-          result.position,
-          result.points,
-          result.laps,
-          result.bestLapMs,
-          result.oldSr,
-          result.newSr,
-          result.deltaSr,
-          result.oldGsr,
-          result.newGsr,
-          result.deltaGsr,
-          result.gsrMuBefore,
-          result.gsrMuAfter,
-          result.gsrSigmaBefore,
-          result.gsrSigmaAfter,
-          result.incidentPoints,
+          mysqlInt(result.position),
+          mysqlNumber(result.points),
+          mysqlInt(result.laps),
+          mysqlInt(result.bestLapMs),
+          mysqlNumber(result.oldSr),
+          mysqlNumber(result.newSr),
+          mysqlNumber(result.deltaSr),
+          mysqlInt(result.oldGsr),
+          mysqlInt(result.newGsr),
+          mysqlInt(result.deltaGsr),
+          mysqlNumber(result.gsrMuBefore),
+          mysqlNumber(result.gsrMuAfter),
+          mysqlNumber(result.gsrSigmaBefore),
+          mysqlNumber(result.gsrSigmaAfter),
+          mysqlNumber(result.incidentPoints),
           result.cleanRace ? 1 : 0,
           result.dnf ? 1 : 0,
           result.dsq ? 1 : 0,
           isoToMysql(result.processedAt),
-          result.match.confidence,
+          mysqlNumber(result.match?.confidence),
           result.match.method,
-          result.match.bestLapDiffMs,
-          result.match.lapDiff,
-          result.match.strackerPlayerInSessionId,
+          Number.isFinite(Number(result.match?.bestLapDiffMs)) ? Number(result.match.bestLapDiffMs) : null,
+          Number.isFinite(Number(result.match?.lapDiff)) ? Number(result.match.lapDiff) : null,
+          Number.isFinite(Number(result.match?.strackerPlayerInSessionId)) ? Number(result.match.strackerPlayerInSessionId) : null,
           JSON.stringify(result.notes || [])
         ]);
 
@@ -407,8 +416,8 @@ export class MysqlRatingStore implements RatingStore {
             incident.driverKey,
             incident.lapNumber,
             incident.type,
-            incident.count,
-            incident.srDelta,
+            mysqlInt(incident.count),
+            mysqlNumber(incident.srDelta),
             incident.description,
             incident.source
           ]);
@@ -422,13 +431,13 @@ export class MysqlRatingStore implements RatingStore {
           `, [
             lap.id,
             lap.eventResultId,
-            lap.lapNumber,
-            lap.lapTimeMs,
+            mysqlInt(lap.lapNumber),
+            mysqlInt(lap.lapTimeMs),
             lap.valid ? 1 : 0,
-            lap.cuts,
-            lap.collisionsCar,
-            lap.collisionsEnv,
-            lap.srDelta,
+            mysqlInt(lap.cuts),
+            mysqlInt(lap.collisionsCar),
+            mysqlInt(lap.collisionsEnv),
+            mysqlNumber(lap.srDelta),
             lap.notes
           ]);
         }
