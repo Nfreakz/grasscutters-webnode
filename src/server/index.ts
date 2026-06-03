@@ -1,11 +1,10 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import { registerAcsmChampionshipRoutes } from './acsm-championship-routes';
-import { registerStrackerChampionshipSafetyRoutes } from './stracker-championship-safety-routes';
 import crypto from 'node:crypto';
 import { DEFAULT_PILOT_AVATAR_URL, readAvatarImage } from '../lib/pilot-avatars';
 
@@ -104,7 +103,7 @@ async function importMysql2() {
 }
 
 async function getMysqlPool() {
-  if (!useMysqlStorage()) throw new Error('APP_STORAGE_DRIVER no estÃ¡ en mysql.');
+  if (!useMysqlStorage()) throw new Error('APP_STORAGE_DRIVER no estÃƒÂ¡ en mysql.');
   if (mysqlPool) return mysqlPool;
 
   const host = process.env.MYSQL_HOST?.trim();
@@ -262,7 +261,7 @@ function sqliteQuery(db: AppSqliteDb, sql: string, params: unknown[] = []) {
 }
 
 async function openAppSqliteDb() {
-  if (!useSqliteStorage()) throw new Error('APP_STORAGE_DRIVER no estÃ¡ en sqlite.');
+  if (!useSqliteStorage()) throw new Error('APP_STORAGE_DRIVER no estÃƒÂ¡ en sqlite.');
   const sqlitePath = getAppSqlitePath();
   ensureDirForFile(sqlitePath);
   const SQL = await getAppSqlJs();
@@ -512,7 +511,7 @@ function getStoragePersistenceInfo() {
       insideProject,
       persistent: true,
       warning: insideProject
-        ? 'SQLite local activo. Es correcto para desarrollo si data/app/*.sqlite estÃ¡ en .gitignore. En Hostinger usa APP_STORAGE_DRIVER=mysql.'
+        ? 'SQLite local activo. Es correcto para desarrollo si data/app/*.sqlite estÃƒÂ¡ en .gitignore. En Hostinger usa APP_STORAGE_DRIVER=mysql.'
         : null
     };
   }
@@ -525,7 +524,7 @@ function getStoragePersistenceInfo() {
     insideProject,
     persistent: !insideProject,
     warning: insideProject
-      ? 'APP_DATA_DIR no estÃ¡ configurado fuera del proyecto. En algunos deploys Hostinger puede borrar data/app/users.json y display-names.json.'
+      ? 'APP_DATA_DIR no estÃƒÂ¡ configurado fuera del proyecto. En algunos deploys Hostinger puede borrar data/app/users.json y display-names.json.'
       : null
   };
 }
@@ -582,8 +581,8 @@ function getAppStorageStatus() {
     recommendation: useMysqlStorage()
       ? 'Storage de app en MySQL. Usuarios, sesiones y alias sobreviven a deploys.'
       : useSqliteStorage()
-        ? 'Storage SQLite local activo. Perfecto para pruebas locales; en Hostinger mantÃ©n APP_STORAGE_DRIVER=mysql.'
-        : 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. AsÃ­ los deploys no pisan usuarios ni alias.'
+        ? 'Storage SQLite local activo. Perfecto para pruebas locales; en Hostinger mantÃƒÂ©n APP_STORAGE_DRIVER=mysql.'
+        : 'En Hostinger usa APP_DATA_DIR con una ruta fuera de nodejs, por ejemplo /home/TU_USUARIO/gc-persistent. AsÃƒÂ­ los deploys no pisan usuarios ni alias.'
   };
 }
 
@@ -635,9 +634,9 @@ function parseDisplayNameStoreFromJsonFile(filePath: string): DisplayNameStore |
 }
 
 function readDisplayNameStore(force = false): DisplayNameStore {
-  // En MySQL/SQLite los alias son 100% DB-backed. Las rutas sÃ­ncronas solo deben
-  // leer la cachÃ© preparada por readDisplayNameStoreAsync(), nunca volver a JSON.
-  // Esto evita que /hotlaps, /perfil y demÃ¡s ignoren la tabla gc_display_names.
+  // En MySQL/SQLite los alias son 100% DB-backed. Las rutas sÃƒÂ­ncronas solo deben
+  // leer la cachÃƒÂ© preparada por readDisplayNameStoreAsync(), nunca volver a JSON.
+  // Esto evita que /hotlaps, /perfil y demÃƒÂ¡s ignoren la tabla gc_display_names.
   if (useMysqlStorage() || useSqliteStorage()) {
     const cacheKey = useMysqlStorage() ? 'mysql:gc_display_names' : `sqlite:${getAppSqlitePath()}`;
     if (!force && displayNameCache?.path === cacheKey) return displayNameCache.store;
@@ -847,7 +846,7 @@ function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, so
 
     // Los pilotos pueden compartir nombre visible en stracker. Si la vuelta trae PlayerId
     // o SteamGuid, NO hacemos fallback por nombre para evitar que dos "Neo" reciban el
-    // mismo override. Solo usamos sourceName cuando no hay identidad tÃ©cnica disponible.
+    // mismo override. Solo usamos sourceName cuando no hay identidad tÃƒÂ©cnica disponible.
     if (kind === 'driver' && (hasId || code)) return false;
 
     if (name && entryName && entryName === name) return true;
@@ -1425,7 +1424,7 @@ async function getCurrentAdminAccess(req: express.Request): Promise<AdminAuthAcc
       user: null,
       via: 'none',
       statusCode: 401,
-      message: 'Necesitas iniciar sesiÃ³n con una cuenta admin.'
+      message: 'Necesitas iniciar sesiÃƒÂ³n con una cuenta admin.'
     };
   }
 
@@ -1624,7 +1623,7 @@ function readBooleanEnv(name: string, fallback = false) {
   const raw = process.env[name];
   if (raw === undefined || raw === null || raw.trim() === '') return fallback;
   const normalized = raw.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on', 'enabled'].includes(normalized)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃƒÂ­', 'on', 'enabled'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
   return fallback;
 }
@@ -1726,7 +1725,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       reason,
       startedAt: started,
       finishedAt: new Date().toISOString(),
-      message: 'Auto-sync fallÃ³ con una excepciÃ³n no esperada.',
+      message: 'Auto-sync fallÃƒÂ³ con una excepciÃƒÂ³n no esperada.',
       statusCode: 500,
       error: error instanceof Error ? error.message : String(error)
     };
@@ -1761,8 +1760,8 @@ function getModules() {
       enabled: true,
       status: fs.existsSync(distDir) ? 'active' : 'missing_dist',
       message: fs.existsSync(distDir)
-        ? 'Web Astro estÃ¡tica servida desde dist.'
-        : 'No existe dist todavÃ­a. Revisa que el build haya terminado.'
+        ? 'Web Astro estÃƒÂ¡tica servida desde dist.'
+        : 'No existe dist todavÃƒÂ­a. Revisa que el build haya terminado.'
     },
     api: {
       enabled: true,
@@ -1773,7 +1772,7 @@ function getModules() {
       enabled: discordEnabled,
       status: discordEnabled ? 'configured_later' : 'disabled',
       message: discordEnabled
-        ? 'Discord marcado como activo, pero el bot real no arranca todavÃ­a.'
+        ? 'Discord marcado como activo, pero el bot real no arranca todavÃƒÂ­a.'
         : 'Discord apagado en este despliegue.'
     },
     stracker: {
@@ -1820,7 +1819,7 @@ function getQueryBool(req: express.Request, name: string, fallback: boolean) {
   const raw = getOneQueryValue(req.query[name]);
   if (!raw) return fallback;
   const normalized = raw.toLowerCase();
-  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on'].includes(normalized)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃƒÂ­', 'on'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   return fallback;
 }
@@ -1920,7 +1919,7 @@ const gcStrackerQueryCache = new Map<string, GcQueryCacheEntry>();
 function gcPerfBoolEnv(name: string, fallback: boolean) {
   const raw = String(process.env[name] ?? '').trim().toLowerCase();
   if (!raw) return fallback;
-  if (['1', 'true', 'yes', 'si', 'sí', 'on', 'enabled'].includes(raw)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on', 'enabled'].includes(raw)) return true;
   if (['0', 'false', 'no', 'off', 'disabled'].includes(raw)) return false;
   return fallback;
 }
@@ -1980,7 +1979,7 @@ function invalidateStrackerRuntimeCache(reason = 'manual') {
   gcStrackerBytesCache = null;
   gcJoinedLapsCache = null;
   gcStrackerQueryCache.clear();
-  if (gcPerformanceLogEnabled()) console.log('[GC PERF] Caché stracker limpiada: ' + reason);
+  if (gcPerformanceLogEnabled()) console.log('[GC PERF] CachÃ© stracker limpiada: ' + reason);
 }
 
 async function getCachedStrackerSqlJs() {
@@ -2086,7 +2085,7 @@ async function runStrackerQuery(dbPath: string, sql: string) {
 
   if (gcPerformanceLogEnabled()) {
     const elapsed = Date.now() - started;
-    if (elapsed > 120) console.log('[GC PERF] SQL stracker ' + elapsed + 'ms · ' + normalizedSql.slice(0, 120));
+    if (elapsed > 120) console.log('[GC PERF] SQL stracker ' + elapsed + 'ms Â· ' + normalizedSql.slice(0, 120));
   }
 
   return gcCloneRows(rows);
@@ -2100,7 +2099,7 @@ function getSafeStrackerOrRespond(res: express.Response) {
       ok: false,
       stracker,
       message: stracker.exists
-        ? 'stracker.db3 existe, pero no parece SQLite vÃ¡lido.'
+        ? 'stracker.db3 existe, pero no parece SQLite vÃƒÂ¡lido.'
         : 'No se ha encontrado stracker.db3. Sincroniza desde GTX con /api/stracker/sync.'
     });
     return null;
@@ -2224,7 +2223,7 @@ async function syncStrackerFromGTX() {
     return {
       ok: false,
       statusCode: 409,
-      message: 'Ya hay una sincronizaciÃ³n en curso.'
+      message: 'Ya hay una sincronizaciÃƒÂ³n en curso.'
     };
   }
 
@@ -2279,11 +2278,11 @@ async function syncStrackerFromGTX() {
     const stats = fs.statSync(tempPath);
 
     if (stats.size < 100) {
-      throw new Error(`Archivo descargado demasiado pequeÃ±o: ${stats.size} bytes.`);
+      throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
     }
 
     if (!isSQLiteFile(tempPath)) {
-      throw new Error('El archivo descargado no parece SQLite vÃ¡lido. Cabecera incorrecta.');
+      throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
     }
 
     if (backupPath && fs.existsSync(target.resolvedPath)) {
@@ -2570,7 +2569,7 @@ async function readJoinedLaps(dbPath: string) {
 
   if (gcPerformanceLogEnabled()) {
     const elapsed = Date.now() - started;
-    console.log('[GC PERF] readJoinedLaps ' + elapsed + 'ms · vueltas=' + laps.length);
+    console.log('[GC PERF] readJoinedLaps ' + elapsed + 'ms Â· vueltas=' + laps.length);
   }
 
   return laps;
@@ -3124,7 +3123,7 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
     sectors: bestSectors,
     message: user.pilotLink
       ? 'Perfil Pro generado desde la cuenta web y stracker.db3.'
-      : 'Cuenta activa sin piloto vinculado todavÃ­a.'
+      : 'Cuenta activa sin piloto vinculado todavÃƒÂ­a.'
   };
 }
 
@@ -3177,24 +3176,24 @@ function buildPublicPilotProfile(playerIdRaw: unknown, allLaps: PilotProfileLap[
     authenticated: false,
     user: null,
     session: null,
-    message: 'Perfil pÃºblico generado desde stracker.db3.'
+    message: 'Perfil pÃƒÂºblico generado desde stracker.db3.'
   };
 }
 
 async function resolvePilotLink(playerIdRaw: unknown) {
   const playerId = Number(playerIdRaw);
   if (!Number.isFinite(playerId) || playerId <= 0) {
-    return { ok: false as const, message: 'El piloto seleccionado no es vÃ¡lido.' };
+    return { ok: false as const, message: 'El piloto seleccionado no es vÃƒÂ¡lido.' };
   }
 
   const stracker = getStrackerConfig();
   if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    return { ok: false as const, message: 'No hay stracker.db3 vÃ¡lido para vincular piloto.' };
+    return { ok: false as const, message: 'No hay stracker.db3 vÃƒÂ¡lido para vincular piloto.' };
   }
 
   const pilot = await getPilotStatsByPlayerId(stracker.resolvedPath, playerId);
   if (!pilot) {
-    return { ok: false as const, message: 'No se encontrÃ³ ese piloto en stracker.db3.' };
+    return { ok: false as const, message: 'No se encontrÃƒÂ³ ese piloto en stracker.db3.' };
   }
 
   return {
@@ -3473,7 +3472,7 @@ function carSummaryFromCars(cars: any[]) {
   if (!clean.length) return 'Sin coches detectados';
   if (clean.length === 1) return clean[0].name || clean[0].code;
   if (clean.length <= 3) return clean.map((car) => car.name || car.code).join(' + ');
-  return `${clean.length} coches Â· ${clean.slice(0, 2).map((car) => car.name || car.code).join(' + ')} + ${clean.length - 2} mÃ¡s`;
+  return `${clean.length} coches Ã‚Â· ${clean.slice(0, 2).map((car) => car.name || car.code).join(' + ')} + ${clean.length - 2} mÃƒÂ¡s`;
 }
 
 function comboDefinitionMap(comboDefinitions: any[] = []) {
@@ -3598,7 +3597,7 @@ function buildLogicalComboDefinitions(comboDefinitions: any[] = []) {
         type: 'similar-car-pack',
         newCarThreshold: LOGICAL_COMBO_NEW_CAR_THRESHOLD,
         newCarThresholdPercent: Math.round(LOGICAL_COMBO_NEW_CAR_THRESHOLD * 100),
-        description: 'Mismo circuito: si menos del 75% de los coches son nuevos, se considera el mismo combo lÃ³gico.'
+        description: 'Mismo circuito: si menos del 75% de los coches son nuevos, se considera el mismo combo lÃƒÂ³gico.'
       }
     });
   }
@@ -3854,7 +3853,7 @@ function buildComboProfile(comboIdRaw: unknown, allLaps: ComboLap[], comboDefini
     recentLaps,
     drivers,
     invalidHotspots,
-    message: 'Combo lÃ³gico generado desde stracker.db3: mismo circuito y paquete de coches compatible. Si el 75% de los coches son nuevos, se crea otro combo.'
+    message: 'Combo lÃƒÂ³gico generado desde stracker.db3: mismo circuito y paquete de coches compatible. Si el 75% de los coches son nuevos, se crea otro combo.'
   };
 }
 
@@ -3990,7 +3989,7 @@ const gcRateStoreV1532 = new Map<string, GcRateEntryV1532>();
 function gcSecurityBoolEnvV1532(name: string, fallback: boolean) {
   const raw = String(process.env[name] ?? '').trim().toLowerCase();
   if (!raw) return fallback;
-  if (['1', 'true', 'yes', 'si', 'sí', 'on'].includes(raw)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on'].includes(raw)) return true;
   if (['0', 'false', 'no', 'off'].includes(raw)) return false;
   return fallback;
 }
@@ -4308,7 +4307,7 @@ app.use((req, res, next) => {
     if (!gcPerformanceLogEnabled()) return;
     const elapsed = Date.now() - started;
     if (elapsed >= gcPerfNumberEnv('GC_PERF_SLOW_MS', 300, 0, 10000)) {
-      console.log('[GC PERF] ' + req.method + ' ' + url + ' -> ' + res.statusCode + ' · ' + elapsed + 'ms');
+      console.log('[GC PERF] ' + req.method + ' ' + url + ' -> ' + res.statusCode + ' Â· ' + elapsed + 'ms');
     }
   });
 
@@ -4317,7 +4316,6 @@ app.use((req, res, next) => {
 
 // GC ACSR/ACSM championship community integration v3.1
 /* GC_STRACKER_CHAMPIONSHIP_SAFETY_REGISTER_V1 */
-registerStrackerChampionshipSafetyRoutes(app);
 registerAcsmChampionshipRoutes(app);
 registerGcRatingRoutes(app, {
   isAdmin: async (req) => {
@@ -4418,7 +4416,7 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
     if (!auth.authorized) return res.status(403).json({ ok: false, authenticated: true, authorized: false, source: 'acsm-priority-mysql-guard-v6', message: auth.message || 'Acceso admin requerido.' });
 
     if (typeof gcAcsmSyncCurrentComboV1 !== 'function') {
-      return res.status(500).json({ ok: false, source: 'acsm-priority-mysql-guard-v6', message: 'No se encontraron las funciones de sincronizaciÃ³n ACSM. Aplica primero el pack ACSM current combo sync.' });
+      return res.status(500).json({ ok: false, source: 'acsm-priority-mysql-guard-v6', message: 'No se encontraron las funciones de sincronizaciÃƒÂ³n ACSM. Aplica primero el pack ACSM current combo sync.' });
     }
 
     const result: any = await gcAcsmSyncCurrentComboV1();
@@ -4494,7 +4492,7 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
   try {
     const syncCurrentCombo = gcAcsmGetLocalFunctionV4('gcAcsmSyncCurrentComboV1') || gcAcsmGetLocalFunctionV4('gcAcsmSyncCurrentComboV2');
     if (typeof syncCurrentCombo !== 'function') {
-      res.status(500).json({ ok: false, source: 'acsm-profile-guard-v4', message: 'No se encontraron las funciones de sincronizaciÃ³n ACSM. Aplica primero el pack ACSM current combo sync.' });
+      res.status(500).json({ ok: false, source: 'acsm-profile-guard-v4', message: 'No se encontraron las funciones de sincronizaciÃƒÂ³n ACSM. Aplica primero el pack ACSM current combo sync.' });
       return;
     }
 
@@ -4583,7 +4581,7 @@ function gcCompatCalendarStorageInfo() {
     sizeBytes: stats?.size || 0,
     modifiedAt: stats?.mtime?.toISOString?.() || null,
     warning: isPathInside(calendarPath, rootDir)
-      ? 'El calendario estÃ¡ en JSON dentro del proyecto. Usa APP_STORAGE_DRIVER=mysql o APP_CALENDAR_EVENTS_PATH fuera del deploy.'
+      ? 'El calendario estÃƒÂ¡ en JSON dentro del proyecto. Usa APP_STORAGE_DRIVER=mysql o APP_CALENDAR_EVENTS_PATH fuera del deploy.'
       : null
   };
 }
@@ -4602,7 +4600,7 @@ app.get('/api/admin/performance/cache', async (req, res) => {
       sizeBytes: stracker.sizeBytes,
       modifiedAt: stracker.modifiedAt,
     },
-    message: 'Estado de caché de rendimiento v15.29.3.'
+    message: 'Estado de cachÃ© de rendimiento v15.29.3.'
   });
 });
 
@@ -4611,7 +4609,7 @@ app.post('/api/admin/performance/cache/clear', async (req, res) => {
   if (!context) return;
 
   invalidateStrackerRuntimeCache('admin-clear');
-  res.json({ ok: true, cache: gcCacheInfo(), message: 'Caché de rendimiento limpiada.' });
+  res.json({ ok: true, cache: gcCacheInfo(), message: 'CachÃ© de rendimiento limpiada.' });
 });
 
 app.get('/api/admin/status', async (req, res, next) => {
@@ -4705,7 +4703,7 @@ app.post('/api/admin/users/:id/role', async (req, res) => {
     }
 
     if (!role) {
-      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Rol no válido.' });
+      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Rol no vÃ¡lido.' });
       return;
     }
 
@@ -4718,7 +4716,7 @@ app.post('/api/admin/users/:id/role', async (req, res) => {
     }
 
     if (user.role === 'admin' && role !== 'admin' && isLastAdmin(store, user.id)) {
-      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes quitar el último administrador.' });
+      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes quitar el Ãºltimo administrador.' });
       return;
     }
 
@@ -4806,7 +4804,7 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
     }
 
     if (password.length < 8) {
-      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La contraseña debe tener al menos 8 caracteres.' });
+      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La contraseÃ±a debe tener al menos 8 caracteres.' });
       return;
     }
 
@@ -4834,14 +4832,14 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)),
       summary: getUserStoreAdminSummary(store),
       source: 'admin-users-backend-endpoints-v1',
-      message: 'Contraseña actualizada.'
+      message: 'ContraseÃ±a actualizada.'
     });
   } catch (error: any) {
-    console.error('[GC] Error reseteando contraseña usuario admin v1:', error);
+    console.error('[GC] Error reseteando contraseÃ±a usuario admin v1:', error);
     res.status(500).json({
       ok: false,
       source: 'admin-users-backend-endpoints-v1',
-      message: error?.message || 'No se pudo cambiar la contraseña.'
+      message: error?.message || 'No se pudo cambiar la contraseÃ±a.'
     });
   }
 });
@@ -4867,7 +4865,7 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
         pilots: [],
         source: 'admin-users-backend-endpoints-v1',
         stracker,
-        message: 'No hay stracker.db3 válido para calcular pilotos sin cuenta.'
+        message: 'No hay stracker.db3 vÃ¡lido para calcular pilotos sin cuenta.'
       });
       return;
     }
@@ -4942,7 +4940,7 @@ function gcCalendarToBoolDbV8(value: unknown, fallback = false) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
   const text = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on'].includes(text)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃƒÂ­', 'on'].includes(text)) return true;
   if (['0', 'false', 'no', 'off'].includes(text)) return false;
   return fallback;
 }
@@ -5228,7 +5226,7 @@ app.get('/api/calendar-events', async (_req: any, res: any) => {
     const events = (await gcCalendarReadEventsDbV8()).filter((event) => event.visible !== false);
     res.json({ ok: true, source: gcCalendarStorageSourceDbV8(), events, items: events });
   } catch (error: any) {
-    console.error('[GC] Error leyendo calendario pÃºblico:', error);
+    console.error('[GC] Error leyendo calendario pÃƒÂºblico:', error);
     res.status(500).json({ ok: false, message: error?.message || 'No se pudo leer el calendario.' });
   }
 });
@@ -5263,7 +5261,7 @@ app.post('/api/admin/calendar-events', gcCalendarJsonBodyDbV8, async (req: any, 
     const events = await gcCalendarReadEventsDbV8();
     const event = gcCalendarNormalizeEventDbV8(req.body || {});
     if (!event.title || !event.startDate) {
-      res.status(400).json({ ok: false, message: 'TÃ­tulo y fecha inicio son obligatorios.' });
+      res.status(400).json({ ok: false, message: 'TÃƒÂ­tulo y fecha inicio son obligatorios.' });
       return;
     }
     const nextEvents = [...events.filter((item) => item.id !== event.id), event];
@@ -5287,7 +5285,7 @@ app.put('/api/admin/calendar-events/:id', gcCalendarJsonBodyDbV8, async (req: an
     }
     const event = gcCalendarNormalizeEventDbV8({ ...(req.body || {}), id }, existing);
     if (!event.title || !event.startDate) {
-      res.status(400).json({ ok: false, message: 'TÃ­tulo y fecha inicio son obligatorios.' });
+      res.status(400).json({ ok: false, message: 'TÃƒÂ­tulo y fecha inicio son obligatorios.' });
       return;
     }
     const nextEvents = events.map((item) => item.id === id ? event : item);
@@ -5336,7 +5334,7 @@ function gcAcsmBoolV1(value: unknown, fallback = false) {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value === 'boolean') return value;
   const text = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on'].includes(text)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃƒÂ­', 'on'].includes(text)) return true;
   if (['0', 'false', 'no', 'off'].includes(text)) return false;
   return fallback;
 }
@@ -5446,7 +5444,7 @@ function gcAcsmBuildComboEventV1(cfg: GcAcsmServerCfgV1) {
   return gcCalendarNormalizeEventDbV8({
     id: process.env.ACSM_COMBO_EVENT_ID?.trim() || 'acsm-current-combo',
     type: 'combo',
-    title: `${titlePrefix} Â· ${trackName}`,
+    title: `${titlePrefix} Ã‚Â· ${trackName}`,
     startDate,
     startTime,
     endDate: '',
@@ -5455,7 +5453,7 @@ function gcAcsmBuildComboEventV1(cfg: GcAcsmServerCfgV1) {
     carNames,
     linkUrl: panelUrl,
     description: [
-      'Importado automÃ¡ticamente desde Assetto Corsa Server Manager.',
+      'Importado automÃƒÂ¡ticamente desde Assetto Corsa Server Manager.',
       cfg.serverName ? `Servidor: ${cfg.serverName}` : '',
       cfg.trackCode ? `Track code: ${cfg.trackCode}` : '',
       cfg.trackConfig ? `Config track: ${cfg.trackConfig}` : '',
@@ -5592,7 +5590,7 @@ function gcCalendarV6NormalizeEvent(input: any, existing?: Partial<GcCalendarV6E
   const startDate = gcCalendarV6Date(input.startDate ?? input.date ?? input.startsAt ?? existing?.startDate);
   const title = gcCalendarV6Text(input.title ?? existing?.title).slice(0, 180);
 
-  if (!title) throw new Error('El tÃ­tulo es obligatorio.');
+  if (!title) throw new Error('El tÃƒÂ­tulo es obligatorio.');
   if (!startDate) throw new Error('La fecha de inicio es obligatoria.');
 
   return {
@@ -5807,7 +5805,7 @@ app.get('/api/status', (_req, res) => {
       users: modules.users.enabled
     },
     moduleStatus: modules,
-    note: useMysqlStorage() ? 'App storage activo con driver configurable: MySQL en producciÃ³n, SQLite/JSON en local.' : 'Storage JSON activo. Para producciÃ³n usa APP_STORAGE_DRIVER=mysql.'
+    note: useMysqlStorage() ? 'App storage activo con driver configurable: MySQL en producciÃƒÂ³n, SQLite/JSON en local.' : 'Storage JSON activo. Para producciÃƒÂ³n usa APP_STORAGE_DRIVER=mysql.'
   });
 });
 
@@ -5835,7 +5833,7 @@ app.get('/api/auth/me', async (req, res) => {
       authenticated: false,
       user: null,
       pilot: null,
-      message: 'No hay sesiÃ³n activa.'
+      message: 'No hay sesiÃƒÂ³n activa.'
     });
     return;
   }
@@ -5871,7 +5869,7 @@ app.get('/api/auth/me', async (req, res) => {
 app.get('/api/pilots/:playerId/profile', async (req, res) => {
   const playerId = Number(req.params.playerId);
   if (!Number.isFinite(playerId) || playerId <= 0) {
-    res.status(400).json({ ok: false, profile: null, message: 'PlayerId no vÃ¡lido.' });
+    res.status(400).json({ ok: false, profile: null, message: 'PlayerId no vÃƒÂ¡lido.' });
     return;
   }
 
@@ -5881,7 +5879,7 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
       ok: false,
       profile: null,
       stracker,
-      message: 'stracker.db3 no estÃ¡ disponible para generar el perfil pÃºblico.'
+      message: 'stracker.db3 no estÃƒÂ¡ disponible para generar el perfil pÃƒÂºblico.'
     });
     return;
   }
@@ -5896,7 +5894,7 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
         ok: false,
         profile: null,
         playerId,
-        message: 'No se encontrÃ³ actividad para ese piloto en stracker.db3.'
+        message: 'No se encontrÃƒÂ³ actividad para ese piloto en stracker.db3.'
       });
       return;
     }
@@ -5911,12 +5909,12 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[GC] Error generando perfil pÃºblico de piloto:', error);
+    console.error('[GC] Error generando perfil pÃƒÂºblico de piloto:', error);
     res.status(200).json({
       ok: false,
       profile: null,
       playerId,
-      message: 'No se pudo generar el perfil pÃºblico desde stracker.db3.',
+      message: 'No se pudo generar el perfil pÃƒÂºblico desde stracker.db3.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -5931,7 +5929,7 @@ app.get('/api/profile', async (req, res) => {
       authenticated: false,
       user: null,
       profile: null,
-      message: 'No hay sesiÃ³n activa.'
+      message: 'No hay sesiÃƒÂ³n activa.'
     });
     return;
   }
@@ -5955,7 +5953,7 @@ app.get('/api/profile', async (req, res) => {
       pilotLink: context.user.pilotLink,
       profile: null,
       stracker,
-      message: 'Hay sesiÃ³n activa, pero stracker.db3 no estÃ¡ disponible para generar el perfil.'
+      message: 'Hay sesiÃƒÂ³n activa, pero stracker.db3 no estÃƒÂ¡ disponible para generar el perfil.'
     });
     return;
   }
@@ -6007,7 +6005,7 @@ app.get('/api/mysql/status', async (req, res) => {
       ok: false,
       enabled: false,
       config,
-      message: 'MySQL no estÃ¡ activo. APP_STORAGE_DRIVER debe ser mysql.'
+      message: 'MySQL no estÃƒÂ¡ activo. APP_STORAGE_DRIVER debe ser mysql.'
     });
     return;
   }
@@ -6038,7 +6036,7 @@ app.get('/api/mysql/status', async (req, res) => {
       enabled: true,
       config,
       error: safeRuntimeError(error),
-      message: 'No se pudo conectar o preparar MySQL. Revisa variables, password, permisos y que mysql2 estÃ© instalado.'
+      message: 'No se pudo conectar o preparar MySQL. Revisa variables, password, permisos y que mysql2 estÃƒÂ© instalado.'
     });
   }
 });
@@ -6051,7 +6049,7 @@ app.get('/api/sqlite/status', async (req, res) => {
       ok: true,
       enabled: false,
       config,
-      message: 'SQLite local no estÃ¡ activo. Usa APP_STORAGE_DRIVER=sqlite para desarrollo local.'
+      message: 'SQLite local no estÃƒÂ¡ activo. Usa APP_STORAGE_DRIVER=sqlite para desarrollo local.'
     });
     return;
   }
@@ -6150,8 +6148,8 @@ app.get('/api/admin/status', async (req, res) => {
     message: authorized
       ? 'Consola admin activa.'
       : summary.setupRequired
-        ? 'No hay administradores todavÃ­a. Promociona una cuenta con ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
-        : 'Inicia sesiÃ³n con una cuenta administradora.'
+        ? 'No hay administradores todavÃƒÂ­a. Promociona una cuenta con ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
+        : 'Inicia sesiÃƒÂ³n con una cuenta administradora.'
   });
 });
 
@@ -6159,7 +6157,7 @@ app.post('/api/admin/bootstrap', async (req, res) => {
   if (!assertAdminSetupSecret(req)) {
     res.status(401).json({
       ok: false,
-      message: 'Secret admin invÃ¡lido. Usa ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
+      message: 'Secret admin invÃƒÂ¡lido. Usa ADMIN_SETUP_SECRET o STRACKER_SYNC_SECRET.'
     });
     return;
   }
@@ -6179,7 +6177,7 @@ app.post('/api/admin/bootstrap', async (req, res) => {
   if (!target) {
     res.status(404).json({
       ok: false,
-      message: 'No se encontrÃ³ la cuenta a promocionar. Inicia sesiÃ³n o indica email/userId.'
+      message: 'No se encontrÃƒÂ³ la cuenta a promocionar. Inicia sesiÃƒÂ³n o indica email/userId.'
     });
     return;
   }
@@ -6201,8 +6199,8 @@ app.post('/api/admin/bootstrap', async (req, res) => {
 
   const targetIsCurrentSession = Boolean(context && context.user.id === target.id);
   const message = shouldAuthenticateTarget
-    ? `Cuenta ${target.displayName} promocionada a administrador. SesiÃ³n admin activada.`
-    : `Cuenta ${target.displayName} promocionada a administrador. Para usar ese admin, inicia sesiÃ³n con esa cuenta.`;
+    ? `Cuenta ${target.displayName} promocionada a administrador. SesiÃƒÂ³n admin activada.`
+    : `Cuenta ${target.displayName} promocionada a administrador. Para usar ese admin, inicia sesiÃƒÂ³n con esa cuenta.`;
 
   res.json({
     ok: true,
@@ -6239,7 +6237,7 @@ app.post('/api/admin/users/:userId/role', async (req, res) => {
 
   const nextRole = String(req.body?.role ?? '').trim() as AppUserRole;
   if (!['pilot', 'admin'].includes(nextRole)) {
-    res.status(400).json({ ok: false, message: 'Rol no vÃ¡lido. Usa pilot o admin.' });
+    res.status(400).json({ ok: false, message: 'Rol no vÃƒÂ¡lido. Usa pilot o admin.' });
     return;
   }
 
@@ -6252,7 +6250,7 @@ app.post('/api/admin/users/:userId/role', async (req, res) => {
   }
 
   if (target.role === 'admin' && nextRole !== 'admin' && isLastAdmin(store, target.id)) {
-    res.status(409).json({ ok: false, message: 'No puedes quitar el Ãºltimo administrador.' });
+    res.status(409).json({ ok: false, message: 'No puedes quitar el ÃƒÂºltimo administrador.' });
     return;
   }
 
@@ -6293,7 +6291,7 @@ app.post('/api/admin/users/:userId/link-pilot', async (req, res) => {
   if (alreadyLinked) {
     res.status(409).json({
       ok: false,
-      message: `Ese piloto ya estÃ¡ vinculado a ${alreadyLinked.displayName || alreadyLinked.email}.`
+      message: `Ese piloto ya estÃƒÂ¡ vinculado a ${alreadyLinked.displayName || alreadyLinked.email}.`
     });
     return;
   }
@@ -6308,7 +6306,7 @@ app.post('/api/admin/users/:userId/link-pilot', async (req, res) => {
     ok: true,
     user: publicAdminUser(target, store),
     pilot: resolved.pilot,
-    message: 'Piloto vinculado desde administraciÃ³n.'
+    message: 'Piloto vinculado desde administraciÃƒÂ³n.'
   });
 });
 
@@ -6333,7 +6331,7 @@ app.post('/api/admin/users/:userId/unlink-pilot', async (req, res) => {
   res.json({
     ok: true,
     user: publicAdminUser(target, store),
-    message: 'Piloto desvinculado desde administraciÃ³n.'
+    message: 'Piloto desvinculado desde administraciÃƒÂ³n.'
   });
 });
 
@@ -6369,12 +6367,12 @@ app.post('/api/admin/users/:userId/password', async (req, res) => {
   const password = String(req.body?.password ?? '');
 
   if (password.length < 8) {
-    res.status(400).json({ ok: false, message: 'La nueva contraseÃ±a debe tener al menos 8 caracteres.' });
+    res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a debe tener al menos 8 caracteres.' });
     return;
   }
 
   if (password.length > 128) {
-    res.status(400).json({ ok: false, message: 'La nueva contraseÃ±a es demasiado larga.' });
+    res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a es demasiado larga.' });
     return;
   }
 
@@ -6397,8 +6395,8 @@ app.post('/api/admin/users/:userId/password', async (req, res) => {
   target.password = hashPassword(password);
   target.updatedAt = new Date().toISOString();
 
-  // Seguridad: tras resetear contraseÃ±a se cierran las sesiones del usuario.
-  // Si el admin se resetea a sÃ­ mismo, se conserva la sesiÃ³n actual para no expulsarlo en medio de la operaciÃ³n.
+  // Seguridad: tras resetear contraseÃƒÂ±a se cierran las sesiones del usuario.
+  // Si el admin se resetea a sÃƒÂ­ mismo, se conserva la sesiÃƒÂ³n actual para no expulsarlo en medio de la operaciÃƒÂ³n.
   store.sessions = store.sessions.filter((session) => {
     if (session.userId !== target.id) return true;
     if (target.id === context.user.id && session.id === context.session.id) return true;
@@ -6431,8 +6429,8 @@ app.post('/api/admin/users/:userId/password', async (req, res) => {
     user: publicAdminUser(target, store),
     sessionsRevoked,
     message: target.id === context.user.id
-      ? 'ContraseÃ±a actualizada. Se han cerrado otras sesiones de tu cuenta.'
-      : 'ContraseÃ±a actualizada y sesiones del usuario cerradas.'
+      ? 'ContraseÃƒÂ±a actualizada. Se han cerrado otras sesiones de tu cuenta.'
+      : 'ContraseÃƒÂ±a actualizada y sesiones del usuario cerradas.'
   });
 });
 // GC ADMIN PASSWORD RESET V8.8.2 END
@@ -6622,7 +6620,7 @@ async function buildDisplayNameCatalog() {
       const tracks = await runStrackerQuery(stracker.resolvedPath, 'SELECT TrackId, Track, UiTrackName, Length FROM Tracks ORDER BY UiTrackName ASC, Track ASC');
       catalog.tracks = tracks.map((row) => buildDisplayNameCatalogItem('track', row.TrackId, row.Track, row.UiTrackName || row.Track, getRawDisplayTrack(row), store));
     } catch (error) {
-      console.error('[GC] Error generando catÃ¡logo de display names:', error);
+      console.error('[GC] Error generando catÃƒÂ¡logo de display names:', error);
     }
   }
 
@@ -6680,7 +6678,7 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
   const stracker = getStrackerConfig();
 
   if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    res.json({ ok: true, count: 0, pilots: [], message: 'stracker.db3 no estÃ¡ disponible para detectar pilotos sin cuenta.' });
+    res.json({ ok: true, count: 0, pilots: [], message: 'stracker.db3 no estÃƒÂ¡ disponible para detectar pilotos sin cuenta.' });
     return;
   }
 
@@ -6791,12 +6789,12 @@ app.post('/api/admin/name-filters', async (req, res) => {
   const notes = compactNullableText(req.body?.notes);
 
   if (!kind) {
-    res.status(400).json({ ok: false, message: 'Tipo no vÃ¡lido. Usa driver, car o track.' });
+    res.status(400).json({ ok: false, message: 'Tipo no vÃƒÂ¡lido. Usa driver, car o track.' });
     return;
   }
 
   if (!displayName) {
-    res.status(400).json({ ok: false, message: 'El nombre visible no puede estar vacÃ­o.' });
+    res.status(400).json({ ok: false, message: 'El nombre visible no puede estar vacÃƒÂ­o.' });
     return;
   }
 
@@ -6869,7 +6867,7 @@ app.post('/api/admin/name-filters/delete', async (req, res) => {
     ok: true,
     removed: before - store.entries.length,
     storage: getDisplayNamesDbInfo(),
-    message: before === store.entries.length ? 'No habÃ­a override que eliminar.' : 'Override eliminado. Se usarÃ¡ el nombre automÃ¡tico.'
+    message: before === store.entries.length ? 'No habÃƒÂ­a override que eliminar.' : 'Override eliminado. Se usarÃƒÂ¡ el nombre automÃƒÂ¡tico.'
   });
 });
 
@@ -6877,7 +6875,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (!readBooleanEnv('AUTH_REGISTRATION_ENABLED', true)) {
     res.status(403).json({
       ok: false,
-      message: 'El registro estÃ¡ desactivado temporalmente.'
+      message: 'El registro estÃƒÂ¡ desactivado temporalmente.'
     });
     return;
   }
@@ -6888,7 +6886,7 @@ app.post('/api/auth/register', async (req, res) => {
   const playerId = req.body?.playerId;
 
   if (!email || !email.includes('@') || email.length > 160) {
-    res.status(400).json({ ok: false, message: 'Introduce un email vÃ¡lido.' });
+    res.status(400).json({ ok: false, message: 'Introduce un email vÃƒÂ¡lido.' });
     return;
   }
 
@@ -6898,7 +6896,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   if (password.length < 6) {
-    res.status(400).json({ ok: false, message: 'La contraseÃ±a debe tener al menos 6 caracteres.' });
+    res.status(400).json({ ok: false, message: 'La contraseÃƒÂ±a debe tener al menos 6 caracteres.' });
     return;
   }
 
@@ -6920,7 +6918,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     if (findUserByPilotId(store, resolved.link.playerId)) {
-      res.status(409).json({ ok: false, message: 'Ese piloto ya estÃ¡ vinculado a otra cuenta.' });
+      res.status(409).json({ ok: false, message: 'Ese piloto ya estÃƒÂ¡ vinculado a otra cuenta.' });
       return;
     }
 
@@ -6968,7 +6966,7 @@ app.post('/api/auth/login', async (req, res) => {
   const user = findUserByEmail(store, email);
 
   if (!user || !verifyPassword(password, user.password)) {
-    res.status(401).json({ ok: false, message: 'Email o contraseÃ±a incorrectos.' });
+    res.status(401).json({ ok: false, message: 'Email o contraseÃƒÂ±a incorrectos.' });
     return;
   }
 
@@ -6998,7 +6996,7 @@ app.post('/api/auth/password', async (req, res) => {
   const context = await getAuthContextAsync(req);
 
   if (!context) {
-    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃ³n.' });
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃƒÂ³n.' });
     return;
   }
 
@@ -7006,27 +7004,27 @@ app.post('/api/auth/password', async (req, res) => {
   const newPassword = String(req.body?.newPassword ?? '');
 
   if (!currentPassword) {
-    res.status(400).json({ ok: false, message: 'Introduce tu contraseÃ±a actual.' });
+    res.status(400).json({ ok: false, message: 'Introduce tu contraseÃƒÂ±a actual.' });
     return;
   }
 
   if (!verifyPassword(currentPassword, context.user.password)) {
-    res.status(401).json({ ok: false, message: 'La contraseÃ±a actual no es correcta.' });
+    res.status(401).json({ ok: false, message: 'La contraseÃƒÂ±a actual no es correcta.' });
     return;
   }
 
   if (newPassword.length < 8) {
-    res.status(400).json({ ok: false, message: 'La nueva contraseÃ±a debe tener al menos 8 caracteres.' });
+    res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a debe tener al menos 8 caracteres.' });
     return;
   }
 
   if (newPassword.length > 128) {
-    res.status(400).json({ ok: false, message: 'La nueva contraseÃ±a es demasiado larga.' });
+    res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a es demasiado larga.' });
     return;
   }
 
   if (newPassword === currentPassword) {
-    res.status(400).json({ ok: false, message: 'La nueva contraseÃ±a debe ser distinta a la actual.' });
+    res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a debe ser distinta a la actual.' });
     return;
   }
 
@@ -7035,7 +7033,7 @@ app.post('/api/auth/password', async (req, res) => {
   context.user.password = hashPassword(newPassword);
   context.user.updatedAt = new Date().toISOString();
 
-  // Conserva la sesiÃ³n actual y cierra el resto por seguridad.
+  // Conserva la sesiÃƒÂ³n actual y cierra el resto por seguridad.
   context.store.sessions = context.store.sessions.filter((session) => {
     if (session.userId !== context.user.id) return true;
     return session.id === context.session.id;
@@ -7051,8 +7049,8 @@ app.post('/api/auth/password', async (req, res) => {
     user: publicUser(context.user),
     sessionsRevoked,
     message: sessionsRevoked > 0
-      ? 'ContraseÃ±a actualizada. Se han cerrado otras sesiones de tu cuenta.'
-      : 'ContraseÃ±a actualizada correctamente.'
+      ? 'ContraseÃƒÂ±a actualizada. Se han cerrado otras sesiones de tu cuenta.'
+      : 'ContraseÃƒÂ±a actualizada correctamente.'
   });
 });
 // GC AUTH CHANGE PASSWORD V8.8.4 END
@@ -7068,13 +7066,13 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 
   clearSessionCookie(res);
-  res.json({ ok: true, authenticated: false, message: 'SesiÃ³n cerrada.' });
+  res.json({ ok: true, authenticated: false, message: 'SesiÃƒÂ³n cerrada.' });
 });
 
 app.post('/api/auth/link-pilot', async (req, res) => {
   const context = await getAuthContextAsync(req);
   if (!context) {
-    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃ³n.' });
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃƒÂ³n.' });
     return;
   }
 
@@ -7085,7 +7083,7 @@ app.post('/api/auth/link-pilot', async (req, res) => {
   }
 
   if (findUserByPilotId(context.store, resolved.link.playerId, context.user.id)) {
-    res.status(409).json({ ok: false, message: 'Ese piloto ya estÃ¡ vinculado a otra cuenta.' });
+    res.status(409).json({ ok: false, message: 'Ese piloto ya estÃƒÂ¡ vinculado a otra cuenta.' });
     return;
   }
 
@@ -7104,7 +7102,7 @@ app.post('/api/auth/link-pilot', async (req, res) => {
 app.post('/api/auth/unlink-pilot', async (req, res) => {
   const context = await getAuthContextAsync(req);
   if (!context) {
-    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃ³n.' });
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesiÃƒÂ³n.' });
     return;
   }
 
@@ -7144,7 +7142,7 @@ app.get('/api/stracker/remote-config', (_req, res) => {
     autoSync: getAutoSyncConfig(),
     lastSync: lastSyncResult,
     syncInProgress,
-    message: 'No se muestran usuario, contraseÃ±a ni secret. Solo si estÃ¡n configurados.'
+    message: 'No se muestran usuario, contraseÃƒÂ±a ni secret. Solo si estÃƒÂ¡n configurados.'
   });
 });
 
@@ -7163,7 +7161,7 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
   if (!assertSyncSecret(req)) {
     res.status(401).json({
       ok: false,
-      message: 'Secret invÃ¡lido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
+      message: 'Secret invÃƒÂ¡lido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
     });
     return;
   }
@@ -7194,7 +7192,7 @@ async function handleStrackerSync(req: express.Request, res: express.Response) {
   if (!assertSyncSecret(req)) {
     res.status(401).json({
       ok: false,
-      message: 'Secret invÃ¡lido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
+      message: 'Secret invÃƒÂ¡lido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
     });
     return;
   }
@@ -7250,7 +7248,7 @@ app.get('/api/stracker/tables', async (_req, res) => {
       ok: false,
       stracker,
       tables: [],
-      message: 'El archivo existe, pero no se pudo leer como SQLite. Revisa que sea stracker.db3 vÃ¡lido.',
+      message: 'El archivo existe, pero no se pudo leer como SQLite. Revisa que sea stracker.db3 vÃƒÂ¡lido.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -7586,7 +7584,7 @@ function gcLegacyAliasBuildComboDetailV1(combo: any, rows: any[]) {
     trackName,
     cars,
     carSummary: cars.length
-      ? cars.slice(0, 3).map((car: any) => gcLegacyAliasEntityNameV1(car, '')).filter(Boolean).join(' + ') + (cars.length > 3 ? ' +' + (cars.length - 3) + ' más' : '')
+      ? cars.slice(0, 3).map((car: any) => gcLegacyAliasEntityNameV1(car, '')).filter(Boolean).join(' + ') + (cars.length > 3 ? ' +' + (cars.length - 3) + ' mÃ¡s' : '')
       : 'Sin coches detectados',
     summary: {
       totalLaps,
@@ -8250,8 +8248,8 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
       hiddenLowLapCars,
       allCars: [...allCarsMap.values()].sort((a: any, b: any) => b.totalLaps - a.totalLaps),
       carSummary: publicCars.length
-        ? publicCars.slice(0, 4).map((car: any) => car.displayName || car.name).join(' + ') + (publicCars.length > 4 ? ' +' + (publicCars.length - 4) + ' más' : '')
-        : 'Sin coches públicos',
+        ? publicCars.slice(0, 4).map((car: any) => car.displayName || car.name).join(' + ') + (publicCars.length > 4 ? ' +' + (publicCars.length - 4) + ' mÃ¡s' : '')
+        : 'Sin coches pÃºblicos',
       mainVariant: mainVariant ? {
         variantKey: mainVariant.variantKey,
         rawTrackCode: mainVariant.rawTrackCode,
@@ -8412,8 +8410,8 @@ function gcComboCanonicalCompatShapeV1(item: any) {
     carModels: carNames,
     carSummary: item.carSummary || (
       carNames.length
-        ? carNames.slice(0, 3).join(' + ') + (carNames.length > 3 ? ' + ' + (carNames.length - 3) + ' más' : '')
-        : 'Sin coches públicos'
+        ? carNames.slice(0, 3).join(' + ') + (carNames.length > 3 ? ' + ' + (carNames.length - 3) + ' mÃ¡s' : '')
+        : 'Sin coches pÃºblicos'
     ),
     displayTrackName: item.trackName || item.canonicalTrackName || item.track?.displayName || item.track?.name || 'Circuito',
     trackName: item.trackName || item.canonicalTrackName || item.track?.displayName || item.track?.name || 'Circuito',
@@ -8544,7 +8542,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
         minPublicDrivers: GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1,
         scope: 'combos-only'
       },
-      message: 'Combos públicos agrupados por circuito canónico y filtrados por variante principal.'
+      message: 'Combos pÃºblicos agrupados por circuito canÃ³nico y filtrados por variante principal.'
     });
   } catch (error) {
     console.error('[GC Combo Canonical Public Filter] /api/gc/combos error:', error);
@@ -8554,7 +8552,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
       items: [],
-      message: 'No se pudieron generar combos canónicos.',
+      message: 'No se pudieron generar combos canÃ³nicos.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -8575,7 +8573,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         source: 'gc-data-core',
         comboCore: 'gc-combo-canonical-public-filter-v1',
         generatedAt: new Date().toISOString(),
-        message: 'Combo canónico no encontrado.',
+        message: 'Combo canÃ³nico no encontrado.',
         comboId: requestedId
       });
     }
@@ -8596,7 +8594,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         hiddenLowLapCarsCount: item.hiddenLowLapCars?.length || 0,
         minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1
       },
-      message: 'Ficha de combo canónico generada desde Race Data Core.'
+      message: 'Ficha de combo canÃ³nico generada desde Race Data Core.'
     });
   } catch (error) {
     console.error('[GC Combo Canonical Public Filter] /api/gc/combos/:comboId error:', error);
@@ -8606,7 +8604,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
       item: null,
-      message: 'No se pudo generar la ficha de combo canónico.',
+      message: 'No se pudo generar la ficha de combo canÃ³nico.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -8652,7 +8650,7 @@ app.get('/api/combos/stats', async (req: any, res: any) => {
       legacyEndpoint: '/api/combos/stats',
       items: [],
       combos: [],
-      message: 'No se pudieron generar combos canónicos para legacy alias.',
+      message: 'No se pudieron generar combos canÃ³nicos para legacy alias.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -8675,7 +8673,7 @@ app.get('/api/combos/:comboId', async (req: any, res: any) => {
         generatedAt: new Date().toISOString(),
         legacyEndpoint: '/api/combos/:comboId',
         canonicalEndpoint: '/api/gc/combos/:comboId',
-        message: 'Combo canónico no encontrado.',
+        message: 'Combo canÃ³nico no encontrado.',
         comboId: requestedId
       });
     }
@@ -8707,7 +8705,7 @@ app.get('/api/combos/:comboId', async (req: any, res: any) => {
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/combos/:comboId',
       item: null,
-      message: 'No se pudo generar la ficha legacy de combo canónico.',
+      message: 'No se pudo generar la ficha legacy de combo canÃ³nico.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -9392,7 +9390,7 @@ app.get('/api/laps', async (req, res) => {
       totalMatchedLaps: filtered.length,
       filters: summarizeFilters(req),
       items: sorted.slice(0, limit),
-      message: 'Vueltas reales leÃ­das desde stracker.db3.'
+      message: 'Vueltas reales leÃƒÂ­das desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC] Error leyendo vueltas:', error);
@@ -9444,7 +9442,7 @@ app.get('/api/pilots', async (req, res) => {
       ok: true,
       mode: 'mock',
       items: mockPilots,
-      message: 'Ãrea de pilotos en maqueta. Sin stracker.db3 vÃ¡lido todavÃ­a.'
+      message: 'ÃƒÂrea de pilotos en maqueta. Sin stracker.db3 vÃƒÂ¡lido todavÃƒÂ­a.'
     });
     return;
   }
@@ -9458,7 +9456,7 @@ app.get('/api/pilots', async (req, res) => {
       mode: 'real-stracker',
       count: items.length,
       items,
-      message: 'Pilotos reales generados desde stracker.db3. Login pendiente para Ã¡rea privada.'
+      message: 'Pilotos reales generados desde stracker.db3. Login pendiente para ÃƒÂ¡rea privada.'
     });
   } catch (error) {
     res.status(200).json({
@@ -9816,7 +9814,7 @@ function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
     trackName,
     cars,
     carSummary: cars.length
-      ? cars.slice(0, 3).map((car: any) => gcComboDetailEntityNameV1(car, '')).filter(Boolean).join(' + ') + (cars.length > 3 ? ' +' + (cars.length - 3) + ' más' : '')
+      ? cars.slice(0, 3).map((car: any) => gcComboDetailEntityNameV1(car, '')).filter(Boolean).join(' + ') + (cars.length > 3 ? ' +' + (cars.length - 3) + ' mÃ¡s' : '')
       : 'Sin coches detectados',
     summary: {
       totalLaps,
@@ -9958,7 +9956,7 @@ app.get('/api/gc/combos', async (req, res) => {
         sizeBytes: stracker.sizeBytes,
         modifiedAt: stracker.modifiedAt
       },
-      message: 'Combos canónicos generados desde GC Data Core. Usa este endpoint para /combos y futuras vistas.'
+      message: 'Combos canÃ³nicos generados desde GC Data Core. Usa este endpoint para /combos y futuras vistas.'
     });
   } catch (error) {
     console.error('[GC Data Core] Error generando /api/gc/combos:', error);
@@ -10036,14 +10034,14 @@ app.get('/api/combos/stats', async (req, res) => {
       sort,
       filters: { q: q || null },
       items: items.slice(0, limit),
-      message: 'Combos lÃ³gicos: mismo circuito y coches compatibles se agrupan. Si el 75% de los coches son nuevos, nace otro combo.'
+      message: 'Combos lÃƒÂ³gicos: mismo circuito y coches compatibles se agrupan. Si el 75% de los coches son nuevos, nace otro combo.'
     });
   } catch (error) {
     console.error('[GC] Error generando combo stats:', error);
     res.status(200).json({
       ok: false,
       items: [],
-      message: 'No se pudieron generar estadÃ­sticas de combos.',
+      message: 'No se pudieron generar estadÃƒÂ­sticas de combos.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -10064,7 +10062,7 @@ app.get('/api/combos/:comboId', async (req, res) => {
       res.status(200).json({
         ok: false,
         item: null,
-        message: 'No se encontrÃ³ ese ComboId en stracker.db3.'
+        message: 'No se encontrÃƒÂ³ ese ComboId en stracker.db3.'
       });
       return;
     }
@@ -10073,7 +10071,7 @@ app.get('/api/combos/:comboId', async (req, res) => {
       ok: true,
       mode: 'real-stracker',
       item: profile,
-      message: 'Ficha de combo lÃ³gico generada desde ComboId/familia de combos.'
+      message: 'Ficha de combo lÃƒÂ³gico generada desde ComboId/familia de combos.'
     });
   } catch (error) {
     console.error('[GC] Error generando combo profile:', error);
@@ -10098,7 +10096,7 @@ app.get('/api/combos/:trackId/:carId', async (req, res) => {
       res.status(200).json({
         ok: false,
         item: null,
-        message: 'No se encontrÃ³ ese combo legacy TrackId + CarId en las vueltas reales.'
+        message: 'No se encontrÃƒÂ³ ese combo legacy TrackId + CarId en las vueltas reales.'
       });
       return;
     }
@@ -10175,7 +10173,7 @@ app.get('/api/activity/recent', async (req, res) => {
       hours,
       count: items.length,
       items,
-      message: `Actividad reciente de las Ãºltimas ${hours}h.`
+      message: `Actividad reciente de las ÃƒÂºltimas ${hours}h.`
     });
   } catch (error) {
     console.error('[GC] Error leyendo recent activity:', error);
@@ -10234,14 +10232,14 @@ app.get('/api/stats/overview', async (_req, res) => {
  * GC Data Core v1
  *
  * Objetivo:
- * - crear una capa canónica de lectura para bloques nuevos.
- * - evitar que cada página calcule por su cuenta combo activo, últimas vueltas,
- *   leaderboard, mejor vuelta y métricas globales.
+ * - crear una capa canÃ³nica de lectura para bloques nuevos.
+ * - evitar que cada pÃ¡gina calcule por su cuenta combo activo, Ãºltimas vueltas,
+ *   leaderboard, mejor vuelta y mÃ©tricas globales.
  *
  * Importante:
- * - no sustituye todavía los endpoints legacy.
+ * - no sustituye todavÃ­a los endpoints legacy.
  * - /api/hotlaps, /api/laps, /api/combos/stats, /api/stats/overview siguen vivos.
- * - los nuevos bloques deberían consumir /api/gc/*.
+ * - los nuevos bloques deberÃ­an consumir /api/gc/*.
  */
 type GcDataCoreScope = 'global' | 'activeCombo';
 
@@ -10372,7 +10370,7 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       generatedAt: new Date().toISOString(),
       source: 'stracker',
       data: null,
-      message: 'stracker.db3 no está disponible.'
+      message: 'stracker.db3 no estÃ¡ disponible.'
     };
   }
 
@@ -10441,8 +10439,8 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       overview: '/api/stats/overview'
     },
     message: scope === 'activeCombo'
-      ? 'Snapshot canónico del combo activo generado desde stracker.db3.'
-      : 'Snapshot canónico global generado desde stracker.db3.'
+      ? 'Snapshot canÃ³nico del combo activo generado desde stracker.db3.'
+      : 'Snapshot canÃ³nico global generado desde stracker.db3.'
   };
 }
 
@@ -10471,7 +10469,7 @@ function gcSafeStrackerCacheStatusV1() {
       configured: Boolean(stracker.configured),
       source: stracker.source ?? null
     },
-    message: 'Estado seguro de caché Race Data Core. No expone rutas internas.'
+    message: 'Estado seguro de cachÃ© Race Data Core. No expone rutas internas.'
   };
 }
 
@@ -10485,7 +10483,7 @@ app.get('/api/gc/cache/status', async (_req, res) => {
       source: 'gc-race-data-core',
       generatedAt: new Date().toISOString(),
       domain: 'stracker',
-      message: 'No se pudo leer el estado de caché Race Data Core.',
+      message: 'No se pudo leer el estado de cachÃ© Race Data Core.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -10502,14 +10500,14 @@ app.post('/api/admin/stracker/cache/clear', async (req, res) => {
       source: 'gc-race-data-core',
       clearedAt: new Date().toISOString(),
       cache: gcCacheInfo(),
-      message: 'Caché Stracker/Race Data Core limpiada.'
+      message: 'CachÃ© Stracker/Race Data Core limpiada.'
     });
   } catch (error) {
     console.error('[GC Race Data Core] cache clear error:', error);
     res.status(500).json({
       ok: false,
       source: 'gc-race-data-core',
-      message: 'No se pudo limpiar la caché Race Data Core.',
+      message: 'No se pudo limpiar la cachÃ© Race Data Core.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -10550,7 +10548,7 @@ function gcChampionshipCoreBoolV1(value: unknown, fallback = false) {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value === 'boolean') return value;
   const text = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'si', 'sí', 'on'].includes(text)) return true;
+  if (['1', 'true', 'yes', 'si', 'sÃ­', 'on'].includes(text)) return true;
   if (['0', 'false', 'no', 'off'].includes(text)) return false;
   return fallback;
 }
@@ -10580,7 +10578,7 @@ function gcChampionshipCoreEventSourceV1(event: any): 'acsm' | 'manual' | 'calen
   if (
     id.includes('acsm') ||
     description.includes('assetto corsa server manager') ||
-    description.includes('importado automáticamente desde assetto') ||
+    description.includes('importado automÃ¡ticamente desde assetto') ||
     title.includes('acsm')
   ) {
     return 'acsm';
@@ -10728,7 +10726,7 @@ function gcArchiveCoreSlugV1(value: unknown, fallback = 'item') {
 
 function gcArchiveCoreNormalizeItemV1(item: any, index = 0): GcArchiveCoreItemV1 {
   const id = gcArchiveCoreTextV1(item?.id ?? item?._id ?? item?.uuid ?? item?.slug, String(index + 1));
-  const title = gcArchiveCoreTextV1(item?.title ?? item?.name ?? item?.heading, 'Ficha sin título');
+  const title = gcArchiveCoreTextV1(item?.title ?? item?.name ?? item?.heading, 'Ficha sin tÃ­tulo');
   const slug = gcArchiveCoreTextV1(item?.slug, gcArchiveCoreSlugV1(title, id));
   const category = gcArchiveCoreTextV1(item?.category ?? item?.section ?? item?.group, 'general');
   const type = gcArchiveCoreTextV1(item?.type ?? item?.kind, category);
@@ -11157,8 +11155,8 @@ app.get('/api/gc/pilots/:playerId/profile', async (req, res) => {
       stracker: profile.stracker,
       separatedFromRaceDataCore: true,
       message: profile.ok
-        ? 'Perfil público de piloto generado desde Identity/Profile Core.'
-        : 'No se pudo generar perfil de piloto porque Stracker no está disponible.'
+        ? 'Perfil pÃºblico de piloto generado desde Identity/Profile Core.'
+        : 'No se pudo generar perfil de piloto porque Stracker no estÃ¡ disponible.'
     });
   } catch (error) {
     console.error('[GC Identity Core] public pilot profile error:', error);
@@ -11169,7 +11167,7 @@ app.get('/api/gc/pilots/:playerId/profile', async (req, res) => {
       generatedAt: new Date().toISOString(),
       domain: 'identity-profile',
       pilot: null,
-      message: 'No se pudo generar el perfil público de piloto.',
+      message: 'No se pudo generar el perfil pÃºblico de piloto.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -11310,7 +11308,7 @@ function gcTrackFallbackSvgV1(label: string) {
     <g font-family="Inter, Segoe UI, Arial, sans-serif">
       <text x="64" y="84" fill="#9dff47" font-size="28" font-weight="800" letter-spacing="4">GRASSCUTTERS</text>
       <text x="64" y="140" fill="#f1ffe8" font-size="44" font-weight="900">Track image pending</text>
-      <text x="64" y="192" fill="#afc6a2" font-size="26">Añade una imagen real en /images/tracks para este circuito.</text>
+      <text x="64" y="192" fill="#afc6a2" font-size="26">AÃ±ade una imagen real en /images/tracks para este circuito.</text>
     </g>
   </svg>`;
 }
@@ -11325,7 +11323,7 @@ app.get('/api/gc/assets/tracks', (_req, res) => {
       domain: 'track-images',
       count: items.length,
       items,
-      message: 'Listado seguro de imágenes reales disponibles en /images/tracks.'
+      message: 'Listado seguro de imÃ¡genes reales disponibles en /images/tracks.'
     });
   } catch (error) {
     console.error('[GC Track Image Guard] assets/tracks error:', error);
@@ -11336,7 +11334,7 @@ app.get('/api/gc/assets/tracks', (_req, res) => {
       domain: 'track-images',
       count: 0,
       items: [],
-      message: 'No se pudo listar imágenes de circuito.',
+      message: 'No se pudo listar imÃ¡genes de circuito.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -11433,7 +11431,7 @@ app.get('/api/gc/archive/latest', async (req, res) => {
       totalMatched: items.length,
       items: items.slice(0, limit),
       warnings: archive.warnings,
-      message: 'Últimos elementos públicos de Archive Core.'
+      message: 'Ãšltimos elementos pÃºblicos de Archive Core.'
     });
   } catch (error) {
     console.error('[GC Archive Core] latest error:', error);
@@ -11718,7 +11716,7 @@ app.get('/api/gc/diagnostics', async (_req, res) => {
       latencyMs: Date.now() - startedAt,
       health: 'error',
       warnings: ['diagnostics failed'],
-      message: 'No se pudo generar el diagnóstico Race Data Core.',
+      message: 'No se pudo generar el diagnÃ³stico Race Data Core.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
@@ -11781,7 +11779,7 @@ app.get('/api/gc/snapshot', async (req, res) => {
     res.status(payload.ok ? 200 : 200).json(payload);
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/snapshot:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudo generar el snapshot canónico.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudo generar el snapshot canÃ³nico.' });
   }
 });
 
@@ -11809,11 +11807,11 @@ app.get('/api/gc/active-combo', async (req, res) => {
         leaderboard: payload.data.leaderboard,
         stats: payload.data.scopedStats
       } : null,
-      message: payload.ok ? 'Combo activo canónico.' : payload.message
+      message: payload.ok ? 'Combo activo canÃ³nico.' : payload.message
     });
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/active-combo:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudo generar el combo activo canónico.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudo generar el combo activo canÃ³nico.' });
   }
 });
 
@@ -11823,7 +11821,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     await readDisplayNameStoreAsync();
 
     const rawScope = getQueryString(req, 'scope', 'activeCombo').toLowerCase();
-    const globalScopes = ['global', 'all', 'history', 'historico', 'histórico', 'full', 'complete', 'completo'];
+    const globalScopes = ['global', 'all', 'history', 'historico', 'histÃ³rico', 'full', 'complete', 'completo'];
     const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
     const wantsRawGlobal = scope === 'global';
     /* GC_HOTLAPS_LOAD_ALL_REFERENCES_V2_BACKEND */
@@ -11885,7 +11883,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
           }
         },
         filters: summarizeFilters(req),
-        message: 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histórico completo.'
+        message: 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histÃ³rico completo.'
       });
       return;
     }
@@ -11918,11 +11916,11 @@ app.get('/api/gc/leaderboard', async (req, res) => {
         laps: payload.data.leaderboard,
         stats: payload.data.scopedStats
       } : null,
-      message: payload.ok ? 'Leaderboard canónico generado desde GC Data Core.' : payload.message
+      message: payload.ok ? 'Leaderboard canÃ³nico generado desde GC Data Core.' : payload.message
     });
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/leaderboard:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canónico.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canÃ³nico.' });
   }
 });
 
@@ -12171,7 +12169,7 @@ app.get('/api/gc/names/preview', async (req, res) => {
         lapTimeMs: gcLabFixLapMsV1(lap) || null,
         lapTimeFormatted: gcLabFixLapTimeV1(lap)
       })),
-      message: 'Previsualización del pipeline de nombres: rawName -> autoName -> displayName.'
+      message: 'PrevisualizaciÃ³n del pipeline de nombres: rawName -> autoName -> displayName.'
     });
   } catch (error) {
     console.error('[GC Data Core Lab Fixes] names preview error:', error);
@@ -12241,7 +12239,7 @@ app.get('/api/gc/recent-laps', async (req, res) => {
       } : null,
       warnings,
       items: filtered.slice(0, limit).map(gcLabFixCompactLapV1),
-      message: 'Vueltas recientes canónicas desde Race Data Core.'
+      message: 'Vueltas recientes canÃ³nicas desde Race Data Core.'
     });
   } catch (error) {
     console.error('[GC Data Core Lab Fixes] recent laps error:', error);
@@ -12283,11 +12281,11 @@ app.get('/api/gc/recent-laps', async (req, res) => {
         latestLap: payload.data.latestLap,
         stats: payload.data.scopedStats
       } : null,
-      message: payload.ok ? 'Vueltas recientes canónicas generadas desde GC Data Core.' : payload.message
+      message: payload.ok ? 'Vueltas recientes canÃ³nicas generadas desde GC Data Core.' : payload.message
     });
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/recent-laps:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudieron generar las vueltas recientes canónicas.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudieron generar las vueltas recientes canÃ³nicas.' });
   }
 });
 /* GC_DATA_CORE_V1_END */
@@ -12369,8 +12367,8 @@ app.use(
 
 
 /* GC_AUTH_LOGOUT_PATCH_V1
- * Endpoint de cierre de sesiÃ³n para headers pÃºblico e interno.
- * Limpia cookie gc_session y elimina la sesiÃ³n en MySQL, SQLite o JSON.
+ * Endpoint de cierre de sesiÃƒÂ³n para headers pÃƒÂºblico e interno.
+ * Limpia cookie gc_session y elimina la sesiÃƒÂ³n en MySQL, SQLite o JSON.
  */
 function gcParseRequestCookies(rawCookieHeader) {
   return String(rawCookieHeader || '')
@@ -12474,7 +12472,7 @@ async function gcLogoutRequest(req, res, redirectToHome = false) {
   try {
     removedSessions = await gcDeleteSessionByToken(token);
   } catch (error) {
-    console.error('[GC] Error cerrando sesiÃ³n:', error);
+    console.error('[GC] Error cerrando sesiÃƒÂ³n:', error);
   }
 
   gcClearSessionCookie(res);
@@ -12488,7 +12486,7 @@ async function gcLogoutRequest(req, res, redirectToHome = false) {
     ok: true,
     authenticated: false,
     removedSessions,
-    message: 'SesiÃ³n cerrada correctamente.'
+    message: 'SesiÃƒÂ³n cerrada correctamente.'
   });
 }
 
@@ -12894,8 +12892,8 @@ app.get('/api/logout', (req, res) => {
 
 /* GC_ASTRO_RUNTIME_PATCH_V3
  * Runtime Hostinger + Astro para Express.
- * V3: separa API, estáticos prerenderizados y SSR.
- * Objetivo: / funciona, /admin, /hotlaps, /perfil, /combos y /pilotos también.
+ * V3: separa API, estÃ¡ticos prerenderizados y SSR.
+ * Objetivo: / funciona, /admin, /hotlaps, /perfil, /combos y /pilotos tambiÃ©n.
  */
 function gcFindExistingDirectory(candidates) {
   for (const candidate of candidates) {
@@ -13055,13 +13053,13 @@ async function mountAstroRuntime() {
       console.error('[GC] Error importando Astro SSR V3:', error);
     }
   } else {
-    console.warn('[GC] Astro SSR V3 no encontrado. Las rutas dinámicas dependerán solo de HTML estático.');
+    console.warn('[GC] Astro SSR V3 no encontrado. Las rutas dinÃ¡micas dependerÃ¡n solo de HTML estÃ¡tico.');
   }
 
   app.use((req, res, next) => {
     if (gcIsApiRequest(req.originalUrl || req.url)) return next();
 
-    res.status(404).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GrassCutters · ruta no encontrada</title></head><body style="margin:0;background:#03140d;color:#f1fff6;font-family:Arial,sans-serif;padding:32px;line-height:1.55"><main style="max-width:760px"><h1>Ruta no encontrada</h1><p>No se encontró una página estática ni SSR para <strong>' + escapeHtml(req.originalUrl || req.url) + '</strong>.</p><p><a style="color:#85ff55" href="/api/runtime/status">Ver runtime</a> · <a style="color:#85ff55" href="/">Volver al inicio</a></p></main></body></html>');
+    res.status(404).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GrassCutters Â· ruta no encontrada</title></head><body style="margin:0;background:#03140d;color:#f1fff6;font-family:Arial,sans-serif;padding:32px;line-height:1.55"><main style="max-width:760px"><h1>Ruta no encontrada</h1><p>No se encontrÃ³ una pÃ¡gina estÃ¡tica ni SSR para <strong>' + escapeHtml(req.originalUrl || req.url) + '</strong>.</p><p><a style="color:#85ff55" href="/api/runtime/status">Ver runtime</a> Â· <a style="color:#85ff55" href="/">Volver al inicio</a></p></main></body></html>');
   });
 }
 
@@ -13081,4 +13079,5 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
+
 
