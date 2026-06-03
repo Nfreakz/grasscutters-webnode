@@ -6,19 +6,73 @@ import { findRaceSessions, openStrackerDb, readRaceDrivers, readRaceLaps, resolv
 import type { DriverRatingState, PlainObject, RatingEventResult, RatingsSnapshot, RecalculationLog } from './types';
 import { clamp, driverKeyFromParts, ensureArray, formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, textValue, uniqueId, visibleGsr } from './utils';
 
-function acsmUrlFromEnv() {
-  return process.env.GC_CHAMPIONSHIP_SOURCE_URL ||
-    process.env.ACSR_CHAMPIONSHIP_LOCAL_URL ||
-    `http://localhost:${process.env.PORT || 3000}/api/community/acsr-championship?refresh=1`;
+function normalizeOrigin(value: string) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function acsmUrlCandidates() {
+  const explicit = [
+    process.env.GC_CHAMPIONSHIP_SOURCE_URL,
+    process.env.ACSR_CHAMPIONSHIP_LOCAL_URL
+  ]
+    .flatMap((value) => String(value || '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const origins = [
+    process.env.GC_INTERNAL_BASE_URL,
+    process.env.INTERNAL_BASE_URL,
+    process.env.PUBLIC_SITE_URL,
+    process.env.PUBLIC_BASE_URL,
+    process.env.FRONTEND_URL,
+    process.env.SITE_URL,
+    process.env.ASTRO_SITE,
+    process.env.ORIGIN,
+    'https://grasscuttersracing.com'
+  ]
+    .map((value) => normalizeOrigin(String(value || '')))
+    .filter(Boolean)
+    .map((origin) => `${origin}/api/community/acsr-championship?refresh=1`);
+
+  const port = process.env.PORT || 3000;
+  const local = [
+    `http://127.0.0.1:${port}/api/community/acsr-championship?refresh=1`,
+    `http://localhost:${port}/api/community/acsr-championship?refresh=1`
+  ];
+
+  return [...new Set([...explicit, ...origins, ...local])];
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = 9000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: { accept: 'application/json', 'user-agent': 'GrassCutters ratings backend' },
+      signal: controller.signal
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!payload?.ok || !payload?.championship) {
+      throw new Error(payload?.message || 'Payload ACSM inválido.');
+    }
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchChampionship() {
-  const url = acsmUrlFromEnv();
-  const response = await fetch(url, { headers: { accept: 'application/json' } });
-  if (!response.ok) throw new Error(`No se pudo leer ACSM: ${response.status}`);
-  const payload = await response.json();
-  if (!payload?.ok || !payload?.championship) throw new Error(payload?.message || 'Payload ACSM inválido.');
-  return payload;
+  const errors: string[] = [];
+  for (const url of acsmUrlCandidates()) {
+    try {
+      return await fetchJsonWithTimeout(url);
+    } catch (error) {
+      errors.push(`${url}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  throw new Error(`No se pudo leer ACSM desde backend. ${errors.join(' | ')}`);
 }
 
 function completedEvents(championship: PlainObject) {
@@ -211,6 +265,49 @@ function nextEventFallbackIso(event: PlainObject) {
   return '';
 }
 
+function raceSessionFromEvent(event: PlainObject) {
+  return ensureArray(event.sessions).find((session: PlainObject) =>
+    String(session?.type || session?.key || session?.name || '').toUpperCase().includes('RACE')
+  ) || null;
+}
+
+function sameDriverLap(lap: PlainObject, result: PlainObject) {
+  const lapGuid = textValue(lap.driverGuid || lap.guid);
+  const resultGuid = textValue(result.guid || result.steamGuid);
+  if (lapGuid && resultGuid && lapGuid === resultGuid) return true;
+
+  const lapName = textValue(lap.driverName || lap.name).toLowerCase();
+  const resultName = textValue(result.name || result.driverName).toLowerCase();
+  return Boolean(lapName && resultName && lapName === resultName);
+}
+
+function buildAcsmRaceLapsForDriver(event: PlainObject, result: PlainObject) {
+  const race = raceSessionFromEvent(event);
+  const rawLaps = ensureArray(race?.laps).filter((lap: PlainObject) => sameDriverLap(lap, result));
+
+  return rawLaps.map((lap: PlainObject, index: number) => ({
+    lapNumber: index + 1,
+    lapTimeMs: Number(lap.lapTimeMs || lap.timeMs || 0),
+    valid: Number(lap.cuts || 0) <= 0,
+    cuts: Number(lap.cuts || 0),
+    collisionsCar: Number(lap.collisionsCar || lap.carContacts || lap.contactsCar || 0),
+    collisionsEnv: Number(lap.collisionsEnv || lap.envContacts || lap.contactsEnv || 0),
+    notes: ['Fuente ACSM']
+  }));
+}
+
+function acsmFallbackMatch(event: PlainObject, result: PlainObject) {
+  const laps = buildAcsmRaceLapsForDriver(event, result);
+  return {
+    confidence: laps.length ? 0.55 : 0.35,
+    method: laps.length ? 'acsm-session-laps-fallback' : 'acsm-official-result-fallback',
+    bestLapDiffMs: null,
+    lapDiff: laps.length ? Math.abs(laps.length - Number(result.numLaps || 0)) : null,
+    strackerPlayerInSessionId: null,
+    strackerSessionId: null
+  };
+}
+
 export class GcRatingsService {
   private readonly store = createRatingStore();
   private cachedSnapshot: RatingsSnapshot | null = null;
@@ -218,29 +315,67 @@ export class GcRatingsService {
   private async recompute(mode: 'event' | 'championship', targetEventId?: string | null) {
     const acsm = await fetchChampionship();
     const championship = acsm.championship;
-    const events = completedEvents(championship);
+    const events = completedEvents(championship).filter((event: PlainObject) =>
+      mode !== 'event' || !targetEventId || String(event.id) === String(targetEventId)
+    );
     const strackerDbPath = resolveStrackerDbPath();
     const states = new Map<string, DriverRatingState>();
     const allResults: RatingEventResult[] = [];
     const logs: RecalculationLog[] = [];
 
-    if (!strackerDbPath) throw new Error('No encuentro stracker.db3.');
+    let db: any = null;
+    let sessions: PlainObject[] = [];
+    let usingStracker = false;
 
-    const db = await openStrackerDb(strackerDbPath);
+    if (strackerDbPath) {
+      try {
+        db = await openStrackerDb(strackerDbPath);
+        const tableCheck = verifyStrackerTables(db);
+        if (!tableCheck.ok) throw new Error(`Faltan tablas en stracker: ${tableCheck.missing.join(', ')}`);
+        sessions = findRaceSessions(db, Math.max(200, events.length * 6));
+        usingStracker = true;
+      } catch (error) {
+        try { db?.close?.(); } catch {}
+        db = null;
+        usingStracker = false;
+        logs.push({
+          id: uniqueId('gc_recalc'),
+          eventId: targetEventId ?? null,
+          mode,
+          status: 'error',
+          message: `STRacker no disponible, usando fallback ACSM: ${error instanceof Error ? error.message : String(error)}`,
+          createdAt: isoNow()
+        });
+      }
+    } else {
+      logs.push({
+        id: uniqueId('gc_recalc'),
+        eventId: targetEventId ?? null,
+        mode,
+        status: 'error',
+        message: 'STRacker no configurado, usando fallback ACSM con cuts y resultados oficiales.',
+        createdAt: isoNow()
+      });
+    }
+
     try {
-      const tableCheck = verifyStrackerTables(db);
-      if (!tableCheck.ok) throw new Error(`Faltan tablas en stracker: ${tableCheck.missing.join(', ')}`);
-
-      const sessions = findRaceSessions(db, Math.max(200, events.length * 6));
-
       for (const event of events) {
-        const session = identifyRaceSession(event, sessions);
-        const strackerDrivers = session ? readRaceDrivers(db, Number(session.SessionId)) : [];
-        const matches = matchOfficialToStracker(event, session, strackerDrivers);
-        const maxRaceLaps = Math.max(...ensureArray(event.raceResults).map((row: PlainObject) => Number(row.numLaps || 0)), 0);
+        const session = usingStracker && db ? identifyRaceSession(event, sessions) : null;
+        const strackerDrivers = session && db ? readRaceDrivers(db, Number(session.SessionId)) : [];
+        const officialResults = ensureArray(event.raceResults);
+
+        const matches = session && strackerDrivers.length
+          ? matchOfficialToStracker(event, session, strackerDrivers)
+          : officialResults.map((result: PlainObject) => ({
+              result,
+              stracker: null,
+              match: acsmFallbackMatch(event, result)
+            }));
+
+        const maxRaceLaps = Math.max(...officialResults.map((row: PlainObject) => Number(row.numLaps || 0)), 0);
         const processedAt = isoNow();
 
-        const provisionalRows = matches.map(({ result, stracker, match }) => {
+        const provisionalRows = matches.map(({ result, stracker, match }: any) => {
           const driverKey = driverKeyFromParts({
             strackerPlayerId: stracker?.PlayerId ?? null,
             steamGuid: stracker?.StrackerGuid ?? result.guid ?? null,
@@ -255,12 +390,14 @@ export class GcRatingsService {
           states.set(driverKey, current);
 
           const resultId = uniqueId('gc_evt');
-          const laps = stracker?.PlayerInSessionId ? readRaceLaps(db, Number(stracker.PlayerInSessionId)) : [];
+          const laps = db && stracker?.PlayerInSessionId
+            ? readRaceLaps(db, Number(stracker.PlayerInSessionId))
+            : buildAcsmRaceLapsForDriver(event, result);
+
           const sr = buildSrComputation({
             eventId: String(event.id),
             eventResultId: resultId,
             driverKey,
-            oldSr: current.srScore,
             laps,
             officialResult: {
               ...result,
@@ -369,9 +506,9 @@ export class GcRatingsService {
         version: 1,
         championshipId: textValue(championship.id, 'acsr'),
         championshipName: textValue(championship.name, 'GrassCutters Ratings'),
-        source: 'gc-ratings-v1',
+        source: usingStracker ? 'gc-ratings-v1' : 'gc-ratings-v1-acsm-fallback',
         storage: this.store.kind,
-        strackerDbPath,
+        strackerDbPath: usingStracker ? strackerDbPath : null,
         generatedAt: isoNow(),
         processedEventIds: [...new Set(allResults.map((row) => row.eventId))],
         drivers: [...states.values()].sort((left, right) => right.gsrRating - left.gsrRating || right.srScore - left.srScore),
@@ -383,7 +520,9 @@ export class GcRatingsService {
             eventId: targetEventId ?? null,
             mode,
             status: 'ok',
-            message: mode === 'event' && targetEventId ? `Recalculado el evento ${targetEventId} rehaciendo todo el campeonato para mantener consistencia.` : 'Recalculado el campeonato completo.',
+            message: usingStracker
+              ? (mode === 'event' && targetEventId ? `Recalculado el evento ${targetEventId} rehaciendo todo el campeonato para mantener consistencia.` : 'Recalculado el campeonato completo.')
+              : 'Recalculado desde ACSM fallback. SR usa cuts/resultados oficiales; contactos coche/entorno requieren STRacker.',
             createdAt: isoNow()
           }
         ]
@@ -407,7 +546,7 @@ export class GcRatingsService {
       }
       throw error;
     } finally {
-      db.close();
+      try { db?.close?.(); } catch {}
     }
   }
 
