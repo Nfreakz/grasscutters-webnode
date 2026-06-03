@@ -1,5 +1,4 @@
-import { clamp, ratingClassFromSr, roundTo } from './utils';
-import { uniqueId } from './utils';
+import { clamp, ratingClassFromSr, roundTo, safeFiniteInt, safeFiniteNumber, uniqueId } from './utils';
 import type { PlainObject, RatingIncident, RatingLapDetail } from './types';
 
 const SR_WEIGHTS = {
@@ -16,12 +15,11 @@ const SR_WEIGHTS = {
 };
 
 function safeSrNumber(value: unknown, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return safeFiniteNumber(value, fallback);
 }
 
 function safeSrCount(value: unknown) {
-  return Math.max(0, Math.round(safeSrNumber(value, 0)));
+  return safeFiniteInt(value, 0);
 }
 
 function pushIncident(
@@ -153,7 +151,8 @@ export function buildSrComputation(input: {
   }
 
   delta = roundTo(safeSrNumber(delta, 0));
-  const newSr = roundTo(clamp(oldSr + delta, 0, 100));
+  const rawNewSr = safeSrNumber(oldSr + delta, oldSr);
+  const newSr = roundTo(clamp(rawNewSr, 0, 100));
   return {
     oldSr: roundTo(oldSr),
     newSr,
@@ -165,4 +164,3 @@ export function buildSrComputation(input: {
     lapDetails
   };
 }
-

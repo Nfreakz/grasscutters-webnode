@@ -22,5 +22,17 @@ export class LocalJsonRatingStore implements RatingStore {
     fs.writeFileSync(tempPath, JSON.stringify(snapshot, null, 2) + '\n', 'utf8');
     fs.renameSync(tempPath, this.filePath);
   }
+
+  async append(payload: { snapshot: RatingsSnapshot }) {
+    await this.save(payload.snapshot);
+  }
+
+  async diagnostics() {
+    return {
+      storage: 'json',
+      filePath: this.filePath,
+      exists: fs.existsSync(this.filePath)
+    };
+  }
 }
 

@@ -1,4 +1,4 @@
-import type { RatingsSnapshot } from './types';
+import type { DriverRatingState, RatingEventResult, RatingsSnapshot, RecalculationLog } from './types';
 import { LocalJsonRatingStore } from './localJsonRatingStore';
 import { MysqlRatingStore } from './mysqlRatingStore';
 
@@ -6,6 +6,13 @@ export interface RatingStore {
   kind: 'json' | 'mysql';
   load(): Promise<RatingsSnapshot | null>;
   save(snapshot: RatingsSnapshot): Promise<void>;
+  append?(payload: {
+    snapshot: RatingsSnapshot;
+    drivers: DriverRatingState[];
+    eventResults: RatingEventResult[];
+    recalculationLogs: RecalculationLog[];
+  }): Promise<void>;
+  diagnostics?(): Promise<Record<string, unknown>>;
 }
 
 export function createRatingStore() {
@@ -15,9 +22,9 @@ export function createRatingStore() {
   if (driver === 'json' || driver === 'local-json') return new LocalJsonRatingStore();
 
   const hasMysqlConfig = Boolean(
-    process.env.MYSQL_HOST?.trim() &&
-    process.env.MYSQL_DATABASE?.trim() &&
-    process.env.MYSQL_USER?.trim()
+    (process.env.MYSQL_HOST?.trim() || process.env.DB_HOST?.trim()) &&
+    (process.env.MYSQL_DATABASE?.trim() || process.env.DB_NAME?.trim()) &&
+    (process.env.MYSQL_USER?.trim() || process.env.DB_USER?.trim())
   );
 
   if (hasMysqlConfig) return new MysqlRatingStore();

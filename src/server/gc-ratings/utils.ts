@@ -12,6 +12,15 @@ export function numberValue(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+export function safeFiniteNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export function safeFiniteInt(value: unknown, fallback = 0) {
+  return Math.max(0, Math.round(safeFiniteNumber(value, fallback)));
+}
+
 export function boolValue(value: unknown) {
   return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true';
 }
@@ -58,6 +67,7 @@ export function formatLapMs(value: unknown) {
 }
 
 export function ratingClassFromSr(score: number) {
+  if (!Number.isFinite(score)) return 'B';
   if (score >= 95) return 'A+';
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';

@@ -107,7 +107,7 @@ export type RatingEventResult = {
 export type RecalculationLog = {
   id: string;
   eventId: string | null;
-  mode: 'event' | 'championship';
+  mode: 'event' | 'championship' | 'incremental' | 'rebuild';
   status: 'ok' | 'error';
   message: string;
   createdAt: string;

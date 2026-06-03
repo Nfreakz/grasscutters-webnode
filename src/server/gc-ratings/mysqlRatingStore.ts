@@ -24,6 +24,40 @@ function mysqlInt(value: unknown, fallback = 0) {
   return Math.round(mysqlNumber(value, fallback));
 }
 
+function mysqlSr(value: unknown, fallback = 80) {
+  return mysqlNumber(value, fallback);
+}
+
+function mysqlGsr(value: unknown, fallback = 1500) {
+  return mysqlInt(value, fallback);
+}
+
+function mysqlDriverRatingState(row: any): DriverRatingState {
+  return {
+    driverKey: row.driver_key,
+    steamGuid: row.steam_guid,
+    strackerPlayerId: row.stracker_player_id ?? null,
+    displayName: row.display_name,
+    srScore: mysqlSr(row.sr_score, 80),
+    srClass: row.sr_class,
+    gsrMu: mysqlNumber(row.gsr_mu, 25),
+    gsrSigma: mysqlNumber(row.gsr_sigma, 25 / 3),
+    gsrRating: mysqlGsr(row.gsr_rating, 1500),
+    gsrClass: row.gsr_class,
+    racesCount: mysqlInt(row.races_count, 0),
+    cleanRaces: mysqlInt(row.clean_races, 0),
+    wins: mysqlInt(row.wins, 0),
+    podiums: mysqlInt(row.podiums, 0),
+    incidentPointsTotal: mysqlNumber(row.incident_points_total, 0),
+    lastDeltaSr: mysqlNumber(row.last_delta_sr, 0),
+    lastDeltaGsr: mysqlInt(row.last_delta_gsr, 0),
+    lastEventId: row.last_event_id ?? null,
+    lastRaceAt: mysqlToIso(row.last_race_at),
+    createdAt: mysqlToIso(row.created_at) || new Date().toISOString(),
+    updatedAt: mysqlToIso(row.updated_at) || new Date().toISOString()
+  };
+}
+
 export class MysqlRatingStore implements RatingStore {
   kind = 'mysql' as const;
   private poolPromise: Promise<Pool> | null = null;
@@ -35,11 +69,11 @@ export class MysqlRatingStore implements RatingStore {
         const mod: any = await import('mysql2/promise');
         const mysql = mod.default ?? mod;
         return mysql.createPool({
-          host: process.env.MYSQL_HOST?.trim(),
-          port: Number(process.env.MYSQL_PORT || 3306),
-          database: process.env.MYSQL_DATABASE?.trim(),
-          user: process.env.MYSQL_USER?.trim(),
-          password: process.env.MYSQL_PASSWORD ?? '',
+          host: process.env.MYSQL_HOST?.trim() || process.env.DB_HOST?.trim(),
+          port: Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306),
+          database: process.env.MYSQL_DATABASE?.trim() || process.env.DB_NAME?.trim(),
+          user: process.env.MYSQL_USER?.trim() || process.env.DB_USER?.trim(),
+          password: process.env.MYSQL_PASSWORD ?? process.env.DB_PASSWORD ?? '',
           waitForConnections: true,
           connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT || 5),
           charset: 'utf8mb4',
@@ -222,29 +256,7 @@ export class MysqlRatingStore implements RatingStore {
       lapsByResult.set(lap.eventResultId, bucket);
     }
 
-    const drivers: DriverRatingState[] = (driversRows as any[]).map((row) => ({
-      driverKey: row.driver_key,
-      steamGuid: row.steam_guid,
-      strackerPlayerId: row.stracker_player_id ?? null,
-      displayName: row.display_name,
-      srScore: Number(row.sr_score || 0),
-      srClass: row.sr_class,
-      gsrMu: Number(row.gsr_mu || 0),
-      gsrSigma: Number(row.gsr_sigma || 0),
-      gsrRating: Number(row.gsr_rating || 0),
-      gsrClass: row.gsr_class,
-      racesCount: Number(row.races_count || 0),
-      cleanRaces: Number(row.clean_races || 0),
-      wins: Number(row.wins || 0),
-      podiums: Number(row.podiums || 0),
-      incidentPointsTotal: Number(row.incident_points_total || 0),
-      lastDeltaSr: Number(row.last_delta_sr || 0),
-      lastDeltaGsr: Number(row.last_delta_gsr || 0),
-      lastEventId: row.last_event_id ?? null,
-      lastRaceAt: mysqlToIso(row.last_race_at),
-      createdAt: mysqlToIso(row.created_at) || new Date().toISOString(),
-      updatedAt: mysqlToIso(row.updated_at) || new Date().toISOString()
-    }));
+    const drivers: DriverRatingState[] = (driversRows as any[]).map((row) => mysqlDriverRatingState(row));
 
     const eventResults: RatingEventResult[] = (resultRows as any[]).map((row) => ({
       id: row.id,
@@ -262,17 +274,17 @@ export class MysqlRatingStore implements RatingStore {
       laps: Number(row.laps || 0),
       bestLapMs: Number(row.best_lap_ms || 0),
       bestLap: '',
-      oldSr: Number(row.old_sr || 0),
-      newSr: Number(row.new_sr || 0),
-      deltaSr: Number(row.delta_sr || 0),
-      oldGsr: Number(row.old_gsr || 0),
-      newGsr: Number(row.new_gsr || 0),
-      deltaGsr: Number(row.delta_gsr || 0),
-      gsrMuBefore: Number(row.gsr_mu_before || 0),
-      gsrMuAfter: Number(row.gsr_mu_after || 0),
-      gsrSigmaBefore: Number(row.gsr_sigma_before || 0),
-      gsrSigmaAfter: Number(row.gsr_sigma_after || 0),
-      incidentPoints: Number(row.incident_points || 0),
+      oldSr: mysqlSr(row.old_sr, 80),
+      newSr: mysqlSr(row.new_sr, 80),
+      deltaSr: mysqlNumber(row.delta_sr, 0),
+      oldGsr: mysqlGsr(row.old_gsr, 1500),
+      newGsr: mysqlGsr(row.new_gsr, 1500),
+      deltaGsr: mysqlInt(row.delta_gsr, 0),
+      gsrMuBefore: mysqlNumber(row.gsr_mu_before, 25),
+      gsrMuAfter: mysqlNumber(row.gsr_mu_after, 25),
+      gsrSigmaBefore: mysqlNumber(row.gsr_sigma_before, 25 / 3),
+      gsrSigmaAfter: mysqlNumber(row.gsr_sigma_after, 25 / 3),
+      incidentPoints: mysqlNumber(row.incident_points, 0),
       cleanRace: Boolean(row.clean_race),
       dnf: Boolean(row.dnf),
       dsq: Boolean(row.dsq),
@@ -458,5 +470,188 @@ export class MysqlRatingStore implements RatingStore {
       connection.release();
     }
   }
-}
 
+  private async upsertDriver(connection: PoolConnection, driver: DriverRatingState) {
+    await connection.query(`
+      INSERT INTO gc_driver_rating
+      (driver_key, steam_guid, stracker_player_id, display_name, sr_score, sr_class, gsr_mu, gsr_sigma, gsr_rating, gsr_class, races_count, clean_races, wins, podiums, incident_points_total, last_delta_sr, last_delta_gsr, last_event_id, last_race_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        steam_guid = VALUES(steam_guid),
+        stracker_player_id = VALUES(stracker_player_id),
+        display_name = VALUES(display_name),
+        sr_score = VALUES(sr_score),
+        sr_class = VALUES(sr_class),
+        gsr_mu = VALUES(gsr_mu),
+        gsr_sigma = VALUES(gsr_sigma),
+        gsr_rating = VALUES(gsr_rating),
+        gsr_class = VALUES(gsr_class),
+        races_count = VALUES(races_count),
+        clean_races = VALUES(clean_races),
+        wins = VALUES(wins),
+        podiums = VALUES(podiums),
+        incident_points_total = VALUES(incident_points_total),
+        last_delta_sr = VALUES(last_delta_sr),
+        last_delta_gsr = VALUES(last_delta_gsr),
+        last_event_id = VALUES(last_event_id),
+        last_race_at = VALUES(last_race_at),
+        updated_at = VALUES(updated_at)
+    `, [
+      driver.driverKey,
+      driver.steamGuid,
+      driver.strackerPlayerId,
+      driver.displayName,
+      mysqlSr(driver.srScore, 80),
+      driver.srClass,
+      mysqlNumber(driver.gsrMu, 25),
+      mysqlNumber(driver.gsrSigma, 25 / 3),
+      mysqlGsr(driver.gsrRating, 1500),
+      driver.gsrClass,
+      mysqlInt(driver.racesCount, 0),
+      mysqlInt(driver.cleanRaces, 0),
+      mysqlInt(driver.wins, 0),
+      mysqlInt(driver.podiums, 0),
+      mysqlNumber(driver.incidentPointsTotal, 0),
+      mysqlNumber(driver.lastDeltaSr, 0),
+      mysqlInt(driver.lastDeltaGsr, 0),
+      driver.lastEventId,
+      isoToMysql(driver.lastRaceAt),
+      isoToMysql(driver.createdAt),
+      isoToMysql(driver.updatedAt)
+    ]);
+  }
+
+  private async insertEventResult(connection: PoolConnection, result: RatingEventResult) {
+    await connection.query(`
+      INSERT INTO gc_rating_event_result
+      (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      result.id,
+      result.eventId,
+      result.eventName,
+      isoToMysql(result.eventDate),
+      result.strackerSessionId,
+      result.driverKey,
+      result.steamGuid,
+      result.strackerPlayerId,
+      result.displayName,
+      result.car,
+      mysqlInt(result.position),
+      mysqlNumber(result.points),
+      mysqlInt(result.laps),
+      mysqlInt(result.bestLapMs),
+      mysqlSr(result.oldSr, 80),
+      mysqlSr(result.newSr, 80),
+      mysqlNumber(result.deltaSr, 0),
+      mysqlGsr(result.oldGsr, 1500),
+      mysqlGsr(result.newGsr, 1500),
+      mysqlInt(result.deltaGsr, 0),
+      mysqlNumber(result.gsrMuBefore, 25),
+      mysqlNumber(result.gsrMuAfter, 25),
+      mysqlNumber(result.gsrSigmaBefore, 25 / 3),
+      mysqlNumber(result.gsrSigmaAfter, 25 / 3),
+      mysqlNumber(result.incidentPoints, 0),
+      result.cleanRace ? 1 : 0,
+      result.dnf ? 1 : 0,
+      result.dsq ? 1 : 0,
+      isoToMysql(result.processedAt),
+      mysqlNumber(result.match?.confidence),
+      result.match.method,
+      Number.isFinite(Number(result.match?.bestLapDiffMs)) ? Number(result.match.bestLapDiffMs) : null,
+      Number.isFinite(Number(result.match?.lapDiff)) ? Number(result.match.lapDiff) : null,
+      Number.isFinite(Number(result.match?.strackerPlayerInSessionId)) ? Number(result.match.strackerPlayerInSessionId) : null,
+      JSON.stringify(result.notes || [])
+    ]);
+
+    for (const incident of result.incidents) {
+      await connection.query(`
+        INSERT INTO gc_rating_incident
+        (id, event_result_id, event_id, driver_key, lap_number, type, count, sr_delta, description, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        incident.id,
+        incident.eventResultId,
+        incident.eventId,
+        incident.driverKey,
+        incident.lapNumber,
+        incident.type,
+        mysqlInt(incident.count),
+        mysqlNumber(incident.srDelta, 0),
+        incident.description,
+        incident.source
+      ]);
+    }
+
+    for (const lap of result.lapsDetail) {
+      await connection.query(`
+        INSERT INTO gc_rating_lap_detail
+        (id, event_result_id, lap_number, lap_time_ms, valid, cuts, collisions_car, collisions_env, sr_delta, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        lap.id,
+        lap.eventResultId,
+        mysqlInt(lap.lapNumber),
+        mysqlInt(lap.lapTimeMs),
+        lap.valid ? 1 : 0,
+        mysqlInt(lap.cuts),
+        mysqlInt(lap.collisionsCar),
+        mysqlInt(lap.collisionsEnv),
+        mysqlNumber(lap.srDelta, 0),
+        lap.notes
+      ]);
+    }
+  }
+
+  async append(payload: {
+    snapshot: RatingsSnapshot;
+    drivers: DriverRatingState[];
+    eventResults: RatingEventResult[];
+    recalculationLogs: RecalculationLog[];
+  }) {
+    await this.ensureSchema();
+    const pool = await this.getPool();
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      for (const driver of payload.drivers) {
+        await this.upsertDriver(connection, driver);
+      }
+      for (const result of payload.eventResults) {
+        await this.insertEventResult(connection, result);
+      }
+      for (const log of payload.recalculationLogs) {
+        await connection.query(`
+          INSERT INTO gc_rating_recalculation_log (id, event_id, mode, status, message, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [log.id, log.eventId, log.mode, log.status, log.message, isoToMysql(log.createdAt)]);
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  async diagnostics() {
+    const configured = Boolean(
+      (process.env.MYSQL_HOST?.trim() || process.env.DB_HOST?.trim()) &&
+      (process.env.MYSQL_DATABASE?.trim() || process.env.DB_NAME?.trim()) &&
+      (process.env.MYSQL_USER?.trim() || process.env.DB_USER?.trim())
+    );
+    if (!configured) {
+      return { storage: 'mysql', mysqlConfigured: false, mysqlConnected: false };
+    }
+
+    try {
+      await this.ensureSchema();
+      const pool = await this.getPool();
+      await pool.query('SELECT 1 AS ok');
+      return { storage: 'mysql', mysqlConfigured: true, mysqlConnected: true };
+    } catch {
+      return { storage: 'mysql', mysqlConfigured: true, mysqlConnected: false };
+    }
+  }
+}

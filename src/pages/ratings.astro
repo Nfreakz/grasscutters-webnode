@@ -509,6 +509,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         return Number.isFinite(parsed) ? parsed : null;
       };
 
+      const validSr = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      };
+
       const formatDelta = (value, digits = 1) => {
         const numeric = toNumber(value);
         if (numeric === null) return '--';
@@ -553,7 +558,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           <tr class="${index < 3 ? 'gc-ratings-row--top' : ''}">
             <td><span class="gc-ratings-pos">${escapeHtml(row.position ?? index + 1)}</span></td>
             <td>${driverCell(row)}</td>
-            <td>${badge(`SR ${row.srClass || '--'}`, toNumber(row.sr)?.toFixed(1) ?? '--')}</td>
+            <td>${badge(`SR ${row.srClass || '--'}`, validSr(row.sr)?.toFixed(1) ?? '--')}</td>
             <td>${pill(row.srClass)}</td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.races ?? '--')}</span></td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.cleanRaces ?? '--')}</span></td>
@@ -584,11 +589,12 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       }
 
       function updateSummary(srRows, gsrRows, diagnostics) {
-        const averageSr = srRows.length
-          ? (srRows.reduce((sum, row) => sum + Number(row.sr || 0), 0) / srRows.length).toFixed(1)
+        const validSrRows = srRows.filter((row) => validSr(row.sr) !== null);
+        const averageSr = validSrRows.length
+          ? (validSrRows.reduce((sum, row) => sum + Number(validSr(row.sr) || 0), 0) / validSrRows.length).toFixed(1)
           : '--';
         const topGsr = gsrRows[0] || null;
-        const bestSr = srRows[0] || null;
+        const bestSr = validSrRows[0] || null;
         const biggestGain = [...srRows.map((row) => ({ ...row, type: 'SR' })), ...gsrRows.map((row) => ({ ...row, type: 'GSR' }))]
           .filter((row) => toNumber(row.lastDelta) !== null)
           .sort((a, b) => Number(b.lastDelta) - Number(a.lastDelta))[0] || null;
@@ -598,7 +604,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         summaryTopGsr.textContent = topGsr ? String(topGsr.gsr ?? '--') : '--';
         summaryTopGsrMeta.textContent = topGsr ? `${topGsr.driver} · ${topGsr.gsrClass}` : 'sin datos';
         summaryRaces.textContent = String(diagnostics?.eventsProcessed ?? '--');
-        summaryBestSr.textContent = bestSr ? toNumber(bestSr.sr)?.toFixed(1) ?? '--' : '--';
+        summaryBestSr.textContent = bestSr ? validSr(bestSr.sr)?.toFixed(1) ?? '--' : '--';
         summaryBestSrMeta.textContent = bestSr ? `${bestSr.driver} · ${bestSr.srClass}` : 'sin datos';
 
         if (biggestGain && Number(biggestGain.lastDelta) > 0) {
