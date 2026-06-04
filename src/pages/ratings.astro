@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
+import '../styles/public/gc-rating-badges.css';
 ---
 
 <MarketingLayout
@@ -49,13 +50,13 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
             <p>Mide contactos, salidas de pista, sanciones y abandonos.</p>
           </div>
 
-          <div class="gc-ratings-scale" aria-label="Escala SR">
-            <div><strong>A+</strong><span>95–100 · Excelente</span></div>
-            <div><strong>A</strong><span>90–94 · Muy limpio</span></div>
-            <div><strong>B</strong><span>80–89 · Correcto</span></div>
-            <div><strong>C</strong><span>70–79 · En observación</span></div>
-            <div><strong>D</strong><span>60–69 · Riesgo alto</span></div>
-            <div><strong>E</strong><span>0–59 · Muy penalizado</span></div>
+          <div class="gc-ratings-scale gc-ratings-scale--badges" aria-label="Escala SR">
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-aplus"><span class="gc-rating-badge__type">SR</span><strong>A+</strong></span><span>95–100 · Excelente</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-a"><span class="gc-rating-badge__type">SR</span><strong>A</strong></span><span>90–94 · Muy limpio</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-b"><span class="gc-rating-badge__type">SR</span><strong>B</strong></span><span>80–89 · Correcto</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-c"><span class="gc-rating-badge__type">SR</span><strong>C</strong></span><span>70–79 · En observación</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-d"><span class="gc-rating-badge__type">SR</span><strong>D</strong></span><span>60–69 · Riesgo alto</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-e"><span class="gc-rating-badge__type">SR</span><strong>E</strong></span><span>0–59 · Muy penalizado</span></div>
           </div>
 
           <div class="gc-ratings-impact" aria-label="Impactos SR">
@@ -75,13 +76,13 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
             <p>Mide resultado final y nivel de rivales.</p>
           </div>
 
-          <div class="gc-ratings-scale" aria-label="Rangos GSR">
-            <div><strong>S</strong><span>Elite · rendimiento fuerte</span></div>
-            <div><strong>A</strong><span>Pro · muy competitivo</span></div>
-            <div><strong>B</strong><span>Club · nivel estable</span></div>
-            <div><strong>C</strong><span>Challenger · en progresión</span></div>
-            <div><strong>D</strong><span>Base · aprendizaje competitivo</span></div>
-            <div><strong>Rookie</strong><span>Alta incertidumbre inicial</span></div>
+          <div class="gc-ratings-scale gc-ratings-scale--badges" aria-label="Rangos GSR">
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-s"><span class="gc-rating-badge__type">GSR</span><strong>S</strong></span><span>Elite · rendimiento fuerte</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-a"><span class="gc-rating-badge__type">GSR</span><strong>A</strong></span><span>Pro · muy competitivo</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-b"><span class="gc-rating-badge__type">GSR</span><strong>B</strong></span><span>Club · nivel estable</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-c"><span class="gc-rating-badge__type">GSR</span><strong>C</strong></span><span>Challenger · en progresión</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-d"><span class="gc-rating-badge__type">GSR</span><strong>D</strong></span><span>Base · aprendizaje competitivo</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-rookie"><span class="gc-rating-badge__type">GSR</span><strong>Rookie</strong></span><span>Alta incertidumbre inicial</span></div>
           </div>
 
           <div class="gc-ratings-note">
@@ -555,8 +556,32 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
         return `<strong>${escapeHtml(label)}</strong>`;
       };
 
-      const badge = (label, score) => `<span class="gc-acsr-sr">${escapeHtml(label)} <small>${escapeHtml(score)}</small></span>`;
-      const pill = (value) => `<span class="gc-ratings-pill">${escapeHtml(value || '--')}</span>`;
+      const ratingClassKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'unknown';
+
+      const ratingBadge = (type, value, score = null, options = {}) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeValue = String(value || '--');
+        const classKey = ratingClassKey(safeValue);
+        const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const scoreMarkup = score !== null && score !== undefined && score !== ''
+          ? `<small>${escapeHtml(score)}</small>`
+          : '';
+
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeValue)}</strong>
+            ${scoreMarkup}
+          </span>
+        `;
+      };
+
+      const pill = (value, type = 'sr') => ratingBadge(type, value || '--', null, { compact: true });
       const delta = (value, digits = 1) => `<span class="${deltaClass(value)}">${escapeHtml(formatDelta(value, digits))}</span>`;
       const driverCell = (row) => `
         <div class="gc-ratings-driver">
@@ -575,8 +600,8 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
           <tr class="${index < 3 ? 'gc-ratings-row--top' : ''}">
             <td><span class="gc-ratings-pos">${escapeHtml(row.position ?? index + 1)}</span></td>
             <td>${driverCell(row)}</td>
-            <td>${badge(`SR ${row.srClass || '--'}`, validSr(row.sr)?.toFixed(1) ?? '--')}</td>
-            <td>${pill(row.srClass)}</td>
+            <td>${ratingBadge('sr', row.srClass || '--', validSr(row.sr)?.toFixed(1) ?? '--')}</td>
+            <td>${pill(row.srClass, 'sr')}</td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.races ?? '--')}</span></td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.cleanRaces ?? '--')}</span></td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.incidentsPerRace ?? '--')}</span></td>
@@ -595,8 +620,8 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
           <tr class="${index < 3 ? 'gc-ratings-row--top' : ''}">
             <td><span class="gc-ratings-pos">${escapeHtml(row.position ?? index + 1)}</span></td>
             <td>${driverCell(row)}</td>
-            <td>${badge('GSR', row.gsr ?? '--')}</td>
-            <td>${pill(row.gsrClass)}</td>
+            <td>${ratingBadge('gsr', row.gsrClass || '--', row.gsr ?? '--')}</td>
+            <td>${pill(row.gsrClass, 'gsr')}</td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.races ?? '--')}</span></td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.wins ?? '--')}</span></td>
             <td><span class="gc-ratings-stat">${escapeHtml(row.podiums ?? '--')}</span></td>

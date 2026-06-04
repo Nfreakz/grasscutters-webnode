@@ -1,0 +1,178 @@
+/* GC_RATING_BADGES_V57
+   Sistema visual centralizado para SR y GSR.
+   SR = seguridad/limpieza.
+   GSR = rendimiento/nivel competitivo.
+*/
+
+.gc-rating-badge {
+  --badge-border: rgba(150, 255, 47, .25);
+  --badge-bg: rgba(150, 255, 47, .08);
+  --badge-text: #96ff2f;
+  --badge-soft: rgba(245, 248, 241, .68);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 0 9px;
+  border: 1px solid var(--badge-border);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(0,0,0,.10)),
+    var(--badge-bg);
+  color: var(--badge-text);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.16),
+    0 0 18px color-mix(in srgb, var(--badge-text) 18%, transparent);
+  font-family: var(--gc-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.gc-rating-badge__type {
+  color: var(--badge-soft);
+  opacity: .86;
+  font-size: 9px;
+  letter-spacing: .10em;
+}
+
+.gc-rating-badge strong {
+  color: var(--badge-text);
+  font: inherit;
+  letter-spacing: .04em;
+}
+
+.gc-rating-badge small {
+  color: rgba(245, 248, 241, .82);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: .02em;
+}
+
+.gc-rating-badge--compact {
+  min-width: 54px;
+  padding-inline: 8px;
+}
+
+.gc-rating-badge--compact .gc-rating-badge__type {
+  opacity: .62;
+}
+
+.gc-rating-badge--compact small {
+  display: none;
+}
+
+/* SR · Safety Rating */
+.gc-rating-badge--sr-aplus {
+  --badge-border: rgba(150,255,47,.72);
+  --badge-bg: rgba(150,255,47,.14);
+  --badge-text: #96ff2f;
+}
+
+.gc-rating-badge--sr-a {
+  --badge-border: rgba(110,232,95,.64);
+  --badge-bg: rgba(110,232,95,.12);
+  --badge-text: #6ee85f;
+}
+
+.gc-rating-badge--sr-b {
+  --badge-border: rgba(33,200,214,.62);
+  --badge-bg: rgba(33,200,214,.12);
+  --badge-text: #21c8d6;
+}
+
+.gc-rating-badge--sr-c {
+  --badge-border: rgba(232,186,8,.68);
+  --badge-bg: rgba(232,186,8,.13);
+  --badge-text: #e8ba08;
+}
+
+.gc-rating-badge--sr-d {
+  --badge-border: rgba(255,138,42,.66);
+  --badge-bg: rgba(255,138,42,.13);
+  --badge-text: #ff8a2a;
+}
+
+.gc-rating-badge--sr-e {
+  --badge-border: rgba(255,87,87,.66);
+  --badge-bg: rgba(255,87,87,.13);
+  --badge-text: #ff5757;
+}
+
+/* GSR · GrassCutters Skill Rating */
+.gc-rating-badge--gsr-s {
+  --badge-border: rgba(217,164,65,.76);
+  --badge-bg: rgba(217,164,65,.14);
+  --badge-text: #ffd166;
+}
+
+.gc-rating-badge--gsr-a {
+  --badge-border: rgba(181,68,226,.72);
+  --badge-bg: rgba(181,68,226,.14);
+  --badge-text: #d36aff;
+}
+
+.gc-rating-badge--gsr-b {
+  --badge-border: rgba(85,129,231,.72);
+  --badge-bg: rgba(85,129,231,.14);
+  --badge-text: #75a0ff;
+}
+
+.gc-rating-badge--gsr-c {
+  --badge-border: rgba(45,212,191,.68);
+  --badge-bg: rgba(45,212,191,.12);
+  --badge-text: #2dd4bf;
+}
+
+.gc-rating-badge--gsr-d {
+  --badge-border: rgba(124,139,120,.62);
+  --badge-bg: rgba(124,139,120,.12);
+  --badge-text: #a8b8a2;
+}
+
+.gc-rating-badge--gsr-rookie {
+  --badge-border: rgba(156,163,175,.62);
+  --badge-bg: rgba(156,163,175,.12);
+  --badge-text: #c4cbd5;
+}
+
+/* Fallbacks */
+.gc-rating-badge--sr-unknown,
+.gc-rating-badge--sr---,
+.gc-rating-badge--gsr-unknown,
+.gc-rating-badge--gsr--- {
+  --badge-border: rgba(245,248,241,.18);
+  --badge-bg: rgba(245,248,241,.06);
+  --badge-text: rgba(245,248,241,.72);
+}
+
+/* Integración en /ratings */
+.gc-ratings-scale--badges div {
+  justify-content: space-between;
+}
+
+.gc-ratings-scale--badges .gc-rating-badge {
+  flex: 0 0 auto;
+}
+
+.gc-ratings-table .gc-rating-badge {
+  min-height: 24px;
+}
+
+@media (max-width: 720px) {
+  .gc-rating-badge {
+    min-height: 24px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .gc-rating-badge__type {
+    font-size: 8px;
+  }
+}

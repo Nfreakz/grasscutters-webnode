@@ -1,0 +1,33 @@
+---
+import '../../styles/public/gc-rating-badges.css';
+
+const {
+  type = 'sr',
+  value = '--',
+  score,
+  compact = false,
+  class: className = '',
+} = Astro.props;
+
+const normalizedType = String(type).toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+const normalizedValue = String(value || '--');
+
+const classKey = normalizedValue
+  .trim()
+  .toLowerCase()
+  .replace('+', 'plus')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '') || 'unknown';
+---
+
+<span class:list={[
+  'gc-rating-badge',
+  `gc-rating-badge--${normalizedType}`,
+  `gc-rating-badge--${normalizedType}-${classKey}`,
+  compact && 'gc-rating-badge--compact',
+  className
+]}>
+  <span class="gc-rating-badge__type">{normalizedType.toUpperCase()}</span>
+  <strong>{normalizedValue}</strong>
+  {score !== undefined && score !== null && score !== '' && <small>{score}</small>}
+</span>
