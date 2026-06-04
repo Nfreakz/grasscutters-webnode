@@ -176,8 +176,9 @@
   }
 
   html[data-gc-scope="marketing"] .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) > strong{
-    color:#b544e2 !important;
+    color:#96ff2f !important;
     font-weight:900 !important;
+    text-shadow:0 0 12px rgba(150,255,47,.16) !important;
   }
 
   html[data-gc-scope="marketing"] .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) > small{
@@ -188,12 +189,12 @@
   /* Now Racing buttons: shrink labels visually so they fit cleanly inside the buttons.
      This avoids touching page structure and keeps the pack as a simple copy-overwrite.
      If the repo later changes the DOM, these selectors may need to be moved to index.astro. */
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn{
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn{
     white-space:nowrap !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type,
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2){
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:first-of-type,
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:nth-of-type(2){
     position:relative !important;
     display:inline-flex !important;
     align-items:center !important;
@@ -202,12 +203,12 @@
     overflow:hidden !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type{
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:first-of-type{
     color:transparent !important;
     font-size:0 !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type::after{
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:first-of-type::after{
     content:"COCHE" !important;
     color:#f2f4ef !important;
     font-size:clamp(.70rem,.82vw,.78rem) !important;
@@ -216,12 +217,12 @@
     line-height:1 !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2){
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:nth-of-type(2){
     color:transparent !important;
     font-size:0 !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2)::after{
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:nth-of-type(2)::after{
     content:"CIRCUITO" !important;
     color:#f2f4ef !important;
     font-size:clamp(.68rem,.78vw,.75rem) !important;
@@ -230,15 +231,19 @@
     line-height:1 !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:first-of-type:hover::after,
-  html[data-gc-scope="marketing"] .gc-home2-panel .gc-home2-btn:nth-of-type(2):hover::after{
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:first-of-type:hover::after,
+  html[data-gc-scope="marketing"] .gc-home2-panel--now .gc-home2-btn:nth-of-type(2):hover::after{
     color:#f2f4ef !important;
   }
 
-  /* GC_FLOATING_HERO_LOGO_V30
-     - Header con efecto KITT verde más visible.
-     - Logo flotante se oculta al hacer scroll y vuelve solo arriba.
-     - Logo sigue arrastrable, con hover e historia en click.
+  /* GC_FLOATING_HERO_LOGO_V40
+     Ajustes de home:
+     - Header sin scanner: solo texto, Racing Community en verde.
+     - Logo flotante se oculta al hacer scroll y mantiene drag/story/hover.
+     - Combo actual: tiempo en color de Timing Sheet.
+     - Top combo: 9 líneas sin compactar el tamaño original.
+     - Estado servidor: fila Vueltas combo.
+     - Campeonato: botón verde con texto negro para apuntarse.
   */
 
   html[data-gc-scope="marketing"] .gc-public-brand{
@@ -255,95 +260,36 @@
     display:grid !important;
     gap:3px !important;
     overflow:visible !important;
-    padding:4px 8px 5px 0 !important;
-    isolation:isolate !important;
+    padding:0 !important;
+    isolation:auto !important;
   }
 
-  html[data-gc-scope="marketing"] .gc-public-brand-copy strong,
-  html[data-gc-scope="marketing"] .gc-public-brand-copy small{
-    position:relative !important;
-    z-index:2 !important;
-    color:transparent !important;
-    background:
-      linear-gradient(
-        90deg,
-        rgba(242,244,239,.88) 0%,
-        rgba(242,244,239,.94) 34%,
-        #96ff2f 45%,
-        #eaffd6 50%,
-        #96ff2f 55%,
-        rgba(242,244,239,.94) 66%,
-        rgba(242,244,239,.88) 100%
-      ) !important;
-    background-size:260% 100% !important;
-    background-position:-160% 0 !important;
-    -webkit-background-clip:text !important;
-    background-clip:text !important;
-    text-shadow:
-      0 0 10px rgba(150,255,47,.16),
-      0 0 22px rgba(150,255,47,.06) !important;
-    animation:gcHeaderKittTextGreen 2.25s linear infinite !important;
-  }
-
-  html[data-gc-scope="marketing"] .gc-public-brand-copy small{
-    animation-delay:.08s !important;
-    opacity:.82 !important;
-  }
-
-  html[data-gc-scope="marketing"] .gc-public-brand-copy::before{
-    content:"" !important;
-    position:absolute !important;
-    left:0 !important;
-    right:0 !important;
-    bottom:-5px !important;
-    height:2px !important;
-    z-index:1 !important;
-    border-radius:999px !important;
-    background:
-      linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(150,255,47,0) 28%,
-        rgba(150,255,47,.96) 48%,
-        rgba(232,255,214,.96) 50%,
-        rgba(150,255,47,.96) 52%,
-        rgba(150,255,47,0) 72%,
-        transparent 100%
-      ) !important;
-    background-size:260% 100% !important;
-    filter:drop-shadow(0 0 10px rgba(150,255,47,.88)) !important;
-    animation:gcHeaderKittBarGreen 1.55s ease-in-out infinite alternate !important;
-    opacity:.95 !important;
-    pointer-events:none !important;
-  }
-
+  html[data-gc-scope="marketing"] .gc-public-brand-copy::before,
   html[data-gc-scope="marketing"] .gc-public-brand-copy::after{
-    content:"" !important;
-    position:absolute !important;
-    inset:-5px -16px -8px -10px !important;
-    z-index:0 !important;
-    pointer-events:none !important;
-    background:
-      radial-gradient(circle at var(--gc-brand-scan-x, 0%) 50%, rgba(150,255,47,.18), transparent 34%) !important;
-    filter:blur(6px) !important;
-    animation:gcHeaderKittGlowGreen 1.55s ease-in-out infinite alternate !important;
-    opacity:.78 !important;
+    content:none !important;
+    display:none !important;
+    animation:none !important;
+    background:none !important;
+    filter:none !important;
   }
 
-  @keyframes gcHeaderKittTextGreen{
-    0%{ background-position:180% 0; }
-    100%{ background-position:-180% 0; }
+  html[data-gc-scope="marketing"] .gc-public-brand-copy strong{
+    color:#f2f4ef !important;
+    background:none !important;
+    -webkit-background-clip:initial !important;
+    background-clip:initial !important;
+    text-shadow:none !important;
+    animation:none !important;
   }
 
-  @keyframes gcHeaderKittBarGreen{
-    0%{ background-position:180% 0; }
-    100%{ background-position:-180% 0; }
-  }
-
-  @keyframes gcHeaderKittGlowGreen{
-    0%{ --gc-brand-scan-x:0%; opacity:.50; }
-    50%{ opacity:.90; }
-    100%{ --gc-brand-scan-x:100%; opacity:.50; }
+  html[data-gc-scope="marketing"] .gc-public-brand-copy small{
+    color:#96ff2f !important;
+    background:none !important;
+    -webkit-background-clip:initial !important;
+    background-clip:initial !important;
+    text-shadow:0 0 10px rgba(150,255,47,.18) !important;
+    animation:none !important;
+    opacity:1 !important;
   }
 
   html[data-gc-scope="marketing"] .gc-home2-combo-card__time{
@@ -351,15 +297,66 @@
     text-shadow:0 0 24px rgba(181,68,226,.18) !important;
   }
 
+
+
+
+
+
+  html[data-gc-scope="marketing"] .gc-home2-server-rows--v8 > div[data-gc-server-combo-laps-row]{
+    border-color:rgba(150,255,47,.11) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-server-rows--v8 [data-home2-server-combo-laps]{
+    color:#96ff2f !important;
+    text-shadow:0 0 12px rgba(150,255,47,.18) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    padding:11px 18px !important;
+    border-radius:8px !important;
+    border:1px solid rgba(150,255,47,.95) !important;
+    background:#96ff2f !important;
+    color:#061006 !important;
+    font-size:11px !important;
+    line-height:1 !important;
+    font-weight:950 !important;
+    letter-spacing:.08em !important;
+    text-transform:uppercase !important;
+    text-shadow:none !important;
+    box-shadow:0 0 22px rgba(150,255,47,.10) !important;
+    overflow:visible !important;
+    white-space:nowrap !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn:hover{
+    transform:translateY(-1px) !important;
+    background:#b2ff55 !important;
+    border-color:#b2ff55 !important;
+    color:#061006 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::before,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
   html[data-gc-scope="marketing"] .gc-floating-hero-logo{
     appearance:none !important;
     -webkit-appearance:none !important;
     position:fixed !important;
-    left:clamp(520px,55vw,910px) !important;
-    top:clamp(96px,12vh,138px) !important;
+    left:calc(100vw - clamp(132px,10.5vw,168px)) !important;
+    top:clamp(86px,9.5vh,116px) !important;
     z-index:2147483646 !important;
-    width:clamp(112px,10.8vw,156px) !important;
-    height:clamp(112px,10.8vw,156px) !important;
+    width:clamp(95px,9.18vw,133px) !important;
+    height:clamp(95px,9.18vw,133px) !important;
     display:grid !important;
     place-items:center !important;
     padding:0 !important;
@@ -544,8 +541,8 @@
     html[data-gc-scope="marketing"] .gc-floating-hero-logo{
       left:50% !important;
       top:90px !important;
-      width:118px !important;
-      height:118px !important;
+      width:100px !important;
+      height:100px !important;
     }
   }
 
@@ -553,8 +550,8 @@
     html[data-gc-scope="marketing"] .gc-floating-hero-logo{
       left:12px !important;
       top:78px !important;
-      width:88px !important;
-      height:88px !important;
+      width:75px !important;
+      height:75px !important;
     }
 
     html[data-gc-scope="marketing"] .gc-floating-hero-story{
@@ -562,6 +559,140 @@
       border-radius:18px !important;
       padding:16px !important;
     }
+
+    html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn{
+      width:100% !important;
+      padding:12px 14px !important;
+    }
+  }
+
+
+  /* GC_HOME_TWEAKS_V33_PATCH
+     Fixes:
+     - Championship CTA visible with full text + external signup link.
+     - Top combo keeps original row size; no duplicate filler rows.
+     - Adds breathing room in Últimas Vueltas and Estado servidor.
+  */
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship a.gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship a.gc-home2-championship-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    min-width:230px !important;
+    width:auto !important;
+    max-width:100% !important;
+    min-height:42px !important;
+    padding:12px 20px !important;
+    border-radius:8px !important;
+    border:1px solid rgba(150,255,47,.98) !important;
+    background:#96ff2f !important;
+    color:#061006 !important;
+    font-size:12px !important;
+    line-height:1.05 !important;
+    font-weight:950 !important;
+    letter-spacing:.07em !important;
+    text-transform:uppercase !important;
+    text-shadow:none !important;
+    box-shadow:0 0 22px rgba(150,255,47,.12) !important;
+    overflow:visible !important;
+    white-space:nowrap !important;
+    text-indent:0 !important;
+    opacity:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::before,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn:hover{
+    background:#b2ff55 !important;
+    border-color:#b2ff55 !important;
+    color:#061006 !important;
+    transform:translateY(-1px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--combo-ranking .gc-home2-combo-ranking-list{
+    gap:var(--gc-home2-combo-rank-gap, 6px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--combo-ranking .gc-home2-combo-rank{
+    min-height:var(--gc-home2-combo-rank-height, 36px) !important;
+    padding-top:var(--gc-home2-combo-rank-padding-y, 6px) !important;
+    padding-bottom:var(--gc-home2-combo-rank-padding-y, 6px) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--timing [data-home2-recent-laps]{
+    display:grid !important;
+    gap:5px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head){
+    min-height:30px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-server-rows--v8{
+    display:grid !important;
+    gap:6px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-server-rows--v8 > div{
+    min-height:36px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-server-rows--v8 [data-home2-server-combo-laps]{
+    color:#96ff2f !important;
+    text-shadow:0 0 12px rgba(150,255,47,.18) !important;
+  }
+
+
+  /* GC_HOME_TWEAKS_V34_CHAMPIONSHIP_PRIMARY_STYLE
+     El CTA de campeonato usa el mismo estilo visual que "Entrar al servidor".
+  */
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship a.gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship a.gc-home2-championship-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:10px !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    min-height:40px !important;
+    padding:0 20px !important;
+    border-radius:4px !important;
+    border:1px solid rgba(150,255,47,.62) !important;
+    background:linear-gradient(135deg, #96ff2f, #80f016) !important;
+    color:#071006 !important;
+    text-decoration:none !important;
+    font-size:12px !important;
+    font-weight:900 !important;
+    line-height:1 !important;
+    letter-spacing:.05em !important;
+    text-transform:uppercase !important;
+    text-shadow:none !important;
+    box-shadow:0 10px 34px rgba(150,255,47,.13) !important;
+    overflow:visible !important;
+    white-space:nowrap !important;
+    text-indent:0 !important;
+    opacity:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn:hover{
+    transform:translateY(-1px) !important;
+    background:linear-gradient(135deg, #a6ff3a, #91ff22) !important;
+    border-color:rgba(150,255,47,.72) !important;
+    color:#071006 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::before,
+  html[data-gc-scope="marketing"] .gc-home2-panel--championship .gc-home2-championship-btn::after{
+    content:none !important;
+    display:none !important;
   }
 
 </style>
@@ -612,7 +743,7 @@
         return;
       }
 
-      const storageKey = 'gc-floating-hero-logo-position-v30';
+      const storageKey = 'gc-floating-hero-logo-position-v40';
       const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
       const setPos = (x, y) => {
@@ -665,11 +796,8 @@
       };
 
       const toggleStory = () => {
-        if (story.hidden || !story.classList.contains('is-open')) {
-          openStory();
-        } else {
-          closeStory();
-        }
+        if (story.hidden || !story.classList.contains('is-open')) openStory();
+        else closeStory();
       };
 
       const updateScrollVisibility = () => {
@@ -695,7 +823,6 @@
 
       const begin = (clientX, clientY, pointerId = null) => {
         if (logo.classList.contains('is-scroll-hidden')) return;
-
         const rect = logo.getBoundingClientRect();
         dragging = true;
         moved = false;
@@ -709,22 +836,17 @@
 
       const move = (clientX, clientY) => {
         if (!dragging) return;
-
         const dx = clientX - startX;
         const dy = clientY - startY;
-
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
-
         setPos(startLeft + dx, startTop + dy);
         positionStory();
       };
 
       const end = () => {
         if (!dragging) return;
-
         dragging = false;
         logo.classList.remove('is-dragging');
-
         const rect = logo.getBoundingClientRect();
         localStorage.setItem(storageKey, JSON.stringify({ x: rect.left, y: rect.top }));
         activePointerId = null;
@@ -800,14 +922,11 @@
       logo.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-
         if (logo.classList.contains('is-scroll-hidden')) return;
-
         if (moved) {
           moved = false;
           return;
         }
-
         toggleStory();
       });
 
@@ -841,10 +960,932 @@
       updateScrollVisibility();
     };
 
+    const initHomeEnhancements = () => {
+      const champBtn = document.querySelector('.gc-home2-championship-btn');
+      if (champBtn) {
+        champBtn.textContent = 'Inscribirse al campeonato';
+        champBtn.setAttribute('href', 'http://185.216.144.78:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam');
+        champBtn.setAttribute('target', '_blank');
+        champBtn.setAttribute('rel', 'noreferrer');
+        champBtn.classList.add('gc-home2-btn--primary');
+        champBtn.style.setProperty('background', 'linear-gradient(135deg, #96ff2f, #80f016)', 'important');
+        champBtn.style.setProperty('background-color', '#96ff2f', 'important');
+        champBtn.style.setProperty('color', '#071006', 'important');
+        champBtn.style.setProperty('border-color', 'rgba(150,255,47,.62)', 'important');
+        champBtn.style.setProperty('box-shadow', '0 10px 34px rgba(150,255,47,.13)', 'important');
+        champBtn.style.setProperty('min-height', '40px', 'important');
+        champBtn.style.setProperty('height', '40px', 'important');
+        champBtn.style.setProperty('padding', '0 20px', 'important');
+        champBtn.style.setProperty('border-radius', '4px', 'important');
+        champBtn.style.setProperty('opacity', '1', 'important');
+        champBtn.style.setProperty('text-shadow', 'none', 'important');
+      }
+
+      const serverRows = document.querySelector('.gc-home2-server-rows--v8');
+      if (serverRows && !serverRows.querySelector('[data-gc-server-combo-laps-row]')) {
+        const row = document.createElement('div');
+        row.setAttribute('data-gc-server-combo-laps-row', '');
+        row.innerHTML = '<dt>Vueltas combo</dt><dd data-home2-server-combo-laps>--</dd>';
+        const activeCarsRow = serverRows.querySelector('[data-home2-server-active-cars]')?.closest('div');
+        if (activeCarsRow && activeCarsRow.nextSibling) serverRows.insertBefore(row, activeCarsRow.nextSibling);
+        else serverRows.appendChild(row);
+      }
+
+      const firstValue = (obj, paths) => {
+        for (const path of paths) {
+          const parts = String(path).split('.');
+          let cur = obj;
+          for (const part of parts) {
+            if (cur == null) break;
+            cur = cur[part];
+          }
+          if (cur !== undefined && cur !== null && cur !== '') return cur;
+        }
+        return '';
+      };
+
+      const slugify = (value) => String(value || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+      const getArray = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (!payload || typeof payload !== 'object') return [];
+        for (const key of ['rows', 'laps', 'items', 'data', 'results', 'hotlaps', 'recentLaps']) {
+          if (Array.isArray(payload[key])) return payload[key];
+        }
+        for (const value of Object.values(payload)) {
+          if (Array.isArray(value)) return value;
+        }
+        return [];
+      };
+
+      const parseMs = (value) => {
+        if (value === undefined || value === null || value === '') return Number.POSITIVE_INFINITY;
+        if (typeof value === 'string' && value.includes(':')) {
+          const [m, s] = value.split(':');
+          const ms = ((Number(m) || 0) * 60 + (Number(s) || 0)) * 1000;
+          return Number.isFinite(ms) && ms > 0 ? ms : Number.POSITIVE_INFINITY;
+        }
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) return Number.POSITIVE_INFINITY;
+        return n > 1000 ? n : n * 1000;
+      };
+
+      const formatLap = (value) => {
+        const ms = Math.round(parseMs(value));
+        if (!Number.isFinite(ms) || ms === Number.POSITIVE_INFINITY) return '--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const millis = ms % 1000;
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+      };
+
+      const driverName = (row) => firstValue(row, ['driverName','pilotName','playerName','name','driver.displayName','driver.name','player.name','DriverName','steamName']) || 'Piloto';
+      const carName = (row) => firstValue(row, ['carName','carDisplayName','carVisibleName','vehicle','car.displayName','car.name','Car','car']) || 'Coche';
+      const trackName = (row) => firstValue(row, ['trackName','trackDisplayName','trackVisibleName','track.name','track.displayName','Track','track']) || '';
+
+      const rowTrackMatches = (row, activeTrack) => {
+        const wanted = slugify(activeTrack);
+        if (!wanted || wanted === 'actualizando') return true;
+        const got = slugify(trackName(row)).replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
+        const cleanWanted = wanted.replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '');
+        if (!got) return true;
+        return got.includes(cleanWanted) || cleanWanted.includes(got);
+      };
+
+      const rowCarMatches = (row, activeCars) => {
+        if (!activeCars.length) return true;
+        const got = slugify(carName(row));
+        if (!got) return true;
+        return activeCars.some((car) => {
+          const wanted = slugify(car);
+          return wanted && (got.includes(wanted) || wanted.includes(got));
+        });
+      };
+
+      const isValidLap = (row) => {
+        const raw = firstValue(row, ['valid','isValid','Valid']);
+        return !(raw === 0 || raw === false || raw === '0' || raw === 'false' || raw === 'no');
+      };
+
+      const avatarUrl = (row) => firstValue(row, ['avatarUrl','avatar_url','imageUrl','image','driver.avatarUrl','player.avatarUrl']) || '/images/pilot-avatar-default.png';
+
+      const endpoints = [
+        '/api/gc/recent-laps?limit=2500&sort=recent&valid=all',
+        '/api/laps?limit=2500&sort=recent&valid=all',
+        '/api/hotlaps?limit=2500&sort=recent&valid=all'
+      ];
+
+      const fetchRows = async () => {
+        for (const endpoint of endpoints) {
+          try {
+            const res = await fetch(endpoint, { cache:'no-store' });
+            if (!res.ok) continue;
+            const payload = await res.json();
+            const rows = getArray(payload);
+            if (rows.length) return rows;
+          } catch (_) {}
+        }
+        return [];
+      };
+
+
+      const findDirectComboLapTotal = (payload) => {
+        if (!payload || typeof payload !== 'object') return null;
+
+        const directKeys = [
+          'activeComboLaps',
+          'currentComboLaps',
+          'comboLaps',
+          'combo_laps',
+          'comboLapCount',
+          'combo_lap_count',
+          'currentComboLapCount',
+          'activeComboLapCount',
+          'totalComboLaps',
+          'total_combo_laps',
+          'currentComboTotalLaps',
+          'activeComboTotalLaps',
+          'lapsInCombo',
+          'laps_in_combo'
+        ];
+
+        const readNumber = (value) => {
+          if (Array.isArray(value)) return null;
+          const n = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+          return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+        };
+
+        const visit = (obj, depth = 0) => {
+          if (!obj || typeof obj !== 'object' || depth > 5) return null;
+
+          for (const key of directKeys) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+              const n = readNumber(obj[key]);
+              if (n !== null) return n;
+            }
+          }
+
+          const comboLike = obj.combo || obj.currentCombo || obj.activeCombo || obj.current_combo || obj.active_combo || obj.raceCombo || obj.serverCombo;
+          if (comboLike && typeof comboLike === 'object') {
+            for (const key of ['totalLaps', 'lapCount', 'lapsCount', 'lapsTotal', 'validLaps', 'validLapCount']) {
+              const n = readNumber(comboLike[key]);
+              if (n !== null) return n;
+            }
+          }
+
+          for (const value of Object.values(obj)) {
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              const found = visit(value, depth + 1);
+              if (found !== null) return found;
+            }
+          }
+
+          return null;
+        };
+
+        return visit(payload);
+      };
+
+      const fetchDirectComboLapTotal = async () => {
+        const endpoints = [
+          '/api/gc/current-combo',
+          '/api/gc/active-combo',
+          '/api/gc/combo-current',
+          '/api/gc/combo-summary',
+          '/api/gc/combo',
+          '/api/current-combo',
+          '/api/combo/current',
+          '/api/combos/current',
+          '/api/race-control/current-combo',
+          '/api/gc/server-summary',
+          '/api/gc/server-stats',
+          '/api/gc/stats',
+          '/api/gc/overview',
+          '/api/status'
+        ];
+
+        for (const endpoint of endpoints) {
+          try {
+            const res = await fetch(endpoint, { cache:'no-store' });
+            if (!res.ok) continue;
+            const payload = await res.json();
+            const value = findDirectComboLapTotal(payload);
+            if (value !== null) return value;
+          } catch (_) {}
+        }
+
+        return null;
+      };
+
+      const renderNine = async () => {
+        const host = document.querySelector('[data-home2-combo-ranking]');
+        const comboLapsEl = document.querySelector('[data-home2-server-combo-laps]');
+        if (!host && !comboLapsEl) return;
+
+        const activeTrack = document.querySelector('[data-home2-now-title]')?.textContent
+          || document.querySelector('[data-home2-track]')?.textContent
+          || '';
+
+        const activeCarsText = [
+          document.querySelector('[data-home2-cars]')?.textContent,
+          document.querySelector('[data-home2-best-car]')?.textContent
+        ].filter(Boolean).join(' ');
+
+        const activeCars = activeCarsText
+          .split(/[,/·|]+/)
+          .map((part) => part.replace(/esperando datos del combo/ig, '').trim())
+          .filter(Boolean);
+
+        if (comboLapsEl) {
+          const directComboLaps = await fetchDirectComboLapTotal();
+          comboLapsEl.textContent = directComboLaps !== null ? new Intl.NumberFormat('es-ES').format(directComboLaps) : '--';
+          comboLapsEl.title = directComboLaps !== null
+            ? 'Vueltas del combo desde endpoint directo'
+            : 'Sin dato directo fiable de vueltas del combo';
+        }
+
+        const rows = await fetchRows();
+        if (!rows.length) return;
+
+        const trackRows = rows
+          .filter((row) => rowTrackMatches(row, activeTrack));
+
+        let comboRows = trackRows
+          .filter((row) => rowCarMatches(row, activeCars));
+
+        // Si el nombre exacto del coche no coincide entre API/web,
+        // no dejamos el bloque a 0: manda el circuito activo.
+        if (comboRows.length < 9) comboRows = trackRows.length ? trackRows : rows;
+
+        if (!host) return;
+
+        const byDriver = new Map();
+        comboRows
+          .filter((row) => parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime'])) !== Number.POSITIVE_INFINITY)
+          .forEach((row) => {
+            const name = driverName(row);
+            const guid = firstValue(row, ['playerId','driverId','pilotId','steamGuid','guid','driver.guid','player.guid','DriverGuid']);
+            const key = slugify(guid || name);
+            if (!key) return;
+            const current = byDriver.get(key);
+            const time = parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']));
+            const currentTime = current ? parseMs(firstValue(current, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime'])) : Number.POSITIVE_INFINITY;
+            if (!current || time < currentTime) byDriver.set(key, row);
+          });
+
+        const timeOf = (row) => parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']));
+
+        const bestRows = [...byDriver.values()]
+          .sort((a, b) => timeOf(a) - timeOf(b))
+          .slice(0, 9);
+
+        // No rellenamos con vueltas duplicadas: así Top Combo mantiene el comportamiento correcto.
+        // Si existen 9 pilotos únicos del combo, aparece la novena fila. Si no, no inventa datos.
+        if (!bestRows.length) return;
+
+        host.innerHTML = bestRows.map((row, index) => {
+          const badge = index === 0
+            ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold" aria-label="1º">🥇</span>'
+            : index === 1
+              ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--silver" aria-label="2º">🥈</span>'
+              : index === 2
+                ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--bronze" aria-label="3º">🥉</span>'
+                : `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain">${index + 1}</span>`;
+
+          const rawTime = firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']);
+          const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
+
+          return `<div class="gc-home2-combo-rank${compactClass}">` +
+            badge +
+            `<div><strong>${driverName(row)}</strong><small>${carName(row)}</small></div>` +
+            `<img class="gc-home2-combo-rank__avatar" src="${avatarUrl(row)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" />` +
+            `<em>${formatLap(rawTime)}</em>` +
+          '</div>';
+        }).join('');
+      };
+
+      renderNine();
+      window.setTimeout(renderNine, 1200);
+      window.setTimeout(renderNine, 3200);
+    };
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init, { once:true });
+      document.addEventListener('DOMContentLoaded', () => {
+        init();
+        initHomeEnhancements();
+      }, { once:true });
     } else {
       init();
+      initHomeEnhancements();
     }
   })();
 </script>
+
+<style is:global>
+  /* GC_HOME_TWEAKS_V39_FORCE_CHAMPIONSHIP_BUTTON_GREEN
+     Última capa: fuerza el CTA de campeonato a ser igual que "Entrar al servidor".
+  */
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn,
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn:link,
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:10px !important;
+    min-height:40px !important;
+    height:40px !important;
+    padding:0 20px !important;
+    border-radius:4px !important;
+    border:1px solid rgba(150,255,47,.62) !important;
+    background:linear-gradient(135deg, #96ff2f, #80f016) !important;
+    background-color:#96ff2f !important;
+    color:#071006 !important;
+    text-decoration:none !important;
+    font-size:12px !important;
+    font-weight:900 !important;
+    line-height:1 !important;
+    letter-spacing:.05em !important;
+    text-transform:uppercase !important;
+    text-shadow:none !important;
+    box-shadow:0 10px 34px rgba(150,255,47,.13) !important;
+    opacity:1 !important;
+    filter:none !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+    text-indent:0 !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+  }
+
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn:hover{
+    background:linear-gradient(135deg, #a6ff3a, #91ff22) !important;
+    background-color:#a6ff3a !important;
+    color:#071006 !important;
+    border-color:rgba(150,255,47,.72) !important;
+    transform:translateY(-1px) !important;
+  }
+
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn::before,
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--championship a.gc-home2-championship-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+</style>
+
+<style is:global>
+  /* GC_HOME_TWEAKS_V39_TIMING_AND_COMBO_LAPS
+     - Últimas vueltas: tiempo verde como Top Combo.
+     - Vueltas combo: no usa conteo estimado de recent-laps; solo dato directo si existe.
+  */
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-panel--timing .gc-home2-table__row:not(.gc-home2-table__row--head) > strong{
+    color:#96ff2f !important;
+    text-shadow:0 0 12px rgba(150,255,47,.16) !important;
+  }
+
+  html[data-gc-scope="marketing"] body .gc-home2 .gc-home2-server-rows--v8 [data-home2-server-combo-laps]{
+    color:#96ff2f !important;
+    text-shadow:0 0 12px rgba(150,255,47,.18) !important;
+  }
+</style>
+
+<style is:global>
+  /* GC_FLOATING_LOGO_SPAWN_V39
+     Spawn un poco más a la derecha para no tapar el bloque de combo activo.
+  */
+  html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-floating-hero-logo{
+    left:calc(100vw - clamp(132px,10.5vw,168px)) !important;
+    top:clamp(86px,9.5vh,116px) !important;
+  }
+
+  @media(max-width:1200px){
+    html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-floating-hero-logo{
+      left:calc(100vw - 118px) !important;
+      top:86px !important;
+    }
+  }
+
+  @media(max-width:760px){
+    html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-floating-hero-logo{
+      left:calc(100vw - 86px) !important;
+      top:78px !important;
+    }
+  }
+</style>
+
+
+<style is:global>
+  /* GC_COMMUNITY_MOCKUP_APPLY_V40
+     Rediseño visual de /comunidad inspirado en el mockup, respetando el contenido actual.
+  */
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad{
+    background:
+      radial-gradient(circle at 12% 10%, rgba(150,255,47,.07), transparent 24%),
+      radial-gradient(circle at 85% 18%, rgba(33,200,214,.045), transparent 28%),
+      linear-gradient(180deg, #020402 0%, #030503 42%, #020402 100%) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-section,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-card,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-panel,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-cta{
+    box-sizing:border-box !important;
+  }
+
+  /* HERO */
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero{
+    position:relative !important;
+    padding:54px 0 52px !important;
+    overflow:hidden !important;
+    border-bottom:1px solid rgba(150,255,47,.12) !important;
+    background:
+      linear-gradient(90deg, rgba(2,5,2,.96) 0%, rgba(3,6,3,.86) 38%, rgba(3,6,3,.38) 68%, rgba(3,6,3,.16) 100%),
+      radial-gradient(circle at 20% 24%, rgba(150,255,47,.06), transparent 26%) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero::before,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero::after,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-manifest-grid-v104::before{
+    content:none !important;
+    display:none !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero .gc-public-wrap,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero .gc-public-container,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero > div{
+    position:relative !important;
+    z-index:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero h1{
+    max-width:10ch !important;
+    margin:0 0 18px !important;
+    font-size:clamp(52px, 8.2vw, 92px) !important;
+    line-height:.92 !important;
+    letter-spacing:-.045em !important;
+    text-transform:uppercase !important;
+    color:#f6f8f3 !important;
+    text-wrap:balance !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero p{
+    max-width:720px !important;
+    font-size:clamp(18px, 2vw, 25px) !important;
+    line-height:1.45 !important;
+    color:rgba(241,245,237,.84) !important;
+    margin:0 !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-social-actions,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:12px !important;
+    align-items:center !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-social-actions{
+    margin-top:28px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions{
+    margin-top:14px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:10px !important;
+    min-height:46px !important;
+    padding:0 18px 0 14px !important;
+    border-radius:8px !important;
+    color:#ffffff !important;
+    text-decoration:none !important;
+    border:1px solid rgba(255,255,255,.14) !important;
+    box-shadow:0 14px 38px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.16) !important;
+    transition:transform .18s ease, filter .18s ease, box-shadow .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn svg{
+    width:18px !important;
+    height:18px !important;
+    fill:#fff !important;
+    color:#fff !important;
+    flex:0 0 auto !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn span{
+    color:#fff !important;
+    font-weight:950 !important;
+    letter-spacing:.05em !important;
+    text-shadow:0 1px 6px rgba(0,0,0,.2) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn:hover{
+    transform:translateY(-2px) !important;
+    filter:saturate(1.06) brightness(1.04) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn--discord{
+    background:#5865F2 !important;
+    background-color:#5865F2 !important;
+    border-color:rgba(88,101,242,.92) !important;
+    box-shadow:0 16px 42px rgba(88,101,242,.24), inset 0 1px 0 rgba(255,255,255,.16) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn--whatsapp{
+    background:#25D366 !important;
+    background-color:#25D366 !important;
+    border-color:rgba(37,211,102,.92) !important;
+    box-shadow:0 16px 42px rgba(37,211,102,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn--instagram{
+    background:linear-gradient(135deg, #405DE6 0%, #833AB4 24%, #C13584 48%, #E1306C 70%, #FCAF45 100%) !important;
+    background-color:#E1306C !important;
+    border-color:rgba(225,48,108,.86) !important;
+    box-shadow:0 16px 42px rgba(225,48,108,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions a.gc-community-pilots-btn,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions a.gc-community-pilots-btn:visited{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    min-height:44px !important;
+    padding:0 18px !important;
+    border-radius:8px !important;
+    border:1px solid rgba(150,255,47,.30) !important;
+    background:rgba(150,255,47,.08) !important;
+    color:#dffcce !important;
+    text-decoration:none !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 28px rgba(0,0,0,.22) !important;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions a.gc-community-pilots-btn:hover{
+    transform:translateY(-1px) !important;
+    background:rgba(150,255,47,.14) !important;
+    border-color:rgba(150,255,47,.54) !important;
+    color:#ffffff !important;
+  }
+
+  /* SECTIONS & PANELS */
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-first-after-hero-v113{
+    margin-top:0 !important;
+    padding-top:38px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-section{
+    position:relative !important;
+    padding-top:52px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-section-head{
+    position:relative !important;
+    margin-bottom:20px !important;
+    padding-left:16px !important;
+    border-left:2px solid rgba(150,255,47,.45) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-section-head::before{
+    content:"" !important;
+    position:absolute !important;
+    left:-2px !important;
+    top:0 !important;
+    width:2px !important;
+    height:34px !important;
+    background:#96ff2f !important;
+    box-shadow:0 0 16px rgba(150,255,47,.34) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-card,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-panel,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-cta{
+    position:relative !important;
+    border:1px solid rgba(150,255,47,.16) !important;
+    background:linear-gradient(180deg, rgba(7,12,8,.96), rgba(4,8,5,.985)) !important;
+    box-shadow:0 22px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.045) !important;
+    overflow:hidden !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-card::after,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-panel::after,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-cta::after{
+    content:"" !important;
+    position:absolute !important;
+    inset:0 !important;
+    background:
+      radial-gradient(circle at 10% 0%, rgba(150,255,47,.06), transparent 28%),
+      linear-gradient(90deg, rgba(255,255,255,.012), transparent 22%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 54px) !important;
+    opacity:.55 !important;
+    pointer-events:none !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-card > *,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-panel > *,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-cta > *{
+    position:relative !important;
+    z-index:1 !important;
+  }
+
+  /* First split block */
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-manifest-grid-v104{
+    display:grid !important;
+    grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr) !important;
+    gap:28px !important;
+    align-items:stretch !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-copy-v104{
+    padding:clamp(24px,3vw,38px) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-copy-v104 h2,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-copy-v104 h3{
+    font-size:clamp(36px,4.4vw,62px) !important;
+    line-height:.94 !important;
+    letter-spacing:-.04em !important;
+    text-transform:uppercase !important;
+    margin:0 0 16px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-copy-v104 p{
+    font-size:19px !important;
+    line-height:1.6 !important;
+    color:rgba(241,245,237,.82) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104{
+    display:grid !important;
+    grid-template-rows:minmax(210px,1fr) auto !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-top-v105{
+    position:relative !important;
+    min-height:210px !important;
+    border-bottom:1px solid rgba(150,255,47,.10) !important;
+    overflow:hidden !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-top-v105 img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    filter:brightness(.74) saturate(.9) contrast(1.04) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104 ul{
+    display:grid !important;
+    gap:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    list-style:none !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104 li{
+    display:grid !important;
+    grid-template-columns:132px 1fr !important;
+    gap:18px !important;
+    align-items:start !important;
+    padding:16px 22px !important;
+    border-top:1px solid rgba(255,255,255,.05) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104 li strong{
+    color:#96ff2f !important;
+    font-size:11px !important;
+    letter-spacing:.10em !important;
+    text-transform:uppercase !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104 li span{
+    color:rgba(241,245,237,.82) !important;
+  }
+
+  /* How it works */
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104{
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:16px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104 .gc-public-card,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-principles-v104 .gc-public-card{
+    min-height:210px !important;
+    padding:22px 20px !important;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104 .gc-public-card:hover,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-principles-v104 .gc-public-card:hover{
+    transform:translateY(-3px) !important;
+    border-color:rgba(150,255,47,.32) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104 .gc-public-card > span,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-principles-v104 .gc-public-card > span{
+    display:inline-grid !important;
+    place-items:center !important;
+    width:42px !important;
+    height:42px !important;
+    margin-bottom:16px !important;
+    border-radius:999px !important;
+    border:1px solid rgba(150,255,47,.26) !important;
+    background:rgba(150,255,47,.08) !important;
+    color:#96ff2f !important;
+    font-weight:900 !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104 h3,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-principles-v104 h3{
+    margin:0 0 10px !important;
+    font-size:20px !important;
+    text-transform:uppercase !important;
+    letter-spacing:-.02em !important;
+  }
+
+  /* Discord / daily / support lower blocks */
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-discord-layout-v104,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-support-grid-v104,
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104{
+    display:grid !important;
+    gap:24px !important;
+    align-items:start !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-discord-layout-v104{
+    grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-support-grid-v104{
+    grid-template-columns:minmax(0,1fr) minmax(300px,.78fr) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104{
+    grid-template-columns:minmax(0,.95fr) minmax(280px,1fr) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-channel-list-v104{
+    display:grid !important;
+    gap:10px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-channel-v104{
+    display:grid !important;
+    grid-template-columns:38px 1fr !important;
+    gap:12px !important;
+    align-items:start !important;
+    padding:13px 14px !important;
+    border-radius:12px !important;
+    border:1px solid rgba(150,255,47,.10) !important;
+    background:rgba(255,255,255,.024) !important;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-channel-v104:hover{
+    transform:translateX(3px) !important;
+    border-color:rgba(150,255,47,.24) !important;
+    background:rgba(150,255,47,.042) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-channel-v104 > span{
+    display:grid !important;
+    place-items:center !important;
+    width:34px !important;
+    height:34px !important;
+    border-radius:10px !important;
+    background:rgba(150,255,47,.08) !important;
+    border:1px solid rgba(150,255,47,.14) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104 ul{
+    display:grid !important;
+    gap:10px !important;
+    margin:0 !important;
+    padding:0 !important;
+    list-style:none !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104 li{
+    position:relative !important;
+    padding:13px 14px 13px 42px !important;
+    border:1px solid rgba(150,255,47,.11) !important;
+    background:rgba(255,255,255,.026) !important;
+    border-radius:10px !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104 li::before{
+    content:"" !important;
+    position:absolute !important;
+    left:15px !important;
+    top:50% !important;
+    width:9px !important;
+    height:9px !important;
+    border-radius:50% !important;
+    transform:translateY(-50%) !important;
+    background:#96ff2f !important;
+    box-shadow:0 0 16px rgba(150,255,47,.34) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-final-card-v104{
+    text-align:center !important;
+    padding:clamp(32px,4vw,52px) !important;
+    border-color:rgba(150,255,47,.22) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(150,255,47,.10), transparent 34%),
+      linear-gradient(180deg, rgba(8,14,9,.97), rgba(4,8,5,.99)) !important;
+  }
+
+  @media(max-width:1080px){
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-manifest-grid-v104,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-discord-layout-v104,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-support-grid-v104,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-daily-card-v104{
+      grid-template-columns:1fr !important;
+    }
+
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104{
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+  }
+
+  @media(max-width:680px){
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-social-actions,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-steps-v104{
+      display:grid !important;
+      grid-template-columns:1fr !important;
+    }
+
+    html[data-gc-scope="marketing"] body.gc-page-comunidad a.gc-community-social-btn,
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-hero-secondary-actions a.gc-community-pilots-btn{
+      width:100% !important;
+    }
+
+    html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-community-pitwall-v104 li{
+      grid-template-columns:1fr !important;
+      gap:6px !important;
+    }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const applyCommunityMockupStyles = () => {
+      const body = document.body;
+      if (!body || !body.classList.contains('gc-page-comunidad')) return;
+
+      const setStyles = (selector, styles) => {
+        document.querySelectorAll(selector).forEach((el) => {
+          Object.entries(styles).forEach(([k, v]) => el.style.setProperty(k, v, 'important'));
+        });
+      };
+
+      setStyles('.gc-community-social-btn--discord', {
+        'background': '#5865F2',
+        'background-color': '#5865F2',
+        'border-color': 'rgba(88,101,242,.92)',
+        'color': '#ffffff'
+      });
+      setStyles('.gc-community-social-btn--whatsapp', {
+        'background': '#25D366',
+        'background-color': '#25D366',
+        'border-color': 'rgba(37,211,102,.92)',
+        'color': '#ffffff'
+      });
+      setStyles('.gc-community-social-btn--instagram', {
+        'background': 'linear-gradient(135deg, #405DE6 0%, #833AB4 24%, #C13584 48%, #E1306C 70%, #FCAF45 100%)',
+        'background-color': '#E1306C',
+        'border-color': 'rgba(225,48,108,.86)',
+        'color': '#ffffff'
+      });
+      setStyles('.gc-community-social-btn svg, .gc-community-social-btn span', {
+        'fill': '#ffffff',
+        'color': '#ffffff'
+      });
+
+      setStyles('.gc-community-hero-secondary-actions .gc-community-pilots-btn', {
+        'background': 'rgba(150,255,47,.08)',
+        'background-color': 'rgba(150,255,47,.08)',
+        'border-color': 'rgba(150,255,47,.30)',
+        'color': '#dffcce',
+        'box-shadow': 'inset 0 1px 0 rgba(255,255,255,.05), 0 10px 28px rgba(0,0,0,.22)'
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyCommunityMockupStyles, { once:true });
+    } else {
+      applyCommunityMockupStyles();
+    }
+  })();
+</script>
+

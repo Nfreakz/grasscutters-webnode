@@ -1,5 +1,6 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 ---
 
 <MarketingLayout
@@ -9,19 +10,35 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   canonicalPath="/ratings"
 >
   <section class="gc-public-shell gc-public-section gc-ratings-page" data-gc-ratings-page>
+    <div class="gc-ratings-atmosphere" aria-hidden="true">
+      <video
+        class="gc-ratings-atmosphere-video"
+        src="/videos/04061.mp4"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+      ></video>
+    </div>
     <header class="gc-public-section-head gc-ratings-head">
       <div class="gc-ratings-head-copy">
-        <span class="gc-public-kicker">Ratings</span>
-        <h1 class="gc-public-section-title">Dos sistemas separados.</h1>
-        <p class="gc-public-section-lead" id="ratingsLead">SR mide limpieza en pista. GSR mide rendimiento competitivo.</p>
-      </div>
-
-      <div class="gc-ratings-head-actions">
-        <a class="gc-public-btn gc-public-btn-secondary" href="#ratingsSr">Ver SR</a>
-        <a class="gc-public-btn gc-public-btn-secondary" href="#ratingsGsr">Ver GSR</a>
-        <button class="gc-public-btn gc-public-btn-primary" type="button" id="ratingsRefresh">Actualizar datos</button>
-      </div>
+        <PublicHeroFrame
+            id="ratingsTitle"
+            kicker="Ratings"
+            title={['Dos sistemas', 'separados.']}
+            lead="SR mide limpieza en pista. GSR mide rendimiento competitivo."
+            leadId="ratingsLead"
+          />
+      
+        <div class="gc-ratings-head-actions gc-hero-actions-inline">
+          <a class="gc-public-btn gc-public-btn-secondary" href="#ratingsSr">Ver SR</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="#ratingsGsr">Ver GSR</a>
+          <button class="gc-public-btn gc-public-btn-primary" type="button" id="ratingsRefresh">Actualizar datos</button>
+        </div>
+</div>
     </header>
+
 
     <section class="gc-ratings-map">
       <div class="gc-ratings-map-grid">

@@ -1,0 +1,34 @@
+---
+import '../../styles/public/gc-unified-hero.css';
+
+const {
+  id,
+  kicker,
+  title,
+  lead,
+  leadId,
+  class: className = '',
+} = Astro.props;
+
+const titleLines = Array.isArray(title)
+  ? title
+  : String(title || '').split('|').map((line) => line.trim()).filter(Boolean);
+---
+
+<div class:list={['gc-unified-hero-text', className]}>
+  {kicker && <span class="gc-unified-hero-kicker">{kicker}</span>}
+
+  {titleLines.length > 0 && (
+    <h1 id={id} class="gc-unified-hero-title">
+      {titleLines.map((line) => (
+        <span class="gc-unified-hero-title-line">{line}</span>
+      ))}
+    </h1>
+  )}
+
+  {lead && (
+    <p id={leadId} class="gc-unified-hero-lead">
+      {lead}
+    </p>
+  )}
+</div>

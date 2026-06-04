@@ -1,172 +1,148 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
+import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 const discordUrl = 'https://discord.gg/jA4yuuH5T';
 const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
 const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
 const gtxSupportUrl = 'https://www.gtxgaming.co.uk/clientarea/index.php?m=public_pay&hash_id=mW1QWBg9XVJn';
 
+const quickActions = [
+  ['👥', 'Ver pilotos', 'Miembros de la comunidad', '/pilotos'],
+  ['🛡', 'Normas', 'Convivencia y reglas', '/normas'],
+  ['♡', 'Apoyo al servidor', 'Ayuda a mantenerlo vivo', '/apoyo-servidor']
+];
+
+const summaryItems = [
+  ['Semanales con Stracker', 'Compite y sube puesto'],
+  ['Votados por la comunidad', 'Combos democráticos y justos'],
+  ['Coche, volante y sensaciones', 'Lo importante es rodar y pasarlo bien']
+];
+
+const steps = [
+  ['01', 'Únete', 'Entra al Discord, preséntate y forma parte del grupo.'],
+  ['02', 'Elige y vota', 'Votamos combos y horarios. La comunidad decide.'],
+  ['03', 'Entra a pista', 'Rodamos, competimos y mejoramos juntos.'],
+  ['04', 'Disfruta y mejora', 'Buen ambiente, respeto y ganas de volver.']
+];
+
 const textChannels = [
-  ['💬', 'general · chat', 'Charla diaria, dudas rápidas, avisos entre pilotos y conversación sin tener que abrir veinte hilos.'],
-  ['📋', 'info', 'Información básica del servidor, accesos y cosas que conviene tener localizadas.'],
-  ['📢', 'anuncios', 'Avisos importantes, cambios de combo, eventos y novedades de la comunidad.'],
-  ['🚀', 'mods · ac', 'Mods de Assetto Corsa, packs, enlaces y material para tener el garaje al día.'],
-  ['💯', 'setups-ac', 'Ajustes de coche, volante, sensaciones y pruebas compartidas por la gente.'],
-  ['🖥️', 'servidor · ac', 'Estado y detalles del servidor de Assetto Corsa.'],
-  ['🏁', 'campeonatos', 'Organización de carreras, rondas y seguimiento cuando se monta algo más serio.'],
-  ['🚗', 'servidor · raceroom', 'Espacio para RaceRoom cuando toca salir del garaje habitual.'],
-  ['💯', 'grasscutters-hud-ac', 'Feedback, dudas y versiones del HUD de GrassCutters para Assetto Corsa.'],
-  ['🛡️', 'lowfuelmotorsport-ac', 'Charla y dudas sobre LFM dentro del grupo.'],
-  ['🎥', 'clips · highlights', 'Vueltas buenas, adelantamientos, fails y momentos para enseñar al paddock.'],
-  ['🤓', 'datos-curiosos', 'Cosas raras, detalles técnicos y pequeñas joyas del sim racing.'],
-  ['🏛️', 'donaciones', 'Apoyo voluntario para mantener el servidor y sus costes.'],
-  ['🗳️', 'votaciones', 'Donde se decide qué se prueba, qué se corre y qué toca mover después.']
+  ['#', 'bienvenida', 'Empieza por aquí'],
+  ['#', 'anuncios', 'Novedades y avisos'],
+  ['#', 'votaciones', 'Vota combos y horarios'],
+  ['#', 'general', 'Charla y buen rollo'],
+  ['#', 'setups', 'Comparte y mejora'],
+  ['#', 'clips-y-repeticiones', 'Tus mejores momentos'],
+  ['#', 'soporte', 'Ayuda y dudas']
 ];
 
-const voiceChannels = [
-  ['🎙️', 'Lobby', 'Para entrar, hablar y organizarse sin complicarse.'],
-  ['🎙️', 'Lobby AC', 'Voz rápida cuando se está rodando en Assetto Corsa.']
-];
-
-const principles = [
-  ['01', 'Actitud antes que ritmo', 'No hace falta ser el más rápido. Hace falta sumar buen ambiente, respetar y querer mejorar.'],
-  ['02', 'Pista limpia', 'Se puede competir fuerte, pero sin choques intencionados, sin zigzag y dejando espacio cuando toca.'],
-  ['03', 'Sin dramas en caliente', 'Si hay incidente, se enfría primero y se habla después. El chat no es dirección de carrera con fuego en el casco.']
-];
-
-const dailyRacers = [
-  'Participar regularmente en carreras o hotlaps.',
-  'Estar activo en la comunidad: chat, feedback, dudas y buen ambiente.',
-  'Implicarse en eventos, votaciones o pruebas del servidor.',
-  'Mantener una actitud positiva y respetuosa.'
+const dailyHours = [
+  ['19:00', 'Carrera 1'],
+  ['21:00', 'Carrera 2'],
+  ['23:00', 'Carrera 3']
 ];
 ---
 <MarketingLayout
   title="Comunidad | GrassCutters Racing"
   description="Comunidad GrassCutters Racing: Discord, hotlaps semanales, setups, mods, votaciones, fair play y buen ambiente en Assetto Corsa."
   ogImage="/og/comunidad-og-v1531.png"
-  bodyClass="gc-page-comunidad gc-community-rework-v104"
+  bodyClass="gc-page-comunidad gc-community-mock43"
 >
-  <section class="gc-public-hero gc-community-hero gc-community-hero-video gc-home-hero-video" aria-labelledby="gc-comunidad-title">
-    <video
-      class="gc-public-hero__media gc-community-hero-bg-video gc-home-hero-bg-video"
-      src="/videos/comunidad-hero.mp4"
-      autoplay
-      muted
-      loop
-      playsinline
-      preload="metadata"
-      aria-hidden="true"
-    ></video>
-    <div class="gc-public-hero__scrim gc-community-hero-scrim gc-home-hero-scrim" aria-hidden="true"></div>
+  <main class="gc43">
+    <section class="gc43-hero" aria-labelledby="gc43-title">
+      <video
+        class="gc43-hero__video"
+        src="/videos/comunidad-hero.mp4"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-hidden="true"
+      ></video>
+      <div class="gc43-hero__shade" aria-hidden="true"></div>
+      <div class="gc43-hero__grid" aria-hidden="true"></div>
 
-    <div class="gc-public-shell gc-public-hero__inner gc-community-hero-inner gc-home-hero-inner gc-community-home-inner-v113">
-      <div>
-        <span class="gc-public-kicker">Comunidad GC</span>
-        <h1 id="gc-comunidad-title" class="gc-public-title">Un paddock para correr, mejorar y volver.</h1>
-        <p class="gc-public-description">
-          GrassCutters es una comunidad para rodar, comentar carreras, seguir campeonatos y compartir pista sin perder el buen ambiente.
-        </p>
-        <div class="gc-community-social-actions" aria-label="Canales de la comunidad">
-          <a class="gc-public-btn gc-public-btn-primary gc-community-social-btn gc-community-social-btn--discord" href={discordUrl} target="_blank" rel="noreferrer">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.55 5.45A16.4 16.4 0 0 0 15.45 4l-.2.4a12.6 12.6 0 0 1 3.52 1.77A14.9 14.9 0 0 0 12 4.55a14.9 14.9 0 0 0-6.77 1.62A12.6 12.6 0 0 1 8.75 4.4L8.55 4c-1.43.25-2.8.74-4.1 1.45C1.86 9.3 1.17 13.05 1.53 16.75A16.6 16.6 0 0 0 6.55 19.3l.62-.86a10.6 10.6 0 0 1-1.62-.77l.39-.29A11.55 11.55 0 0 0 12 19a11.55 11.55 0 0 0 6.06-1.62l.39.29a10.6 10.6 0 0 1-1.62.77l.62.86a16.6 16.6 0 0 0 5.02-2.55c.43-4.29-.73-8-2.92-11.3ZM8.32 14.35c-.96 0-1.74-.88-1.74-1.96s.77-1.96 1.74-1.96c.98 0 1.77.88 1.75 1.96 0 1.08-.77 1.96-1.75 1.96Zm7.36 0c-.96 0-1.75-.88-1.75-1.96s.77-1.96 1.75-1.96c.98 0 1.75.88 1.75 1.96s-.77 1.96-1.75 1.96Z" /></svg>
-            <span>Discord</span>
-          </a>
-          <a class="gc-public-btn gc-community-social-btn gc-community-social-btn--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.05 3a8.82 8.82 0 0 0-7.49 13.49L3.7 21l4.6-1.2A8.82 8.82 0 1 0 12.05 3Zm0 1.7a7.12 7.12 0 0 1 6.05 10.87 7.09 7.09 0 0 1-8.85 2.65l-.32-.15-2.72.71.73-2.64-.18-.34A7.12 7.12 0 0 1 12.05 4.7Zm-3.1 3.78c-.2 0-.52.08-.8.38-.27.3-1.05 1.03-1.05 2.52 0 1.48 1.08 2.92 1.23 3.12.15.2 2.1 3.36 5.2 4.57 2.57 1 3.1.8 3.66.75.56-.05 1.8-.74 2.05-1.45.25-.72.25-1.33.18-1.46-.08-.13-.28-.2-.58-.36-.3-.15-1.8-.9-2.08-1-.28-.1-.48-.15-.68.15-.2.3-.78 1-.96 1.2-.18.2-.36.22-.66.07-.3-.15-1.26-.47-2.4-1.5-.88-.78-1.48-1.75-1.65-2.05-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.30.3-.5.1-.2.05-.38-.03-.53-.08-.15-.68-1.64-.94-2.25-.25-.6-.5-.51-.68-.52h-.58Z" /></svg>
-            <span>WhatsApp</span>
-          </a>
-          <a class="gc-public-btn gc-community-social-btn gc-community-social-btn--instagram" href={instagramUrl} target="_blank" rel="noreferrer">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3h9.6A4.2 4.2 0 0 1 21 7.2v9.6a4.2 4.2 0 0 1-4.2 4.2H7.2A4.2 4.2 0 0 1 3 16.8V7.2A4.2 4.2 0 0 1 7.2 3Zm0 1.8a2.4 2.4 0 0 0-2.4 2.4v9.6a2.4 2.4 0 0 0 2.4 2.4h9.6a2.4 2.4 0 0 0 2.4-2.4V7.2a2.4 2.4 0 0 0-2.4-2.4H7.2ZM12 8.15A3.85 3.85 0 1 1 12 15.85 3.85 3.85 0 0 1 12 8.15Zm0 1.8a2.05 2.05 0 1 0 0 4.1 2.05 2.05 0 0 0 0-4.1Zm4.15-2.85a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z" /></svg>
-            <span>Instagram</span>
-          </a>
+      <div class="gc43-shell gc43-hero__inner">
+        <div class="gc43-hero__marker" aria-hidden="true">
+          <span></span>
+          <i></i>
+          <span></span>
         </div>
-        <div class="gc-actions gc-community-hero-secondary-actions" aria-label="Enlaces rápidos de comunidad">
-          <a class="gc-public-btn gc-public-btn-secondary gc-community-pilots-btn" href="/pilotos">Ver pilotos</a>
-          <a class="gc-public-btn gc-public-btn-secondary gc-community-pilots-btn" href="/normas">Normas</a>
-          <a class="gc-public-btn gc-public-btn-secondary gc-community-pilots-btn" href="/apoyo-servidor">Apoyo al servidor</a>
+
+        <div class="gc43-hero__copy">
+          <PublicHeroFrame
+            id="gc43-title"
+            kicker="Comunidad GC"
+            title={['Un paddock para', 'correr, mejorar', 'y volver.']}
+            lead="GrassCutters es una comunidad para rodar, comentar carreras, seguir campeonatos y compartir pista sin perder el buen ambiente."
+          />
+
+          <div class="gc43-social" aria-label="Canales principales">
+            <a class="gc43-social-btn gc43-social-btn--discord" href={discordUrl} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.55 5.45A16.4 16.4 0 0 0 15.45 4l-.2.4a12.6 12.6 0 0 1 3.52 1.77A14.9 14.9 0 0 0 12 4.55a14.9 14.9 0 0 0-6.77 1.62A12.6 12.6 0 0 1 8.75 4.4L8.55 4c-1.43.25-2.8.74-4.1 1.45C1.86 9.3 1.17 13.05 1.53 16.75A16.6 16.6 0 0 0 6.55 19.3l.62-.86a10.6 10.6 0 0 1-1.62-.77l.39-.29A11.55 11.55 0 0 0 12 19a11.55 11.55 0 0 0 6.06-1.62l.39.29a10.6 10.6 0 0 1-1.62.77l.62.86a16.6 16.6 0 0 0 5.02-2.55c.43-4.29-.73-8-2.92-11.3ZM8.32 14.35c-.96 0-1.74-.88-1.74-1.96s.77-1.96 1.74-1.96c.98 0 1.77.88 1.75 1.96 0 1.08-.77 1.96-1.75 1.96Zm7.36 0c-.96 0-1.75-.88-1.75-1.96s.77-1.96 1.75-1.96c.98 0 1.75.88 1.75 1.96s-.77 1.96-1.75 1.96Z" /></svg>
+              <span><strong>Discord</strong><small>Únete al servidor</small></span>
+            </a>
+
+            <a class="gc43-social-btn gc43-social-btn--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.05 3a8.82 8.82 0 0 0-7.49 13.49L3.7 21l4.6-1.2A8.82 8.82 0 1 0 12.05 3Zm0 1.7a7.12 7.12 0 0 1 6.05 10.87 7.09 7.09 0 0 1-8.85 2.65l-.32-.15-2.72.71.73-2.64-.18-.34A7.12 7.12 0 0 1 12.05 4.7Zm-3.1 3.78c-.2 0-.52.08-.8.38-.27.3-1.05 1.03-1.05 2.52 0 1.48 1.08 2.92 1.23 3.12.15.2 2.1 3.36 5.2 4.57 2.57 1 3.1.8 3.66.75.56-.05 1.8-.74 2.05-1.45.25-.72.25-1.33.18-1.46-.08-.13-.28-.2-.58-.36-.3-.15-1.8-.9-2.08-1-.28-.1-.48-.15-.68.15-.2.3-.78 1-.96 1.2-.18.2-.36.22-.66.07-.3-.15-1.26-.47-2.4-1.5-.88-.78-1.48-1.75-1.65-2.05-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.30.3-.5.1-.2.05-.38-.03-.53-.08-.15-.68-1.64-.94-2.25-.25-.6-.5-.51-.68-.52h-.58Z" /></svg>
+              <span><strong>WhatsApp</strong><small>Grupo de la comunidad</small></span>
+            </a>
+
+            <a class="gc43-social-btn gc43-social-btn--instagram" href={instagramUrl} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3h9.6A4.2 4.2 0 0 1 21 7.2v9.6a4.2 4.2 0 0 1-4.2 4.2H7.2A4.2 4.2 0 0 1 3 16.8V7.2A4.2 4.2 0 0 1 7.2 3Zm0 1.8a2.4 2.4 0 0 0-2.4 2.4v9.6a2.4 2.4 0 0 0 2.4 2.4h9.6a2.4 2.4 0 0 0 2.4-2.4V7.2a2.4 2.4 0 0 0-2.4-2.4H7.2ZM12 8.15A3.85 3.85 0 1 1 12 15.85 3.85 3.85 0 0 1 12 8.15Zm0 1.8a2.05 2.05 0 1 0 0 4.1 2.05 2.05 0 0 0 0-4.1Zm4.15-2.85a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z" /></svg>
+              <span><strong>Instagram</strong><small>Síguenos</small></span>
+            </a>
+          </div>
+
+          <div class="gc43-quick">
+            {quickActions.map(([icon, title, text, href]) => (
+              <a href={href}>
+                <span>{icon}</span>
+                <strong>{title}</strong>
+                <small>{text}</small>
+              </a>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="gc-public-shell gc-public-section gc-community-manifest-v104 gc-week-combo-section gc-community-first-after-hero-v113">
-    <div class="gc-community-manifest-grid-v104">
-      <article class="gc-community-copy-v104 gc-public-card">
-        <span class="gc-public-kicker">Qué es GrassCutters</span>
-        <h2 class="gc-public-card-title gc-public-card-title--large">Un servidor para correr sin problemas.</h2>
-        <p class="gc-public-card-text">
+    <section class="gc43-shell gc43-intro">
+      <article class="gc43-card gc43-copy-card">
+        <span class="gc43-kicker">Qué es GrassCutters</span>
+        <h2>Un servidor para correr <em>sin problemas.</em></h2>
+        <p>
           Aquí se viene a desconectar, probar coches, compartir setups, votar combos y hacer vueltas sin convertir cada tarde en una reunión de comisarios.
           Si hablas español, perfecto. Si no, pero te adaptas al ambiente del grupo, también tienes sitio.
         </p>
-        <p class="gc-public-card-text">
-          Nos gusta correr limpio y apretar cuando toca, pero valoramos más la actitud que el ritmo. Puedes entrar siendo nuevo, rápido, lento o irregular:
-          lo importante es respetar, aprender y no traer toxicidad al box.
-        </p>
       </article>
 
-      <aside class="gc-community-pitwall-v104 gc-public-panel" aria-label="Resumen de comunidad">
-        <div class="gc-community-pitwall-top-v105">
-          <img src="/images/comunidad-card-bg3.webp" alt="" loading="lazy" aria-hidden="true" />
+      <aside class="gc43-card gc43-summary">
+        <div class="gc43-summary__logo">
+          <img src="/images/newlogo.png" alt="GrassCutters Simracing" loading="lazy" decoding="async" />
         </div>
-        <ul>
-          <li><strong>Hotlaps</strong><span>Semanales con Stracker</span></li>
-          <li><strong>Combos</strong><span>Votados por la comunidad</span></li>
-          <li><strong>Setups</strong><span>Coche, volante y sensaciones</span></li>
-          <li><strong>Clips</strong><span>Highlights, fails y momentos buenos</span></li>
-          <li><strong>Eventos</strong><span>Carreras semanales, LFM y otros sims de vez en cuando</span></li>
-        </ul>
+        <div class="gc43-summary__items">
+          {summaryItems.map(([title, text]) => (
+            <div>
+              <span>▣</span>
+              <strong>{title}</strong>
+              <small>{text}</small>
+            </div>
+          ))}
+        </div>
       </aside>
-    </div>
-  </section>
+    </section>
 
-  <section class="gc-public-shell gc-public-section gc-community-how-v104">
-    <div class="gc-public-section-head">
-      <span class="gc-public-kicker">Cómo funciona</span>
-      <h2 class="gc-public-section-title">Discord mantiene al grupo conectado. La web deja los resultados claros.</h2>
-      <p class="gc-public-section-lead">
-        Todo gira alrededor de probar, votar, correr y comentar. Sin hacerlo más complicado de lo necesario.
-      </p>
-    </div>
+    <section class="gc43-shell gc43-section">
+      <header class="gc43-section-title">
+        <span></span>
+        <h2>Cómo funciona la comunidad</h2>
+      </header>
 
-    <div class="gc-community-steps-v104">
-      <article class="gc-public-card">
-        <span>01</span>
-        <h3>Entras al Discord</h3>
-        <p>Saludas, miras anuncios, preguntas lo que haga falta y te pones al día con el combo o el evento activo.</p>
-      </article>
-      <article class="gc-public-card">
-        <span>02</span>
-        <h3>Pruebas el combo</h3>
-        <p>El servidor va rotando. Hay coches, circuitos, hotlaps y referencias para saber dónde estás.</p>
-      </article>
-      <article class="gc-public-card">
-        <span>03</span>
-        <h3>Compartes lo que aprendes</h3>
-        <p>Setups, clips, dudas, errores, mejoras y feedback. Nadie nace sabiendo frenar tarde en todos los circuitos.</p>
-      </article>
-      <article class="gc-public-card">
-        <span>04</span>
-        <h3>Votas lo siguiente</h3>
-        <p>La comunidad decide qué apetece probar. Coches, tracks, eventos y pruebas salen del propio grupo.</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="gc-public-shell gc-public-section gc-community-rules-v104">
-    <div class="gc-community-rules-grid-v104">
-      <div class="gc-community-rules-copy-v104 gc-public-card">
-        <span class="gc-public-kicker">Filosofía GC</span>
-        <h2 class="gc-public-card-title gc-public-card-title--large">Pocas normas. Buen ambiente. Pista limpia.</h2>
-        <p class="gc-public-card-text">
-          No buscamos un servidor lleno de sanciones absurdas. Tampoco un sitio donde valga todo.
-          La línea es sencilla: respeto en el chat, respeto en pista y cero dramas cuando algo sale mal.
-        </p>
-      </div>
-
-      <div class="gc-community-principles-v104">
-        {principles.map(([number, title, text]) => (
-          <article class="gc-public-card">
+      <div class="gc43-steps">
+        {steps.map(([number, title, text]) => (
+          <article class="gc43-card gc43-step">
             <span>{number}</span>
             <div>
               <h3>{title}</h3>
@@ -175,134 +151,917 @@ const dailyRacers = [
           </article>
         ))}
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="gc-public-shell gc-public-section gc-community-discord-v104">
-    <div class="gc-public-section-head">
-      <span class="gc-public-kicker">Canales del Discord</span>
-      <h2 class="gc-public-section-title">Cada cosa en su sitio.</h2>
-      <p class="gc-public-section-lead">
-        El Discord no está para perderse. Hay canales para hablar, votar, compartir mods, subir clips y organizar carreras.
-      </p>
-    </div>
+    <section class="gc43-shell gc43-section gc43-discord-activity">
+      <article class="gc43-card gc43-discord">
+        <header>
+          <div>
+            <span class="gc43-kicker gc43-kicker--blue">Discord · tu casa</span>
+            <h2>Canales principales</h2>
+          </div>
+          <strong>{textChannels.length}</strong>
+        </header>
 
-    <div class="gc-community-discord-layout-v104">
-      <article class="gc-community-channel-panel-v104 gc-public-card">
-        <div class="gc-community-channel-head-v104">
-          <h3>Canales de texto</h3>
-          <span>{textChannels.length} canales</span>
-        </div>
-
-        <div class="gc-community-channel-list-v104">
+        <div class="gc43-channel-list">
           {textChannels.map(([icon, name, text]) => (
-            <div class="gc-community-channel-v104">
-              <span aria-hidden="true">{icon}</span>
-              <div>
-                <strong># {name}</strong>
-                <p>{text}</p>
-              </div>
+            <div class="gc43-channel">
+              <span>{icon}</span>
+              <strong>{name}</strong>
+              <small>{text}</small>
             </div>
           ))}
         </div>
+
+        <a class="gc43-outline gc43-outline--blue" href={discordUrl} target="_blank" rel="noreferrer">Ir al Discord</a>
       </article>
 
-      <aside class="gc-community-side-stack-v104">
-        <article class="gc-community-channel-panel-v104 gc-community-voice-v104 gc-public-card">
-          <div class="gc-community-channel-head-v104">
-            <h3>Canales de voz</h3>
-            <span>Lobby</span>
-          </div>
-
-          <div class="gc-community-channel-list-v104">
-            {voiceChannels.map(([icon, name, text]) => (
-              <div class="gc-community-channel-v104">
-                <span aria-hidden="true">{icon}</span>
-                <div>
-                  <strong>{name}</strong>
-                  <p>{text}</p>
-                </div>
-              </div>
+      <div class="gc43-activity-grid">
+        <article class="gc43-card gc43-activity gc43-activity--wide">
+          <span class="gc43-kicker">Actividad en la pista</span>
+          <h2>Diarias</h2>
+          <p>Carreras cada día a diferentes horas.</p>
+          <div class="gc43-hour-list">
+            {dailyHours.map(([hour, title]) => (
+              <span><strong>{hour}</strong>{title}</span>
             ))}
           </div>
+          <a class="gc43-outline" href="/calendario">Ver horarios</a>
         </article>
 
-        <article class="gc-community-note-v104 gc-public-panel">
-          <span>Regla de oro</span>
-          <h3>Lo que pase en pista no se discute en caliente.</h3>
-          <p>
-            Si hay incidente, se revisa con calma después. Primero enfriar. Luego hablar.
-          </p>
+        <article class="gc43-card gc43-activity">
+          <span class="gc43-kicker">Combos</span>
+          <h2>Con 30s</h2>
+          <p>Votados por la comunidad. Variedad y equilibrio.</p>
+          <a class="gc43-outline" href="/ratings">Ver combos</a>
         </article>
-      </aside>
-    </div>
-  </section>
 
-  <section class="gc-public-shell gc-public-section gc-community-daily-v104">
-    <div class="gc-community-daily-card-v104 gc-public-card">
-      <div>
-        <span class="gc-public-kicker">Daily Racers</span>
-        <h2 class="gc-public-card-title gc-public-card-title--large">No se pide. Se gana.</h2>
-        <p class="gc-public-card-text">
-          Daily Racers es para quienes están de verdad en el día a día de la comunidad.
-          No va de ser el más rápido, va de aparecer, participar y mantener vivo el servidor.
-        </p>
+        <article class="gc43-card gc43-activity">
+          <span class="gc43-kicker">Eventos y campeonatos</span>
+          <h2>Endurance 3H</h2>
+          <p>Campeonatos, endurance y eventos especiales.</p>
+          <a class="gc43-outline" href="/campeonato">Ver eventos</a>
+        </article>
       </div>
+    </section>
 
-      <ul>
-        {dailyRacers.map((item) => (
-          <li>{item}</li>
-        ))}
-      </ul>
-    </div>
-  </section>
-
-  <section class="gc-public-shell gc-public-section gc-community-support-v104">
-    <div class="gc-community-support-grid-v104">
-      <article class="gc-public-card">
-        <span class="gc-public-kicker">Apoyo al servidor</span>
-        <h2 class="gc-public-card-title gc-public-card-title--large">El servidor se mantiene entre todos.</h2>
-        <p class="gc-public-card-text">
-          Las donaciones voluntarias se usan únicamente para pagar el proveedor de hosting GTX:
-          mantenimiento, slots y servidor. Nada de compras externas ni historias raras.
+    <section class="gc43-shell gc43-section gc43-rules">
+      <article class="gc43-card gc43-rules__intro">
+        <span class="gc43-kicker">Filosofía GC</span>
+        <h2>Pocas normas. Buen ambiente. Pista limpia.</h2>
+        <p>
+          No buscamos un servidor lleno de sanciones absurdas. Tampoco un sitio donde valga todo.
+          La línea es sencilla: respeto en el chat, respeto en pista y cero dramas cuando algo sale mal.
         </p>
-        <div class="gc-actions">
-          <a class="gc-public-btn gc-public-btn-primary" href={gtxSupportUrl} target="_blank" rel="noreferrer">Apoyar servidor GTX</a>
-        </div>
       </article>
 
-      <aside class="gc-public-panel">
-        <h3>También puedes sumar.</h3>
-        <p class="gc-public-card-text">
-          GrassCutters también crece con gente que participa. Puedes organizar una carrera, proponer combos, compartir setups, subir clips, compartir la comunidad en redes sociales,
-          probar cosas nuevas o ayudar a que el ambiente se mantenga limpio cuando haga falta.
-        </p>
-        <p class="gc-public-card-text">
-          También buscamos gente para aportar en Discord, WhatsApp, la app, la web y otros proyectos de GC.
-          Si quieres implicarte un poco más, díselo a un admin.
-        </p>
-        <div class="gc-actions gc-community-contribute-actions">
-          <a class="gc-public-btn gc-public-btn-secondary gc-community-contribute-discord" href={discordUrl} target="_blank" rel="noreferrer">Entrar al Discord</a>
-        </div>
-      </aside>
-    </div>
-  </section>
-
-  <section class="gc-public-shell gc-public-section gc-community-final-v104">
-    <div class="gc-community-final-card-v104 gc-public-cta">
-      <span class="gc-public-kicker">Entrada al paddock</span>
-      <h2 class="gc-public-cta-title">Entra, saluda y prueba el combo.</h2>
-      <p class="gc-public-cta-text">
-        Si quieres rodar en Assetto Corsa, compartir setups, mirar hotlaps y correr con gente sin convertirlo en un drama,
-        GrassCutters te queda cerca.
-      </p>
-      <div class="gc-actions">
-        <a class="gc-public-btn gc-public-btn-primary" href="/pilotos">Ver pilotos</a>
-        <a class="gc-public-btn gc-public-btn-secondary" href="/hotlaps">Ver hotlaps</a>
-        <a class="gc-public-btn gc-public-btn-secondary" href="/app">Ver plataforma</a>
+      <div class="gc43-rule-list">
+        <article class="gc43-card"><span>01</span><h3>Actitud antes que ritmo</h3><p>No hace falta ser el más rápido. Hace falta sumar buen ambiente, respetar y querer mejorar.</p></article>
+        <article class="gc43-card"><span>02</span><h3>Pista limpia</h3><p>Se puede competir fuerte, pero sin choques intencionados, sin zigzag y dejando espacio cuando toca.</p></article>
+        <article class="gc43-card"><span>03</span><h3>Sin dramas en caliente</h3><p>Si hay incidente, se enfría primero y se habla después. El chat no es dirección de carrera con fuego en el casco.</p></article>
       </div>
-    </div>
-  </section>
+    </section>
 
+    <section class="gc43-shell gc43-section">
+      <article class="gc43-card gc43-daily">
+        <div>
+          <span class="gc43-kicker">Daily Racers</span>
+          <h2>No se pide. Se gana.</h2>
+          <p>
+            Daily Racers es para quienes están de verdad en el día a día de la comunidad.
+            No va de ser el más rápido, va de aparecer, participar y mantener vivo el servidor.
+          </p>
+        </div>
+        <ul>
+          <li>Participar regularmente en carreras o hotlaps.</li>
+          <li>Estar activo en la comunidad: chat, feedback, dudas y buen ambiente.</li>
+          <li>Implicarse en eventos, votaciones o pruebas del servidor.</li>
+          <li>Mantener una actitud positiva y respetuosa.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="gc43-final">
+      <div class="gc43-shell gc43-final__inner">
+        <div>
+          <span class="gc43-kicker">Listo para formar parte del equipo</span>
+          <h2>Únete a <em>GrassCutters</em></h2>
+          <p>Buena gente, buenas carreras y muchas ganas de mejorar juntos.</p>
+        </div>
+        <a class="gc43-primary" href={discordUrl} target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.55 5.45A16.4 16.4 0 0 0 15.45 4l-.2.4a12.6 12.6 0 0 1 3.52 1.77A14.9 14.9 0 0 0 12 4.55a14.9 14.9 0 0 0-6.77 1.62A12.6 12.6 0 0 1 8.75 4.4L8.55 4c-1.43.25-2.8.74-4.1 1.45C1.86 9.3 1.17 13.05 1.53 16.75A16.6 16.6 0 0 0 6.55 19.3l.62-.86a10.6 10.6 0 0 1-1.62-.77l.39-.29A11.55 11.55 0 0 0 12 19a11.55 11.55 0 0 0 6.06-1.62l.39.29a10.6 10.6 0 0 1-1.62.77l.62.86a16.6 16.6 0 0 0 5.02-2.55c.43-4.29-.73-8-2.92-11.3Z" /></svg>
+          <span>Únete al Discord</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <style is:global>
+    /* GC_COMMUNITY_HEADER_CLEAN_V51
+       Header y logo flotante deben ser globales en todas las páginas públicas.
+       No ocultamos .gc-floating-hero-logo y no tocamos .gc-public-header.
+    */
+    .gc43{
+      --green:#96ff2f;
+      --green2:#77df16;
+      --ink:#f5f8f1;
+      --muted:rgba(245,248,241,.70);
+      --line:rgba(150,255,47,.18);
+      --soft:rgba(150,255,47,.075);
+      color:var(--ink);
+      background:#010301;
+      overflow:hidden;
+    }
+
+    .gc43-shell{
+      width:min(1120px, calc(100% - 44px));
+      margin:0 auto;
+    }
+
+    .gc43-kicker{
+      display:block;
+      color:var(--green);
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      line-height:1;
+      letter-spacing:.15em;
+      font-weight:950;
+      text-transform:uppercase;
+      margin-bottom:12px;
+    }
+
+    .gc43-kicker--blue{
+      color:#7f8cff;
+    }
+
+    .gc43-hero{
+      position:relative;
+      height:490px;
+      min-height:490px;
+      overflow:hidden;
+      border-bottom:1px solid rgba(150,255,47,.20);
+      isolation:isolate;
+    }
+
+    .gc43-hero__video{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      filter:saturate(.78) contrast(1.12) brightness(.64);
+      transform:scale(1.02);
+      z-index:-4;
+    }
+
+    .gc43-hero__shade{
+      position:absolute;
+      inset:0;
+      z-index:-3;
+      background:
+        linear-gradient(90deg, rgba(1,3,1,.98) 0%, rgba(1,3,1,.90) 35%, rgba(1,3,1,.34) 64%, rgba(1,3,1,.13) 100%),
+        linear-gradient(180deg, rgba(1,3,1,.15) 0%, rgba(1,3,1,.10) 55%, rgba(1,3,1,.82) 100%);
+    }
+
+    .gc43-hero__grid{
+      position:absolute;
+      inset:0;
+      z-index:-2;
+      opacity:.22;
+      background:
+        linear-gradient(rgba(150,255,47,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(150,255,47,.038) 1px, transparent 1px);
+      background-size:54px 54px;
+      mask-image:linear-gradient(90deg,#000 0%, rgba(0,0,0,.88) 42%, transparent 78%);
+      pointer-events:none;
+    }
+
+    .gc43-hero__inner{
+      height:100%;
+      position:relative;
+      display:flex;
+      align-items:center;
+    }
+
+    .gc43-hero__marker{
+      position:absolute;
+      left:-48px;
+      top:122px;
+      width:18px;
+      height:118px;
+      display:grid;
+      justify-items:center;
+      grid-template-rows:14px 1fr 14px;
+      opacity:.9;
+    }
+
+    .gc43-hero__marker span{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 18px rgba(150,255,47,.65);
+    }
+
+    .gc43-hero__marker i{
+      width:1px;
+      background:linear-gradient(180deg, transparent, var(--green), transparent);
+    }
+
+    .gc43-hero__copy{
+      width:650px;
+      max-width:100%;
+      padding-top:4px;
+    }
+
+    .gc43-hero h1{
+      margin:0 0 16px;
+      max-width:650px;
+      color:var(--ink);
+      font-size:64px;
+      line-height:.91;
+      letter-spacing:-.052em;
+      text-transform:uppercase;
+    }
+
+    .gc43-hero h1 span{
+      display:block;
+    }
+
+    .gc43-hero h1 em{
+      color:var(--green);
+      font-style:normal;
+      text-shadow:0 0 20px rgba(150,255,47,.23);
+    }
+
+    .gc43-hero p{
+      max-width:560px;
+      margin:0;
+      color:var(--muted);
+      font-size:16px;
+      line-height:1.45;
+    }
+
+    .gc43-social,
+    .gc43-quick{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    .gc43-social{
+      margin-top:28px;
+    }
+
+    .gc43-quick{
+      margin-top:12px;
+    }
+
+    .gc43-social-btn,
+    .gc43-quick a,
+    .gc43-outline,
+    .gc43-primary{
+      text-decoration:none;
+      transition:transform .18s ease, filter .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .gc43-social-btn:hover,
+    .gc43-quick a:hover,
+    .gc43-outline:hover,
+    .gc43-primary:hover{
+      transform:translateY(-2px);
+      filter:saturate(1.06) brightness(1.04);
+    }
+
+    .gc43-social-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:11px;
+      min-width:154px;
+      min-height:46px;
+      padding:0 14px;
+      border-radius:6px;
+      color:white;
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 16px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.16);
+    }
+
+    .gc43-social-btn svg{
+      width:21px;
+      height:21px;
+      fill:#fff;
+      flex:0 0 auto;
+    }
+
+    .gc43-social-btn span{
+      display:grid;
+      gap:2px;
+    }
+
+    .gc43-social-btn strong{
+      color:#fff;
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.08em;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .gc43-social-btn small{
+      color:rgba(255,255,255,.75);
+      font-size:10px;
+      line-height:1.1;
+    }
+
+    .gc43-social-btn--discord{
+      background:#5865F2;
+    }
+
+    .gc43-social-btn--whatsapp{
+      background:#25D366;
+    }
+
+    .gc43-social-btn--instagram{
+      background:linear-gradient(135deg,#405DE6 0%,#833AB4 25%,#C13584 50%,#E1306C 70%,#FCAF45 100%);
+    }
+
+    .gc43-quick a{
+      display:grid;
+      grid-template-columns:28px 1fr;
+      column-gap:10px;
+      row-gap:2px;
+      align-items:center;
+      min-width:196px;
+      min-height:46px;
+      padding:0 14px;
+      border-radius:6px;
+      border:1px solid rgba(150,255,47,.32);
+      background:linear-gradient(135deg, rgba(150,255,47,.10), rgba(2,7,3,.78));
+      color:#efffeb;
+      box-shadow:0 12px 32px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.045);
+    }
+
+    .gc43-quick a span{
+      grid-row:1 / span 2;
+      display:grid;
+      place-items:center;
+      color:var(--green);
+      filter:drop-shadow(0 0 12px rgba(150,255,47,.25));
+    }
+
+    .gc43-quick a strong{
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      letter-spacing:.08em;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .gc43-quick a small{
+      color:rgba(245,248,241,.58);
+      font-size:10px;
+      line-height:1.1;
+    }
+
+    .gc43-card{
+      position:relative;
+      border:1px solid var(--line);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(150,255,47,.07), transparent 30%),
+        linear-gradient(180deg, rgba(6,12,7,.95), rgba(3,7,4,.985));
+      box-shadow:0 24px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+
+    .gc43-card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 1px, transparent 1px 48px),
+        linear-gradient(90deg, rgba(150,255,47,.040), transparent 34%);
+      opacity:.85;
+    }
+
+    .gc43-card > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .gc43-intro{
+      display:grid;
+      grid-template-columns:1fr 1.28fr;
+      gap:24px;
+      margin-top:28px;
+    }
+
+    .gc43-copy-card{
+      padding:28px 34px 30px;
+      min-height:160px;
+    }
+
+    .gc43-copy-card h2,
+    .gc43-rules__intro h2,
+    .gc43-daily h2,
+    .gc43-final h2{
+      margin:0 0 12px;
+      color:var(--ink);
+      font-size:36px;
+      line-height:.95;
+      letter-spacing:-.04em;
+      text-transform:uppercase;
+    }
+
+    .gc43-copy-card h2 em,
+    .gc43-final h2 em{
+      color:var(--green);
+      font-style:normal;
+    }
+
+    .gc43-copy-card p,
+    .gc43-card p,
+    .gc43-section-title p,
+    .gc43-final p{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.55;
+      margin:0;
+    }
+
+    .gc43-summary{
+      display:grid;
+      grid-template-columns:40% 60%;
+      min-height:160px;
+    }
+
+    .gc43-summary__logo{
+      display:grid;
+      place-items:center;
+      border-right:1px solid rgba(150,255,47,.13);
+      background:radial-gradient(circle at center, rgba(150,255,47,.12), transparent 58%);
+    }
+
+    .gc43-summary__logo img{
+      width:210px;
+      max-width:80%;
+      height:auto;
+      filter:drop-shadow(0 0 22px rgba(150,255,47,.22));
+    }
+
+    .gc43-summary__items{
+      display:grid;
+      align-content:center;
+      gap:0;
+    }
+
+    .gc43-summary__items div{
+      display:grid;
+      grid-template-columns:34px 1fr;
+      column-gap:14px;
+      row-gap:3px;
+      align-items:center;
+      padding:15px 24px;
+      border-top:1px solid rgba(255,255,255,.055);
+    }
+
+    .gc43-summary__items div:first-child{
+      border-top:0;
+    }
+
+    .gc43-summary__items span{
+      grid-row:1 / span 2;
+      display:grid;
+      place-items:center;
+      width:30px;
+      height:30px;
+      border-radius:8px;
+      border:1px solid rgba(150,255,47,.22);
+      background:rgba(150,255,47,.075);
+      color:var(--green);
+    }
+
+    .gc43-summary__items strong{
+      color:var(--ink);
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      letter-spacing:.08em;
+      line-height:1.1;
+      text-transform:uppercase;
+    }
+
+    .gc43-summary__items small{
+      color:rgba(245,248,241,.56);
+      font-size:12px;
+      line-height:1.2;
+    }
+
+    .gc43-section{
+      margin-top:40px;
+    }
+
+    .gc43-section-title{
+      display:grid;
+      place-items:center;
+      text-align:center;
+      margin-bottom:18px;
+    }
+
+    .gc43-section-title span{
+      width:70px;
+      height:1px;
+      background:linear-gradient(90deg, transparent, var(--green), transparent);
+      box-shadow:0 0 16px rgba(150,255,47,.35);
+      margin-bottom:12px;
+    }
+
+    .gc43-section-title h2{
+      margin:0;
+      color:var(--ink);
+      font-size:24px;
+      line-height:1;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+
+    .gc43-steps{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:18px;
+    }
+
+    .gc43-step{
+      min-height:82px;
+      padding:18px 18px;
+      display:grid;
+      grid-template-columns:42px 1fr;
+      gap:14px;
+      align-items:start;
+      transition:transform .18s ease, border-color .18s ease;
+    }
+
+    .gc43-step:hover,
+    .gc43-channel:hover,
+    .gc43-rule-list article:hover{
+      transform:translateY(-3px);
+      border-color:rgba(150,255,47,.34);
+    }
+
+    .gc43-step > span,
+    .gc43-rule-list article > span{
+      display:grid;
+      place-items:center;
+      width:36px;
+      height:36px;
+      border-radius:999px;
+      border:1px solid rgba(150,255,47,.25);
+      background:rgba(150,255,47,.08);
+      color:var(--green);
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-weight:950;
+      font-size:11px;
+    }
+
+    .gc43-step h3,
+    .gc43-discord h2,
+    .gc43-activity h2,
+    .gc43-rule-list h3{
+      margin:0 0 6px;
+      color:var(--ink);
+      font-size:15px;
+      line-height:1;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+
+    .gc43-step p,
+    .gc43-rule-list p{
+      margin:0;
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    .gc43-discord-activity{
+      display:grid;
+      grid-template-columns:380px 1fr;
+      gap:18px;
+    }
+
+    .gc43-discord{
+      padding:20px;
+      border-color:rgba(88,101,242,.30);
+    }
+
+    .gc43-discord header{
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:flex-start;
+      margin-bottom:14px;
+    }
+
+    .gc43-discord header > strong{
+      display:grid;
+      place-items:center;
+      min-width:38px;
+      height:38px;
+      color:#8f99ff;
+      border:1px solid rgba(88,101,242,.35);
+      background:rgba(88,101,242,.10);
+      font-size:18px;
+    }
+
+    .gc43-channel-list{
+      display:grid;
+      gap:6px;
+    }
+
+    .gc43-channel{
+      display:grid;
+      grid-template-columns:24px 1fr 1.15fr;
+      gap:10px;
+      align-items:center;
+      min-height:28px;
+      padding:5px 8px;
+      border:1px solid rgba(255,255,255,.055);
+      background:rgba(255,255,255,.022);
+      border-radius:6px;
+      transition:transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .gc43-channel:hover{
+      transform:translateX(3px);
+      background:rgba(88,101,242,.075);
+      border-color:rgba(88,101,242,.30);
+    }
+
+    .gc43-channel > span{
+      color:#8f99ff;
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:12px;
+    }
+
+    .gc43-channel strong{
+      color:var(--ink);
+      font-size:12px;
+      text-transform:lowercase;
+    }
+
+    .gc43-channel small{
+      color:rgba(245,248,241,.55);
+      font-size:10px;
+      line-height:1.2;
+    }
+
+    .gc43-activity-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      grid-auto-rows:minmax(150px,auto);
+      gap:18px;
+    }
+
+    .gc43-activity{
+      padding:20px;
+      min-height:150px;
+    }
+
+    .gc43-activity--wide{
+      grid-row:span 2;
+    }
+
+    .gc43-hour-list{
+      display:grid;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .gc43-hour-list span{
+      display:flex;
+      justify-content:space-between;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.055);
+      background:rgba(255,255,255,.024);
+      color:rgba(245,248,241,.72);
+      font-size:12px;
+    }
+
+    .gc43-hour-list strong{
+      color:var(--green);
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+    }
+
+    .gc43-outline,
+    .gc43-primary{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height:38px;
+      margin-top:14px;
+      padding:0 16px;
+      border-radius:6px;
+      font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .gc43-outline{
+      border:1px solid rgba(150,255,47,.25);
+      background:rgba(150,255,47,.045);
+      color:#eaffdf;
+    }
+
+    .gc43-outline--blue{
+      width:100%;
+      color:#dce1ff;
+      border-color:rgba(88,101,242,.40);
+      background:rgba(88,101,242,.12);
+    }
+
+    .gc43-rules{
+      display:grid;
+      grid-template-columns:1fr 1.35fr;
+      gap:18px;
+    }
+
+    .gc43-rules__intro{
+      padding:26px;
+    }
+
+    .gc43-rule-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .gc43-rule-list article{
+      display:grid;
+      grid-template-columns:48px 1fr;
+      gap:14px;
+      padding:20px;
+      transition:transform .18s ease, border-color .18s ease;
+    }
+
+    .gc43-rule-list article > span{
+      margin-top:2px;
+    }
+
+    .gc43-daily{
+      display:grid;
+      grid-template-columns:1fr 1.1fr;
+      gap:28px;
+      padding:28px;
+      align-items:center;
+    }
+
+    .gc43-daily ul{
+      list-style:none;
+      display:grid;
+      gap:8px;
+      margin:0;
+      padding:0;
+    }
+
+    .gc43-daily li{
+      position:relative;
+      padding:11px 12px 11px 36px;
+      border:1px solid rgba(150,255,47,.11);
+      background:rgba(255,255,255,.024);
+      border-radius:8px;
+      color:rgba(245,248,241,.74);
+      font-size:13px;
+    }
+
+    .gc43-daily li::before{
+      content:"";
+      position:absolute;
+      left:14px;
+      top:50%;
+      width:8px;
+      height:8px;
+      transform:translateY(-50%);
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 14px rgba(150,255,47,.36);
+    }
+
+    .gc43-final{
+      margin-top:44px;
+      padding:26px 0;
+      border-top:1px solid rgba(150,255,47,.20);
+      background:
+        linear-gradient(90deg, rgba(150,255,47,.12), transparent 32%, rgba(150,255,47,.10)),
+        repeating-linear-gradient(45deg, rgba(255,255,255,.022) 0 12px, transparent 12px 24px);
+    }
+
+    .gc43-final__inner{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:24px;
+      align-items:center;
+    }
+
+    .gc43-final h2{
+      margin:0 0 6px;
+      font-size:42px;
+      line-height:.95;
+    }
+
+    .gc43-final p{
+      margin:0;
+    }
+
+    .gc43-primary{
+      min-width:270px;
+      min-height:52px;
+      margin:0;
+      border:1px solid rgba(150,255,47,.70);
+      color:#071006;
+      background:linear-gradient(135deg,var(--green),var(--green2));
+      box-shadow:0 12px 34px rgba(150,255,47,.15);
+    }
+
+    .gc43-primary svg{
+      width:20px;
+      height:20px;
+      fill:#071006;
+    }
+
+    @media(max-width:1080px){
+      html[data-gc-scope="marketing"] body.gc-page-comunidad .gc-public-header{
+        padding-inline:18px !important;
+      }
+
+      .gc43-hero{
+        height:auto;
+        min-height:570px;
+      }
+
+      .gc43-hero__inner{
+        padding:54px 0;
+      }
+
+      .gc43-hero h1{
+        font-size:clamp(48px,10vw,74px);
+      }
+
+      .gc43-intro,
+      .gc43-discord-activity,
+      .gc43-rules,
+      .gc43-daily,
+      .gc43-final__inner{
+        grid-template-columns:1fr;
+      }
+
+      .gc43-steps,
+      .gc43-activity-grid{
+        grid-template-columns:repeat(2,1fr);
+      }
+
+      .gc43-summary{
+        grid-template-columns:1fr;
+      }
+
+      .gc43-summary__logo{
+        min-height:180px;
+        border-right:0;
+        border-bottom:1px solid rgba(150,255,47,.13);
+      }
+    }
+
+    @media(max-width:720px){
+      .gc43-shell{
+        width:min(100% - 28px,1120px);
+      }
+
+      .gc43-social,
+      .gc43-quick,
+      .gc43-steps,
+      .gc43-activity-grid{
+        display:grid;
+        grid-template-columns:1fr;
+      }
+
+      .gc43-social-btn,
+      .gc43-quick a,
+      .gc43-primary{
+        width:100%;
+      }
+
+      .gc43-channel{
+        grid-template-columns:24px 1fr;
+      }
+
+      .gc43-channel small{
+        grid-column:2;
+      }
+
+      .gc43-rule-list article{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </MarketingLayout>
-

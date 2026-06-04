@@ -1,0 +1,865 @@
+/* GC_PUBLIC_HERO_ZONE_V48
+   Trabajado sobre el src.zip real.
+
+   Objetivo:
+   - Unificar SOLO el texto superior de los heroes públicos.
+   - Misma X, misma Y, mismo tamaño, misma fuente, mismo peso y misma altura visual del hero.
+   - Quitar el marker/barra verde lateral de Comunidad.
+
+   No toca /app.
+   No rediseña cards, tablas, buscadores ni bloques inferiores.
+   No usa :has().
+*/
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) {
+  --gc-hero-zone-width: 1120px;
+  --gc-hero-zone-gutter: 44px;
+  --gc-hero-zone-height: 490px;
+  --gc-hero-text-y: 84px;
+  --gc-hero-text-max: 650px;
+  --gc-hero-lead-max: 560px;
+
+  --gc-hero-kicker-color: #96ff2f;
+  --gc-hero-kicker-size: 11px;
+  --gc-hero-kicker-weight: 950;
+  --gc-hero-kicker-spacing: .15em;
+
+  --gc-hero-title-color: #f2f4ef;
+  --gc-hero-title-size: clamp(58px, 5.2vw, 64px);
+  --gc-hero-title-weight: 900;
+  --gc-hero-title-line: .91;
+  --gc-hero-title-spacing: -.052em;
+
+  --gc-hero-lead-color: rgba(242,244,239,.72);
+  --gc-hero-lead-size: 16px;
+  --gc-hero-lead-weight: 500;
+  --gc-hero-lead-line: 1.45;
+
+  --gc-hero-after-gap: 44px;
+}
+
+/* =========================
+   COMPONENTE ÚNICO DE TEXTO
+   ========================= */
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-frame,
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-text {
+  display: block !important;
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-kicker {
+  display: block !important;
+  margin: 0 0 12px !important;
+  color: var(--gc-hero-kicker-color) !important;
+  font-family: var(--gc-mono, "JetBrains Mono", monospace) !important;
+  font-size: var(--gc-hero-kicker-size) !important;
+  font-weight: var(--gc-hero-kicker-weight) !important;
+  line-height: 1 !important;
+  letter-spacing: var(--gc-hero-kicker-spacing) !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 0 14px rgba(150,255,47,.18) !important;
+}
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-title {
+  display: block !important;
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--gc-hero-title-color) !important;
+  font-family: var(--gc-font, Inter, system-ui, sans-serif) !important;
+  font-size: var(--gc-hero-title-size) !important;
+  font-weight: var(--gc-hero-title-weight) !important;
+  line-height: var(--gc-hero-title-line) !important;
+  letter-spacing: var(--gc-hero-title-spacing) !important;
+  text-transform: uppercase !important;
+  text-wrap: balance !important;
+  text-shadow: none !important;
+}
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-title-line {
+  display: block !important;
+}
+
+html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) .gc-unified-hero-lead {
+  display: block !important;
+  width: min(100%, var(--gc-hero-lead-max)) !important;
+  max-width: var(--gc-hero-lead-max) !important;
+  margin: 16px 0 0 !important;
+  padding: 0 !important;
+  color: var(--gc-hero-lead-color) !important;
+  font-family: var(--gc-font, Inter, system-ui, sans-serif) !important;
+  font-size: var(--gc-hero-lead-size) !important;
+  font-weight: var(--gc-hero-lead-weight) !important;
+  line-height: var(--gc-hero-lead-line) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+/* =========================
+   HERO ZONE COMÚN
+   Mismo alto visual en todas las páginas públicas.
+   ========================= */
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero {
+  position: relative !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* Campeonato y Ratings no eran heroes, eran secciones con padding-top.
+   Aquí se convierten en una cabecera de hero real, sin tocar las cards inferiores. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-community-championship,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-page {
+  padding-top: 0 !important;
+  gap: var(--gc-hero-after-gap) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-row,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head {
+  position: relative !important;
+  display: block !important;
+  width: min(var(--gc-hero-zone-width), calc(100% - var(--gc-hero-zone-gutter))) !important;
+  max-width: var(--gc-hero-zone-width) !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  border: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* =========================
+   SHELL INTERIOR COMÚN
+   Mismo ancho y sin padding heredado.
+   ========================= */
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__shell,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__inner,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__grid,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero__grid,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero__grid {
+  position: relative !important;
+  display: block !important;
+  width: min(var(--gc-hero-zone-width), calc(100% - var(--gc-hero-zone-gutter))) !important;
+  max-width: var(--gc-hero-zone-width) !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+/* =========================
+   TEXTO: MISMA X / MISMA Y
+   Se posiciona el contenedor que lleva PublicHeroFrame.
+   ========================= */
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__copy,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__copy,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero__grid > div:first-child,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero__grid > div:first-child,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-row > div:first-child,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-copy {
+  position: absolute !important;
+  left: 0 !important;
+  top: var(--gc-hero-text-y) !important;
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+  z-index: 5 !important;
+}
+
+/* =========================
+   ELEMENTOS EXTRA DEL HERO
+   Se reubican para no estirar ni cambiar altura del texto.
+   ========================= */
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero-card,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-command-card,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-command-card,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions {
+  position: absolute !important;
+  right: 0 !important;
+  top: var(--gc-hero-text-y) !important;
+  margin: 0 !important;
+  z-index: 4 !important;
+}
+
+/* Calendario solo tiene acciones debajo del texto: no cambian la X/Y del texto. */
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-actions {
+  margin-top: 24px !important;
+}
+
+/* Home statusline y Archive/Noticias statusline mantienen separación, sin mover el h1. */
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-unified-hero-frame + .gc-home2-statusline,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-unified-hero-frame + .gc-archive-statusline,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-unified-hero-frame + .gc-archive-statusline,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc-unified-hero-frame + .gc43-social {
+  margin-top: 24px !important;
+}
+
+/* Comunidad: quitar barra/marker verde lateral. */
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__marker {
+  display: none !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__copy {
+  margin-left: 0 !important;
+}
+
+/* Fondos de hero a altura completa, sin que el contenido los estire. */
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__video,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__shade,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__grid,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere-video {
+  height: 100% !important;
+}
+
+/* =========================
+   GAP DESPUÉS DEL HERO
+   Para que el primer bloque no arranque a una distancia distinta por padding antiguos.
+   ========================= */
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-shell,
+html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-home2 > .gc-archive-shell,
+html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-news-archive-style-v2 > .gc-archive-shell,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-grid--hub,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-intro {
+  margin-top: var(--gc-hero-after-gap) !important;
+  padding-top: 0 !important;
+}
+
+/* Inicio tiene una tira de combo propia justo bajo hero. La dejamos pegada al hero porque forma parte de su home. */
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2-combo-strip {
+  margin-top: 0 !important;
+}
+
+/* Responsive: en móvil dejamos respirar y volvemos a flujo normal. */
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body:not([data-public-route="/app"]) {
+    --gc-hero-zone-gutter: 28px;
+    --gc-hero-zone-height: auto;
+    --gc-hero-text-y: 52px;
+    --gc-hero-title-size: clamp(46px, 14vw, 68px);
+    --gc-hero-lead-size: 16px;
+    --gc-hero-text-max: 680px;
+    --gc-hero-lead-max: 620px;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero,
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero,
+  html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero,
+  html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero,
+  html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero,
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-row,
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head,
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__shell,
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__inner,
+  html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__grid,
+  html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero__grid,
+  html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero__grid {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__copy,
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__copy,
+  html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main,
+  html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-race-hero__grid > div:first-child,
+  html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-race-hero__grid > div:first-child,
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-row > div:first-child,
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-copy,
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero-card,
+  html[data-gc-scope="marketing"] body[data-public-route="/archivo"] .gc-archive-command-card,
+  html[data-gc-scope="marketing"] body[data-public-route="/noticias"] .gc-archive-command-card,
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions,
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: min(100%, var(--gc-hero-text-max)) !important;
+    margin: 0 !important;
+    padding-top: var(--gc-hero-text-y) !important;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions,
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions {
+    margin-top: 24px !important;
+    padding-top: 0 !important;
+  }
+}
+
+/* GC_HOME_COMBO_CARD_RESTORE_V49
+   Corrección específica de Inicio.
+   En v48 se neutralizó el grid del hero para alinear textos y el combo activo quedó en flujo normal.
+   La clase real del bloque es .gc-home2-combo-card, no .gc-home2-hero-card.
+   Este bloque devuelve el combo activo a la derecha del texto, centrado verticalmente y con tamaño normal.
+*/
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__shell {
+  display: block !important;
+  position: relative !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  width: min(var(--gc-hero-zone-width), calc(100% - var(--gc-hero-zone-gutter))) !important;
+  max-width: var(--gc-hero-zone-width) !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__copy {
+  position: absolute !important;
+  left: 0 !important;
+  top: var(--gc-hero-text-y) !important;
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  z-index: 5 !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-combo-card {
+  position: absolute !important;
+  right: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 360px !important;
+  max-width: 360px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  z-index: 4 !important;
+  box-sizing: border-box !important;
+}
+
+/* Evita que reglas antiguas dirigidas a una clase que no existe afecten a otras cards */
+html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero-card {
+  position: static !important;
+}
+
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__shell,
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-hero__copy,
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-combo-card {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: min(100%, var(--gc-hero-text-max)) !important;
+    max-width: var(--gc-hero-text-max) !important;
+    transform: none !important;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/"] .gc-home2 .gc-home2-combo-card {
+    margin-top: 28px !important;
+  }
+}
+
+
+/* GC_COMMUNITY_VIDEO_AND_PHILOSOPHY_FIX_V50
+   Correcciones específicas de /comunidad:
+   - Quita líneas verdes del vídeo/hero.
+   - Quita estriado del bloque Filosofía.
+   - Corrige el texto estrecho de las normas.
+   - Compacta el bloque para que no ocupe tanta altura.
+*/
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero__grid {
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+}
+
+/* Por si alguna línea viene de overlays heredados */
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero::before,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-hero::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Bloque Filosofía: más compacto y sin textura de rayas */
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules {
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+  margin-top: 34px !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules .gc43-card {
+  background: linear-gradient(180deg, rgba(6, 12, 7, .94), rgba(3, 7, 4, .985)) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules .gc43-card::before,
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules .gc43-card::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules__intro {
+  padding: 24px 28px !important;
+  min-height: 0 !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules__intro h2 {
+  font-size: clamp(30px, 3.2vw, 42px) !important;
+  line-height: .96 !important;
+  margin-bottom: 14px !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules__intro p {
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+  max-width: 48ch !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list {
+  gap: 10px !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  column-gap: 14px !important;
+  row-gap: 6px !important;
+  align-items: start !important;
+  padding: 16px 18px !important;
+  min-height: 0 !important;
+}
+
+/* Esta era la causa del texto estrecho: el <p> caía en la primera columna */
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > span {
+  grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
+  margin: 0 !important;
+  width: 36px !important;
+  height: 36px !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > h3 {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  margin: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.1 !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > p {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  margin: 0 !important;
+  max-width: none !important;
+  width: auto !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  color: rgba(245, 248, 241, .68) !important;
+  white-space: normal !important;
+}
+
+/* En tablet/móvil lo dejamos en una columna, pero sin romper texto */
+@media (max-width: 1080px) {
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rules {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > span {
+    grid-column: 1 !important;
+    grid-row: 1 / span 2 !important;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > h3,
+  html[data-gc-scope="marketing"] body[data-public-route="/comunidad"] .gc43-rule-list article > p {
+    grid-column: 2 !important;
+  }
+}
+
+
+/* GC_CAMPEONATO_HERO_VIDEO_WIDTH_V52
+   Corrección específica de /campeonato:
+   - El vídeo del hero sale a ancho completo de viewport, como Comunidad.
+   - La altura del vídeo queda limitada al hero, no al bloque entero de la página.
+   - La distancia entre hero y cards se reduce para parecerse más a Inicio/Comunidad.
+   - No toca cards, datos dinámicos ni /app.
+*/
+
+html[data-gc-scope="marketing"] body.gc-page-acsr {
+  --gc-acsr-hero-height: var(--gc-hero-zone-height, 490px);
+  --gc-acsr-after-hero-gap: 30px;
+}
+
+/* El section venía con clase gc-public-shell y por eso el vídeo quedaba dentro del ancho del shell.
+   Lo dejamos escapar solo para el fondo, sin estirar las cards. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-community-championship {
+  position: relative !important;
+  overflow: visible !important;
+  gap: var(--gc-acsr-after-hero-gap) !important;
+}
+
+/* El fondo del hero debe ocupar todo el ancho de la ventana, no el ancho del shell. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere {
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  width: 100vw !important;
+  height: var(--gc-acsr-hero-height) !important;
+  min-height: var(--gc-acsr-hero-height) !important;
+  max-height: var(--gc-acsr-hero-height) !important;
+  transform: translateX(-50%) !important;
+  overflow: hidden !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* El vídeo se comporta como el de Comunidad: background full width, sin ensanchar el contenido. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere-video {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+}
+
+/* Los overlays también quedan limitados al alto real del hero. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::after {
+  pointer-events: none !important;
+}
+
+/* La cabecera hero no debe alargar la página más de la cuenta. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-row {
+  height: var(--gc-acsr-hero-height) !important;
+  min-height: var(--gc-acsr-hero-height) !important;
+  max-height: var(--gc-acsr-hero-height) !important;
+  margin-bottom: 0 !important;
+}
+
+/* Cards del campeonato: distancia compacta respecto al hero, como Inicio/Comunidad. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-grid--hub {
+  margin-top: var(--gc-acsr-after-hero-gap) !important;
+}
+
+/* Evita que la primera fila quede demasiado baja por gaps heredados. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-community-championship > .gc-acsr-head-row + .gc-acsr-grid--hub {
+  margin-top: var(--gc-acsr-after-hero-gap) !important;
+}
+
+/* Acciones del hero: siguen a la derecha, dentro del mismo frame visual. */
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions {
+  top: var(--gc-hero-text-y, 84px) !important;
+  right: 0 !important;
+}
+
+/* Responsive: el vídeo sigue ancho completo, pero sin altura rígida absurda. */
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body.gc-page-acsr {
+    --gc-acsr-after-hero-gap: 24px;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere {
+    height: 420px !important;
+    min-height: 420px !important;
+    max-height: 420px !important;
+  }
+}
+
+
+/* GC_RATINGS_HERO_VIDEO_AND_GAP_V53
+   Corrección específica de /ratings:
+   - Añade soporte para vídeo de fondo /videos/04061.mp4.
+   - El vídeo ocupa todo el ancho de viewport, como Comunidad y Campeonato.
+   - Reduce la distancia entre hero y primeros bloques al mismo criterio de Campeonato.
+   - No toca tablas ni datos dinámicos.
+*/
+
+html[data-gc-scope="marketing"] body.gc-page-ratings {
+  --gc-ratings-hero-height: var(--gc-hero-zone-height, 490px);
+  --gc-ratings-after-hero-gap: 30px;
+}
+
+/* La página de ratings ahora puede tener fondo absoluto dentro del hero */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-page {
+  position: relative !important;
+  overflow: visible !important;
+  gap: var(--gc-ratings-after-hero-gap) !important;
+}
+
+/* Vídeo de fondo full width, fuera del ancho del shell central */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere {
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  width: 100vw !important;
+  height: var(--gc-ratings-hero-height) !important;
+  min-height: var(--gc-ratings-hero-height) !important;
+  max-height: var(--gc-ratings-hero-height) !important;
+  transform: translateX(-50%) !important;
+  overflow: hidden !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background: #020402 !important;
+}
+
+/* Overlays equivalentes al campeonato: oscurecen y dejan leer el texto */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::before {
+  background:
+    linear-gradient(90deg, rgba(2,5,2,.96) 0%, rgba(2,5,2,.84) 36%, rgba(2,5,2,.38) 68%, rgba(2,5,2,.16) 100%),
+    linear-gradient(180deg, rgba(2,5,2,.40) 0%, rgba(2,5,2,.16) 44%, rgba(2,5,2,.88) 100%) !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::after {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(150,255,47,.10), transparent 30%),
+    linear-gradient(rgba(150,255,47,.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(150,255,47,.025) 1px, transparent 1px) !important;
+  background-size: auto, 54px 54px, 54px 54px !important;
+  opacity: .55 !important;
+}
+
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere-video {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  filter: saturate(.82) contrast(1.08) brightness(.72) !important;
+}
+
+/* El header del hero queda por encima del vídeo */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head {
+  position: relative !important;
+  z-index: 2 !important;
+  height: var(--gc-ratings-hero-height) !important;
+  min-height: var(--gc-ratings-hero-height) !important;
+  max-height: var(--gc-ratings-hero-height) !important;
+  margin-bottom: 0 !important;
+}
+
+/* Primeros bloques pegados al hero con la misma distancia que campeonato */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map {
+  position: relative !important;
+  z-index: 2 !important;
+  margin-top: var(--gc-ratings-after-hero-gap) !important;
+  padding-top: 0 !important;
+}
+
+/* El resto de bloques conservan el flujo normal */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-summary-grid,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-empty-card,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-table-shell {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Acciones del hero: derecha, dentro del mismo frame visual */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions {
+  top: var(--gc-hero-text-y, 84px) !important;
+  right: 0 !important;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body.gc-page-ratings {
+    --gc-ratings-after-hero-gap: 24px;
+  }
+
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere {
+    height: 420px !important;
+    min-height: 420px !important;
+    max-height: 420px !important;
+  }
+}
+
+
+/* GC_HERO_ACTIONS_BELOW_AND_RATINGS_TITLES_V54
+   - Ratings y Campeonato: botones del hero debajo del hero, no encima del vídeo.
+   - No cambia paddings del hero.
+   - Ratings: elimina el cuadrado/adorno verde en los títulos de Safety Rating y GrassCutters Skill Rating.
+*/
+
+/* Las acciones salen del hero y quedan como fila independiente entre hero y contenido. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-hero-actions-below,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-hero-actions-below {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+
+  z-index: 3 !important;
+  grid-column: 1 / -1 !important;
+  justify-self: stretch !important;
+  align-self: start !important;
+
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Anula reglas anteriores que los recolocaban dentro del hero. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions {
+  top: auto !important;
+  right: auto !important;
+  margin-top: 0 !important;
+}
+
+/* Ahora la separación la marca el grid gap de la sección, no márgenes antiguos. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-grid--hub,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-community-championship > .gc-acsr-head-row + .gc-acsr-grid--hub {
+  margin-top: 0 !important;
+}
+
+/* Ratings: quitar cuadrado/adorno verde en los encabezados de los dos bloques principales. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-head::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-head::after,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-public-kicker::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-public-kicker::after,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-title::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-title::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Por si el cuadrado venía del overlay heredado del card-header. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-head {
+  position: relative !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Evita que un pseudo global quede por encima del título. */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map-card .gc-ratings-card-head > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body.gc-page-ratings .gc-hero-actions-below,
+  html[data-gc-scope="marketing"] body.gc-page-acsr .gc-hero-actions-below {
+    justify-content: flex-start !important;
+  }
+}
+
+
+/* GC_HERO_ACTIONS_INLINE_UNDER_TITLE_V56
+   Campeonato y Ratings:
+   - Los botones van debajo del H1/lead del hero, dentro del bloque de texto.
+   - Ya no quedan a la derecha ni en una fila separada antes de las cards.
+   - Mantiene los paddings del hero.
+*/
+
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-hero-actions-inline,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-hero-actions-inline {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+
+  z-index: 4 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+
+  width: min(100%, var(--gc-hero-text-max, 650px)) !important;
+  max-width: var(--gc-hero-text-max, 650px) !important;
+  margin: 24px 0 0 0 !important;
+  padding: 0 !important;
+}
+
+/* Blindaje: elimina comportamientos heredados de cuando estaban fuera del hero */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-head-actions.gc-hero-actions-inline,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-head-actions.gc-hero-actions-inline {
+  grid-column: auto !important;
+  justify-self: start !important;
+  align-self: start !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Si quedase una fila antigua fuera del hero en caché o por merge, la neutralizamos visualmente */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-hero-actions-below:not(.gc-hero-actions-inline),
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-hero-actions-below:not(.gc-hero-actions-inline) {
+  display: none !important;
+}
+
+/* La distancia a los primeros bloques vuelve a depender del sistema de la sección, no de los botones */
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-map,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-grid--hub {
+  margin-top: 0 !important;
+}

@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
+import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 const acsmChampionshipUrl = 'http://185.216.144.78:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6';
 const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 ---
@@ -27,16 +28,22 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
     <div class="gc-public-section-head gc-acsr-head-row">
       <div>
-        <span class="gc-public-kicker">Campeonato</span>
-        <h2 class="gc-public-section-title">Campeonato semanal ACSM.</h2>
-        <p class="gc-public-section-lead" id="acsrChampionshipLead">Cargando campeonato...</p>
-      </div>
-      <div class="gc-actions gc-acsr-head-actions">
-        <button class="gc-public-btn gc-public-btn-secondary" type="button" id="acsrRefresh">Actualizar</button>
-        <a class="gc-public-btn gc-public-btn-primary" href={acsmSignupUrl} id="acsrSignupHero" target="_blank" rel="noopener noreferrer">Inscribirse con Steam</a>
-        <a class="gc-public-btn gc-public-btn-secondary" href={acsmChampionshipUrl} target="_blank" rel="noopener noreferrer">Ver clasificación</a>
-      </div>
+        <PublicHeroFrame
+            id="acsrChampionshipTitle"
+            kicker="Campeonato"
+            title={['Campeonato', 'semanal ACSM.']}
+            lead="Cargando campeonato..."
+            leadId="acsrChampionshipLead"
+          />
+      
+        <div class="gc-actions gc-acsr-head-actions gc-hero-actions-inline">
+          <button class="gc-public-btn gc-public-btn-secondary" type="button" id="acsrRefresh">Actualizar</button>
+          <a class="gc-public-btn gc-public-btn-primary" href={acsmSignupUrl} id="acsrSignupHero" target="_blank" rel="noopener noreferrer">Inscribirse con Steam</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href={acsmChampionshipUrl} target="_blank" rel="noopener noreferrer">Ver clasificación</a>
+        </div>
+</div>
     </div>
+
 
     <div class="gc-acsr-grid gc-acsr-grid--hub">
       <article class="gc-acsr-main-card gc-public-card">
