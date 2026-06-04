@@ -2,6 +2,7 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
+import '../styles/public/gc-rating-badges.css';
 const acsmChampionshipUrl = 'http://185.216.144.78:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6';
 const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 ---
@@ -591,6 +592,31 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       if (els.signupHero) els.signupHero.href = ACSM_SIGNUP_URL;
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const ratingClassKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'unknown';
+
+      const ratingBadge = (type, value, score = null, options = {}) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeValue = String(value || '--');
+        const classKey = ratingClassKey(safeValue);
+        const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const scoreMarkup = score !== null && score !== undefined && score !== ''
+          ? `<small>${escapeHtml(score)}</small>`
+          : '';
+
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeValue)}</strong>
+            ${scoreMarkup}
+          </span>
+        `;
+      };
+
       const srInfo = (driver) => {
         const sr = driver?.safetyRating || {};
         const score = Number(sr.score ?? driver?.srScore);
@@ -600,8 +626,8 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       };
       const srBadge = (driver) => {
         const sr = srInfo(driver);
-        if (!sr) return '<span class="gc-acsr-sr" title="Safety Rating">-- <small>Sin rating</small></span>';
-        return `<span class="gc-acsr-sr" title="Safety Rating">${escapeHtml(sr.label)} <small>${escapeHtml(sr.score)}</small></span>`;
+        if (!sr) return ratingBadge('sr', '--', null, { compact: true });
+        return ratingBadge('sr', sr.label || '--', sr.score);
       };
       const gsrInfo = (driver) => {
         const score = Number(driver?.gsrRating ?? driver?.gsr);
@@ -611,8 +637,8 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       };
       const gsrBadge = (driver) => {
         const gsr = gsrInfo(driver);
-        if (!gsr) return '<span class="gc-acsr-sr" title="Grasscutters Skill Rating">-- <small>Sin rating</small></span>';
-        return `<span class="gc-acsr-sr" title="Grasscutters Skill Rating">${escapeHtml(gsr.label)} <small>${escapeHtml(gsr.score)}</small></span>`;
+        if (!gsr) return ratingBadge('gsr', '--', null, { compact: true });
+        return ratingBadge('gsr', gsr.label || '--', gsr.score);
       };
       const fmtDate = (value) => {
         if (!value) return 'Fecha por confirmar';

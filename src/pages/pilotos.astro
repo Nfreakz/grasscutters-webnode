@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+import '../styles/public/gc-rating-badges.css';
 ---
 <AppLayout
   title="Pilotos | GrassCutters Racing"
@@ -691,6 +692,31 @@ import AppLayout from '../layouts/AppLayout.astro';
         '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
       }[char]));
 
+      const ratingClassKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'unknown';
+
+      const ratingBadge = (type, value, score = null, options = {}) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeValue = String(value || '--');
+        const classKey = ratingClassKey(safeValue);
+        const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const scoreMarkup = score !== null && score !== undefined && score !== ''
+          ? `<small>${escapeHtml(score)}</small>`
+          : '';
+
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeValue)}</strong>
+            ${scoreMarkup}
+          </span>
+        `;
+      };
+
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
@@ -863,10 +889,15 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const ratingBadges = (pilot) => {
         const rating = pilotRatings(pilot);
+        const srScore = rating ? Number(rating.sr ?? 0).toFixed(1) : null;
+        const gsrScore = rating && rating.gsr !== null && rating.gsr !== undefined
+          ? Math.round(Number(rating.gsr ?? 0))
+          : null;
+
         return `
           <div class="gc-pilot-card-v9__ratings">
-            <span class="gc-rating-badge-v10"><small>SR</small><strong>${escapeHtml(rating ? `${rating.srClass || '--'} ${Number(rating.sr ?? 0).toFixed(1)}` : '--')}</strong></span>
-            <span class="gc-rating-badge-v10"><small>GSR</small><strong>${escapeHtml(rating ? Math.round(Number(rating.gsr ?? 0)) : '--')}</strong></span>
+            ${ratingBadge('sr', rating?.srClass || '--', srScore)}
+            ${ratingBadge('gsr', rating?.gsrClass || '--', gsrScore)}
           </div>
         `;
       };
@@ -993,8 +1024,8 @@ import AppLayout from '../layouts/AppLayout.astro';
               <td>
                 <strong>${escapeHtml(dateText(lastSeenRaw(pilot)))}</strong>
                 <div class="gc-piloto-ratings-v10">
-                  <span class="gc-rating-badge-v10"><small>SR</small><strong>${escapeHtml(srValue(pilot))}</strong></span>
-                  <span class="gc-rating-badge-v10"><small>GSR</small><strong>${escapeHtml(gsrValue(pilot))}</strong></span>
+                  ${ratingBadge('sr', pilotRatings(pilot)?.srClass || '--', pilotRatings(pilot) ? Number(pilotRatings(pilot).sr ?? 0).toFixed(1) : null, { compact: true })}
+                  ${ratingBadge('gsr', pilotRatings(pilot)?.gsrClass || '--', pilotRatings(pilot)?.gsr !== null && pilotRatings(pilot)?.gsr !== undefined ? Math.round(Number(pilotRatings(pilot).gsr ?? 0)) : null, { compact: true })}
                 </div>
               </td>
               <td>${url ? `<a class="gc-btn gc-btn--mini" href="${escapeHtml(url)}">Abrir ficha</a>` : '<span class="gc-muted-text">Sin ficha</span>'}</td>

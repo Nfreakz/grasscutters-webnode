@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AppLayout from '../../layouts/AppLayout.astro';
+import '../../styles/public/gc-rating-badges.css';
 
 const rawId = Astro.params.id ?? '';
 
@@ -753,6 +754,31 @@ const pageTitle = pilotSeo.title;
         '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
       }[char]));
 
+      const ratingClassKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'unknown';
+
+      const ratingBadge = (type, value, score = null, options = {}) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeValue = String(value || '--');
+        const classKey = ratingClassKey(safeValue);
+        const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const scoreMarkup = score !== null && score !== undefined && score !== ''
+          ? `<small>${escapeHtml(score)}</small>`
+          : '';
+
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeValue)}</strong>
+            ${scoreMarkup}
+          </span>
+        `;
+      };
+
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
@@ -869,9 +895,9 @@ const pageTitle = pilotSeo.title;
           </div>
         `).join('');
 
-        if (pilotSrMain) pilotSrMain.textContent = `SR ${ratingDriver.srClass || '--'} ${ratingDriver.srScore ?? '--'}`;
+        if (pilotSrMain) pilotSrMain.innerHTML = ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null);
         if (pilotSrMeta) pilotSrMeta.textContent = `${fmtNumber(ratingStats.cleanRaces)} carreras limpias · ${ratingStats.incidentsPerRace ?? '--'} incidentes/carrera`;
-        if (pilotGsrMain) pilotGsrMain.textContent = `GSR ${ratingDriver.gsrRating ?? '--'}`;
+        if (pilotGsrMain) pilotGsrMain.innerHTML = ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null);
         if (pilotGsrMeta) pilotGsrMeta.textContent = `${ratingDriver.gsrClass || 'Sin rango'} · ${fmtNumber(ratingStats.races)} carreras computadas`;
         if (pilotLastRaceMain) pilotLastRaceMain.textContent = recentRace ? recentRace.eventName || 'Última carrera' : 'Sin datos';
         if (pilotLastRaceMeta) {

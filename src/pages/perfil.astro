@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+import '../styles/public/gc-rating-badges.css';
 ---
 <AppLayout title="Perfil piloto | GrassCutters">
   <div class="gc-page gc-profile-page gc-profile-page-v20">
@@ -634,6 +635,31 @@ import AppLayout from '../layouts/AppLayout.astro';
         '"':'&quot;'
       }[char]));
 
+      const ratingClassKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'unknown';
+
+      const ratingBadge = (type, value, score = null, options = {}) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeValue = String(value || '--');
+        const classKey = ratingClassKey(safeValue);
+        const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const scoreMarkup = score !== null && score !== undefined && score !== ''
+          ? `<small>${escapeHtml(score)}</small>`
+          : '';
+
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeValue)}</strong>
+            ${scoreMarkup}
+          </span>
+        `;
+      };
+
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
@@ -986,14 +1012,14 @@ import AppLayout from '../layouts/AppLayout.astro';
           `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span>` +
           `<span class="gc-chip">${escapeHtml(pilotName(pilot))}</span>` +
           `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>` +
-          `<span class="gc-chip">SR ${escapeHtml(ratingDriver.srScore ?? '--')} ${escapeHtml(ratingDriver.srClass || '')}</span>` +
-          `<span class="gc-chip">GSR ${escapeHtml(ratingDriver.gsrRating ?? '--')} ${escapeHtml(ratingDriver.gsrClass || '')}</span>`;
+          ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null) +
+          ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null);
 
         $('profileMeta').innerHTML =
           `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div>` +
           `<div class="gc-status-row"><span>Rol</span><strong>${escapeHtml(cleanName(user.role,'pilot'))}</strong></div>` +
           `<div class="gc-status-row"><span>Última actividad</span><strong>${escapeHtml(fmtDate(summary.lastSeenAt || summary.lastActivityAt || summary.latestLapAt))}</strong></div>` +
-          `<div class="gc-status-row"><span>Ratings</span><strong>SR ${escapeHtml(ratingDriver.srScore ?? '--')} · GSR ${escapeHtml(ratingDriver.gsrRating ?? '--')}</strong></div>`;
+          `<div class="gc-status-row"><span>Ratings</span><strong class="gc-profile-rating-inline">${ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null)}${ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null)}</strong></div>`;
 
         const rank = summary.bestRank ? `${summary.bestRank.position}/${summary.bestRank.total}` : '--';
 
@@ -1005,8 +1031,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos · ${ratingStats.races || 0} carreras rating`;
 
         $('summaryRows').innerHTML =
-          `<div><span>Safety Rating</span><strong>${escapeHtml(ratingDriver.srScore ?? '--')} ${escapeHtml(ratingDriver.srClass || '')}</strong></div>` +
-          `<div><span>Skill Rating</span><strong>${escapeHtml(ratingDriver.gsrRating ?? '--')} ${escapeHtml(ratingDriver.gsrClass || '')}</strong></div>` +
+          `<div><span>Safety Rating</span><strong>${ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null)}</strong></div>` +
+          `<div><span>Skill Rating</span><strong>${ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null)}</strong></div>` +
           `<div><span>Limpieza</span><strong>${escapeHtml(summary.cleanRate ?? summary.validityRate ?? 0)}%</strong></div>` +
           `<div><span>Carreras limpias</span><strong>${escapeHtml(ratingStats.cleanRaces ?? 0)}</strong></div>` +
           `<div><span>Incid./carrera</span><strong>${escapeHtml(ratingStats.incidentsPerRace ?? '--')}</strong></div>` +
