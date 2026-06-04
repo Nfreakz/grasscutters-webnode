@@ -235,4 +235,543 @@
     color:#f2f4ef !important;
   }
 
+  /* GC_FLOATING_HERO_LOGO_V29
+     - Logo flotante en zona hero, centrado entre copy y card.
+     - Click abre historia.
+     - Arrastrable y persistente.
+     - Header sin icono, solo texto con barrido verde tipo luz.
+     - Combo actual: tiempo en el mismo color que Tiempo de Últimas Vueltas.
+  */
+
+  html[data-gc-scope="marketing"] .gc-public-brand{
+    gap:0 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-mark,
+  html[data-gc-scope="marketing"] .gc-public-brand-mark.gc-public-brand-mark--logo{
+    display:none !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-copy{
+    position:relative !important;
+    display:grid !important;
+    gap:3px !important;
+    overflow:hidden !important;
+    padding-right:2px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-copy strong,
+  html[data-gc-scope="marketing"] .gc-public-brand-copy small{
+    position:relative !important;
+    color:#f2f4ef !important;
+    text-shadow:0 0 9px rgba(150,255,47,.10) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-copy::after{
+    content:"" !important;
+    position:absolute !important;
+    inset:-20% auto -20% -45% !important;
+    width:44% !important;
+    background:linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(150,255,47,.00) 18%,
+      rgba(150,255,47,.28) 45%,
+      rgba(210,255,190,.78) 50%,
+      rgba(150,255,47,.28) 55%,
+      rgba(150,255,47,.00) 82%,
+      transparent 100%
+    ) !important;
+    filter:blur(.4px) drop-shadow(0 0 12px rgba(150,255,47,.45)) !important;
+    mix-blend-mode:screen !important;
+    transform:skewX(-16deg) !important;
+    pointer-events:none !important;
+    animation:gcBrandKnightGreen 3.2s ease-in-out infinite !important;
+  }
+
+  @keyframes gcBrandKnightGreen{
+    0%, 18%{ left:-52%; opacity:0; }
+    28%{ opacity:.95; }
+    50%{ left:108%; opacity:.95; }
+    64%, 100%{ left:108%; opacity:0; }
+  }
+
+  html[data-gc-scope="marketing"] .gc-home2-combo-card__time{
+    color:#b544e2 !important;
+    text-shadow:0 0 24px rgba(181,68,226,.18) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-logo{
+    appearance:none !important;
+    -webkit-appearance:none !important;
+    position:fixed !important;
+    left:clamp(520px,55vw,910px) !important;
+    top:clamp(96px,12vh,138px) !important;
+    z-index:2147483646 !important;
+    width:clamp(112px,10.8vw,156px) !important;
+    height:clamp(112px,10.8vw,156px) !important;
+    display:grid !important;
+    place-items:center !important;
+    padding:0 !important;
+    margin:0 !important;
+    border:0 !important;
+    outline:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    text-decoration:none !important;
+    opacity:.96 !important;
+    transform:translate3d(0,0,0) scale(1) !important;
+    transform-origin:center center !important;
+    cursor:grab !important;
+    user-select:none !important;
+    -webkit-user-select:none !important;
+    touch-action:none !important;
+    pointer-events:auto !important;
+    transition:transform .18s ease, opacity .18s ease, filter .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-logo:hover{
+    transform:translate3d(0,0,0) scale(1.13) !important;
+    opacity:1 !important;
+    filter:drop-shadow(0 0 20px rgba(150,255,47,.22)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-logo.is-dragging{
+    cursor:grabbing !important;
+    transition:none !important;
+    transform:translate3d(0,0,0) scale(1.06) !important;
+    opacity:1 !important;
+    filter:drop-shadow(0 0 18px rgba(150,255,47,.18)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-logo img{
+    width:100% !important;
+    height:100% !important;
+    max-width:100% !important;
+    max-height:100% !important;
+    object-fit:contain !important;
+    display:block !important;
+    pointer-events:none !important;
+    user-select:none !important;
+    -webkit-user-select:none !important;
+    -webkit-user-drag:none !important;
+    filter:drop-shadow(0 0 14px rgba(150,255,47,.16)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story{
+    position:fixed !important;
+    z-index:2147483645 !important;
+    width:min(340px,calc(100vw - 28px)) !important;
+    color:#f2f4ef !important;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(150,255,47,.14), transparent 42%),
+      linear-gradient(180deg, rgba(9,15,10,.96), rgba(4,8,5,.98)) !important;
+    border:1px solid rgba(150,255,47,.18) !important;
+    border-radius:22px !important;
+    box-shadow:
+      0 24px 80px rgba(0,0,0,.58),
+      inset 0 1px 0 rgba(255,255,255,.06) !important;
+    padding:18px !important;
+    opacity:0 !important;
+    transform:translateY(8px) scale(.98) !important;
+    transform-origin:top left !important;
+    pointer-events:none !important;
+    transition:opacity .18s ease, transform .18s ease !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story.is-open{
+    opacity:1 !important;
+    transform:translateY(0) scale(1) !important;
+    pointer-events:auto !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story[hidden]{
+    display:none !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__close{
+    appearance:none !important;
+    -webkit-appearance:none !important;
+    position:absolute !important;
+    top:10px !important;
+    right:10px !important;
+    width:32px !important;
+    height:32px !important;
+    display:grid !important;
+    place-items:center !important;
+    border:1px solid rgba(255,255,255,.09) !important;
+    border-radius:999px !important;
+    background:rgba(255,255,255,.04) !important;
+    color:rgba(242,244,239,.86) !important;
+    font-size:20px !important;
+    line-height:1 !important;
+    cursor:pointer !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__close:hover{
+    background:rgba(255,255,255,.08) !important;
+    color:#ffffff !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__top{
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding-right:32px !important;
+    margin-bottom:14px !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__logo{
+    width:58px !important;
+    height:58px !important;
+    object-fit:contain !important;
+    flex:0 0 auto !important;
+    filter:drop-shadow(0 0 14px rgba(150,255,47,.18)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__eyebrow{
+    display:block !important;
+    color:#96ff2f !important;
+    font-family:var(--gc-mono, "JetBrains Mono", monospace) !important;
+    font-size:11px !important;
+    font-weight:900 !important;
+    letter-spacing:.11em !important;
+    text-transform:uppercase !important;
+    line-height:1 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story h2{
+    margin:7px 0 0 !important;
+    color:#f2f4ef !important;
+    font-size:22px !important;
+    line-height:.98 !important;
+    letter-spacing:-.035em !important;
+    text-transform:uppercase !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story p{
+    margin:0 0 10px !important;
+    color:rgba(242,244,239,.76) !important;
+    font-size:13px !important;
+    line-height:1.45 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story p strong{
+    color:#f2f4ef !important;
+    font-weight:900 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-story__quote{
+    margin:14px 0 0 !important;
+    padding:11px 12px !important;
+    border-left:3px solid #96ff2f !important;
+    background:rgba(150,255,47,.055) !important;
+    color:rgba(242,244,239,.86) !important;
+    font-family:var(--gc-mono, "JetBrains Mono", monospace) !important;
+    font-size:11px !important;
+    font-weight:800 !important;
+    letter-spacing:.04em !important;
+    text-transform:uppercase !important;
+  }
+
+  html[data-gc-scope="marketing"] body[data-public-route="/app"] .gc-floating-hero-logo,
+  html[data-gc-scope="marketing"] body[data-public-route^="/app/"] .gc-floating-hero-logo,
+  html[data-gc-scope="marketing"] body[data-public-route="/app"] .gc-floating-hero-story,
+  html[data-gc-scope="marketing"] body[data-public-route^="/app/"] .gc-floating-hero-story{
+    display:none !important;
+  }
+
+  @media(max-width:1200px){
+    html[data-gc-scope="marketing"] .gc-floating-hero-logo{
+      left:50% !important;
+      top:90px !important;
+      width:118px !important;
+      height:118px !important;
+    }
+  }
+
+  @media(max-width:760px){
+    html[data-gc-scope="marketing"] .gc-floating-hero-logo{
+      left:12px !important;
+      top:78px !important;
+      width:88px !important;
+      height:88px !important;
+    }
+
+    html[data-gc-scope="marketing"] .gc-floating-hero-story{
+      width:calc(100vw - 24px) !important;
+      border-radius:18px !important;
+      padding:16px !important;
+    }
+  }
+
 </style>
+
+<button
+  class="gc-floating-hero-logo"
+  type="button"
+  data-gc-floating-hero-logo
+  aria-label="Logo flotante GrassCutters. Arrastra para mover. Click para leer la historia."
+  title="Arrastra para mover · Click para leer la historia"
+>
+  <img src="/images/newlogo.png" alt="" loading="eager" decoding="async" draggable="false" />
+</button>
+
+<section
+  class="gc-floating-hero-story"
+  data-gc-floating-hero-story
+  hidden
+  aria-label="Historia de GrassCutters Racing"
+>
+  <button class="gc-floating-hero-story__close" type="button" data-gc-floating-hero-story-close aria-label="Cerrar historia">×</button>
+  <div class="gc-floating-hero-story__top">
+    <img class="gc-floating-hero-story__logo" src="/images/newlogo.png" alt="" loading="lazy" decoding="async" />
+    <div>
+      <span class="gc-floating-hero-story__eyebrow">GrassCutters Racing</span>
+      <h2>From the grass to the apex</h2>
+    </div>
+  </div>
+  <p><strong>GrassCutters nació en 2026</strong> alrededor de Assetto Corsa, entre tandas, hotlaps y esas conversaciones de Discord que empiezan con un setup y acaban montando una comunidad.</p>
+  <p>La idea era sencilla: juntar pilotos con ganas de correr limpio, compartir coches, circuitos, tiempos y herramientas útiles sin convertirlo todo en una oficina con casco.</p>
+  <p>Hoy GC es paddock digital, archivo, campeonato, HUD, setups y una pequeña familia de simracers que sigue buscando la vuelta buena.</p>
+  <div class="gc-floating-hero-story__quote">Comunidad, tandas y hierba en las ruedas.</div>
+</section>
+
+<script is:inline>
+  (() => {
+    const init = () => {
+      const body = document.body;
+      const logo = document.querySelector('[data-gc-floating-hero-logo]');
+      const story = document.querySelector('[data-gc-floating-hero-story]');
+      const storyClose = document.querySelector('[data-gc-floating-hero-story-close]');
+      if (!body || !logo || !story) return;
+
+      const route = String(body.dataset.publicRoute || window.location.pathname || '').replace(/\/$/, '') || '/';
+      if (route === '/app' || route.startsWith('/app/')) {
+        logo.hidden = true;
+        story.hidden = true;
+        return;
+      }
+
+      const storageKey = 'gc-floating-hero-logo-position-v29';
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+      const setPos = (x, y) => {
+        const rect = logo.getBoundingClientRect();
+        const maxX = Math.max(0, window.innerWidth - rect.width);
+        const maxY = Math.max(0, window.innerHeight - rect.height);
+        const nextX = clamp(x, 0, maxX);
+        const nextY = clamp(y, 0, maxY);
+        logo.style.setProperty('left', `${nextX}px`, 'important');
+        logo.style.setProperty('top', `${nextY}px`, 'important');
+        return { x: nextX, y: nextY };
+      };
+
+      const positionStory = () => {
+        if (story.hidden) return;
+
+        const logoRect = logo.getBoundingClientRect();
+        const storyRect = story.getBoundingClientRect();
+        const gap = 12;
+
+        let left = logoRect.right + gap;
+        if (left + storyRect.width > window.innerWidth - 12) {
+          left = logoRect.left - storyRect.width - gap;
+        }
+        if (left < 12) left = 12;
+
+        let top = logoRect.top + 8;
+        if (top + storyRect.height > window.innerHeight - 12) {
+          top = window.innerHeight - storyRect.height - 12;
+        }
+        if (top < 12) top = 12;
+
+        story.style.setProperty('left', `${left}px`, 'important');
+        story.style.setProperty('top', `${top}px`, 'important');
+      };
+
+      const openStory = () => {
+        story.hidden = false;
+        requestAnimationFrame(() => {
+          positionStory();
+          story.classList.add('is-open');
+        });
+      };
+
+      const closeStory = () => {
+        story.classList.remove('is-open');
+        window.setTimeout(() => {
+          if (!story.classList.contains('is-open')) story.hidden = true;
+        }, 180);
+      };
+
+      const toggleStory = () => {
+        if (story.hidden || !story.classList.contains('is-open')) {
+          openStory();
+        } else {
+          closeStory();
+        }
+      };
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+          requestAnimationFrame(() => setPos(saved.x, saved.y));
+        }
+      } catch (_) {}
+
+      let dragging = false;
+      let moved = false;
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+      let activePointerId = null;
+
+      const begin = (clientX, clientY, pointerId = null) => {
+        const rect = logo.getBoundingClientRect();
+        dragging = true;
+        moved = false;
+        startX = clientX;
+        startY = clientY;
+        startLeft = rect.left;
+        startTop = rect.top;
+        activePointerId = pointerId;
+        logo.classList.add('is-dragging');
+      };
+
+      const move = (clientX, clientY) => {
+        if (!dragging) return;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+
+        setPos(startLeft + dx, startTop + dy);
+        positionStory();
+      };
+
+      const end = () => {
+        if (!dragging) return;
+
+        dragging = false;
+        logo.classList.remove('is-dragging');
+
+        const rect = logo.getBoundingClientRect();
+        localStorage.setItem(storageKey, JSON.stringify({ x: rect.left, y: rect.top }));
+        activePointerId = null;
+      };
+
+      if (window.PointerEvent) {
+        logo.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+          begin(event.clientX, event.clientY, event.pointerId);
+          logo.setPointerCapture?.(event.pointerId);
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        logo.addEventListener('pointermove', (event) => {
+          if (!dragging || event.pointerId !== activePointerId) return;
+          move(event.clientX, event.clientY);
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        logo.addEventListener('pointerup', (event) => {
+          if (event.pointerId !== activePointerId) return;
+          logo.releasePointerCapture?.(event.pointerId);
+          end();
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        logo.addEventListener('pointercancel', end);
+      }
+
+      logo.addEventListener('mousedown', (event) => {
+        if (window.PointerEvent) return;
+        if (event.button !== 0) return;
+        begin(event.clientX, event.clientY);
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
+      window.addEventListener('mousemove', (event) => {
+        if (window.PointerEvent || !dragging) return;
+        move(event.clientX, event.clientY);
+        event.preventDefault();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (window.PointerEvent) return;
+        end();
+      });
+
+      logo.addEventListener('touchstart', (event) => {
+        if (window.PointerEvent) return;
+        const touch = event.touches && event.touches[0];
+        if (!touch) return;
+        begin(touch.clientX, touch.clientY);
+        event.preventDefault();
+      }, { passive:false });
+
+      window.addEventListener('touchmove', (event) => {
+        if (window.PointerEvent || !dragging) return;
+        const touch = event.touches && event.touches[0];
+        if (!touch) return;
+        move(touch.clientX, touch.clientY);
+        event.preventDefault();
+      }, { passive:false });
+
+      window.addEventListener('touchend', () => {
+        if (window.PointerEvent) return;
+        end();
+      });
+
+      logo.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (moved) {
+          moved = false;
+          return;
+        }
+
+        toggleStory();
+      });
+
+      storyClose?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeStory();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeStory();
+      });
+
+      document.addEventListener('click', (event) => {
+        if (story.hidden) return;
+        const target = event.target;
+        if (logo.contains(target) || story.contains(target)) return;
+        closeStory();
+      });
+
+      window.addEventListener('resize', () => {
+        const rect = logo.getBoundingClientRect();
+        const pos = setPos(rect.left, rect.top);
+        localStorage.setItem(storageKey, JSON.stringify(pos));
+        positionStory();
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once:true });
+    } else {
+      init();
+    }
+  })();
+</script>
