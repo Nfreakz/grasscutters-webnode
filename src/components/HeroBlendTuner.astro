@@ -235,12 +235,10 @@
     color:#f2f4ef !important;
   }
 
-  /* GC_FLOATING_HERO_LOGO_V29
-     - Logo flotante en zona hero, centrado entre copy y card.
-     - Click abre historia.
-     - Arrastrable y persistente.
-     - Header sin icono, solo texto con barrido verde tipo luz.
-     - Combo actual: tiempo en el mismo color que Tiempo de Últimas Vueltas.
+  /* GC_FLOATING_HERO_LOGO_V30
+     - Header con efecto KITT verde más visible.
+     - Logo flotante se oculta al hacer scroll y vuelve solo arriba.
+     - Logo sigue arrastrable, con hover e historia en click.
   */
 
   html[data-gc-scope="marketing"] .gc-public-brand{
@@ -256,44 +254,96 @@
     position:relative !important;
     display:grid !important;
     gap:3px !important;
-    overflow:hidden !important;
-    padding-right:2px !important;
+    overflow:visible !important;
+    padding:4px 8px 5px 0 !important;
+    isolation:isolate !important;
   }
 
   html[data-gc-scope="marketing"] .gc-public-brand-copy strong,
   html[data-gc-scope="marketing"] .gc-public-brand-copy small{
     position:relative !important;
-    color:#f2f4ef !important;
-    text-shadow:0 0 9px rgba(150,255,47,.10) !important;
+    z-index:2 !important;
+    color:transparent !important;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(242,244,239,.88) 0%,
+        rgba(242,244,239,.94) 34%,
+        #96ff2f 45%,
+        #eaffd6 50%,
+        #96ff2f 55%,
+        rgba(242,244,239,.94) 66%,
+        rgba(242,244,239,.88) 100%
+      ) !important;
+    background-size:260% 100% !important;
+    background-position:-160% 0 !important;
+    -webkit-background-clip:text !important;
+    background-clip:text !important;
+    text-shadow:
+      0 0 10px rgba(150,255,47,.16),
+      0 0 22px rgba(150,255,47,.06) !important;
+    animation:gcHeaderKittTextGreen 2.25s linear infinite !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-copy small{
+    animation-delay:.08s !important;
+    opacity:.82 !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-public-brand-copy::before{
+    content:"" !important;
+    position:absolute !important;
+    left:0 !important;
+    right:0 !important;
+    bottom:-5px !important;
+    height:2px !important;
+    z-index:1 !important;
+    border-radius:999px !important;
+    background:
+      linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(150,255,47,0) 28%,
+        rgba(150,255,47,.96) 48%,
+        rgba(232,255,214,.96) 50%,
+        rgba(150,255,47,.96) 52%,
+        rgba(150,255,47,0) 72%,
+        transparent 100%
+      ) !important;
+    background-size:260% 100% !important;
+    filter:drop-shadow(0 0 10px rgba(150,255,47,.88)) !important;
+    animation:gcHeaderKittBarGreen 1.55s ease-in-out infinite alternate !important;
+    opacity:.95 !important;
+    pointer-events:none !important;
   }
 
   html[data-gc-scope="marketing"] .gc-public-brand-copy::after{
     content:"" !important;
     position:absolute !important;
-    inset:-20% auto -20% -45% !important;
-    width:44% !important;
-    background:linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(150,255,47,.00) 18%,
-      rgba(150,255,47,.28) 45%,
-      rgba(210,255,190,.78) 50%,
-      rgba(150,255,47,.28) 55%,
-      rgba(150,255,47,.00) 82%,
-      transparent 100%
-    ) !important;
-    filter:blur(.4px) drop-shadow(0 0 12px rgba(150,255,47,.45)) !important;
-    mix-blend-mode:screen !important;
-    transform:skewX(-16deg) !important;
+    inset:-5px -16px -8px -10px !important;
+    z-index:0 !important;
     pointer-events:none !important;
-    animation:gcBrandKnightGreen 3.2s ease-in-out infinite !important;
+    background:
+      radial-gradient(circle at var(--gc-brand-scan-x, 0%) 50%, rgba(150,255,47,.18), transparent 34%) !important;
+    filter:blur(6px) !important;
+    animation:gcHeaderKittGlowGreen 1.55s ease-in-out infinite alternate !important;
+    opacity:.78 !important;
   }
 
-  @keyframes gcBrandKnightGreen{
-    0%, 18%{ left:-52%; opacity:0; }
-    28%{ opacity:.95; }
-    50%{ left:108%; opacity:.95; }
-    64%, 100%{ left:108%; opacity:0; }
+  @keyframes gcHeaderKittTextGreen{
+    0%{ background-position:180% 0; }
+    100%{ background-position:-180% 0; }
+  }
+
+  @keyframes gcHeaderKittBarGreen{
+    0%{ background-position:180% 0; }
+    100%{ background-position:-180% 0; }
+  }
+
+  @keyframes gcHeaderKittGlowGreen{
+    0%{ --gc-brand-scan-x:0%; opacity:.50; }
+    50%{ opacity:.90; }
+    100%{ --gc-brand-scan-x:100%; opacity:.50; }
   }
 
   html[data-gc-scope="marketing"] .gc-home2-combo-card__time{
@@ -328,7 +378,7 @@
     -webkit-user-select:none !important;
     touch-action:none !important;
     pointer-events:auto !important;
-    transition:transform .18s ease, opacity .18s ease, filter .18s ease !important;
+    transition:transform .18s ease, opacity .18s ease, filter .18s ease, visibility .18s ease !important;
   }
 
   html[data-gc-scope="marketing"] .gc-floating-hero-logo:hover{
@@ -343,6 +393,14 @@
     transform:translate3d(0,0,0) scale(1.06) !important;
     opacity:1 !important;
     filter:drop-shadow(0 0 18px rgba(150,255,47,.18)) !important;
+  }
+
+  html[data-gc-scope="marketing"] .gc-floating-hero-logo.is-scroll-hidden{
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+    transform:translate3d(0,-18px,0) scale(.78) !important;
+    filter:none !important;
   }
 
   html[data-gc-scope="marketing"] .gc-floating-hero-logo img{
@@ -554,7 +612,7 @@
         return;
       }
 
-      const storageKey = 'gc-floating-hero-logo-position-v29';
+      const storageKey = 'gc-floating-hero-logo-position-v30';
       const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
       const setPos = (x, y) => {
@@ -614,6 +672,12 @@
         }
       };
 
+      const updateScrollVisibility = () => {
+        const shouldHide = window.scrollY > 80;
+        logo.classList.toggle('is-scroll-hidden', shouldHide);
+        if (shouldHide) closeStory();
+      };
+
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
         if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
@@ -630,6 +694,8 @@
       let activePointerId = null;
 
       const begin = (clientX, clientY, pointerId = null) => {
+        if (logo.classList.contains('is-scroll-hidden')) return;
+
         const rect = logo.getBoundingClientRect();
         dragging = true;
         moved = false;
@@ -735,6 +801,8 @@
         event.preventDefault();
         event.stopPropagation();
 
+        if (logo.classList.contains('is-scroll-hidden')) return;
+
         if (moved) {
           moved = false;
           return;
@@ -760,12 +828,17 @@
         closeStory();
       });
 
+      window.addEventListener('scroll', updateScrollVisibility, { passive:true });
+
       window.addEventListener('resize', () => {
         const rect = logo.getBoundingClientRect();
         const pos = setPos(rect.left, rect.top);
         localStorage.setItem(storageKey, JSON.stringify(pos));
         positionStory();
+        updateScrollVisibility();
       });
+
+      updateScrollVisibility();
     };
 
     if (document.readyState === 'loading') {
