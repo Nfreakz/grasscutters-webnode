@@ -1460,6 +1460,205 @@ const home2ArchiveSeed = (archiveStats.items || [])
         setText('[data-home2-best-time]', bestTime);
       };
 
+
+
+      const comboDetailId = (combo) => firstValue(combo, [
+        'comboId',
+        'id',
+        'combo.id',
+        'comboID',
+        'combo_id',
+        'logicalComboId',
+        'currentComboId',
+        'activeComboId',
+        'key'
+      ]);
+
+      const fetchComboDetailLeaderboard = async (combo) => {
+        const comboId = comboDetailId(combo);
+        if (!comboId) return [];
+
+        const detailPayload = await fetchJson(`/api/gc/combos/${encodeURIComponent(comboId)}`);
+        const item =
+          detailPayload?.item ||
+          detailPayload?.data?.item ||
+          detailPayload?.combo ||
+          detailPayload?.data?.combo ||
+          null;
+
+        const leaderboard = Array.isArray(item?.leaderboard) ? item.leaderboard : [];
+
+        console.info('[GC Home] Top Combo usando leaderboard de /combos/:id', {
+          comboId,
+          rows: leaderboard.length
+        });
+
+        return leaderboard;
+      };
+
+
+      const comboBestRankingRow = (combo, trackName = '', fallbackCar = '') => {
+        if (!combo) return null;
+
+        const best = combo.best || {};
+        const rawTime = firstValue(combo, [
+          'bestLapTimeFormatted',
+          'bestLapFormatted',
+          'bestLapTime',
+          'bestLap',
+          'best.time',
+          'best.lapTime',
+          'best.lapTimeFormatted',
+          'leaderboard.0.lapTimeFormatted',
+          'leaderboard.0.bestLapTimeFormatted',
+          'leaderboard.0.lapTime',
+          'leaderboard.0.bestLapTime'
+        ]);
+
+        const bestTime = formatLap(rawTime);
+        if (!rawTime || !bestTime || bestTime === '--') return null;
+
+        const driverName = firstValue(combo, [
+          'bestDriverName',
+          'bestPilotName',
+          'best.driverName',
+          'best.pilotName',
+          'best.playerName',
+          'leaderboard.0.driverName',
+          'leaderboard.0.pilotName',
+          'leaderboard.0.playerName'
+        ]) || firstValue(best, ['driverName', 'pilotName', 'playerName', 'name']) || 'Piloto';
+
+        const carName = firstValue(combo, [
+          'bestCarName',
+          'best.carName',
+          'best.car',
+          'leaderboard.0.carName',
+          'leaderboard.0.car'
+        ]) || firstValue(best, ['carName', 'car', 'carDisplayName']) || fallbackCar || 'Coche';
+
+        return {
+          ...best,
+          driverName,
+          pilotName: driverName,
+          playerName: driverName,
+          carName,
+          car: carName,
+          lapTimeFormatted: bestTime,
+          timeFormatted: bestTime,
+          lapTime: rawTime,
+          bestLapTime: rawTime,
+          trackName: trackName || firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']),
+          _gcSource: 'activeCombo.best'
+        };
+      };
+
+
+      const comboPilotIdentity = (row) => {
+        const rawId = firstValue(row, [
+          'driverId',
+          'driverID',
+          'pilotId',
+          'pilotID',
+          'playerId',
+          'playerID',
+          'userId',
+          'userID',
+          'steamId',
+          'steamID',
+          'steamGuid',
+          'steamGUID',
+          'guid',
+          'GUID',
+          'driverGuid',
+          'driverGUID',
+          'playerGuid',
+          'playerGUID',
+          'acGuid',
+          'strackerGuid',
+          'hash',
+          'driver.id',
+          'driver.guid',
+          'pilot.id',
+          'pilot.guid',
+          'player.id',
+          'player.guid'
+        ]);
+
+        if (rawId !== null && rawId !== undefined && String(rawId).trim() !== '') {
+          return `id:${normalizeName(rawId)}`;
+        }
+
+        const driver = normalizeName(firstValue(row, ['driverName', 'pilotName', 'playerName', 'name', 'driver.name', 'pilot.name']));
+        const car = normalizeName(firstValue(row, ['carName', 'car', 'carDisplayName', 'vehicleName', 'model', 'car.name']));
+
+        /* Fallback: si el backend no trae ID real, no hay forma fiable de distinguir
+           dos pilotos con el mismo nombre y mismo coche. */
+        return driver ? `name:${driver}||car:${car || 'car'}` : '';
+      };
+
+      const comboHasPilotIdentity = (row) => comboPilotIdentity(row).startsWith('id:');
+
+      const dedupeComboRankingRows = (rows) => {
+        const exactLapMap = new Map();
+
+        rows.forEach((row) => {
+          if (!row) return;
+
+          const driver = normalizeName(firstValue(row, ['driverName', 'pilotName', 'playerName', 'name', 'driver.name', 'pilot.name']));
+          const car = normalizeName(firstValue(row, ['carName', 'car', 'carDisplayName', 'vehicleName', 'model', 'car.name']));
+          const timeValue = lapMs(row);
+
+          if (!driver || !timeValue) return;
+
+          /* Primero quitamos SOLO duplicados exactos, normalmente el combo.best sintético
+             repetido en combo.leaderboard: mismo nombre visible + mismo coche + mismo tiempo. */
+          const exactKey = `${driver}||${car || 'car'}||${Math.round(timeValue)}`;
+          const existingExact = exactLapMap.get(exactKey);
+
+          if (!existingExact || (!comboHasPilotIdentity(existingExact) && comboHasPilotIdentity(row))) {
+            exactLapMap.set(exactKey, {
+              ...row,
+              _gcTimeMs: timeValue
+            });
+          }
+        });
+
+        const bestByPilot = new Map();
+
+        Array.from(exactLapMap.values()).forEach((row) => {
+          const identity = comboPilotIdentity(row);
+          const timeValue = row._gcTimeMs || lapMs(row);
+
+          if (!identity || !timeValue) return;
+
+          const current = bestByPilot.get(identity);
+
+          /* Resultado final: mejor vuelta por piloto REAL.
+             Si hay dos pilotos llamados Neo con distinto ID, salen dos Neo.
+             Si es el mismo piloto, solo sale su mejor vuelta. */
+          if (!current || timeValue < current._gcTimeMs) {
+            bestByPilot.set(identity, {
+              ...row,
+              _gcTimeMs: timeValue
+            });
+          }
+        });
+
+        return Array.from(bestByPilot.values());
+      };
+
+
+      const comboRankingRowsFromCombo = (combo, trackName = '', activeCars = []) => {
+        const fallbackCar = activeCars[0] || firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']);
+        return dedupeComboRankingRows([
+          comboBestRankingRow(combo, trackName, fallbackCar),
+          ...getArray(combo?.leaderboard),
+          ...getArray(combo?.bestLaps),
+          ...getArray(combo?.laps)
+        ].filter(Boolean));
+      };
+
       const comboRankBadge = (index) => {
         if (index === 0) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold" aria-label="1º">🥇</span>';
         if (index === 1) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--silver" aria-label="2º">🥈</span>';
@@ -1467,13 +1666,17 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain">${index + 1}</span>`;
       };
 
-      const renderComboRanking = (rows, trackName = '', activeCars = []) => {
+      const renderComboRanking = (rows, trackName = '', activeCars = [], options = {}) => {
         const host = $('[data-home2-combo-ranking]');
         if (!host) return [];
 
         const cleanRows = bestRowsForCombo(rows, trackName, activeCars).slice(0, 8);
 
         if (!cleanRows.length) {
+          if (options.preserveOnEmpty) {
+            console.warn('[GC Home] Top Combo preservado: no hay filas válidas del combo activo', { trackName, activeCars });
+            return [];
+          }
           host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>Sin ranking disponible</strong><small>Esperando datos del combo</small></div></div>';
           return [];
         }
@@ -2700,17 +2903,19 @@ const home2ArchiveSeed = (archiveStats.items || [])
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
         await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
 
+        const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
+        const activeComboRankingRows = comboDetailLeaderboardRows.length
+          ? comboDetailLeaderboardRows
+          : comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
+        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
+        if (!renderedComboRankingRows.length) {
+          console.warn('[GC Home] Top Combo no se ha sobrescrito: faltan filas del combo activo', {
+            track: trackAssetName || rawTrackName || track,
+            cars: carList,
+            comboRows: activeComboRankingRows.length
+          });
+        }
 
-
-        const boardCandidates = [
-          ...getArray(leaderboardPayload),
-          ...getArray(combo.leaderboard),
-          ...getArray(combo.bestLaps),
-          ...getArray(combo.laps),
-          ...getArray(recentPayload)
-        ];
-
-        renderComboRanking(boardCandidates, trackAssetName || rawTrackName || track, carList);
 
         renderRaceStandoutsV1([
           ...getArray(comboStandoutsPayload),
