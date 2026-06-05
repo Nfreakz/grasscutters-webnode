@@ -1,0 +1,1098 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Admin ratings | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-admin-ratings-v1">
+    <section class="gc-hero gc-hero--compact gc-admin-ratings-hero-v1">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Ratings, ACSM y carreras sTracker.</h1>
+        <p class="gc-subtitle">ACSM completed se procesa automáticamente. Las carreras fuera de ACSM se revisan manualmente desde aquí.</p>
+
+        <div class="gc-admin-ratings-chips-v1">
+          <span>SR/GSR global</span>
+          <span>Solo Race</span>
+          <span>ACSM auto</span>
+          <span>sTracker manual</span>
+        </div>
+      </div>
+
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title">
+          <span>Ratings</span>
+          <strong id="ratingsState">Comprobando</strong>
+        </div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Storage</span><strong id="ratingsStorage">...</strong></div>
+          <div class="gc-status-row"><span>Procesadas</span><strong id="ratingsProcessed">...</strong></div>
+          <div class="gc-status-row"><span>Pendientes</span><strong id="ratingsPending">...</strong></div>
+          <div class="gc-status-row"><span>Revisadas</span><strong id="ratingsReviewed">...</strong></div>
+          <div class="gc-status-row"><span>Ignoradas</span><strong id="ratingsIgnored">...</strong></div>
+          <div class="gc-status-row"><span>Último check</span><strong id="ratingsLastCheck">...</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Acceso</span>
+          <h2>Acceso restringido</h2>
+          <p>Solo administradores.</p>
+        </div>
+      </div>
+      <div class="gc-slab">
+        <p>Inicia sesión con una cuenta administradora para gestionar carreras detectadas.</p>
+        <div class="gc-actions">
+          <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+          <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminContent" hidden>
+      <section class="gc-admin-ratings-summary-v1">
+        <article>
+          <span>SR/GSR</span>
+          <strong>Global</strong>
+          <small>Cuenta ACSM completadas + carreras sTracker procesadas manualmente.</small>
+        </article>
+        <article>
+          <span>Incluye</span>
+          <strong>Race</strong>
+          <small>Practice y Qualy nunca cuentan.</small>
+        </article>
+        <article>
+          <span>Duplicados</span>
+          <strong>Filtrados</strong>
+          <small>Fuera de ACSM siempre requiere revisión manual.</small>
+        </article>
+      </section>
+
+      <section class="gc-admin-ratings-layout-v1">
+        <main class="gc-admin-ratings-main-v1">
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Detectadas pendientes</span>
+                <h2>Sesiones Race de sTracker.</h2>
+                <p>Aquí solo aparecen carreras Race fuera de ACSM. Se procesan manualmente si deben contar para SR/GSR global.</p>
+              </div>
+              <div class="gc-actions">
+                <button class="gc-btn gc-btn--primary" id="refreshRatings" type="button">Actualizar</button>
+              </div>
+            </div>
+
+            <div class="gc-admin-ratings-list-v1" id="detectedList">
+              <article><strong>Cargando...</strong><p>Buscando carreras candidatas.</p></article>
+            </div>
+          </section>
+
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Ignoradas</span>
+                <h2>Sesiones descartadas.</h2>
+                <p>No aparecen como pendientes y no afectan al SR/GSR. Puedes recuperarlas si hace falta.</p>
+              </div>
+            </div>
+
+            <div class="gc-admin-ratings-list-v1" id="ignoredList">
+              <article><strong>Cargando...</strong><p>Consultando sesiones ignoradas.</p></article>
+            </div>
+          </section>
+
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Revisadas ? No puntuables</span>
+                <h2>Carreras aceptadas sin SR/GSR.</h2>
+                <p>Estas carreras no reaparecen como pendientes, no afectan al SR/GSR y quedan registradas como revisadas.</p>
+              </div>
+            </div>
+
+            <div class="gc-admin-ratings-list-v1" id="reviewedList">
+              <article><strong>Cargando...</strong><p>Consultando carreras revisadas no puntuables.</p></article>
+            </div>
+          </section>
+
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Procesadas</span>
+                <h2>Carreras ya aplicadas al rating.</h2>
+                <p>Estas carreras fuera de ACSM ya cuentan para SR/GSR global y aparecen como sTracker procesadas.</p>
+              </div>
+            </div>
+
+            <div class="gc-admin-ratings-list-v1" id="processedList">
+              <article><strong>Cargando...</strong><p>Consultando snapshot de ratings.</p></article>
+            </div>
+          </section>
+        </main>
+
+        <aside class="gc-admin-ratings-side-v1">
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Diagnóstico</span>
+                <h2>Estado SR/GSR</h2>
+                <p>Resumen rápido de persistencia y eventos.</p>
+              </div>
+            </div>
+            <div class="gc-admin-ratings-diagnostics-v1" id="diagnosticRows">
+              <article><span>Estado</span><strong>Sin ejecutar</strong><p>Esperando datos.</p></article>
+            </div>
+          </section>
+
+          <section class="gc-section gc-admin-ratings-card-v1">
+            <div class="gc-section-head">
+              <div>
+                <span class="gc-kicker">Regla</span>
+                <h2>Qué cuenta</h2>
+              </div>
+            </div>
+            <div class="gc-admin-ratings-note-v1">
+              <p><strong>ACSM:</strong> una carrera oficial completada con resultados se procesa automáticamente y entra en SR/GSR global.</p>
+              <p><strong>Fuera de ACSM:</strong> cualquier Race de sTracker requiere revisión manual desde esta pantalla.</p>
+              <p><strong>No cuenta nunca:</strong> Practice, Qualy, sesiones no Race e ignoradas.</p>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-admin-ratings-v1 {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: grid;
+      gap: clamp(18px, 2.2vw, 28px);
+    }
+
+    .gc-admin-ratings-hero-v1 {
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--accent2, #35d3ff) 10%, transparent), transparent 24rem),
+        radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--accent, #9dff00) 10%, transparent), transparent 20rem),
+        linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.016));
+    }
+
+    .gc-admin-ratings-chips-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .gc-admin-ratings-chips-v1 span {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      background: rgba(0,0,0,.14);
+      color: var(--soft);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-ratings-summary-v1 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 18%, var(--line));
+      background: rgba(255,255,255,.018);
+      overflow: hidden;
+      margin-bottom: clamp(18px, 2.2vw, 28px);
+    }
+
+    .gc-admin-ratings-summary-v1 article {
+      min-height: 112px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 9%, transparent), transparent 8rem),
+        linear-gradient(135deg, rgba(255,255,255,.052), rgba(255,255,255,.018));
+    }
+
+    .gc-admin-ratings-summary-v1 article:last-child { border-right: 0; }
+
+    .gc-admin-ratings-summary-v1 span,
+    .gc-admin-ratings-diagnostics-v1 span,
+    .gc-admin-ratings-item-v1 span,
+    .gc-admin-ratings-info-grid-v1 dt {
+      color: var(--dim);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-ratings-summary-v1 strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: clamp(1.65rem, 3vw, 2.45rem);
+      line-height: .92;
+      letter-spacing: -.06em;
+    }
+
+    .gc-admin-ratings-summary-v1 small {
+      display: block;
+      margin-top: 8px;
+      color: var(--soft);
+      line-height: 1.35;
+    }
+
+    .gc-admin-ratings-layout-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, .36fr);
+      gap: clamp(18px, 2.2vw, 28px);
+      align-items: start;
+    }
+
+    .gc-admin-ratings-main-v1,
+    .gc-admin-ratings-side-v1,
+    .gc-admin-ratings-list-v1,
+    .gc-admin-ratings-diagnostics-v1 {
+      display: grid;
+      gap: 14px;
+    }
+
+    .gc-admin-ratings-side-v1 {
+      position: sticky;
+      top: 86px;
+    }
+
+    .gc-admin-ratings-card-v1 {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.018);
+    }
+
+    .gc-admin-ratings-item-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: clamp(15px, 1.8vw, 20px);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(255,255,255,.055), transparent 12rem),
+        rgba(0,0,0,.16);
+    }
+
+    .gc-admin-ratings-item-v1.is-pending {
+      border-color: color-mix(in srgb, var(--accent, #9dff00) 22%, rgba(255,255,255,.08));
+    }
+
+    .gc-admin-ratings-item-v1.is-processed {
+      border-color: rgba(80, 190, 255, .20);
+    }
+
+    .gc-admin-ratings-item-v1.is-reviewed {
+      border-color: rgba(126, 255, 39, .18);
+    }
+
+    .gc-admin-ratings-item-v1.is-ignored {
+      border-color: rgba(255, 194, 87, .20);
+      opacity: .92;
+    }
+
+    .gc-admin-ratings-item-v1 strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text);
+      font-size: clamp(1.03rem, 1.8vw, 1.24rem);
+      line-height: 1.12;
+      letter-spacing: -.025em;
+    }
+
+    .gc-admin-ratings-item-v1 p {
+      margin: 9px 0 0;
+      color: var(--soft);
+      line-height: 1.45;
+    }
+
+    .gc-admin-ratings-badges-v1,
+    .gc-admin-ratings-meta-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .gc-admin-ratings-badges-v1 { margin-top: 0; }
+
+    .gc-admin-ratings-badge-v1,
+    .gc-admin-ratings-meta-v1 small {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 999px;
+      background: rgba(255,255,255,.035);
+      color: var(--dim);
+      font-family: var(--font-mono, monospace);
+      font-size: .7rem;
+      font-weight: 850;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .gc-admin-ratings-badge-v1.is-detected {
+      border-color: color-mix(in srgb, var(--accent, #9dff00) 32%, rgba(255,255,255,.09));
+      color: color-mix(in srgb, var(--accent, #9dff00) 70%, #fff);
+      background: color-mix(in srgb, var(--accent, #9dff00) 9%, transparent);
+    }
+
+    .gc-admin-ratings-badge-v1.is-processed {
+      border-color: rgba(80, 190, 255, .34);
+      color: #b9e9ff;
+      background: rgba(80, 190, 255, .10);
+    }
+
+    .gc-admin-ratings-badge-v1.is-reviewed {
+      border-color: rgba(126, 255, 39, .28);
+      color: #d9ffb8;
+      background: rgba(126, 255, 39, .09);
+    }
+
+    .gc-admin-ratings-badge-v1.is-ignored,
+    .gc-admin-ratings-badge-v1.is-warning {
+      border-color: rgba(255, 194, 87, .34);
+      color: #ffe0ad;
+      background: rgba(255, 194, 87, .10);
+    }
+
+    .gc-admin-ratings-badge-v1.is-muted {
+      color: var(--dim);
+      background: rgba(255,255,255,.028);
+    }
+
+    .gc-admin-ratings-info-grid-v1 {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0 0;
+    }
+
+    .gc-admin-ratings-info-grid-v1 div {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: 14px;
+      background: rgba(255,255,255,.026);
+    }
+
+    .gc-admin-ratings-info-grid-v1 dt {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gc-admin-ratings-info-grid-v1 dd {
+      margin: 6px 0 0;
+      overflow: hidden;
+      color: var(--text);
+      font-size: .88rem;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gc-admin-ratings-warning-v1 {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--accent, #9dff00) 18%, rgba(255,255,255,.08));
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--accent, #9dff00) 7%, rgba(0,0,0,.16));
+      color: var(--soft);
+      font-size: .86rem;
+      line-height: 1.4;
+    }
+
+    .gc-admin-ratings-controls-v1{
+      display:grid;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .gc-admin-ratings-checkbox-v1{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background:rgba(255,255,255,.02);
+      color:var(--soft);
+    }
+
+    .gc-admin-ratings-checkbox-v1 input{
+      margin-top:2px;
+      accent-color: var(--accent, #9dff00);
+    }
+
+    .gc-admin-ratings-checkbox-v1 strong{
+      margin:0;
+      font-size:.9rem;
+      letter-spacing:0;
+    }
+
+    .gc-admin-ratings-checkbox-v1 small{
+      display:block;
+      margin-top:3px;
+      color:var(--dim);
+      line-height:1.35;
+    }
+
+    .gc-admin-ratings-item-v1 .gc-actions {
+      justify-content: flex-end;
+      align-self: stretch;
+      align-content: center;
+      min-width: 185px;
+    }
+
+    .gc-admin-ratings-v1 .gc-btn--danger {
+      border-color: rgba(255, 87, 87, .32);
+      background: rgba(255, 87, 87, .10);
+      color: #ffb4b4;
+    }
+
+    .gc-admin-ratings-v1 .gc-btn--danger:hover {
+      border-color: rgba(255, 87, 87, .55);
+      background: rgba(255, 87, 87, .16);
+      color: #ffe1e1;
+    }
+
+    .gc-admin-ratings-v1 .gc-btn--warning {
+      border-color: rgba(255, 194, 87, .32);
+      background: rgba(255, 194, 87, .10);
+      color: #ffe0ad;
+    }
+
+    .gc-admin-ratings-v1 .gc-btn--warning:hover {
+      border-color: rgba(255, 194, 87, .55);
+      background: rgba(255, 194, 87, .16);
+      color: #fff0d2;
+    }
+
+    .gc-admin-ratings-diagnostics-v1 article,
+    .gc-admin-ratings-note-v1 {
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(0,0,0,.16);
+    }
+
+    .gc-admin-ratings-diagnostics-v1 strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text);
+    }
+
+    .gc-admin-ratings-diagnostics-v1 p,
+    .gc-admin-ratings-note-v1 p {
+      margin: 8px 0 0;
+      color: var(--soft);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-admin-ratings-info-grid-v1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 980px) {
+      .gc-admin-ratings-summary-v1,
+      .gc-admin-ratings-layout-v1 { grid-template-columns: 1fr; }
+
+      .gc-admin-ratings-summary-v1 article {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .gc-admin-ratings-summary-v1 article:last-child { border-bottom: 0; }
+
+      .gc-admin-ratings-side-v1 { position: static; }
+      .gc-admin-ratings-item-v1 { grid-template-columns: 1fr; }
+      .gc-admin-ratings-item-v1 .gc-actions { justify-content: flex-start; min-width: 0; }
+    }
+
+    @media (max-width: 680px) {
+      .gc-admin-ratings-info-grid-v1 { grid-template-columns: 1fr 1fr; }
+      .gc-admin-ratings-item-v1 { border-radius: 18px; }
+    }
+
+    @media (max-width: 460px) {
+      .gc-admin-ratings-info-grid-v1 { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        gate: $('adminGate'),
+        content: $('adminContent'),
+        retry: $('retryAdmin'),
+        refresh: $('refreshRatings'),
+        state: $('ratingsState'),
+        storage: $('ratingsStorage'),
+        processed: $('ratingsProcessed'),
+        pending: $('ratingsPending'),
+        reviewed: $('ratingsReviewed'),
+        ignored: $('ratingsIgnored'),
+        lastCheck: $('ratingsLastCheck'),
+        detectedList: $('detectedList'),
+        reviewedList: $('reviewedList'),
+        ignoredList: $('ignoredList'),
+        processedList: $('processedList'),
+        diagnosticRows: $('diagnosticRows'),
+      };
+
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const numberFmt = new Intl.NumberFormat('es-ES');
+      const intValue = (value, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+      };
+      const hasValue = (value) => value !== null && value !== undefined && value !== '';
+      const formatInt = (value) => numberFmt.format(intValue(value));
+      const fmtLap = (value, fallback = '') => {
+        if (fallback && fallback !== '0:00.000' && fallback !== '--') return fallback;
+        const ms = Number(value);
+        if (!Number.isFinite(ms) || ms <= 0) return '--';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const millis = Math.floor(ms % 1000);
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+      };
+      const fmtDate = (value, timeZone) => {
+        if (!value) return 'Sin fecha';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Sin fecha';
+        return date.toLocaleString('es-ES', {
+          timeZone,
+          day:'2-digit',
+          month:'2-digit',
+          year:'2-digit',
+          hour:'2-digit',
+          minute:'2-digit'
+        });
+      };
+      const fmtServerDate = (value) => `${fmtDate(value, 'UTC')} UTC`;
+      const fmtSpainDate = (value) => fmtDate(value, 'Europe/Madrid');
+      const nowText = () => new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+      function show(mode) {
+        els.gate.hidden = mode !== 'gate';
+        els.content.hidden = mode !== 'content';
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, {
+          credentials:'include',
+          cache:'no-store',
+          headers:{ 'Content-Type':'application/json' },
+          ...options
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return status;
+        } catch {}
+
+        const profile = await fetchJson('/api/profile');
+        if (profile.user?.role === 'admin') return { authorized:true, currentUser:profile.user, admin:{} };
+
+        return null;
+      }
+
+      function badge(label, tone = 'muted') {
+        return `<span class="gc-admin-ratings-badge-v1 is-${esc(tone)}">${esc(label)}</span>`;
+      }
+
+      function badges(items) {
+        return `<div class="gc-admin-ratings-badges-v1">${items.filter(Boolean).map((item) => badge(item.label, item.tone)).join('')}</div>`;
+      }
+
+      function infoGrid(items) {
+        return `<dl class="gc-admin-ratings-info-grid-v1">${items.map((item) => `
+          <div>
+            <dt>${esc(item.label)}</dt>
+            <dd title="${esc(item.value)}">${esc(item.value)}</dd>
+          </div>
+        `).join('')}</dl>`;
+      }
+
+      function sessionDetails(event) {
+        const start = event.startTime || event.startedAt || event.scheduledAt || event.completedAt || event.ignoredAt || event.updatedAt || event.createdAt || '';
+        return [
+          { label:'SessionId', value: hasValue(event.sessionId) ? String(event.sessionId) : (event.strackerSessionId ? String(event.strackerSessionId) : '--') },
+          { label:'Track', value: event.trackRaw || event.track || '--' },
+          { label:'ComboId', value: hasValue(event.comboId) ? String(event.comboId) : '--' },
+          { label:'Servidor', value: fmtServerDate(start) },
+          { label:'España', value: fmtSpainDate(start) },
+          { label:'Pilotos', value: formatInt(event.playerCount ?? event.driverCount ?? event.raceResults?.length ?? 0) },
+          { label:'Vueltas', value: formatInt(event.lapCount ?? event.totalLaps ?? 0) },
+          { label:'Best lap', value: fmtLap(event.bestLapMs, event.bestLap) },
+          { label:'Cortes', value: formatInt(event.cuts ?? 0) },
+          { label:'Golpes coche', value: formatInt(event.collisionsCar ?? 0) },
+          { label:'Golpes entorno', value: formatInt(event.collisionsEnv ?? 0) },
+        ];
+      }
+
+      function processedTotals(event) {
+        const results = Array.isArray(event.raceResults) ? event.raceResults : [];
+        let bestLapMs = Number.POSITIVE_INFINITY;
+        let bestLapLabel = '';
+        let laps = 0;
+        let cuts = 0;
+        let collisionsCar = 0;
+        let collisionsEnv = 0;
+
+        for (const row of results) {
+          const rowBest = Number(row.bestLapMs || 0);
+          if (Number.isFinite(rowBest) && rowBest > 0 && rowBest < bestLapMs) {
+            bestLapMs = rowBest;
+            bestLapLabel = row.bestLap || '';
+          }
+          laps += intValue(row.laps, 0);
+          const safety = row.safetyRating || {};
+          cuts += intValue(safety.offTracks ?? safety.cuts, 0);
+          collisionsCar += intValue(safety.collisionsCar, 0);
+          collisionsEnv += intValue(safety.collisionsEnv, 0);
+        }
+
+        return {
+          playerCount: results.length,
+          lapCount: laps,
+          bestLapMs: Number.isFinite(bestLapMs) ? bestLapMs : 0,
+          bestLap: bestLapLabel,
+          cuts,
+          collisionsCar,
+          collisionsEnv
+        };
+      }
+
+      function emptyCard(kicker, title, text) {
+        return `<article class="gc-admin-ratings-item-v1"><div><span>${esc(kicker)}</span><strong>${esc(title)}</strong><p>${esc(text)}</p></div></article>`;
+      }
+
+      function renderDetected(candidates) {
+        const rows = Array.isArray(candidates) ? candidates.filter((item) => !item.alreadyProcessed && !item.linkedToAcsm && !item.ignored && !item.reviewed) : [];
+
+        els.detectedList.innerHTML = rows.length ? rows.map((event) => {
+          const title = `${event.track || 'Circuito'} ? Session ${event.sessionId || '--'}`;
+          const checkboxId = `ratingsEligible-${event.sessionId}`;
+          return `
+            <article class="gc-admin-ratings-item-v1 is-pending">
+              <div>
+                ${badges([
+                  { label:'Detectada', tone:'detected' },
+                  { label:event.recommended ? 'Recomendada' : 'Revisar', tone:event.recommended ? 'detected' : 'warning' },
+                  { label:'Race', tone:'muted' },
+                  event.linkedToAcsm ? { label:'Vinculada ACSM', tone:'processed' } : null
+                ])}
+                <strong>${esc(title)}</strong>
+                <p>${esc(event.trackRaw && event.trackRaw !== event.track ? event.trackRaw : 'Sesi?n Race detectada fuera de ACSM.')}</p>
+                ${infoGrid(sessionDetails(event))}
+                <div class="gc-admin-ratings-warning-v1">Esta carrera est? fuera de ACSM y todav?a no cuenta. Puedes procesarla para SR/GSR global o dejarla registrada como carrera revisada no puntuable.</div>
+                <div class="gc-admin-ratings-controls-v1">
+                  <label class="gc-admin-ratings-checkbox-v1" for="${esc(checkboxId)}">
+                    <input id="${esc(checkboxId)}" type="checkbox" data-counts-for-ratings ${event.recommended ? 'checked' : ''} />
+                    <span>
+                      <strong>Contar para SR/GSR global</strong>
+                      <small>${esc(event.recommended ? 'Recomendada por mínimo 3 pilotos y vueltas detectadas.' : 'D?jala desmarcada si solo quieres registrar la carrera como revisada no puntuable.')}</small>
+                    </span>
+                  </label>
+                </div>
+                <div class="gc-admin-ratings-meta-v1">
+                  <small>${esc(event.eventId)}</small>
+                  <small>Manual fuera de ACSM</small>
+                  <small>Pendiente de revisi?n</small>
+                </div>
+              </div>
+              <div class="gc-actions">
+                <button class="gc-btn gc-btn--primary" type="button" data-process-session="${esc(event.sessionId)}" data-event-label="${esc(title)}">Procesar</button>
+                <button class="gc-btn gc-btn--warning" type="button" data-ignore-session="${esc(event.sessionId)}" data-ignore-event="${esc(event.eventId)}" data-event-label="${esc(title)}">Ignorar</button>
+              </div>
+            </article>
+          `;
+        }).join('') : emptyCard('OK', 'Sin pendientes', 'No hay sesiones Race candidatas pendientes de procesar.');
+
+        els.pending.textContent = String(rows.length);
+      }
+
+      function renderReviewed(events) {
+        const rows = Array.isArray(events) ? events : [];
+
+        els.reviewedList.innerHTML = rows.length ? rows.map((event) => {
+          const title = `${event.track || event.name || event.eventId || `Session ${event.sessionId}`} ? ${fmtSpainDate(event.startTime || event.completedAt || event.updatedAt || event.createdAt)}`;
+          return `
+            <article class="gc-admin-ratings-item-v1 is-reviewed">
+              <div>
+                ${badges([
+                  { label:'Revisada', tone:'reviewed' },
+                  { label:'No puntuable', tone:'warning' },
+                  { label:'No cuenta SR/GSR', tone:'muted' }
+                ])}
+                <strong>${esc(title)}</strong>
+                <p>${esc(event.reason || 'Carrera aceptada como no oficial, pero sin impacto en SR/GSR global.')}</p>
+                ${infoGrid(sessionDetails(event))}
+                <div class="gc-admin-ratings-meta-v1">
+                  <small>${esc(event.eventId || `stracker:${event.sessionId}`)}</small>
+                  <small>${esc(event.updatedAt ? `Revisada ${fmtSpainDate(event.updatedAt)}` : 'Revisada')}</small>
+                </div>
+              </div>
+              <div class="gc-actions">
+                <button class="gc-btn" type="button" data-unreview-session="${esc(event.sessionId)}" data-unreview-event="${esc(event.eventId || '')}" data-event-label="${esc(title)}">Quitar revisi?n</button>
+              </div>
+            </article>
+          `;
+        }).join('') : emptyCard('Vac?o', 'Sin carreras revisadas no puntuables', 'Cuando revises una sesi?n sin SR/GSR aparecer? aqu?.');
+
+        els.reviewed.textContent = String(rows.length);
+      }
+
+      function renderIgnored(events) {
+        const rows = Array.isArray(events) ? events : [];
+
+        els.ignoredList.innerHTML = rows.length ? rows.map((event) => {
+          const title = `${event.track || event.eventId || `Session ${event.sessionId}`} · ${fmtSpainDate(event.startTime || event.ignoredAt || event.updatedAt || event.createdAt)}`;
+          return `
+            <article class="gc-admin-ratings-item-v1 is-ignored">
+              <div>
+                ${badges([
+                  { label:'Ignorada', tone:'ignored' },
+                  { label:'No cuenta SR/GSR', tone:'warning' },
+                  { label:'Recuperable', tone:'muted' }
+                ])}
+                <strong>${esc(title)}</strong>
+                <p>${esc(event.reason || event.ignoredReason || 'Descartada manualmente. No cuenta para SR/GSR global.')}</p>
+                ${infoGrid(sessionDetails(event))}
+                <div class="gc-admin-ratings-meta-v1">
+                  <small>${esc(event.eventId || `stracker:${event.sessionId}`)}</small>
+                  <small>${esc(event.ignoredAt ? `Ignorada ${fmtSpainDate(event.ignoredAt)}` : 'Ignorada')}</small>
+                </div>
+              </div>
+              <div class="gc-actions">
+                <button class="gc-btn" type="button" data-unignore-session="${esc(event.sessionId)}" data-unignore-event="${esc(event.eventId || '')}" data-event-label="${esc(title)}">Recuperar</button>
+              </div>
+            </article>
+          `;
+        }).join('') : emptyCard('Vacío', 'Sin carreras ignoradas', 'Las sesiones descartadas aparecerán aquí.');
+
+        els.ignored.textContent = String(rows.length);
+      }
+
+      function renderProcessed(events) {
+        const rows = Array.isArray(events) ? events : [];
+
+        els.processedList.innerHTML = rows.length ? rows.map((event) => {
+          const totals = processedTotals(event);
+          const enriched = {
+            ...event,
+            sessionId: event.strackerSessionId,
+            startTime: event.scheduledAt || event.startedAt || event.completedAt,
+            playerCount: totals.playerCount,
+            lapCount: totals.lapCount,
+            bestLapMs: totals.bestLapMs,
+            bestLap: totals.bestLap,
+            cuts: totals.cuts,
+            collisionsCar: totals.collisionsCar,
+            collisionsEnv: totals.collisionsEnv
+          };
+          const title = event.name || event.id || `stracker:${event.strackerSessionId}`;
+          return `
+            <article class="gc-admin-ratings-item-v1 is-processed">
+              <div>
+                ${badges([
+                  { label:'Procesada', tone:'processed' },
+                  { label:'Cuenta SR/GSR global', tone:'processed' },
+                  { label:'Carrera no oficial', tone:'muted' }
+                ])}
+                <strong>${esc(title)}</strong>
+                <p>${esc([fmtSpainDate(enriched.startTime), event.track, totals.playerCount ? `${totals.playerCount} pilotos` : ''].filter(Boolean).join(' · '))}</p>
+                ${infoGrid(sessionDetails(enriched))}
+                <div class="gc-admin-ratings-meta-v1">
+                  <small>${esc(event.id)}</small>
+                  <small>${esc(event.strackerSessionId ? `Session ${event.strackerSessionId}` : 'sTracker')}</small>
+                  <small>Rebuild seguro al quitar</small>
+                </div>
+              </div>
+              <div class="gc-actions">
+                <a class="gc-btn" href="/campeonato/ronda/${encodeURIComponent(event.id)}">Ver carrera</a>
+                <button class="gc-btn gc-btn--danger" type="button" data-remove-stracker="${esc(event.id)}" data-remove-session="${esc(event.strackerSessionId || '')}" data-event-label="${esc(title)}">Quitar</button>
+              </div>
+            </article>
+          `;
+        }).join('') : emptyCard('Vacío', 'Sin carreras sTracker procesadas', 'Cuando proceses una sesión aparecerá aquí.');
+
+        els.processed.textContent = String(rows.length);
+      }
+
+      function renderDiagnostics(data) {
+        const diagnostics = data.diagnostics || {};
+        const rows = [
+          { label:'Storage', value: diagnostics.storage || data.storage || 'desconocido', detail:'Persistencia activa del snapshot SR/GSR.' },
+          { label:'ACSM auto', value: diagnostics.acsmAutoProcessingEnabled === false ? 'OFF' : 'ON', detail:'ACSM completed con resultados entra automáticamente.' },
+          { label:'sTracker auto', value: diagnostics.strackerAutoProcessingEnabled ? 'ON' : 'OFF', detail:'Fuera de ACSM siempre manual desde admin.' },
+          { label:'Eventos procesados', value: diagnostics.eventsProcessed ?? '--', detail:'Total de carreras que ya cuentan para rating.' },
+          { label:'Pendientes ACSM', value: diagnostics.pendingEvents ?? '--', detail:'Eventos ACSM completed todavía no procesados.' },
+          { label:'Pendientes sTracker', value: diagnostics.strackerCandidateCount ?? '--', detail:'Sesiones Race candidatas no procesadas ni ignoradas.' },
+          { label:'Revisadas no puntuables', value: diagnostics.reviewedStrackerSessionCount ?? '--', detail:'Sesiones aceptadas sin impacto en SR/GSR.' },
+          { label:'Ignoradas sTracker', value: diagnostics.ignoredStrackerSessionCount ?? '--', detail:'Sesiones descartadas manualmente. No cuentan para SR/GSR.' },
+        ];
+
+        els.diagnosticRows.innerHTML = rows.map((row) => `
+          <article>
+            <span>${esc(row.label)}</span>
+            <strong>${esc(row.value)}</strong>
+            <p>${esc(row.detail)}</p>
+          </article>
+        `).join('');
+      }
+
+      async function load() {
+        els.state.textContent = 'Cargando';
+        els.state.style.color = 'var(--soft)';
+        els.lastCheck.textContent = nowText();
+
+        const [championship, candidates, diagnostics] = await Promise.all([
+          fetchJson('/api/gc/ratings/championship?refresh=1'),
+          fetchJson('/api/gc/ratings/stracker-candidates?limit=200&minDrivers=3&minTotalLaps=1'),
+          fetchJson('/api/gc/ratings/diagnostics'),
+        ]);
+
+        const series = championship.championship?.strackerSeries || {};
+        renderProcessed(series.processedEvents || []);
+        renderDetected(candidates.candidates || []);
+        renderIgnored(candidates.ignoredSessions || []);
+        renderReviewed(candidates.reviewedSessions || []);
+        renderDiagnostics(diagnostics);
+
+        els.storage.textContent = diagnostics.diagnostics?.storage || championship.diagnostics?.storage || '--';
+        els.state.textContent = 'OK';
+        els.state.style.color = 'var(--accent)';
+      }
+
+      async function boot() {
+        try {
+          const allowed = await isAdmin();
+          if (!allowed) {
+            show('gate');
+            return;
+          }
+          show('content');
+          await load();
+        } catch (error) {
+          console.error(error);
+          show('gate');
+        }
+      }
+
+      document.addEventListener('click', async (event) => {
+        const clicked = event.target instanceof Element ? event.target : null;
+        const ignoreButton = clicked?.closest('[data-ignore-session]');
+        if (ignoreButton) {
+          const sessionId = ignoreButton.getAttribute('data-ignore-session');
+          const eventId = ignoreButton.getAttribute('data-ignore-event');
+          const label = ignoreButton.getAttribute('data-event-label') || `sesión sTracker ${sessionId}`;
+          if (!sessionId) return;
+
+          const reason = window.prompt(`¿Ignorar ${label}?
+
+No contará para SR/GSR y dejará de salir como pendiente. Puedes escribir un motivo opcional:`, 'Test / carrera no válida');
+          if (reason === null) return;
+
+          ignoreButton.disabled = true;
+          const oldText = ignoreButton.textContent;
+          ignoreButton.textContent = 'Ignorando...';
+
+          try {
+            const params = new URLSearchParams();
+            params.set('sessionId', sessionId);
+            if (eventId) params.set('eventId', eventId);
+            if (reason.trim()) params.set('reason', reason.trim());
+            const payload = await fetchJson(`/api/gc/ratings/ignore-stracker-session?${params.toString()}`, { method:'POST' });
+            console.info('[GC Admin Ratings] Ignorada sesión sTracker', payload);
+            await load();
+          } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'No se pudo ignorar la carrera.');
+            ignoreButton.disabled = false;
+            ignoreButton.textContent = oldText || 'Ignorar';
+          }
+          return;
+        }
+
+        const unignoreButton = clicked?.closest('[data-unignore-session]');
+        if (unignoreButton) {
+          const sessionId = unignoreButton.getAttribute('data-unignore-session');
+          const eventId = unignoreButton.getAttribute('data-unignore-event');
+          const label = unignoreButton.getAttribute('data-event-label') || eventId || `stracker:${sessionId}`;
+          if (!sessionId && !eventId) return;
+
+          const ok = window.confirm(`¿Recuperar ${label}?
+
+Si sigue en sTracker volverá a aparecer como pendiente. No modifica SR/GSR.`);
+          if (!ok) return;
+
+          unignoreButton.disabled = true;
+          const oldText = unignoreButton.textContent;
+          unignoreButton.textContent = 'Recuperando...';
+
+          try {
+            const params = new URLSearchParams();
+            if (sessionId) params.set('sessionId', sessionId);
+            if (eventId) params.set('eventId', eventId);
+            const payload = await fetchJson(`/api/gc/ratings/unignore-stracker-session?${params.toString()}`, { method:'POST' });
+            console.info('[GC Admin Ratings] Recuperada sesión sTracker', payload);
+            await load();
+          } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'No se pudo recuperar la carrera.');
+            unignoreButton.disabled = false;
+            unignoreButton.textContent = oldText || 'Recuperar';
+          }
+          return;
+        }
+
+        const unreviewButton = clicked?.closest('[data-unreview-session]');
+        if (unreviewButton) {
+          const sessionId = unreviewButton.getAttribute('data-unreview-session');
+          const eventId = unreviewButton.getAttribute('data-unreview-event');
+          const label = unreviewButton.getAttribute('data-event-label') || eventId || `stracker:${sessionId}`;
+          if (!sessionId && !eventId) return;
+
+          const ok = window.confirm(`?Quitar la revisi?n no puntuable de ${label}?
+
+Si sigue en sTracker volver? a aparecer como pendiente. No modifica SR/GSR.`);
+          if (!ok) return;
+
+          unreviewButton.disabled = true;
+          const oldText = unreviewButton.textContent;
+          unreviewButton.textContent = 'Quitando...';
+
+          try {
+            const params = new URLSearchParams();
+            if (sessionId) params.set('sessionId', sessionId);
+            if (eventId) params.set('eventId', eventId);
+            const payload = await fetchJson(`/api/gc/ratings/unreview-stracker-session?${params.toString()}`, { method:'POST' });
+            console.info('[GC Admin Ratings] Quitada revisi?n no puntuable', payload);
+            await load();
+          } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'No se pudo quitar la revisi?n.');
+            unreviewButton.disabled = false;
+            unreviewButton.textContent = oldText || 'Quitar revisi?n';
+          }
+          return;
+        }
+
+        const removeButton = clicked?.closest('[data-remove-stracker]');
+        if (removeButton) {
+          const eventId = removeButton.getAttribute('data-remove-stracker');
+          const sessionId = removeButton.getAttribute('data-remove-session');
+          const label = removeButton.getAttribute('data-event-label') || eventId;
+          if (!eventId) return;
+
+          const ok = window.confirm(`¿Quitar ${label} del SR/GSR global?
+
+Se recalculará SR/GSR desde cero con las carreras restantes. La sesión volverá a pendientes si sigue en sTracker.`);
+          if (!ok) return;
+
+          removeButton.disabled = true;
+          const oldText = removeButton.textContent;
+          removeButton.textContent = 'Quitando...';
+
+          try {
+            const params = new URLSearchParams();
+            if (eventId) params.set('eventId', eventId);
+            if (sessionId) params.set('sessionId', sessionId);
+            const payload = await fetchJson(`/api/gc/ratings/remove-stracker-session?${params.toString()}`, { method:'POST' });
+            console.info('[GC Admin Ratings] Quitada carrera sTracker', payload);
+            await load();
+          } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'No se pudo quitar la carrera.');
+            removeButton.disabled = false;
+            removeButton.textContent = oldText || 'Quitar';
+          }
+          return;
+        }
+
+        const button = clicked?.closest('[data-process-session]');
+        if (!button) return;
+
+        const sessionId = button.getAttribute('data-process-session');
+        const label = button.getAttribute('data-event-label') || `sesión sTracker ${sessionId}`;
+        if (!sessionId) return;
+
+        const card = button.closest('.gc-admin-ratings-item-v1');
+        const checkbox = card?.querySelector('[data-counts-for-ratings]');
+        const countsForRatings = checkbox instanceof HTMLInputElement ? checkbox.checked : true;
+        const ok = window.confirm(countsForRatings
+          ? `?Procesar ${label}?
+
+Esta carrera contar? para SR/GSR global.`
+          : `?Procesar ${label}?
+
+Esta carrera quedar? registrada, pero no modificar? SR/GSR.`);
+        if (!ok) return;
+
+        button.disabled = true;
+        const oldText = button.textContent;
+        button.textContent = countsForRatings ? 'Procesando...' : 'Registrando...';
+
+        try {
+          const processParams = new URLSearchParams();
+          processParams.set('sessionId', sessionId);
+          processParams.set('countsForRatings', countsForRatings ? 'true' : 'false');
+
+          const payload = await fetchJson(`/api/gc/ratings/process-stracker-session?${processParams.toString()}`, {
+            method:'POST',
+            body: JSON.stringify({ sessionId, countsForRatings })
+          });
+          console.info('[GC Admin Ratings] Procesada sesi?n', payload);
+          await load();
+        } catch (error) {
+          console.error(error);
+          alert(error instanceof Error ? error.message : 'No se pudo procesar la sesi?n.');
+          button.disabled = false;
+          button.textContent = oldText || 'Procesar';
+        }
+      });
+
+      els.refresh?.addEventListener('click', () => load().catch((error) => {
+        console.error(error);
+        alert(error instanceof Error ? error.message : 'No se pudo actualizar.');
+      }));
+
+      els.retry?.addEventListener('click', () => boot());
+
+      boot();
+    })();
+  </script>
+</AppLayout>

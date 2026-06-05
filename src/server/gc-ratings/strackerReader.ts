@@ -119,7 +119,9 @@ export function readRaceDrivers(db: StrackerDb, sessionId: number) {
       COALESCE(SUM(l.CollisionsEnv), 0) AS CollisionsEnv,
       COALESCE(SUM(CASE WHEN l.Valid = 1 THEN 1 ELSE 0 END), 0) AS ValidLaps,
       COALESCE(SUM(CASE WHEN l.Valid = 0 THEN 1 ELSE 0 END), 0) AS InvalidLaps,
-      COALESCE(SUM(CASE WHEN l.Valid = 0 AND COALESCE(l.Cuts, 0) = 0 THEN 1 ELSE 0 END), 0) AS InvalidNoCutLaps
+      COALESCE(SUM(CASE WHEN l.Valid = 0 AND COALESCE(l.Cuts, 0) = 0 THEN 1 ELSE 0 END), 0) AS InvalidNoCutLaps,
+      COALESCE(MAX(l.SessionTime), 0) AS RaceTimeMs,
+      COALESCE(MAX(l.Timestamp), 0) AS LastLapUnix
     FROM PlayerInSession pis
     JOIN Players p ON p.PlayerId = pis.PlayerId
     LEFT JOIN Cars c ON c.CarId = pis.CarId
@@ -170,3 +172,68 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
   });
 }
 
+
+export function readRaceSession(db: StrackerDb, sessionId: number) {
+  return db.all(`
+    SELECT
+      s.SessionId,
+      s.SessionType,
+      s.StartTimeDate,
+      s.EndTimeDate,
+      s.NumberOfLaps,
+      s.Duration,
+      s.ComboId,
+      t.Track,
+      t.UiTrackName,
+      COUNT(DISTINCT pis.PlayerInSessionId) AS PlayerCount,
+      COUNT(l.LapId) AS LapCount,
+      COALESCE(MAX(l.Timestamp), 0) AS LastLapUnix
+    FROM Session s
+    LEFT JOIN Tracks t ON t.TrackId = s.TrackId
+    LEFT JOIN PlayerInSession pis ON pis.SessionId = s.SessionId
+    LEFT JOIN Lap l ON l.PlayerInSessionId = pis.PlayerInSessionId
+    WHERE s.SessionId = ?
+    GROUP BY s.SessionId
+    LIMIT 1
+  `, [sessionId])[0] || null;
+}
+
+export function findRatingCandidateRaceSessions(db: StrackerDb, options: {
+  limit?: number;
+  minDrivers?: number;
+  minTotalLaps?: number;
+} = {}) {
+  const limit = Math.max(1, Math.min(500, numberValue(options.limit, 80)));
+  const minDrivers = Math.max(1, numberValue(options.minDrivers, 3));
+  const minTotalLaps = Math.max(1, numberValue(options.minTotalLaps, 1));
+
+  return db.all(`
+    SELECT
+      s.SessionId,
+      s.SessionType,
+      s.StartTimeDate,
+      s.EndTimeDate,
+      s.NumberOfLaps,
+      s.Duration,
+      s.ComboId,
+      t.Track,
+      t.UiTrackName,
+      COUNT(DISTINCT pis.PlayerInSessionId) AS PlayerCount,
+      COUNT(l.LapId) AS LapCount,
+      COALESCE(MAX(l.Timestamp), 0) AS LastLapUnix,
+      COALESCE(MAX(l.LapCount), 0) AS MaxLapCount,
+      COALESCE(MIN(CASE WHEN l.LapTime > 0 THEN l.LapTime END), 0) AS BestLapMs,
+      COALESCE(SUM(l.Cuts), 0) AS Cuts,
+      COALESCE(SUM(l.CollisionsCar), 0) AS CollisionsCar,
+      COALESCE(SUM(l.CollisionsEnv), 0) AS CollisionsEnv
+    FROM Session s
+    LEFT JOIN Tracks t ON t.TrackId = s.TrackId
+    LEFT JOIN PlayerInSession pis ON pis.SessionId = s.SessionId
+    LEFT JOIN Lap l ON l.PlayerInSessionId = pis.PlayerInSessionId
+    WHERE LOWER(s.SessionType) = 'race'
+    GROUP BY s.SessionId
+    HAVING PlayerCount >= ? AND LapCount >= ?
+    ORDER BY s.StartTimeDate DESC
+    LIMIT ?
+  `, [minDrivers, minTotalLaps, limit]);
+}

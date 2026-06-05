@@ -113,6 +113,30 @@ export type RecalculationLog = {
   createdAt: string;
 };
 
+export type RatingStrackerSessionReview = {
+  eventId: string;
+  sessionId: number;
+  status: 'ignored' | 'reviewed-unrated';
+  ratingEligible?: boolean;
+  reason: string | null;
+  name?: string | null;
+  track?: string | null;
+  trackRaw?: string | null;
+  comboId?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  playerCount?: number | null;
+  lapCount?: number | null;
+  maxLapCount?: number | null;
+  bestLapMs?: number | null;
+  bestLap?: string | null;
+  cuts?: number | null;
+  collisionsCar?: number | null;
+  collisionsEnv?: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RatingsSnapshot = {
   version: 1;
   championshipId: string;
@@ -125,6 +149,8 @@ export type RatingsSnapshot = {
   drivers: DriverRatingState[];
   eventResults: RatingEventResult[];
   recalculationLogs: RecalculationLog[];
+  ignoredStrackerSessions?: RatingStrackerSessionReview[];
+  reviewedStrackerSessions?: RatingStrackerSessionReview[];
 };
 
 export type ChampionshipRatingPayload = {
@@ -138,4 +164,3 @@ export type ChampionshipRatingPayload = {
   };
   diagnostics: PlainObject;
 };
-

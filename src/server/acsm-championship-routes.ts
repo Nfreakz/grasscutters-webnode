@@ -1,4 +1,5 @@
 import type express from 'express';
+import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName } from './gc-ratings/utils';
 
 type PlainObject = Record<string, any>;
 
@@ -301,37 +302,12 @@ function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?
 }
 
 function prettifyName(value: unknown, fallback = '-') {
-  const text = textValue(value, fallback);
+  const text = cleanDisplayText(value, fallback);
   return text.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
 }
 
 function prettifyCarModel(value: unknown, fallback = '') {
-  const raw = textValue(value, fallback);
-  if (!raw) return fallback;
-
-  const known: Record<string, string> = {
-    rss_formula_rss_4_2024: 'RSS Formula RSS 4 2024',
-    ts_bmw_m3_gt2: 'BMW M3 GT2',
-    ts_spyker_c8_laviolette_gt2r: 'Spyker C8 Laviolette GT2R',
-    ts_ferrari_f430_gt2: 'Ferrari F430 GT2',
-    doran_ford_gt40_gt2: 'Doran Ford GT40 GT2',
-    ts_porsche_997r: 'Porsche 997R'
-  };
-
-  const key = raw.trim().toLowerCase();
-  if (known[key]) return known[key];
-
-  return raw
-    .replace(/^ks_/i, '')
-    .replace(/^ts_/i, '')
-    .replace(/^rss_/i, 'RSS ')
-    .replace(/_/g, ' ')
-    .replace(/\bgt2\b/gi, 'GT2')
-    .replace(/\brss\b/gi, 'RSS')
-    .replace(/\bbmw\b/gi, 'BMW')
-    .replace(/\bf430\b/gi, 'F430')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return displayCarName(value, fallback);
 }
 
 function formatLapMs(value: unknown) {
@@ -445,7 +421,7 @@ function parsePublicEntrantsFromHtml(html: string) {
     const carIndex = cells.findIndex((cell, cellIndex) => cellIndex > numericIndex && /\s\/\s/.test(cell) && cellIndex !== attendanceIndex);
     const driverIndex = numericIndex + 1;
 
-    const name = prettifyName(cells[driverIndex] || '', '');
+    const name = displayDriverName(cells[driverIndex] || '', '');
     if (!name || /^rating$/i.test(name) || /^car$/i.test(name)) return;
 
     const model = carIndex >= 0 ? prettifyCarModel(cells[carIndex].split('/')[0].trim(), '') : '';
@@ -475,7 +451,7 @@ function collectRegisteredDrivers(raw: PlainObject, publicHtml = '') {
     const className = prettifyName(pick(classItem, ['Name', 'name'], ''), '') || 'General';
 
     collectionValue(pick(classItem, ['Entrants', 'entrants'], {})).forEach((entrant) => {
-      const name = prettifyName(pick(entrant, ['Name', 'name', 'DriverName', 'driverName'], ''), '');
+      const name = displayDriverName(pick(entrant, ['Name', 'name', 'DriverName', 'driverName'], ''), '');
       const guid = textValue(pick(entrant, ['GUID', 'Guid', 'guid', 'DriverGuid', 'driverGuid', 'SteamID', 'SteamId', 'steamId'], ''));
       const modelRaw = textValue(pick(entrant, ['Model', 'model', 'CarModel', 'carModel'], ''));
       if (!name && !guid) return;
@@ -526,7 +502,7 @@ function classPointsFor(raw: PlainObject, classId = '') {
 
 function normalizeResultRow(row: PlainObject, position: number, sessionType: string, points = 0) {
   const driver = objectValue(pick(row, ['Driver', 'driver'], {}));
-  const name = prettifyName(pick(row, ['DriverName', 'driverName', 'Name', 'name'], pick(driver, ['Name', 'name'], '')), '');
+  const name = displayDriverName(pick(row, ['DriverName', 'driverName', 'Name', 'name'], pick(driver, ['Name', 'name'], '')), '');
   const guid = textValue(pick(row, ['DriverGuid', 'driverGuid', 'DriverGUID', 'driverGUID', 'GUID', 'Guid', 'guid'], pick(driver, ['Guid', 'GUID', 'guid'], '')));
   const model = prettifyCarModel(pick(row, ['CarModel', 'carModel', 'Model', 'model'], ''), '');
   if (!name && !guid) return null;
@@ -574,7 +550,7 @@ function normalizeSession(raw: PlainObject, key: string, event: PlainObject, cha
   const laps = arrayValue(pick(resultsRaw, ['Laps', 'laps'], []))
     .filter((lap) => textValue(pick(lap, ['DriverName', 'driverName', 'DriverGuid', 'driverGuid'], '')))
     .map((lap) => ({
-      driverName: prettifyName(pick(lap, ['DriverName', 'driverName'], ''), ''),
+      driverName: displayDriverName(pick(lap, ['DriverName', 'driverName'], ''), ''),
       driverGuid: textValue(pick(lap, ['DriverGuid', 'driverGuid'], '')),
       carModel: prettifyCarModel(pick(lap, ['CarModel', 'carModel'], ''), ''),
       lapTimeMs: numberValue(pick(lap, ['LapTime', 'lapTime'], 0), 0),
@@ -594,7 +570,7 @@ function normalizeSession(raw: PlainObject, key: string, event: PlainObject, cha
     name: prettifyName(pick(raw, ['Name', 'name'], pick(resultsRaw, ['Type', 'type'], key)), key),
     startedAt: isoOrNull(pick(raw, ['StartedTime', 'startedTime', 'Started', 'started'], '')),
     completedAt: isoOrNull(pick(raw, ['CompletedTime', 'completedTime', 'Completed', 'completed'], '')),
-    trackName: prettifyName(pick(resultsRaw, ['TrackName', 'trackName'], pick(event, ['RaceSetup.Track', 'raceSetup.track'], '')), ''),
+    trackName: displayTrackName(pick(resultsRaw, ['TrackName', 'trackName'], pick(event, ['RaceSetup.Track', 'raceSetup.track'], '')), ''),
     resultCount: results.length,
     lapCount: laps.length,
     results,
@@ -607,7 +583,7 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
   const raceSetup = objectValue(pick(event, ['RaceSetup', 'raceSetup'], {}));
   const sessionsRaw = objectValue(pick(event, ['Sessions', 'sessions'], {}));
   const trackRaw = pick(raceSetup, ['Track', 'track', 'TrackName', 'trackName'], pick(event, ['Track', 'track', 'TrackName', 'trackName'], 'Circuito por confirmar'));
-  const track = prettifyName(trackRaw, 'Circuito por confirmar');
+  const track = displayTrackName(trackRaw, 'Circuito por confirmar');
   const cars = extractCarsFromRaceSetup(raceSetup);
   const scheduled = isoOrNull(pick(event, ['Scheduled', 'scheduled', 'ScheduledTime', 'scheduledTime', 'ScheduledAt', 'scheduledAt', 'Date', 'date']));
   const started = isoOrNull(pick(event, ['StartedTime', 'startedTime', 'Started', 'started']));
@@ -642,7 +618,7 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     id,
     slug: id,
     href: `/campeonato/ronda/${encodeURIComponent(id)}`,
-    name: textValue(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
+    name: cleanDisplayText(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
     track,
     trackRaw: textValue(trackRaw, ''),
     trackSlug: normalizeTrackSlug(trackRaw),
@@ -727,10 +703,10 @@ function buildStandings(registeredDrivers: PlainObject[], events: PlainObject[])
     .map((driver, index) => ({
       key: driverMapKey(driver) || `standing-${index + 1}`,
       position: index + 1,
-      name: driver.name || `Piloto ${index + 1}`,
+      name: displayDriverName(driver.name, `Piloto ${index + 1}`),
       guid: driver.guid || '',
-      team: driver.team || '',
-      model: driver.model || driver.carModel || '',
+      team: prettifyName(driver.team || '', ''),
+      model: displayCarName(driver.model || driver.carModel || '', ''),
       className: driver.className || 'General',
       points: numberValue(driver.points, 0),
       events: numberValue(driver.events, 0),

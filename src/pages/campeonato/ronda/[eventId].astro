@@ -3,7 +3,11 @@ export const prerender = false;
 import MarketingLayout from '../../../layouts/MarketingLayout.astro';
 import '../../../styles/public/gc-rating-badges.css';
 
-const eventId = Astro.params.eventId ?? '';
+const rawEventId = Astro.params.eventId ?? '';
+let eventId = rawEventId;
+try {
+  eventId = decodeURIComponent(rawEventId);
+} catch {}
 ---
 
 <MarketingLayout

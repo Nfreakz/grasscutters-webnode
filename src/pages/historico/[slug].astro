@@ -1,0 +1,75 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+export const prerender = false;
+const { slug } = Astro.params;
+---
+
+<MarketingLayout
+  title="Campeonato archivado | GrassCutters Racing"
+  description="Detalle de campeonato ACSM archivado de GrassCutters Racing."
+  ogImage="/og/campeonato-og-v1531.png"
+  bodyClass="gc-page-acsr gc-page-acsr-history-detail"
+  canonicalPath={`/historico/${slug || ''}`}
+>
+  <section class="gc-public-shell gc-public-section gc-archived-championship-detail">
+    <a class="gc-archive-back" href="/historico">← Histórico ACSM</a>
+
+    <header class="gc-archive-detail-hero">
+      <span class="gc-public-kicker">Archivo</span>
+      <h1 class="gc-public-title">Campeonato no archivado todavía.</h1>
+      <p class="gc-public-description">
+        Esta ruta queda reservada para campeonatos ACSM cerrados. No se duplica el campeonato actual dentro del histórico para evitar confusión.
+      </p>
+    </header>
+
+    <section class="gc-archive-detail-empty">
+      <p><strong>Slug solicitado:</strong> {slug}</p>
+      <p>Cuando exista persistencia real de campeonatos cerrados, aquí aparecerán la clasificación final, las carreras disputadas y los datos del campeonato archivado.</p>
+      <div class="gc-archive-detail-links">
+        <a class="gc-data-link" href="/campeonato">Ver campeonato actual</a>
+        <a class="gc-data-link" href="/historico">Ver archivo de campeonatos</a>
+      </div>
+    </section>
+  </section>
+
+  <style is:global>
+    .gc-archived-championship-detail{
+      display:grid;
+      gap:clamp(24px,3vw,44px);
+      padding-top:clamp(110px,12vw,170px);
+    }
+    .gc-archive-back,
+    .gc-data-link{
+      width:max-content;
+      color:var(--gc-mk-accent,#80ff1f);
+      text-decoration:none;
+      font-family:var(--font-mono,monospace);
+      font-size:.82rem;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      border-bottom:1px solid rgba(126,255,39,.32);
+    }
+    .gc-archive-back:hover,
+    .gc-data-link:hover{
+      color:var(--gc-mk-text,#f2f6ef);
+      border-bottom-color:var(--gc-mk-text,#f2f6ef);
+    }
+    .gc-archive-detail-hero{
+      display:grid;
+      gap:12px;
+      max-width:980px;
+      padding-bottom:clamp(14px,2vw,26px);
+      border-bottom:1px solid rgba(126,255,39,.14);
+    }
+    .gc-archive-detail-empty{
+      display:grid;
+      gap:12px;
+      max-width:900px;
+      color:var(--gc-mk-muted,#9ca59a);
+      line-height:1.6;
+    }
+    .gc-archive-detail-empty strong{ color:var(--gc-mk-text,#f2f6ef); }
+    .gc-archive-detail-links{ display:flex; flex-wrap:wrap; gap:12px 18px; margin-top:12px; }
+  </style>
+</MarketingLayout>

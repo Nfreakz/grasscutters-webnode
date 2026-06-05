@@ -1,0 +1,262 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
+---
+
+<MarketingLayout
+  title="Carreras no oficiales | GrassCutters Racing"
+  description="Carreras fuera del campeonato ACSM revisadas manualmente para SR/GSR global en GrassCutters Racing."
+  ogImage="/og/campeonato-og-v1531.png"
+  bodyClass="gc-page-acsr gc-page-community-races"
+  canonicalPath="/carreras-comunidad"
+>
+  <section class="gc-public-shell gc-public-section gc-community-races-page" data-gc-community-races>
+    <header class="gc-data-landing-hero gc-community-races-hero">
+      <div class="gc-data-landing-hero__copy">
+        <a class="gc-archive-back" href="/campeonato">← Campeonato ACSM actual</a>
+        <PublicHeroFrame
+          kicker="Carreras no oficiales"
+          title={['Carreras no', 'oficiales.']}
+          lead="Estas carreras no pertenecen al campeonato ACSM. No suman puntos de campeonato y, si un admin las procesa manualmente desde /admin/ratings, pueden contar para el SR/GSR global."
+        />
+      </div>
+    </header>
+
+    <section class="gc-community-races-overview" aria-label="Resumen de carreras no oficiales">
+      <article class="gc-community-races-card">
+        <span class="gc-public-kicker">Campeonato</span>
+        <h2 class="gc-public-card-title">No alteran la clasificación ACSM.</h2>
+        <p class="gc-public-card-text">Estas carreras no forman parte del calendario oficial del campeonato. Sirven como actividad de comunidad, pruebas especiales o eventos fuera del marco competitivo principal.</p>
+      </article>
+      <article class="gc-community-races-card">
+        <span class="gc-public-kicker">SR/GSR global</span>
+        <h2 class="gc-public-card-title">Pueden contar si se revisan manualmente.</h2>
+        <p class="gc-public-card-text">Si un admin valida una carrera desde `admin/ratings`, esa sesión puede entrar en el SR/GSR global sin convertirse en una ronda oficial del campeonato.</p>
+      </article>
+    </section>
+
+    <section class="gc-community-race-rules" aria-label="Reglas de carreras no oficiales">
+      <p><strong>Campeonato ACSM:</strong> no suman puntos.</p>
+      <p><strong>SR/GSR global:</strong> pueden contar si un admin las procesa.</p>
+      <p><strong>Practice/Qualy:</strong> no cuentan nunca.</p>
+      <a class="gc-data-link" href="/ratings">Ver SR/GSR global</a>
+    </section>
+
+    <section class="gc-community-races-block">
+      <div class="gc-public-section-head">
+        <span class="gc-public-kicker">Revisadas</span>
+        <h2 class="gc-public-section-title">Carreras de comunidad revisadas.</h2>
+        <p class="gc-public-section-lead">Este listado no forma una clasificación de campeonato. Reúne carreras no oficiales ya revisadas y diferencia si cuentan o no para el SR/GSR global.</p>
+      </div>
+
+      <div class="gc-community-races-table-wrap">
+        <table class="gc-community-races-table">
+          <thead>
+            <tr>
+              <th>Carrera</th>
+              <th>Circuito</th>
+              <th>Fecha</th>
+              <th>Pilotos</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="gcCommunityRacesBody">
+            <tr><td colspan="5">Cargando carreras no oficiales...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <style is:global>
+    .gc-community-races-page{
+      display:grid;
+      gap:var(--gc-hero-after-gap,44px);
+      padding-top:0;
+    }
+    .gc-community-races-overview{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+    .gc-community-races-card{
+      display:grid;
+      gap:10px;
+      padding:clamp(18px,2vw,24px);
+      border:1px solid rgba(126,255,39,.14);
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(10,18,11,.8), rgba(4,7,5,.92));
+      box-shadow:0 18px 46px rgba(0,0,0,.28);
+    }
+    .gc-data-landing-hero{
+      position:relative;
+      display:block;
+      width:min(var(--gc-hero-zone-width,1120px), calc(100% - var(--gc-hero-zone-gutter,44px)));
+      max-width:var(--gc-hero-zone-width,1120px);
+      height:var(--gc-hero-zone-height,490px);
+      min-height:var(--gc-hero-zone-height,490px);
+      max-height:var(--gc-hero-zone-height,490px);
+      margin:0 auto;
+      padding:0;
+      border:0;
+      box-sizing:border-box;
+      overflow:hidden;
+    }
+    .gc-data-landing-hero::after{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:1px;
+      background:linear-gradient(90deg, rgba(126,255,39,.18), transparent 70%);
+    }
+    .gc-data-landing-hero__copy{
+      position:absolute;
+      left:0;
+      top:var(--gc-hero-text-y,84px);
+      width:min(100%, var(--gc-hero-text-max,650px));
+      max-width:var(--gc-hero-text-max,650px);
+      margin:0;
+      padding:0;
+      z-index:5;
+    }
+    .gc-data-landing-hero__copy .gc-archive-back{
+      margin:0 0 18px;
+    }
+    .gc-archive-back,
+    .gc-data-link{
+      width:max-content;
+      color:var(--gc-mk-accent,#80ff1f);
+      text-decoration:none;
+      font-family:var(--font-mono,monospace);
+      font-size:.82rem;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      border-bottom:1px solid rgba(126,255,39,.32);
+    }
+    .gc-archive-back:hover,
+    .gc-data-link:hover{
+      color:var(--gc-mk-text,#f2f6ef);
+      border-bottom-color:var(--gc-mk-text,#f2f6ef);
+    }
+    .gc-community-race-rules{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 20px;
+      align-items:center;
+      padding:0 0 clamp(18px,2.4vw,30px);
+      border-bottom:1px solid rgba(126,255,39,.14);
+      color:var(--gc-mk-muted,#9ca59a);
+    }
+    .gc-community-race-rules p{ margin:0; }
+    .gc-community-race-rules strong{ color:var(--gc-mk-text,#f2f6ef); }
+    .gc-community-races-block{ display:grid; gap:16px; }
+    .gc-community-races-table-wrap{
+      overflow:auto;
+      border-top:1px solid rgba(126,255,39,.14);
+    }
+    .gc-community-races-table{
+      width:100%;
+      min-width:760px;
+      border-collapse:collapse;
+    }
+    .gc-community-races-table th,
+    .gc-community-races-table td{
+      padding:16px 0;
+      border-bottom:1px solid rgba(126,255,39,.12);
+      text-align:left;
+      vertical-align:top;
+    }
+    .gc-community-races-table th{
+      color:var(--gc-mk-muted,#9ca59a);
+      font-family:var(--font-mono,monospace);
+      font-size:.76rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    .gc-community-races-table strong{ color:var(--gc-mk-text,#f2f6ef); }
+    .gc-community-races-table small{
+      display:block;
+      margin-top:4px;
+      color:var(--gc-mk-muted,#9ca59a);
+    }
+    .gc-community-races-status{
+      display:inline-flex;
+      color:var(--gc-mk-accent,#80ff1f);
+      font-family:var(--font-mono,monospace);
+      font-size:.78rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+    @media (max-width: 720px){
+      .gc-data-landing-hero{
+        width:min(var(--gc-hero-zone-width,1120px), calc(100% - 28px));
+        height:clamp(430px,68vh,520px);
+        min-height:clamp(430px,68vh,520px);
+        max-height:clamp(430px,68vh,520px);
+      }
+      .gc-data-landing-hero__copy{ top:84px; }
+    }
+    @media (max-width: 860px){
+      .gc-community-races-overview{ grid-template-columns:1fr; }
+    }
+  </style>
+
+  <script>
+    const body = document.getElementById('gcCommunityRacesBody');
+    function text(value, fallback = '') { return String(value ?? '').trim() || fallback; }
+    function fmt(value) {
+      const date = Date.parse(value || '');
+      if (!Number.isFinite(date)) return 'Fecha pendiente';
+      return new Intl.DateTimeFormat('es-ES', { dateStyle:'medium', timeStyle:'short' }).format(new Date(date));
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+    }
+
+    async function loadCommunityRaces() {
+      try {
+        const response = await fetch('/api/gc/ratings/championship?refresh=1', { headers: { accept:'application/json' }, cache:'no-store' });
+        const data = await response.json();
+        if (!data?.ok || !data?.championship) throw new Error(data?.message || 'No se pudo cargar el rating global.');
+
+        const processed = Array.isArray(data.championship?.strackerSeries?.processedEvents)
+          ? data.championship.strackerSeries.processedEvents.map((event) => ({ ...event, ratingEligible: true }))
+          : [];
+        const reviewed = Array.isArray(data.championship?.strackerSeries?.reviewedEvents)
+          ? data.championship.strackerSeries.reviewedEvents.map((event) => ({ ...event, ratingEligible: false }))
+          : [];
+        const events = [...processed, ...reviewed].sort((left, right) =>
+          Date.parse(right.completedAt || right.scheduledAt || '') - Date.parse(left.completedAt || left.scheduledAt || '')
+        );
+
+        body.innerHTML = events.length ? events.map((event) => {
+          const results = Array.isArray(event.raceResults) ? event.raceResults.length : 0;
+          const href = `/campeonato/ronda/${encodeURIComponent(String(event.id || ''))}`;
+          const titleMarkup = event.ratingEligible
+            ? `<a class="gc-data-link" href="${escapeHtml(href)}">${escapeHtml(text(event.name, 'Carrera no oficial'))}</a>`
+            : `<strong>${escapeHtml(text(event.name, 'Carrera no oficial'))}</strong>`;
+          const badgeTitle = event.ratingEligible ? 'SR/GSR global' : 'No cuenta SR/GSR';
+          const badgeNote = event.ratingEligible ? 'No suma campeonato ACSM' : 'Carrera revisada no puntuable';
+          return `
+            <tr>
+              <td>${titleMarkup}<small>${escapeHtml(text(event.id, 'Sesión procesada'))}</small></td>
+              <td><strong>${escapeHtml(text(event.track, 'Circuito'))}</strong><small>${escapeHtml(text(event.carSummary, ''))}</small></td>
+              <td>${escapeHtml(fmt(event.completedAt || event.scheduledAt))}</td>
+              <td>${escapeHtml(results || event.playerCount || '--')}</td>
+              <td><span class="gc-community-races-status">${escapeHtml(badgeTitle)}</span><small>${escapeHtml(badgeNote)}</small></td>
+            </tr>
+          `;
+        }).join('') : '<tr><td colspan="5">No hay carreras no oficiales revisadas todavía. Las pendientes se gestionan desde /admin/ratings.</td></tr>';
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        body.innerHTML = `<tr><td colspan="5">${escapeHtml(message)}</td></tr>`;
+      }
+    }
+
+    loadCommunityRaces();
+  </script>
+</MarketingLayout>

@@ -11,7 +11,7 @@ import {
 } from '../lib/archive/archiveRuntime';
 
 const title = 'GrassCutters Racing | Sim racing, hotlaps y comunidad';
-const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, noticias, archivo motorsport y herramientas para pilotos.';
+const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, archivo motorsport y herramientas para pilotos.';
 
 const home2ToolLinks = {
   hud: 'https://www.overtake.gg/downloads/grasscutters-lua-hud-lite.84201/',
@@ -422,63 +422,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
           </div>
         </div>
       </article>
-    </section>
-
-    <section class="gc-home2-section gc-home2-shell" aria-labelledby="gc-home2-news-title">
-      <div class="gc-home2-section__head">
-        <div>
-          <p class="gc-home2-panel__eyebrow">Noticias GC</p>
-          <h2 id="gc-home2-news-title">Últimas noticias</h2>
-          <p class="gc-home2-section__sub">Lo último de GrassCutters</p>
-        </div>
-        <a href="/noticias" class="gc-home2-btn gc-home2-btn--small">Ver todas las noticias →</a>
-      </div>
-
-      <div class="gc-home2-news-grid" data-home2-news>
-        <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-hud.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
-          <div class="gc-home2-news-card__body">
-            <span class="gc-home2-tag gc-home2-tag--green">Update</span>
-            <time>28 may 2026</time>
-            <h3>HUD Lite 2.3 ya disponible</h3>
-            <p>Nuevos overlays, mejor rendimiento y compatibilidad ampliada.</p>
-            <a href="/novedades" class="gc-home2-link">Leer noticia →</a>
-          </div>
-        </article>
-
-        <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-combo.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
-          <div class="gc-home2-news-card__body">
-            <span class="gc-home2-tag">Comunidad</span>
-            <time>27 may 2026</time>
-            <h3>Nuevo combo semanal</h3>
-            <p>Mugello y GT2, combinación perfecta para tandas rápidas.</p>
-            <a href="/combos" class="gc-home2-link">Leer noticia →</a>
-          </div>
-        </article>
-
-        <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-race.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
-          <div class="gc-home2-news-card__body">
-            <span class="gc-home2-tag gc-home2-tag--red">Crónica</span>
-            <time>26 may 2026</time>
-            <h3>Crónica GC Weekly Race</h3>
-            <p>Resumen de la carrera del sábado con grandes batallas.</p>
-            <a href="/novedades" class="gc-home2-link">Leer noticia →</a>
-          </div>
-        </article>
-
-        <article class="gc-home2-news-card">
-          <img src="/ui/home2/gc-home2-news-sim.svg" alt="" width="380" height="216" loading="lazy" decoding="async" />
-          <div class="gc-home2-news-card__body">
-            <span class="gc-home2-tag gc-home2-tag--cyan">Simracing</span>
-            <time>25 may 2026</time>
-            <h3>Formula Drift: todo lo nuevo</h3>
-            <p>Análisis de la nueva actualización y los coches añadidos.</p>
-            <a href="/novedades" class="gc-home2-link">Leer noticia →</a>
-          </div>
-        </article>
-      </div>
     </section>
 
     <section class="gc-home2-section gc-home2-shell gc-home2-mid-grid" aria-label="Archivo y box tools">
@@ -2507,45 +2450,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return merged;
       };
 
-      const renderNews = async () => {
-        const featuredData = await fetchJson('/api/noticias?limit=4&featured=1');
-        const featuredItems = getArray(featuredData);
-
-        let allItems = [];
-        if (featuredItems.length < 4) {
-          const allData = await fetchJson('/api/noticias?limit=4');
-          allItems = getArray(allData);
-        }
-
-        let items = mergeNewsItems(featuredItems, allItems).slice(0, 4);
-
-        if (!items.length) {
-          const fallbackData = await fetchJson('/data/home2-news.json');
-          items = getArray(fallbackData).slice(0, 4);
-        }
-
-        const host = $('[data-home2-news]');
-        if (!host || !items.length) return;
-
-        host.innerHTML = items.map((item) => {
-          const href = item.href || item.linkUrl || item.link || (item.slug ? `/noticias/${item.slug}` : '/noticias');
-          const image = item.image || item.imageUrl || item.coverUrl || '/ui/home2/gc-home2-news-sim.svg';
-
-          return `
-            <article class="gc-home2-news-card">
-              <img class="gc-home2-news-card__image" src="${escapeAttr(image)}" alt="" width="380" height="216" loading="lazy" decoding="async" />
-              <div class="gc-home2-news-card__body">
-                <span class="gc-home2-tag">${escapeAttr(item.category || 'Paddock')}</span>
-                <time>${escapeAttr(item.date || item.publishedAt || '')}</time>
-                <h3>${escapeAttr(item.title || 'Noticia')}</h3>
-                <p>${escapeAttr(item.excerpt || '')}</p>
-                ${href ? `<a href="${escapeAttr(href)}" class="gc-home2-link">Leer noticia →</a>` : `<span class="gc-home2-link gc-home2-link--muted">Noticias GC</span>`}
-              </div>
-            </article>
-          `;
-        }).join('');
-      };
-
       const renderArchive = async (activeTrack = '', activeCars = []) => {
         const serverSeed = Array.isArray(window.__GC_HOME2_ARCHIVE__) ? window.__GC_HOME2_ARCHIVE__ : [];
 
@@ -2928,7 +2832,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         await Promise.all([
           renderChampionship(),
-          renderNews(),
           renderArchive(track, carList)
         ]);
       };

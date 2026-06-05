@@ -18,7 +18,6 @@ import { registerMotorsportArchiveSafeApiV824 } from './motorsport-archive-safe-
 import { registerMotorsportArchiveUnifiedAdminRoutes } from './motorsport-archive-unified-admin-routes';
 import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-archive-local-image-upload-routes';
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
-import { registerNewsRoutes } from './news-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
@@ -1552,6 +1551,7 @@ let lastAutoSyncResult: null | {
   message: string;
   statusCode?: number;
   sync?: typeof lastSyncResult;
+  ratings?: any;
   error?: string;
 } = null;
 
@@ -1707,6 +1707,36 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     const ok = Boolean(result.ok);
     if (!ok) autoSyncFailureCount += 1;
 
+    let ratingsAutoProcess: any = null;
+    if (ok && String(process.env.GC_RATINGS_AUTO_PROCESS_ACSM || 'true').toLowerCase() !== 'false') {
+      try {
+        const acsmPayload = await getGcRatingsService().processNewEvents({
+          saveNoopLog: false,
+          trigger: 'stracker-sync-acsm-auto'
+        });
+        ratingsAutoProcess = {
+          ok: true,
+          source: 'acsm',
+          processedEvents: acsmPayload.processedEvents,
+          message: acsmPayload.message
+        };
+        if (acsmPayload.processedEvents > 0) {
+          console.log(`[GC] Ratings auto-process ACSM: ${acsmPayload.message}`);
+        }
+      } catch (ratingsError) {
+        ratingsAutoProcess = {
+          ok: false,
+          source: 'acsm',
+          message: ratingsError instanceof Error ? ratingsError.message : String(ratingsError)
+        };
+        console.warn('[GC] Ratings auto-process ACSM falló:', ratingsError);
+      }
+    }
+
+    if (String(process.env.GC_RATINGS_AUTO_PROCESS_STRACKER || '').toLowerCase() === 'true') {
+      console.warn('[GC] GC_RATINGS_AUTO_PROCESS_STRACKER=true ignorado: sTracker fuera de ACSM es manual por diseño.');
+    }
+
     lastAutoSyncResult = {
       ok,
       reason,
@@ -1715,6 +1745,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
+      ratings: ratingsAutoProcess,
       error: ok ? undefined : result.sync?.error
     };
 
@@ -5524,7 +5555,6 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
 
 // GC_CALENDAR_EVENTS_PATCH_V6_ROUTE_FIRST
 app.use(express.json({ limit: '25mb' }));
-registerNewsRoutes(app, { rootDir, requireAdmin });
 
 const gcCalendarV6AllowedTypes = ['combo', 'race_lfm', 'race_gc'] as const;
 type GcCalendarV6Type = typeof gcCalendarV6AllowedTypes[number];
@@ -13081,5 +13111,6 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
+
 
 

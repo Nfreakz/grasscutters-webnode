@@ -29,7 +29,7 @@ import AuthHeader from '../components/AuthHeader.astro';
 
 const {
   title = 'GrassCutters Racing',
-  description = 'Comunidad de sim racing, motorsport, hotlaps, noticias, archivo técnico y plataforma para pilotos.',
+  description = 'Comunidad de sim racing, motorsport, hotlaps, archivo técnico y plataforma para pilotos.',
   bodyClass = '',
   canonicalPath,
   ogImage,
@@ -51,7 +51,8 @@ const pageOgImages = {
   '/privacidad': '/og/privacidad-og-v1531.png',
   '/app-android': '/og/app-android-og-v1531.png',
   '/archivo': '/og/archivo-og.png',
-  '/noticias': '/og/grasscutters-social-card-v1531.png',
+  '/historico': '/og/campeonato-og-v1531.png',
+  '/carreras-comunidad': '/og/campeonato-og-v1531.png',
   '/calendario': '/og/calendario-og-v1531.png',
 };
 
@@ -92,18 +93,25 @@ const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
 const hudOvertakeUrl = 'https://www.overtake.gg/downloads/grasscutters-lua-hud-lite.84201/';
 const hudPatreonUrl = 'https://www.patreon.com/c/neorsgarage';
 
+const championshipNavItems = [
+  { href: '/campeonato', label: 'Campeonato ACSM', match: '/campeonato' },
+  { href: '/historico', label: 'Histórico ACSM', match: '/historico' },
+  { href: '/carreras-comunidad', label: 'Carreras no oficiales', match: '/carreras-comunidad' },
+];
+
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
-  { href: '/campeonato', label: 'CAMPEONATO', match: '/campeonato' },
   { href: '/ratings', label: 'RATINGS', match: '/ratings' },
   { href: '/calendario', label: 'CALENDARIO', match: '/calendario' },
   { href: '/archivo', label: 'ARCHIVO', match: '/archivo' },
-  { href: '/noticias', label: 'NOTICIAS', match: '/noticias' },
   { href: '/app', label: 'PLATAFORMA', match: '/app' },
 ];
 
 const footerItems = [
+  { href: '/campeonato', label: 'Campeonato' },
+  { href: '/historico', label: 'Histórico' },
+  { href: '/carreras-comunidad', label: 'Carreras no oficiales' },
   { href: '/normas', label: 'Normas' },
   { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
   { href: '/privacidad', label: 'Privacidad' },
@@ -112,6 +120,10 @@ const footerItems = [
 function isActive(match) {
   if (match === '/') return path === '/';
   return path === match || path.startsWith(`${match}/`);
+}
+
+function isChampionshipActive() {
+  return championshipNavItems.some((item) => isActive(item.match));
 }
 ---
 <!doctype html>
@@ -222,7 +234,18 @@ function isActive(match) {
       </button>
 
       <nav class="gc-public-nav" aria-label="Navegación pública" data-public-nav>
-        {navItems.map((item) => (
+        {navItems.slice(0, 2).map((item) => (
+          <a href={item.href} class:list={[{ 'is-active': isActive(item.match) }]}>{item.label}</a>
+        ))}
+        <details class="gc-public-nav-dropdown" data-public-nav-dropdown data-active={isChampionshipActive() ? 'true' : undefined}>
+          <summary class="gc-public-nav-trigger" aria-label="Abrir secciones de campeonato">CAMPEONATO</summary>
+          <div class="gc-public-nav-dropdown__menu" role="menu" aria-label="Secciones de campeonato">
+            {championshipNavItems.map((item) => (
+              <a href={item.href} data-active={isActive(item.match) ? 'true' : undefined} role="menuitem">{item.label}</a>
+            ))}
+          </div>
+        </details>
+        {navItems.slice(2).map((item) => (
           <a href={item.href} class:list={[{ 'is-active': isActive(item.match) }]}>{item.label}</a>
         ))}
       </nav>
@@ -382,6 +405,56 @@ function isActive(match) {
         margin-inline:.28rem;
       }
 
+
+
+      /* GC_V85_HEADER_DROPDOWN_NO_FILL_OVERRIDE */
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[open],
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"]{
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        border:0!important;
+        box-shadow:none!important;
+        outline:0!important;
+        filter:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[open] > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"] > .gc-public-nav-trigger{
+        min-height:34px!important;
+        height:34px!important;
+        padding:0 11px 7px!important;
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        color:var(--gc-mk-accent,#8cff00)!important;
+        border:0!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+        outline:0!important;
+        filter:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:not(:hover):not(:focus-within):not([data-active="true"]):not([open]) > .gc-public-nav-trigger{
+        color:rgba(244,255,241,.78)!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:hover,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:focus-visible,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a[data-active="true"]{
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        color:var(--gc-mk-accent,#8cff00)!important;
+        box-shadow:inset 2px 0 0 rgba(140,255,0,.9)!important;
+      }
+
       @media(max-width:980px){
         .gc-public-footer--v52 .gc-public-footer-inner{
           grid-template-columns:1fr;
@@ -475,25 +548,272 @@ function isActive(match) {
         [title*="Volver"],
         [title*="volver"]{ bottom:104px!important; }
       }
+
+      .gc-public-nav-dropdown{
+        position:relative;
+        display:flex;
+        align-items:center;
+        height:34px;
+        min-height:34px;
+        margin:0;
+        padding:0;
+        background:transparent!important;
+        border:0!important;
+        box-shadow:none!important;
+        color:inherit;
+      }
+
+      .gc-public-nav-dropdown summary::-webkit-details-marker{ display:none!important; }
+      .gc-public-nav-dropdown summary::marker{ content:''; }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger{
+        all:unset;
+        box-sizing:border-box!important;
+        position:relative!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        gap:7px!important;
+        min-height:34px!important;
+        height:34px!important;
+        padding:0 11px 7px!important;
+        margin:0!important;
+        border:0!important;
+        border-radius:0!important;
+        outline:0!important;
+        background:transparent!important;
+        background-image:none!important;
+        box-shadow:none!important;
+        color:rgba(244,255,241,.78)!important;
+        font-family:var(--mono, 'JetBrains Mono', monospace)!important;
+        font-size:12px!important;
+        font-weight:850!important;
+        letter-spacing:.09em!important;
+        line-height:1!important;
+        text-transform:uppercase!important;
+        text-decoration:none!important;
+        text-shadow:none!important;
+        cursor:pointer!important;
+        user-select:none!important;
+        -webkit-appearance:none!important;
+        appearance:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger::before{
+        content:""!important;
+        display:block!important;
+        position:absolute!important;
+        left:11px!important;
+        right:24px!important;
+        bottom:3px!important;
+        height:2px!important;
+        border-radius:999px!important;
+        background:linear-gradient(90deg,var(--gc-mk-accent,#8cff00),var(--gc-mk-accent-2,#23f0cf))!important;
+        box-shadow:0 0 12px color-mix(in srgb,var(--gc-mk-accent,#8cff00) 48%, transparent)!important;
+        opacity:0!important;
+        transform:scaleX(.25)!important;
+        transform-origin:center!important;
+        transition:opacity .16s ease, transform .16s ease!important;
+        pointer-events:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger::after{
+        content:''!important;
+        position:static!important;
+        width:6px!important;
+        height:6px!important;
+        flex:0 0 6px!important;
+        display:block!important;
+        margin-top:-2px!important;
+        border-right:1.5px solid currentColor!important;
+        border-bottom:1.5px solid currentColor!important;
+        background:transparent!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+        opacity:.78!important;
+        transform:rotate(45deg)!important;
+        transform-origin:center!important;
+        transition:transform .18s ease, opacity .18s ease!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"] > .gc-public-nav-trigger{
+        color:var(--gc-mk-text,#f4fff1)!important;
+        background:transparent!important;
+        background-image:none!important;
+        box-shadow:none!important;
+        font-size:12px!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover > .gc-public-nav-trigger::before,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within > .gc-public-nav-trigger::before,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"] > .gc-public-nav-trigger::before{
+        opacity:1!important;
+        transform:scaleX(1)!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[open] > .gc-public-nav-trigger::after{
+        transform:rotate(-135deg)!important;
+        opacity:1!important;
+      }
+
+      .gc-public-nav-dropdown__menu{
+        position:absolute;
+        top:calc(100% + 12px);
+        left:0;
+        min-width:220px;
+        display:grid;
+        gap:4px;
+        padding:10px;
+        border:1px solid rgba(126,255,39,.18);
+        border-radius:16px;
+        background:linear-gradient(180deg, rgba(7,12,8,.98), rgba(10,18,11,.96));
+        box-shadow:0 22px 48px rgba(0,0,0,.36);
+        z-index:60;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a{
+        display:flex!important;
+        align-items:center!important;
+        min-height:34px!important;
+        height:auto!important;
+        padding:9px 12px!important;
+        border:0!important;
+        border-radius:10px!important;
+        white-space:nowrap!important;
+        background:transparent!important;
+        background-image:none!important;
+        color:rgba(244,255,241,.78)!important;
+        box-shadow:none!important;
+        text-shadow:none!important;
+        font-family:var(--mono, 'JetBrains Mono', monospace)!important;
+        font-size:11px!important;
+        font-weight:850!important;
+        letter-spacing:.07em!important;
+        line-height:1.05!important;
+        text-transform:uppercase!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a::before,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a::after{
+        content:none!important;
+        display:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:hover,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:focus-visible,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a[data-active="true"]{
+        background:rgba(126,255,39,.10)!important;
+        background-image:none!important;
+        color:var(--gc-mk-text,#f4fff1)!important;
+        box-shadow:none!important;
+      }
+
+      @media (hover:hover){
+        .gc-public-nav-dropdown:hover > .gc-public-nav-dropdown__menu,
+        .gc-public-nav-dropdown:focus-within > .gc-public-nav-dropdown__menu{ display:grid; }
+        .gc-public-nav-dropdown:not([open]) > .gc-public-nav-dropdown__menu{ display:none; }
+      }
+
+
+
+      /* GC_V85_HEADER_DROPDOWN_NO_FILL_OVERRIDE */
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[open],
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"]{
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        border:0!important;
+        box-shadow:none!important;
+        outline:0!important;
+        filter:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[open] > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:hover > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:focus-within > .gc-public-nav-trigger,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown[data-active="true"] > .gc-public-nav-trigger{
+        min-height:34px!important;
+        height:34px!important;
+        padding:0 11px 7px!important;
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        color:var(--gc-mk-accent,#8cff00)!important;
+        border:0!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+        outline:0!important;
+        filter:none!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown:not(:hover):not(:focus-within):not([data-active="true"]):not([open]) > .gc-public-nav-trigger{
+        color:rgba(244,255,241,.78)!important;
+      }
+
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:hover,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a:focus-visible,
+      html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown__menu a[data-active="true"]{
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        color:var(--gc-mk-accent,#8cff00)!important;
+        box-shadow:inset 2px 0 0 rgba(140,255,0,.9)!important;
+      }
+
+      @media(max-width:980px){
+        .gc-public-nav-dropdown{
+          width:100%;
+          height:auto;
+          min-height:34px;
+          display:block;
+        }
+        html[data-gc-scope="marketing"] body.gc-public-body .gc-public-header .gc-public-nav .gc-public-nav-dropdown > .gc-public-nav-trigger{
+          width:100%!important;
+          justify-content:space-between!important;
+          min-height:38px!important;
+          height:38px!important;
+        }
+        .gc-public-nav-dropdown__menu{
+          position:static;
+          min-width:0;
+          margin-top:8px;
+          box-shadow:none;
+        }
+      }
+
     </style>
 
     <script is:inline>
       (() => {
         const toggle = document.querySelector('[data-public-menu-toggle]');
         const nav = document.querySelector('[data-public-nav]');
+        const dropdown = document.querySelector('[data-public-nav-dropdown]');
         if (!toggle || !nav) return;
         const closeMenu = () => {
           document.body.classList.remove('gc-public-menu-open');
           toggle.setAttribute('aria-expanded', 'false');
+          if (window.innerWidth <= 980) dropdown?.removeAttribute('open');
         };
         toggle.addEventListener('click', () => {
           const open = document.body.classList.toggle('gc-public-menu-open');
           toggle.setAttribute('aria-expanded', String(open));
         });
         nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+        dropdown?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+          dropdown.removeAttribute('open');
+        }));
         document.querySelectorAll('.gc-public-actions a').forEach((link) => link.addEventListener('click', closeMenu));
         window.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') closeMenu();
+          if (event.key === 'Escape') {
+            dropdown?.removeAttribute('open');
+            closeMenu();
+          }
         });
       })();
     </script>
@@ -532,3 +852,4 @@ function isActive(match) {
     <AuthHeader />
   </body>
 </html>
+

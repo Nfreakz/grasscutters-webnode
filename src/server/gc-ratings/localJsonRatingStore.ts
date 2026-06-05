@@ -28,11 +28,25 @@ export class LocalJsonRatingStore implements RatingStore {
   }
 
   async diagnostics() {
+    let ignoredStrackerSessions = 0;
+    let reviewedStrackerSessions = 0;
+    if (fs.existsSync(this.filePath)) {
+      try {
+        const snapshot = JSON.parse(fs.readFileSync(this.filePath, 'utf8')) as RatingsSnapshot;
+        ignoredStrackerSessions = Array.isArray(snapshot.ignoredStrackerSessions) ? snapshot.ignoredStrackerSessions.length : 0;
+        reviewedStrackerSessions = Array.isArray(snapshot.reviewedStrackerSessions) ? snapshot.reviewedStrackerSessions.length : 0;
+      } catch {
+        ignoredStrackerSessions = 0;
+        reviewedStrackerSessions = 0;
+      }
+    }
+
     return {
       storage: 'json',
       filePath: this.filePath,
-      exists: fs.existsSync(this.filePath)
+      exists: fs.existsSync(this.filePath),
+      ignoredStrackerSessions,
+      reviewedStrackerSessions
     };
   }
 }
-

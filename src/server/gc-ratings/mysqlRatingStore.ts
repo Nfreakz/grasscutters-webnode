@@ -1,6 +1,6 @@
 import type { Pool, PoolConnection } from 'mysql2/promise';
 import type { RatingStore } from './ratingStore';
-import type { DriverRatingState, RatingEventResult, RatingIncident, RatingLapDetail, RatingsSnapshot, RecalculationLog } from './types';
+import type { DriverRatingState, RatingEventResult, RatingIncident, RatingLapDetail, RatingsSnapshot, RecalculationLog, RatingStrackerSessionReview } from './types';
 
 function isoToMysql(value: string | null | undefined) {
   if (!value) return null;
@@ -206,6 +206,24 @@ export class MysqlRatingStore implements RatingStore {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS gc_rating_stracker_session_review (
+        session_id INT NOT NULL PRIMARY KEY,
+        event_id VARCHAR(191) NOT NULL,
+        status VARCHAR(24) NOT NULL,
+        reason TEXT NULL,
+        payload LONGTEXT NULL,
+        created_at DATETIME(3) NOT NULL,
+        updated_at DATETIME(3) NOT NULL,
+        KEY idx_gc_rating_stracker_review_event (event_id),
+        KEY idx_gc_rating_stracker_review_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    try {
+      await pool.query('ALTER TABLE gc_rating_stracker_session_review ADD COLUMN payload LONGTEXT NULL');
+    } catch {}
+
     this.schemaReady = true;
   }
 
@@ -217,6 +235,7 @@ export class MysqlRatingStore implements RatingStore {
     const [incidentRows] = await pool.query('SELECT * FROM gc_rating_incident ORDER BY event_id ASC, event_result_id ASC, lap_number ASC');
     const [lapRows] = await pool.query('SELECT * FROM gc_rating_lap_detail ORDER BY event_result_id ASC, lap_number ASC');
     const [logRows] = await pool.query('SELECT * FROM gc_rating_recalculation_log ORDER BY created_at ASC');
+    const [reviewRows] = await pool.query('SELECT * FROM gc_rating_stracker_session_review ORDER BY updated_at DESC, created_at DESC');
 
     const incidentsByResult = new Map<string, RatingIncident[]>();
     for (const row of incidentRows as any[]) {
@@ -311,7 +330,42 @@ export class MysqlRatingStore implements RatingStore {
       createdAt: mysqlToIso(row.created_at) || new Date().toISOString()
     }));
 
-    if (!drivers.length && !eventResults.length) return null;
+    const allReviews: RatingStrackerSessionReview[] = (reviewRows as any[]).map((row) => {
+      let payload: any = {};
+      try {
+        payload = row.payload ? JSON.parse(row.payload) : {};
+      } catch {
+        payload = {};
+      }
+      return {
+        eventId: row.event_id,
+        sessionId: Number(row.session_id || 0),
+        status: row.status === 'reviewed-unrated' ? 'reviewed-unrated' : 'ignored',
+        ratingEligible: row.status === 'reviewed-unrated' ? false : undefined,
+        reason: row.reason || null,
+        name: payload?.name || null,
+        track: payload?.track || null,
+        trackRaw: payload?.trackRaw || null,
+        comboId: payload?.comboId ?? null,
+        startTime: payload?.startTime || null,
+        endTime: payload?.endTime || null,
+        playerCount: payload?.playerCount ?? null,
+        lapCount: payload?.lapCount ?? null,
+        maxLapCount: payload?.maxLapCount ?? null,
+        bestLapMs: payload?.bestLapMs ?? null,
+        bestLap: payload?.bestLap || null,
+        cuts: payload?.cuts ?? null,
+        collisionsCar: payload?.collisionsCar ?? null,
+        collisionsEnv: payload?.collisionsEnv ?? null,
+        createdAt: mysqlToIso(row.created_at) || new Date().toISOString(),
+        updatedAt: mysqlToIso(row.updated_at) || mysqlToIso(row.created_at) || new Date().toISOString()
+      };
+    }).filter((row) => row.sessionId > 0);
+
+    const ignoredStrackerSessions = allReviews.filter((row) => row.status === 'ignored');
+    const reviewedStrackerSessions = allReviews.filter((row) => row.status === 'reviewed-unrated');
+
+    if (!drivers.length && !eventResults.length && !ignoredStrackerSessions.length && !reviewedStrackerSessions.length) return null;
 
     const processedEventIds = [...new Set(eventResults.map((row) => row.eventId))];
     const lastLog = recalculationLogs[recalculationLogs.length - 1];
@@ -327,7 +381,9 @@ export class MysqlRatingStore implements RatingStore {
       processedEventIds,
       drivers,
       eventResults,
-      recalculationLogs
+      recalculationLogs,
+      ignoredStrackerSessions,
+      reviewedStrackerSessions
     } as RatingsSnapshot;
   }
 
@@ -342,6 +398,38 @@ export class MysqlRatingStore implements RatingStore {
       await connection.query('DELETE FROM gc_rating_event_result');
       await connection.query('DELETE FROM gc_driver_rating');
       await connection.query('DELETE FROM gc_rating_recalculation_log');
+      await connection.query('DELETE FROM gc_rating_stracker_session_review');
+
+      for (const review of [...(snapshot.ignoredStrackerSessions || []), ...(snapshot.reviewedStrackerSessions || [])]) {
+        await connection.query(`
+          INSERT INTO gc_rating_stracker_session_review
+          (session_id, event_id, status, reason, payload, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [
+          mysqlInt(review.sessionId),
+          review.eventId,
+          review.status,
+          review.reason || null,
+          JSON.stringify({
+            name: review.name ?? null,
+            track: review.track ?? null,
+            trackRaw: review.trackRaw ?? null,
+            comboId: review.comboId ?? null,
+            startTime: review.startTime ?? null,
+            endTime: review.endTime ?? null,
+            playerCount: review.playerCount ?? null,
+            lapCount: review.lapCount ?? null,
+            maxLapCount: review.maxLapCount ?? null,
+            bestLapMs: review.bestLapMs ?? null,
+            bestLap: review.bestLap ?? null,
+            cuts: review.cuts ?? null,
+            collisionsCar: review.collisionsCar ?? null,
+            collisionsEnv: review.collisionsEnv ?? null
+          }),
+          isoToMysql(review.createdAt),
+          isoToMysql(review.updatedAt)
+        ]);
+      }
 
       for (const driver of snapshot.drivers) {
         await connection.query(`
@@ -649,7 +737,11 @@ export class MysqlRatingStore implements RatingStore {
       await this.ensureSchema();
       const pool = await this.getPool();
       await pool.query('SELECT 1 AS ok');
-      return { storage: 'mysql', mysqlConfigured: true, mysqlConnected: true };
+      const [reviewRows] = await pool.query('SELECT status, COUNT(*) AS total FROM gc_rating_stracker_session_review GROUP BY status');
+      const rows = Array.isArray(reviewRows) ? (reviewRows as any[]) : [];
+      const ignoredStrackerSessions = Number(rows.find((row) => row.status === 'ignored')?.total || 0);
+      const reviewedStrackerSessions = Number(rows.find((row) => row.status === 'reviewed-unrated')?.total || 0);
+      return { storage: 'mysql', mysqlConfigured: true, mysqlConnected: true, ignoredStrackerSessions, reviewedStrackerSessions };
     } catch {
       return { storage: 'mysql', mysqlConfigured: true, mysqlConnected: false };
     }
