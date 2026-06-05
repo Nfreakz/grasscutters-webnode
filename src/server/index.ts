@@ -20,6 +20,7 @@ import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-ar
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
+import { getHotlapsFromMirror, getLeaderboardFromMirror, getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9362,20 +9363,81 @@ app.get('/api/stats/overview', async (_req, res) => {
 
 
 app.get('/api/hotlaps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
+    const fallbackEnabled = getQueryString(req, 'fallback', '').trim() === '1';
+    const mirrorDiagnostics = await getStrackerMirrorDiagnostics();
     const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
-    const groupMode = getQueryString(req, 'group', 'best').toLowerCase();
+    const group = getQueryString(req, 'group', 'best').toLowerCase();
+    const mirrorPayload = await getHotlapsFromMirror({
+      limit,
+      group,
+      sort: getQueryString(req, 'sort', 'fastest'),
+      valid: getQueryString(req, 'valid', '1'),
+      sinceHours: getQueryString(req, 'sinceHours', ''),
+      driver: getQueryString(req, 'driver', ''),
+      pilot: getQueryString(req, 'pilot', ''),
+      player: getQueryString(req, 'player', ''),
+      car: getQueryString(req, 'car', ''),
+      coche: getQueryString(req, 'coche', ''),
+      track: getQueryString(req, 'track', ''),
+      circuit: getQueryString(req, 'circuit', ''),
+      brand: getQueryString(req, 'brand', ''),
+      sessionType: getQueryString(req, 'sessionType', ''),
+      session: getQueryString(req, 'session', ''),
+      playerId: getQueryString(req, 'playerId', ''),
+      carId: getQueryString(req, 'carId', ''),
+      trackId: getQueryString(req, 'trackId', ''),
+      comboId: getQueryString(req, 'comboId', ''),
+      fallback: fallbackEnabled
+    });
+
+    if (mirrorPayload?.items?.length || mirrorPayload?.syncRequired === false) {
+      return res.json({
+        ...mirrorPayload,
+        mode: 'sql-mirror',
+        group,
+        stracker: mirrorPayload.stracker || {
+          exists: Boolean(mirrorDiagnostics.sqliteExists),
+          sizeBytes: mirrorDiagnostics.sqliteExists ? fs.statSync(getStrackerMirrorSqlitePath()).size : 0,
+          modifiedAt: mirrorDiagnostics.sqliteExists ? fs.statSync(getStrackerMirrorSqlitePath()).mtime.toISOString() : null
+        },
+        message: mirrorPayload.message || 'Hotlaps generadas desde SQL mirror.'
+      });
+    }
+
+    if (!fallbackEnabled) {
+      return res.json({
+        ok: true,
+        mode: 'sql-mirror',
+        group,
+        count: 0,
+        totalMatchedLaps: 0,
+        filters: summarizeFilters(req),
+        options: getQueryBool(req, 'options', false) ? [] : undefined,
+        stracker: {
+          exists: Boolean(mirrorDiagnostics.sqliteExists),
+          sizeBytes: mirrorDiagnostics.sqliteExists ? fs.statSync(getStrackerMirrorSqlitePath()).size : 0,
+          modifiedAt: mirrorDiagnostics.sqliteExists ? fs.statSync(getStrackerMirrorSqlitePath()).mtime.toISOString() : null
+        },
+        items: [],
+        hotlaps: [],
+        leaderboard: [],
+        laps: [],
+        syncRequired: true,
+        message: 'SQL mirror vacío. Ejecuta sync sTracker → SQL.'
+      });
+    }
+
+    const stracker = getSafeStrackerOrRespond(res);
+    if (!stracker?.resolvedPath) return;
     const laps = await readJoinedLaps(stracker.resolvedPath);
     const filtered = filterLaps(laps, req, { validOnly: true });
-    const items = makeBestHotlaps(filtered, groupMode).slice(0, limit);
+    const items = makeBestHotlaps(filtered, group).slice(0, limit);
 
     res.json({
       ok: true,
       mode: 'real-stracker',
-      group: groupMode,
+      group,
       count: items.length,
       totalMatchedLaps: filtered.length,
       filters: summarizeFilters(req),
@@ -9386,13 +9448,24 @@ app.get('/api/hotlaps', async (req, res) => {
         modifiedAt: stracker.modifiedAt
       },
       items,
-      message: 'Hotlaps reales generadas desde stracker.db3.'
+      hotlaps: items,
+      leaderboard: items,
+      laps: items,
+      source: 'stracker-db3-fallback',
+      mirrorDriver: mirrorDiagnostics.mirrorDriver,
+      syncRequired: false,
+      message: 'Hotlaps generadas desde stracker.db3 (fallback).'
     });
   } catch (error) {
     console.error('[GC] Error leyendo hotlaps reales:', error);
     res.status(200).json({
       ok: false,
+      mode: 'sql-mirror',
       items: [],
+      hotlaps: [],
+      leaderboard: [],
+      laps: [],
+      syncRequired: true,
       message: 'No se pudieron leer hotlaps reales desde stracker.db3.',
       error: error instanceof Error ? error.message : String(error)
     });
@@ -11849,75 +11922,57 @@ app.get('/api/gc/active-combo', async (req, res) => {
 
 app.get('/api/gc/leaderboard', async (req, res) => {
   try {
-    /* GC_HOTLAPS_ALL_TRACKS_SCOPE_FIX_V1_BACKEND */
+    const fallbackEnabled = getQueryString(req, 'fallback', '').trim() === '1';
+    const mirrorDiagnostics = await getStrackerMirrorDiagnostics();
     await readDisplayNameStoreAsync();
 
     const rawScope = getQueryString(req, 'scope', 'activeCombo').toLowerCase();
-    const globalScopes = ['global', 'all', 'history', 'historico', 'histÃ³rico', 'full', 'complete', 'completo'];
+    const globalScopes = ['global', 'all', 'history', 'historico', 'histórico', 'full', 'complete', 'completo'];
     const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
     const wantsRawGlobal = scope === 'global';
-    /* GC_HOTLAPS_LOAD_ALL_REFERENCES_V2_BACKEND */
     const rawLimit = getQueryString(req, 'limit', wantsRawGlobal ? 'all' : '30').toLowerCase();
     const wantsAllReferences = wantsRawGlobal && ['all', 'full', 'max', 'none', '0', '-1'].includes(rawLimit);
     const limit = wantsAllReferences
       ? Number.POSITIVE_INFINITY
       : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
 
-    if (wantsRawGlobal) {
-      const stracker = getSafeStrackerOrRespond(res);
-      if (!stracker?.resolvedPath) return;
+    const mirrorPayload = await getLeaderboardFromMirror({
+      scope,
+      limit: wantsAllReferences ? 50000 : limit,
+      recentLimit: wantsAllReferences ? 50000 : limit,
+      fallback: fallbackEnabled
+    });
 
-      const laps = await readJoinedLaps(stracker.resolvedPath);
-      const filtered = filterLaps(laps, req, { validOnly: false });
-      const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
-      const rows = makeBestHotlaps(filtered, groupMode === 'driver' ? 'driver' : 'all').slice(0, limit);
-      const items = rows.map((lap) => compactLapForCombo(lap));
+    if ((mirrorPayload?.leaderboard?.length || 0) > 0 || mirrorPayload?.syncRequired === false) {
+      return res.json({
+        ...mirrorPayload,
+        scope,
+        requestedScope: rawScope,
+        count: Array.isArray(mirrorPayload.leaderboard) ? mirrorPayload.leaderboard.length : 0,
+        source: 'sql-mirror',
+        message: mirrorPayload.message || 'Leaderboard generado desde SQL mirror.'
+      });
+    }
 
-      const validRows = filtered.filter((lap) => lap.valid);
-      const tracks = new Set(filtered.map((lap) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean));
-      const cars = new Set(filtered.map((lap) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean));
-      const drivers = new Set(filtered.map((lap) => String(lap.driver?.id ?? lap.driver?.name ?? '')).filter(Boolean));
-      const bestLap = validRows.slice().sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
-      const latestLap = filtered.slice().sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))[0] || null;
-
-      res.json({
+    if (!fallbackEnabled) {
+      return res.json({
         ok: true,
         mode: 'gc-data-core-v1',
         generatedAt: new Date().toISOString(),
-        source: 'gc-hotlaps-all-tracks-scope-fix-v1',
+        source: 'sql-mirror',
         scope,
         requestedScope: rawScope,
-        stracker,
-        count: items.length,
-        total: items.length,
-        limitMode: wantsAllReferences ? 'all' : 'limited',
-        totalFilteredLaps: filtered.length,
-        totalLaps: laps.length,
-        items,
-        hotlaps: items,
-        laps: items,
-        leaderboard: items,
-        data: {
-          activeCombo: null,
-          leaderboard: items,
-          laps: items,
-          items,
-          stats: {
-            totalLaps: filtered.length,
-            visibleLaps: items.length,
-            validLaps: validRows.length,
-            invalidLaps: Math.max(0, filtered.length - validRows.length),
-            driversCount: drivers.size,
-            carsCount: cars.size,
-            tracksCount: tracks.size,
-            bestLap: bestLap ? compactLapForCombo(bestLap) : null,
-            latestLap: latestLap ? compactLapForCombo(latestLap) : null
-          }
-        },
+        mirrorDriver: mirrorDiagnostics.mirrorDriver,
+        syncRequired: true,
+        count: 0,
+        items: [],
+        hotlaps: [],
+        laps: [],
+        leaderboard: [],
+        data: null,
         filters: summarizeFilters(req),
-        message: 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histÃ³rico completo.'
+        message: 'SQL mirror vacío. Ejecuta sync sTracker → SQL.'
       });
-      return;
     }
 
     const payload = await buildGcDataCorePayload(req, {
@@ -11932,7 +11987,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
       ok: payload.ok,
       mode: payload.mode,
       generatedAt: payload.generatedAt,
-      source: payload.source,
+      mirrorSource: payload.source,
       scope,
       requestedScope: rawScope,
       stracker: payload.stracker,
@@ -11948,14 +12003,16 @@ app.get('/api/gc/leaderboard', async (req, res) => {
         laps: payload.data.leaderboard,
         stats: payload.data.scopedStats
       } : null,
-      message: payload.ok ? 'Leaderboard canÃ³nico generado desde GC Data Core.' : payload.message
+      source: 'stracker-db3-fallback',
+      mirrorDriver: mirrorDiagnostics.mirrorDriver,
+      syncRequired: false,
+      message: payload.ok ? 'Leaderboard canonico generado desde GC Data Core (fallback).' : payload.message
     });
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/leaderboard:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canÃ³nico.' });
+    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], syncRequired: true, message: 'No se pudo generar el leaderboard canonico.' });
   }
 });
-
 
 /* GC_DATA_CORE_LAB_FIXES_V1_START */
 function gcLabFixTextV1(value: unknown, fallback = '') {
@@ -13111,6 +13168,7 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
+
 
 
 

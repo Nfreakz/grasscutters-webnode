@@ -83,8 +83,15 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
                 <p>Aquí solo aparecen carreras Race fuera de ACSM. Se procesan manualmente si deben contar para SR/GSR global.</p>
               </div>
               <div class="gc-actions">
+                <button class="gc-btn" id="syncStrackerSql" type="button">Sincronizar sTracker → SQL</button>
+                <a class="gc-btn" id="viewStrackerSqlDiagnostics" href="/api/gc/ratings/stracker-sql-diagnostics" target="_blank" rel="noreferrer">Ver diagnóstico</a>
                 <button class="gc-btn gc-btn--primary" id="refreshRatings" type="button">Actualizar</button>
               </div>
+            </div>
+
+            <div class="gc-admin-ratings-warning-v1" id="candidateSourceNotice">
+              <strong>Cargando candidatas...</strong>
+              <span>Esperando respuesta del mirror SQL.</span>
             </div>
 
             <div class="gc-admin-ratings-list-v1" id="detectedList">
@@ -146,6 +153,14 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
             </div>
             <div class="gc-admin-ratings-diagnostics-v1" id="diagnosticRows">
               <article><span>Estado</span><strong>Sin ejecutar</strong><p>Esperando datos.</p></article>
+            </div>
+
+            <div class="gc-admin-ratings-mirror-v1" id="mirrorStatusRows">
+              <article><span>Mirror activo</span><strong>...</strong><p>Esperando diagnóstico del mirror SQL.</p></article>
+              <article><span>Última sync</span><strong>...</strong><p>Sin información todavía.</p></article>
+              <article><span>Sesiones importadas</span><strong>...</strong><p>Sesiones guardadas en el mirror SQL.</p></article>
+              <article><span>Última sesión</span><strong>...</strong><p>Sesión más reciente importada.</p></article>
+              <article><span>Estado latestSync</span><strong>...</strong><p>Estado del último proceso de sincronización.</p></article>
             </div>
           </section>
 
@@ -495,6 +510,42 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       background: rgba(0,0,0,.16);
     }
 
+    .gc-admin-ratings-mirror-v1 {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .gc-admin-ratings-mirror-v1 article {
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent, #9dff00) 8%, transparent), transparent 10rem),
+        rgba(0,0,0,.16);
+    }
+
+    .gc-admin-ratings-mirror-v1 span {
+      color: var(--dim);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-ratings-mirror-v1 strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text);
+      font-size: .96rem;
+    }
+
+    .gc-admin-ratings-mirror-v1 p {
+      margin: 8px 0 0;
+      color: var(--soft);
+      line-height: 1.45;
+    }
+
     .gc-admin-ratings-diagnostics-v1 strong {
       display: block;
       margin-top: 5px;
@@ -544,6 +595,8 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       const els = {
         gate: $('adminGate'),
         content: $('adminContent'),
+        syncMirror: $('syncStrackerSql'),
+        viewMirrorDiagnostics: $('viewStrackerSqlDiagnostics'),
         retry: $('retryAdmin'),
         refresh: $('refreshRatings'),
         state: $('ratingsState'),
@@ -553,11 +606,13 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         reviewed: $('ratingsReviewed'),
         ignored: $('ratingsIgnored'),
         lastCheck: $('ratingsLastCheck'),
+        candidateSourceNotice: $('candidateSourceNotice'),
         detectedList: $('detectedList'),
         reviewedList: $('reviewedList'),
         ignoredList: $('ignoredList'),
         processedList: $('processedList'),
         diagnosticRows: $('diagnosticRows'),
+        mirrorStatusRows: $('mirrorStatusRows'),
       };
 
       const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
@@ -874,23 +929,72 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         `).join('');
       }
 
+      function renderMirrorDiagnostics(data) {
+        const latestSync = data?.latestSync || null;
+        const latestSession = data?.latestSession || null;
+        const mirrorDriver = data?.mirrorDriver === 'mysql' ? 'MySQL' : 'SQLite local';
+        const rows = [
+          { label:'Mirror activo', value: mirrorDriver, detail: data?.message || 'Mirror SQL disponible para sincronización y lectura.' },
+          { label:'Última sync', value: latestSync?.finishedAt ? fmtSpainDate(latestSync.finishedAt) : 'Sin sync', detail: latestSync?.startedAt ? `Inició ${fmtSpainDate(latestSync.startedAt)}` : 'Aún no se ha ejecutado una sincronización completa.' },
+          { label:'Sesiones importadas', value: formatInt(data?.sessionsImported ?? 0), detail: 'Sesiones persistidas en el mirror SQL.' },
+          { label:'Última sesión', value: latestSession ? `${latestSession.track || 'Circuito'} · #${latestSession.sessionId}` : 'Sin sesiones', detail: latestSession?.startTime ? fmtSpainDate(latestSession.startTime) : 'No hay una sesión importada reciente.' },
+          { label:'Estado latestSync', value: latestSync?.status || 'Sin estado', detail: latestSync?.message || 'Sin información del último proceso.' },
+        ];
+
+        if (els.mirrorStatusRows) {
+          els.mirrorStatusRows.innerHTML = rows.map((row) => `
+            <article>
+              <span>${esc(row.label)}</span>
+              <strong>${esc(row.value)}</strong>
+              <p>${esc(row.detail)}</p>
+            </article>
+          `).join('');
+        }
+      }
+
+      function renderCandidateSource(data) {
+        const candidateSource = data?.candidateSource || 'none';
+        const mirrorDriver = data?.mirrorDriver || 'sqlite';
+        const syncRequired = data?.syncRequired === true;
+        const label = candidateSource === 'sql-mirror'
+          ? `Candidatas desde SQL mirror · ${mirrorDriver === 'mysql' ? 'MySQL' : 'SQLite local'}`
+          : candidateSource === 'stracker-db3-fallback'
+            ? 'Candidatas desde sTracker DB3 · fallback'
+            : 'Sin candidatas importadas';
+        const message = syncRequired
+          ? 'No hay carreras sincronizadas en el mirror SQL. Pulsa Sincronizar sTracker → SQL.'
+          : candidateSource === 'sql-mirror'
+            ? 'La lista viene del mirror SQL, no de stracker.db3.'
+            : 'Fallback activo solo para revisión puntual.';
+
+        if (els.candidateSourceNotice) {
+          els.candidateSourceNotice.innerHTML = `
+            <strong>${esc(label)}</strong>
+            <span>${esc(message)}</span>
+          `;
+        }
+      }
+
       async function load() {
         els.state.textContent = 'Cargando';
         els.state.style.color = 'var(--soft)';
         els.lastCheck.textContent = nowText();
 
-        const [championship, candidates, diagnostics] = await Promise.all([
+        const [championship, candidates, diagnostics, mirrorDiagnostics] = await Promise.all([
           fetchJson('/api/gc/ratings/championship?refresh=1'),
           fetchJson('/api/gc/ratings/stracker-candidates?limit=200&minDrivers=3&minTotalLaps=1'),
           fetchJson('/api/gc/ratings/diagnostics'),
+          fetchJson('/api/gc/ratings/stracker-sql-diagnostics'),
         ]);
 
         const series = championship.championship?.strackerSeries || {};
+        renderCandidateSource(candidates);
         renderProcessed(series.processedEvents || []);
         renderDetected(candidates.candidates || []);
         renderIgnored(candidates.ignoredSessions || []);
         renderReviewed(candidates.reviewedSessions || []);
         renderDiagnostics(diagnostics);
+        renderMirrorDiagnostics(mirrorDiagnostics);
 
         els.storage.textContent = diagnostics.diagnostics?.storage || championship.diagnostics?.storage || '--';
         els.state.textContent = 'OK';
@@ -1089,6 +1193,33 @@ Esta carrera quedar? registrada, pero no modificar? SR/GSR.`);
         console.error(error);
         alert(error instanceof Error ? error.message : 'No se pudo actualizar.');
       }));
+
+      els.syncMirror?.addEventListener('click', async () => {
+        const button = els.syncMirror;
+        if (!button) return;
+        const oldText = button.textContent || 'Sincronizar sTracker → SQL';
+        button.disabled = true;
+        button.textContent = 'Sincronizando...';
+        try {
+          const payload = await fetchJson('/api/gc/ratings/sync-stracker-sql', {
+            method:'POST',
+            body: JSON.stringify({})
+          });
+          console.info('[GC Admin Ratings] Sync mirror SQL', payload);
+          await load();
+        } catch (error) {
+          console.error(error);
+          alert(error instanceof Error ? error.message : 'No se pudo sincronizar sTracker.');
+        } finally {
+          button.disabled = false;
+          button.textContent = oldText;
+        }
+      });
+
+      els.viewMirrorDiagnostics?.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.open(els.viewMirrorDiagnostics?.href || '/api/gc/ratings/stracker-sql-diagnostics', '_blank', 'noopener,noreferrer');
+      });
 
       els.retry?.addEventListener('click', () => boot());
 

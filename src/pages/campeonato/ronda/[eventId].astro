@@ -25,6 +25,7 @@ try {
         <span class="gc-public-kicker" id="acsrRoundStatus">Ronda</span>
         <h1 class="gc-public-title" id="acsrRoundTitle">Cargando resultados...</h1>
         <p class="gc-public-description" id="acsrRoundMeta">Consultando ACSM.</p>
+        <div class="gc-acsr-source-badges" id="acsrRoundBadges" aria-label="Origen de los datos"></div>
       </div>
       <figure class="gc-acsr-round-map gc-acsr-round-photo" id="acsrRoundMapFigure" hidden>
         <img id="acsrRoundMap" src="" alt="" loading="lazy" />
@@ -148,6 +149,48 @@ try {
         radial-gradient(circle at 80% 20%, rgba(126,255,39,.12), transparent 26rem),
         rgba(255,255,255,.024);
       box-shadow:0 22px 80px rgba(0,0,0,.35);
+    }
+
+    .gc-acsr-source-badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .gc-acsr-source-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border:1px solid rgba(126,255,39,.18);
+      border-radius:999px;
+      background:rgba(0,0,0,.24);
+      color:var(--gc-mk-muted,#9ca59a);
+      font-size:.7rem;
+      font-weight:900;
+      letter-spacing:.07em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    .gc-acsr-source-badge::before{
+      content:'';
+      width:6px;
+      height:6px;
+      border-radius:999px;
+      background:var(--gc-mk-accent,#80ff1f);
+      box-shadow:0 0 12px color-mix(in srgb, var(--gc-mk-accent,#80ff1f) 45%, transparent);
+    }
+
+    .gc-acsr-source-badge--muted{
+      color:var(--gc-mk-text,#f5fff0);
+      border-color:rgba(126,255,39,.22);
+    }
+
+    .gc-acsr-source-badge--warning{
+      color:#ffcf7a;
+      border-color:rgba(255,207,122,.24);
     }
 
     .gc-acsr-round-map{
@@ -427,7 +470,8 @@ try {
         entrantsMeta: $('acsrRoundEntrantsMeta'),
         raceBody: $('acsrRaceBody'),
         qualyBody: $('acsrQualyBody'),
-        sessionGrid: $('acsrSessionGrid')
+        sessionGrid: $('acsrSessionGrid'),
+        badges: $('acsrRoundBadges')
       };
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
@@ -650,9 +694,22 @@ try {
       const renderError = (message) => {
         els.title.textContent = 'No se pudo cargar la ronda';
         els.meta.textContent = message || 'Error desconocido.';
+        if (els.badges) els.badges.innerHTML = '';
         els.raceBody.innerHTML = `<tr><td colspan="12">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
         els.qualyBody.innerHTML = `<tr><td colspan="6">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
         els.sessionGrid.innerHTML = '<article class="gc-public-card"><strong>Sin datos</strong></article>';
+      };
+
+      const renderBadges = (event, data) => {
+        if (!els.badges) return;
+        const badges = [];
+        if (data?.eventSource === 'sql-mirror') {
+          badges.push('<span class="gc-acsr-source-badge gc-acsr-source-badge--muted">Datos desde SQL mirror</span>');
+        }
+        if (data?.ratingEligible === false || String(data?.reviewStatus || '') === 'reviewed-unrated') {
+          badges.push('<span class="gc-acsr-source-badge gc-acsr-source-badge--warning">No cuenta SR/GSR</span>');
+        }
+        els.badges.innerHTML = badges.join('');
       };
 
       const render = (data) => {
@@ -667,6 +724,7 @@ try {
         const winner = event.winner || raceResults[0] || null;
         const fastest = event.fastestLap || null;
 
+        renderBadges(event, data);
         els.status.textContent = statusLabel[event.status] || event.status || 'Ronda';
         els.title.textContent = event.name || `Ronda ${event.index}`;
         els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
