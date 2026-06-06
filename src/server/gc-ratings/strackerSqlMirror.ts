@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import type { Pool } from 'mysql2/promise';
 import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName, formatLapMs, textValue } from './utils';
@@ -639,7 +639,7 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
       SELECT s.SessionId
       FROM Session s
       WHERE LOWER(s.SessionType) IN ('race', 'qualy', 'practice')
-      ORDER BY s.StartTimeDate ASC, s.SessionId ASC
+      ORDER BY s.StartTimeDate DESC, s.SessionId DESC
     `).map((row: any) => toInt(row.SessionId, 0)).filter(Boolean);
     const limit = Math.max(1, Math.min(5000, toInt(options.limit, sourceIds.length || 1)));
     const sessionIds = sourceIds.slice(0, limit);
@@ -847,7 +847,17 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
     if (!session) return null;
 
     const [driverRows, lapRows, incidentRows] = await Promise.all([
-      backend.query('SELECT * FROM gc_stracker_session_driver WHERE session_id = ? ORDER BY position ASC, best_lap_ms ASC, id ASC', [sessionId]),
+      backend.query(`
+        SELECT * FROM gc_stracker_session_driver
+        WHERE session_id = ?
+        ORDER BY
+          CASE WHEN position > 0 THEN 0 ELSE 1 END,
+          position ASC,
+          laps DESC,
+          race_time_ms ASC,
+          best_lap_ms ASC,
+          id ASC
+      `, [sessionId]),
       backend.query('SELECT * FROM gc_stracker_lap WHERE session_id = ? ORDER BY lap_number ASC, id ASC', [sessionId]),
       backend.query('SELECT * FROM gc_stracker_incident WHERE session_id = ? ORDER BY lap_number ASC, id ASC', [sessionId])
     ]);
@@ -1200,6 +1210,11 @@ export async function getHotlapsFromMirror(options: {
   }
 
   const items = mirrorBuildBestHotlaps(filtered, groupMode).slice(0, base.limit);
+  const mirrorBlock = {
+    driver: base.diagnostics.mirrorDriver,
+    syncRequired: Number(base.diagnostics.sessionsImported || 0) === 0,
+    sessionsImported: Number(base.diagnostics.sessionsImported || 0)
+  };
   await base.backend.close();
   return {
     ok: true as const,
@@ -1224,8 +1239,10 @@ export async function getHotlapsFromMirror(options: {
       sessionType: sessionTypeFilter || null,
       sinceHours: Number.isFinite(sinceHours) ? String(sinceHours) : null
     },
+    mirror: mirrorBlock,
     options: options.fallback ? { fallback: true } : undefined,
     stracker: {
+      ...mirrorBlock,
       exists: Boolean(base.diagnostics.sqliteExists),
       sizeBytes: base.diagnostics.sqliteExists ? fs.statSync(SQLITE_MIRROR_PATH).size : 0,
       modifiedAt: base.diagnostics.sqliteExists ? fs.statSync(SQLITE_MIRROR_PATH).mtime.toISOString() : null
@@ -1287,6 +1304,11 @@ export async function getLeaderboardFromMirror(options: {
   const bestLap = [...scopedLaps].sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
   const stats = mirrorLapSummary(base.laps);
   const scopedStats = mirrorLapSummary(scopedLaps);
+  const mirrorBlock = {
+    driver: base.diagnostics.mirrorDriver,
+    syncRequired: Number(base.diagnostics.sessionsImported || 0) === 0,
+    sessionsImported: Number(base.diagnostics.sessionsImported || 0)
+  };
   const activeCombo = latestSession ? {
     id: String(activeComboId ?? latestSession.session_id),
     comboId: activeComboId,
@@ -1324,6 +1346,7 @@ export async function getLeaderboardFromMirror(options: {
     hotlaps: leaderboard,
     laps: leaderboard,
     leaderboard,
+    mirror: mirrorBlock,
     data: {
       activeCombo,
       latestLap,
@@ -1387,6 +1410,11 @@ export async function getTrackStatsFromMirror(options: { limit?: number } = {}) 
     .sort((left, right) => right.lapsCount - left.lapsCount || String(left.trackName).localeCompare(String(right.trackName)));
 
   await base.backend.close();
+  const mirrorBlock = {
+    driver: base.diagnostics.mirrorDriver,
+    syncRequired: Number(base.diagnostics.sessionsImported || 0) === 0,
+    sessionsImported: Number(base.diagnostics.sessionsImported || 0)
+  };
   return {
     ok: true as const,
     source: 'sql-mirror' as const,
@@ -1394,6 +1422,7 @@ export async function getTrackStatsFromMirror(options: { limit?: number } = {}) 
     syncRequired: Number(base.diagnostics.sessionsImported || 0) === 0,
     count: items.length,
     items,
+    mirror: mirrorBlock,
     message: Number(base.diagnostics.sessionsImported || 0) === 0
       ? 'SQL mirror vacío. Ejecuta sync sTracker → SQL.'
       : 'Track stats generados desde SQL mirror.'
@@ -1515,3 +1544,4 @@ export async function getStrackerMirrorDiagnostics() {
     await backend.close();
   }
 }
+

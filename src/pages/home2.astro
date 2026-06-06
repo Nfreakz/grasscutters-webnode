@@ -264,24 +264,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
             <img class="gc-home2-combo-rank__avatar" src="/images/pilot-avatar-default.png" alt="" width="24" height="24" loading="lazy" decoding="async" />
             <em>--</em>
           </div>
-          <div class="gc-home2-combo-rank gc-home2-combo-rank--loading">
-            <span class="gc-home2-rank-badge">6</span>
-            <div><strong>--</strong><small>Esperando datos</small></div>
-            <img class="gc-home2-combo-rank__avatar" src="/images/pilot-avatar-default.png" alt="" width="24" height="24" loading="lazy" decoding="async" />
-            <em>--</em>
-          </div>
-          <div class="gc-home2-combo-rank gc-home2-combo-rank--loading">
-            <span class="gc-home2-rank-badge">7</span>
-            <div><strong>--</strong><small>Esperando datos</small></div>
-            <img class="gc-home2-combo-rank__avatar" src="/images/pilot-avatar-default.png" alt="" width="24" height="24" loading="lazy" decoding="async" />
-            <em>--</em>
-          </div>
-          <div class="gc-home2-combo-rank gc-home2-combo-rank--loading">
-            <span class="gc-home2-rank-badge">8</span>
-            <div><strong>--</strong><small>Esperando datos</small></div>
-            <img class="gc-home2-combo-rank__avatar" src="/images/pilot-avatar-default.png" alt="" width="24" height="24" loading="lazy" decoding="async" />
-            <em>--</em>
-          </div>
         </div>
       </article>
 
@@ -2320,14 +2302,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
         const diagnostics = await fetchJson('/api/gc/diagnostics') || await fetchJson('/api/status') || await fetchJson('/api/stats/overview');
-        const combosPayload = await fetchJson('/api/gc/combos?limit=1&sort=recent') || await fetchJson('/api/combos/stats?limit=1&sort=recent') || await fetchJson('/api/combos?limit=1&sort=recent');
+        const homeSummaryPayload = await fetchJson('/api/gc/home-summary?scope=activeCombo&limit=5');
         const recentPayload = await fetchJson('/api/gc/recent-laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/hotlaps?limit=20');
-        const leaderboardPayload =
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200') ||
-          await fetchJson('/api/gc/recent-laps?limit=200&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=200');
 
         const comboStandoutsPayload =
           await fetchJson('/api/gc/recent-laps?limit=3000&sort=recent&valid=all') ||
@@ -2348,19 +2324,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
           if (totalLaps) setText('[data-home2-laps]', totalLaps);
         }
 
-        const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
-        const track = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
-        const cars = firstValue(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']);
-        const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
-        const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
-        const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
-        const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
-        const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']) || carList[0] || '--';
-        const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime'])) || '--';
+        const activeCombo = homeSummaryPayload?.activeCombo || {};
+        const topComboTimes = Array.isArray(homeSummaryPayload?.topComboTimes) ? homeSummaryPayload.topComboTimes : [];
+        const track = firstValue(activeCombo, ['track.name', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
+        const trackCode = firstValue(activeCombo, ['track.code', 'trackRaw', 'trackCode']) || '';
+        const cars = firstValue(activeCombo, ['cars', 'publicComboCars', 'carNames', 'mainVariantAllCars']);
+        const carList = Array.isArray(cars)
+          ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean)
+          : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const totalComboLaps = firstValue(activeCombo, ['lapsCount', 'totalLaps', 'validLaps', 'summary.totalLaps']);
+        const comboDrivers = firstValue(activeCombo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
+        const bestDriver = firstValue(activeCombo, ['bestDriverName', 'bestPilotName', 'bestLap.driverName']) || topComboTimes[0]?.driverName || '--';
+        const bestCar = firstValue(activeCombo, ['bestCarName', 'best.carName', 'bestLap.carName']) || topComboTimes[0]?.carName || carList[0] || '--';
+        const bestTime = formatLap(firstValue(activeCombo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'bestLap.lapTime'])) || topComboTimes[0]?.lapTime || '--';
 
         setText('[data-home2-track]', track);
         setText('[data-home2-now-title]', track);
-        const inferredCountry = inferTrackCountry(track, combo) || '--';
+        const inferredCountry = inferTrackCountry(track, activeCombo) || '--';
         setText('[data-home2-track-country]', inferredCountry);
         setText('[data-home2-now-country]', inferredCountry);
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
@@ -2374,7 +2354,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         if (totalComboLaps) setText('[data-home2-laps]', totalComboLaps);
         if (comboDrivers) setText('[data-home2-drivers]', comboDrivers);
 
-        const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
+        const bestAvatar = pilotAvatarUrl(activeCombo.best || topComboTimes[0] || activeCombo);
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
         await setTrackImage(track);
@@ -2388,26 +2368,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
         await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
 
-        const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
-        const activeComboRankingRows = comboDetailLeaderboardRows.length
-          ? comboDetailLeaderboardRows
-          : comboRankingRowsFromCombo(combo, track, carList);
-        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, track, carList, { preserveOnEmpty: true });
+        const renderedComboRankingRows = renderComboRanking(topComboTimes, track, carList, { preserveOnEmpty: false });
         if (!renderedComboRankingRows.length) {
-          console.warn('[GC Home] Top Combo no se ha sobrescrito: faltan filas del combo activo', {
-            track: track,
+          console.warn('[GC Home] Top Combo vacío desde SQL mirror', {
+            track,
             cars: carList,
-            comboRows: activeComboRankingRows.length
+            trackCode,
+            dataSource: homeSummaryPayload?.dataSource || 'sql-mirror',
+            syncRequired: Boolean(homeSummaryPayload?.syncRequired)
           });
         }
 
 
         renderRaceStandoutsV1([
           ...getArray(comboStandoutsPayload),
-          ...getArray(leaderboardPayload),
-          ...getArray(combo.laps),
-          ...getArray(combo.bestLaps),
-          ...getArray(combo.leaderboard),
+          ...getArray(activeCombo.laps),
+          ...getArray(activeCombo.bestLaps),
+          ...getArray(activeCombo.leaderboard),
           ...getArray(recentPayload)
         ], track, carList);
 

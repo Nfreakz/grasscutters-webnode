@@ -346,7 +346,7 @@ function buildManualStrackerEvent(session: PlainObject, drivers: PlainObject[], 
   const eventId = textValue(options.eventId, strackerManualEventId(sessionId));
   const eventName = textValue(
     options.name,
-    `Carrera sTracker #${sessionId} Â· ${track}`
+    `Carrera sTracker #${sessionId} · ${track}`
   );
 
   return {
@@ -460,8 +460,8 @@ function manualEventsFromSnapshot(snapshot: RatingsSnapshot, existingEvents: Pla
       scheduledAt: first?.eventDate || first?.processedAt || null,
       completedAt: first?.eventDate || first?.processedAt || null,
       startedAt: first?.eventDate || first?.processedAt || null,
-      track: displayTrackName(first?.eventName?.split('Â·').pop()?.trim(), 'sTracker'),
-      trackRaw: cleanDisplayText(first?.eventName?.split('Â·').pop()?.trim(), 'sTracker'),
+      track: displayTrackName(first?.eventName?.split('·').pop()?.trim(), 'sTracker'),
+      trackRaw: cleanDisplayText(first?.eventName?.split('·').pop()?.trim(), 'sTracker'),
       strackerSessionId: sessionId,
       manualStrackerSessionId: sessionId,
       raceResults: []
@@ -569,7 +569,7 @@ function buildStrackerEventFromRatingResults(eventId: string, snapshot: RatingsS
           collisionsCar: lap.collisionsCar,
           collisionsEnv: lap.collisionsEnv,
           srDelta: lap.srDelta,
-          notes: textValue(lap.notes).split(' Â· ').filter(Boolean)
+          notes: textValue(lap.notes).split(' · ').filter(Boolean)
         }))
       }
     };
@@ -587,7 +587,7 @@ function buildStrackerEventFromRatingResults(eventId: string, snapshot: RatingsS
     id: eventId,
     source: 'stracker-manual',
     status: 'completed',
-    name: cleanDisplayText(`Carrera sTracker #${sessionId || ''} Â· ${trackSource}`.trim(), `Carrera sTracker #${sessionId || ''}`),
+    name: cleanDisplayText(`Carrera sTracker #${sessionId || ''} · ${trackSource}`.trim(), `Carrera sTracker #${sessionId || ''}`),
     scheduledAt,
     completedAt: first.eventDate || first.processedAt || null,
     startedAt: first.eventDate || first.processedAt || null,
@@ -734,7 +734,7 @@ function buildStrackerMirrorEventFromDetail(detail: PlainObject, snapshot: Ratin
             ? driverIncidents.map((incident) => {
               const parts = [incident.type || 'Incidente STRacker'];
               if (incident.lapNumber !== null && incident.lapNumber !== undefined) parts.push(`vuelta ${incident.lapNumber}`);
-              return parts.join(' Â· ');
+              return parts.join(' · ');
             })
             : []
         },
@@ -783,7 +783,7 @@ function buildStrackerMirrorEventFromDetail(detail: PlainObject, snapshot: Ratin
     .filter((row) => safeFiniteNumber(row.bestLapMs, 0) > 0)
     .sort((left, right) => safeFiniteNumber(left.bestLapMs, 0) - safeFiniteNumber(right.bestLapMs, 0))[0] || null;
   const sessionTrack = displayTrackName(session.track || session.trackRaw || review?.track || review?.trackRaw, 'Circuito');
-  const sessionName = cleanDisplayText(`Carrera sTracker #${sessionId || ''} Â· ${sessionTrack}`.trim(), `Carrera no oficial ${sessionId}`);
+  const sessionName = cleanDisplayText(`Carrera sTracker #${sessionId || ''} · ${sessionTrack}`.trim(), `Carrera no oficial ${sessionId}`);
   const sessionStart = session.startTime || review?.startTime || null;
   const sessionEnd = session.endTime || review?.endTime || null;
   const lapCount = safeFiniteNumber(session.lapCount, 0) || Math.max(...raceResults.map((row) => safeFiniteNumber(row.numLaps, 0)), 0);
@@ -1052,7 +1052,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
               collisionsCar: lap.collisionsCar,
               collisionsEnv: lap.collisionsEnv,
               srDelta: lap.srDelta,
-              notes: lap.notes ? lap.notes.split(' Â· ') : []
+              notes: lap.notes ? lap.notes.split(' · ') : []
             }))
           }
         };
@@ -2342,7 +2342,7 @@ export class GcRatingsService {
         mirrorDriver,
         ratingEligible: false,
         reviewStatus: reviewedSession?.status || null,
-        message: 'Carrera no encontrada en SQL mirror. Ejecuta sync sTracker â†’ SQL.'
+        message: 'Carrera no encontrada en SQL mirror. Ejecuta sync sTracker → SQL.'
       };
     }
 

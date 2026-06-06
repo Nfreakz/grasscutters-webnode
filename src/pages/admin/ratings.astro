@@ -1,4 +1,4 @@
----
+﻿---
 import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
@@ -7,9 +7,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
   <div class="gc-page gc-admin-page-clean gc-admin-ratings-v1">
     <section class="gc-hero gc-hero--compact gc-admin-ratings-hero-v1">
       <div>
-        <span class="gc-kicker">Administración</span>
+        <span class="gc-kicker">AdministraciÃ³n</span>
         <h1 class="gc-title">Ratings, ACSM y carreras sTracker.</h1>
-        <p class="gc-subtitle">ACSM completed se procesa automáticamente. Las carreras fuera de ACSM se revisan manualmente desde aquí.</p>
+        <p class="gc-subtitle">ACSM completed se procesa automÃ¡ticamente. Las carreras fuera de ACSM se revisan manualmente desde aquÃ­.</p>
 
         <div class="gc-admin-ratings-chips-v1">
           <span>SR/GSR global</span>
@@ -30,7 +30,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           <div class="gc-status-row"><span>Pendientes</span><strong id="ratingsPending">...</strong></div>
           <div class="gc-status-row"><span>Revisadas</span><strong id="ratingsReviewed">...</strong></div>
           <div class="gc-status-row"><span>Ignoradas</span><strong id="ratingsIgnored">...</strong></div>
-          <div class="gc-status-row"><span>Último check</span><strong id="ratingsLastCheck">...</strong></div>
+          <div class="gc-status-row"><span>Ãšltimo check</span><strong id="ratingsLastCheck">...</strong></div>
         </div>
       </aside>
     </section>
@@ -46,7 +46,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         </div>
       </div>
       <div class="gc-slab">
-        <p>Inicia sesión con una cuenta administradora para gestionar carreras detectadas.</p>
+        <p>Inicia sesiÃ³n con una cuenta administradora para gestionar carreras detectadas.</p>
         <div class="gc-actions">
           <a class="gc-btn gc-btn--primary" href="/login">Login</a>
           <button class="gc-btn" id="retryAdmin" type="button">Reintentar</button>
@@ -69,7 +69,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         <article>
           <span>Duplicados</span>
           <strong>Filtrados</strong>
-          <small>Fuera de ACSM siempre requiere revisión manual.</small>
+          <small>Fuera de ACSM siempre requiere revisiÃ³n manual.</small>
         </article>
       </section>
 
@@ -80,11 +80,11 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
               <div>
                 <span class="gc-kicker">Detectadas pendientes</span>
                 <h2>Sesiones Race de sTracker.</h2>
-                <p>Aquí solo aparecen carreras Race fuera de ACSM. Se procesan manualmente si deben contar para SR/GSR global.</p>
+                <p>AquÃ­ solo aparecen carreras Race fuera de ACSM. Se procesan manualmente si deben contar para SR/GSR global.</p>
               </div>
               <div class="gc-actions">
                 <button class="gc-btn" id="syncStrackerSql" type="button">Sincronizar sTracker → SQL</button>
-                <a class="gc-btn" id="viewStrackerSqlDiagnostics" href="/api/gc/ratings/stracker-sql-diagnostics" target="_blank" rel="noreferrer">Ver diagnóstico</a>
+                <a class="gc-btn" id="viewStrackerSqlDiagnostics" href="/api/gc/ratings/stracker-sql-diagnostics" target="_blank" rel="noreferrer">Ver diagnÃ³stico</a>
                 <button class="gc-btn gc-btn--primary" id="refreshRatings" type="button">Actualizar</button>
               </div>
             </div>
@@ -146,7 +146,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           <section class="gc-section gc-admin-ratings-card-v1">
             <div class="gc-section-head">
               <div>
-                <span class="gc-kicker">Diagnóstico</span>
+                <span class="gc-kicker">DiagnÃ³stico</span>
                 <h2>Estado SR/GSR</h2>
                 <p>Resumen rápido de persistencia y eventos.</p>
               </div>
@@ -770,22 +770,22 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
                   event.linkedToAcsm ? { label:'Vinculada ACSM', tone:'processed' } : null
                 ])}
                 <strong>${esc(title)}</strong>
-                <p>${esc(event.trackRaw && event.trackRaw !== event.track ? event.trackRaw : 'Sesi?n Race detectada fuera de ACSM.')}</p>
+                <p>${esc(event.trackRaw && event.trackRaw !== event.track ? event.trackRaw : 'Sesión Race detectada fuera de ACSM.')}</p>
                 ${infoGrid(sessionDetails(event))}
-                <div class="gc-admin-ratings-warning-v1">Esta carrera est? fuera de ACSM y todav?a no cuenta. Puedes procesarla para SR/GSR global o dejarla registrada como carrera revisada no puntuable.</div>
+                <div class="gc-admin-ratings-warning-v1">Esta carrera está fuera de ACSM y todavía no cuenta. Puedes procesarla para SR/GSR global o dejarla registrada como carrera revisada no puntuable.</div>
                 <div class="gc-admin-ratings-controls-v1">
                   <label class="gc-admin-ratings-checkbox-v1" for="${esc(checkboxId)}">
                     <input id="${esc(checkboxId)}" type="checkbox" data-counts-for-ratings ${event.recommended ? 'checked' : ''} />
                     <span>
                       <strong>Contar para SR/GSR global</strong>
-                      <small>${esc(event.recommended ? 'Recomendada por mínimo 3 pilotos y vueltas detectadas.' : 'D?jala desmarcada si solo quieres registrar la carrera como revisada no puntuable.')}</small>
+                      <small>${esc(event.recommended ? 'Recomendada por mínimo 3 pilotos y vueltas detectadas.' : 'Déjala desmarcada si solo quieres registrar la carrera como revisada no puntuable.')}</small>
                     </span>
                   </label>
                 </div>
                 <div class="gc-admin-ratings-meta-v1">
                   <small>${esc(event.eventId)}</small>
                   <small>Manual fuera de ACSM</small>
-                  <small>Pendiente de revisi?n</small>
+                  <small>Pendiente de revisión</small>
                 </div>
               </div>
               <div class="gc-actions">
@@ -803,7 +803,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const rows = Array.isArray(events) ? events : [];
 
         els.reviewedList.innerHTML = rows.length ? rows.map((event) => {
-          const title = `${event.track || event.name || event.eventId || `Session ${event.sessionId}`} ? ${fmtSpainDate(event.startTime || event.completedAt || event.updatedAt || event.createdAt)}`;
+          const title = `${event.track || event.name || event.eventId || `Session ${event.sessionId}`} · ${fmtSpainDate(event.startTime || event.completedAt || event.updatedAt || event.createdAt)}`;
           return `
             <article class="gc-admin-ratings-item-v1 is-reviewed">
               <div>
@@ -821,11 +821,11 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
                 </div>
               </div>
               <div class="gc-actions">
-                <button class="gc-btn" type="button" data-unreview-session="${esc(event.sessionId)}" data-unreview-event="${esc(event.eventId || '')}" data-event-label="${esc(title)}">Quitar revisi?n</button>
+                <button class="gc-btn" type="button" data-unreview-session="${esc(event.sessionId)}" data-unreview-event="${esc(event.eventId || '')}" data-event-label="${esc(title)}">Quitar revisión</button>
               </div>
             </article>
           `;
-        }).join('') : emptyCard('Vac?o', 'Sin carreras revisadas no puntuables', 'Cuando revises una sesi?n sin SR/GSR aparecer? aqu?.');
+        }).join('') : emptyCard('Vacío', 'Sin carreras revisadas no puntuables', 'Cuando revises una sesión sin SR/GSR aparecerá aquí.');
 
         els.reviewed.textContent = String(rows.length);
       }
@@ -856,7 +856,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
               </div>
             </article>
           `;
-        }).join('') : emptyCard('Vacío', 'Sin carreras ignoradas', 'Las sesiones descartadas aparecerán aquí.');
+        }).join('') : emptyCard('VacÃ­o', 'Sin carreras ignoradas', 'Las sesiones descartadas aparecerÃ¡n aquÃ­.');
 
         els.ignored.textContent = String(rows.length);
       }
@@ -902,7 +902,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
               </div>
             </article>
           `;
-        }).join('') : emptyCard('Vacío', 'Sin carreras sTracker procesadas', 'Cuando proceses una sesión aparecerá aquí.');
+        }).join('') : emptyCard('VacÃ­o', 'Sin carreras sTracker procesadas', 'Cuando proceses una sesiÃ³n aparecerÃ¡ aquÃ­.');
 
         els.processed.textContent = String(rows.length);
       }
@@ -1022,12 +1022,12 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         if (ignoreButton) {
           const sessionId = ignoreButton.getAttribute('data-ignore-session');
           const eventId = ignoreButton.getAttribute('data-ignore-event');
-          const label = ignoreButton.getAttribute('data-event-label') || `sesión sTracker ${sessionId}`;
+          const label = ignoreButton.getAttribute('data-event-label') || `sesiÃ³n sTracker ${sessionId}`;
           if (!sessionId) return;
 
-          const reason = window.prompt(`¿Ignorar ${label}?
+          const reason = window.prompt(`Â¿Ignorar ${label}?
 
-No contará para SR/GSR y dejará de salir como pendiente. Puedes escribir un motivo opcional:`, 'Test / carrera no válida');
+No contarÃ¡ para SR/GSR y dejarÃ¡ de salir como pendiente. Puedes escribir un motivo opcional:`, 'Test / carrera no vÃ¡lida');
           if (reason === null) return;
 
           ignoreButton.disabled = true;
@@ -1040,7 +1040,7 @@ No contará para SR/GSR y dejará de salir como pendiente. Puedes escribir un mo
             if (eventId) params.set('eventId', eventId);
             if (reason.trim()) params.set('reason', reason.trim());
             const payload = await fetchJson(`/api/gc/ratings/ignore-stracker-session?${params.toString()}`, { method:'POST' });
-            console.info('[GC Admin Ratings] Ignorada sesión sTracker', payload);
+            console.info('[GC Admin Ratings] Ignorada sesiÃ³n sTracker', payload);
             await load();
           } catch (error) {
             console.error(error);
@@ -1058,9 +1058,9 @@ No contará para SR/GSR y dejará de salir como pendiente. Puedes escribir un mo
           const label = unignoreButton.getAttribute('data-event-label') || eventId || `stracker:${sessionId}`;
           if (!sessionId && !eventId) return;
 
-          const ok = window.confirm(`¿Recuperar ${label}?
+          const ok = window.confirm(`Â¿Recuperar ${label}?
 
-Si sigue en sTracker volverá a aparecer como pendiente. No modifica SR/GSR.`);
+Si sigue en sTracker volverÃ¡ a aparecer como pendiente. No modifica SR/GSR.`);
           if (!ok) return;
 
           unignoreButton.disabled = true;
@@ -1072,7 +1072,7 @@ Si sigue en sTracker volverá a aparecer como pendiente. No modifica SR/GSR.`);
             if (sessionId) params.set('sessionId', sessionId);
             if (eventId) params.set('eventId', eventId);
             const payload = await fetchJson(`/api/gc/ratings/unignore-stracker-session?${params.toString()}`, { method:'POST' });
-            console.info('[GC Admin Ratings] Recuperada sesión sTracker', payload);
+            console.info('[GC Admin Ratings] Recuperada sesiÃ³n sTracker', payload);
             await load();
           } catch (error) {
             console.error(error);
@@ -1110,7 +1110,7 @@ Si sigue en sTracker volver? a aparecer como pendiente. No modifica SR/GSR.`);
             console.error(error);
             alert(error instanceof Error ? error.message : 'No se pudo quitar la revisi?n.');
             unreviewButton.disabled = false;
-            unreviewButton.textContent = oldText || 'Quitar revisi?n';
+            unreviewButton.textContent = oldText || 'Quitar revisión';
           }
           return;
         }
@@ -1122,9 +1122,9 @@ Si sigue en sTracker volver? a aparecer como pendiente. No modifica SR/GSR.`);
           const label = removeButton.getAttribute('data-event-label') || eventId;
           if (!eventId) return;
 
-          const ok = window.confirm(`¿Quitar ${label} del SR/GSR global?
+          const ok = window.confirm(`Â¿Quitar ${label} del SR/GSR global?
 
-Se recalculará SR/GSR desde cero con las carreras restantes. La sesión volverá a pendientes si sigue en sTracker.`);
+Se recalcularÃ¡ SR/GSR desde cero con las carreras restantes. La sesiÃ³n volverÃ¡ a pendientes si sigue en sTracker.`);
           if (!ok) return;
 
           removeButton.disabled = true;
@@ -1151,7 +1151,7 @@ Se recalculará SR/GSR desde cero con las carreras restantes. La sesión volver�
         if (!button) return;
 
         const sessionId = button.getAttribute('data-process-session');
-        const label = button.getAttribute('data-event-label') || `sesión sTracker ${sessionId}`;
+        const label = button.getAttribute('data-event-label') || `sesiÃ³n sTracker ${sessionId}`;
         if (!sessionId) return;
 
         const card = button.closest('.gc-admin-ratings-item-v1');
@@ -1227,3 +1227,4 @@ Esta carrera quedar? registrada, pero no modificar? SR/GSR.`);
     })();
   </script>
 </AppLayout>
+
