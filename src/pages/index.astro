@@ -1613,23 +1613,14 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const host = $('[data-home2-combo-ranking]');
         if (!host) return [];
 
-        // Fuente única para este bloque: el leaderboard de /api/gc/combos/:comboId.
-        // No volver a filtrar por track/coche ni mezclar con hotlaps/recent-laps:
-        // ese filtrado ya lo hace la página de combo, que es la referencia correcta.
-        const cleanRows = getArray(rows)
-          .filter((row) => rankTimeValue(row) !== Number.POSITIVE_INFINITY)
-          .slice(0, 8);
+        const cleanRows = Array.isArray(rows) ? rows.filter(Boolean).slice(0, 8) : [];
 
         if (!cleanRows.length) {
           if (options.preserveOnEmpty) {
-            console.warn('[GC Home] Top Combo preservado: no hay filas válidas desde leaderboard del combo activo', { trackName, activeCars });
+            console.warn('[GC Home] Top Combo preservado: no hay filas válidas del combo activo', { trackName, activeCars });
             return [];
           }
-          host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty">' +
-            '<span class="gc-home2-rank-badge gc-home2-rank-badge--plain">--</span>' +
-            '<div><strong>Sin ranking disponible</strong><small>Esperando leaderboard del combo</small></div>' +
-            '<em>--</em>' +
-          '</div>';
+          host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>Sin ranking disponible</strong><small>Esperando datos del combo</small></div></div>';
           return [];
         }
 
@@ -1637,7 +1628,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         host.innerHTML = cleanRows.map((lap, index) => {
           const driver = firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'driver.name', 'player.name', 'DriverName', 'steamName']) || 'Piloto';
-          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'carVisibleName', 'vehicle', 'model', 'car.displayName', 'car.name', 'Car']) || 'Coche';
+          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'carVisibleName', 'vehicle', 'car.displayName', 'car.name', 'Car']) || 'Coche';
           const rawTime = firstValue(lap, ['lapTimeFormatted', 'timeFormatted', 'formattedLapTime', 'bestLapTimeFormatted', 'lapTime', 'lapMs', 'lapTimeMs', 'time', 'bestLap', 'bestLapTime']);
           const avatar = pilotAvatarUrl(lap);
           const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
@@ -1652,6 +1643,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         return cleanRows;
       };
+
 
 
 
@@ -2819,7 +2811,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const activeComboRankingRows = comboDetailLeaderboardRows.length
           ? comboDetailLeaderboardRows
           : comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
-        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: false });
+        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
         if (!renderedComboRankingRows.length) {
           console.warn('[GC Home] Top Combo no se ha sobrescrito: faltan filas del combo activo', {
             track: trackAssetName || rawTrackName || track,

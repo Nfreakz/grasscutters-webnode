@@ -1179,96 +1179,31 @@
         return null;
       };
 
-      const renderNine = async () => {
-        const host = document.querySelector('[data-home2-combo-ranking]');
+      const refreshComboLapTotal = async () => {
         const comboLapsEl = document.querySelector('[data-home2-server-combo-laps]');
-        if (!host && !comboLapsEl) return;
+        if (!comboLapsEl) return;
 
-        const activeTrack = document.querySelector('[data-home2-now-title]')?.textContent
-          || document.querySelector('[data-home2-track]')?.textContent
-          || '';
-
-        const activeCarsText = [
-          document.querySelector('[data-home2-cars]')?.textContent,
-          document.querySelector('[data-home2-best-car]')?.textContent
-        ].filter(Boolean).join(' ');
-
-        const activeCars = activeCarsText
-          .split(/[,/·|]+/)
-          .map((part) => part.replace(/esperando datos del combo/ig, '').trim())
-          .filter(Boolean);
-
-        if (comboLapsEl) {
-          const directComboLaps = await fetchDirectComboLapTotal();
-          comboLapsEl.textContent = directComboLaps !== null ? new Intl.NumberFormat('es-ES').format(directComboLaps) : '--';
-          comboLapsEl.title = directComboLaps !== null
-            ? 'Vueltas del combo desde endpoint directo'
-            : 'Sin dato directo fiable de vueltas del combo';
-        }
-
-        const rows = await fetchRows();
-        if (!rows.length) return;
-
-        const trackRows = rows
-          .filter((row) => rowTrackMatches(row, activeTrack));
-
-        let comboRows = trackRows
-          .filter((row) => rowCarMatches(row, activeCars));
-
-        // Si el nombre exacto del coche no coincide entre API/web,
-        // no dejamos el bloque a 0: manda el circuito activo.
-        if (comboRows.length < 9) comboRows = trackRows.length ? trackRows : rows;
-
-        if (!host) return;
-
-        const byDriver = new Map();
-        comboRows
-          .filter((row) => parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime'])) !== Number.POSITIVE_INFINITY)
-          .forEach((row) => {
-            const name = driverName(row);
-            const guid = firstValue(row, ['playerId','driverId','pilotId','steamGuid','guid','driver.guid','player.guid','DriverGuid']);
-            const key = slugify(guid || name);
-            if (!key) return;
-            const current = byDriver.get(key);
-            const time = parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']));
-            const currentTime = current ? parseMs(firstValue(current, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime'])) : Number.POSITIVE_INFINITY;
-            if (!current || time < currentTime) byDriver.set(key, row);
-          });
-
-        const timeOf = (row) => parseMs(firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']));
-
-        const bestRows = [...byDriver.values()]
-          .sort((a, b) => timeOf(a) - timeOf(b))
-          .slice(0, 9);
-
-        // No rellenamos con vueltas duplicadas: así Top Combo mantiene el comportamiento correcto.
-        // Si existen 9 pilotos únicos del combo, aparece la novena fila. Si no, no inventa datos.
-        if (!bestRows.length) return;
-
-        host.innerHTML = bestRows.map((row, index) => {
-          const badge = index === 0
-            ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold" aria-label="1º">🥇</span>'
-            : index === 1
-              ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--silver" aria-label="2º">🥈</span>'
-              : index === 2
-                ? '<span class="gc-home2-rank-badge gc-home2-rank-badge--bronze" aria-label="3º">🥉</span>'
-                : `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain">${index + 1}</span>`;
-
-          const rawTime = firstValue(row, ['lapTimeFormatted','timeFormatted','formattedLapTime','bestLapTimeFormatted','lapTime','lapMs','lapTimeMs','time','bestLap','bestLapTime']);
-          const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
-
-          return `<div class="gc-home2-combo-rank${compactClass}">` +
-            badge +
-            `<div><strong>${driverName(row)}</strong><small>${carName(row)}</small></div>` +
-            `<img class="gc-home2-combo-rank__avatar" src="${avatarUrl(row)}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" />` +
-            `<em>${formatLap(rawTime)}</em>` +
-          '</div>';
-        }).join('');
+        const directComboLaps = await fetchDirectComboLapTotal();
+        comboLapsEl.textContent = directComboLaps !== null ? new Intl.NumberFormat('es-ES').format(directComboLaps) : '--';
+        comboLapsEl.title = directComboLaps !== null
+          ? 'Vueltas del combo desde endpoint directo'
+          : 'Sin dato directo fiable de vueltas del combo';
       };
 
-      renderNine();
-      window.setTimeout(renderNine, 1200);
-      window.setTimeout(renderNine, 3200);
+      /* GC_TOP_COMBO_SINGLE_SOURCE_V98
+         Este componente antes volvía a pintar [data-home2-combo-ranking]
+         varias veces con setTimeout usando endpoints legacy. Eso pisaba el ranking
+         correcto de la home: se veía placeholder, luego 8/9 filas, y finalmente
+         otra lista distinta.
+
+         A partir de ahora HeroBlendTuner NO toca Top Combo. El único dueño de
+         [data-home2-combo-ranking] es el script de index/home2, usando la misma
+         fuente que la tabla "Mejores pilotos del combo".
+      */
+
+      refreshComboLapTotal();
+      window.setTimeout(refreshComboLapTotal, 1200);
+      window.setTimeout(refreshComboLapTotal, 3200);
     };
 
     if (document.readyState === 'loading') {
