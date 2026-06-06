@@ -1613,14 +1613,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const host = $('[data-home2-combo-ranking]');
         if (!host) return [];
 
-        const cleanRows = bestRowsForCombo(rows, trackName, activeCars).slice(0, 8);
+        // Fuente única para este bloque: el leaderboard de /api/gc/combos/:comboId.
+        // No volver a filtrar por track/coche ni mezclar con hotlaps/recent-laps:
+        // ese filtrado ya lo hace la página de combo, que es la referencia correcta.
+        const cleanRows = getArray(rows)
+          .filter((row) => rankTimeValue(row) !== Number.POSITIVE_INFINITY)
+          .slice(0, 8);
 
         if (!cleanRows.length) {
           if (options.preserveOnEmpty) {
-            console.warn('[GC Home] Top Combo preservado: no hay filas válidas del combo activo', { trackName, activeCars });
+            console.warn('[GC Home] Top Combo preservado: no hay filas válidas desde leaderboard del combo activo', { trackName, activeCars });
             return [];
           }
-          host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>Sin ranking disponible</strong><small>Esperando datos del combo</small></div></div>';
+          host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty">' +
+            '<span class="gc-home2-rank-badge gc-home2-rank-badge--plain">--</span>' +
+            '<div><strong>Sin ranking disponible</strong><small>Esperando leaderboard del combo</small></div>' +
+            '<em>--</em>' +
+          '</div>';
           return [];
         }
 
@@ -1628,7 +1637,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         host.innerHTML = cleanRows.map((lap, index) => {
           const driver = firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'driver.name', 'player.name', 'DriverName', 'steamName']) || 'Piloto';
-          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'carVisibleName', 'vehicle', 'car.displayName', 'car.name', 'Car']) || 'Coche';
+          const car = firstValue(lap, ['carName', 'car', 'carDisplayName', 'carVisibleName', 'vehicle', 'model', 'car.displayName', 'car.name', 'Car']) || 'Coche';
           const rawTime = firstValue(lap, ['lapTimeFormatted', 'timeFormatted', 'formattedLapTime', 'bestLapTimeFormatted', 'lapTime', 'lapMs', 'lapTimeMs', 'time', 'bestLap', 'bestLapTime']);
           const avatar = pilotAvatarUrl(lap);
           const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
@@ -1644,60 +1653,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return cleanRows;
       };
 
-
-
-      const renderHomeSummaryTopCombo = (rows, options = {}) => {
-        const host = $('[data-home2-combo-ranking]');
-        if (!host) return [];
-
-        const cleanRows = Array.isArray(rows) ? rows.filter(Boolean).slice(0, 5) : [];
-
-        if (!cleanRows.length) {
-          host.innerHTML = `
-            <div class="gc-home2-combo-rank gc-home2-combo-rank--empty">
-              <span class="gc-home2-rank-badge gc-home2-rank-badge--plain">--</span>
-              <div><strong>Sin tiempos</strong><small>SQL mirror sin datos del combo</small></div>
-              <img class="gc-home2-combo-rank__avatar" src="/images/pilot-avatar-default.png" alt="" width="24" height="24" loading="lazy" decoding="async" />
-              <em>--</em>
-            </div>
-          `;
-          return [];
-        }
-
-        syncBestFromRow(cleanRows[0]);
-
-        host.innerHTML = cleanRows.map((lap, index) => {
-          const driver =
-            firstValue(lap, ['driverName', 'playerName', 'pilotName', 'name', 'driver.name', 'player.name']) ||
-            `Piloto ${index + 1}`;
-
-          const car =
-            firstValue(lap, ['carName', 'car.name', 'carCode', 'vehicle', 'model']) ||
-            'Coche';
-
-          const rawTime =
-            firstValue(lap, ['lapTimeFormatted', 'lapTime', 'timeFormatted', 'bestLap', 'bestLapTime']) ||
-            '--';
-
-          const avatar = pilotAvatarUrl(lap);
-
-          return `
-            <div class="gc-home2-combo-rank ${index >= 3 ? 'gc-home2-combo-rank--compact' : ''}">
-              ${comboRankBadge(index)}
-              <div><strong>${driver}</strong><small>${car}</small></div>
-              <img class="gc-home2-combo-rank__avatar" src="${avatar}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" />
-              <em>${formatLap(rawTime)}</em>
-            </div>
-          `;
-        }).join('');
-
-        if (options?.dataSource || options?.mirrorDriver) {
-          host.dataset.source = options.dataSource || '';
-          host.dataset.mirrorDriver = options.mirrorDriver || '';
-        }
-
-        return cleanRows;
-      };
 
 
       const escapeAttr = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
@@ -2761,7 +2716,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
         const diagnostics = await fetchJson('/api/gc/diagnostics') || await fetchJson('/api/status') || await fetchJson('/api/stats/overview');
-        const homeSummaryPayload = await fetchJson('/api/gc/home-summary?scope=activeCombo&limit=5');
         const combosPayload = await fetchJson('/api/gc/combos?limit=1&sort=recent') || await fetchJson('/api/combos/stats?limit=1&sort=recent') || await fetchJson('/api/combos?limit=1&sort=recent');
         const recentPayload = await fetchJson('/api/gc/recent-laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/hotlaps?limit=20');
         const leaderboardPayload =
@@ -2790,8 +2744,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           if (totalLaps) setText('[data-home2-laps]', totalLaps);
         }
 
-        const combo = homeSummaryPayload?.activeCombo || getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
-        const topComboTimes = Array.isArray(homeSummaryPayload?.topComboTimes) ? homeSummaryPayload.topComboTimes.slice(0, 5) : [];
+        const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
         const rawTrackName = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
         const trackHelper = window.GCHomeTrackResolver || null;
         const track = trackHelper?.displayName ? trackHelper.displayName(rawTrackName) : rawTrackName;
@@ -2800,9 +2753,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
         const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
         const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
-        const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName', 'bestLap.driverName']) || topComboTimes[0]?.driverName || topComboTimes[0]?.playerName || '--';
-        const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName', 'bestLap.carName']) || topComboTimes[0]?.carName || carList[0] || '--';
-        const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime', 'bestLap.lapTime'])) || topComboTimes[0]?.lapTimeFormatted || topComboTimes[0]?.lapTime || '--';
+        const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
+        const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']) || carList[0] || '--';
+        const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime'])) || '--';
 
         setText('[data-home2-track]', track);
         setText('[data-home2-now-title]', track);
@@ -2862,16 +2815,16 @@ const home2ArchiveSeed = (archiveStats.items || [])
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
         await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
 
-        const renderedComboRankingRows = renderHomeSummaryTopCombo(topComboTimes, {
-          dataSource: homeSummaryPayload?.dataSource || homeSummaryPayload?.source || 'sql-mirror',
-          mirrorDriver: homeSummaryPayload?.mirrorDriver || ''
-        });
+        const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
+        const activeComboRankingRows = comboDetailLeaderboardRows.length
+          ? comboDetailLeaderboardRows
+          : comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
+        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: false });
         if (!renderedComboRankingRows.length) {
-          console.warn('[GC Home] Top Combo vacío desde /api/gc/home-summary', {
+          console.warn('[GC Home] Top Combo no se ha sobrescrito: faltan filas del combo activo', {
             track: trackAssetName || rawTrackName || track,
             cars: carList,
-            syncRequired: Boolean(homeSummaryPayload?.syncRequired),
-            dataSource: homeSummaryPayload?.dataSource || homeSummaryPayload?.source || 'sql-mirror'
+            comboRows: activeComboRankingRows.length
           });
         }
 
