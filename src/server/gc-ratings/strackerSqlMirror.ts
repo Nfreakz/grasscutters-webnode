@@ -630,6 +630,7 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
   let incidentsImported = 0;
 
   try {
+    await ensureStrackerMirrorSchema();
     const tableCheck = verifyStrackerTables(sourceDb);
     if (!tableCheck.ok) throw new Error(`Faltan tablas en stracker: ${tableCheck.missing.join(', ')}`);
     await ensureBackendSchema(backend);
@@ -801,6 +802,7 @@ async function queryMirrorSessionRows(backend: MirrorBackend, limit: number) {
 }
 
 export async function getStrackerRaceCandidatesFromMirror(options: { limit?: number } = {}) {
+  await ensureStrackerMirrorSchema();
   const backend = await openMirrorBackend(false);
   try {
     const rows = await queryMirrorSessionRows(backend, Math.max(1, Math.min(500, toInt(options.limit, 80))));
@@ -837,6 +839,7 @@ export async function getStrackerRaceCandidatesFromMirror(options: { limit?: num
 }
 
 export async function getStrackerSessionDetailFromMirror(sessionId: number) {
+  await ensureStrackerMirrorSchema();
   const backend = await openMirrorBackend(false);
   try {
     const sessionRows = await backend.query('SELECT * FROM gc_stracker_session WHERE session_id = ? LIMIT 1', [sessionId]);
@@ -1111,6 +1114,7 @@ function mirrorLapSummary(laps: MirrorLapRow[]) {
 }
 
 async function getMirrorHotlapBase(options: { limit?: number } = {}) {
+  await ensureStrackerMirrorSchema();
   const backend = await openMirrorBackend(false);
   try {
     const diagnostics = await getStrackerMirrorDiagnostics();
@@ -1403,15 +1407,17 @@ export async function getStrackerMirrorDiagnostics() {
   const strackerDbPath = resolveStrackerDbPath();
   const strackerDbExists = Boolean(strackerDbPath && fs.existsSync(strackerDbPath));
 
-  if (driver === 'sqlite' && !sqliteExists) {
+  try {
+    await ensureStrackerMirrorSchema();
+  } catch (error) {
     return {
-      ok: true as const,
+      ok: false as const,
       source: 'gc-ratings-v1' as const,
-      mirrorDriver: 'sqlite' as const,
+      mirrorDriver: driver,
       mysqlConfigured: hasMysqlConfig(),
       dbName: getMysqlDatabaseName() || null,
       sqlitePath,
-      sqliteExists: false,
+      sqliteExists,
       strackerDbPath: strackerDbPath || null,
       strackerDbExists,
       tables: {
@@ -1424,7 +1430,8 @@ export async function getStrackerMirrorDiagnostics() {
       latestSync: null,
       sessionsImported: 0,
       latestSession: null,
-      message: 'Mirror SQLite local activo.'
+      phase: 'schema',
+      message: 'No se pudieron crear las tablas del SQL mirror.'
     };
   }
 
