@@ -224,13 +224,105 @@ function stateFromRow(row: Partial<DriverRatingState> & { driverKey: string; dis
   } satisfies DriverRatingState;
 }
 
+
+type LeaderboardDriverState = DriverRatingState & {
+  profilePlayerId?: number | null;
+  mergedDriverKeys?: string[];
+};
+
+function driverNameIdentityKey(value: unknown) {
+  return normalizeDriverNameKey(value) || 'unknown';
+}
+
+function driverUpdatedMs(driver: Partial<DriverRatingState>) {
+  return Math.max(parseDateMs(driver.updatedAt), parseDateMs(driver.lastRaceAt), parseDateMs(driver.createdAt));
+}
+
+function preferredDriverKeyForMergedDrivers(drivers: LeaderboardDriverState[]) {
+  const steam = drivers.find((driver) => textValue(driver.driverKey).startsWith('steam:'));
+  if (steam) return steam.driverKey;
+  const player = drivers.find((driver) => textValue(driver.driverKey).startsWith('player:'));
+  if (player) return player.driverKey;
+  return drivers[0]?.driverKey || 'name:unknown';
+}
+
+function bestDisplayNameForMergedDrivers(drivers: LeaderboardDriverState[]) {
+  const sorted = [...drivers].sort((left, right) =>
+    driverUpdatedMs(right) - driverUpdatedMs(left) ||
+    textValue(right.displayName).length - textValue(left.displayName).length
+  );
+  return sorted.find((driver) => textValue(driver.displayName))?.displayName || 'Piloto';
+}
+
+function latestRatingDriverForMergedDrivers(drivers: LeaderboardDriverState[], rating: 'sr' | 'gsr') {
+  return [...drivers]
+    .filter((driver) => safeFiniteNumber(rating === 'sr' ? driver.srScore : driver.gsrRating, 0) > 0)
+    .sort((left, right) =>
+      driverUpdatedMs(right) - driverUpdatedMs(left) ||
+      safeFiniteNumber(right.racesCount, 0) - safeFiniteNumber(left.racesCount, 0)
+    )[0] || drivers[0];
+}
+
+function mergeDriverIdentityGroup(drivers: DriverRatingState[]): LeaderboardDriverState {
+  const group = drivers.map((driver) => ({ ...driver })) as LeaderboardDriverState[];
+  const newest = [...group].sort((left, right) => driverUpdatedMs(right) - driverUpdatedMs(left))[0] || group[0];
+  const srSource = latestRatingDriverForMergedDrivers(group, 'sr');
+  const gsrSource = latestRatingDriverForMergedDrivers(group, 'gsr');
+  const profilePlayerId = group.find((driver) => safeFiniteNumber(driver.strackerPlayerId, 0) > 0)?.strackerPlayerId ?? null;
+  const steamGuid = group.find((driver) => textValue(driver.steamGuid))?.steamGuid ?? null;
+  const createdAt = [...group].sort((left, right) => parseDateMs(left.createdAt) - parseDateMs(right.createdAt))[0]?.createdAt || newest.createdAt;
+
+  return {
+    ...newest,
+    driverKey: preferredDriverKeyForMergedDrivers(group),
+    steamGuid,
+    strackerPlayerId: profilePlayerId,
+    profilePlayerId,
+    displayName: bestDisplayNameForMergedDrivers(group),
+    srScore: srSource.srScore,
+    srClass: srSource.srClass,
+    gsrMu: gsrSource.gsrMu,
+    gsrSigma: gsrSource.gsrSigma,
+    gsrRating: gsrSource.gsrRating,
+    gsrClass: gsrSource.gsrClass,
+    racesCount: group.reduce((sum, driver) => sum + safeFiniteNumber(driver.racesCount, 0), 0),
+    cleanRaces: group.reduce((sum, driver) => sum + safeFiniteNumber(driver.cleanRaces, 0), 0),
+    wins: group.reduce((sum, driver) => sum + safeFiniteNumber(driver.wins, 0), 0),
+    podiums: group.reduce((sum, driver) => sum + safeFiniteNumber(driver.podiums, 0), 0),
+    incidentPointsTotal: roundTo(group.reduce((sum, driver) => sum + safeFiniteNumber(driver.incidentPointsTotal, 0), 0), 2),
+    lastDeltaSr: srSource.lastDeltaSr,
+    lastDeltaGsr: gsrSource.lastDeltaGsr,
+    lastEventId: newest.lastEventId,
+    lastRaceAt: newest.lastRaceAt,
+    createdAt,
+    updatedAt: newest.updatedAt,
+    mergedDriverKeys: [...new Set(group.map((driver) => driver.driverKey).filter(Boolean))]
+  };
+}
+
+function mergeDriversForPublicLeaderboard(drivers: DriverRatingState[]) {
+  const buckets = new Map<string, DriverRatingState[]>();
+  for (const driver of drivers) {
+    const key = `name:${driverNameIdentityKey(driver.displayName)}`;
+    const bucket = buckets.get(key) || [];
+    bucket.push(driver);
+    buckets.set(key, bucket);
+  }
+
+  return [...buckets.values()].map((group) => group.length > 1 ? mergeDriverIdentityGroup(group) : { ...group[0], profilePlayerId: group[0].strackerPlayerId, mergedDriverKeys: [group[0].driverKey] } as LeaderboardDriverState);
+}
+
 function buildLeaderboard(drivers: DriverRatingState[]) {
-  const sr = [...drivers]
+  const publicDrivers = mergeDriversForPublicLeaderboard(drivers);
+
+  const sr = [...publicDrivers]
     .filter((driver) => Number.isFinite(Number(driver.srScore)) && Number(driver.racesCount) > 0)
     .sort((left, right) => right.srScore - left.srScore || left.incidentPointsTotal - right.incidentPointsTotal || left.displayName.localeCompare(right.displayName))
     .map((driver, index) => ({
       position: index + 1,
       driverKey: driver.driverKey,
+      profilePlayerId: driver.profilePlayerId ?? driver.strackerPlayerId ?? null,
+      mergedDriverKeys: driver.mergedDriverKeys || [driver.driverKey],
       driver: driver.displayName,
       sr: driver.srScore,
       srClass: driver.srClass,
@@ -240,12 +332,14 @@ function buildLeaderboard(drivers: DriverRatingState[]) {
       lastDelta: driver.lastDeltaSr
     }));
 
-  const gsr = [...drivers]
+  const gsr = [...publicDrivers]
     .filter((driver) => Number.isFinite(Number(driver.gsrRating)) && Number(driver.racesCount) > 0)
     .sort((left, right) => right.gsrRating - left.gsrRating || right.wins - left.wins || left.displayName.localeCompare(right.displayName))
     .map((driver, index) => ({
       position: index + 1,
       driverKey: driver.driverKey,
+      profilePlayerId: driver.profilePlayerId ?? driver.strackerPlayerId ?? null,
+      mergedDriverKeys: driver.mergedDriverKeys || [driver.driverKey],
       driver: driver.displayName,
       gsr: driver.gsrRating,
       gsrClass: driver.gsrClass,

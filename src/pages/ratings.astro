@@ -667,10 +667,11 @@ import '../styles/public/gc-rating-badges.css';
       };
 
       const driverLink = (row, label) => {
+        const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
         const driverKey = String(row?.driverKey || '');
-        if (driverKey.startsWith('player:')) {
-          const playerId = encodeURIComponent(driverKey.replace('player:', ''));
-          return `<a href="/pilotos/${playerId}">${escapeHtml(label)}</a>`;
+        const playerId = directPlayerId || (driverKey.startsWith('player:') ? driverKey.replace('player:', '') : '');
+        if (playerId) {
+          return `<a href="/pilotos/${encodeURIComponent(String(playerId))}">${escapeHtml(label)}</a>`;
         }
         return `<strong>${escapeHtml(label)}</strong>`;
       };
@@ -705,7 +706,7 @@ import '../styles/public/gc-rating-badges.css';
       const driverCell = (row) => `
         <div class="gc-ratings-driver">
           ${driverLink(row, row.driver || 'Piloto')}
-          <small>${escapeHtml(row.driverKey || 'Sin perfil enlazado')}</small>
+          ${row.profilePlayerId || String(row.driverKey || '').startsWith('player:') ? '<small>Perfil público</small>' : ''}
         </div>
       `;
 

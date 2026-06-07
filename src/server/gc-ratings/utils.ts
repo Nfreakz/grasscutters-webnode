@@ -72,6 +72,11 @@ export function displayTrackName(value: unknown, fallback = 'Circuito') {
     imola: 'Imola',
     vallelunga: 'Vallelunga',
     estoril: 'Estoril',
+    fuji: 'Fuji Speedway',
+    fuji_speedway: 'Fuji Speedway',
+    fuji_speedway_gp: 'Fuji Speedway GP',
+    fuji_speedway_gp_japan: 'Fuji Speedway GP',
+    fuji_international_speedway: 'Fuji Speedway',
     bathurst: 'Bathurst',
     hockenheim: 'Hockenheim'
   };
