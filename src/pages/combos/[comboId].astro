@@ -1028,6 +1028,84 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       return `${count} ${count === 1 ? 'coche permitido' : 'coches permitidos'}`;
     }
 
+
+    function normalizeComboText(value) {
+      return String(value || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\b(rt|ks|fn|acu|mx)\b/g, ' ')
+        .replace(/\b(layout|circuit|circuito|track)\b/g, ' ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function trackLooksSame(left, right) {
+      const a = normalizeComboText(left);
+      const b = normalizeComboText(right);
+      if (!a || !b) return false;
+      if (a === b || a.includes(b) || b.includes(a)) return true;
+      const aWords = new Set(a.split(' ').filter((word) => word.length > 2));
+      const bWords = b.split(' ').filter((word) => word.length > 2);
+      if (!aWords.size || !bWords.length) return false;
+      const hits = bWords.filter((word) => aWords.has(word)).length;
+      return hits >= Math.min(2, bWords.length);
+    }
+
+    function normalizeCarKeyForPackage(car) {
+      return normalizeComboText(cleanCarName(car));
+    }
+
+    function mergeCarPackages(primary, extra) {
+      const map = new Map();
+      [...(primary || []), ...(extra || [])].forEach((car) => {
+        const name = cleanCarName(car);
+        const key = normalizeCarKeyForPackage(car);
+        if (!name || !key || map.has(key)) return;
+        map.set(key, typeof car === 'string' ? { name: car } : car);
+      });
+      return Array.from(map.values()).sort((a, b) => cleanCarName(a).localeCompare(cleanCarName(b)));
+    }
+
+    function eventCarsFromChampionshipEvent(event) {
+      if (!event) return [];
+      const rawCars = Array.isArray(event.cars) ? event.cars : [];
+      return rawCars.map((car) => {
+        const name = cleanCarName(car);
+        return name ? { ...(typeof car === 'object' ? car : {}), name } : null;
+      }).filter(Boolean);
+    }
+
+    async function findChampionshipCarPackageForTrack(trackName) {
+      try {
+        const response = await fetch('/api/community/acsr-championship?refresh=1', { credentials:'same-origin', cache:'no-store' });
+        const payload = await response.json().catch(() => null);
+        if (!payload?.ok) return [];
+
+        const events = Array.isArray(payload.events) ? payload.events : [];
+        const matchingEvents = events.filter((event) => {
+          const candidateTrack = event.track || event.trackRaw || event.trackName || event.name || '';
+          return trackLooksSame(trackName, candidateTrack);
+        });
+
+        const chosen = matchingEvents.find((event) => event.status !== 'completed') || matchingEvents[0] || null;
+        const cars = eventCarsFromChampionshipEvent(chosen);
+
+        if (cars.length) {
+          console.info('[GC combo detail] Coches permitidos suplementados desde ACSM championship', {
+            trackName,
+            event: chosen?.name || chosen?.id || null,
+            cars: cars.length
+          });
+        }
+
+        return cars;
+      } catch (error) {
+        console.warn('[GC combo detail] No se pudo consultar ACSM championship para coches permitidos', error);
+        return [];
+      }
+    }
+
     async function load() {
       const comboId = pathComboId();
 
@@ -1049,7 +1127,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         const item = data.item;
         const summary = item.summary || {};
         const track = item.track || summary.track || {};
-        const cars = Array.isArray(item.cars || summary.cars) ? (item.cars || summary.cars) : [];
+        const rawCars = Array.isArray(item.cars || summary.cars) ? (item.cars || summary.cars) : [];
+        let cars = rawCars;
         const carSummary = item.carSummary || summary.carSummary || 'Sin coches detectados';
         const memberIds = Array.isArray(item.memberComboIds) ? item.memberComboIds : [];
         const memberCount = memberIds.length || 1;
@@ -1058,6 +1137,14 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         const recentLaps = Array.isArray(item.recentLaps) ? item.recentLaps : [];
 
         const trackName = cleanTrackText(track.name || track.id || track || summary.track || item.trackName || item.trackId) || 'Circuito';
+        const championshipCars = await findChampionshipCarPackageForTrack(trackName);
+        if (championshipCars.length > cars.length) {
+          cars = mergeCarPackages(cars, championshipCars);
+          item.cars = cars;
+          summary.cars = cars;
+          summary.carsCount = cars.length;
+        }
+
         const fastestDriver = summary.bestLap?.driverName || summary.bestLap?.playerName || leaderboard[0]?.driverName || leaderboard[0]?.playerName || '';
         const fastestCar = bestLapCarName(summary, leaderboard);
         const fastestTime = summary.bestLapTime || summary.bestLap?.lapTime || leaderboard[0]?.lapTime || '--';
