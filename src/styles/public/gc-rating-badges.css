@@ -10,42 +10,81 @@
   --badge-text: #96ff2f;
   --badge-soft: rgba(245, 248, 241, .68);
 
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 25px;
-  padding: 0 9px;
-  border: 1px solid var(--badge-border);
-  border-radius: 999px;
+  position:relative;
+  isolation:isolate;
+  display:inline-grid;
+  grid-template-columns:auto auto;
+  align-items:center;
+  justify-content:center;
+  column-gap:7px;
+  min-height:28px;
+  padding:5px 11px 5px 13px;
+  border:1px solid color-mix(in srgb, var(--badge-text) 54%, rgba(255,255,255,.10));
+  border-left-width:4px;
+  border-radius:9px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.045), rgba(0,0,0,.10)),
-    var(--badge-bg);
-  color: var(--badge-text);
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.018)),
+    linear-gradient(90deg, color-mix(in srgb, var(--badge-text) 12%, transparent), rgba(0,0,0,.14) 42%),
+    rgba(3,10,7,.64);
+  color:var(--badge-text);
   box-shadow:
-    0 0 0 1px rgba(0,0,0,.16),
-    0 0 18px color-mix(in srgb, var(--badge-text) 18%, transparent);
-  font-family: var(--gc-mono, "JetBrains Mono", monospace);
-  font-size: 11px;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  vertical-align: middle;
+    inset 0 1px 0 rgba(255,255,255,.06),
+    inset 0 -1px 0 rgba(0,0,0,.28),
+    0 0 0 1px rgba(0,0,0,.25),
+    0 0 18px color-mix(in srgb, var(--badge-text) 14%, transparent);
+  font-family:var(--gc-mono, "JetBrains Mono", monospace);
+  font-size:11px;
+  font-weight:950;
+  line-height:1;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  vertical-align:middle;
+  overflow:hidden;
+}
+
+.gc-rating-badge::before{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:transparent;
+  box-shadow:0 0 18px color-mix(in srgb, var(--badge-text) 70%, transparent);
+  z-index:-1;
+}
+
+.gc-rating-badge::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.10), transparent 24%),
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--badge-text) 14%, transparent), transparent 54%);
+  opacity:.75;
+  pointer-events:none;
+  z-index:-1;
 }
 
 .gc-rating-badge__type {
-  color: var(--badge-soft);
-  opacity: .86;
-  font-size: 9px;
-  letter-spacing: .10em;
+  color:rgba(245,248,241,.74);
+  opacity:.95;
+  font-size:9px;
+  letter-spacing:.11em;
 }
 
 .gc-rating-badge strong {
-  color: var(--badge-text);
-  font: inherit;
-  letter-spacing: .04em;
+  color:var(--badge-text);
+  background:transparent;
+  padding:0;
+  border-radius:0;
+  box-shadow:none;
+  font:inherit;
+  letter-spacing:.045em;
+  text-shadow:
+    0 1px 0 rgba(0,0,0,.95),
+    1px 0 0 rgba(0,0,0,.75),
+    -1px 0 0 rgba(0,0,0,.75),
+    0 0 10px color-mix(in srgb, var(--badge-text) 38%, transparent);
 }
 
 .gc-rating-badge small {
@@ -56,8 +95,9 @@
 }
 
 .gc-rating-badge--compact {
-  min-width: 54px;
-  padding-inline: 8px;
+  min-width:0;
+  min-height:26px;
+  padding:4px 9px 4px 11px;
 }
 
 .gc-rating-badge--compact .gc-rating-badge__type {
@@ -70,76 +110,76 @@
 
 /* SR · Safety Rating */
 .gc-rating-badge--sr-aplus {
-  --badge-border: rgba(150,255,47,.72);
-  --badge-bg: rgba(150,255,47,.14);
-  --badge-text: #96ff2f;
+  --badge-border: rgba(255,209,102,.78);
+  --badge-bg: rgba(255,209,102,.14);
+  --badge-text: #ffd166;
 }
 
 .gc-rating-badge--sr-a {
-  --badge-border: rgba(110,232,95,.64);
-  --badge-bg: rgba(110,232,95,.12);
-  --badge-text: #6ee85f;
+  --badge-border: rgba(150,255,47,.72);
+  --badge-bg: rgba(150,255,47,.13);
+  --badge-text: #96ff2f;
 }
 
 .gc-rating-badge--sr-b {
-  --badge-border: rgba(33,200,214,.62);
+  --badge-border: rgba(33,200,214,.68);
   --badge-bg: rgba(33,200,214,.12);
   --badge-text: #21c8d6;
 }
 
 .gc-rating-badge--sr-c {
-  --badge-border: rgba(232,186,8,.68);
-  --badge-bg: rgba(232,186,8,.13);
-  --badge-text: #e8ba08;
+  --badge-border: rgba(85,129,231,.68);
+  --badge-bg: rgba(85,129,231,.12);
+  --badge-text: #75a0ff;
 }
 
 .gc-rating-badge--sr-d {
-  --badge-border: rgba(255,138,42,.66);
+  --badge-border: rgba(255,138,42,.68);
   --badge-bg: rgba(255,138,42,.13);
   --badge-text: #ff8a2a;
 }
 
 .gc-rating-badge--sr-e {
-  --badge-border: rgba(255,87,87,.66);
+  --badge-border: rgba(255,87,87,.70);
   --badge-bg: rgba(255,87,87,.13);
   --badge-text: #ff5757;
 }
 
 /* GSR · GrassCutters Skill Rating */
 .gc-rating-badge--gsr-s {
-  --badge-border: rgba(217,164,65,.76);
-  --badge-bg: rgba(217,164,65,.14);
-  --badge-text: #ffd166;
+  --badge-border: rgba(176,239,255,.92);
+  --badge-bg: rgba(176,239,255,.14);
+  --badge-text: #b0efff;
 }
 
 .gc-rating-badge--gsr-a {
-  --badge-border: rgba(181,68,226,.72);
-  --badge-bg: rgba(181,68,226,.14);
-  --badge-text: #d36aff;
+  --badge-border: rgba(255,54,94,.88);
+  --badge-bg: rgba(255,54,94,.14);
+  --badge-text: #ff365e;
 }
 
 .gc-rating-badge--gsr-b {
-  --badge-border: rgba(85,129,231,.72);
-  --badge-bg: rgba(85,129,231,.14);
-  --badge-text: #75a0ff;
+  --badge-border: rgba(62,137,255,.88);
+  --badge-bg: rgba(62,137,255,.14);
+  --badge-text: #3e89ff;
 }
 
 .gc-rating-badge--gsr-c {
-  --badge-border: rgba(45,212,191,.68);
-  --badge-bg: rgba(45,212,191,.12);
-  --badge-text: #2dd4bf;
+  --badge-border: rgba(31,216,116,.88);
+  --badge-bg: rgba(31,216,116,.14);
+  --badge-text: #1fd874;
 }
 
 .gc-rating-badge--gsr-d {
-  --badge-border: rgba(124,139,120,.62);
-  --badge-bg: rgba(124,139,120,.12);
-  --badge-text: #a8b8a2;
+  --badge-border: rgba(255,169,40,.88);
+  --badge-bg: rgba(255,169,40,.14);
+  --badge-text: #ffa928;
 }
 
 .gc-rating-badge--gsr-rookie {
-  --badge-border: rgba(156,163,175,.62);
-  --badge-bg: rgba(156,163,175,.12);
-  --badge-text: #c4cbd5;
+  --badge-border: rgba(177,102,255,.84);
+  --badge-bg: rgba(177,102,255,.13);
+  --badge-text: #b166ff;
 }
 
 /* Fallbacks */

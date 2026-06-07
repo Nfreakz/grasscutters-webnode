@@ -423,6 +423,35 @@ import '../styles/public/gc-rating-badges.css';
       line-height:1.15;
     }
 
+
+    .gc-profile-summary-list-v20 .gc-profile-rating-stack{
+      display:grid;
+      justify-items:start;
+      gap:8px;
+    }
+
+    .gc-profile-summary-list-v20 .gc-rating-badge{
+      min-height:34px;
+      padding:0 12px;
+      gap:8px;
+    }
+
+    .gc-profile-summary-list-v20 .gc-rating-badge .gc-rating-badge__type{
+      font-size:10px;
+      opacity:.72;
+    }
+
+    .gc-profile-summary-list-v20 .gc-profile-rating-copy{
+      display:block;
+      margin:0;
+      color:var(--dim);
+      font-size:.78rem;
+      line-height:1.35;
+      text-transform:none;
+      letter-spacing:.01em;
+      font-weight:700;
+    }
+
     .gc-profile-linked-pilot-v20{
       background:transparent;
       border:0;
@@ -642,9 +671,36 @@ import '../styles/public/gc-rating-badges.css';
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '') || 'unknown';
 
+
+      const ratingDisplayName = (type, value) => {
+        const raw = String(value || '--');
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const srLabels = {
+          'A+': 'Legend',
+          A: 'Elite',
+          B: 'Pro',
+          C: 'Advanced',
+          D: 'Rookie',
+          E: 'Pitlane',
+          '--': '--'
+        };
+        const gsrLabels = {
+          S: 'Diamond',
+          A: 'Ruby',
+          B: 'Sapphire',
+          C: 'Emerald',
+          D: 'Amber',
+          Rookie: 'Onyx',
+          ROOKIE: 'Onyx',
+          '--': '--'
+        };
+        return safeType === 'gsr' ? (gsrLabels[raw] || raw) : (srLabels[raw] || raw);
+      };
+
       const ratingBadge = (type, value, score = null, options = {}) => {
         const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
         const safeValue = String(value || '--');
+        const displayValue = ratingDisplayName(safeType, safeValue);
         const classKey = ratingClassKey(safeValue);
         const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
         const scoreMarkup = score !== null && score !== undefined && score !== ''
@@ -654,9 +710,18 @@ import '../styles/public/gc-rating-badges.css';
         return `
           <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
             <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
-            <strong>${escapeHtml(safeValue)}</strong>
+            <strong>${escapeHtml(displayValue)}</strong>
             ${scoreMarkup}
           </span>
+        `;
+      };
+
+      const ratingSummaryBlock = (label, type, value, score = null, helper = '') => {
+        return `
+          <div class="gc-profile-rating-stack">
+            ${ratingBadge(type, value, score)}
+            ${helper ? `<small class="gc-profile-rating-copy">${escapeHtml(helper)}</small>` : ''}
+          </div>
         `;
       };
 
@@ -1011,9 +1076,7 @@ import '../styles/public/gc-rating-badges.css';
         $('profileBadges').innerHTML =
           `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span>` +
           `<span class="gc-chip">${escapeHtml(pilotName(pilot))}</span>` +
-          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>` +
-          ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null) +
-          ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null);
+          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>`;
 
         $('profileMeta').innerHTML =
           `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div>` +
@@ -1031,8 +1094,8 @@ import '../styles/public/gc-rating-badges.css';
         $('summaryMeta').textContent = `${summary.carsCount || 0} coches · ${summary.tracksCount || 0} circuitos · ${summary.combosCount || 0} combos · ${ratingStats.races || 0} carreras rating`;
 
         $('summaryRows').innerHTML =
-          `<div><span>Safety Rating</span><strong>${ratingBadge('sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null)}</strong></div>` +
-          `<div><span>Skill Rating</span><strong>${ratingBadge('gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null)}</strong></div>` +
+          `<div><span>Racecraft</span><strong>${ratingSummaryBlock('Racecraft', 'sr', ratingDriver.srClass || '--', ratingDriver.srScore ?? null, 'Racecraft limpio y consistente')}</strong></div>` +
+          `<div><span>Race Pace</span><strong>${ratingSummaryBlock('Race Pace', 'gsr', ratingDriver.gsrClass || '--', ratingDriver.gsrRating ?? null, 'Rango competitivo en parrilla')}</strong></div>` +
           `<div><span>Limpieza</span><strong>${escapeHtml(summary.cleanRate ?? summary.validityRate ?? 0)}%</strong></div>` +
           `<div><span>Carreras limpias</span><strong>${escapeHtml(ratingStats.cleanRaces ?? 0)}</strong></div>` +
           `<div><span>Incid./carrera</span><strong>${escapeHtml(ratingStats.incidentsPerRace ?? '--')}</strong></div>` +

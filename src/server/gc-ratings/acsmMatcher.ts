@@ -39,6 +39,20 @@ function carMatches(result: PlainObject, candidate: PlainObject) {
   return [folder, ui].some((value) => value && (value.includes(expected) || expected.includes(value)));
 }
 
+function resultGuid(result: PlainObject) {
+  return normalizeIdentity(result.guid || result.steamGuid || result.SteamGuid || result.driverGuid || '');
+}
+
+function candidateGuid(candidate: PlainObject) {
+  return normalizeIdentity(candidate.StrackerGuid || candidate.SteamGuid || candidate.Guid || '');
+}
+
+function guidMatches(result: PlainObject, candidate: PlainObject) {
+  const official = resultGuid(result);
+  const stracker = candidateGuid(candidate);
+  return Boolean(official && stracker && official === stracker);
+}
+
 function candidateScore(result: PlainObject, candidate: PlainObject) {
   const resultLaps = numberValue(result.numLaps, 0);
   const candidateLaps = numberValue(candidate.MaxLapCount, 0) || numberValue(candidate.LapRows, 0);
@@ -48,13 +62,23 @@ function candidateScore(result: PlainObject, candidate: PlainObject) {
   const bestDiff = resultBest && candidateBest ? Math.abs(resultBest - candidateBest) : 30000;
   const carMatch = carMatches(result, candidate);
   const nameMatch = normalizeIdentity(result.name) === normalizeIdentity(candidate.StrackerName);
+  const hasOfficialGuid = Boolean(resultGuid(result));
+  const hasCandidateGuid = Boolean(candidateGuid(candidate));
+  const guidMatch = guidMatches(result, candidate);
 
   let score = 0;
+
+  // Mega Update v109:
+  // SteamID/GUID manda. Si ACSM y sTracker tienen GUID y coinciden, el match es casi seguro.
+  if (guidMatch) score -= 120000;
+  if (hasOfficialGuid && hasCandidateGuid && !guidMatch) score += 120000;
+
   score += lapDiff * 4500;
   score += Math.min(bestDiff, 45000);
   if (carMatch) score -= 3000;
   if (!carMatch) score += 4000;
   if (nameMatch) score -= 12000;
+
   return score;
 }
 
@@ -73,18 +97,22 @@ export function matchOfficialToStracker(event: PlainObject, session: PlainObject
 
     const bestLapDiffMs = best ? Math.abs(numberValue(result.bestLapMs, 0) - numberValue(best.BestLapMs, 0)) : null;
     const lapDiff = best ? Math.abs(numberValue(result.numLaps, 0) - numberValue(best.MaxLapCount || best.LapRows, 0)) : null;
+    const steamGuidMatch = best ? guidMatches(result, best) : false;
     const confidence = best
-      ? clamp(1 - (numberValue(bestLapDiffMs, 0) / 5000) - numberValue(lapDiff, 0) * 0.12, 0, 1)
+      ? steamGuidMatch
+        ? 1
+        : clamp(1 - (numberValue(bestLapDiffMs, 0) / 5000) - numberValue(lapDiff, 0) * 0.12, 0, 1)
       : 0;
 
     const match: MatchDebug = {
       confidence: Math.round(confidence * 100) / 100,
-      method: best ? 'bestLap+lapCount+car+name' : 'unmatched',
+      method: best ? (steamGuidMatch ? 'steamGuid+bestLap+lapCount+car+name' : 'bestLap+lapCount+car+name') : 'unmatched',
       bestLapDiffMs,
       lapDiff,
       strackerPlayerInSessionId: best ? numberValue(best.PlayerInSessionId, 0) : null,
-      strackerSessionId: session ? numberValue(session.SessionId, 0) : null
-    };
+      strackerSessionId: session ? numberValue(session.SessionId, 0) : null,
+      steamGuidMatch
+    } as MatchDebug & { steamGuidMatch?: boolean };
 
     return { result, stracker: best, match };
   });
@@ -93,4 +121,3 @@ export function matchOfficialToStracker(event: PlainObject, session: PlainObject
 export function officialDriverName(result: PlainObject) {
   return textValue(result.name || result.driverName || result.DriverName, 'Piloto');
 }
-

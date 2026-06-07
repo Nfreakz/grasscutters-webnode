@@ -25,7 +25,6 @@ try {
         <span class="gc-public-kicker" id="acsrRoundStatus">Ronda</span>
         <h1 class="gc-public-title" id="acsrRoundTitle">Cargando resultados...</h1>
         <p class="gc-public-description" id="acsrRoundMeta">Consultando ACSM.</p>
-        <div class="gc-acsr-source-badges" id="acsrRoundBadges" aria-label="Origen de los datos"></div>
       </div>
       <figure class="gc-acsr-round-map gc-acsr-round-photo" id="acsrRoundMapFigure" hidden>
         <img id="acsrRoundMap" src="" alt="" loading="lazy" />
@@ -149,48 +148,6 @@ try {
         radial-gradient(circle at 80% 20%, rgba(126,255,39,.12), transparent 26rem),
         rgba(255,255,255,.024);
       box-shadow:0 22px 80px rgba(0,0,0,.35);
-    }
-
-    .gc-acsr-source-badges{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .gc-acsr-source-badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:6px 10px;
-      border:1px solid rgba(126,255,39,.18);
-      border-radius:999px;
-      background:rgba(0,0,0,.24);
-      color:var(--gc-mk-muted,#9ca59a);
-      font-size:.7rem;
-      font-weight:900;
-      letter-spacing:.07em;
-      text-transform:uppercase;
-      white-space:nowrap;
-    }
-
-    .gc-acsr-source-badge::before{
-      content:'';
-      width:6px;
-      height:6px;
-      border-radius:999px;
-      background:var(--gc-mk-accent,#80ff1f);
-      box-shadow:0 0 12px color-mix(in srgb, var(--gc-mk-accent,#80ff1f) 45%, transparent);
-    }
-
-    .gc-acsr-source-badge--muted{
-      color:var(--gc-mk-text,#f5fff0);
-      border-color:rgba(126,255,39,.22);
-    }
-
-    .gc-acsr-source-badge--warning{
-      color:#ffcf7a;
-      border-color:rgba(255,207,122,.24);
     }
 
     .gc-acsr-round-map{
@@ -449,7 +406,132 @@ try {
         min-width:760px;
       }
     }
-  </style>
+  
+  .gc-acsr-safety-hero{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:18px;
+    align-items:stretch;
+    margin-bottom:16px;
+    padding:18px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:22px;
+    background:linear-gradient(135deg, rgba(126,255,39,.08), rgba(255,255,255,.025));
+  }
+  .gc-acsr-safety-hero > div:first-child{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .gc-acsr-safety-eyebrow{
+    width:max-content;
+    padding:4px 9px;
+    border:1px solid rgba(126,255,39,.28);
+    border-radius:999px;
+    color:var(--gc-mk-accent,#80ff1f);
+    font-family:var(--font-mono,monospace);
+    font-size:.68rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .gc-acsr-safety-hero strong{
+    color:var(--gc-mk-text,#f2f6ef);
+    font-size:1.02rem;
+  }
+  .gc-acsr-safety-hero p{
+    max-width:760px;
+    margin:0;
+    color:var(--gc-mk-muted,#9ca59a);
+    font-size:.86rem;
+    line-height:1.55;
+  }
+  .gc-acsr-safety-result{
+    min-width:150px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:flex-end;
+    gap:3px;
+    padding:14px 16px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(0,0,0,.22);
+  }
+  .gc-acsr-safety-result span,
+  .gc-acsr-safety-result small{
+    color:var(--gc-mk-muted,#9ca59a);
+    font-family:var(--font-mono,monospace);
+    font-size:.68rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .gc-acsr-safety-result strong{
+    font-family:var(--font-mono,monospace);
+    font-size:1.45rem;
+  }
+  .gc-acsr-safety-result.is-positive strong,
+  .gc-acsr-safety-card.is-positive strong{
+    color:var(--gc-mk-accent,#80ff1f);
+  }
+  .gc-acsr-safety-result.is-negative strong,
+  .gc-acsr-safety-card.is-negative strong{
+    color:#ff8f8f;
+  }
+  .gc-acsr-safety-result.is-neutral strong,
+  .gc-acsr-safety-card.is-neutral strong{
+    color:var(--gc-mk-text,#f2f6ef);
+  }
+  .gc-acsr-safety-summary--main,
+  .gc-acsr-safety-summary--delta{
+    margin-bottom:12px;
+  }
+  .gc-acsr-safety-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:8px 0 14px;
+  }
+  .gc-acsr-safety-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:999px;
+    background:rgba(255,255,255,.035);
+    color:var(--gc-mk-text,#f2f6ef);
+  }
+  .gc-acsr-safety-chip small{
+    color:var(--gc-mk-muted,#9ca59a);
+    font-family:var(--font-mono,monospace);
+    font-size:.66rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .gc-acsr-safety-chip strong{
+    color:var(--gc-mk-text,#f2f6ef);
+    font-family:var(--font-mono,monospace);
+    font-size:.78rem;
+  }
+  .gc-acsr-safety-chip.is-clean{
+    border-color:rgba(126,255,39,.24);
+    background:rgba(126,255,39,.06);
+  }
+  .gc-acsr-safety-chip.is-clean strong{
+    color:var(--gc-mk-accent,#80ff1f);
+  }
+  @media (max-width:760px){
+    .gc-acsr-safety-hero{
+      grid-template-columns:1fr;
+    }
+    .gc-acsr-safety-result{
+      align-items:flex-start;
+      min-width:0;
+    }
+  }
+
+</style>
 
   <script is:inline define:vars={{ eventId }}>
     // @ts-nocheck
@@ -470,8 +552,7 @@ try {
         entrantsMeta: $('acsrRoundEntrantsMeta'),
         raceBody: $('acsrRaceBody'),
         qualyBody: $('acsrQualyBody'),
-        sessionGrid: $('acsrSessionGrid'),
-        badges: $('acsrRoundBadges')
+        sessionGrid: $('acsrSessionGrid')
       };
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
@@ -534,23 +615,123 @@ try {
         return Number.isFinite(parsed) ? parsed : fallback;
       };
 
+      const cleanSrSummaryItem = (value) => {
+        const text = String(value ?? '').trim();
+        if (!text) return '';
+        const internalPatterns = [
+          /^gc-sr-v\d/i,
+          /^gc-ratings-v\d/i,
+          /^Cap positivo/i,
+          /^Cap aplicado/i,
+          /^Modelo/i,
+          /^Estado:/i,
+          /completion\/DNF/i
+        ];
+        if (internalPatterns.some((pattern) => pattern.test(text))) return '';
+        return text
+          .replace(/Incidentes GC/g, 'Incidentes')
+          .replace(/Delta final/g, 'Resultado SR');
+      };
+
+      const cleanLapNote = (value) => {
+        const text = String(value ?? '').trim();
+        if (!text) return '';
+        const hidden = [
+          /Vuelta limpia SR v2/i,
+          /Vuelta inválida informativa/i,
+          /Vuelta invalida informativa/i,
+          /Déficit informativo/i,
+          /^gc-sr-v\d/i,
+          /^gc-ratings-v\d/i
+        ];
+        if (hidden.some((pattern) => pattern.test(text))) return '';
+        return text;
+      };
+
+      const amountFromSummary = (items, label, fallback = '--') => {
+        const hit = items.find((item) => item.toLowerCase().startsWith(label.toLowerCase()));
+        if (!hit) return fallback;
+        const after = hit.split(':').slice(1).join(':').trim();
+        return after || fallback;
+      };
+
+      const numberFromText = (value) => {
+        const match = String(value ?? '').match(/-?\d+(?:[.,]\d+)?/);
+        return match ? Number(match[0].replace(',', '.')) : null;
+      };
+
+      const srToneClass = (value) => {
+        const n = numberFromText(value);
+        if (n === null) return '';
+        if (n > 0.005) return 'is-positive';
+        if (n < -0.005) return 'is-negative';
+        return 'is-neutral';
+      };
+
+      const buildPenaltyChips = (summaryItems) => {
+        const chips = [];
+        const cuts = amountFromSummary(summaryItems, 'Salidas/cuts', '');
+        const car = amountFromSummary(summaryItems, 'Golpes con coche', '');
+        const env = amountFromSummary(summaryItems, 'Golpes con entorno', '');
+        const dnf = summaryItems.find((item) => item.startsWith('Carrera no completada'));
+        const dsq = summaryItems.find((item) => item.startsWith('Descalificación'));
+        const official = summaryItems.find((item) => item.startsWith('Sanción oficial'));
+
+        if (cuts) chips.push(['Salidas/cuts', cuts]);
+        if (car) chips.push(['Golpes coche', car]);
+        if (env) chips.push(['Golpes entorno', env]);
+        if (dnf) chips.push(['Carrera no completada', dnf.split(':').slice(1).join(':').trim() || 'Sí']);
+        if (dsq) chips.push(['Descalificación', dsq.split(':').slice(1).join(':').trim() || 'Sí']);
+        if (official) chips.push(['Sanción oficial', official.split(':').slice(1).join(':').trim() || 'Sí']);
+
+        return chips;
+      };
+
       const renderSafetyDetails = (row) => {
         const sr = row?.safetyRating || {};
-        const isStrackerSource = sr.source === 'stracker.db3' || String(sr.model || '').includes('stracker');
+        const isStrackerSource = sr.source === 'stracker.db3' || String(sr.source || '').includes('stracker');
         const penalties = sr.penalties || {};
         const laps = Array.isArray(sr.laps) ? sr.laps : [];
+        const summaryItems = Array.isArray(penalties.summary)
+          ? penalties.summary.map(cleanSrSummaryItem).filter(Boolean)
+          : [];
+
+        const timeValue = amountFromSummary(summaryItems, 'Tiempo en pista', '--');
+        const cleanTimeValue = amountFromSummary(summaryItems, 'Tiempo limpio', '--');
+        const cleanLapsValue = amountFromSummary(summaryItems, 'Vueltas limpias', '--');
+        const streakValue = amountFromSummary(summaryItems, 'Racha limpia', '--');
+        const bonusValue = amountFromSummary(summaryItems, 'Bonus por conducción limpia', '--');
+        const penaltyValue = amountFromSummary(summaryItems, 'Penalizaciones', sr.severity ?? '--');
+        const resultValue = amountFromSummary(summaryItems, 'Resultado SR', `${(sr.delta ?? row.srDelta ?? row.deltaSr ?? 0) > 0 ? '+' : ''}${sr.delta ?? row.srDelta ?? row.deltaSr ?? 0}`);
+        const penaltyChips = buildPenaltyChips(summaryItems);
+
         const summary = !isStrackerSource
-          ? '<li>Este SR no viene de STRacker. Revisa STRACKER_DB_PATH y que el middleware antiguo no esté registrado.</li>'
-          : (Array.isArray(penalties.summary) && penalties.summary.length
-            ? penalties.summary.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+          ? '<li>Este SR no viene de STRacker. Revisa que la carrera oficial esté vinculada correctamente a sTracker.</li>'
+          : (summaryItems.length
+            ? summaryItems
+                .filter((item) =>
+                  !item.startsWith('Salidas/cuts') &&
+                  !item.startsWith('Golpes con coche') &&
+                  !item.startsWith('Golpes con entorno') &&
+                  !item.startsWith('Carrera no completada') &&
+                  !item.startsWith('Descalificación') &&
+                  !item.startsWith('Sanción oficial')
+                )
+                .map((item) => `<li>${escapeHtml(item)}</li>`)
+                .join('')
             : '<li>Sin sanciones ni incidentes registrados en STRacker.</li>');
 
+        const chipsMarkup = penaltyChips.length
+          ? penaltyChips.map(([label, value]) => `<span class="gc-acsr-safety-chip"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></span>`).join('')
+          : '<span class="gc-acsr-safety-chip is-clean"><small>Incidentes</small><strong>0</strong></span>';
+
         const lapRows = laps.length ? laps.map((lap) => {
-          const alert = safetyNumber(lap.offTracks) || safetyNumber(lap.collisionsCar) || safetyNumber(lap.collisionsEnv) || !lap.valid;
-          const notes = Array.isArray(lap.notes) && lap.notes.length ? lap.notes.join(', ') : '-';
+          const noteItems = Array.isArray(lap.notes) ? lap.notes.map(cleanLapNote).filter(Boolean) : [];
+          const alert = safetyNumber(lap.offTracks) || safetyNumber(lap.collisionsCar) || safetyNumber(lap.collisionsEnv) || noteItems.length > 0;
+          const notes = noteItems.length ? noteItems.join(', ') : '-';
           return `
             <tr class="${alert ? 'gc-acsr-lap-alert' : ''}">
-              <td>${escapeHtml(lap.lap ?? '')}</td>
+              <td>${escapeHtml(lap.lap && lap.lap > 0 ? lap.lap : '--')}</td>
               <td>${escapeHtml(lap.lapTime || '--')}</td>
               <td>${lap.valid ? 'Sí' : 'No'}</td>
               <td>${escapeHtml(lap.offTracks ?? lap.cuts ?? 0)}</td>
@@ -564,13 +745,34 @@ try {
           <tr class="gc-acsr-safety-detail-row" data-safety-detail="${escapeHtml(row.guid || row.name || '')}" style="display:none">
             <td colspan="12">
               <div class="gc-acsr-safety-detail">
-                <div class="gc-acsr-safety-summary">
-                  <div class="gc-acsr-safety-card"><span>SR evento</span><strong>${escapeHtml(sr.eventScore ?? sr.score ?? '--')}</strong></div>
-                  <div class="gc-acsr-safety-card"><span>Severidad</span><strong>${escapeHtml(sr.severity ?? 0)}</strong></div>
-                  <div class="gc-acsr-safety-card"><span>Salidas</span><strong>${escapeHtml(sr.offTracks ?? sr.cuts ?? 0)}</strong></div>
-                  <div class="gc-acsr-safety-card"><span>Golpes coche</span><strong>${escapeHtml(sr.collisionsCar ?? 0)}</strong></div>
-                  <div class="gc-acsr-safety-card"><span>Golpes entorno</span><strong>${escapeHtml(sr.collisionsEnv ?? 0)}</strong></div>
+                <div class="gc-acsr-safety-hero">
+                  <div>
+                    <span class="gc-acsr-safety-eyebrow">Resumen SR del piloto</span>
+                    <strong>${escapeHtml(row.name || row.displayName || 'Piloto')}</strong>
+                    <p>El SR premia el tiempo limpio en pista y resta por incidentes registrados por sTracker.</p>
+                  </div>
+                  <div class="gc-acsr-safety-result ${srToneClass(resultValue)}">
+                    <span>Resultado SR</span>
+                    <strong>${escapeHtml(resultValue)}</strong>
+                    <small>SR final ${escapeHtml(sr.eventScore ?? sr.score ?? '--')}</small>
+                  </div>
                 </div>
+
+                <div class="gc-acsr-safety-summary gc-acsr-safety-summary--main">
+                  <div class="gc-acsr-safety-card"><span>Tiempo en pista</span><strong>${escapeHtml(timeValue)}</strong></div>
+                  <div class="gc-acsr-safety-card"><span>Tiempo limpio</span><strong>${escapeHtml(cleanTimeValue)}</strong></div>
+                  <div class="gc-acsr-safety-card"><span>Vueltas limpias</span><strong>${escapeHtml(cleanLapsValue)}</strong></div>
+                  <div class="gc-acsr-safety-card"><span>Racha limpia</span><strong>${escapeHtml(streakValue)}</strong></div>
+                </div>
+
+                <div class="gc-acsr-safety-summary gc-acsr-safety-summary--delta">
+                  <div class="gc-acsr-safety-card is-positive"><span>Bonus SR</span><strong>${escapeHtml(bonusValue)}</strong></div>
+                  <div class="gc-acsr-safety-card is-negative"><span>Penalizaciones</span><strong>${escapeHtml(penaltyValue)}</strong></div>
+                  <div class="gc-acsr-safety-card ${srToneClass(resultValue)}"><span>ΔSR</span><strong>${escapeHtml(resultValue)}</strong></div>
+                  <div class="gc-acsr-safety-card"><span>Golpes coche</span><strong>${escapeHtml(sr.collisionsCar ?? 0)}</strong></div>
+                </div>
+
+                <div class="gc-acsr-safety-chips">${chipsMarkup}</div>
                 <ul class="gc-acsr-penalty-list">${summary}</ul>
                 <table class="gc-acsr-laps-table">
                   <thead><tr><th>Vuelta</th><th>Tiempo</th><th>Válida</th><th>Salidas</th><th>Golpes coche</th><th>Golpes entorno</th><th>Notas</th></tr></thead>
@@ -694,22 +896,9 @@ try {
       const renderError = (message) => {
         els.title.textContent = 'No se pudo cargar la ronda';
         els.meta.textContent = message || 'Error desconocido.';
-        if (els.badges) els.badges.innerHTML = '';
         els.raceBody.innerHTML = `<tr><td colspan="12">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
         els.qualyBody.innerHTML = `<tr><td colspan="6">${escapeHtml(message || 'Error desconocido')}</td></tr>`;
         els.sessionGrid.innerHTML = '<article class="gc-public-card"><strong>Sin datos</strong></article>';
-      };
-
-      const renderBadges = (event, data) => {
-        if (!els.badges) return;
-        const badges = [];
-        if (data?.eventSource === 'sql-mirror') {
-          badges.push('<span class="gc-acsr-source-badge gc-acsr-source-badge--muted">Datos desde SQL mirror</span>');
-        }
-        if (data?.ratingEligible === false || String(data?.reviewStatus || '') === 'reviewed-unrated') {
-          badges.push('<span class="gc-acsr-source-badge gc-acsr-source-badge--warning">No cuenta SR/GSR</span>');
-        }
-        els.badges.innerHTML = badges.join('');
       };
 
       const render = (data) => {
@@ -724,7 +913,6 @@ try {
         const winner = event.winner || raceResults[0] || null;
         const fastest = event.fastestLap || null;
 
-        renderBadges(event, data);
         els.status.textContent = statusLabel[event.status] || event.status || 'Ronda';
         els.title.textContent = event.name || `Ronda ${event.index}`;
         els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
@@ -769,4 +957,5 @@ try {
       load();
     })();
   </script>
+
 </MarketingLayout>

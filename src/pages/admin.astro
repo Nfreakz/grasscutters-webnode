@@ -1,15 +1,15 @@
-﻿---
+---
 import AppLayout from '../layouts/AppLayout.astro';
 import AdminSubnav from '../components/AdminSubnav.astro';
 
 const moduleGroups = [
   {
     label: 'Base',
-    desc: 'GestiÃ³n de usuarios, alias y calendario.',
+    desc: 'Gestión de usuarios, alias y calendario.',
     modules: [
       { href: '/admin/usuarios', title: 'Usuarios', desc: 'Cuentas, roles, sesiones y pilotos vinculados.', tag: 'Core' },
       { href: '/admin/nombres', title: 'Nombres visibles', desc: 'Alias de pilotos, coches y circuitos.', tag: 'Core' },
-      { href: '/admin/calendario', title: 'Calendario', desc: 'Eventos, combo semanal y sincronizaciÃ³n ACSM.', tag: 'Eventos' },
+      { href: '/admin/calendario', title: 'Calendario', desc: 'Eventos, combo semanal y sincronización ACSM.', tag: 'Eventos' },
     ],
   },
   {
@@ -18,19 +18,19 @@ const moduleGroups = [
     modules: [
       { href: '/admin/archivo', title: 'Archivo', desc: 'Fichas de circuitos, coches, pilotos y conceptos.', tag: 'DB' },
       { href: '/admin/archivo/importar', title: 'Importar archivo', desc: 'Carga CSV para dossiers del archivo.', tag: 'CSV' },
-      { href: '/admin/archivo/imagen-url', title: 'ImÃ¡genes archivo', desc: 'Biblioteca visual de fichas del archivo.', tag: 'Media' },
+      { href: '/admin/archivo/imagen-url', title: 'Imágenes archivo', desc: 'Biblioteca visual de fichas del archivo.', tag: 'Media' },
     ],
   },
   {
     label: 'Herramientas',
-    desc: 'RevisiÃ³n, conexiones, endpoints y diagnÃ³stico.',
+    desc: 'Revisión, conexiones, endpoints y diagnóstico.',
     modules: [
       { href: '/admin/archivo/calidad', title: 'Calidad archivo', desc: 'Checklist editorial de fichas.', tag: 'QA' },
       { href: '/admin/archivo/relaciones', title: 'Relaciones archivo', desc: 'Conexiones entre fichas y entidades.', tag: 'Graph' },
-      { href: '/admin/endpoints', title: 'Endpoints', desc: 'Pruebas rÃ¡pidas de API.', tag: 'API' },
-      { href: '/admin/sistema', title: 'Sistema', desc: 'Storage, stracker, ACSM y diagnÃ³stico.', tag: 'Ops' },
+      { href: '/admin/endpoints', title: 'Endpoints', desc: 'Pruebas rápidas de API.', tag: 'API' },
+      { href: '/admin/sistema', title: 'Sistema', desc: 'Storage, stracker, ACSM y diagnóstico.', tag: 'Ops' },
       { href: '/admin/ratings', title: 'Ratings', desc: 'Carreras sTracker pendientes, procesadas y SR/GSR global.', tag: 'SR/GSR' },
-      { href: '/admin/historial', title: 'Historial', desc: 'AuditorÃ­a de acciones sensibles.', tag: 'Log' },
+      { href: '/admin/historial', title: 'Historial', desc: 'Auditoría de acciones sensibles.', tag: 'Log' },
     ],
   },
 ];
@@ -76,7 +76,7 @@ const moduleGroups = [
 
       <div class="gc-slab gc-admin-gate-slab-v1">
         <h3 id="adminGateTitle">No tienes permisos de admin</h3>
-        <p id="adminGateText">Inicia sesiÃ³n con una cuenta administradora.</p>
+        <p id="adminGateText">Inicia sesión con una cuenta administradora.</p>
         <div class="gc-actions">
           <a class="gc-btn gc-btn--primary" href="/login">Login</a>
           <button class="gc-btn" id="adminGateRetry" type="button">Reintentar</button>
@@ -123,7 +123,7 @@ const moduleGroups = [
             <div class="gc-section-head">
               <div>
                 <span class="gc-kicker">Sistema</span>
-                <h2>Estado rÃ¡pido</h2>
+                <h2>Estado rápido</h2>
                 <p>Datos principales del panel.</p>
               </div>
             </div>
@@ -147,7 +147,7 @@ const moduleGroups = [
 
               <article>
                 <header><h3>ACSM</h3><span id="acsmBadge">Manual</span></header>
-                <p id="acsmText">SincronizaciÃ³n del combo actual desde ACSM.</p>
+                <p id="acsmText">Sincronización del combo actual desde ACSM.</p>
                 <div class="gc-actions gc-admin-acsm-actions-v1">
                   <button class="gc-btn gc-btn--primary" id="syncAcsmBtn" type="button">Sincronizar combo</button>
                   <a class="gc-btn" href="/calendario">Ver calendario</a>
@@ -705,7 +705,7 @@ const moduleGroups = [
 
         if (els.storageText) {
           els.storageText.textContent = storage.persistent === false
-            ? 'AtenciÃ³n: revisa la ruta persistente.'
+            ? 'Atención: revisa la ruta persistente.'
             : `OK: ${storage.source || files.users?.source || 'storage'} persistente.`;
         }
 
@@ -713,7 +713,7 @@ const moduleGroups = [
           els.storageRows.innerHTML =
             `<div><span>Usuarios</span><strong>${esc(files.users?.source || storage.source || '-')}</strong></div>` +
             `<div><span>Nombres</span><strong>${esc(files.displayNames?.source || storage.source || '-')}</strong></div>` +
-            `<div><span>Persistente</span><strong>${storage.persistent === false ? 'No' : 'SÃ­'}</strong></div>`;
+            `<div><span>Persistente</span><strong>${storage.persistent === false ? 'No' : 'Sí'}</strong></div>`;
         }
 
         const stracker = data.admin?.stracker || {};
@@ -728,9 +728,9 @@ const moduleGroups = [
 
         if (els.strackerRows) {
           els.strackerRows.innerHTML =
-            `<div><span>Existe</span><strong>${stracker.exists ? 'SÃ­' : 'No'}</strong></div>` +
-            `<div><span>SQLite</span><strong>${stracker.validSQLite ? 'VÃ¡lido' : '-'}</strong></div>` +
-            `<div><span>TamaÃ±o</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>`;
+            `<div><span>Existe</span><strong>${stracker.exists ? 'Sí' : 'No'}</strong></div>` +
+            `<div><span>SQLite</span><strong>${stracker.validSQLite ? 'Válido' : '-'}</strong></div>` +
+            `<div><span>Tamaño</span><strong>${Math.round(((stracker.sizeBytes || 0) / 1024 / 1024) * 10) / 10} MB</strong></div>`;
         }
 
         setBadge(els.acsmBadge, 'Manual');
@@ -754,7 +754,7 @@ const moduleGroups = [
             method:'POST'
           });
 
-          if (els.acsmText) els.acsmText.textContent = `Ãšltimo sync correcto. Storage: ${data.source || '-'}.`;
+          if (els.acsmText) els.acsmText.textContent = `Último sync correcto. Storage: ${data.source || '-'}.`;
 
           if (els.acsmMessage) {
             els.acsmMessage.textContent = `Combo sincronizado. Eventos: ${data.totalEvents ?? '-'}`;

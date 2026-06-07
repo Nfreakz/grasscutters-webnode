@@ -36,28 +36,18 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
             lead="Clasificación oficial, rondas puntuables y estado del campeonato actual."
             leadId="acsrChampionshipLead"
           />
+        <div class="gc-acsr-hero-actions" aria-label="Accesos principales ACSM">
+          <a class="gc-public-btn gc-public-btn-primary gc-acsr-hero-btn" href={acsmSignupUrl} id="acsrSignupHero" target="_blank" rel="noopener noreferrer">Inscripción ACSM</a>
+          <a class="gc-public-btn gc-public-btn-secondary gc-acsr-hero-btn" href={acsmChampionshipUrl} id="acsrOfficialHero" target="_blank" rel="noopener noreferrer">Panel ACSM</a>
+        </div>
       
-        <nav class="gc-acsr-quiet-nav" aria-label="Accesos de campeonato">
-          <a class="gc-data-link" href={acsmChampionshipUrl} id="acsrOfficialHero" target="_blank" rel="noopener noreferrer">Panel ACSM</a>
-          <a class="gc-data-link" href={acsmSignupUrl} id="acsrSignupHero" target="_blank" rel="noopener noreferrer">Inscripción ACSM</a>
-          <a class="gc-data-link" href="/historico">Histórico ACSM</a>
-          <button class="gc-data-link gc-data-link--button" type="button" id="acsrRefresh">Actualizar datos</button>
-        </nav>
 </div>
     </div>
 
-    <section class="gc-acsr-storyline" aria-label="Resumen del campeonato actual">
-      <article class="gc-acsr-story gc-public-card">
-        <span class="gc-public-kicker">Oficial ACSM</span>
-        <h2 class="gc-public-card-title">El campeonato actual vive aquí.</h2>
-        <p class="gc-public-card-text">La clasificación oficial ACSM manda sobre esta página. Debajo tienes las rondas puntuables, el siguiente evento y el estado real del campeonato sin mezclar carreras de comunidad.</p>
-      </article>
-      <article class="gc-acsr-story gc-public-card">
-        <span class="gc-public-kicker">Separación clara</span>
-        <h2 class="gc-public-card-title">Las carreras no oficiales van aparte.</h2>
-        <p class="gc-public-card-text">Las carreras fuera de ACSM no suman puntos aquí. Si se procesan manualmente, solo afectan al SR/GSR global en su propia sección de datos.</p>
-      </article>
-    </section>
+    <nav class="gc-acsr-quiet-nav gc-acsr-quiet-nav--main" aria-label="Accesos secundarios de campeonato">
+      <a class="gc-data-link" href="/historico">Histórico ACSM</a>
+      <button class="gc-data-link gc-data-link--button" type="button" id="acsrRefresh">Actualizar datos</button>
+    </nav>
 
 
     <div class="gc-acsr-grid gc-acsr-grid--hub">
@@ -102,7 +92,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       <div class="gc-public-section-head">
         <span class="gc-public-kicker">Clasificación</span>
         <h2 class="gc-public-section-title">Clasificación ACSM oficial.</h2>
-        <p class="gc-public-section-lead" id="acsrStandingsLead">Puntos y posición salen exclusivamente de ACSM. Las carreras fuera de ACSM no suman en esta tabla.</p>
+        <p class="gc-public-section-lead" id="acsrStandingsLead">Puntos y posición salen exclusivamente de ACSM. Las carreras fuera de ACSM no suman en esta tabla ni modifican SR/GSR por defecto.</p>
       </div>
 
       <div class="gc-acsr-standings-table-wrap">
@@ -172,8 +162,8 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       isolation:isolate;
       overflow:hidden;
       display:grid;
-      gap:clamp(22px,3vw,38px);
-      padding-top:clamp(110px,12vw,170px);
+      gap:clamp(14px,2vw,24px);
+      padding-top:clamp(96px,10vw,148px);
     }
 
     .gc-community-championship > *{
@@ -223,17 +213,25 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       justify-content:space-between;
       align-items:end;
       gap:18px;
+      margin-bottom:clamp(2px,.6vw,8px);
     }
 
-    .gc-acsr-storyline{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:16px;
+    .gc-acsr-hero-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      margin-top:clamp(18px,2vw,26px);
     }
 
-    .gc-acsr-story{
-      padding:clamp(16px,2vw,22px);
+    .gc-acsr-hero-btn{
+      min-width:clamp(178px,13vw,226px);
+      min-height:48px;
+      justify-content:center;
+      letter-spacing:.08em;
+      white-space:nowrap;
     }
+
 
     .gc-acsr-head-actions{
       flex-wrap:wrap;
@@ -339,6 +337,44 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       color:var(--gc-mk-muted,#8d968c);
       text-align:right;
       font-family:var(--font-mono,monospace);
+    }
+
+    .gc-acsr-last-link{
+      align-self:flex-start;
+      padding:8px 14px;
+      min-height:auto;
+      font-size:.82rem;
+      letter-spacing:.06em;
+    }
+
+    .gc-acsr-podium-row__rank{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      min-height:34px;
+      border-radius:999px;
+      border:1px solid rgba(126,255,39,.16);
+      background:rgba(255,255,255,.04);
+      font-size:1rem;
+    }
+
+    .gc-acsr-podium-row__rank--gold{
+      color:#ffd166;
+      border-color:rgba(255,209,102,.32);
+      background:rgba(255,209,102,.08);
+    }
+
+    .gc-acsr-podium-row__rank--silver{
+      color:#d8dee9;
+      border-color:rgba(216,222,233,.28);
+      background:rgba(216,222,233,.08);
+    }
+
+    .gc-acsr-podium-row__rank--bronze{
+      color:#d08b5b;
+      border-color:rgba(208,139,91,.28);
+      background:rgba(208,139,91,.08);
     }
 
     .gc-acsr-last-link[hidden]{ display:none!important; }
@@ -601,6 +637,18 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       padding-bottom:8px;
     }
 
+    .gc-acsr-quiet-nav--main{
+      justify-content:flex-start;
+      width:100%;
+      max-width:100%;
+      padding:0 0 clamp(6px,1vw,12px);
+      margin-top:clamp(-4px,-.25vw,0px);
+    }
+
+    .gc-acsr-quiet-nav--main .gc-data-link{
+      white-space:nowrap;
+    }
+
     .gc-data-link--button{
       display:inline-flex;
       align-items:center;
@@ -640,10 +688,6 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
     }
 
     @media (max-width:1180px){
-      .gc-acsr-storyline{
-        grid-template-columns:1fr;
-      }
-
       .gc-acsr-grid--hub{
         grid-template-columns:1fr 1fr;
       }
@@ -669,6 +713,14 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
       .gc-acsr-quiet-nav{
         justify-content:flex-start;
+      }
+
+      .gc-acsr-hero-actions{
+        width:100%;
+      }
+
+      .gc-acsr-hero-btn{
+        flex:1 1 210px;
       }
 
       .gc-acsr-data-links{
@@ -764,44 +816,6 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       if (els.signupHero) els.signupHero.href = ACSM_SIGNUP_URL;
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-
-      const cleanText = (value, fallback = '') => {
-        let text = String(value ?? '').trim();
-        if (!text) return fallback;
-        const replacements = {
-          'ÃƒÂ¡':'á','ÃƒÂ©':'é','ÃƒÂ­':'í','ÃƒÂ³':'ó','ÃƒÂº':'ú','ÃƒÂ±':'ñ','ÃƒÂ':'Á','ÃƒÂ‰':'É','ÃƒÂ':'Í','ÃƒÂ“':'Ó','ÃƒÂš':'Ú','ÃƒÂ‘':'Ñ',
-          'Ã¡':'á','Ã©':'é','Ã­':'í','Ã³':'ó','Ãº':'ú','Ã±':'ñ','Ã':'Á','Ã‰':'É','Ã':'Í','Ã“':'Ó','Ãš':'Ú','Ã‘':'Ñ',
-          'Ã‚Â·':'·','Â·':'·','Âº':'º','Âª':'ª','Â¿':'¿','Â¡':'¡','â€“':'–','â€”':'—','â€¦':'…'
-        };
-        Object.entries(replacements).forEach(([bad, good]) => { text = text.split(bad).join(good); });
-        return text.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
-      };
-      const displayDriverName = (value, fallback = 'Piloto') => cleanText(value, fallback);
-      const displayCarName = (value, fallback = '') => {
-        const raw = cleanText(value, fallback);
-        const key = String(value ?? '').trim().toLowerCase();
-        const known = {
-          rss_formula_rss_4_2024: 'RSS Formula RSS 4 2024',
-          f1600_van_diemen: 'F1600 Van Diemen',
-          ts_bmw_m3_gt2: 'BMW M3 GT2',
-          ts_spyker_c8_laviolette_gt2r: 'Spyker C8 Laviolette GT2R',
-          ts_ferrari_f430_gt2: 'Ferrari F430 GT2',
-          doran_ford_gt40_gt2: 'Doran Ford GT40 GT2',
-          ts_porsche_997r: 'Porsche 997R'
-        };
-        return known[key] || raw.replace(/^ts\s+/i, '').replace(/\bbmw\b/gi, 'BMW').replace(/\bgt2\b/gi, 'GT2').replace(/\brss\b/gi, 'RSS');
-      };
-      const displayTrackName = (value, fallback = 'Circuito pendiente') => {
-        const raw = cleanText(value, fallback);
-        const key = String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-        const known = {
-          fn_jerez: 'Jerez', jerez: 'Jerez', circuito_de_jerez: 'Jerez', circuito_de_jerez_spain: 'Jerez', mugello: 'Mugello', spa: 'Spa', road_atlanta: 'Road Atlanta', sebring: 'Sebring',
-          salzburgring: 'Salzburgring', zolder: 'Zolder', okayama_circuit_gp: 'Okayama', okayama_circuit: 'Okayama', okayama: 'Okayama',
-          phillip_island_2013: 'Phillip Island', phillip_island: 'Phillip Island', brands_hatch: 'Brands Hatch', nordschleife: 'Nordschleife',
-          nurburgring: 'Nürburgring', suzuka: 'Suzuka', imola: 'Imola', vallelunga: 'Vallelunga'
-        };
-        return known[key] || raw.replace(/^(fn|ks|rt|mx|acu|nrms)\s+/i, '').replace(/\b(circuit|circuito|track|spain|italy|italia)\b/gi, '').replace(/\s+/g, ' ').trim() || fallback;
-      };
       const ratingClassKey = (value) => String(value || 'unknown')
         .trim()
         .toLowerCase()
@@ -1004,7 +1018,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
       const renderTrackImage = (event) => {
         const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
-        if (els.trackImage) els.trackImage.alt = displayTrackName(event?.track || event?.name, '');
+        if (els.trackImage) els.trackImage.alt = event?.track || event?.name || '';
         setImageWithFallback(els.trackImage, els.trackFigure, candidates);
       };
 
@@ -1019,8 +1033,8 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         els.drivers.innerHTML = drivers.slice(0, 48).map((driver) => `
           <article class="gc-acsr-driver">
             <span>${escapeHtml(driver.className || 'General')}</span>
-            <strong>${escapeHtml(displayDriverName(driver.name, 'Piloto'))}</strong>
-            <small>${escapeHtml(displayCarName(driver.model || driver.team || 'Inscrito', 'Inscrito'))}</small>
+            <strong>${escapeHtml(driver.name || 'Piloto')}</strong>
+            <small>${escapeHtml(driver.model || driver.team || 'Inscrito')}</small>
           </article>
         `).join('');
       }
@@ -1036,18 +1050,27 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
           <tr>
             <td><strong>${escapeHtml(driver.position)}</strong></td>
             <td>
-              <strong>${escapeHtml(displayDriverName(driver.name, 'Piloto'))}</strong>
-              <br><small>${escapeHtml(displayCarName(driver.model || '', ''))}</small>
+              <strong>${escapeHtml(driver.name || 'Piloto')}</strong>
+              <br><small>${escapeHtml(driver.model || '')}</small>
             </td>
             <td><span class="gc-acsr-points">${escapeHtml(driver.points ?? 0)}</span></td>
             <td>${escapeHtml(driver.wins ?? 0)}</td>
             <td>${escapeHtml(driver.podiums ?? 0)}</td>
             <td>${escapeHtml(driver.incidentPointsTotal ?? 0)}</td>
-            <td>${driver.lastResult ? `${escapeHtml(cleanText(driver.lastResult.eventName))} · P${escapeHtml(driver.lastResult.position)} · ${escapeHtml(driver.lastResult.points)} pts` : 'Sin carrera ACSM completada'}</td>
+            <td>${driver.lastResult ? `${escapeHtml(driver.lastResult.eventName)} · P${escapeHtml(driver.lastResult.position)} · ${escapeHtml(driver.lastResult.points)} pts` : 'Sin carrera ACSM completada'}</td>
             <td>${srBadge(driver)}</td>
             <td>${gsrBadge(driver)}</td>
           </tr>
         `).join('') : '<tr><td colspan="9">La clasificación ACSM se actualizará cuando haya resultados oficiales de carrera.</td></tr>';
+      }
+
+
+      function lastRaceRankBadge(position) {
+        const pos = Number(position || 0);
+        if (pos === 1) return '<span class="gc-acsr-podium-row__rank gc-acsr-podium-row__rank--gold" title="Ganador">🏆</span>';
+        if (pos === 2) return '<span class="gc-acsr-podium-row__rank gc-acsr-podium-row__rank--silver" title="Segundo">🥈</span>';
+        if (pos === 3) return '<span class="gc-acsr-podium-row__rank gc-acsr-podium-row__rank--bronze" title="Tercero">🥉</span>';
+        return `<span class="gc-acsr-podium-row__rank">P${escapeHtml(pos || '-')}</span>`;
       }
 
       function renderLastCompleted(event) {
@@ -1059,19 +1082,21 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
           return;
         }
 
-        els.lastTitle.textContent = cleanText(event.name || `Ronda ${event.index}`);
-        els.lastMeta.textContent = `${fmtDate(event.completedAt || event.scheduledAt)} · ${displayTrackName(event.track, 'Circuito por confirmar')}`;
+        els.lastTitle.textContent = event.name || `Ronda ${event.index}`;
+        els.lastMeta.textContent = `${fmtDate(event.completedAt || event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}`;
         els.lastLink.href = event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`;
         els.lastLink.hidden = false;
 
-        const podium = Array.isArray(event.podium) ? event.podium : [];
+        const podium = Array.isArray(event.raceResults) && event.raceResults.length
+          ? event.raceResults.slice(0, 5)
+          : (Array.isArray(event.podium) ? event.podium : []);
         els.lastPodium.innerHTML = podium.length ? podium.map((driver) => `
           <div class="gc-acsr-podium-row">
-            <span>P${escapeHtml(driver.position)}</span>
-            <strong>${escapeHtml(displayDriverName(driver.name, 'Piloto'))}</strong>
+            ${lastRaceRankBadge(driver.position)}
+            <strong>${escapeHtml(driver.name)}</strong>
             <small>${escapeHtml(driver.points)} pts</small>
           </div>
-        `).join('') : '<p>No hay podio disponible.</p>';
+        `).join('') : '<p>No hay resultados disponibles.</p>';
       }
 
       function renderError(data) {
@@ -1109,7 +1134,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         const stats = championship.stats || {};
 
         els.lead.textContent = `Calendario actualizado. Progreso del campeonato: ${championship.progressPercent || 0}%.`;
-        els.name.textContent = cleanText(championship.name || 'Campeonato actual');
+        els.name.textContent = championship.name || 'Campeonato actual';
         els.meta.textContent = `ID ${championship.id} · ${championship.acsrEnabled ? 'ACSR activo' : 'ACSR no marcado'} · actualizado ${fmtDate(championship.updatedAt)}`;
         els.events.textContent = String(stats.events ?? events.length ?? '--');
         els.completed.textContent = String(stats.completedEvents ?? '--');
@@ -1126,9 +1151,9 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         }
 
         if (next) {
-          els.nextTitle.textContent = cleanText(next.name || `Ronda ${next.index}`);
+          els.nextTitle.textContent = next.name || `Ronda ${next.index}`;
           els.nextMeta.textContent = `${fmtDate(next.scheduledAt)} · ${statusLabel[next.status] || next.status || 'Pendiente'}`;
-          els.nextTrack.textContent = [displayTrackName(next.track, ''), displayCarName(next.carSummary, '')].filter(Boolean).join(' · ') || 'Circuito pendiente';
+          els.nextTrack.textContent = [next.track, next.carSummary].filter(Boolean).join(' · ') || 'Circuito pendiente';
           renderTrackImage(next);
         } else {
           els.nextTitle.textContent = 'Sin próxima ronda';
@@ -1142,16 +1167,16 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         renderDrivers(drivers);
 
         els.list.innerHTML = events.slice(0, 24).map((event) => {
-          const winner = event.winner ? `${displayDriverName(event.winner.name, 'Piloto')} · ${event.winner.points} pts` : 'Resultados pendientes';
+          const winner = event.winner ? `${event.winner.name} · ${event.winner.points} pts` : 'Resultados pendientes';
           return `
             <a class="gc-acsr-event" href="${escapeHtml(event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`)}" data-status="${escapeHtml(event.status || 'pending')}">
               ${eventImageHtml(event)}
               <div>
                 <span>${escapeHtml(statusLabel[event.status] || event.status || 'Pendiente')}</span>
-                <strong>${escapeHtml(cleanText(event.name || `Ronda ${event.index}`))}</strong>
+                <strong>${escapeHtml(event.name || `Ronda ${event.index}`)}</strong>
               </div>
               <p>${escapeHtml(fmtDate(event.scheduledAt))}</p>
-              <p>${escapeHtml([displayTrackName(event.track, ''), displayCarName(event.carSummary, '')].filter(Boolean).join(' · ') || 'Combo por confirmar')}</p>
+              <p>${escapeHtml([event.track, event.carSummary].filter(Boolean).join(' · ') || 'Combo por confirmar')}</p>
               <div class="gc-acsr-event__meta">
                 <span class="gc-acsr-chip">${escapeHtml(event.raceResults?.length ? `${event.raceResults.length} pilotos` : 'Sin resultados')}</span>
                 <span class="gc-acsr-chip">${escapeHtml(winner)}</span>

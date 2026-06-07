@@ -1,40 +1,62 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 ---
 
 <MarketingLayout
-  title="Carreras no oficiales | GrassCutters Racing"
-  description="Carreras fuera del campeonato ACSM revisadas manualmente para SR/GSR global en GrassCutters Racing."
+  title="Carreras de comunidad | GrassCutters Racing"
+  description="Carreras fuera del campeonato ACSM revisadas desde administración. No alteran la clasificación oficial y no puntúan SR/GSR por defecto."
   ogImage="/og/campeonato-og-v1531.png"
-  bodyClass="gc-page-acsr gc-page-community-races"
+  bodyClass="gc-page-community-races"
   canonicalPath="/carreras-comunidad"
 >
-  <section class="gc-public-shell gc-public-section gc-community-races-page" data-gc-community-races>
-    <header class="gc-community-races-hero">
-      <a class="gc-archive-back" href="/campeonato">← Campeonato ACSM actual</a>
-      <span class="gc-public-kicker">Carreras no oficiales</span>
-      <h1 class="gc-public-title">Carreras de comunidad fuera del campeonato.</h1>
-      <p class="gc-public-description">
-        Estas carreras no pertenecen al campeonato ACSM. No suman puntos de campeonato y, si un admin las procesa manualmente desde `/admin/ratings`, pueden contar para el SR/GSR global.
-      </p>
-    </header>
+  <section class="gc-public-shell gc-public-page-hero gc-community-races-hero-zone" data-gc-community-races-hero>
+    <div class="gc-community-races-atmosphere" aria-hidden="true">
+      <video
+        class="gc-community-races-atmosphere-video"
+        src="/videos/0608.mp4"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+      ></video>
+    </div>
 
-    <section class="gc-community-races-overview" aria-label="Resumen de carreras no oficiales">
+    <div class="gc-public-page-hero__grid">
+      <div class="gc-public-page-hero__main">
+        <PublicHeroFrame
+          id="communityRacesHeroTitle"
+          kicker="Carreras de comunidad"
+          title={['Fuera del', 'campeonato ACSM.']}
+          lead="Sesiones revisadas desde administración. Sirven para ordenar actividad de comunidad, pruebas y eventos especiales sin alterar la clasificación oficial."
+          leadId="communityRacesHeroLead"
+        />
+        <div class="gc-actions">
+          <a class="gc-public-btn gc-public-btn-primary" href="/campeonato">Campeonato ACSM</a>
+          <a class="gc-public-btn gc-public-btn-secondary" href="/ratings">Ver SR/GSR</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="gc-public-shell gc-public-section gc-community-races-page" data-gc-community-races>
+    <section class="gc-community-races-overview" aria-label="Resumen de carreras de comunidad">
       <article class="gc-community-races-card">
         <span class="gc-public-kicker">Campeonato</span>
         <h2 class="gc-public-card-title">No alteran la clasificación ACSM.</h2>
         <p class="gc-public-card-text">Estas carreras no forman parte del calendario oficial del campeonato. Sirven como actividad de comunidad, pruebas especiales o eventos fuera del marco competitivo principal.</p>
       </article>
       <article class="gc-community-races-card">
-        <span class="gc-public-kicker">SR/GSR global</span>
-        <h2 class="gc-public-card-title">Pueden contar si se revisan manualmente.</h2>
-        <p class="gc-public-card-text">Si un admin valida una carrera desde `admin/ratings`, esa sesión puede entrar en el SR/GSR global sin convertirse en una ronda oficial del campeonato.</p>
+        <span class="gc-public-kicker">SR/GSR v125</span>
+        <h2 class="gc-public-card-title">No puntúan por defecto.</h2>
+        <p class="gc-public-card-text">En la línea actual, el rating activo es ACSM-only. Las sesiones de sTracker se pueden revisar y listar, pero no deben modificar SR/GSR salvo activación explícita de pruebas.</p>
       </article>
     </section>
 
-    <section class="gc-community-race-rules" aria-label="Reglas de carreras no oficiales">
+    <section class="gc-community-race-rules" aria-label="Reglas de carreras de comunidad">
       <p><strong>Campeonato ACSM:</strong> no suman puntos.</p>
-      <p><strong>SR/GSR global:</strong> pueden contar si un admin las procesa.</p>
+      <p><strong>SR/GSR:</strong> ACSM-only por defecto.</p>
       <p><strong>Practice/Qualy:</strong> no cuentan nunca.</p>
       <a class="gc-data-link" href="/ratings">Ver SR/GSR global</a>
     </section>
@@ -43,7 +65,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       <div class="gc-public-section-head">
         <span class="gc-public-kicker">Revisadas</span>
         <h2 class="gc-public-section-title">Carreras de comunidad revisadas.</h2>
-        <p class="gc-public-section-lead">Este listado no forma una clasificación de campeonato. Reúne carreras no oficiales ya revisadas y diferencia si cuentan o no para el SR/GSR global.</p>
+        <p class="gc-public-section-lead">Este listado no forma una clasificación de campeonato. Reúne sesiones revisadas para consulta y control interno.</p>
       </div>
 
       <div class="gc-community-races-table-wrap">
@@ -59,7 +81,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             </tr>
           </thead>
           <tbody id="gcCommunityRacesBody">
-            <tr><td colspan="6">Cargando carreras no oficiales...</td></tr>
+            <tr><td colspan="6">Cargando carreras de comunidad...</td></tr>
           </tbody>
         </table>
       </div>
@@ -70,7 +92,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     .gc-community-races-page{
       display:grid;
       gap:clamp(26px,3vw,46px);
-      padding-top:clamp(110px,12vw,170px);
+      padding-top:0;
     }
     .gc-community-races-overview{
       display:grid;
@@ -85,13 +107,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       border-radius:16px;
       background:linear-gradient(180deg, rgba(10,18,11,.8), rgba(4,7,5,.92));
       box-shadow:0 18px 46px rgba(0,0,0,.28);
-    }
-    .gc-community-races-hero{
-      display:grid;
-      gap:12px;
-      max-width:1060px;
-      padding-bottom:clamp(14px,2vw,26px);
-      border-bottom:1px solid rgba(126,255,39,.14);
     }
     .gc-archive-back,
     .gc-data-link{
@@ -160,6 +175,14 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       text-transform:uppercase;
       letter-spacing:.06em;
     }
+    .gc-community-races-title-link,
+    .gc-community-races-detail{
+      color:var(--gc-mk-text,#f2f6ef);
+      text-decoration:none;
+    }
+    .gc-community-races-title-link:hover,
+    .gc-community-races-detail:hover{ color:var(--gc-mk-accent,#80ff1f); }
+    .gc-community-races-detail--disabled{ color:var(--gc-mk-muted,#9ca59a); }
     @media (max-width: 860px){
       .gc-community-races-overview{ grid-template-columns:1fr; }
     }
@@ -211,7 +234,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         if (!data?.ok || !data?.championship) throw new Error(data?.message || 'No se pudo cargar el rating global.');
 
         const processed = Array.isArray(data.championship?.strackerSeries?.processedEvents)
-          ? data.championship.strackerSeries.processedEvents.map((event) => ({ ...event, ratingEligible: true }))
+          ? data.championship.strackerSeries.processedEvents.map((event) => ({ ...event, ratingEligible: false, sourceState: 'reviewed' }))
           : [];
         const reviewed = Array.isArray(data.championship?.strackerSeries?.reviewedEvents)
           ? data.championship.strackerSeries.reviewedEvents.map((event) => ({ ...event, ratingEligible: false }))
@@ -231,8 +254,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           const detailMarkup = href
             ? `<a class="gc-community-races-detail" href="${escapeHtml(href)}">Ver resultados →</a>`
             : `<span class="gc-community-races-detail gc-community-races-detail--disabled">Sin detalle</span>`;
-          const badgeTitle = event.ratingEligible ? 'SR/GSR global' : 'No cuenta SR/GSR';
-          const badgeNote = event.ratingEligible ? 'No suma campeonato ACSM' : 'Carrera revisada no puntuable';
+          const badgeTitle = event.ratingEligible ? 'SR/GSR global' : 'Revisada';
+          const badgeNote = event.ratingEligible ? 'Validada manualmente' : 'No puntuable por defecto';
           return `
             <tr>
               <td>${titleMarkup}<small>${escapeHtml(eventId || 'Sesión procesada')}</small></td>

@@ -18,6 +18,31 @@ const classKey = normalizedValue
   .replace('+', 'plus')
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-|-$/g, '') || 'unknown';
+
+const SR_LABELS = {
+  'A+': 'Legend',
+  A: 'Elite',
+  B: 'Pro',
+  C: 'Advanced',
+  D: 'Rookie',
+  E: 'Pitlane',
+  '--': '--',
+};
+
+const GSR_LABELS = {
+  S: 'Diamond',
+  A: 'Ruby',
+  B: 'Sapphire',
+  C: 'Emerald',
+  D: 'Amber',
+  Rookie: 'Onyx',
+  ROOKIE: 'Onyx',
+  '--': '--',
+};
+
+const displayValue = normalizedType === 'gsr'
+  ? (GSR_LABELS[normalizedValue] || normalizedValue)
+  : (SR_LABELS[normalizedValue] || normalizedValue);
 ---
 
 <span class:list={[
@@ -28,6 +53,6 @@ const classKey = normalizedValue
   className
 ]}>
   <span class="gc-rating-badge__type">{normalizedType.toUpperCase()}</span>
-  <strong>{normalizedValue}</strong>
+  <strong>{displayValue}</strong>
   {score !== undefined && score !== null && score !== '' && <small>{score}</small>}
 </span>

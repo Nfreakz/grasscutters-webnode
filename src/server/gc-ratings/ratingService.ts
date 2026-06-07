@@ -1,11 +1,10 @@
-﻿import { identifyRaceSession, matchOfficialToStracker, officialDriverName } from './acsmMatcher';
+import { identifyRaceSession, matchOfficialToStracker, officialDriverName } from './acsmMatcher';
 import { applyGsrUpdates, initialGsrState } from './gsrModel';
 import { createRatingStore } from './ratingStore';
 import { buildSrComputation } from './srModel';
 import { findRaceSessions, findRatingCandidateRaceSessions, openStrackerDb, readRaceDrivers, readRaceLaps, readRaceSession, resolveStrackerDbPath, verifyStrackerTables } from './strackerReader';
-import { getStrackerMirrorDriver, getStrackerSessionDetailFromMirror } from './strackerSqlMirror';
 import type { DriverRatingState, PlainObject, RatingEventResult, RatingsSnapshot, RecalculationLog, RatingStrackerSessionReview } from './types';
-import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName, driverKeyFromParts, ensureArray, formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, safeFiniteNumber, textValue, uniqueId } from './utils';
+import { ensureArray, formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, safeFiniteNumber, textValue, uniqueId } from './utils';
 
 function normalizeOrigin(value: string) {
   return String(value || '').trim().replace(/\/+$/, '');
@@ -26,6 +25,82 @@ function parseBooleanish(value: unknown, fallback: boolean | undefined = undefin
     return fallback;
   }
   return fallback;
+}
+
+
+function manualStrackerRatingsEnabled() {
+  const raw = String(process.env.GC_ENABLE_MANUAL_STRACKER_RATINGS || '').trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on', 'si', 'sí'].includes(raw);
+}
+
+const MIN_SR_STRACKER_MATCH_CONFIDENCE = safeFiniteNumber(process.env.GC_SR_MIN_STRACKER_MATCH_CONFIDENCE, 0.55);
+
+function protectLowConfidenceStrackerMatch(entry: any) {
+  const confidence = safeFiniteNumber(entry?.match?.confidence, 0);
+  if (!entry?.stracker || confidence >= MIN_SR_STRACKER_MATCH_CONFIDENCE) return entry;
+
+  return {
+    ...entry,
+    stracker: null,
+    match: {
+      ...(entry.match || {}),
+      confidence,
+      srTelemetryReliable: false,
+      rejectedForSr: true,
+      rejectedReason: 'low-confidence-stracker-match',
+      requiredConfidence: MIN_SR_STRACKER_MATCH_CONFIDENCE,
+      note: `Telemetría sTracker no usada para SR: confianza ${Math.round(confidence * 100)}%, mínimo ${Math.round(MIN_SR_STRACKER_MATCH_CONFIDENCE * 100)}%.`
+    }
+  };
+}
+
+function normalizeDriverNameKey(value: unknown) {
+  return textValue(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function stableDriverKeyFromParts(input: {
+  steamGuid?: string | null;
+  strackerPlayerId?: number | null;
+  name?: string | null;
+}) {
+  // Mega Update v109:
+  // SteamID/GUID es la identidad primaria. PlayerId es local a sTracker y puede variar.
+  const guid = textValue(input.steamGuid);
+  if (guid) return `steam:${guid}`;
+
+  const playerId = safeFiniteNumber(input.strackerPlayerId, 0);
+  if (playerId > 0) return `player:${playerId}`;
+
+  return `name:${normalizeDriverNameKey(input.name || 'unknown') || 'unknown'}`;
+}
+
+function findExistingStateForIdentity(
+  states: Map<string, DriverRatingState>,
+  input: {
+    driverKey: string;
+    steamGuid?: string | null;
+    strackerPlayerId?: number | null;
+    name?: string | null;
+  }
+) {
+  const candidates = [
+    input.driverKey,
+    textValue(input.steamGuid) ? `steam:${textValue(input.steamGuid)}` : '',
+    safeFiniteNumber(input.strackerPlayerId, 0) > 0 ? `player:${safeFiniteNumber(input.strackerPlayerId, 0)}` : '',
+    `name:${normalizeDriverNameKey(input.name)}`
+  ].filter(Boolean);
+
+  for (const key of candidates) {
+    const state = states.get(key);
+    if (state) return { key, state };
+  }
+
+  return null;
 }
 
 function acsmUrlCandidates() {
@@ -277,9 +352,9 @@ function normalizeReviewedStrackerSessions(snapshot: RatingsSnapshot | null | un
         status: 'reviewed-unrated' as const,
         ratingEligible: false,
         reason: textValue(item.reason) || null,
-        name: cleanDisplayText(item.name) || null,
-        track: displayTrackName(item.track || item.trackRaw, '') || null,
-        trackRaw: cleanDisplayText(item.trackRaw || item.track) || null,
+        name: textValue(item.name) || null,
+        track: textValue(item.track) || null,
+        trackRaw: textValue(item.trackRaw) || null,
         comboId: safeFiniteNumber(item.comboId, 0) || null,
         startTime: textValue(item.startTime) || null,
         endTime: textValue(item.endTime) || null,
@@ -336,8 +411,8 @@ function sortStrackerDriversForRace(drivers: PlainObject[]) {
 
 function buildManualStrackerEvent(session: PlainObject, drivers: PlainObject[], options: PlainObject = {}) {
   const sessionId = safeFiniteNumber(session.SessionId, 0);
-  const rawTrack = cleanDisplayText(session.Track || session.UiTrackName, 'Circuito');
-  const track = displayTrackName(session.UiTrackName || session.Track, 'Circuito');
+  const track = textValue(session.UiTrackName || session.Track, 'Circuito');
+  const rawTrack = textValue(session.Track || session.UiTrackName, track);
   const maxLaps = Math.max(...drivers.map((driver) => safeFiniteNumber(driver.MaxLapCount || driver.LapRows, 0)), 0);
   const sorted = sortStrackerDriversForRace(drivers);
   const startIso = unixSecondsToIso(session.StartTimeDate) || isoNow();
@@ -360,7 +435,7 @@ function buildManualStrackerEvent(session: PlainObject, drivers: PlainObject[], 
     startedAt: startIso,
     track,
     trackRaw: rawTrack,
-    car: displayCarName(sorted[0]?.UiCarName || sorted[0]?.CarFolder, ''),
+    car: textValue(sorted[0]?.UiCarName || sorted[0]?.CarFolder, ''),
     strackerSessionId: sessionId,
     manualStrackerSessionId: sessionId,
     raceResults: sorted.map((driver, index) => {
@@ -368,11 +443,11 @@ function buildManualStrackerEvent(session: PlainObject, drivers: PlainObject[], 
       const position = strackerRacePosition(driver, index, maxLaps);
       return {
         position,
-        name: displayDriverName(driver.StrackerName, `Piloto ${index + 1}`),
+        name: textValue(driver.StrackerName, `Piloto ${index + 1}`),
         guid: textValue(driver.StrackerGuid),
         playerId: safeFiniteNumber(driver.PlayerId, 0) || null,
-        model: displayCarName(driver.UiCarName || driver.CarFolder, 'Coche'),
-        carModel: displayCarName(driver.CarFolder || driver.UiCarName, 'Coche'),
+        model: textValue(driver.UiCarName || driver.CarFolder, 'Coche'),
+        carModel: textValue(driver.CarFolder || driver.UiCarName, 'Coche'),
         numLaps: laps,
         bestLapMs: safeFiniteNumber(driver.BestLapMs, 0),
         bestLap: formatLapMs(driver.BestLapMs),
@@ -385,54 +460,6 @@ function buildManualStrackerEvent(session: PlainObject, drivers: PlainObject[], 
       };
     })
   };
-}
-
-
-function enrichRowsWithCurrentRatings(rows: PlainObject[], snapshot: RatingsSnapshot) {
-  const byDriverKey = new Map(snapshot.drivers.map((driver) => [driver.driverKey, driver]));
-  const bySteam = new Map(snapshot.drivers.filter((driver) => driver.steamGuid).map((driver) => [String(driver.steamGuid), driver]));
-  const byPlayerId = new Map(snapshot.drivers.filter((driver) => driver.strackerPlayerId).map((driver) => [Number(driver.strackerPlayerId), driver]));
-  const byName = new Map(snapshot.drivers.map((driver) => [driverKeyFromParts({ name: driver.displayName }).replace('name:', ''), driver]));
-
-  return ensureArray(rows).map((row: PlainObject) => {
-    const playerId = safeFiniteNumber(row.strackerPlayerId ?? row.playerId, 0) || null;
-    const steamGuid = textValue(row.steamGuid ?? row.guid);
-    const driverKey = driverKeyFromParts({
-      strackerPlayerId: playerId,
-      steamGuid,
-      name: textValue(row.displayName ?? row.name)
-    });
-    const nameKey = driverKeyFromParts({ name: textValue(row.displayName ?? row.name) }).replace('name:', '');
-    const current = byDriverKey.get(driverKey)
-      || (steamGuid ? bySteam.get(steamGuid) : null)
-      || (playerId ? byPlayerId.get(playerId) : null)
-      || byName.get(nameKey)
-      || null;
-
-    if (!current) return row;
-
-    return {
-      ...row,
-      driverKey: current.driverKey,
-      steamGuid: current.steamGuid ?? row.steamGuid ?? row.guid ?? null,
-      strackerPlayerId: current.strackerPlayerId ?? row.strackerPlayerId ?? row.playerId ?? null,
-      srScore: current.srScore,
-      srClass: current.srClass,
-      srDelta: 0,
-      deltaSr: 0,
-      gsrRating: current.gsrRating,
-      gsrClass: current.gsrClass,
-      gsrDelta: 0,
-      deltaGsr: 0,
-      safetyRating: {
-        ...(row.safetyRating || {}),
-        score: current.srScore,
-        class: current.srClass,
-        delta: 0,
-        source: row.safetyRating?.source || 'current-rating'
-      }
-    };
-  });
 }
 
 function manualEventsFromSnapshot(snapshot: RatingsSnapshot, existingEvents: PlainObject[]) {
@@ -455,13 +482,13 @@ function manualEventsFromSnapshot(snapshot: RatingsSnapshot, existingEvents: Pla
       id: eventId,
       source: 'stracker-manual',
       status: 'completed',
-      name: cleanDisplayText(first?.eventName || `Carrera sTracker ${sessionId || ''}`.trim()),
+      name: first?.eventName || `Carrera sTracker ${sessionId || ''}`.trim(),
       index: existingEvents.length + index + 1,
       scheduledAt: first?.eventDate || first?.processedAt || null,
       completedAt: first?.eventDate || first?.processedAt || null,
       startedAt: first?.eventDate || first?.processedAt || null,
-      track: displayTrackName(first?.eventName?.split('·').pop()?.trim(), 'sTracker'),
-      trackRaw: cleanDisplayText(first?.eventName?.split('·').pop()?.trim(), 'sTracker'),
+      track: first?.eventName?.split('·').pop()?.trim() || 'sTracker',
+      trackRaw: first?.eventName?.split('·').pop()?.trim() || 'sTracker',
       strackerSessionId: sessionId,
       manualStrackerSessionId: sessionId,
       raceResults: []
@@ -477,13 +504,13 @@ function reviewedEventsFromSnapshot(snapshot: RatingsSnapshot, existingEvents: P
       id: review.eventId,
       source: 'stracker-reviewed',
       status: 'reviewed',
-      name: cleanDisplayText(review.name || `Carrera de comunidad ${review.sessionId}`),
+      name: review.name || `Carrera de comunidad ${review.sessionId}`,
       index: existingEvents.length + index + 1,
       scheduledAt: review.startTime || review.endTime || review.updatedAt || null,
       completedAt: review.endTime || review.startTime || review.updatedAt || null,
       startedAt: review.startTime || review.updatedAt || null,
-      track: displayTrackName(review.track || review.trackRaw, 'Carrera no oficial'),
-      trackRaw: cleanDisplayText(review.trackRaw || review.track, 'Carrera no oficial'),
+      track: review.track || review.trackRaw || 'Carrera no oficial',
+      trackRaw: review.trackRaw || review.track || 'Carrera no oficial',
       strackerSessionId: review.sessionId,
       manualStrackerSessionId: review.sessionId,
       playerCount: review.playerCount || 0,
@@ -500,353 +527,6 @@ function reviewedEventsFromSnapshot(snapshot: RatingsSnapshot, existingEvents: P
       reviewReason: review.reason || null,
       raceResults: []
     }));
-}
-
-function buildStrackerEventFromRatingResults(eventId: string, snapshot: RatingsSnapshot) {
-  const rows = snapshot.eventResults
-    .filter((row) => String(row.eventId) === String(eventId))
-    .sort((left, right) => left.position - right.position);
-
-  if (!rows.length) return null;
-
-  const first = rows[0];
-  const sessionId = safeFiniteNumber(first?.strackerSessionId, 0) || safeFiniteNumber(String(eventId).replace('stracker:', ''), 0) || null;
-  const trackFromEvent = displayTrackName(textValue(first?.eventName || '').split('·').pop()?.trim(), 'Circuito');
-  const raceResults = rows.map((result) => {
-    const lapDetails = ensureArray(result.lapsDetail);
-    const incidents = ensureArray(result.incidents);
-    return {
-      position: result.position,
-      name: displayDriverName(result.displayName, 'Piloto'),
-      guid: result.steamGuid,
-      playerId: result.strackerPlayerId ?? null,
-      model: displayCarName(result.car, 'Coche'),
-      carModel: displayCarName(result.car, 'Coche'),
-      car: displayCarName(result.car, 'Coche'),
-      numLaps: result.laps,
-      bestLapMs: result.bestLapMs,
-      bestLap: formatLapMs(result.bestLapMs),
-      totalTimeMs: null,
-      totalTime: '--',
-      points: result.points,
-      srScore: result.newSr,
-      srClass: ratingClassFromSr(result.newSr),
-      srDelta: result.deltaSr,
-      deltaSr: result.deltaSr,
-      gsrRating: result.newGsr,
-      gsrClass: ratingClassFromGsr(result.newGsr),
-      gsrDelta: result.deltaGsr,
-      deltaGsr: result.deltaGsr,
-      cleanRace: result.cleanRace,
-      incidentPoints: result.incidentPoints,
-      incidents,
-      lapsDetail: lapDetails,
-      match: result.match,
-      gsrExplanation: result.notes?.[0] || '',
-      safetyRating: {
-        score: result.newSr,
-        class: ratingClassFromSr(result.newSr),
-        delta: result.deltaSr,
-        eventScore: result.newSr,
-        severity: result.incidentPoints,
-        offTracks: lapDetails.reduce((sum, lap) => sum + Number(lap.cuts || 0), 0),
-        collisionsCar: lapDetails.reduce((sum, lap) => sum + Number(lap.collisionsCar || 0), 0),
-        collisionsEnv: lapDetails.reduce((sum, lap) => sum + Number(lap.collisionsEnv || 0), 0),
-        source: result.match?.method?.includes('acsm') ? 'acsm' : 'stracker.db3',
-        model: 'stracker-db3',
-        penalties: {
-          summary: incidents.length
-            ? incidents.map((incident) => incident.description || incident.type || 'Incidente STRacker')
-            : []
-        },
-        incidents,
-        laps: lapDetails.map((lap) => ({
-          lap: lap.lapNumber,
-          lapTime: formatLapMs(lap.lapTimeMs),
-          valid: lap.valid,
-          offTracks: lap.cuts,
-          cuts: lap.cuts,
-          collisionsCar: lap.collisionsCar,
-          collisionsEnv: lap.collisionsEnv,
-          srDelta: lap.srDelta,
-          notes: textValue(lap.notes).split(' · ').filter(Boolean)
-        }))
-      }
-    };
-  });
-
-  const topRow = raceResults[0] || null;
-  const fastest = [...raceResults]
-    .filter((row) => safeFiniteNumber(row.bestLapMs, 0) > 0)
-    .sort((left, right) => safeFiniteNumber(left.bestLapMs, 0) - safeFiniteNumber(right.bestLapMs, 0))[0] || null;
-
-  const trackSource = trackFromEvent || 'Circuito';
-  const scheduledAt = first.eventDate || first.processedAt || null;
-
-  return {
-    id: eventId,
-    source: 'stracker-manual',
-    status: 'completed',
-    name: cleanDisplayText(`Carrera sTracker #${sessionId || ''} · ${trackSource}`.trim(), `Carrera sTracker #${sessionId || ''}`),
-    scheduledAt,
-    completedAt: first.eventDate || first.processedAt || null,
-    startedAt: first.eventDate || first.processedAt || null,
-    track: displayTrackName(trackSource, 'Circuito'),
-    trackRaw: cleanDisplayText(trackSource, 'Circuito'),
-    carSummary: topRow?.model || topRow?.carModel || null,
-    strackerSessionId: sessionId,
-    manualStrackerSessionId: sessionId,
-    playerCount: raceResults.length,
-    lapCount: Math.max(...raceResults.map((row) => safeFiniteNumber(row.numLaps, 0)), 0),
-    maxLapCount: Math.max(...raceResults.map((row) => safeFiniteNumber(row.numLaps, 0)), 0),
-    bestLapMs: fastest ? safeFiniteNumber(fastest.bestLapMs, 0) : 0,
-    bestLap: fastest ? fastest.bestLap : '--',
-    cuts: raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.offTracks, 0), 0),
-    collisionsCar: raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.collisionsCar, 0), 0),
-    collisionsEnv: raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.collisionsEnv, 0), 0),
-    ratingEligible: true,
-    reviewStatus: null,
-    qualifyingResults: [],
-    raceResults,
-    sessions: [
-      {
-        type: 'RACE',
-        key: 'RACE',
-        track: sessionTrack,
-        resultCount: raceResults.length,
-        lapCount: Math.max(...raceResults.map((row) => safeFiniteNumber(row.numLaps, 0)), 0),
-        fastestLap: fastest ? {
-          lapTime: fastest.bestLap,
-          driverName: fastest.name,
-          carModel: fastest.model
-        } : null
-      }
-    ],
-    winner: topRow || null,
-    fastestLap: fastest ? {
-      lapTime: fastest.bestLap,
-      driverName: fastest.name,
-      carModel: fastest.model
-    } : null
-  };
-}
-
-function buildStrackerMirrorEventFromDetail(detail: PlainObject, snapshot: RatingsSnapshot, options: PlainObject = {}) {
-  const session = detail.session || {};
-  const sessionId = safeFiniteNumber(session.sessionId, 0);
-  const review = normalizeReviewedStrackerSessions(snapshot).find((item) => item.sessionId === sessionId) || null;
-  const eventId = textValue(options.eventId, strackerManualEventId(sessionId));
-  const mirrorDriver = textValue(options.mirrorDriver, getStrackerMirrorDriver());
-  const driverRows = ensureArray(detail.drivers)
-    .slice()
-    .sort((left, right) => {
-      const leftPosition = safeFiniteNumber(left.position, 0);
-      const rightPosition = safeFiniteNumber(right.position, 0);
-      if (leftPosition !== rightPosition) return leftPosition - rightPosition;
-      const leftBest = safeFiniteNumber(left.bestLapMs, 0);
-      const rightBest = safeFiniteNumber(right.bestLapMs, 0);
-      if (leftBest !== rightBest) return leftBest - rightBest;
-      return safeFiniteNumber(left.playerInSessionId, 0) - safeFiniteNumber(right.playerInSessionId, 0);
-    });
-  const lapRows = ensureArray(detail.laps);
-  const incidentRows = ensureArray(detail.incidents);
-
-  const rawRows = driverRows.map((driver, index) => {
-    const playerId = safeFiniteNumber(driver.playerId, 0) || null;
-    const playerInSessionId = safeFiniteNumber(driver.playerInSessionId, 0) || null;
-    const driverLaps = lapRows.filter((lap) => {
-      const lapPlayerId = safeFiniteNumber(lap.playerId, 0) || null;
-      const lapPlayerInSessionId = safeFiniteNumber(lap.playerInSessionId, 0) || null;
-      return (playerInSessionId && lapPlayerInSessionId === playerInSessionId) || (playerId && lapPlayerId === playerId);
-    });
-    const driverIncidents = incidentRows.filter((incident) => {
-      const incidentPlayerId = safeFiniteNumber(incident.playerId, 0) || null;
-      return Boolean(playerId && incidentPlayerId === playerId);
-    });
-    const totalCuts = driverLaps.reduce((sum, lap) => sum + safeFiniteNumber(lap.cuts, 0), 0);
-    const totalCollisionsCar = driverLaps.reduce((sum, lap) => sum + safeFiniteNumber(lap.collisionsCar, 0), 0);
-    const totalCollisionsEnv = driverLaps.reduce((sum, lap) => sum + safeFiniteNumber(lap.collisionsEnv, 0), 0);
-    const lapDetails = driverLaps.map((lap) => {
-      const lapIncidents = driverIncidents.filter((incident) => safeFiniteNumber(incident.lapNumber, 0) === safeFiniteNumber(lap.lapNumber, 0));
-      return {
-        lapNumber: safeFiniteNumber(lap.lapNumber, 0),
-        lapTimeMs: safeFiniteNumber(lap.lapTimeMs, 0),
-        valid: Boolean(lap.valid),
-        cuts: safeFiniteNumber(lap.cuts, 0),
-        collisionsCar: safeFiniteNumber(lap.collisionsCar, 0),
-        collisionsEnv: safeFiniteNumber(lap.collisionsEnv, 0),
-        srDelta: 0,
-        notes: lapIncidents.length
-          ? lapIncidents.map((incident) => incident.type || 'Incidente STRacker')
-          : []
-      };
-    });
-    const bestLapMs = safeFiniteNumber(driver.bestLapMs, 0);
-    const totalTimeMs = safeFiniteNumber(driver.raceTimeMs, 0);
-    return {
-      position: safeFiniteNumber(driver.position, 0) || index + 1,
-      name: displayDriverName(driver.driverName, `Piloto ${index + 1}`),
-      guid: textValue(driver.steamGuid),
-      playerId,
-      model: displayCarName(driver.carDisplay || driver.carRaw, 'Coche'),
-      carModel: displayCarName(driver.carRaw || driver.carDisplay, 'Coche'),
-      car: displayCarName(driver.carDisplay || driver.carRaw, 'Coche'),
-      numLaps: safeFiniteNumber(driver.laps, 0),
-      bestLapMs,
-      bestLap: formatLapMs(bestLapMs),
-      totalTimeMs,
-      totalTime: formatLapMs(totalTimeMs),
-      points: 0,
-      srScore: null,
-      srClass: null,
-      srDelta: 0,
-      deltaSr: 0,
-      gsrRating: null,
-      gsrClass: null,
-      gsrDelta: 0,
-      deltaGsr: 0,
-      cleanRace: driverIncidents.length === 0,
-      incidentPoints: 0,
-      incidents: driverIncidents.map((incident) => ({
-        ...incident,
-        description: incident.type || 'Incidente STRacker'
-      })),
-      lapsDetail: lapDetails,
-      match: { method: 'sql-mirror' },
-      gsrExplanation: review?.reason || '',
-      source: 'sql-mirror',
-      mirrorDriver,
-      strackerPlayerId: playerId,
-      strackerPlayerInSessionId: playerInSessionId,
-      safetyRating: {
-        score: null,
-        class: null,
-        delta: 0,
-        eventScore: 0,
-        severity: driverIncidents.length,
-        offTracks: totalCuts,
-        collisionsCar: totalCollisionsCar,
-        collisionsEnv: totalCollisionsEnv,
-        source: 'sql-mirror',
-        model: 'stracker-sql-mirror',
-        penalties: {
-          summary: driverIncidents.length
-            ? driverIncidents.map((incident) => {
-              const parts = [incident.type || 'Incidente STRacker'];
-              if (incident.lapNumber !== null && incident.lapNumber !== undefined) parts.push(`vuelta ${incident.lapNumber}`);
-              return parts.join(' · ');
-            })
-            : []
-        },
-        incidents: driverIncidents,
-        laps: lapDetails.map((lap) => ({
-          lap: lap.lapNumber,
-          lapTime: formatLapMs(lap.lapTimeMs),
-          valid: lap.valid,
-          offTracks: lap.cuts,
-          cuts: lap.cuts,
-          collisionsCar: lap.collisionsCar,
-          collisionsEnv: lap.collisionsEnv,
-          srDelta: lap.srDelta,
-          notes: lap.notes
-        }))
-      }
-    };
-  });
-
-  const enrichedRows = enrichRowsWithCurrentRatings(rawRows, snapshot);
-  const raceResults = enrichedRows.map((row) => ({
-    ...row,
-    totalTime: row.totalTime || formatLapMs(row.totalTimeMs || 0) || '--',
-    totalTimeMs: row.totalTimeMs ?? null,
-    points: 0,
-    srDelta: 0,
-    deltaSr: 0,
-    gsrDelta: 0,
-    deltaGsr: 0,
-    incidents: ensureArray(row.incidents),
-    lapsDetail: ensureArray(row.lapsDetail),
-    safetyRating: {
-      ...(row.safetyRating || {}),
-      score: row.safetyRating?.score ?? row.srScore ?? null,
-      class: row.safetyRating?.class ?? row.srClass ?? null,
-      delta: 0,
-      eventScore: 0,
-      severity: row.safetyRating?.severity ?? ensureArray(row.incidents).length,
-      source: row.safetyRating?.source || 'sql-mirror',
-      model: row.safetyRating?.model || 'stracker-sql-mirror'
-    }
-  }));
-
-  const topRow = raceResults[0] || null;
-  const fastest = [...raceResults]
-    .filter((row) => safeFiniteNumber(row.bestLapMs, 0) > 0)
-    .sort((left, right) => safeFiniteNumber(left.bestLapMs, 0) - safeFiniteNumber(right.bestLapMs, 0))[0] || null;
-  const sessionTrack = displayTrackName(session.track || session.trackRaw || review?.track || review?.trackRaw, 'Circuito');
-  const sessionName = cleanDisplayText(`Carrera sTracker #${sessionId || ''} · ${sessionTrack}`.trim(), `Carrera no oficial ${sessionId}`);
-  const sessionStart = session.startTime || review?.startTime || null;
-  const sessionEnd = session.endTime || review?.endTime || null;
-  const lapCount = safeFiniteNumber(session.lapCount, 0) || Math.max(...raceResults.map((row) => safeFiniteNumber(row.numLaps, 0)), 0);
-  const maxLapCount = safeFiniteNumber(session.maxLapCount, 0) || lapCount;
-  const bestLapMs = safeFiniteNumber(session.bestLapMs, 0) || safeFiniteNumber(fastest?.bestLapMs, 0);
-
-  return {
-    id: eventId,
-    source: 'stracker-reviewed',
-    status: 'reviewed',
-    name: sessionName,
-    scheduledAt: sessionStart || sessionEnd || review?.updatedAt || null,
-    completedAt: sessionEnd || sessionStart || review?.updatedAt || null,
-    startedAt: sessionStart || review?.updatedAt || null,
-    track: sessionTrack,
-    trackRaw: cleanDisplayText(review?.trackRaw || session.trackRaw || sessionTrack, 'Circuito'),
-    comboId: safeFiniteNumber(session.comboId, 0) || review?.comboId || null,
-    carSummary: topRow?.model || topRow?.carModel || null,
-    strackerSessionId: sessionId,
-    manualStrackerSessionId: sessionId,
-    playerCount: safeFiniteNumber(session.playerCount, 0) || raceResults.length,
-    lapCount,
-    maxLapCount,
-    bestLapMs,
-    bestLap: formatLapMs(bestLapMs),
-    cuts: safeFiniteNumber(session.cuts, 0) || raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.offTracks, 0), 0),
-    collisionsCar: safeFiniteNumber(session.collisionsCar, 0) || raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.collisionsCar, 0), 0),
-    collisionsEnv: safeFiniteNumber(session.collisionsEnv, 0) || raceResults.reduce((sum, row) => sum + safeFiniteNumber(row.safetyRating?.collisionsEnv, 0), 0),
-    ratingEligible: false,
-    reviewStatus: 'reviewed-unrated',
-    reviewReason: review?.reason || null,
-    qualifyingResults: [],
-    raceResults,
-    session: {
-      ...session,
-      type: String(session.type || 'RACE').toUpperCase(),
-      source: 'sql-mirror',
-      mirrorDriver
-    },
-    drivers: ensureArray(detail.drivers),
-    laps: ensureArray(detail.laps),
-    incidents: ensureArray(detail.incidents),
-    sessions: [
-      {
-        type: 'RACE',
-        key: 'RACE',
-        track: sessionTrack,
-        resultCount: raceResults.length,
-        lapCount,
-        fastestLap: fastest ? {
-          lapTime: fastest.bestLap,
-          driverName: fastest.name,
-          carModel: fastest.model
-        } : null
-      }
-    ],
-    winner: topRow || null,
-    fastestLap: fastest ? {
-      lapTime: fastest.bestLap,
-      driverName: fastest.name,
-      carModel: fastest.model
-    } : null
-  };
 }
 
 type ProcessingContext = {
@@ -929,9 +609,9 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     bucket.push(result);
     resultsByEvent.set(result.eventId, bucket);
 
-    // La clasificaciÃ³n de /campeonato es ACSM-only: las carreras manuales sTracker
-    // pueden contar para SR/GSR global, pero nunca deben alterar puntos, victorias,
-    // podios, incidentes ni Ãºltimo resultado del campeonato ACSM.
+    // La clasificación de /campeonato es ACSM-only: las carreras manuales sTracker
+    // quedan fuera del campeonato oficial. En v125 no deben alterar SR/GSR salvo
+    // activación explícita para pruebas controladas.
     if (!championshipEventIds.has(String(result.eventId))) return;
 
     const officialBucket = officialResultsByDriver.get(result.driverKey) || [];
@@ -970,8 +650,6 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
 
     return {
       ...row,
-      name: displayDriverName(row.name, 'Piloto'),
-      model: displayCarName(row.model || row.carModel || row.car, ''),
       classificationSource: 'acsm',
       ratingDisplayScope: 'global-reference',
       driverKey: rating?.driverKey ?? row.driverKey ?? null,
@@ -985,7 +663,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
       podiums: row.podiums ?? officialPodiums ?? 0,
       lastResult: lastResult ? {
         eventId: lastResult.eventId,
-        eventName: cleanDisplayText(lastResult.eventName),
+        eventName: lastResult.eventName,
         position: lastResult.position,
         points: lastResult.points
       } : null,
@@ -1005,12 +683,36 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
           textValue(row.guid) === textValue(result.steamGuid) ||
           textValue(row.name).toLowerCase() === textValue(result.displayName).toLowerCase()
         ) || {};
+        const ratingNotes = ensureArray(result.notes).map((item) => String(item));
+        const srExplanationNotes = ratingNotes
+          .filter((item) =>
+            item.startsWith('Tiempo en pista') ||
+            item.startsWith('Tiempo limpio') ||
+            item.startsWith('Vueltas limpias') ||
+            item.startsWith('Racha limpia') ||
+            item.startsWith('Bonus por conducción limpia') ||
+            item.startsWith('Penalizaciones') ||
+            item.startsWith('Salidas/cuts') ||
+            item.startsWith('Golpes con coche') ||
+            item.startsWith('Golpes con entorno') ||
+            item.startsWith('Carrera no completada') ||
+            item.startsWith('Descalificación') ||
+            item.startsWith('Sanción oficial') ||
+            item.startsWith('Resultado SR')
+          )
+          .filter((item) =>
+            !item.includes('gc-sr-v2') &&
+            !item.includes('gc-ratings-v1') &&
+            !item.startsWith('Cap ') &&
+            !item.startsWith('Estado:')
+          );
+        const srModelNote = '';
         return {
           ...official,
           position: result.position,
-          name: displayDriverName(result.displayName, 'Piloto'),
+          name: result.displayName,
           guid: result.steamGuid,
-          model: displayCarName(result.car, 'Coche'),
+          model: result.car,
           bestLapMs: result.bestLapMs,
           bestLap: formatLapMs(result.bestLapMs),
           totalTime: official.totalTime || official.totalTimeMs || '--',
@@ -1027,7 +729,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
           incidents: result.incidents,
           lapsDetail: result.lapsDetail,
           match: result.match,
-          gsrExplanation: result.notes[0] || '',
+          gsrExplanation: ratingNotes[0] || '',
           safetyRating: {
             score: result.newSr,
             class: ratingClassFromSr(result.newSr),
@@ -1038,9 +740,9 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
             collisionsCar: result.lapsDetail.reduce((sum, lap) => sum + lap.collisionsCar, 0),
             collisionsEnv: result.lapsDetail.reduce((sum, lap) => sum + lap.collisionsEnv, 0),
             source: result.match.method.includes('acsm') ? 'acsm' : 'stracker.db3',
-            model: 'gc-ratings-v1',
+            model: srModelNote,
             penalties: {
-              summary: result.incidents.map((incident) => incident.description)
+              summary: srExplanationNotes.length ? srExplanationNotes : result.incidents.map((incident) => incident.description)
             },
             incidents: result.incidents,
             laps: result.lapsDetail.map((lap) => ({
@@ -1075,7 +777,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     id: 'gc-stracker-community',
     name: 'Carreras sTracker',
     type: 'stracker_series',
-    description: 'Carreras detectadas desde sTracker fuera de ACSM. Pueden contar para SR/GSR global si se validan manualmente, pero nunca para la clasificaciÃ³n ACSM.',
+    description: 'Carreras detectadas desde sTracker fuera de ACSM. En v125 se revisan como no puntuables por defecto y nunca alteran la clasificación ACSM.',
     sharedRatings: true,
     processedEvents: processedStrackerEvents,
     reviewedEvents: reviewedStrackerEvents,
@@ -1090,6 +792,26 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   return { ...championship, standings, events, strackerSeries };
 }
 
+
+
+function orderRowsForGsr(rows: any[]) {
+  return [...rows].sort((left, right) => {
+    const leftPosition = safeFiniteNumber(left.position, 9999);
+    const rightPosition = safeFiniteNumber(right.position, 9999);
+    if (leftPosition !== rightPosition) return leftPosition - rightPosition;
+
+    const lapDiff = safeFiniteNumber(right.laps, 0) - safeFiniteNumber(left.laps, 0);
+    if (lapDiff) return lapDiff;
+
+    const timeDiff = safeFiniteNumber(left.totalTimeMs, 0) - safeFiniteNumber(right.totalTimeMs, 0);
+    if (timeDiff) return timeDiff;
+
+    const bestLapDiff = safeFiniteNumber(left.bestLapMs, 0) - safeFiniteNumber(right.bestLapMs, 0);
+    if (bestLapDiff) return bestLapDiff;
+
+    return String(left.displayName || '').localeCompare(String(right.displayName || ''));
+  });
+}
 
 function rebuildDriversFromEventResults(eventResults: RatingEventResult[], previousDrivers: DriverRatingState[] = []) {
   const states = new Map<string, DriverRatingState>();
@@ -1110,7 +832,7 @@ function rebuildDriversFromEventResults(eventResults: RatingEventResult[], previ
     });
 
     current.createdAt = previous?.createdAt || current.createdAt;
-    current.displayName = displayDriverName(result.displayName || current.displayName, current.displayName);
+    current.displayName = result.displayName || current.displayName;
     current.steamGuid = result.steamGuid ?? current.steamGuid ?? null;
     current.strackerPlayerId = result.strackerPlayerId ?? current.strackerPlayerId ?? null;
 
@@ -1178,7 +900,7 @@ export class GcRatingsService {
         const strackerDrivers = session && context.db ? readRaceDrivers(context.db, Number(session.SessionId)) : [];
         const officialResults = ensureArray(event.raceResults);
 
-        const matches = session && strackerDrivers.length
+        const rawMatches = session && strackerDrivers.length
           ? matchOfficialToStracker(event, session, strackerDrivers)
           : officialResults.map((result: PlainObject) => ({
               result,
@@ -1186,21 +908,47 @@ export class GcRatingsService {
               match: acsmFallbackMatch(event, result)
             }));
 
+        // Mega Update v108:
+        // Si el matching ACSM ↔ sTracker es dudoso, no usamos esa telemetría para SR.
+        // El GSR puede seguir usando el resultado oficial ACSM, pero el SR queda congelado
+        // para evitar penalizar o bonificar a un piloto con vueltas del piloto equivocado.
+        const matches = rawMatches.map(protectLowConfidenceStrackerMatch);
+
         const maxRaceLaps = Math.max(...officialResults.map((row: PlainObject) => safeFiniteNumber(row.numLaps, 0)), 0);
         const processedAt = isoNow();
 
         const provisionalRows = matches.map(({ result, stracker, match }: any) => {
-          const driverKey = driverKeyFromParts({
-            strackerPlayerId: stracker?.PlayerId ?? null,
-            steamGuid: stracker?.StrackerGuid ?? result.guid ?? null,
-            name: displayDriverName(officialDriverName(result), 'Piloto')
+          const steamGuid = textValue(stracker?.StrackerGuid ?? result.guid ?? result.steamGuid ?? result.SteamGuid);
+          const strackerPlayerId = safeFiniteNumber(stracker?.PlayerId ?? result.playerId ?? result.strackerPlayerId, 0) || null;
+          const displayName = officialDriverName(result);
+          const driverKey = stableDriverKeyFromParts({
+            steamGuid,
+            strackerPlayerId,
+            name: displayName
           });
-          const current = states.get(driverKey) || stateFromRow({
+          const existingState = findExistingStateForIdentity(states, {
             driverKey,
-            displayName: displayDriverName(officialDriverName(result), 'Piloto'),
-            steamGuid: stracker?.StrackerGuid ?? result.guid ?? null,
-            strackerPlayerId: stracker?.PlayerId ?? null
+            steamGuid,
+            strackerPlayerId,
+            name: displayName
           });
+          const current = existingState?.state || stateFromRow({
+            driverKey,
+            displayName,
+            steamGuid,
+            strackerPlayerId
+          });
+
+          // Si venía de una clave antigua player:/name:, migramos el estado vivo a steam:
+          // para que el rebuild/incremental mantenga una sola identidad.
+          if (existingState?.key && existingState.key !== driverKey) {
+            states.delete(existingState.key);
+            current.driverKey = driverKey;
+          }
+
+          current.steamGuid = steamGuid || current.steamGuid || null;
+          current.strackerPlayerId = strackerPlayerId ?? current.strackerPlayerId ?? null;
+          current.displayName = displayName || current.displayName;
           states.set(driverKey, current);
 
           const resultId = uniqueId('gc_evt');
@@ -1216,7 +964,8 @@ export class GcRatingsService {
             laps,
             officialResult: {
               ...result,
-              dnf: Boolean(result.status === 'DNF')
+              dnf: Boolean(result.status === 'DNF'),
+              __srTelemetryReliable: Boolean(stracker?.PlayerInSessionId && context.db)
             },
             matchedRow: stracker,
             maxRaceLaps
@@ -1225,14 +974,14 @@ export class GcRatingsService {
           return {
             resultId,
             eventId: String(event.id),
-            eventName: cleanDisplayText(event.name, `Ronda ${event.index}`),
+            eventName: textValue(event.name, `Ronda ${event.index}`),
             eventDate: event.completedAt || event.scheduledAt || null,
             strackerSessionId: session ? Number(session.SessionId) : null,
             driverKey,
-            steamGuid: stracker?.StrackerGuid ?? result.guid ?? null,
-            strackerPlayerId: stracker?.PlayerId ?? null,
-            displayName: displayDriverName(officialDriverName(result), 'Piloto'),
-            car: displayCarName(result.model || result.carModel || stracker?.UiCarName || stracker?.CarFolder, 'Coche'),
+            steamGuid,
+            strackerPlayerId,
+            displayName,
+            car: textValue(result.model || result.carModel || stracker?.UiCarName || stracker?.CarFolder),
             position: safeFiniteNumber(result.position, 0),
             points: safeFiniteNumber(result.points, 0),
             laps: safeFiniteNumber(result.numLaps, 0),
@@ -1246,15 +995,22 @@ export class GcRatingsService {
             dsq: Boolean(result.disqualified || result.dsq),
             srIncidents: sr.incidents,
             srLaps: sr.lapDetails,
+            srExplanations: ensureArray((sr as PlainObject).explanations).map((item) => String(item)),
+            srModelVersion: String((sr as PlainObject).modelVersion || 'gc-sr-v2-clean-time'),
             match,
             processedAt
           };
         });
 
-        const gsrUpdates = applyGsrUpdates(provisionalRows, states);
+        // Mega Update v110:
+        // GSR debe calcularse con el orden real de llegada. Antes se usaba el orden
+        // de matching, que normalmente coincide, pero puede fallar con emparejamientos
+        // ACSM/sTracker raros. No cambiamos el modelo GSR, solo el orden de entrada.
+        const orderedRowsForGsr = orderRowsForGsr(provisionalRows);
+        const gsrUpdates = applyGsrUpdates(orderedRowsForGsr, states);
         const gsrByDriver = new Map(gsrUpdates.map((row) => [row.driverKey, row]));
 
-        for (const row of provisionalRows.sort((left, right) => left.position - right.position)) {
+        for (const row of orderedRowsForGsr) {
           const current = states.get(row.driverKey)!;
           const gsr = gsrByDriver.get(row.driverKey)!;
           current.displayName = row.displayName;
@@ -1311,7 +1067,10 @@ export class GcRatingsService {
             incidents: row.srIncidents,
             lapsDetail: row.srLaps,
             match: row.match,
-            notes: [gsr.explanation]
+            notes: [
+              gsr.explanation,
+              ...ensureArray(row.srExplanations).map((item) => String(item))
+            ]
           });
         }
 
@@ -1391,8 +1150,8 @@ export class GcRatingsService {
 
     const computed = await this.computeEventUpdates(baseSnapshot, newEvents, 'incremental');
     const statusMessage = computed.context.srMode === 'stracker'
-      ? `Procesados automÃ¡ticamente ${newEvents.length} evento(s) ACSM completado(s) con SR/GSR.`
-      : `Procesados automÃ¡ticamente ${newEvents.length} evento(s) ACSM completado(s) con SR parcial desde ACSM.`;
+      ? `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR/GSR.`
+      : `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR parcial desde ACSM.`;
     const okLog: RecalculationLog = {
       id: uniqueId('gc_recalc'),
       eventId: null,
@@ -1445,7 +1204,8 @@ export class GcRatingsService {
     const previousSnapshot = await this.getSnapshot();
     const baseSnapshot: RatingsSnapshot = {
       ...createEmptySnapshot(championship, this.store.kind),
-      ignoredStrackerSessions: normalizeIgnoredStrackerSessions(previousSnapshot)
+      ignoredStrackerSessions: normalizeIgnoredStrackerSessions(previousSnapshot),
+      reviewedStrackerSessions: normalizeReviewedStrackerSessions(previousSnapshot)
     };
     const computed = await this.computeEventUpdates(baseSnapshot, allCompleted, 'rebuild');
     const okLog: RecalculationLog = {
@@ -1494,18 +1254,18 @@ export class GcRatingsService {
       if (!tableCheck.ok) throw new Error(`Faltan tablas en stracker: ${tableCheck.missing.join(', ')}`);
 
       const session = readRaceSession(db, sessionId);
-      if (!session) throw new Error(`No existe la sesiÃ³n sTracker ${sessionId}.`);
+      if (!session) throw new Error(`No existe la sesión sTracker ${sessionId}.`);
       if (String(session.SessionType || '').toLowerCase() !== 'race') {
-        throw new Error(`La sesiÃ³n ${sessionId} no es Race.`);
+        throw new Error(`La sesión ${sessionId} no es Race.`);
       }
 
       const drivers = readRaceDrivers(db, sessionId).filter((driver: PlainObject) =>
         safeFiniteNumber(driver.MaxLapCount || driver.LapRows, 0) > 0
       );
 
-      const minDrivers = safeFiniteNumber(options.minDrivers, 3);
+      const minDrivers = safeFiniteNumber(options.minDrivers, 2);
       if (drivers.length < minDrivers) {
-        throw new Error(`La sesiÃ³n ${sessionId} tiene ${drivers.length} piloto(s), mÃ­nimo ${minDrivers}.`);
+        throw new Error(`La sesión ${sessionId} tiene ${drivers.length} piloto(s), mínimo ${minDrivers}.`);
       }
 
       return buildManualStrackerEvent(session, drivers, options);
@@ -1545,8 +1305,8 @@ export class GcRatingsService {
 
       const candidates = findRatingCandidateRaceSessions(db, {
         limit: safeFiniteNumber(options.limit, 80),
-        minDrivers: safeFiniteNumber(options.minDrivers, 3),
-        minTotalLaps: safeFiniteNumber(options.minTotalLaps, 1)
+        minDrivers: safeFiniteNumber(options.minDrivers, 2),
+        minTotalLaps: safeFiniteNumber(options.minTotalLaps, 10)
       }).map((session: PlainObject) => {
         const sessionId = safeFiniteNumber(session.SessionId, 0);
         const eventId = strackerManualEventId(sessionId);
@@ -1561,8 +1321,8 @@ export class GcRatingsService {
           eventId,
           sessionId,
           type: session.SessionType,
-          track: displayTrackName(session.UiTrackName || session.Track, 'Circuito'),
-          trackRaw: cleanDisplayText(session.Track),
+          track: textValue(session.UiTrackName || session.Track, 'Circuito'),
+          trackRaw: textValue(session.Track),
           comboId: session.ComboId ?? null,
           startTime: startIso,
           lastLapAt: lastLapIso,
@@ -1586,7 +1346,7 @@ export class GcRatingsService {
           ignoredAt: ignoredReview?.updatedAt || ignoredReview?.createdAt || null,
           linkedToAcsm: Boolean(linkedOfficial),
           linkedAcsmEventId: linkedOfficial?.eventId || null,
-          recommended: !alreadyProcessed && !ignoredReview && !reviewedReview && safeFiniteNumber(session.PlayerCount, 0) >= 3 && safeFiniteNumber(session.LapCount, 0) >= 1
+          recommended: !alreadyProcessed && !ignoredReview && !reviewedReview && safeFiniteNumber(session.PlayerCount, 0) >= 2 && safeFiniteNumber(session.LapCount, 0) >= 10
         };
       });
 
@@ -1624,13 +1384,23 @@ export class GcRatingsService {
       return this.reviewStrackerSession(sessionId, options);
     }
 
+    // Mega Update v107:
+    // El rating activo queda limitado a carreras oficiales ACSM completadas.
+    // Las carreras sTracker no oficiales se mantienen para revisión/detalle/futuro,
+    // pero no deben tocar SR/GSR salvo que se active explícitamente por variable.
+    if (!manualStrackerRatingsEnabled()) {
+      throw new Error(
+        'Las carreras sTracker no oficiales no cuentan para SR/GSR en esta fase. Marca la sesión como revisada no puntuable o activa GC_ENABLE_MANUAL_STRACKER_RATINGS=true solo para pruebas controladas.'
+      );
+    }
+
     const event = await this.buildManualStrackerEventFromSession(sessionId, options);
     const baseSnapshot = (await this.loadSnapshot()) || createEmptySnapshot(null, this.store.kind);
     const processedIds = new Set([...baseSnapshot.processedEventIds, ...baseSnapshot.eventResults.map((row) => row.eventId)]);
     const reviewedSessions = normalizeReviewedStrackerSessions(baseSnapshot);
 
     if (isIgnoredStrackerSession(baseSnapshot, sessionId)) {
-      throw new Error(`La sesiÃ³n ${sessionId} estÃ¡ ignorada. RecupÃ©rala antes de procesarla para SR/GSR.`);
+      throw new Error(`La sesión ${sessionId} está ignorada. Recupérala antes de procesarla para SR/GSR.`);
     }
 
     if (processedIds.has(String(event.id))) {
@@ -1640,7 +1410,7 @@ export class GcRatingsService {
         processedEvents: 0,
         skippedEvents: [String(event.id)],
         newEvents: [],
-        message: `La sesiÃ³n ${sessionId} ya estaba procesada.`
+        message: `La sesión ${sessionId} ya estaba procesada.`
       };
     }
 
@@ -1684,7 +1454,7 @@ export class GcRatingsService {
       mode: 'incremental' as const,
       processedEvents: 1,
       skippedEvents: [],
-      newEvents: [{ id: String(event.id), name: cleanDisplayText(event.name) }],
+      newEvents: [{ id: String(event.id), name: textValue(event.name) }],
       message: `Procesada carrera sTracker ${sessionId}.`
     };
   }
@@ -1695,10 +1465,10 @@ export class GcRatingsService {
     const processedRows = baseSnapshot.eventResults.filter((row) => String(row.eventId) === eventId);
 
     if (processedRows.length) {
-      throw new Error(`La sesiÃ³n ${sessionId} ya cuenta para SR/GSR. QuÃ­tala antes de marcarla como no puntuable.`);
+      throw new Error(`La sesión ${sessionId} ya cuenta para SR/GSR. Quítala antes de marcarla como no puntuable.`);
     }
     if (isIgnoredStrackerSession(baseSnapshot, sessionId)) {
-      throw new Error(`La sesiÃ³n ${sessionId} estÃ¡ ignorada. RecupÃ©rala antes de revisarla como no puntuable.`);
+      throw new Error(`La sesión ${sessionId} está ignorada. Recupérala antes de revisarla como no puntuable.`);
     }
 
     const event = await this.buildManualStrackerEventFromSession(sessionId, options);
@@ -1711,9 +1481,9 @@ export class GcRatingsService {
       status: 'reviewed-unrated',
       ratingEligible: false,
       reason: textValue(options.reason) || previous?.reason || null,
-      name: cleanDisplayText(event.name, `Carrera no oficial ${sessionId}`),
-      track: displayTrackName(event.track || event.trackRaw, 'Carrera no oficial'),
-      trackRaw: cleanDisplayText(event.trackRaw || event.track, 'Carrera no oficial'),
+      name: textValue(event.name, `Carrera no oficial ${sessionId}`),
+      track: textValue(event.track, 'Carrera no oficial'),
+      trackRaw: textValue(event.trackRaw || event.track, 'Carrera no oficial'),
       comboId: safeFiniteNumber(event.comboId, 0) || null,
       startTime: textValue(event.scheduledAt || event.startedAt || event.completedAt) || null,
       endTime: textValue(event.completedAt || event.scheduledAt || event.startedAt) || null,
@@ -1754,7 +1524,7 @@ export class GcRatingsService {
       mode: 'event' as const,
       processedEvents: 0,
       skippedEvents: [],
-      newEvents: [{ id: eventId, name: review.name || cleanDisplayText(event.name) }],
+      newEvents: [{ id: eventId, name: review.name || textValue(event.name) }],
       reviewed: review,
       message: `Registrada carrera sTracker ${sessionId} como no puntuable.`
     };
@@ -1780,7 +1550,7 @@ export class GcRatingsService {
         removedEvents: 0,
         removedRows: 0,
         eventId,
-        message: `No habÃ­a resultados guardados para ${eventId}.`
+        message: `No había resultados guardados para ${eventId}.`
       };
     }
 
@@ -1886,10 +1656,10 @@ export class GcRatingsService {
     const reviewedRows = normalizeReviewedStrackerSessions(baseSnapshot).filter((row) => row.sessionId === sessionId);
 
     if (processedRows.length) {
-      throw new Error(`La sesiÃ³n ${sessionId} ya estÃ¡ procesada. Primero quÃ­tala del SR/GSR y despuÃ©s podrÃ¡s ignorarla.`);
+      throw new Error(`La sesión ${sessionId} ya está procesada. Primero quítala del SR/GSR y después podrás ignorarla.`);
     }
     if (reviewedRows.length) {
-      throw new Error(`La sesiÃ³n ${sessionId} ya estÃ¡ revisada como no puntuable. Quita esa revisiÃ³n antes de ignorarla.`);
+      throw new Error(`La sesión ${sessionId} ya está revisada como no puntuable. Quita esa revisión antes de ignorarla.`);
     }
 
     const strackerDbPath = resolveStrackerDbPath();
@@ -1900,9 +1670,9 @@ export class GcRatingsService {
       const tableCheck = verifyStrackerTables(db);
       if (!tableCheck.ok) throw new Error(`Faltan tablas en stracker: ${tableCheck.missing.join(', ')}`);
       const session = readRaceSession(db, sessionId);
-      if (!session) throw new Error(`No existe la sesiÃ³n sTracker ${sessionId}.`);
+      if (!session) throw new Error(`No existe la sesión sTracker ${sessionId}.`);
       if (String(session.SessionType || '').toLowerCase() !== 'race') {
-        throw new Error(`La sesiÃ³n ${sessionId} no es Race.`);
+        throw new Error(`La sesión ${sessionId} no es Race.`);
       }
     } finally {
       try { db.close(); } catch {}
@@ -1945,7 +1715,7 @@ export class GcRatingsService {
       eventId,
       sessionId,
       ignored: review,
-      message: `Ignorada sesiÃ³n sTracker ${sessionId}. No afecta al SR/GSR.`
+      message: `Ignorada sesión sTracker ${sessionId}. No afecta al SR/GSR.`
     };
   }
 
@@ -1965,7 +1735,7 @@ export class GcRatingsService {
         eventId,
         sessionId,
         recovered: false,
-        message: `La sesiÃ³n sTracker ${sessionId} no estaba ignorada.`
+        message: `La sesión sTracker ${sessionId} no estaba ignorada.`
       };
     }
 
@@ -1995,7 +1765,7 @@ export class GcRatingsService {
       eventId,
       sessionId,
       recovered: true,
-      message: `Recuperada sesiÃ³n sTracker ${sessionId}.`
+      message: `Recuperada sesión sTracker ${sessionId}.`
     };
   }
 
@@ -2016,7 +1786,7 @@ export class GcRatingsService {
         eventId,
         sessionId,
         recovered: false,
-        message: `La sesiÃ³n sTracker ${sessionId} no estaba revisada como no puntuable.`
+        message: `La sesión sTracker ${sessionId} no estaba revisada como no puntuable.`
       };
     }
 
@@ -2026,7 +1796,7 @@ export class GcRatingsService {
       eventId,
       mode: 'event',
       status: 'ok',
-      message: `Quitada revisiÃ³n no puntuable de ${eventId}. Puede volver a aparecer como pendiente si sigue en sTracker.`,
+      message: `Quitada revisión no puntuable de ${eventId}. Puede volver a aparecer como pendiente si sigue en sTracker.`,
       createdAt: now
     };
 
@@ -2046,7 +1816,7 @@ export class GcRatingsService {
       eventId,
       sessionId,
       recovered: true,
-      message: `Quitada revisiÃ³n no puntuable de la sesiÃ³n ${sessionId}.`
+      message: `Quitada revisión no puntuable de la sesión ${sessionId}.`
     };
   }
 
@@ -2060,10 +1830,174 @@ export class GcRatingsService {
       skipped: [],
       disabled: true,
       policy: 'manual-only',
-      message: 'Auto-proceso sTracker desactivado por diseÃ±o. Las carreras fuera de ACSM se revisan manualmente en /admin/ratings.'
+      message: 'Auto-proceso sTracker desactivado por diseño. Las carreras fuera de ACSM se revisan manualmente en /admin/ratings.'
     };
   }
 
+
+
+
+  private compactDiagnosticsEvent(event: PlainObject | null | undefined) {
+    if (!event) return null;
+    return {
+      id: textValue(event.id || event.slug) || null,
+      name: textValue(event.name, 'Carrera') || 'Carrera',
+      track: textValue(event.track || event.trackRaw || event.name, 'Circuito'),
+      trackRaw: textValue(event.trackRaw || event.track) || null,
+      status: textValue(event.status) || null,
+      href: textValue(event.href) || (event.id ? `/campeonato/ronda/${encodeURIComponent(String(event.id))}` : null),
+      scheduledAt: nextEventFallbackIso(event) || textValue(event.scheduledAt || event.date) || null,
+      completedAt: textValue(event.completedAt) || null,
+      hasResults: Boolean(event.rawHasResults || ensureArray(event.raceResults).length),
+      raceResults: ensureArray(event.raceResults).length,
+      qualifyingResults: ensureArray(event.qualifyingResults).length,
+      practiceResults: ensureArray(event.practiceResults).length,
+      carSummary: textValue(event.carSummary || ensureArray(event.cars).join(', ')) || null
+    };
+  }
+
+  private buildSrEconomyAudit(snapshot: RatingsSnapshot) {
+    const rows = Array.isArray(snapshot.eventResults) ? snapshot.eventResults : [];
+    const deltas = rows.map((row) => {
+      const newSr = safeFiniteNumber(row.newSr, 0);
+      return {
+        eventId: String(row.eventId || ''),
+        eventName: textValue(row.eventName, 'Carrera'),
+        driverKey: String(row.driverKey || ''),
+        displayName: textValue(row.displayName, 'Piloto'),
+        oldSr: safeFiniteNumber(row.oldSr, 0),
+        newSr,
+        deltaSr: safeFiniteNumber(row.deltaSr, 0),
+        srClass: textValue((row as any).srClass || (row as any).safetyClass || ratingClassFromSr(newSr), ''),
+        strackerSessionId: safeFiniteNumber(row.strackerSessionId, 0) || null
+      };
+    });
+
+    const count = deltas.length;
+    const positiveRows = deltas.filter((row) => row.deltaSr > 0.005);
+    const negativeRows = deltas.filter((row) => row.deltaSr < -0.005);
+    const neutralRows = deltas.filter((row) => Math.abs(row.deltaSr) <= 0.005);
+    const sum = deltas.reduce((total, row) => total + row.deltaSr, 0);
+    const averageDeltaSr = count ? Math.round((sum / count) * 1000) / 1000 : 0;
+    const positiveSum = positiveRows.reduce((total, row) => total + row.deltaSr, 0);
+    const negativeSum = negativeRows.reduce((total, row) => total + row.deltaSr, 0);
+
+    const sortedGains = [...positiveRows].sort((left, right) => right.deltaSr - left.deltaSr);
+    const sortedLosses = [...negativeRows].sort((left, right) => left.deltaSr - right.deltaSr);
+
+    const compact = (row: any) => ({
+      eventId: row.eventId,
+      eventName: row.eventName,
+      displayName: row.displayName,
+      driverKey: row.driverKey,
+      oldSr: Math.round(row.oldSr * 100) / 100,
+      newSr: Math.round(row.newSr * 100) / 100,
+      deltaSr: Math.round(row.deltaSr * 100) / 100,
+      srClass: row.srClass || null,
+      strackerSessionId: row.strackerSessionId
+    });
+
+    const warnings: string[] = [];
+    const notes: string[] = [];
+
+    if (sortedLosses[0] && sortedLosses[0].deltaSr < -8) {
+      warnings.push('Hay pérdidas SR inferiores a -8. Revisar si corresponde a DSQ/carrera extremadamente sucia.');
+    }
+    if (sortedGains[0] && sortedGains[0].deltaSr > 1.5) {
+      warnings.push('Hay ganancias SR superiores a +1.5. Revisar caps positivos.');
+    }
+    if (count >= 6 && Math.abs(averageDeltaSr) > 0.65) {
+      warnings.push('La media de ΔSR es alta. Revisar equilibrio general del modelo.');
+    }
+    if (count >= 6 && negativeRows.length > positiveRows.length * 2) {
+      warnings.push('Hay muchas más bajadas que subidas. Revisar si el modelo sigue siendo demasiado castigador.');
+    }
+    if (count >= 6 && positiveRows.length > negativeRows.length * 3 && negativeRows.length > 0) {
+      warnings.push('Hay muchas más subidas que bajadas. Revisar si el modelo es demasiado generoso.');
+    }
+
+    const nearPositiveCap = sortedGains.filter((row) => row.deltaSr >= 1.45 && row.deltaSr <= 1.5);
+    if (nearPositiveCap.length) {
+      notes.push('Hay pilotos cerca del máximo positivo SR. Es normal en carreras muy limpias/largas, pero conviene observarlo con más carreras.');
+    }
+
+    return {
+      count,
+      positive: positiveRows.length,
+      neutral: neutralRows.length,
+      negative: negativeRows.length,
+      averageDeltaSr,
+      totalDeltaSr: Math.round(sum * 100) / 100,
+      positiveDeltaTotal: Math.round(positiveSum * 100) / 100,
+      negativeDeltaTotal: Math.round(negativeSum * 100) / 100,
+      biggestGains: sortedGains.slice(0, 5).map(compact),
+      biggestLosses: sortedLosses.slice(0, 5).map(compact),
+      outliers: {
+        gainsOverOnePoint: positiveRows.filter((row) => row.deltaSr > 1).sort((left, right) => right.deltaSr - left.deltaSr).map(compact),
+        lossesUnderMinusFive: negativeRows.filter((row) => row.deltaSr < -5).sort((left, right) => left.deltaSr - right.deltaSr).map(compact)
+      },
+      notes,
+      warnings
+    };
+  }
+
+  private buildPreDeployStatus(input: {
+    megaAuditWarnings: string[];
+    srEconomyWarnings: string[];
+    manualStrackerEventIds: string[];
+    steamKeyDrivers: number;
+    playerKeyDrivers: number;
+    nameKeyDrivers: number;
+    strackerLinkedResults: number;
+    frozenSrResults: number;
+    lowConfidenceResults: number;
+    eventResults: number;
+    pendingCompletedEvents: number;
+  }) {
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+    const checks = {
+      acsmOnly: input.manualStrackerEventIds.length === 0,
+      steamIdentity: input.nameKeyDrivers === 0,
+      noFrozenSr: input.frozenSrResults === 0,
+      noLowConfidence: input.lowConfidenceResults === 0,
+      strackerLinked: input.eventResults === 0 || input.strackerLinkedResults > 0,
+      srEconomyClean: input.srEconomyWarnings.length === 0,
+      megaAuditClean: input.megaAuditWarnings.length === 0
+    };
+
+    if (!checks.acsmOnly) blockers.push('Hay carreras sTracker manuales dentro del rating activo.');
+    if (!checks.strackerLinked) blockers.push('Hay resultados procesados pero ninguno enlazado a sTracker.');
+    if (!checks.steamIdentity) warnings.push('Hay pilotos identificados solo por nombre. Revisar SteamID/GUID.');
+    if (input.playerKeyDrivers > 0) warnings.push('Hay pilotos identificados por PlayerId. Es aceptable solo si falta SteamID/GUID.');
+    if (!checks.noFrozenSr) warnings.push('Hay SR congelado por falta de telemetría o confianza.');
+    if (!checks.noLowConfidence) warnings.push('Hay matches de baja confianza.');
+    if (!checks.srEconomyClean) warnings.push(...input.srEconomyWarnings);
+    if (!checks.megaAuditClean) warnings.push(...input.megaAuditWarnings);
+
+    const ready = blockers.length === 0 && warnings.length === 0;
+
+    return {
+      ready,
+      status: blockers.length ? 'blocked' : warnings.length ? 'review' : 'ready',
+      label: blockers.length ? 'Bloqueado' : warnings.length ? 'Revisar' : 'Listo para Git/deploy',
+      checks,
+      blockers,
+      warnings,
+      summary: {
+        driversByIdentity: {
+          steam: input.steamKeyDrivers,
+          player: input.playerKeyDrivers,
+          name: input.nameKeyDrivers
+        },
+        eventResults: input.eventResults,
+        strackerLinkedResults: input.strackerLinkedResults,
+        frozenSrResults: input.frozenSrResults,
+        lowConfidenceResults: input.lowConfidenceResults,
+        pendingCompletedEvents: input.pendingCompletedEvents
+      }
+    };
+  }
 
   private async buildDiagnostics(snapshot: RatingsSnapshot, championship?: PlainObject | null) {
     const recentLogs = [...snapshot.recalculationLogs].slice(-20);
@@ -2098,13 +2032,59 @@ export class GcRatingsService {
     const hasStracker = snapshot.eventResults.some((row) => !row.match.method.includes('acsm'));
     const srMode = hasStracker ? 'stracker' : hasAcsmPartial ? 'acsm-partial' : 'none';
 
+    const manualStrackerEventIds = [...new Set(snapshot.eventResults
+      .map((row) => String(row.eventId || ''))
+      .filter((eventId) => eventId.startsWith('stracker:')))];
+    const acsmEventIdsWithResults = [...new Set(snapshot.eventResults
+      .map((row) => String(row.eventId || ''))
+      .filter((eventId) => eventId && !eventId.startsWith('stracker:')))];
+    const strackerLinkedResults = snapshot.eventResults.filter((row) => safeFiniteNumber(row.strackerSessionId, 0) > 0);
+    const frozenSrResults = snapshot.eventResults.filter((row) => {
+      const notes = Array.isArray(row.notes) ? row.notes.join(' ') : String(row.notes || '');
+      const lapNotes = ensureArray(row.lapsDetail).map((lap: PlainObject) => String(lap.notes || '')).join(' ');
+      return notes.includes('SR v2 congelado') ||
+        notes.includes('Telemetría sTracker no usada') ||
+        lapNotes.includes('SR v2 congelado') ||
+        lapNotes.includes('sin telemetría sTracker fiable');
+    });
+    const lowConfidenceResults = snapshot.eventResults.filter((row) => {
+      const notes = Array.isArray(row.notes) ? row.notes.join(' ') : String(row.notes || '');
+      return notes.includes('baja confianza') ||
+        notes.includes('low-confidence') ||
+        notes.includes('Telemetría sTracker no usada');
+    });
+    const steamKeyDrivers = snapshot.drivers.filter((driver) => String(driver.driverKey || '').startsWith('steam:'));
+    const playerKeyDrivers = snapshot.drivers.filter((driver) => String(driver.driverKey || '').startsWith('player:'));
+    const nameKeyDrivers = snapshot.drivers.filter((driver) => String(driver.driverKey || '').startsWith('name:'));
+    const manualStrackerRatingsEnabled = ['1', 'true', 'yes', 'on', 'si', 'sí'].includes(String(process.env.GC_ENABLE_MANUAL_STRACKER_RATINGS || '').trim().toLowerCase());
+    const megaAuditWarnings: string[] = [];
+    if (manualStrackerEventIds.length) megaAuditWarnings.push('Hay carreras sTracker manuales dentro del rating activo. En esta fase debería ser ACSM-only.');
+    if (nameKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados solo por nombre. Conviene revisar SteamID/GUID.');
+    if (playerKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados por PlayerId porque no se encontró SteamID/GUID.');
+    if (snapshot.eventResults.length && !strackerLinkedResults.length) megaAuditWarnings.push('No hay resultados enlazados a sTracker. El SR podría estar congelado o usando fallback.');
+
     let strackerCandidateCount = 0;
     try {
-      const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 80, minDrivers: 3, minTotalLaps: 1 });
-      strackerCandidateCount = ensureArray(candidatesPayload.candidates).filter((candidate: PlainObject) => !candidate.alreadyProcessed && !candidate.linkedToAcsm && !candidate.ignored && !candidate.reviewed).length;
+      const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 30, minDrivers: 2, minTotalLaps: 10 });
+      strackerCandidateCount = ensureArray(candidatesPayload.candidates).filter((candidate: PlainObject) => candidate.recommended && !candidate.alreadyProcessed).length;
     } catch {
       strackerCandidateCount = 0;
     }
+
+    const srEconomyAudit = this.buildSrEconomyAudit(snapshot);
+    const preDeployStatus = this.buildPreDeployStatus({
+      megaAuditWarnings,
+      srEconomyWarnings: ensureArray(srEconomyAudit.warnings).map((item) => String(item)),
+      manualStrackerEventIds,
+      steamKeyDrivers: steamKeyDrivers.length,
+      playerKeyDrivers: playerKeyDrivers.length,
+      nameKeyDrivers: nameKeyDrivers.length,
+      strackerLinkedResults: strackerLinkedResults.length,
+      frozenSrResults: frozenSrResults.length,
+      lowConfidenceResults: lowConfidenceResults.length,
+      eventResults: snapshot.eventResults.length,
+      pendingCompletedEvents: pendingCompletedEvents.length
+    });
 
     return {
       storage: snapshot.storage,
@@ -2120,8 +2100,60 @@ export class GcRatingsService {
       strackerCandidateCount,
       ignoredStrackerSessionCount: ignoredStrackerSessions.length,
       reviewedStrackerSessionCount: reviewedStrackerSessions.length,
+      megaAudit: {
+        ok: megaAuditWarnings.length === 0,
+        auditVersion: 'gc-mega-update-v121',
+        acsmOnlyGuard: {
+          active: true,
+          manualStrackerRatingsEnabled,
+          manualStrackerEventsInRating: manualStrackerEventIds
+        },
+        counts: {
+          drivers: snapshot.drivers.length,
+          processedEventIds: processedIds.length,
+          acsmEventsWithResults: acsmEventIdsWithResults.length,
+          eventResults: snapshot.eventResults.length,
+          strackerLinkedResults: strackerLinkedResults.length,
+          frozenSrResults: frozenSrResults.length,
+          lowConfidenceResults: lowConfidenceResults.length,
+          ignoredStrackerSessions: ignoredStrackerSessions.length,
+          reviewedStrackerSessions: reviewedStrackerSessions.length
+        },
+        srEconomy: srEconomyAudit,
+        identity: {
+          steamKeyDrivers: steamKeyDrivers.length,
+          playerKeyDrivers: playerKeyDrivers.length,
+          nameKeyDrivers: nameKeyDrivers.length,
+          fallbackDrivers: [...playerKeyDrivers, ...nameKeyDrivers].slice(0, 20).map((driver) => ({
+            driverKey: driver.driverKey,
+            displayName: driver.displayName,
+            steamGuid: driver.steamGuid || null,
+            strackerPlayerId: driver.strackerPlayerId || null
+          }))
+        },
+        telemetry: {
+          minMatchConfidence: safeFiniteNumber(process.env.GC_SR_MIN_STRACKER_MATCH_CONFIDENCE, 0.55),
+          frozenExamples: frozenSrResults.slice(0, 10).map((row) => ({
+            eventId: row.eventId,
+            displayName: row.displayName,
+            driverKey: row.driverKey,
+            strackerSessionId: row.strackerSessionId || null,
+            deltaSr: row.deltaSr,
+            notes: Array.isArray(row.notes) ? row.notes : []
+          })),
+          lowConfidenceExamples: lowConfidenceResults.slice(0, 10).map((row) => ({
+            eventId: row.eventId,
+            displayName: row.displayName,
+            driverKey: row.driverKey,
+            strackerSessionId: row.strackerSessionId || null,
+            notes: Array.isArray(row.notes) ? row.notes : []
+          }))
+        },
+        warnings: megaAuditWarnings
+      },
+      preDeployStatus,
       pendingCompletedEvents,
-      nextEvent,
+      nextEvent: this.compactDiagnosticsEvent(nextEvent),
       nextEventName: nextEvent ? textValue(nextEvent.name, 'Proxima carrera') : null,
       nextEventTrack: nextEvent ? textValue(nextEvent.track, 'Circuito por confirmar') : null,
       nextEventScheduledAt: nextEvent ? nextEventFallbackIso(nextEvent) || null : null,
@@ -2159,7 +2191,7 @@ export class GcRatingsService {
     const championship = enrichChampionship(acsm.championship, snapshot);
 
     try {
-      const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 200, minDrivers: 3, minTotalLaps: 1 });
+      const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 80, minDrivers: 2, minTotalLaps: 10 });
       const detectedEvents = ensureArray(candidatesPayload.candidates)
         .filter((candidate: PlainObject) => !candidate.alreadyProcessed && !candidate.linkedToAcsm && !candidate.ignored && !candidate.reviewed)
         .map((candidate: PlainObject) => ({
@@ -2233,118 +2265,11 @@ export class GcRatingsService {
     };
   }
 
-  async getEvent(eventId: string, options: PlainObject = {}) {
+  async getEvent(eventId: string) {
     let normalizedEventId = String(eventId || '');
     try {
       normalizedEventId = decodeURIComponent(normalizedEventId);
     } catch {}
-
-    if (normalizedEventId.startsWith('stracker:')) {
-      const snapshot = await this.getSnapshot();
-      const mirrorDriver = getStrackerMirrorDriver();
-      const ratedEvent = buildStrackerEventFromRatingResults(normalizedEventId, snapshot);
-      if (ratedEvent) {
-        return {
-          ok: true,
-          source: 'gc-ratings-v1',
-          generatedAt: snapshot.generatedAt,
-          eventSource: 'rating-results',
-          mirrorDriver,
-          ratingEligible: true,
-          reviewStatus: null,
-          event: ratedEvent,
-          diagnostics: { storage: snapshot.storage }
-        };
-      }
-
-      const sessionId = safeFiniteNumber(normalizedEventId.replace('stracker:', ''), 0);
-      const reviewedSessions = normalizeReviewedStrackerSessions(snapshot);
-      const reviewedSession = reviewedSessions.find((item) => item.sessionId === sessionId) || null;
-
-      if (sessionId && reviewedSession) {
-        const mirrorDetail = await getStrackerSessionDetailFromMirror(sessionId);
-        if (mirrorDetail) {
-          const event = buildStrackerMirrorEventFromDetail(mirrorDetail, snapshot, {
-            eventId: normalizedEventId,
-            mirrorDriver: mirrorDetail.mirrorDriver || mirrorDriver
-          });
-          return {
-            ok: true,
-            source: 'gc-ratings-v1',
-            generatedAt: snapshot.generatedAt,
-            eventSource: 'sql-mirror',
-            mirrorDriver: mirrorDetail.mirrorDriver || mirrorDriver,
-            ratingEligible: false,
-            reviewStatus: 'reviewed-unrated',
-            event,
-            diagnostics: { storage: snapshot.storage }
-          };
-        }
-      }
-
-      if (Boolean(options?.fallback)) {
-        try {
-          const hydrated = await this.buildManualStrackerEventFromSession(sessionId, {
-            eventId: normalizedEventId,
-            name: reviewedSession?.name || `Carrera no oficial ${sessionId}`,
-            minDrivers: 1
-          });
-          const reviewEvent = {
-            ...hydrated,
-            source: 'stracker-reviewed',
-            status: reviewedSession?.status || 'reviewed',
-            ratingEligible: false,
-            reviewStatus: 'reviewed-unrated',
-            reviewReason: reviewedSession?.reason || null,
-            raceResults: enrichRowsWithCurrentRatings(ensureArray(hydrated.raceResults), snapshot),
-            qualifyingResults: [],
-            sessions: [
-              {
-                type: 'RACE',
-                key: 'RACE',
-                resultCount: ensureArray(hydrated.raceResults).length,
-                lapCount: safeFiniteNumber(hydrated.lapCount || hydrated.maxLapCount, 0),
-                fastestLap: hydrated.bestLap ? { lapTime: hydrated.bestLap, driverName: '' } : null
-              }
-            ]
-          };
-
-          return {
-            ok: true,
-            source: 'gc-ratings-v1',
-            generatedAt: snapshot.generatedAt,
-            eventSource: 'stracker-db3-fallback',
-            mirrorDriver,
-            ratingEligible: false,
-            reviewStatus: 'reviewed-unrated',
-            event: reviewEvent,
-            diagnostics: { storage: snapshot.storage }
-          };
-        } catch (error) {
-          return {
-            ok: false,
-            source: 'gc-ratings-v1',
-            generatedAt: snapshot.generatedAt,
-            eventSource: 'stracker-db3-fallback',
-            mirrorDriver,
-            ratingEligible: false,
-            reviewStatus: reviewedSession?.status || 'reviewed-unrated',
-            message: error instanceof Error ? error.message : String(error)
-          };
-        }
-      }
-
-      return {
-        ok: false,
-        source: 'gc-ratings-v1',
-        generatedAt: snapshot.generatedAt,
-        eventSource: 'none',
-        mirrorDriver,
-        ratingEligible: false,
-        reviewStatus: reviewedSession?.status || null,
-        message: 'Carrera no encontrada en SQL mirror. Ejecuta sync sTracker → SQL.'
-      };
-    }
 
     const payload = await this.getChampionshipPayload(false);
     const allEvents = [
@@ -2352,20 +2277,13 @@ export class GcRatingsService {
       ...ensureArray(payload.championship.strackerSeries?.processedEvents),
       ...ensureArray(payload.championship.strackerSeries?.reviewedEvents)
     ];
-    const foundEvent = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
-    if (!foundEvent) return null;
-
+    const event = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
+    if (!event) return null;
     return {
       ok: true,
       source: 'gc-ratings-v1',
       generatedAt: payload.generatedAt,
-      eventSource: 'rating-results',
-      mirrorDriver: getStrackerMirrorDriver(),
-      ratingEligible: true,
-      reviewStatus: String(foundEvent.source || '') === 'stracker-reviewed' || String(foundEvent.reviewStatus || '') === 'reviewed-unrated'
-        ? 'reviewed-unrated'
-        : null,
-      event: foundEvent,
+      event,
       diagnostics: payload.diagnostics
     };
   }

@@ -142,6 +142,8 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
       Cuts,
       CollisionsCar,
       CollisionsEnv,
+      COALESCE(TimeInPitLane, 0) AS TimeInPitLane,
+      COALESCE(TimeInPit, 0) AS TimeInPit,
       ESCPressed
     FROM Lap
     WHERE PlayerInSessionId = ?
@@ -151,6 +153,8 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
     const collisionsCar = numberValue(lap.CollisionsCar, 0);
     const collisionsEnv = numberValue(lap.CollisionsEnv, 0);
     const valid = boolValue(lap.Valid);
+    const timeInPitLaneMs = numberValue(lap.TimeInPitLane, 0);
+    const timeInPitMs = numberValue(lap.TimeInPit, 0);
     const invalidNoCut = !valid && cuts <= 0;
     const notes: string[] = [];
     if (cuts > 0) notes.push(`Salida x${cuts}`);
@@ -166,6 +170,9 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
       cuts,
       collisionsCar,
       collisionsEnv,
+      timeInPitLaneMs,
+      timeInPitMs,
+      escPressed: boolValue(lap.ESCPressed),
       invalidNoCut,
       notes
     };
@@ -204,8 +211,8 @@ export function findRatingCandidateRaceSessions(db: StrackerDb, options: {
   minTotalLaps?: number;
 } = {}) {
   const limit = Math.max(1, Math.min(500, numberValue(options.limit, 80)));
-  const minDrivers = Math.max(1, numberValue(options.minDrivers, 3));
-  const minTotalLaps = Math.max(1, numberValue(options.minTotalLaps, 1));
+  const minDrivers = Math.max(1, numberValue(options.minDrivers, 2));
+  const minTotalLaps = Math.max(1, numberValue(options.minTotalLaps, 10));
 
   return db.all(`
     SELECT
