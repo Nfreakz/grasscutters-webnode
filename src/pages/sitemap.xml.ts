@@ -2,18 +2,18 @@ import type { APIRoute } from 'astro';
 
 const publicRoutes = [
   '/',
-  '/comunidad',
-  '/ratings',
-  '/campeonato',
-  '/historico',
-  '/carreras-comunidad',
-  '/calendario',
-  '/combos',
-  '/archivo',
-  '/app-android',
-  '/normas',
-  '/apoyo-servidor',
-  '/privacidad',
+  '/comunidad/',
+  '/ratings/',
+  '/campeonato/',
+  '/historico/',
+  '/carreras-comunidad/',
+  '/calendario/',
+  '/combos/',
+  '/archivo/',
+  '/app-android/',
+  '/normas/',
+  '/apoyo-servidor/',
+  '/privacidad/',
 ];
 
 function escapeXml(value: string) {
@@ -29,7 +29,7 @@ export const GET: APIRoute = ({ site }) => {
   const base = (import.meta.env.PUBLIC_SITE_URL || site?.toString() || 'https://grasscuttersracing.com').replace(/\/$/, '');
   const now = new Date().toISOString();
   const urls = publicRoutes.map((route) => {
-    const loc = route === '/' ? base : `${base}${route}`;
+    const loc = route === '/' ? `${base}/` : `${base}${route}`;
     return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${now}</lastmod>\n  </url>`;
   }).join('\n');
 

@@ -40,7 +40,22 @@ const {
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || Astro.url.origin || 'https://grasscuttersracing.com').replace(/\/$/, '');
-const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
+
+function normalizeCanonicalPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '/';
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const normalized = raw.startsWith('/') ? raw : `/${raw}`;
+  if (normalized === '/') return '/';
+
+  const pathname = normalized.split(/[?#]/, 1)[0];
+  if (/\.[a-z0-9]+$/i.test(pathname)) return normalized;
+
+  return normalized.endsWith('/') ? normalized : `${normalized}/`;
+}
+
+const canonicalUrl = new URL(normalizeCanonicalPath(canonicalPath || Astro.url.pathname), siteUrl).toString();
 
 const pageOgImages = {
   '/': '/og/home-og-v1531.png',
