@@ -255,6 +255,21 @@ function trackBaseNames(trackName: unknown, trackRaw?: unknown, eventName?: unkn
   return [...new Set(names.filter(Boolean))];
 }
 
+
+function trackAssetApiUrl(url: string) {
+  const value = String(url || '').trim();
+  const match = value.match(/^\/(?:images|imagenes)\/tracks\/([^?#]+)(?:[?#].*)?$/i);
+  if (!match) return value;
+  return `/api/gc/assets/track-image/${encodeURIComponent(decodeURIComponent(match[1]))}`;
+}
+
+function preferTrackAssetProxy(urls: string[]) {
+  return [...new Set([
+    ...urls.filter(Boolean).map(trackAssetApiUrl),
+    ...urls.filter(Boolean)
+  ])];
+}
+
 function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
   const names = trackBaseNames(trackName, trackRaw, eventName);
   const exact = registeredTrackAsset(names)?.map ? [registeredTrackAsset(names)!.map as string] : [];
@@ -274,7 +289,7 @@ function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: 
     });
   });
 
-  return [...new Set([...exact, ...out])];
+  return preferTrackAssetProxy([...exact, ...out]);
 }
 
 function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
@@ -299,7 +314,7 @@ function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?
     });
   });
 
-  return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
+  return preferTrackAssetProxy([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)));
 }
 
 function prettifyName(value: unknown, fallback = '-') {

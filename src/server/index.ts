@@ -11416,6 +11416,33 @@ function gcListTrackImagesV1() {
   return [...found.values()].sort((a, b) => a.file.localeCompare(b.file));
 }
 
+
+function gcTrackImageIsValidEnoughV2(filePath: string, safeName: string) {
+  try {
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile() || stats.size < 12) return false;
+
+    const fd = fs.openSync(filePath, 'r');
+    try {
+      const length = Math.min(64, stats.size);
+      const buffer = Buffer.alloc(length);
+      fs.readSync(fd, buffer, 0, length, 0);
+      const ext = path.extname(safeName).toLowerCase();
+
+      if (ext === '.png') return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+      if (ext === '.jpg' || ext === '.jpeg') return buffer[0] === 0xff && buffer[1] === 0xd8;
+      if (ext === '.webp') return buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+      if (ext === '.avif') return buffer.subarray(4, 12).toString('ascii').startsWith('ftypavif') || buffer.subarray(4, 12).toString('ascii').startsWith('ftypavis');
+      if (ext === '.svg') return /^\s*<svg[\s>]/i.test(buffer.toString('utf8'));
+      return true;
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return false;
+  }
+}
+
 function gcTrackFallbackSvgV1(label: string) {
   const clean = String(label || 'Track image').replace(/[<>&'"]/g, '');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="${clean}">
@@ -11474,6 +11501,27 @@ app.get('/api/gc/assets/tracks', (_req, res) => {
   }
 });
 
+
+app.get('/api/gc/assets/track-image/:file', (req, res) => {
+  const safe = gcSafeTrackImageFilenameV1(req.params.file);
+  if (!safe) {
+    return res.status(400).type('image/svg+xml').send(gcTrackFallbackSvgV1('Invalid track image'));
+  }
+
+  const existing = gcFindTrackImageFileV1(safe);
+  if (existing && gcTrackImageIsValidEnoughV2(existing, safe)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.type(gcTrackImageMimeV1(safe));
+    return res.sendFile(existing);
+  }
+
+  // Si no existe o está corrupta, devolvemos 404 para que el fallback del frontend pruebe la siguiente candidata.
+  // Esto evita que un PNG vacío/HTML renombrado bloquee toda la cadena de imágenes.
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('image/svg+xml');
+  return res.status(404).send(gcTrackFallbackSvgV1(safe));
+});
+
 app.get('/images/tracks/:file', (req, res) => {
   const safe = gcSafeTrackImageFilenameV1(req.params.file);
   if (!safe) {
@@ -11481,7 +11529,7 @@ app.get('/images/tracks/:file', (req, res) => {
   }
 
   const existing = gcFindTrackImageFileV1(safe);
-  if (existing) {
+  if (existing && gcTrackImageIsValidEnoughV2(existing, safe)) {
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.type(gcTrackImageMimeV1(safe));
     return res.sendFile(existing);

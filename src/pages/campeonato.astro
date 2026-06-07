@@ -940,6 +940,19 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return Object.values(TRACK_ASSET_REGISTRY).find((track) => (track.keys || []).some((key) => names.some((name) => name === key || name.includes(key) || key.includes(name)))) || null;
       };
 
+
+      const trackAssetApiUrl = (url) => {
+        const value = String(url || '').trim();
+        const match = value.match(/^\/(?:images|imagenes)\/tracks\/([^?#]+)(?:[?#].*)?$/i);
+        if (!match) return value;
+        return `/api/gc/assets/track-image/${encodeURIComponent(decodeURIComponent(match[1]))}`;
+      };
+
+      const preferTrackAssetProxy = (urls) => [...new Set([
+        ...urls.filter(Boolean).map(trackAssetApiUrl),
+        ...urls.filter(Boolean)
+      ])];
+
       const localTrackMapCandidates = (event) => {
         const names = trackAssetNames(event);
         const exact = registeredTrackAsset(event)?.map ? [registeredTrackAsset(event).map] : [];
@@ -953,7 +966,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
             });
           });
         });
-        return [...new Set([...exact, ...out])];
+        return preferTrackAssetProxy([...exact, ...out]);
       };
 
       const localTrackPhotoCandidates = (event) => {
@@ -969,7 +982,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
             });
           });
         });
-        return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
+        return preferTrackAssetProxy([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)));
       };
 
       const setImageWithFallback = (img, figure, candidates) => {

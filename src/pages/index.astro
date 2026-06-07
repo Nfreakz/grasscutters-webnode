@@ -1213,6 +1213,19 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }) || null;
       };
 
+
+      const trackAssetApiUrl = (url) => {
+        const value = String(url || '').trim();
+        const match = value.match(/^\/(?:images|imagenes)\/tracks\/([^?#]+)(?:[?#].*)?$/i);
+        if (!match) return value;
+        return `/api/gc/assets/track-image/${encodeURIComponent(decodeURIComponent(match[1]))}`;
+      };
+
+      const preferTrackAssetProxy = (urls) => uniqueValues([
+        ...urls.map(trackAssetApiUrl),
+        ...urls
+      ]);
+
       const trackImageCandidates = (kind, ...trackNames) => {
         const variants = trackSlugVariants(trackNames);
         const match = findRegisteredTrackAsset(trackNames);
@@ -1230,7 +1243,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
               });
             });
           });
-          return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-outline.svg']);
+          return preferTrackAssetProxy([...exact, ...generated, '/ui/home2/gc-home2-track-outline.svg']);
         }
 
         variants.forEach((variant) => {
@@ -1241,7 +1254,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           });
         });
 
-        return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-fallback.svg']);
+        return preferTrackAssetProxy([...exact, ...generated, '/ui/home2/gc-home2-track-fallback.svg']);
       };
 
       const setTrackImage = async (trackName) => {
