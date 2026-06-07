@@ -140,6 +140,8 @@ function isActive(match) {
 function isChampionshipActive() {
   return championshipNavItems.some((item) => isActive(item.match));
 }
+
+const shouldShowHudPopup = !path.startsWith('/archivo');
 ---
 <!doctype html>
 <html lang="es" data-gc-scope="marketing">
@@ -276,7 +278,7 @@ function isChampionshipActive() {
       <slot />
     </main>
 
-    <aside class="gc-hud-popup" data-hud-popup hidden aria-label="Anuncio GrassCutters HUD">
+    {shouldShowHudPopup && (<aside class="gc-hud-popup" data-hud-popup hidden aria-label="Anuncio GrassCutters HUD">
       <button class="gc-hud-popup__close" type="button" aria-label="Cerrar anuncio" data-hud-popup-close>×</button>
       <div class="gc-hud-popup__media" aria-hidden="true">
         <img src="/images/hudlogo-768.webp" alt="" loading="lazy" />
@@ -290,7 +292,7 @@ function isChampionshipActive() {
           <a class="gc-public-btn gc-hud-popup__btn gc-hud-popup__btn--patreon" href={hudPatreonUrl} target="_blank" rel="noreferrer">Patreon</a>
         </div>
       </div>
-    </aside>
+    </aside>)}
 
     <footer class="gc-public-footer gc-public-footer--compact gc-public-footer--v52">
       <div class="gc-public-footer-inner">
