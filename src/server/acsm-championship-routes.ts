@@ -211,10 +211,10 @@ function normalizeTrackSlug(value: unknown) {
 const TRACK_ASSET_REGISTRY: Record<string, { keys: string[]; photo?: string; map?: string }> = {
   jerez: { keys: ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'], photo: '/images/tracks/jerez.png', map: '/images/tracks/jerez_mapa.png' },
   mugello: { keys: ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'], photo: '/images/tracks/mugello.webp', map: '/images/tracks/mugello_mapa.png' },
+  fuji: { keys: ['fuji', 'rt_fuji_speedway', 'rt_fuji_speedway_layout_gp', 'fuji_speedway', 'fuji_speedway_gp', 'fuji_speedway_layout_gp', 'fuji_international_speedway', 'fujispeedway'], photo: '/images/tracks/fuji.jpg', map: '/images/tracks/fuji_mapa.png' },
   bathurst: { keys: ['bathurst', 'mount_panorama'], photo: '/images/tracks/bathurst.png' },
   brands_hatch: { keys: ['brands_hatch', 'ks_brands_hatch'], photo: '/images/tracks/brands_hatch.webp' },
   estoril: { keys: ['estoril'], photo: '/images/tracks/estoril.webp' },
-  fuji: { keys: ['fuji', 'fuji_speedway', 'fuji_speedway_gp', 'fuji_speedway_gp_japan', 'fuji_international_speedway', 'fujispeedway'], photo: '/images/tracks/fuji.jpg', map: '/images/tracks/fuji_mapa.jpg' },
   hockenheim: { keys: ['hockenheim', 'ks_hockenheim', 've_hockenheim_gp', 'hockenheimring'], photo: '/images/tracks/hockenheim.png' },
   imola: { keys: ['imola', 'autodromo_internazionale_enzo_e_dino_ferrari'], photo: '/images/tracks/imola.webp' },
   nordschleife: { keys: ['nordschleife', 'nurburgring_nordschleife'], photo: '/images/tracks/nordschleife.webp' },
@@ -255,21 +255,6 @@ function trackBaseNames(trackName: unknown, trackRaw?: unknown, eventName?: unkn
   return [...new Set(names.filter(Boolean))];
 }
 
-
-function trackAssetApiUrl(url: string) {
-  const value = String(url || '').trim();
-  const match = value.match(/^\/(?:images|imagenes)\/tracks\/([^?#]+)(?:[?#].*)?$/i);
-  if (!match) return value;
-  return `/api/gc/assets/track-image/${encodeURIComponent(decodeURIComponent(match[1]))}`;
-}
-
-function preferTrackAssetProxy(urls: string[]) {
-  return [...new Set([
-    ...urls.filter(Boolean).map(trackAssetApiUrl),
-    ...urls.filter(Boolean)
-  ])];
-}
-
 function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
   const names = trackBaseNames(trackName, trackRaw, eventName);
   const exact = registeredTrackAsset(names)?.map ? [registeredTrackAsset(names)!.map as string] : [];
@@ -280,7 +265,7 @@ function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: 
   ])];
 
   const roots = ['/images/tracks', '/imagenes/tracks'];
-  const exts = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
+  const exts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
 
   const out: string[] = [];
   bases.forEach((base) => {
@@ -289,7 +274,7 @@ function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: 
     });
   });
 
-  return preferTrackAssetProxy([...exact, ...out]);
+  return [...new Set([...exact, ...out])];
 }
 
 function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
@@ -314,7 +299,7 @@ function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?
     });
   });
 
-  return preferTrackAssetProxy([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)));
+  return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
 }
 
 function prettifyName(value: unknown, fallback = '-') {
