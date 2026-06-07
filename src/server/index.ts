@@ -20,6 +20,7 @@ import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-ar
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
+import { syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1536,6 +1537,25 @@ let lastSyncResult: null | {
   sizeBytes?: number;
   savedPath?: string;
   backupPath?: string | null;
+  sqlMirror?: any;
+  error?: string;
+} = null;
+
+let lastStrackerSqlMirrorAutoSyncResult: null | {
+  ok: boolean;
+  enabled: boolean;
+  reason: string;
+  startedAt: string;
+  finishedAt: string;
+  limit?: number;
+  storage?: string;
+  sessionsSeen?: number;
+  sessionsImported?: number;
+  driversImported?: number;
+  lapsImported?: number;
+  incidentsImported?: number;
+  durationMs?: number;
+  message: string;
   error?: string;
 } = null;
 
@@ -1551,6 +1571,7 @@ let lastAutoSyncResult: null | {
   message: string;
   statusCode?: number;
   sync?: typeof lastSyncResult;
+  sqlMirror?: typeof lastStrackerSqlMirrorAutoSyncResult;
   ratings?: any;
   error?: string;
 } = null;
@@ -1635,6 +1656,77 @@ function readNumberEnv(name: string, fallback: number, min: number, max: number)
   return Math.max(min, Math.min(max, value));
 }
 
+function getStrackerSqlMirrorAutoSyncConfig() {
+  const enabled = readBooleanEnv('GC_STRACKER_SQL_MIRROR_AUTO_SYNC', true);
+  const limit = readNumberEnv('GC_STRACKER_SQL_MIRROR_AUTO_LIMIT', 500, 1, 5000);
+  return {
+    enabled,
+    limit,
+    lastSync: lastStrackerSqlMirrorAutoSyncResult,
+    message: enabled
+      ? `Mirror SQL automático activo después de cada sync de stracker.db3. Límite: ${limit} sesiones recientes.`
+      : 'Mirror SQL automático desactivado. Activa GC_STRACKER_SQL_MIRROR_AUTO_SYNC=true.'
+  };
+}
+
+async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
+  const startedAt = new Date().toISOString();
+  const config = getStrackerSqlMirrorAutoSyncConfig();
+
+  if (!config.enabled) {
+    const disabledPayload = {
+      ok: true,
+      enabled: false,
+      reason,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      limit: config.limit,
+      message: 'Mirror SQL automático desactivado por configuración.'
+    };
+    lastStrackerSqlMirrorAutoSyncResult = disabledPayload;
+    return disabledPayload;
+  }
+
+  try {
+    console.log(`[GC] Sync mirror SQL sTracker iniciado (${reason}, limit=${config.limit}).`);
+    const payload = await syncStrackerToSqlMirror({ limit: config.limit });
+    const finishedAt = new Date().toISOString();
+    const okPayload = {
+      ok: true,
+      enabled: true,
+      reason,
+      startedAt,
+      finishedAt,
+      limit: config.limit,
+      storage: payload.storage,
+      sessionsSeen: payload.sessionsSeen,
+      sessionsImported: payload.sessionsImported,
+      driversImported: payload.driversImported,
+      lapsImported: payload.lapsImported,
+      incidentsImported: payload.incidentsImported,
+      durationMs: payload.durationMs,
+      message: `Mirror SQL actualizado: ${payload.sessionsImported} sesiones, ${payload.driversImported} pilotos, ${payload.lapsImported} vueltas.`
+    };
+    lastStrackerSqlMirrorAutoSyncResult = okPayload;
+    console.log(`[GC] Sync mirror SQL sTracker OK: ${okPayload.message}`);
+    return okPayload;
+  } catch (error) {
+    const failedPayload = {
+      ok: false,
+      enabled: true,
+      reason,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      limit: config.limit,
+      message: 'stracker.db3 se sincronizó, pero falló la copia al mirror SQL.',
+      error: error instanceof Error ? error.message : String(error)
+    };
+    lastStrackerSqlMirrorAutoSyncResult = failedPayload;
+    console.warn('[GC] Sync mirror SQL sTracker falló:', error);
+    return failedPayload;
+  }
+}
+
 function getAutoSyncConfig() {
   const enabled = readBooleanEnv('STRACKER_AUTO_SYNC_ENABLED', false);
   const intervalMinutes = readNumberEnv('STRACKER_AUTO_SYNC_INTERVAL_MINUTES', 5, 1, 24 * 60);
@@ -1654,6 +1746,7 @@ function getAutoSyncConfig() {
     runCount: autoSyncRunCount,
     failureCount: autoSyncFailureCount,
     lastAutoSync: lastAutoSyncResult,
+    sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     message: enabled
       ? remote.configured
         ? `Auto-sync activo cada ${intervalMinutes} minutos.`
@@ -1745,6 +1838,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
+      sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
       ratings: ratingsAutoProcess,
       error: ok ? undefined : result.sync?.error
     };
@@ -2324,20 +2418,25 @@ async function syncStrackerFromGTX() {
     fs.renameSync(tempPath, target.resolvedPath);
 
     const finished = new Date().toISOString();
+    const sqlMirror = await syncStrackerSqlMirrorAfterDbSync('stracker-db-sync');
     lastSyncResult = {
       ok: true,
       startedAt: started,
       finishedAt: finished,
       sizeBytes: stats.size,
       savedPath: target.relativePath,
-      backupPath: backupPath ? path.relative(rootDir, backupPath) : null
+      backupPath: backupPath ? path.relative(rootDir, backupPath) : null,
+      sqlMirror
     };
 
     return {
       ok: true,
       statusCode: 200,
-      message: 'stracker.db3 sincronizado correctamente desde GTX.',
+      message: sqlMirror.ok
+        ? 'stracker.db3 sincronizado correctamente desde GTX y mirror SQL actualizado.'
+        : 'stracker.db3 sincronizado correctamente desde GTX, pero falló el mirror SQL.',
       sync: lastSyncResult,
+      sqlMirror,
       stracker: getStrackerConfig()
     };
   } catch (error) {
@@ -7173,6 +7272,7 @@ app.get('/api/stracker/remote-config', (_req, res) => {
     remote: getRemoteStrackerConfig(),
     autoSync: getAutoSyncConfig(),
     lastSync: lastSyncResult,
+    sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     syncInProgress,
     message: 'No se muestran usuario, contraseÃƒÂ±a ni secret. Solo si estÃƒÂ¡n configurados.'
   });
@@ -7185,6 +7285,7 @@ app.get('/api/stracker/auto-sync/status', (_req, res) => {
     stracker: getStrackerConfig(),
     remote: getRemoteStrackerConfig(),
     lastSync: lastSyncResult,
+    sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     syncInProgress
   });
 });
@@ -7208,6 +7309,7 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
     message: result.message,
     statusCode: result.statusCode,
     sync: lastSyncResult,
+    sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
     error: result.ok ? undefined : result.sync?.error
   };
 
