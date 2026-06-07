@@ -947,16 +947,22 @@
         if (!nameCell || !playerId || !nameEl) return;
 
         row.dataset.gcAvatarReady = 'true';
-        const original = nameCell.innerHTML;
         const name = nameEl.textContent?.trim() || 'Piloto';
-        nameCell.innerHTML = `
-          <div class="gc-piloto-table-name-v135">
-            <a class="gc-piloto-table-avatar" href="/pilotos/${escapeHtml(playerId)}" aria-label="Abrir ficha de ${escapeHtml(name)}"></a>
-            <div>${original}</div>
-          </div>
-        `;
-        const avatar = nameCell.querySelector('.gc-piloto-table-avatar');
-        avatar?.appendChild(makeImg(playerId, name));
+        const wrapper = document.createElement('div');
+        wrapper.className = 'gc-piloto-table-name-v135';
+
+        const avatar = document.createElement('a');
+        avatar.className = 'gc-piloto-table-avatar';
+        avatar.href = `/pilotos/${encodeURIComponent(playerId)}`;
+        avatar.setAttribute('aria-label', `Abrir ficha de ${name}`);
+        avatar.appendChild(makeImg(playerId, name));
+
+        const content = document.createElement('div');
+        while (nameCell.firstChild) content.appendChild(nameCell.firstChild);
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(content);
+        nameCell.replaceChildren(wrapper);
       });
     }
 
