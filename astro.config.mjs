@@ -12,9 +12,6 @@ export default defineConfig({
   output: 'static',
   adapter: nodeAdapter || undefined,
   redirects: {
-    '/campeonato/historico': '/historico',
-    '/campeonato/historico/[slug]': '/historico/[slug]',
-    '/campeonato/carreras-comunidad': '/carreras-comunidad',
   },
   vite: {
     server: {
