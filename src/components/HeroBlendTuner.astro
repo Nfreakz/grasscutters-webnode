@@ -1149,20 +1149,13 @@
       };
 
       const fetchDirectComboLapTotal = async () => {
+        // GC public audit v139:
+        // Avoid probing legacy/non-existent current-combo endpoints from the public home.
+        // They generated visible 404s in production console even though the page rendered OK.
+        // Keep only endpoints that are actually registered by the current backend.
         const endpoints = [
-          '/api/gc/current-combo',
-          '/api/gc/active-combo',
-          '/api/gc/combo-current',
-          '/api/gc/combo-summary',
-          '/api/gc/combo',
-          '/api/current-combo',
-          '/api/combo/current',
-          '/api/combos/current',
-          '/api/race-control/current-combo',
-          '/api/gc/server-summary',
-          '/api/gc/server-stats',
-          '/api/gc/stats',
-          '/api/gc/overview',
+          '/api/gc/combos?limit=1&sort=recent',
+          '/api/combos/stats?limit=1&sort=recent',
           '/api/status'
         ];
 
