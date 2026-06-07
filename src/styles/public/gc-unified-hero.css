@@ -1909,3 +1909,60 @@ html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calend
     --gc-calendar-hero-bleed-top: 58px;
   }
 }
+
+/* GC_HERO_VIDEO_COMMUNITY_LOOK_V134
+   Solo tratamiento visual del vídeo para heroes con vídeo.
+   No mueve textos, no cambia paddings, no altera alturas ni estructura.
+   Copia el patrón visual de /comunidad: vídeo más presente + scrim menos agresivo + cola negra inferior suave.
+*/
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-video,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere-video,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere-video,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere-video {
+  opacity: 1 !important;
+  filter: saturate(.92) brightness(.58) contrast(1.08) !important;
+  transform: scale(1.015) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-atmosphere::before,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  opacity: 1 !important;
+  background:
+    linear-gradient(90deg,
+      rgba(3,5,3,.88) 0%,
+      rgba(3,5,3,.64) 38%,
+      rgba(3,5,3,.24) 62%,
+      rgba(3,5,3,.82) 100%),
+    linear-gradient(180deg,
+      rgba(3,5,3,.16) 0%,
+      rgba(3,5,3,.24) 52%,
+      rgba(3,5,3,.96) 100%) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-atmosphere::after,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere::after,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::after,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: -1px !important;
+  height: clamp(220px, 30vh, 360px) !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,0) 0%,
+      rgba(2,4,2,.72) 42%,
+      #030503 82%,
+      rgba(3,5,3,0) 100%) !important;
+}
