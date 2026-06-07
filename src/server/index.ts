@@ -11535,9 +11535,10 @@ app.get('/images/tracks/:file', (req, res) => {
     return res.sendFile(existing);
   }
 
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  // Imagen no encontrada o corrupta: devolvemos 404 para activar el fallback del frontend.
+  res.setHeader('Cache-Control', 'no-store');
   res.type('image/svg+xml');
-  return res.status(200).send(gcTrackFallbackSvgV1(safe));
+  return res.status(404).send(gcTrackFallbackSvgV1(safe));
 });
 /* GC_TRACK_IMAGE_404_GUARD_V1_END */
 
