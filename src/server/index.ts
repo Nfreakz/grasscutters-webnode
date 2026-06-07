@@ -8027,7 +8027,16 @@ const GC_COMBO_CANONICAL_ALIAS_MAP_V1 = new Map<string, string>([
   ['ks_brands_hatch', 'brands_hatch'],
 
   ['salzburgring', 'salzburgring'],
-  ['suzuka', 'suzuka']
+  ['suzuka', 'suzuka'],
+
+  ['fuji', 'fuji'],
+  ['fujispeedway', 'fuji'],
+  ['fuji_speedway', 'fuji'],
+  ['fuji_speedway_gp', 'fuji'],
+  ['fuji_speedway_layout_gp', 'fuji'],
+  ['fuji_international_speedway', 'fuji'],
+  ['rt_fuji_speedway', 'fuji'],
+  ['rt_fuji_speedway_layout_gp', 'fuji']
 ]);
 
 function gcComboCanonicalAliasKeyV1(value: unknown) {
@@ -8331,13 +8340,12 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
 
     const mainVariant = variants[0] || null;
     const mainCars = mainVariant?.cars || [];
-    const publicCars = mainCars.filter((car: any) => car.totalLaps >= GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1);
-    const hiddenLowLapCars = mainCars.filter((car: any) => car.totalLaps < GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1);
     const allCarsMap = new Map<string, any>();
 
     for (const variant of variants) {
       for (const car of variant.cars || []) {
         const key = car.key || gcComboCanonicalNormalizeV1(car.code || car.displayName);
+        if (!key) continue;
         if (!allCarsMap.has(key)) {
           allCarsMap.set(key, { ...car });
         } else {
@@ -8353,15 +8361,26 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
       }
     }
 
+    const allCars = [...allCarsMap.values()].sort((a: any, b: any) =>
+      b.totalLaps - a.totalLaps || String(a.displayName || a.name || a.code).localeCompare(String(b.displayName || b.name || b.code), 'es', { sensitivity: 'base' })
+    );
+
+    // En /combos/:id el paquete visible debe representar todo lo que sTracker ha visto
+    // para el circuito canónico, no solo la variante principal. En Fuji, cada tanda
+    // puede entrar como ComboId distinto y antes solo salían los 4 coches de la
+    // variante con más vueltas. Esto une todos los coches con vueltas registradas.
+    const publicCars = allCars;
+    const hiddenLowLapCars: any[] = [];
+
     const comboId = mainVariant?.comboId ?? [...group.comboIds][0] ?? group.canonicalKey;
-    const mainRows = mainVariant?.rows || [];
-    const leaderboard = gcComboCanonicalBuildLeaderboardV1(mainRows).slice(0, 100);
-    const recentLaps = [...mainRows]
+    const allRows = group.rows || [];
+    const leaderboard = gcComboCanonicalBuildLeaderboardV1(allRows).slice(0, 100);
+    const recentLaps = [...allRows]
       .sort((a, b) => gcComboCanonicalDateMsV1(b) - gcComboCanonicalDateMsV1(a))
       .slice(0, 80)
       .map((row) => gcComboCanonicalCompactLapV1(row));
 
-    const maxSpeed = Math.max(0, ...mainRows.map(gcComboCanonicalSpeedV1));
+    const maxSpeed = Math.max(0, ...allRows.map(gcComboCanonicalSpeedV1));
     const bestLap = leaderboard[0] || null;
 
     return {
@@ -8380,7 +8399,7 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
       publicComboCars: publicCars,
       mainVariantAllCars: mainCars,
       hiddenLowLapCars,
-      allCars: [...allCarsMap.values()].sort((a: any, b: any) => b.totalLaps - a.totalLaps),
+      allCars,
       carSummary: publicCars.length
         ? publicCars.slice(0, 4).map((car: any) => car.displayName || car.name).join(' + ') + (publicCars.length > 4 ? ' +' + (publicCars.length - 4) + ' mÃ¡s' : '')
         : 'Sin coches pÃºblicos',
@@ -8420,32 +8439,32 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
         canonicalGrouping: 'track-name-and-code-cleaned',
         mainVariantRule: 'adminOverride|official|validLaps|totalLaps|lastSeen',
         currentMainVariantRule: 'validLaps|totalLaps|lastSeen',
-        publicCarsFrom: 'mainVariant',
+        publicCarsFrom: 'allTrackVariantsWithLaps',
         minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1,
         minPublicDrivers: GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1,
         scope: 'combos-only'
       },
       summary: {
-        totalLaps: mainVariant?.totalLaps ?? 0,
-        validLaps: mainVariant?.validLaps ?? 0,
-        invalidLaps: mainVariant?.invalidLaps ?? 0,
+        totalLaps: group.totalLaps,
+        validLaps: group.validLaps,
+        invalidLaps: group.invalidLaps,
         canonicalTotalLaps: group.totalLaps,
         canonicalValidLaps: group.validLaps,
         canonicalInvalidLaps: group.invalidLaps,
-        driversCount: mainVariant?.driversCount ?? 0,
+        driversCount: group.drivers.size,
         canonicalDriversCount: group.drivers.size,
         usedCarsCount: publicCars.length,
-        allCarsCount: mainCars.length,
+        allCarsCount: publicCars.length,
         hiddenLowLapCarsCount: hiddenLowLapCars.length,
         variantsCount: variants.length,
         bestLap,
         bestLapTime: bestLap?.lapTime ?? '--',
         maxSpeedKmh: maxSpeed,
-        firstSeenAt: mainVariant?.firstSeenAt ?? null,
-        lastSeenAt: mainVariant?.lastSeenAt ?? null,
-        lastActivityAt: mainVariant?.lastSeenAt ?? null,
-        latestLapAt: mainVariant?.lastSeenAt ?? null,
-        cleanRate: mainVariant?.totalLaps ? Math.round((mainVariant.validLaps / mainVariant.totalLaps) * 100) : 0
+        firstSeenAt: group.firstSeenMs ? new Date(group.firstSeenMs).toISOString() : null,
+        lastSeenAt: group.lastSeenMs ? new Date(group.lastSeenMs).toISOString() : null,
+        lastActivityAt: group.lastSeenMs ? new Date(group.lastSeenMs).toISOString() : null,
+        latestLapAt: group.lastSeenMs ? new Date(group.lastSeenMs).toISOString() : null,
+        cleanRate: group.totalLaps ? Math.round((group.validLaps / group.totalLaps) * 100) : 0
       },
       leaderboard,
       recentLaps,
@@ -8671,12 +8690,12 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       policy: {
         canonicalGrouping: 'track variants grouped by cleaned canonical track',
         mainVariant: 'variant with most valid laps, then total laps, then most recent',
-        publicCars: 'cars from main variant with totalLaps >= minPublicCarLaps',
+        publicCars: 'all cars with laps across every track variant',
         minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1,
         minPublicDrivers: GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1,
         scope: 'combos-only'
       },
-      message: 'Combos pÃºblicos agrupados por circuito canÃ³nico y filtrados por variante principal.'
+      message: 'Combos públicos agrupados por circuito canónico. Coches y vueltas unificados desde todas las variantes del circuito.'
     });
   } catch (error) {
     console.error('[GC Combo Canonical Public Filter] /api/gc/combos error:', error);
@@ -8728,7 +8747,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         hiddenLowLapCarsCount: item.hiddenLowLapCars?.length || 0,
         minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1
       },
-      message: 'Ficha de combo canÃ³nico generada desde Race Data Core.'
+      message: 'Ficha de combo canónico generada desde Race Data Core con coches unificados por circuito.'
     });
   } catch (error) {
     console.error('[GC Combo Canonical Public Filter] /api/gc/combos/:comboId error:', error);
@@ -11416,33 +11435,6 @@ function gcListTrackImagesV1() {
   return [...found.values()].sort((a, b) => a.file.localeCompare(b.file));
 }
 
-
-function gcTrackImageIsValidEnoughV2(filePath: string, safeName: string) {
-  try {
-    const stats = fs.statSync(filePath);
-    if (!stats.isFile() || stats.size < 12) return false;
-
-    const fd = fs.openSync(filePath, 'r');
-    try {
-      const length = Math.min(64, stats.size);
-      const buffer = Buffer.alloc(length);
-      fs.readSync(fd, buffer, 0, length, 0);
-      const ext = path.extname(safeName).toLowerCase();
-
-      if (ext === '.png') return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-      if (ext === '.jpg' || ext === '.jpeg') return buffer[0] === 0xff && buffer[1] === 0xd8;
-      if (ext === '.webp') return buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
-      if (ext === '.avif') return buffer.subarray(4, 12).toString('ascii').startsWith('ftypavif') || buffer.subarray(4, 12).toString('ascii').startsWith('ftypavis');
-      if (ext === '.svg') return /^\s*<svg[\s>]/i.test(buffer.toString('utf8'));
-      return true;
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    return false;
-  }
-}
-
 function gcTrackFallbackSvgV1(label: string) {
   const clean = String(label || 'Track image').replace(/[<>&'"]/g, '');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="${clean}">
@@ -11501,27 +11493,6 @@ app.get('/api/gc/assets/tracks', (_req, res) => {
   }
 });
 
-
-app.get('/api/gc/assets/track-image/:file', (req, res) => {
-  const safe = gcSafeTrackImageFilenameV1(req.params.file);
-  if (!safe) {
-    return res.status(400).type('image/svg+xml').send(gcTrackFallbackSvgV1('Invalid track image'));
-  }
-
-  const existing = gcFindTrackImageFileV1(safe);
-  if (existing && gcTrackImageIsValidEnoughV2(existing, safe)) {
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.type(gcTrackImageMimeV1(safe));
-    return res.sendFile(existing);
-  }
-
-  // Si no existe o está corrupta, devolvemos 404 para que el fallback del frontend pruebe la siguiente candidata.
-  // Esto evita que un PNG vacío/HTML renombrado bloquee toda la cadena de imágenes.
-  res.setHeader('Cache-Control', 'no-store');
-  res.type('image/svg+xml');
-  return res.status(404).send(gcTrackFallbackSvgV1(safe));
-});
-
 app.get('/images/tracks/:file', (req, res) => {
   const safe = gcSafeTrackImageFilenameV1(req.params.file);
   if (!safe) {
@@ -11529,16 +11500,15 @@ app.get('/images/tracks/:file', (req, res) => {
   }
 
   const existing = gcFindTrackImageFileV1(safe);
-  if (existing && gcTrackImageIsValidEnoughV2(existing, safe)) {
+  if (existing) {
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.type(gcTrackImageMimeV1(safe));
     return res.sendFile(existing);
   }
 
-  // Imagen no encontrada o corrupta: devolvemos 404 para activar el fallback del frontend.
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
   res.type('image/svg+xml');
-  return res.status(404).send(gcTrackFallbackSvgV1(safe));
+  return res.status(200).send(gcTrackFallbackSvgV1(safe));
 });
 /* GC_TRACK_IMAGE_404_GUARD_V1_END */
 
