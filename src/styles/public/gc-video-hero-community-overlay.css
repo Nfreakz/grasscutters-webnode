@@ -1,0 +1,43 @@
+/* GC_HERO_VIDEO_MATCH_COMUNIDAD_V140
+   Igualar el tratamiento visual de los heroes con vídeo al patrón real de /comunidad.
+   No mueve textos, no cambia paddings, no toca altura ni estructura.
+   Carga después de gc-unified-hero.css desde PublicHeroFrame.astro.
+*/
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-video,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere-video,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere-video,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere-video {
+  opacity: 1 !important;
+  filter: saturate(.78) contrast(1.10) brightness(.58) !important;
+  transform: scale(1.015) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-atmosphere::before,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::before,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(1, 3, 1, .08) 0%,
+      rgba(1, 3, 1, .10) 52%,
+      rgba(1, 3, 1, .34) 74%,
+      rgba(1, 3, 1, .72) 91%,
+      #020402 100%
+    ) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-atmosphere::after,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere::after,
+html[data-gc-scope="marketing"] body.gc-page-acsr .gc-acsr-atmosphere::after,
+html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::after {
+  content: none !important;
+  display: none !important;
+}
