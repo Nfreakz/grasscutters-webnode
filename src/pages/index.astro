@@ -4037,38 +4037,54 @@ const home2ArchiveSeed = (archiveStats.items || [])
         await renderChampionshipStandings(standings);
       };
 
+      // GC_HOME_DATA_FIRST_CONSERVATIVE_V132
+      // Fix conservador: la Home estaba esperando a endpoints pesados, probes de imagen y módulos secundarios
+      // antes de pintar datos live. Ahora primero pinta combo + últimas vueltas + top combo; lo demás va diferido.
+      const fetchFirstJsonV132 = async (urls = []) => {
+        for (const url of urls.filter(Boolean)) {
+          const payload = await fetchJson(url);
+          if (payload) return payload;
+        }
+        return null;
+      };
+
+      const deferHomeTaskV132 = (label, task, delay = 0) => {
+        window.setTimeout(() => {
+          Promise.resolve()
+            .then(task)
+            .catch((error) => console.warn(`[GC Home] ${label} diferido fallido`, error));
+        }, delay);
+      };
+
       const init = async () => {
         const now = new Date();
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
-        const diagnostics = await fetchJson('/api/gc/diagnostics') || await fetchJson('/api/status') || await fetchJson('/api/stats/overview');
-        const combosPayload = await fetchJson('/api/gc/combos?limit=1&sort=recent') || await fetchJson('/api/combos/stats?limit=1&sort=recent') || await fetchJson('/api/combos?limit=1&sort=recent');
-        const recentPayload = await fetchJson('/api/gc/recent-laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/hotlaps?limit=20');
-        const leaderboardPayload =
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200') ||
-          await fetchJson('/api/gc/recent-laps?limit=200&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=200');
+        // Primera pintura: solo endpoints pequeños y necesarios.
+        const combosPromise = fetchFirstJsonV132([
+          '/api/gc/combos?limit=1&sort=recent',
+          '/api/combos/stats?limit=1&sort=recent',
+          '/api/combos?limit=1&sort=recent'
+        ]);
 
-        const comboStandoutsPayload =
-          await fetchJson('/api/gc/recent-laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=3000&sort=recent&valid=all');
+        const recentPromise = fetchFirstJsonV132([
+          '/api/gc/recent-laps?limit=20&sort=recent&valid=all',
+          '/api/laps?limit=20&sort=recent&valid=all',
+          '/api/hotlaps?limit=20'
+        ]);
 
-        const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
-        if (raceData) {
-          const totalLaps = firstValue(raceData, ['lapsCount', 'validLapsCount', 'totalLaps', 'hotlaps']);
-          const drivers = firstValue(raceData, ['driversCount', 'pilotsCount', 'totalDrivers', 'pilots']);
-          const active = diagnostics && (diagnostics.health === 'ok' || diagnostics.ok);
-          setText('[data-home2-live]', active ? 'LIVE' : 'STATUS');
-          setText('[data-home2-server-state]', active ? 'Online' : 'Revisar');
-          if (drivers) setText('[data-home2-drivers]', drivers);
-          if (totalLaps) setText('[data-home2-laps]', totalLaps);
-        }
+        const leaderboardPromise = fetchFirstJsonV132([
+          '/api/gc/leaderboard?scope=activeCombo&limit=25',
+          '/api/gc/leaderboard?scope=currentCombo&limit=25',
+          '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=80',
+          '/api/gc/recent-laps?limit=80&sort=recent&valid=all',
+          '/api/hotlaps?limit=80'
+        ]);
+
+        const [combosPayload, recentPayload] = await Promise.all([
+          combosPromise,
+          recentPromise
+        ]);
 
         const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
         const rawTrackName = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
@@ -4093,7 +4109,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           '';
         setCountryBadge(inferredCountryCode || inferredCountry, inferredCountry);
         setText('[data-home2-now-country]', inferredCountryCode || inferredCountry);
-        // GC_HOME_TRACK_RESOLVER_V2_DISTANCE
+
         const rawTrackDistance = firstValue(combo, [
           'trackDistanceKm',
           'distanceKm',
@@ -4127,49 +4143,95 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
-        await setTrackImage(trackAssetName || track);
-        await setTrackMap(
-          rawTrackName,
-          trackAssetName,
-          track,
-          firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
-        );
-
-        const champTrackImageFallback = $('[data-home2-champ-track-image]');
-        const heroTrackImage = $('[data-home2-track-image]');
-        if (champTrackImageFallback && heroTrackImage && champTrackImageFallback.src.includes('gc-home2-track-fallback')) {
-          champTrackImageFallback.src = heroTrackImage.currentSrc || heroTrackImage.src;
-        }
+        // Pintado inmediato: esto ya no espera imágenes ni endpoints gigantes.
         renderRows('[data-home2-recent-laps]', getArray(recentPayload));
-        await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
 
-        const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
-        const activeComboRankingRows = comboDetailLeaderboardRows.length
-          ? comboDetailLeaderboardRows
-          : comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
-        const renderedComboRankingRows = renderComboRanking(activeComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
-        if (!renderedComboRankingRows.length) {
-          console.warn('[GC Home] Top Combo no se ha sobrescrito: faltan filas del combo activo', {
-            track: trackAssetName || rawTrackName || track,
-            cars: carList,
-            comboRows: activeComboRankingRows.length
-          });
-        }
+        const instantComboRankingRows = comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
+        const instantRenderedRows = renderComboRanking(instantComboRankingRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
 
+        // Leaderboard público como mejora rápida si el combo no trae suficientes filas.
+        leaderboardPromise
+          .then((leaderboardPayload) => {
+            const rows = getArray(leaderboardPayload);
+            if (!instantRenderedRows.length && rows.length) {
+              renderComboRanking(rows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
+            }
+          })
+          .catch((error) => console.warn('[GC Home] Leaderboard rápido fallido', error));
 
-        renderRaceStandoutsV1([
-          ...getArray(comboStandoutsPayload),
-          ...getArray(leaderboardPayload),
-          ...getArray(combo.laps),
-          ...getArray(combo.bestLaps),
-          ...getArray(combo.leaderboard),
-          ...getArray(recentPayload)
-        ], trackAssetName || rawTrackName || track, carList);
+        // Imágenes en segundo plano. Los probes de fallback no deben bloquear datos.
+        deferHomeTaskV132('Imágenes', async () => {
+          await Promise.all([
+            setTrackImage(trackAssetName || track),
+            setTrackMap(
+              rawTrackName,
+              trackAssetName,
+              track,
+              firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
+            )
+          ]);
 
-        await Promise.all([
-          renderChampionship(),
-          renderArchive(track, carList)
-        ]);
+          const champTrackImageFallback = $('[data-home2-champ-track-image]');
+          const heroTrackImage = $('[data-home2-track-image]');
+          if (champTrackImageFallback && heroTrackImage && champTrackImageFallback.src.includes('gc-home2-track-fallback')) {
+            champTrackImageFallback.src = heroTrackImage.currentSrc || heroTrackImage.src;
+          }
+        });
+
+        // Datos secundarios en segundo plano.
+        deferHomeTaskV132('Servidor ampliado', async () => {
+          const diagnostics = await fetchFirstJsonV132([
+            '/api/gc/diagnostics',
+            '/api/status',
+            '/api/stats/overview'
+          ]);
+
+          const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
+          if (raceData) {
+            const totalLaps = firstValue(raceData, ['lapsCount', 'validLapsCount', 'totalLaps', 'hotlaps']);
+            const drivers = firstValue(raceData, ['driversCount', 'pilotsCount', 'totalDrivers', 'pilots']);
+            const active = diagnostics && (diagnostics.health === 'ok' || diagnostics.ok);
+            setText('[data-home2-live]', active ? 'LIVE' : 'STATUS');
+            setText('[data-home2-server-state]', active ? 'Online' : 'Revisar');
+            if (drivers) setText('[data-home2-drivers]', drivers);
+            if (totalLaps) setText('[data-home2-laps]', totalLaps);
+          }
+
+          await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
+        }, 60);
+
+        deferHomeTaskV132('Combo detail', async () => {
+          const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
+          if (comboDetailLeaderboardRows.length) {
+            renderComboRanking(comboDetailLeaderboardRows, trackAssetName || rawTrackName || track, carList, { preserveOnEmpty: true });
+          }
+        }, 100);
+
+        deferHomeTaskV132('Standouts', async () => {
+          const [comboStandoutsPayload, leaderboardPayload] = await Promise.all([
+            fetchFirstJsonV132([
+              '/api/gc/recent-laps?limit=600&sort=recent&valid=all',
+              '/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=600',
+              '/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=600',
+              '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=600',
+              '/api/laps?limit=600&sort=recent&valid=all',
+              '/api/hotlaps?limit=600&sort=recent&valid=all'
+            ]),
+            leaderboardPromise
+          ]);
+
+          renderRaceStandoutsV1([
+            ...getArray(comboStandoutsPayload),
+            ...getArray(leaderboardPayload),
+            ...getArray(combo.laps),
+            ...getArray(combo.bestLaps),
+            ...getArray(combo.leaderboard),
+            ...getArray(recentPayload)
+          ], trackAssetName || rawTrackName || track, carList);
+        }, 160);
+
+        deferHomeTaskV132('Campeonato', () => renderChampionship(), 220);
+        deferHomeTaskV132('Archivo', () => renderArchive(track, carList), 260);
       };
 
       // GC_HOME_LIVE_REFRESH_TIMER_V130
