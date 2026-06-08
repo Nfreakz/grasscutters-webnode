@@ -2399,7 +2399,34 @@ async function syncStrackerFromGTX() {
 
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
 
-    await sftp.fastGet(process.env.GTX_STRACKER_REMOTE_PATH, tempPath);
+    const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
+
+    try {
+      await sftp.get(remoteDbPath, tempPath);
+    } catch (downloadError) {
+      console.warn('[GC] sTracker SFTP get(path) falló, probando get(buffer):', downloadError);
+      const remoteBuffer = await sftp.get(remoteDbPath);
+      if (Buffer.isBuffer(remoteBuffer)) {
+        fs.writeFileSync(tempPath, remoteBuffer);
+      } else if (remoteBuffer instanceof Uint8Array) {
+        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
+      } else {
+        throw downloadError;
+      }
+    }
+
+    if (!fs.existsSync(tempPath)) {
+      const remoteBuffer = await sftp.get(remoteDbPath);
+      if (Buffer.isBuffer(remoteBuffer)) {
+        fs.writeFileSync(tempPath, remoteBuffer);
+      } else if (remoteBuffer instanceof Uint8Array) {
+        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
+      }
+    }
+
+    if (!fs.existsSync(tempPath)) {
+      throw new Error(`La descarga SFTP terminó sin crear el archivo temporal: ${tempPath}`);
+    }
 
     const stats = fs.statSync(tempPath);
 
