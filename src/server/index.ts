@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1530,6 +1530,7 @@ function findUserByPilotId(store: AppUserStore, playerId: number, exceptUserId?:
 }
 
 let syncInProgress = false;
+let syncStartedAtMs = 0;
 let lastSyncResult: null | {
   ok: boolean;
   startedAt: string;
@@ -2346,11 +2347,23 @@ function assertSyncSecret(req: express.Request) {
 
 async function syncStrackerFromGTX() {
   if (syncInProgress) {
-    return {
-      ok: false,
-      statusCode: 409,
-      message: 'Ya hay una sincronizaciÃƒÂ³n en curso.'
-    };
+    const staleMinutes = readNumberEnv('STRACKER_SYNC_STALE_MINUTES', 15, 1, 120);
+    const staleMs = staleMinutes * 60 * 1000;
+    const runningForMs = syncStartedAtMs ? Date.now() - syncStartedAtMs : 0;
+
+    if (!syncStartedAtMs || runningForMs > staleMs) {
+      console.warn(`[GC] Sync sTracker marcada como en curso durante ${runningForMs}ms. Se libera el bloqueo por timeout (${staleMinutes}min).`);
+      syncInProgress = false;
+      syncStartedAtMs = 0;
+    } else {
+      return {
+        ok: false,
+        statusCode: 409,
+        message: `Ya hay una sincronizaciÃƒÂ³n en curso desde hace ${Math.round(runningForMs / 1000)}s.`,
+        runningForMs,
+        staleAfterMs: staleMs
+      };
+    }
   }
 
   const started = new Date().toISOString();
@@ -2375,6 +2388,7 @@ async function syncStrackerFromGTX() {
   }
 
   syncInProgress = true;
+  syncStartedAtMs = Date.now();
   ensureDirForFile(target.resolvedPath);
 
   const tempPath = `${target.resolvedPath}.download`;
@@ -2399,36 +2413,38 @@ async function syncStrackerFromGTX() {
 
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
 
-    const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
+    const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH?.trim();
+    if (!remoteDbPath) {
+      throw new Error('GTX_STRACKER_REMOTE_PATH no está configurado.');
+    }
 
+    // Hostinger + ssh2-sftp-client puede devolver OK con fastGet/get(dest)
+    // sin dejar el .download visible de forma consistente. Por eso la vía
+    // principal descarga a memoria y escribe el temporal nosotros mismos.
+    let downloadMethod = 'buffer';
     try {
-      await sftp.get(remoteDbPath, tempPath);
-    } catch (downloadError) {
-      console.warn('[GC] sTracker SFTP get(path) falló, probando get(buffer):', downloadError);
-      const remoteBuffer = await sftp.get(remoteDbPath);
-      if (Buffer.isBuffer(remoteBuffer)) {
-        fs.writeFileSync(tempPath, remoteBuffer);
-      } else if (remoteBuffer instanceof Uint8Array) {
-        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
+      const remoteData = await sftp.get(remoteDbPath);
+      if (Buffer.isBuffer(remoteData)) {
+        fs.writeFileSync(tempPath, remoteData);
+      } else if (remoteData instanceof Uint8Array) {
+        fs.writeFileSync(tempPath, Buffer.from(remoteData));
+      } else if (typeof remoteData === 'string') {
+        fs.writeFileSync(tempPath, Buffer.from(remoteData, 'binary'));
       } else {
-        throw downloadError;
+        throw new Error(`sftp.get(buffer) devolvió un tipo no soportado: ${Object.prototype.toString.call(remoteData)}`);
       }
+    } catch (bufferDownloadError) {
+      downloadMethod = 'fastGet-fallback';
+      console.warn('[GC] sTracker SFTP get(buffer) falló, probando fastGet(dest):', bufferDownloadError);
+      await sftp.fastGet(remoteDbPath, tempPath);
     }
 
     if (!fs.existsSync(tempPath)) {
-      const remoteBuffer = await sftp.get(remoteDbPath);
-      if (Buffer.isBuffer(remoteBuffer)) {
-        fs.writeFileSync(tempPath, remoteBuffer);
-      } else if (remoteBuffer instanceof Uint8Array) {
-        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
-      }
-    }
-
-    if (!fs.existsSync(tempPath)) {
-      throw new Error(`La descarga SFTP terminó sin crear el archivo temporal: ${tempPath}`);
+      throw new Error(`La descarga SFTP terminó sin crear el archivo temporal: ${tempPath}. Método=${downloadMethod}. Remote=${remoteDbPath}. CWD=${process.cwd()}`);
     }
 
     const stats = fs.statSync(tempPath);
+    console.log(`[GC] sTracker descargado por SFTP (${downloadMethod}) · ${stats.size} bytes · ${tempPath}`);
 
     if (stats.size < 100) {
       throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
@@ -2491,6 +2507,7 @@ async function syncStrackerFromGTX() {
     };
   } finally {
     syncInProgress = false;
+    syncStartedAtMs = 0;
     if (sftp) {
       try {
         await sftp.end();
