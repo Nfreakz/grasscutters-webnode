@@ -1880,9 +1880,26 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return '';
       };
 
+      // GC_HOME_LIVE_REFRESH_NOCACHE_V130
+      // Hostinger/navegador pueden devolver respuestas antiguas si la URL es idéntica.
+      // Para los datos vivos de Home usamos no-store + cache-buster suave.
+      const gcHomeNoCacheUrlV130 = (url) => {
+        const text = String(url || '');
+        if (!text) return text;
+        if (!text.startsWith('/api') && !text.startsWith('/gc-data') && !text.startsWith('/data')) return text;
+        const joiner = text.includes('?') ? '&' : '?';
+        return `${text}${joiner}_gc_live=${Date.now()}`;
+      };
+
       const fetchJson = async (url) => {
         try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          const res = await fetch(gcHomeNoCacheUrlV130(url), {
+            cache: 'no-store',
+            headers: {
+              Accept: 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          });
           if (!res.ok) return null;
           return await res.json();
         } catch (_) {
@@ -3849,7 +3866,13 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
       const fetchText = async (url) => {
         try {
-          const res = await fetch(url, { headers: { Accept: 'text/html,application/xhtml+xml' } });
+          const res = await fetch(gcHomeNoCacheUrlV130(url), {
+            cache: 'no-store',
+            headers: {
+              Accept: 'text/html,application/xhtml+xml',
+              'Cache-Control': 'no-cache'
+            }
+          });
           if (!res.ok) return '';
           return await res.text();
         } catch (_) {
@@ -4149,7 +4172,35 @@ const home2ArchiveSeed = (archiveStats.items || [])
         ]);
       };
 
-      init();
+      // GC_HOME_LIVE_REFRESH_TIMER_V130
+      // Antes la Home ejecutaba init() una sola vez. Si dejabas la pestaña abierta,
+      // la foto seguía viva pero los datos quedaban congelados.
+      let gcHomeRefreshInProgressV130 = false;
+      let gcHomeLastRefreshAtV130 = 0;
+
+      const runHomeRefreshV130 = async (reason = 'manual') => {
+        if (gcHomeRefreshInProgressV130) return;
+        if (reason === 'interval' && document.visibilityState === 'hidden') return;
+
+        const now = Date.now();
+        if (reason !== 'initial' && now - gcHomeLastRefreshAtV130 < 25000) return;
+
+        gcHomeRefreshInProgressV130 = true;
+        gcHomeLastRefreshAtV130 = now;
+        try {
+          await init();
+        } catch (error) {
+          console.warn('[GC Home] Refresh fallido', { reason, error });
+        } finally {
+          gcHomeRefreshInProgressV130 = false;
+        }
+      };
+
+      runHomeRefreshV130('initial');
+      window.setInterval(() => runHomeRefreshV130('interval'), 60000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') runHomeRefreshV130('visible');
+      });
     })();
   </script>
 </MarketingLayout>
