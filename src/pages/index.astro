@@ -2326,9 +2326,76 @@ const home2ArchiveSeed = (archiveStats.items || [])
       const pilotAvatarUrl = (pilot) => {
         const direct = firstValue(pilot, ['avatarUrl', 'avatar_url', 'imageUrl', 'image', 'driver.avatarUrl', 'player.avatarUrl', 'pilot.avatarUrl']);
         if (direct) return String(direct);
-        const id = firstValue(pilot, ['pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
+        const id = firstValue(pilot, ['profilePlayerId', 'strackerPlayerId', 'pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
         if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
         return '/images/pilot-avatar-default.png';
+      };
+
+      // GC_HOME2_ACSM_AVATAR_RESOLVER_V129
+      // ACSM suele traer nombre/GUID, pero no el PlayerId de sTracker donde se guardan los avatares subidos.
+      // Creamos un índice ligero desde endpoints públicos de pilotos para resolverlo por GUID o nombre.
+      let gcHomePilotAvatarIndexPromiseV129 = null;
+
+      const gcHomeAvatarNameKeyV129 = (value) => slugify(String(value || '').replace(/\s+/g, ' '));
+      const gcHomeAvatarGuidKeyV129 = (value) => String(value || '').replace(/\D+/g, '').trim();
+
+      const gcHomeAvatarRowKeysV129 = (row = {}) => {
+        const name = firstValue(row, ['name', 'driverName', 'displayName', 'visibleName', 'playerName', 'steamName', 'Name', 'driver.name', 'player.name']);
+        const guid = firstValue(row, ['guid', 'steamGuid', 'steamGUID', 'SteamGuid', 'driverGuid', 'playerGuid', 'driver.guid', 'player.guid']);
+        const playerId = firstValue(row, ['profilePlayerId', 'strackerPlayerId', 'pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
+        return {
+          nameKey: gcHomeAvatarNameKeyV129(name),
+          guidKey: gcHomeAvatarGuidKeyV129(guid),
+          playerId: playerId !== undefined && playerId !== null && playerId !== '' ? String(playerId) : '',
+        };
+      };
+
+      const gcHomeAddAvatarIndexRowV129 = (index, row) => {
+        if (!row || typeof row !== 'object') return;
+        const keys = gcHomeAvatarRowKeysV129(row);
+        if (keys.playerId && !index.byPlayerId.has(keys.playerId)) index.byPlayerId.set(keys.playerId, row);
+        if (keys.guidKey && !index.byGuid.has(keys.guidKey)) index.byGuid.set(keys.guidKey, row);
+        if (keys.nameKey && !index.byName.has(keys.nameKey)) index.byName.set(keys.nameKey, row);
+      };
+
+      const gcHomeBuildPilotAvatarIndexV129 = async () => {
+        const index = { byPlayerId: new Map(), byGuid: new Map(), byName: new Map() };
+        const payloads = await Promise.all([
+          fetchJson('/api/pilots?limit=500&sort=recent'),
+          fetchJson('/api/gc/recent-laps?limit=1000&sort=recent&valid=all'),
+          fetchJson('/api/hotlaps?limit=500'),
+          fetchJson('/api/gc/ratings/leaderboard?limit=200')
+        ]);
+
+        payloads.forEach((payload) => {
+          const rows = getArray(payload);
+          rows.forEach((row) => gcHomeAddAvatarIndexRowV129(index, row));
+
+          const nested = [payload?.pilots, payload?.drivers, payload?.items, payload?.leaderboard, payload?.sr, payload?.gsr]
+            .flatMap((value) => Array.isArray(value) ? value : []);
+          nested.forEach((row) => gcHomeAddAvatarIndexRowV129(index, row));
+        });
+
+        return index;
+      };
+
+      const gcHomeGetPilotAvatarIndexV129 = () => {
+        if (!gcHomePilotAvatarIndexPromiseV129) {
+          gcHomePilotAvatarIndexPromiseV129 = gcHomeBuildPilotAvatarIndexV129().catch(() => ({
+            byPlayerId: new Map(),
+            byGuid: new Map(),
+            byName: new Map(),
+          }));
+        }
+        return gcHomePilotAvatarIndexPromiseV129;
+      };
+
+      const gcHomeResolveChampionshipAvatarRowV129 = (driver, index) => {
+        const keys = gcHomeAvatarRowKeysV129(driver);
+        return (keys.playerId && index.byPlayerId.get(keys.playerId)) ||
+          (keys.guidKey && index.byGuid.get(keys.guidKey)) ||
+          (keys.nameKey && index.byName.get(keys.nameKey)) ||
+          driver;
       };
 
       const probeImage = (src) => new Promise((resolve) => {
@@ -3858,7 +3925,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain gc-home2-ranking-medal">${escapeChampionshipText(position)}</span>`;
       };
 
-      const renderChampionshipStandings = (standings = []) => {
+      const renderChampionshipStandings = async (standings = []) => {
         const host = $('[data-home2-champ-drivers]');
         if (!host) return;
 
@@ -3868,6 +3935,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
           return;
         }
 
+        const avatarIndex = await gcHomeGetPilotAvatarIndexV129();
+
         host.innerHTML = list.slice(0, 8).map((driver, index) => {
           const position = firstValue(driver, ['position', 'pos', 'rank']) || index + 1;
           const name = firstValue(driver, ['name', 'driverName', 'displayName', 'steamName', 'Name']) || `Piloto ${index + 1}`;
@@ -3876,7 +3945,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
           const tone = championshipRankTone(position);
           const rowClass = tone ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${tone}` : ' gc-home2-champ-standing-row--plain';
-          const avatar = escapeChampionshipText(pilotAvatarUrl(driver));
+          const avatarRow = gcHomeResolveChampionshipAvatarRowV129(driver, avatarIndex);
+          const avatar = escapeChampionshipText(pilotAvatarUrl(avatarRow));
           const displayName = String(name || `Piloto ${index + 1}`).toUpperCase();
 
           return `<div class="gc-home2-champ-standing-row${rowClass}"><span class="gc-home2-champ-standing-pos">${renderChampionshipRankBadge(position)}</span><div class="gc-home2-champ-standing-meta"><strong>${escapeChampionshipText(displayName)}</strong><small>${escapeChampionshipText(meta || 'Clasificación')}</small></div><img class="gc-home2-champ-standing-avatar" src="${avatar}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" /></div>`;
@@ -3892,7 +3962,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         const box = $('[data-home2-championship]');
         if (!box || !payload || payload.ok === false || !payload.championship) {
-          renderChampionshipStandings([]);
+          await renderChampionshipStandings([]);
           return;
         }
 
@@ -3941,7 +4011,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           setText('[data-home2-champ-next-meta]', 'Ver próximas sesiones');
         }
 
-        renderChampionshipStandings(standings);
+        await renderChampionshipStandings(standings);
       };
 
       const init = async () => {
