@@ -326,7 +326,18 @@ const tagList = [category !== typeSingular ? category : '', country, period, dis
       <figure>
         {imageUrl ? (
           <>
-            <img src={imageUrl} alt={imageAlt} loading="eager" />
+            <button
+              type="button"
+              class="gc-archive-image-zoom-v1 gc-archive-image-zoom-v1--hero"
+              data-archive-lightbox-trigger
+              data-archive-lightbox-src={imageUrl}
+              data-archive-lightbox-alt={imageAlt}
+              data-archive-lightbox-caption={[title, imageCredit, imageLicense].filter(Boolean).join(' · ')}
+              aria-label={`Ampliar imagen de ${title}`}
+            >
+              <img src={imageUrl} alt={imageAlt} loading="eager" />
+              <span>Ampliar imagen</span>
+            </button>
             {(imageCredit || imageLicense) && <figcaption>{imageCredit}{imageCredit && imageLicense ? ' · ' : ''}{imageLicense}</figcaption>}
           </>
         ) : (
@@ -425,7 +436,18 @@ const tagList = [category !== typeSingular ? category : '', country, period, dis
           <div class="gc-archive-inner-gallery-v1">
             {gallery.map((image) => (
               <figure>
-                <img src={image.url} alt={image.alt} loading="lazy" />
+                <button
+                  type="button"
+                  class="gc-archive-image-zoom-v1"
+                  data-archive-lightbox-trigger
+                  data-archive-lightbox-src={image.url}
+                  data-archive-lightbox-alt={image.alt}
+                  data-archive-lightbox-caption={image.credit || image.alt || title}
+                  aria-label={`Ampliar imagen: ${image.alt || title}`}
+                >
+                  <img src={image.url} alt={image.alt} loading="lazy" />
+                  <span>Ampliar imagen</span>
+                </button>
                 {image.credit && <figcaption>{image.credit}</figcaption>}
               </figure>
             ))}
@@ -506,6 +528,80 @@ const tagList = [category !== typeSingular ? category : '', country, period, dis
     </aside>
   </section>
 </article>
+
+<dialog class="gc-archive-lightbox-v1" data-archive-lightbox aria-label="Imagen ampliada del archivo">
+  <button type="button" class="gc-archive-lightbox-v1__close" data-archive-lightbox-close aria-label="Cerrar imagen ampliada">×</button>
+  <figure>
+    <img src="" alt="" data-archive-lightbox-image />
+    <figcaption data-archive-lightbox-caption></figcaption>
+  </figure>
+</dialog>
+
+<script is:inline>
+  (() => {
+    const root = document.currentScript?.closest('body') || document;
+    const dialog = root.querySelector('[data-archive-lightbox]');
+    const image = dialog?.querySelector('[data-archive-lightbox-image]');
+    const caption = dialog?.querySelector('[data-archive-lightbox-caption]');
+    const closeButton = dialog?.querySelector('[data-archive-lightbox-close]');
+    const triggers = [...root.querySelectorAll('[data-archive-lightbox-trigger]')];
+    let lastTrigger = null;
+
+    if (!dialog || !image || !triggers.length) return;
+
+    function closeLightbox() {
+      if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+      else dialog.removeAttribute('open');
+
+      image.removeAttribute('src');
+      image.setAttribute('alt', '');
+      if (caption) caption.textContent = '';
+      document.body.style.overflow = '';
+      lastTrigger?.focus?.();
+    }
+
+    function openLightbox(trigger) {
+      const src = trigger.getAttribute('data-archive-lightbox-src') || '';
+      if (!src) return;
+
+      lastTrigger = trigger;
+      const alt = trigger.getAttribute('data-archive-lightbox-alt') || 'Imagen del Archivo GrassCutters';
+      const captionText = trigger.getAttribute('data-archive-lightbox-caption') || '';
+
+      image.src = src;
+      image.alt = alt;
+      if (caption) {
+        caption.textContent = captionText;
+        caption.hidden = !captionText;
+      }
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+
+      document.body.style.overflow = 'hidden';
+      closeButton?.focus?.();
+    }
+
+    triggers.forEach((trigger) => {
+      trigger.addEventListener('click', () => openLightbox(trigger));
+    });
+
+    closeButton?.addEventListener('click', closeLightbox);
+
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeLightbox();
+    });
+
+    dialog.addEventListener('close', () => {
+      image.removeAttribute('src');
+      document.body.style.overflow = '';
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dialog.open) closeLightbox();
+    });
+  })();
+</script>
 
 <style is:global>
   .gc-archive-inner-v1 {
@@ -792,6 +888,149 @@ const tagList = [category !== typeSingular ? category : '', country, period, dis
     box-shadow:
       0 18px 58px rgba(0,0,0,.38),
       inset 0 0 0 1px rgba(255,255,255,.018) !important;
+  }
+
+
+  /* GC_ARCHIVO_LIGHTBOX_V1 */
+  .gc-archive-image-zoom-v1 {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: zoom-in;
+    overflow: hidden;
+  }
+
+  .gc-archive-image-zoom-v1 > img {
+    transition: transform .22s ease, filter .22s ease;
+  }
+
+  .gc-archive-image-zoom-v1:hover > img,
+  .gc-archive-image-zoom-v1:focus-visible > img {
+    transform: scale(1.018);
+    filter: saturate(1) brightness(.9);
+  }
+
+  .gc-archive-image-zoom-v1 > span {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 2;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    border: 1px solid rgba(150,255,47,.32);
+    border-radius: 999px;
+    background: rgba(3,5,3,.82);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events: none;
+  }
+
+  .gc-archive-image-zoom-v1:hover > span,
+  .gc-archive-image-zoom-v1:focus-visible > span {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .gc-archive-lightbox-v1 {
+    width: min(96vw, 1440px);
+    max-width: none;
+    max-height: 96dvh;
+    padding: 12px;
+    border: 1px solid rgba(150,255,47,.22);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(7,11,8,.98), rgba(2,4,3,.99));
+    color: var(--text);
+    box-shadow: 0 30px 110px rgba(0,0,0,.78);
+    overflow: hidden;
+  }
+
+  .gc-archive-lightbox-v1:not([open]) {
+    display: none;
+  }
+
+  .gc-archive-lightbox-v1::backdrop {
+    background: rgba(0,0,0,.86);
+    backdrop-filter: blur(6px);
+  }
+
+  .gc-archive-lightbox-v1 figure {
+    margin: 0;
+    display: grid;
+    gap: 10px;
+    place-items: center;
+  }
+
+  .gc-archive-lightbox-v1 img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(96dvh - 82px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #020402;
+  }
+
+  .gc-archive-lightbox-v1 figcaption {
+    max-width: min(100%, 1120px);
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .gc-archive-lightbox-v1__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    background: rgba(3,5,3,.86);
+    color: var(--text);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gc-archive-lightbox-v1__close:hover,
+  .gc-archive-lightbox-v1__close:focus-visible {
+    border-color: rgba(150,255,47,.45);
+    color: var(--green);
+  }
+
+  @media (max-width: 720px) {
+    .gc-archive-image-zoom-v1 > span {
+      opacity: 1;
+      transform: none;
+    }
+
+    .gc-archive-lightbox-v1 {
+      width: 100vw;
+      max-height: 100dvh;
+      border-radius: 0;
+    }
+
+    .gc-archive-lightbox-v1 img {
+      max-height: calc(100dvh - 92px);
+    }
   }
 
 </style>

@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
+import '../styles/public/gc-rating-badges.css';
 import {
   archiveItemHref,
   getArchiveImage,
@@ -385,7 +386,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
             <div>
               <p class="gc-home2-panel__eyebrow">Campeonato ACSM</p>
               <h2 id="gc-home2-championship-title" data-home2-champ-name>Campeonato de combos semanales</h2>
-              <p class="gc-home2-section__sub" data-home2-champ-sub>Clasificación, eventos e inscritos</p>
+              <p class="gc-home2-section__sub" data-home2-champ-sub>Clasificación, eventos y calendario</p>
             </div>
             <a href="/campeonato" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn">Ver campeonato →</a>
           </header>
@@ -410,13 +411,13 @@ const home2ArchiveSeed = (archiveStats.items || [])
               <div><dt>Clases</dt><dd data-home2-champ-classes>--</dd></div>
             </dl>
 
-            <section class="gc-home2-championship-drivers" aria-label="Inscritos del campeonato">
+            <section class="gc-home2-championship-drivers" aria-label="Clasificación del campeonato">
               <div class="gc-home2-championship-drivers__head">
-                <span>Inscritos</span>
-                <a href="/campeonato">Ver todos →</a>
+                <span>Clasificación</span>
+                <a href="/campeonato">Ver completa →</a>
               </div>
               <div class="gc-home2-championship-drivers__list" data-home2-champ-drivers>
-                <div><strong>Cargando pilotos</strong><small>ACSM</small></div>
+                <div><strong>Cargando clasificación</strong><small>ACSM</small></div>
               </div>
             </section>
           </div>
@@ -424,7 +425,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
       </article>
     </section>
 
-    <section class="gc-home2-section gc-home2-shell gc-home2-mid-grid" aria-label="Archivo y box tools">
+    <section class="gc-home2-section gc-home2-shell gc-home2-mid-grid" aria-label="Archivo y ratings">
       <article class="gc-home2-panel gc-home2-panel--archive">
         <div class="gc-home2-panel__head">
           <div>
@@ -473,92 +474,59 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </div>
       </article>
 
-      <article class="gc-home2-panel gc-home2-panel--tools">
+      <article class="gc-home2-panel gc-home2-panel--ratings" data-home2-ratings-card>
         <div class="gc-home2-panel__head">
           <div>
-            <p class="gc-home2-panel__eyebrow">Box Tools</p>
-            <h2>Recursos para pilotos</h2>
+            <p class="gc-home2-panel__eyebrow">Safety & Skill</p>
+            <h2>Clasificaciones SR / GSR</h2>
           </div>
+          <a href="/ratings" class="gc-home2-btn gc-home2-btn--small">Ver ratings →</a>
         </div>
 
-        <div class="gc-home2-tools-grid">
-          <a href={home2ToolLinks.hud} target="_blank" rel="noreferrer" class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/hud-pro.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>HUD / Overlays</strong>
-            <span>Descarga el HUD oficial GC</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.android} class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/android.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>App Android</strong>
-            <span>Lleva GC contigo en el móvil</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.carsDrive} target="_blank" rel="noreferrer" class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/car-download.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Coches</strong>
-            <span>Descarga los coches desde Drive</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.tracksDrive} target="_blank" rel="noreferrer" class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/track-download.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Circuitos</strong>
-            <span>Descarga circuitos desde Drive</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.profile} class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/profile-helmet.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Perfil</strong>
-            <span>Acceso rápido al perfil de piloto</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.hotlaps} class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/hotlaps-stopwatch.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Hotlaps</strong>
-            <span>Consulta referencias y mejores vueltas</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.combos} class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/combos-stack.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Combos</strong>
-            <span>Activos, históricos y próximos combos</span>
-            <em>→</em>
-          </a>
-          <a href={home2ToolLinks.championship} class="gc-home2-tool">
-            <span class="gc-home2-tool__icon">
-              <img src="/ui/home2/icons/championship-cup.svg" alt="" width="52" height="52" loading="lazy" />
-            </span>
-            <strong>Campeonato</strong>
-            <span>Calendario, clasificación e inscritos</span>
-            <em>→</em>
-          </a>
-        </div>
+        <div class="gc-home2-ratings-grid" aria-live="polite">
+          <section class="gc-home2-rating-board" aria-labelledby="gc-home2-sr-title">
+            <div class="gc-home2-rating-board__head">
+              <span>Safety Rating</span>
+              <strong id="gc-home2-sr-title">Leaderboard SR</strong>
+            </div>
+            <div class="gc-home2-rating-table-wrap">
+              <table class="gc-home2-rating-table">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Piloto</th>
+                    <th>SR</th>
+                    <th>Var.</th>
+                  </tr>
+                </thead>
+                <tbody data-home2-sr-ratings>
+                  <tr><td colspan="4">Cargando SR...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-
-        <div class="gc-home2-tools-extra" aria-label="Atajos rápidos del paddock">
-          <div class="gc-home2-tools-extra__head">
-            <span>También útil</span>
-            <strong>Atajos de paddock</strong>
-          </div>
-          <div class="gc-home2-tools-extra__links">
-            <a href="/normas">Normas del servidor <span>→</span></a>
-            <a href="/comunidad">Comunidad y Discord <span>→</span></a>
-            <a href="/apoyo-servidor">Apoyar el servidor <span>→</span></a>
-          </div>
+          <section class="gc-home2-rating-board" aria-labelledby="gc-home2-gsr-title">
+            <div class="gc-home2-rating-board__head">
+              <span>GrassCutters Skill Rating</span>
+              <strong id="gc-home2-gsr-title">Leaderboard GSR</strong>
+            </div>
+            <div class="gc-home2-rating-table-wrap">
+              <table class="gc-home2-rating-table">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Piloto</th>
+                    <th>GSR</th>
+                    <th>Var.</th>
+                  </tr>
+                </thead>
+                <tbody data-home2-gsr-ratings>
+                  <tr><td colspan="4">Cargando GSR...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </article>
     </section>
@@ -625,10 +593,517 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
   </main>
 
+  <style is:global>
+    /* GC_HOME2_BOX_TO_RATINGS_V1 */
+    .gc-home2 .gc-home2-panel--ratings{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .gc-home2 .gc-home2-ratings-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+
+    .gc-home2 .gc-home2-rating-board{
+      overflow:hidden;
+      border:1px solid rgba(150,255,47,.14);
+      border-radius:var(--radius-sm,14px);
+      background:
+        radial-gradient(circle at 96% 0%, rgba(150,255,47,.10), transparent 9rem),
+        linear-gradient(180deg, rgba(8,14,10,.94), rgba(4,8,5,.985));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+
+    .gc-home2 .gc-home2-rating-board__head{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      padding:13px 14px 10px;
+      border-bottom:1px solid rgba(150,255,47,.10);
+    }
+
+    .gc-home2 .gc-home2-rating-board__head span{
+      color:var(--green,#96ff2f);
+      font-family:var(--mono,monospace);
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+    }
+
+    .gc-home2 .gc-home2-rating-board__head strong{
+      color:var(--text,#f4fff1);
+      font-size:15px;
+      line-height:1;
+      text-transform:uppercase;
+      text-align:right;
+    }
+
+    .gc-home2 .gc-home2-rating-table-wrap{
+      overflow:auto;
+    }
+
+    .gc-home2 .gc-home2-rating-table{
+      width:100%;
+      min-width:430px;
+      border-collapse:collapse;
+    }
+
+    .gc-home2 .gc-home2-rating-table th,
+    .gc-home2 .gc-home2-rating-table td{
+      padding:10px 11px;
+      border-bottom:1px solid rgba(150,255,47,.09);
+      text-align:left;
+      vertical-align:middle;
+      font-size:12px;
+    }
+
+    .gc-home2 .gc-home2-rating-table tr:last-child td{
+      border-bottom:0;
+    }
+
+    .gc-home2 .gc-home2-rating-table th{
+      color:var(--muted,#72806d);
+      background:rgba(150,255,47,.045);
+      font-family:var(--mono,monospace);
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    .gc-home2 .gc-home2-rating-pos{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:26px;
+      min-height:26px;
+      border:1px solid rgba(150,255,47,.18);
+      border-radius:999px;
+      font-family:var(--mono,monospace);
+      font-weight:900;
+      font-size:11px;
+    }
+
+    .gc-home2 .gc-home2-rating-driver{
+      display:grid;
+      gap:3px;
+      min-width:120px;
+    }
+
+    .gc-home2 .gc-home2-rating-driver a,
+    .gc-home2 .gc-home2-rating-driver strong{
+      color:var(--text,#f4fff1);
+      text-decoration:none;
+      font-weight:950;
+      line-height:1.05;
+    }
+
+    .gc-home2 .gc-home2-rating-driver a:hover{
+      color:var(--green,#96ff2f);
+    }
+
+    .gc-home2 .gc-home2-rating-driver small{
+      color:var(--muted,#72806d);
+      font-family:var(--mono,monospace);
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    .gc-home2 .gc-home2-rating-delta{
+      display:inline-flex;
+      justify-content:center;
+      min-width:46px;
+      padding:4px 7px;
+      border-radius:999px;
+      font-family:var(--mono,monospace);
+      font-size:11px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+
+    .gc-home2 .gc-home2-rating-delta.is-positive{
+      border:1px solid rgba(150,255,47,.24);
+      color:var(--green,#96ff2f);
+      background:rgba(150,255,47,.08);
+    }
+
+    .gc-home2 .gc-home2-rating-delta.is-negative{
+      border:1px solid rgba(255,110,110,.2);
+      color:#ffb0b0;
+      background:rgba(255,90,90,.08);
+    }
+
+    .gc-home2 .gc-home2-rating-delta.is-neutral{
+      border:1px solid rgba(255,255,255,.08);
+      color:var(--muted,#72806d);
+      background:rgba(255,255,255,.035);
+    }
+
+    .gc-home2 .gc-home2-rating-table .gc-rating-badge{
+      transform-origin:left center;
+    }
+
+
+
+    /* GC_HOME2_VISIBLE_RANKINGS_MEDALS_V2 */
+    .gc-home2 .gc-home2-panel--ratings{
+      gap:16px;
+    }
+
+    .gc-home2 .gc-home2-rating-board{
+      border-color:rgba(150,255,47,.22);
+      box-shadow:
+        0 18px 55px rgba(0,0,0,.32),
+        inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .gc-home2 .gc-home2-rating-board__head{
+      padding:16px 17px 12px;
+      background:rgba(150,255,47,.035);
+    }
+
+    .gc-home2 .gc-home2-rating-board__head span{
+      font-size:11px;
+    }
+
+    .gc-home2 .gc-home2-rating-board__head strong{
+      font-size:18px;
+    }
+
+    .gc-home2 .gc-home2-rating-table th,
+    .gc-home2 .gc-home2-rating-table td{
+      padding:12px 13px;
+      font-size:13px;
+    }
+
+    .gc-home2 .gc-home2-rating-table th{
+      font-size:10.5px;
+    }
+
+    .gc-home2 .gc-home2-rating-row--podium td{
+      background:linear-gradient(90deg, rgba(255,255,255,.035), transparent 82%);
+    }
+
+    .gc-home2 .gc-home2-rating-row--gold td{
+      background:linear-gradient(90deg, rgba(255,205,75,.16), rgba(255,205,75,.035) 42%, transparent 88%);
+    }
+
+    .gc-home2 .gc-home2-rating-row--silver td{
+      background:linear-gradient(90deg, rgba(205,220,230,.14), rgba(205,220,230,.035) 42%, transparent 88%);
+    }
+
+    .gc-home2 .gc-home2-rating-row--bronze td{
+      background:linear-gradient(90deg, rgba(207,126,58,.16), rgba(207,126,58,.035) 42%, transparent 88%);
+    }
+
+    .gc-home2 .gc-home2-rating-pos{
+      min-width:30px;
+      min-height:30px;
+      font-size:12px;
+      box-shadow:0 0 0 1px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16);
+    }
+
+    .gc-home2 .gc-home2-rating-pos--gold{
+      color:#1f1600;
+      border-color:rgba(255,213,83,.85);
+      background:linear-gradient(135deg, #fff2a8 0%, #ffd052 48%, #9a6908 100%);
+    }
+
+    .gc-home2 .gc-home2-rating-pos--silver{
+      color:#10161b;
+      border-color:rgba(230,240,245,.78);
+      background:linear-gradient(135deg, #ffffff 0%, #cad7df 50%, #6f7f89 100%);
+    }
+
+    .gc-home2 .gc-home2-rating-pos--bronze{
+      color:#201006;
+      border-color:rgba(220,137,76,.82);
+      background:linear-gradient(135deg, #ffd1a8 0%, #c97837 50%, #754016 100%);
+    }
+
+    .gc-home2 .gc-home2-rating-driver a,
+    .gc-home2 .gc-home2-rating-driver strong{
+      font-size:13.5px;
+    }
+
+    .gc-home2 .gc-home2-rating-driver small{
+      font-size:9.5px;
+    }
+
+    .gc-home2 .gc-home2-championship-drivers{
+      align-self:stretch;
+      padding:18px 20px;
+      border:1px solid rgba(150,255,47,.18);
+      border-radius:var(--radius-sm,14px);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(150,255,47,.10), transparent 13rem),
+        linear-gradient(180deg, rgba(7,13,8,.92), rgba(4,8,5,.985));
+      box-shadow:
+        0 18px 55px rgba(0,0,0,.30),
+        inset 0 1px 0 rgba(255,255,255,.035);
+    }
+
+    .gc-home2 .gc-home2-championship-drivers__head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:13px;
+    }
+
+    .gc-home2 .gc-home2-championship-drivers__head span{
+      color:var(--muted,#72806d);
+      font-family:var(--mono,monospace);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-home2 .gc-home2-championship-drivers__head a{
+      color:var(--green,#96ff2f);
+      font-family:var(--mono,monospace);
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      text-decoration:none;
+    }
+
+    .gc-home2 .gc-home2-championship-drivers__list{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px 14px;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      align-items:center;
+      gap:10px;
+      min-height:48px;
+      padding:9px 10px;
+      border:1px solid rgba(255,255,255,.065);
+      border-radius:10px;
+      background:rgba(255,255,255,.018);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row--gold{
+      border-color:rgba(255,213,83,.36);
+      background:linear-gradient(90deg, rgba(255,205,75,.14), rgba(255,205,75,.025) 72%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row--silver{
+      border-color:rgba(230,240,245,.28);
+      background:linear-gradient(90deg, rgba(205,220,230,.12), rgba(205,220,230,.025) 72%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row--bronze{
+      border-color:rgba(220,137,76,.34);
+      background:linear-gradient(90deg, rgba(207,126,58,.14), rgba(207,126,58,.025) 72%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-pos{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      border:1px solid rgba(150,255,47,.20);
+      border-radius:999px;
+      color:var(--green,#96ff2f);
+      font-family:var(--mono,monospace);
+      font-size:12px;
+      font-weight:1000;
+      background:rgba(150,255,47,.06);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-pos--gold{
+      color:#1f1600;
+      border-color:rgba(255,213,83,.85);
+      background:linear-gradient(135deg, #fff2a8 0%, #ffd052 48%, #9a6908 100%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-pos--silver{
+      color:#10161b;
+      border-color:rgba(230,240,245,.78);
+      background:linear-gradient(135deg, #ffffff 0%, #cad7df 50%, #6f7f89 100%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-pos--bronze{
+      color:#201006;
+      border-color:rgba(220,137,76,.82);
+      background:linear-gradient(135deg, #ffd1a8 0%, #c97837 50%, #754016 100%);
+    }
+
+    .gc-home2 .gc-home2-champ-standing-meta{
+      min-width:0;
+      display:grid;
+      gap:3px;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-meta strong{
+      color:var(--text,#f4fff1);
+      font-size:13.5px;
+      line-height:1.05;
+      text-transform:uppercase;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-meta small{
+      color:var(--muted,#72806d);
+      font-family:var(--mono,monospace);
+      font-size:9.5px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    @media(max-width:920px){
+      .gc-home2 .gc-home2-championship-drivers__list{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:1180px){
+      .gc-home2 .gc-home2-rating-table{
+        min-width:390px;
+      }
+    }
+  </style>
+
   <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline src="/js/gc-home-track-resolver.js"></script>
   <script is:inline define:vars={{ home2ArchiveSeed }}>
     window.__GC_HOME2_ARCHIVE__ = home2ArchiveSeed;
+  </script>
+  <script>
+    (() => {
+      const srBody = document.querySelector('[data-home2-sr-ratings]');
+      const gsrBody = document.querySelector('[data-home2-gsr-ratings]');
+      if (!srBody && !gsrBody) return;
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[char]));
+
+      const toNumber = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+
+      const classKey = (value) => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+', 'plus')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'unknown';
+
+      const formatDelta = (value, digits = 1) => {
+        const numeric = toNumber(value);
+        if (numeric === null) return '--';
+        const formatted = digits === 0 ? String(Math.round(numeric)) : numeric.toFixed(digits);
+        return `${numeric > 0 ? '+' : ''}${formatted}`;
+      };
+
+      const deltaClass = (value) => {
+        const numeric = toNumber(value);
+        if (numeric === null || numeric === 0) return 'gc-home2-rating-delta is-neutral';
+        return numeric > 0 ? 'gc-home2-rating-delta is-positive' : 'gc-home2-rating-delta is-negative';
+      };
+
+      const rankTone = (position) => {
+        const numeric = Number(position);
+        if (numeric === 1) return 'gold';
+        if (numeric === 2) return 'silver';
+        if (numeric === 3) return 'bronze';
+        return '';
+      };
+
+      const ratingBadge = (type, label, score) => {
+        const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
+        const safeLabel = String(label || '--');
+        const scoreText = score === undefined || score === null || score === '' ? '' : `<small>${escapeHtml(score)}</small>`;
+        return `
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey(safeLabel)} gc-rating-badge--compact">
+            <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
+            <strong>${escapeHtml(safeLabel)}</strong>
+            ${scoreText}
+          </span>`;
+      };
+
+      const driverLink = (row) => {
+        const name = row?.driver || row?.name || 'Piloto';
+        const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
+        const driverKey = String(row?.driverKey || '');
+        const playerId = directPlayerId || (driverKey.startsWith('player:') ? driverKey.replace('player:', '') : '');
+        const main = playerId
+          ? `<a href="/pilotos/${encodeURIComponent(String(playerId))}">${escapeHtml(name)}</a>`
+          : `<strong>${escapeHtml(name)}</strong>`;
+        return `<div class="gc-home2-rating-driver">${main}<small>${playerId ? 'Perfil público' : 'Piloto GC'}</small></div>`;
+      };
+
+      const renderRows = (target, rows, type) => {
+        if (!target) return;
+        const list = Array.isArray(rows) ? rows.slice(0, 5) : [];
+        if (!list.length) {
+          target.innerHTML = `<tr><td colspan="4">Sin datos de ${type.toUpperCase()}.</td></tr>`;
+          return;
+        }
+
+        target.innerHTML = list.map((row, index) => {
+          const isSr = type === 'sr';
+          const score = isSr ? toNumber(row.sr) : toNumber(row.gsr);
+          const scoreText = score === null ? '--' : (isSr ? score.toFixed(1) : String(Math.round(score)));
+          const label = isSr ? row.srClass : row.gsrClass;
+          const deltaDigits = isSr ? 1 : 0;
+
+          const position = row.position ?? index + 1;
+          const tone = rankTone(position);
+          const rowClass = tone ? ` class="gc-home2-rating-row--podium gc-home2-rating-row--${tone}"` : '';
+          const posClass = tone ? ` gc-home2-rating-pos--${tone}` : '';
+
+          return `
+            <tr${rowClass}>
+              <td><span class="gc-home2-rating-pos${posClass}">${escapeHtml(position)}</span></td>
+              <td>${driverLink(row)}</td>
+              <td>${ratingBadge(type, label || '--', scoreText)}</td>
+              <td><span class="${deltaClass(row.lastDelta)}">${escapeHtml(formatDelta(row.lastDelta, deltaDigits))}</span></td>
+            </tr>`;
+        }).join('');
+      };
+
+      async function loadHomeRatings() {
+        try {
+          const response = await fetch('/api/gc/ratings/championship', { cache: 'no-store' });
+          const data = await response.json();
+          if (!data?.ok) throw new Error(data?.message || 'Ratings no disponibles.');
+          renderRows(srBody, data.leaderboard?.sr || [], 'sr');
+          renderRows(gsrBody, data.leaderboard?.gsr || [], 'gsr');
+        } catch (error) {
+          if (srBody) srBody.innerHTML = '<tr><td colspan="4">No se pudo cargar SR.</td></tr>';
+          if (gsrBody) gsrBody.innerHTML = '<tr><td colspan="4">No se pudo cargar GSR.</td></tr>';
+          console.warn('[GC Home] No se pudieron cargar ratings', error);
+        }
+      }
+
+      loadHomeRatings();
+    })();
   </script>
   <script>
     (() => {
@@ -2634,21 +3109,51 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return true;
       };
 
-      const renderChampionshipDrivers = (drivers = []) => {
+      const escapeChampionshipText = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[char]));
+
+      const championshipRankTone = (position) => {
+        const numeric = Number(position);
+        if (numeric === 1) return 'gold';
+        if (numeric === 2) return 'silver';
+        if (numeric === 3) return 'bronze';
+        return '';
+      };
+
+      const renderChampionshipStandings = (standings = []) => {
         const host = $('[data-home2-champ-drivers]');
         if (!host) return;
 
-        const list = Array.isArray(drivers) ? drivers : [];
+        const list = Array.isArray(standings) ? standings : [];
         if (!list.length) {
-          host.innerHTML = '<div><strong>Sin inscritos visibles</strong><small>ACSM</small></div>';
+          host.innerHTML = '<div><strong>Sin clasificación visible</strong><small>ACSM</small></div>';
           return;
         }
 
         host.innerHTML = list.slice(0, 8).map((driver, index) => {
+          const position = firstValue(driver, ['position', 'pos', 'rank']) || index + 1;
           const name = firstValue(driver, ['name', 'driverName', 'displayName', 'steamName', 'Name']) || `Piloto ${index + 1}`;
           const klass = firstValue(driver, ['className', 'class', 'ClassName']) || 'General';
-          const car = firstValue(driver, ['model', 'car', 'carName', 'vehicle']) || '';
-          return `<div><span>${index + 1}</span><strong>${name}</strong><small>${[klass, car].filter(Boolean).join(' · ')}</small></div>`;
+          const points = firstValue(driver, ['points', 'totalPoints', 'score']);
+          const wins = firstValue(driver, ['wins', 'victories']);
+          const podiums = firstValue(driver, ['podiums']);
+          const meta = [
+            points !== '' ? `${points} pts` : '',
+            wins ? `${wins} vict.` : '',
+            podiums ? `${podiums} pod.` : '',
+            klass
+          ].filter(Boolean).join(' · ');
+
+          const tone = championshipRankTone(position);
+          const rowClass = tone ? ` gc-home2-champ-standing-row--${tone}` : '';
+          const posClass = tone ? ` gc-home2-champ-standing-pos--${tone}` : '';
+
+          return `<div class="gc-home2-champ-standing-row${rowClass}"><span class="gc-home2-champ-standing-pos${posClass}">${escapeChampionshipText(position)}</span><div class="gc-home2-champ-standing-meta"><strong>${escapeChampionshipText(name)}</strong><small>${escapeChampionshipText(meta || 'Clasificación')}</small></div></div>`;
         }).join('');
       };
 
@@ -2661,7 +3166,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         const box = $('[data-home2-championship]');
         if (!box || !payload || payload.ok === false || !payload.championship) {
-          renderChampionshipDrivers([]);
+          renderChampionshipStandings([]);
           return;
         }
 
@@ -2710,7 +3215,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           setText('[data-home2-champ-next-meta]', 'Ver próximas sesiones');
         }
 
-        renderChampionshipDrivers(drivers.length ? drivers : standings);
+        renderChampionshipStandings(standings);
       };
 
       const init = async () => {
