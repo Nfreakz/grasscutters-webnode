@@ -47,11 +47,12 @@ async function listBackupFiles(dir: string) {
 }
 
 export async function pruneStrackerBackups(reason = 'manual') {
+  const started = Date.now();
   const enabled = envBool('STRACKER_BACKUP_RETENTION_ENABLED', true);
-  if (!enabled) return { ok: true, enabled: false, deleted: 0, kept: 0, found: 0 };
+  if (!enabled) return { ok: true, enabled: false, deleted: 0, kept: 0, found: 0, durationMs: Date.now() - started };
 
   if (retentionRunning) {
-    return { ok: true, enabled: true, skipped: true, reason: 'already-running', deleted: 0, kept: 0, found: 0 };
+    return { ok: true, enabled: true, skipped: true, reason: 'already-running', deleted: 0, kept: 0, found: 0, durationMs: Date.now() - started };
   }
 
   retentionRunning = true;
@@ -74,14 +75,14 @@ export async function pruneStrackerBackups(reason = 'manual') {
       }
     }
 
-    if (deleted > 0) {
-      console.log(`[GC STRacker Retention] ${reason}: deleted ${deleted} old backups, kept ${Math.min(keep, backups.length)} in ${dir}`);
-    }
+    const durationMs = Date.now() - started;
+    console.log(`[GC STRacker Retention] ${reason}: found=${backups.length} kept=${Math.min(keep, backups.length)} deleted=${deleted} duration=${durationMs}ms dir=${dir}`);
 
-    return { ok: true, enabled: true, dir, keep, found: backups.length, kept: Math.min(keep, backups.length), deleted };
+    return { ok: true, enabled: true, dir, keep, found: backups.length, kept: Math.min(keep, backups.length), deleted, durationMs };
   } catch (error) {
+    const durationMs = Date.now() - started;
     console.warn('[GC STRacker Retention] cleanup failed:', error);
-    return { ok: false, enabled: true, dir, keep, found: 0, kept: 0, deleted: 0, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, enabled: true, dir, keep, found: 0, kept: 0, deleted: 0, durationMs, error: error instanceof Error ? error.message : String(error) };
   } finally {
     retentionRunning = false;
   }

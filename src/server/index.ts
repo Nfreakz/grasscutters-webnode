@@ -1530,18 +1530,22 @@ function findUserByPilotId(store: AppUserStore, playerId: number, exceptUserId?:
 }
 
 let syncInProgress = false;
-let lastSyncResult: null | {
+type SyncPhaseDurations = Partial<Record<'connect' | 'download' | 'sqliteCheck' | 'backup' | 'rename' | 'mirror' | 'retention' | 'total', number>>;
+
+type StrackerSyncResult = {
   ok: boolean;
   startedAt: string;
   finishedAt: string;
   sizeBytes?: number;
   savedPath?: string;
   backupPath?: string | null;
+  backupSkipped?: boolean;
+  phases?: SyncPhaseDurations;
   sqlMirror?: any;
   error?: string;
-} = null;
+};
 
-let lastStrackerSqlMirrorAutoSyncResult: null | {
+type StrackerSqlMirrorAutoSyncResult = {
   ok: boolean;
   enabled: boolean;
   reason: string;
@@ -1557,7 +1561,17 @@ let lastStrackerSqlMirrorAutoSyncResult: null | {
   durationMs?: number;
   message: string;
   error?: string;
+};
+
+let currentSyncTelemetry: null | {
+  startedAt: string;
+  phase: string;
+  phases: SyncPhaseDurations;
 } = null;
+
+let lastSyncResult: StrackerSyncResult | null = null;
+
+let lastStrackerSqlMirrorAutoSyncResult: StrackerSqlMirrorAutoSyncResult | null = null;
 
 let autoSyncTimer: NodeJS.Timeout | null = null;
 let nextAutoSyncAt: string | null = null;
@@ -1570,8 +1584,8 @@ let lastAutoSyncResult: null | {
   finishedAt: string;
   message: string;
   statusCode?: number;
-  sync?: typeof lastSyncResult;
-  sqlMirror?: typeof lastStrackerSqlMirrorAutoSyncResult;
+  sync?: StrackerSyncResult | null;
+  sqlMirror?: StrackerSqlMirrorAutoSyncResult | null;
   ratings?: any;
   error?: string;
 } = null;
@@ -1654,6 +1668,24 @@ function readNumberEnv(name: string, fallback: number, min: number, max: number)
   const value = Number(process.env[name]);
   if (!Number.isFinite(value)) return fallback;
   return Math.max(min, Math.min(max, value));
+}
+
+async function timeSyncPhase<T>(phases: SyncPhaseDurations, phase: keyof SyncPhaseDurations, work: () => Promise<T>) {
+  if (currentSyncTelemetry) currentSyncTelemetry.phase = phase;
+  const started = Date.now();
+  try {
+    return await work();
+  } finally {
+    phases[phase] = (phases[phase] ?? 0) + Date.now() - started;
+  }
+}
+
+async function unlinkIfExistsAsync(filePath: string) {
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
 }
 
 function getStrackerSqlMirrorAutoSyncConfig() {
@@ -1743,6 +1775,7 @@ function getAutoSyncConfig() {
     remoteConfigured: remote.configured,
     nextAutoSyncAt,
     syncInProgress,
+    currentSync: currentSyncTelemetry,
     runCount: autoSyncRunCount,
     failureCount: autoSyncFailureCount,
     lastAutoSync: lastAutoSyncResult,
@@ -1790,6 +1823,21 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     return;
   }
 
+  if (syncInProgress) {
+    console.warn('[GC] Auto-sync omitido: ya hay una sincronización sTracker en curso.');
+    lastAutoSyncResult = {
+      ok: false,
+      reason,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      message: 'Auto-sync omitido: ya hay una sincronización sTracker en curso.',
+      statusCode: 409,
+      sync: lastSyncResult
+    };
+    scheduleNextAutoSync(config.intervalMs);
+    return;
+  }
+
   const started = new Date().toISOString();
   autoSyncRunCount += 1;
   console.log(`[GC] Auto-sync stracker iniciado (${reason}).`);
@@ -1799,6 +1847,16 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
     const ok = Boolean(result.ok);
     if (!ok) autoSyncFailureCount += 1;
+
+    let sqlMirror: typeof lastStrackerSqlMirrorAutoSyncResult = null;
+    if (ok) {
+      const mirrorStarted = Date.now();
+      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync');
+      if (lastSyncResult?.phases) {
+        lastSyncResult.phases.mirror = Date.now() - mirrorStarted;
+      }
+      console.log(`[GC] sTracker phase mirror ${Date.now() - mirrorStarted}ms (${sqlMirror?.enabled ? 'enabled' : 'disabled'}).`);
+    }
 
     let ratingsAutoProcess: any = null;
     if (ok && String(process.env.GC_RATINGS_AUTO_PROCESS_ACSM || 'true').toLowerCase() !== 'false') {
@@ -1838,7 +1896,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
-      sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
+      sqlMirror,
       ratings: ratingsAutoProcess,
       error: ok ? undefined : result.sync?.error
     };
@@ -2373,79 +2431,83 @@ async function syncStrackerFromGTX() {
       message: 'No se pudo resolver la ruta local de stracker.db3.'
     };
   }
+  const targetPath = target.resolvedPath;
 
   syncInProgress = true;
-  ensureDirForFile(target.resolvedPath);
+  ensureDirForFile(targetPath);
 
-  const tempPath = `${target.resolvedPath}.download`;
-  const backupPath = fileExists(target.resolvedPath)
-    ? `${target.resolvedPath}.backup-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}`
+  const phases: SyncPhaseDurations = {};
+  const totalStarted = Date.now();
+  currentSyncTelemetry = {
+    startedAt: started,
+    phase: 'starting',
+    phases
+  };
+
+  const tempPath = `${targetPath}.download`;
+  let backupPath = fileExists(targetPath)
+    ? `${targetPath}.backup-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}`
     : null;
 
   let sftp: any = null;
+  let backupSkipped = false;
 
   try {
     const sftpModule = await import('ssh2-sftp-client');
     const SftpClient = sftpModule.default;
     sftp = new SftpClient('grasscutters-stracker-sync');
 
-    await sftp.connect({
-      host: process.env.GTX_SFTP_HOST,
-      port: Number(process.env.GTX_SFTP_PORT ?? 22),
-      username: process.env.GTX_SFTP_USER,
-      password: process.env.GTX_SFTP_PASS,
-      readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
+    await timeSyncPhase(phases, 'connect', async () => {
+      await sftp.connect({
+        host: process.env.GTX_SFTP_HOST,
+        port: Number(process.env.GTX_SFTP_PORT ?? 22),
+        username: process.env.GTX_SFTP_USER,
+        password: process.env.GTX_SFTP_PASS,
+        readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
+      });
     });
 
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    await unlinkIfExistsAsync(tempPath);
 
     const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
 
-    try {
+    await timeSyncPhase(phases, 'download', async () => {
       await sftp.get(remoteDbPath, tempPath);
-    } catch (downloadError) {
-      console.warn('[GC] sTracker SFTP get(path) falló, probando get(buffer):', downloadError);
-      const remoteBuffer = await sftp.get(remoteDbPath);
-      if (Buffer.isBuffer(remoteBuffer)) {
-        fs.writeFileSync(tempPath, remoteBuffer);
-      } else if (remoteBuffer instanceof Uint8Array) {
-        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
-      } else {
-        throw downloadError;
-      }
-    }
-
-    if (!fs.existsSync(tempPath)) {
-      const remoteBuffer = await sftp.get(remoteDbPath);
-      if (Buffer.isBuffer(remoteBuffer)) {
-        fs.writeFileSync(tempPath, remoteBuffer);
-      } else if (remoteBuffer instanceof Uint8Array) {
-        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
-      }
-    }
+    });
 
     if (!fs.existsSync(tempPath)) {
       throw new Error(`La descarga SFTP terminó sin crear el archivo temporal: ${tempPath}`);
     }
 
-    const stats = fs.statSync(tempPath);
+    const stats = await fs.promises.stat(tempPath);
 
-    if (stats.size < 100) {
-      throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
-    }
+    await timeSyncPhase(phases, 'sqliteCheck', async () => {
+      if (stats.size < 100) {
+        throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
+      }
 
-    if (!isSQLiteFile(tempPath)) {
-      throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
-    }
+      if (!isSQLiteFile(tempPath)) {
+        throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
+      }
+    });
 
-    if (backupPath && fs.existsSync(target.resolvedPath)) {
-      fs.copyFileSync(target.resolvedPath, backupPath);
-    }
+    await timeSyncPhase(phases, 'backup', async () => {
+      if (!backupPath || !fs.existsSync(targetPath)) return;
+      try {
+        await fs.promises.link(targetPath, backupPath);
+      } catch (backupError) {
+        backupSkipped = true;
+        backupPath = null;
+        console.warn('[GC] sTracker backup hard-link omitido; no se hará copia síncrona grande:', backupError);
+      }
+    });
 
-    fs.renameSync(tempPath, target.resolvedPath);
+    await timeSyncPhase(phases, 'rename', async () => {
+      await fs.promises.rename(tempPath, targetPath);
+    });
 
     const finished = new Date().toISOString();
-    const sqlMirror = await syncStrackerSqlMirrorAfterDbSync('stracker-db-sync');
+    phases.total = Date.now() - totalStarted;
     lastSyncResult = {
       ok: true,
       startedAt: started,
@@ -2453,35 +2515,39 @@ async function syncStrackerFromGTX() {
       sizeBytes: stats.size,
       savedPath: target.relativePath,
       backupPath: backupPath ? path.relative(rootDir, backupPath) : null,
-      sqlMirror
+      backupSkipped,
+      phases
     };
+    console.log(
+      `[GC] sTracker sync phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
+    );
 
     return {
       ok: true,
       statusCode: 200,
-      message: sqlMirror.ok
-        ? 'stracker.db3 sincronizado correctamente desde GTX y mirror SQL actualizado.'
-        : 'stracker.db3 sincronizado correctamente desde GTX, pero falló el mirror SQL.',
+      message: 'stracker.db3 sincronizado correctamente desde GTX.',
       sync: lastSyncResult,
-      sqlMirror,
       stracker: getStrackerConfig()
     };
   } catch (error) {
-    if (fs.existsSync(tempPath)) {
-      try {
-        fs.unlinkSync(tempPath);
-      } catch (_) {
-        // no-op
-      }
+    try {
+      await unlinkIfExistsAsync(tempPath);
+    } catch (_) {
+      // no-op
     }
 
     const finished = new Date().toISOString();
+    phases.total = Date.now() - totalStarted;
     lastSyncResult = {
       ok: false,
       startedAt: started,
       finishedAt: finished,
+      phases,
       error: error instanceof Error ? error.message : String(error)
     };
+    console.warn(
+      `[GC] sTracker sync failed phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
+    );
 
     return {
       ok: false,
@@ -2491,6 +2557,7 @@ async function syncStrackerFromGTX() {
     };
   } finally {
     syncInProgress = false;
+    currentSyncTelemetry = null;
     if (sftp) {
       try {
         await sftp.end();
@@ -7289,6 +7356,7 @@ app.get('/api/stracker/status', (_req, res) => {
     ok: true,
     stracker: getModules().stracker,
     lastSync: lastSyncResult,
+    currentSync: currentSyncTelemetry,
     syncInProgress
   });
 });
@@ -7300,6 +7368,7 @@ app.get('/api/stracker/remote-config', (_req, res) => {
     autoSync: getAutoSyncConfig(),
     lastSync: lastSyncResult,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
+    currentSync: currentSyncTelemetry,
     syncInProgress,
     message: 'No se muestran usuario, contraseÃƒÂ±a ni secret. Solo si estÃƒÂ¡n configurados.'
   });
@@ -7313,6 +7382,7 @@ app.get('/api/stracker/auto-sync/status', (_req, res) => {
     remote: getRemoteStrackerConfig(),
     lastSync: lastSyncResult,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
+    currentSync: currentSyncTelemetry,
     syncInProgress
   });
 });
@@ -13430,6 +13500,3 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
-
-
-
