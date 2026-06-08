@@ -5,6 +5,7 @@ import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../../components/public/PublicHeroFrame.astro';
 import '../../styles/home2.css';
 import '../../styles/archive-home2-polish.css';
+import '../../styles/archive-home-cleanup-v1.css';
 import {
   archiveItemHref,
   archiveTypeHref,
@@ -22,17 +23,25 @@ const items = stats.items || [];
 const types = (stats.types || []).filter((type) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(type.tipo));
 
 const itemsWithImage = items.filter((item) => getArchiveImage(item));
-const featured = itemsWithImage[0] || items[0] || null;
+const featuredCandidates = itemsWithImage.length ? itemsWithImage : items;
+const initialFeaturedIndex = featuredCandidates.length ? Math.floor(Math.random() * featuredCandidates.length) : -1;
+const featured = initialFeaturedIndex >= 0 ? featuredCandidates[initialFeaturedIndex] : null;
+
+const featuredClientPayload = featuredCandidates.map((item) => ({
+  slug: item.slug,
+  nombre: item.nombre,
+  tipo: item.tipo,
+  tipoLabel: singularArchiveType(item.tipo),
+  href: archiveItemHref(item),
+  image: getArchiveImage(item),
+  imageAlt: item.coverAlt || item.imagen_alt || item.nombre,
+  summary: getArchiveSummary(item) || 'Entrada destacada de la base de datos motorsport.',
+  country: getArchiveCountry(item) || '',
+  period: getArchivePeriod(item) || '',
+}));
 
 const heroImage = featured ? getArchiveImage(featured) : '';
 const heroStyle = heroImage ? `--archive-hero-image:url('${String(heroImage).replace(/'/g, '%27')}');` : '';
-
-const typeIntros = {
-  circuitos: 'Trazados, historia, características, eventos y contexto dentro del motorsport.',
-  coches: 'Modelos de competición, versiones, técnica, categorías e historial deportivo.',
-  pilotos: 'Trayectorias, palmarés, etapas clave, equipos y estilo dentro de la competición.',
-  glosario: 'Conceptos técnicos, términos de pilotaje, cultura racing y vocabulario del motor.',
-};
 
 const pageTitle = 'Archivo GrassCutters | Base de datos de motorsport';
 const pageDescription = 'Base de datos editorial de motorsport con fichas de circuitos, coches, pilotos, conceptos técnicos, historia y cultura racing.';
@@ -47,7 +56,7 @@ const pageDescription = 'Base de datos editorial de motorsport con fichas de cir
   ogImageAlt="Archivo GrassCutters Racing"
 >
   <main class="gc-archive-home2" data-archive-home>
-    <section class={`gc-archive-race-hero ${heroImage ? 'has-image' : ''}`} style={heroStyle}>
+    <section class={`gc-archive-race-hero ${heroImage ? 'has-image' : ''}`} style={heroStyle} data-archive-hero-section>
       <div class="gc-archive-shell gc-archive-race-hero__grid">
         <div>
           <PublicHeroFrame
@@ -96,55 +105,42 @@ const pageDescription = 'Base de datos editorial de motorsport con fichas de cir
       </div>
     </section>
 
-    <section class="gc-archive-shell gc-archive-section" aria-label="Categorías principales">
-      <div class="gc-archive-type-grid">
-        {types.map((type) => (
-          <a class="gc-archive-type-card" href={archiveTypeHref(type.tipo)} data-home-type-card={type.tipo}>
-            <small>{type.singular}</small>
-            <strong>{type.label}</strong>
-            <p>{typeIntros[type.tipo] || 'Fichas editoriales del archivo motorsport.'}</p>
-            <small>{type.count} ficha{type.count === 1 ? '' : 's'}</small>
-          </a>
-        ))}
-      </div>
-    </section>
-
     {featured && (
-      <section class="gc-archive-shell gc-archive-section">
+      <section class="gc-archive-shell gc-archive-section" data-archive-featured>
         <article class="gc-archive-spotlight">
           <div class="gc-archive-spotlight__copy">
             <span class="gc-archive-panel__eyebrow">Ficha destacada</span>
-            <h2>{featured.nombre}</h2>
-            <p>{getArchiveSummary(featured) || 'Entrada destacada de la base de datos motorsport.'}</p>
+            <h2 data-archive-featured-title>{featured.nombre}</h2>
+            <p data-archive-featured-summary>{getArchiveSummary(featured) || 'Entrada destacada de la base de datos motorsport.'}</p>
 
             <dl>
               <div>
                 <dt>Ficha</dt>
-                <dd>{singularArchiveType(featured.tipo)}</dd>
+                <dd data-archive-featured-type>{singularArchiveType(featured.tipo)}</dd>
               </div>
               {getArchiveCountry(featured) && (
-                <div>
+                <div data-archive-featured-country-wrap>
                   <dt>Origen</dt>
-                  <dd>{getArchiveCountry(featured)}</dd>
+                  <dd data-archive-featured-country>{getArchiveCountry(featured)}</dd>
                 </div>
               )}
               {getArchivePeriod(featured) && (
-                <div>
+                <div data-archive-featured-period-wrap>
                   <dt>Periodo</dt>
-                  <dd>{getArchivePeriod(featured)}</dd>
+                  <dd data-archive-featured-period>{getArchivePeriod(featured)}</dd>
                 </div>
               )}
             </dl>
 
-            <a href={archiveItemHref(featured)}>Abrir ficha</a>
+            <a href={archiveItemHref(featured)} data-archive-featured-link>Abrir ficha</a>
           </div>
 
           {getArchiveImage(featured) ? (
-            <figure>
-              <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="eager" />
+            <figure data-archive-featured-figure>
+              <img src={getArchiveImage(featured)} alt={featured.coverAlt || featured.imagen_alt || featured.nombre} loading="eager" data-archive-featured-image />
             </figure>
           ) : (
-            <div class="gc-archive-spotlight__mark">
+            <div class="gc-archive-spotlight__mark" data-archive-featured-mark>
               <span>{singularArchiveType(featured.tipo)}</span>
               <strong>{featured.nombre}</strong>
             </div>
@@ -212,6 +208,8 @@ const pageDescription = 'Base de datos editorial de motorsport con fichas de cir
     </section>
   </main>
 
+  <script type="application/json" id="archive-featured-data" set:html={JSON.stringify(featuredClientPayload)} />
+
   <script>
     const root = document.querySelector('[data-archive-home]');
     const input = root?.querySelector('[data-archive-search-input]');
@@ -259,14 +257,64 @@ const pageDescription = 'Base de datos editorial de motorsport con fichas de cir
       });
     });
 
-    input?.addEventListener('input', applyFilters);
-
     clearBtn?.addEventListener('click', () => {
       if (input) input.value = '';
       setActiveType('all');
       applyFilters();
       input?.focus();
     });
+
+    function pickFeatured(candidates) {
+      if (!Array.isArray(candidates) || candidates.length < 2) return candidates?.[0] || null;
+
+      const previous = window.sessionStorage?.getItem('gcArchiveFeaturedSlug') || '';
+      const pool = candidates.filter((item) => item && item.slug !== previous);
+      const source = pool.length ? pool : candidates;
+      const next = source[Math.floor(Math.random() * source.length)] || candidates[0];
+      if (next?.slug) window.sessionStorage?.setItem('gcArchiveFeaturedSlug', next.slug);
+      return next;
+    }
+
+    function renderFeatured(item) {
+      if (!item) return;
+
+      const hero = root?.querySelector('[data-archive-hero-section]');
+      const title = root?.querySelector('[data-archive-featured-title]');
+      const summary = root?.querySelector('[data-archive-featured-summary]');
+      const type = root?.querySelector('[data-archive-featured-type]');
+      const country = root?.querySelector('[data-archive-featured-country]');
+      const countryWrap = root?.querySelector('[data-archive-featured-country-wrap]');
+      const period = root?.querySelector('[data-archive-featured-period]');
+      const periodWrap = root?.querySelector('[data-archive-featured-period-wrap]');
+      const link = root?.querySelector('[data-archive-featured-link]');
+      const image = root?.querySelector('[data-archive-featured-image]');
+
+      if (title) title.textContent = item.nombre || 'Ficha destacada';
+      if (summary) summary.textContent = item.summary || 'Entrada destacada de la base de datos motorsport.';
+      if (type) type.textContent = item.tipoLabel || item.tipo || 'Ficha';
+      if (country) country.textContent = item.country || '';
+      if (countryWrap) countryWrap.hidden = !item.country;
+      if (period) period.textContent = item.period || '';
+      if (periodWrap) periodWrap.hidden = !item.period;
+      if (link && item.href) link.setAttribute('href', item.href);
+
+      if (image && item.image) {
+        image.setAttribute('src', item.image);
+        image.setAttribute('alt', item.imageAlt || item.nombre || 'Ficha destacada');
+      }
+
+      if (hero && item.image) {
+        hero.classList.add('has-image');
+        hero.style.setProperty('--archive-hero-image', `url("${String(item.image).replace(/"/g, '%22')}")`);
+      }
+    }
+
+    try {
+      const featuredData = JSON.parse(document.getElementById('archive-featured-data')?.textContent || '[]');
+      renderFeatured(pickFeatured(featuredData));
+    } catch (error) {
+      console.warn('[GC Archivo] No se pudo rotar la ficha destacada', error);
+    }
 
     applyFilters();
   </script>
