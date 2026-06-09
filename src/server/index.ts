@@ -10733,6 +10733,134 @@ function gcDataCoreLeaderboard(laps: any[], limit: number) {
   return makeBestHotlaps(laps.filter((lap) => lap?.valid !== false && lap?.Valid !== 0), 'best').slice(0, limit);
 }
 
+function gcDataCoreCarOptionKey(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function gcDataCoreDriverCarLeaderboard(laps: any[], limit: number) {
+  const bestMap = new Map<string, any>();
+
+  for (const lap of laps) {
+    const lapMs = Number(lap?.lapTimeMs ?? Infinity);
+    if (!Number.isFinite(lapMs) || lapMs <= 0) continue;
+
+    const driverKey =
+      lap?.driver?.id !== null && lap?.driver?.id !== undefined
+        ? `player:${lap.driver.id}`
+        : lap?.driver?.steamGuid
+          ? `steam:${lap.driver.steamGuid}`
+          : `name:${String(lap?.driver?.name ?? lap?.driverName ?? '').trim().toLowerCase()}`;
+    const carKey =
+      lap?.car?.id !== null && lap?.car?.id !== undefined
+        ? `car:${lap.car.id}`
+        : `name:${String(lap?.car?.name ?? lap?.carName ?? '').trim().toLowerCase()}`;
+
+    if (!driverKey || !carKey || driverKey === 'name:' || carKey === 'name:') continue;
+
+    const key = `${driverKey}|${carKey}`;
+    const current = bestMap.get(key);
+    if (!current || lapMs < Number(current?.lapTimeMs ?? Infinity)) {
+      bestMap.set(key, lap);
+    }
+  }
+
+  return Array.from(bestMap.values())
+    .sort((a, b) => Number(a?.lapTimeMs ?? Infinity) - Number(b?.lapTimeMs ?? Infinity))
+    .slice(0, limit);
+}
+
+async function gcDataCoreActiveComboDriverCarLeaderboard(req: express.Request, scope: GcDataCoreScope, limit: number) {
+  const stracker = getStrackerConfig();
+  if (!stracker?.resolvedPath || !stracker?.exists || !stracker?.validSQLite) {
+    return {
+      ok: false,
+      mode: 'unavailable',
+      generatedAt: new Date().toISOString(),
+      source: 'stracker',
+      stracker: gcDataCorePublicStracker(stracker),
+      activeCombo: null,
+      cars: [],
+      count: 0,
+      items: [],
+      leaderboard: [],
+      laps: [],
+      hotlaps: [],
+      data: null,
+      message: 'stracker.db3 no está disponible.'
+    };
+  }
+
+  const validParam = getQueryString(req, 'valid', 'true').toLowerCase();
+  const validOnly = !['all', 'any', '0', 'false', 'no'].includes(validParam);
+  const [laps, comboDefinitions] = await Promise.all([
+    readJoinedLaps(stracker.resolvedPath),
+    getCombos(stracker.resolvedPath)
+  ]);
+
+  const comboStats = buildComboStatsFromLaps(laps, comboDefinitions);
+  const activeCombo = gcDataCoreActiveCombo(comboStats);
+  const scopedLaps = scope === 'activeCombo'
+    ? activeCombo
+      ? laps.filter((lap: any) => gcDataCoreComboLapMatch(lap, activeCombo))
+      : []
+    : laps;
+  const filteredLaps = validOnly
+    ? scopedLaps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0)
+    : scopedLaps;
+  const grouped = gcDataCoreDriverCarLeaderboard(filteredLaps, limit);
+  const items = grouped.map((lap) => compactLapForCombo(lap)).filter(Boolean);
+  const carCounts = new Map<string, { key: string; name: string; rowsCount: number }>();
+
+  items.forEach((item: any) => {
+    const name = String(item?.carName ?? '').trim();
+    const key = gcDataCoreCarOptionKey(name);
+    if (!key || !name) return;
+    const current = carCounts.get(key);
+    if (current) current.rowsCount += 1;
+    else carCounts.set(key, { key, name, rowsCount: 1 });
+  });
+
+  return {
+    ok: true,
+    mode: 'gc-data-core-v1',
+    generatedAt: new Date().toISOString(),
+    source: 'gc-active-combo-driver-car-leaderboard',
+    scope,
+    stracker: gcDataCorePublicStracker(stracker),
+    activeCombo: activeCombo ? {
+      comboId: activeCombo.comboId ?? activeCombo.canonicalComboId ?? activeCombo.id ?? null,
+      trackName: activeCombo.track?.name ?? activeCombo.trackName ?? null,
+      cars: Array.isArray(activeCombo.cars) ? activeCombo.cars : []
+    } : null,
+    cars: Array.from(carCounts.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    count: items.length,
+    items,
+    leaderboard: items,
+    laps: items,
+    hotlaps: items,
+    data: {
+      activeCombo,
+      items,
+      leaderboard: items,
+      laps: items,
+      stats: {
+        totalLaps: filteredLaps.length,
+        groupedRows: items.length,
+        validOnly
+      }
+    },
+    message: activeCombo
+      ? 'Leaderboard canónico del combo activo agrupado por piloto y coche.'
+      : 'No hay combo activo detectado.'
+  };
+}
+
 function gcDataCorePublicStracker(stracker: any) {
   return {
     exists: Boolean(stracker?.exists),
@@ -12276,6 +12404,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     await readDisplayNameStoreAsync();
 
     const rawScope = getQueryString(req, 'scope', 'activeCombo').toLowerCase();
+    const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
     const globalScopes = ['global', 'all', 'history', 'historico', 'histÃ³rico', 'full', 'complete', 'completo'];
     const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
     const wantsRawGlobal = scope === 'global';
@@ -12285,6 +12414,12 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     const limit = wantsAllReferences
       ? Number.POSITIVE_INFINITY
       : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
+
+    if (groupMode === 'driver-car') {
+      const payload = await gcDataCoreActiveComboDriverCarLeaderboard(req, scope, limit);
+      res.json(payload);
+      return;
+    }
 
     if (wantsRawGlobal) {
       const stracker = getSafeStrackerOrRespond(res);
@@ -12376,6 +12511,31 @@ app.get('/api/gc/leaderboard', async (req, res) => {
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/leaderboard:', error);
     res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canÃ³nico.' });
+  }
+});
+
+app.get('/api/gc/active-combo-car-leaderboard', async (req, res) => {
+  try {
+    await readDisplayNameStoreAsync();
+    const limit = gcDataCoreQueryNumber(req, 'limit', 3000, 1, 50000);
+    const payload = await gcDataCoreActiveComboDriverCarLeaderboard(req, 'activeCombo', limit);
+    res.json(payload);
+  } catch (error) {
+    console.error('[GC DATA CORE] /api/gc/active-combo-car-leaderboard:', error);
+    res.status(200).json({
+      ok: true,
+      mode: 'gc-data-core-v1',
+      source: 'gc-active-combo-driver-car-leaderboard',
+      activeCombo: null,
+      cars: [],
+      count: 0,
+      items: [],
+      leaderboard: [],
+      laps: [],
+      hotlaps: [],
+      data: null,
+      message: 'No se pudo generar el leaderboard del combo activo por coche.'
+    });
   }
 });
 

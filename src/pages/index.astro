@@ -2769,6 +2769,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
       let gcHomeComboTrackCache = '';
       let gcHomeComboCarsCache = [];
       let gcHomeComboCarOptionsCache = [];
+      let gcHomeComboCanonicalRows = [];
+      let gcHomeComboCanonicalCars = [];
       let gcHomeComboFilterValue = '__all__';
 
       const comboCarDisplayNameHome2 = (car) => {
@@ -2803,6 +2805,144 @@ const home2ArchiveSeed = (archiveStats.items || [])
           'Car',
           'CarName'
         ]) || '';
+
+      const comboCarKeyHome2 = (value) =>
+        slugify(String(value || '').trim());
+
+      const home2ValueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+
+      const home2First = (source, paths, fallback = '') => {
+        for (const path of paths) {
+          const value = home2ValueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return fallback;
+      };
+
+      const normalizeCanonicalComboRowHome2 = (row) => {
+        if (!row) return null;
+
+        const driverName = home2First(row, [
+          'driverName',
+          'pilotName',
+          'playerName',
+          'name',
+          'driver.displayName',
+          'driver.name',
+          'player.name',
+          'DriverName'
+        ], 'Piloto');
+
+        const carName = home2First(row, [
+          'carName',
+          'carDisplayName',
+          'carVisibleName',
+          'car.name',
+          'car.displayName',
+          'car.uiName',
+          'car.code',
+          'Car',
+          'CarName'
+        ], 'Coche');
+
+        const trackName = home2First(row, [
+          'trackName',
+          'trackDisplayName',
+          'trackVisibleName',
+          'track.name',
+          'track.displayName',
+          'Track',
+          'track'
+        ], '');
+
+        const rawTime = home2First(row, [
+          'lapTimeMs',
+          'bestLapTimeMs',
+          'bestLapMs',
+          'LapTime',
+          'lapMs',
+          'timeMs',
+          'lapTime',
+          'bestLapTime',
+          'time',
+          'bestLap'
+        ], '');
+
+        const lapTimeMs = rankTimeValue({ lapTimeMs: rawTime });
+        if (!Number.isFinite(lapTimeMs) || lapTimeMs === Number.POSITIVE_INFINITY) return null;
+
+        const lapTimeFormatted =
+          home2First(row, [
+            'lapTimeFormatted',
+            'bestLapTimeFormatted',
+            'timeFormatted',
+            'lapTimeText',
+            'bestLapFormatted'
+          ], '') || formatLap(lapTimeMs);
+
+        const rawCarKey = home2First(row, [
+          'carKey',
+          'car.key',
+          'carSlug',
+          'car.slug',
+          'carCode',
+          'car.code',
+          'Car'
+        ], '');
+
+        const carKey = comboCarKeyHome2(rawCarKey || carName);
+
+        return {
+          ...row,
+          driverName,
+          pilotName: driverName,
+          playerName: driverName,
+          carName,
+          car: carName,
+          trackName,
+          lapTimeMs,
+          lapTimeFormatted,
+          timeFormatted: lapTimeFormatted,
+          playerId: home2First(row, ['playerId', 'driverId', 'pilotId', 'driver.id', 'player.id'], ''),
+          steamGuid: home2First(row, ['steamGuid', 'driver.steamGuid', 'guid', 'driver.guid', 'player.guid'], ''),
+          _comboCarKey: carKey
+        };
+      };
+
+      const normalizeCanonicalComboCarsHome2 = (cars = [], rows = []) => {
+        const byKey = new Map();
+
+        getArray(cars).forEach((car) => {
+          const name = home2First(car, ['name', 'carName', 'displayName', 'label'], '');
+          const key = comboCarKeyHome2(home2First(car, ['key', 'slug', 'id'], '') || name);
+          const rowsCount = Number(home2First(car, ['rowsCount', 'count', 'total'], 0));
+
+          if (key && name && !byKey.has(key)) {
+            byKey.set(key, { key, name, rowsCount });
+          }
+        });
+
+        getArray(rows).forEach((row) => {
+          const key = row?._comboCarKey;
+          const name = row?.carName;
+          if (!key || !name) return;
+
+          const current = byKey.get(key);
+          byKey.set(key, {
+            key,
+            name: current?.name || name,
+            rowsCount: (current?.rowsCount || 0) + 1
+          });
+        });
+
+        return [...byKey.values()]
+          .filter((car) => car.key && car.name && car.rowsCount > 0)
+          .sort((a, b) => a.name.localeCompare(b.name));
+      };
 
       const collectComboCarOptionsHome2 = (...sources) => {
         const map = new Map();
@@ -2862,29 +3002,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return [...map.entries()].map(([key, name]) => ({ key, name }));
       };
 
-      const collectRenderedComboCarsHome2 = () => {
-        const map = new Map();
-
-        document
-          .querySelectorAll('[data-home2-combo-ranking] .gc-home2-combo-rank small')
-          .forEach((node) => {
-            const name = String(node.textContent || '').trim();
-            const key = slugify(name);
-
-            if (
-              key &&
-              name &&
-              !/esperando datos/i.test(name) &&
-              name !== '--' &&
-              !map.has(key)
-            ) {
-              map.set(key, name);
-            }
-          });
-
-        return [...map.entries()].map(([key, name]) => ({ key, name }));
-      };
-
       const mergeComboCarOptionsHome2 = (...groups) => {
         const map = new Map();
 
@@ -2906,52 +3023,87 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return [...map.entries()].map(([key, name]) => ({ key, name }));
       };
 
-      const collectComboCarsWithTimesHome2 = (rawRows = [], carOptions = []) => {
-        const optionMap = new Map(
-          mergeComboCarOptionsHome2(carOptions).map((item) => [item.key, item.name])
-        );
-        const rows = getArray(rawRows).filter(Boolean);
-        const map = new Map();
-
-        rows.forEach((row) => {
-          const rawName = comboCarNameFromRow(row);
-          const key = slugify(rawName);
-          if (!key || !rawName || rawName === '--' || /esperando datos/i.test(rawName)) return;
-
-          map.set(key, optionMap.get(key) || rawName);
-        });
-
-        return [...map.entries()].map(([key, name]) => ({ key, name }));
-      };
-
-      const updateComboCarFilterOptions = (carOptions = []) => {
+      const updateComboCarFilterOptions = (cars = gcHomeComboCanonicalCars) => {
         try {
           const select = $('[data-home2-combo-car-filter]');
           if (!select) return;
 
-          const current = select.value || gcHomeComboFilterValue || '__all__';
-          const candidateOptions = mergeComboCarOptionsHome2(
-            Array.isArray(carOptions) ? carOptions : [],
-            Array.isArray(gcHomeComboCarOptionsCache) ? gcHomeComboCarOptionsCache : [],
-            collectRenderedComboCarsHome2()
-          );
-          const options = collectComboCarsWithTimesHome2(
-            gcHomeComboRawRowsCache,
-            candidateOptions
-          ).filter((item) => item?.key && item?.name);
+          const current = gcHomeComboFilterValue || select.value || '__all__';
+          const cleanCars = getArray(cars)
+            .filter((car) => car?.key && car?.name && Number(car.rowsCount || 0) > 0);
 
           select.innerHTML = [
             '<option value="__all__">Todos los coches</option>',
-            ...options.map((item) => `<option value="${escapeAttr(item.key)}">${escapeAttr(item.name)}</option>`)
+            ...cleanCars.map((car) =>
+              `<option value="${escapeAttr(car.key)}">${escapeAttr(car.name)}</option>`
+            )
           ].join('');
 
-          const allowed = new Set(['__all__', ...options.map((item) => item.key)]);
+          const allowed = new Set(['__all__', ...cleanCars.map((car) => car.key)]);
           select.value = allowed.has(current) ? current : '__all__';
           gcHomeComboFilterValue = select.value;
-          gcHomeComboCarOptionsCache = options;
+          gcHomeComboCanonicalCars = cleanCars;
+          gcHomeComboCarOptionsCache = cleanCars;
         } catch (error) {
           console.warn('[GC Home] updateComboCarFilterOptions falló', error);
         }
+      };
+
+      const renderCanonicalComboRankingHome2 = (rows = []) => {
+        const host = $('[data-home2-combo-ranking]');
+        if (!host) return [];
+
+        const cleanRows = getArray(rows).filter(Boolean).slice(0, 8);
+
+        if (!cleanRows.length) {
+          host.innerHTML =
+            `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty">` +
+            `<div><strong>Sin tiempos</strong><small>Combo activo</small></div>` +
+            `</div>`;
+          return [];
+        }
+
+        syncBestFromRow(cleanRows[0]);
+
+        host.innerHTML = cleanRows.map((row, index) => {
+          const driver = row.driverName || 'Piloto';
+          const car = row.carName || 'Coche';
+          const time = row.lapTimeFormatted || formatLap(row.lapTimeMs);
+          const avatar = pilotAvatarUrl(row);
+          const compactClass = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
+
+          return '<div class="gc-home2-combo-rank' + compactClass + '">' +
+            comboRankBadge(index) +
+            '<div><strong>' + escapeAttr(driver) + '</strong><small>' + escapeAttr(car) + '</small></div>' +
+            '<img class="gc-home2-combo-rank__avatar" src="' + escapeAttr(avatar) + '" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'/images/pilot-avatar-default.png\';" />' +
+            '<em>' + escapeAttr(time) + '</em>' +
+          '</div>';
+        }).join('');
+
+        return cleanRows;
+      };
+
+      const loadComboCarLeaderboardHome2 = async () => {
+        const payload =
+          await fetchJson('/api/gc/leaderboard?scope=activeCombo&group=driver-car&limit=3000') ||
+          await fetchJson('/api/gc/active-combo-car-leaderboard?limit=3000');
+
+        const rows = getArray(payload?.items)
+          .map(normalizeCanonicalComboRowHome2)
+          .filter(Boolean)
+          .sort((a, b) => rankTimeValue(a) - rankTimeValue(b));
+
+        const cars = normalizeCanonicalComboCarsHome2(payload?.cars, rows);
+
+        gcHomeComboCanonicalRows = rows;
+        gcHomeComboCanonicalCars = cars;
+
+        console.info('[GC Home] Canonical combo leaderboard loaded', {
+          rows: rows.length,
+          cars: cars.map((car) => `${car.name} (${car.rowsCount})`)
+        });
+
+        return { rows, cars };
       };
 
       const renderComboRankingWithFilter = () => {
@@ -2961,117 +3113,41 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
           gcHomeComboFilterValue = selected;
 
-          const rawRows = getArray(gcHomeComboRawRowsCache);
-          const carsSource = getArray(gcHomeComboCarsCache).filter(Boolean);
-
-          if (!rawRows.length) {
-            console.warn('[GC Home] Selector Top Combo sin raw rows, no sobrescribo ranking');
-            return [];
-          }
-
-          const selectedCar =
-            selected === '__all__'
-              ? ''
-              : gcHomeComboCarOptionsCache.find((item) => item.key === selected)?.name ||
-                carsSource.find((car) => slugify(car) === selected) ||
-                rawRows.map(comboCarNameFromRow).find((car) => slugify(car) === selected) ||
-                collectRenderedComboCarsHome2().find((item) => item.key === selected)?.name ||
-                '';
-
-          if (selected !== '__all__' && !selectedCar) {
-            console.warn('[GC Home] Selector Top Combo sin coche válido para el filtro', {
-              selected,
-              availableCars: gcHomeComboCarOptionsCache.map((item) => item.key)
-            });
-            return [];
-          }
-
-          const wantedCars = selectedCar ? [selectedCar] : carsSource;
+          const selectedCar = selected === '__all__'
+            ? null
+            : gcHomeComboCanonicalCars.find((car) => car.key === selected) || null;
 
           const title = $('[data-home2-combo-title]');
           if (title) {
-            title.textContent = selectedCar ? selectedCar : 'Mejores tiempos';
+            title.textContent = selectedCar ? selectedCar.name : 'Mejores tiempos';
           }
 
-          const filteredRows = bestRowsForCombo(rawRows, gcHomeComboTrackCache, wantedCars);
-          if (!filteredRows.length) {
-            const host = $('[data-home2-combo-ranking]');
-            if (host && selectedCar) {
-              host.innerHTML =
-                `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty">` +
-                `<div><strong>Sin tiempos</strong><small>${escapeAttr(selectedCar)}</small></div>` +
-                `</div>`;
-            }
+          const sourceRows = selectedCar
+            ? gcHomeComboCanonicalRows.filter((row) => row._comboCarKey === selectedCar.key)
+            : dedupeComboRankingRows(gcHomeComboCanonicalRows);
 
-            console.warn('[GC Home] Selector Top Combo sin filas tras filtrar', {
-              selected,
-              selectedCar,
-              rawRows: rawRows.length
-            });
-            return [];
-          }
+          const rows = sourceRows
+            .filter((row) => rankTimeValue(row) !== Number.POSITIVE_INFINITY)
+            .sort((a, b) => rankTimeValue(a) - rankTimeValue(b))
+            .slice(0, 8);
 
-          gcHomeComboDisplayRowsCache = filteredRows;
-
-          return renderComboRanking(
-            filteredRows,
-            gcHomeComboTrackCache,
-            wantedCars,
-            { preserveOnEmpty: true }
-          );
+          gcHomeComboDisplayRowsCache = rows;
+          return renderCanonicalComboRankingHome2(rows);
         } catch (error) {
           console.warn('[GC Home] renderComboRankingWithFilter falló', error);
           return [];
         }
       };
 
-      const setComboRankingCacheAndRender = (rawRows = [], trackName = '', cars = [], carOptions = []) => {
-        try {
-          gcHomeComboRawRowsCache = getArray(rawRows).filter(Boolean);
-          gcHomeComboTrackCache = trackName || gcHomeComboTrackCache || '';
-          gcHomeComboCarsCache = getArray(cars).filter(Boolean);
-
-          gcHomeComboCarOptionsCache = mergeComboCarOptionsHome2(
-            carOptions,
-            gcHomeComboCarOptionsCache,
-            collectComboCarOptionsHome2(cars, rawRows)
-          );
-
-          updateComboCarFilterOptions(gcHomeComboCarOptionsCache);
-
-          const rendered = renderComboRankingWithFilter();
-
-          if (!rendered.length && gcHomeComboRawRowsCache.length) {
-            const fallbackRows = bestRowsForCombo(
-              gcHomeComboRawRowsCache,
-              gcHomeComboTrackCache,
-              gcHomeComboCarsCache
-            );
-
-            gcHomeComboDisplayRowsCache = fallbackRows;
-
-            renderComboRanking(
-              fallbackRows,
-              gcHomeComboTrackCache,
-              gcHomeComboCarsCache,
-              { preserveOnEmpty: true }
-            );
-            updateComboCarFilterOptions(gcHomeComboCarOptionsCache);
-          }
-        } catch (error) {
-          console.warn('[GC Home] setComboRankingCacheAndRender falló', error);
-        }
-      };
-
       const bindComboCarFilter = () => {
-        const comboFilter = $('[data-home2-combo-car-filter]');
-        if (comboFilter && !comboFilter.dataset.bound) {
-          comboFilter.dataset.bound = '1';
-          comboFilter.addEventListener('change', () => {
-            gcHomeComboFilterValue = comboFilter.value || '__all__';
-            renderComboRankingWithFilter();
-          });
-        }
+        const select = $('[data-home2-combo-car-filter]');
+        if (!select || select.dataset.bound) return;
+
+        select.dataset.bound = '1';
+        select.addEventListener('change', () => {
+          gcHomeComboFilterValue = select.value || '__all__';
+          renderComboRankingWithFilter();
+        });
       };
 
 
@@ -4449,7 +4525,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
           await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=3000') ||
           await fetchJson('/api/laps?limit=3000&sort=recent&valid=all') ||
           await fetchJson('/api/hotlaps?limit=3000&sort=recent&valid=all');
-
         const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
         if (raceData) {
           const totalLaps = firstValue(raceData, ['lapsCount', 'validLapsCount', 'totalLaps', 'hotlaps']);
@@ -4468,21 +4543,6 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const trackAssetName = trackHelper?.assetName ? trackHelper.assetName(rawTrackName) : rawTrackName;
         const cars = firstValue(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']);
         const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
-        const comboCarOptionsBase = collectComboCarOptionsHome2(
-          carList,
-          cars,
-          combo,
-          combo?.cars,
-          combo?.carNames,
-          combo?.publicComboCars,
-          combo?.mainVariantAllCars,
-          combo?.availableCars,
-          combo?.comboCars,
-          combo?.vehicles,
-          combo?.leaderboard,
-          combo?.bestLaps,
-          combo?.laps
-        );
         const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
         const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
         const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
@@ -4564,48 +4624,32 @@ const home2ArchiveSeed = (archiveStats.items || [])
             carList,
             { preserveOnEmpty: true }
           );
-          updateComboCarFilterOptions(gcHomeComboCarOptionsCache);
+          updateComboCarFilterOptions([]);
 
           try {
-            const comboRawRowsForFilter = [
-              ...getArray(activeComboRankingRows),
-              ...getArray(leaderboardPayload),
-              ...getArray(comboStandoutsPayload),
-              ...getArray(combo.laps),
-              ...getArray(combo.bestLaps),
-              ...getArray(combo.leaderboard),
-              ...getArray(recentPayload)
-            ].filter(Boolean);
-            const comboCarOptionsFull = mergeComboCarOptionsHome2(
-              comboCarOptionsBase,
-              collectComboCarOptionsHome2(
-                combo,
-                cars,
-                carList,
-                comboRawRowsForFilter,
-                leaderboardPayload,
-                comboStandoutsPayload,
-                recentPayload
-              ),
-              collectRenderedComboCarsHome2()
-            );
+            const canonicalCombo = await loadComboCarLeaderboardHome2();
 
-            if (!comboCarOptionsFull.length) {
-              console.warn('[GC Home] Selector Top Combo sin coches detectados', {
-                carList,
-                cars,
-                comboKeys: Object.keys(combo || {}),
-                rankingRows: comboRawRowsForFilter.length
-              });
-            }
+            if (canonicalCombo.rows.length && canonicalCombo.cars.length) {
+              gcHomeComboRawRowsCache = canonicalCombo.rows;
+              gcHomeComboCanonicalRows = canonicalCombo.rows;
+              gcHomeComboCanonicalCars = canonicalCombo.cars;
+              gcHomeComboDisplayRowsCache = canonicalCombo.rows;
+              gcHomeComboCarsCache = canonicalCombo.cars.map((item) => item.name);
+              gcHomeComboCarOptionsCache = canonicalCombo.cars;
 
-            if (typeof setComboRankingCacheAndRender === 'function') {
-              setComboRankingCacheAndRender(
-                comboRawRowsForFilter.length ? comboRawRowsForFilter : activeComboRankingRows,
-                trackAssetName || rawTrackName || track,
-                carList,
-                comboCarOptionsFull
-              );
+              updateComboCarFilterOptions(canonicalCombo.cars);
+              bindComboCarFilter();
+              renderComboRankingWithFilter();
+            } else {
+              console.warn('[GC Home] Endpoint canónico Top Combo sin datos; mantengo render estable');
+              gcHomeComboCanonicalRows = [];
+              gcHomeComboCanonicalCars = [];
+              gcHomeComboRawRowsCache = [];
+              gcHomeComboDisplayRowsCache = [];
+              gcHomeComboCarsCache = [];
+              gcHomeComboCarOptionsCache = [];
+              gcHomeComboFilterValue = '__all__';
+              updateComboCarFilterOptions([]);
             }
           } catch (filterError) {
             console.warn('[GC Home] Selector Top Combo falló, manteniendo render estable', filterError);
