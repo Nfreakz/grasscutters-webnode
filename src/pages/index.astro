@@ -2906,17 +2906,38 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return [...map.entries()].map(([key, name]) => ({ key, name }));
       };
 
+      const collectComboCarsWithTimesHome2 = (rawRows = [], carOptions = []) => {
+        const optionMap = new Map(
+          mergeComboCarOptionsHome2(carOptions).map((item) => [item.key, item.name])
+        );
+        const rows = getArray(rawRows).filter(Boolean);
+        const map = new Map();
+
+        rows.forEach((row) => {
+          const rawName = comboCarNameFromRow(row);
+          const key = slugify(rawName);
+          if (!key || !rawName || rawName === '--' || /esperando datos/i.test(rawName)) return;
+
+          map.set(key, optionMap.get(key) || rawName);
+        });
+
+        return [...map.entries()].map(([key, name]) => ({ key, name }));
+      };
+
       const updateComboCarFilterOptions = (carOptions = []) => {
         try {
           const select = $('[data-home2-combo-car-filter]');
           if (!select) return;
 
           const current = select.value || gcHomeComboFilterValue || '__all__';
-          const renderedOptions = collectRenderedComboCarsHome2();
-          const options = mergeComboCarOptionsHome2(
+          const candidateOptions = mergeComboCarOptionsHome2(
             Array.isArray(carOptions) ? carOptions : [],
             Array.isArray(gcHomeComboCarOptionsCache) ? gcHomeComboCarOptionsCache : [],
-            renderedOptions
+            collectRenderedComboCarsHome2()
+          );
+          const options = collectComboCarsWithTimesHome2(
+            gcHomeComboRawRowsCache,
+            candidateOptions
           ).filter((item) => item?.key && item?.name);
 
           select.innerHTML = [
@@ -2957,11 +2978,19 @@ const home2ArchiveSeed = (archiveStats.items || [])
                 collectRenderedComboCarsHome2().find((item) => item.key === selected)?.name ||
                 '';
 
+          if (selected !== '__all__' && !selectedCar) {
+            console.warn('[GC Home] Selector Top Combo sin coche válido para el filtro', {
+              selected,
+              availableCars: gcHomeComboCarOptionsCache.map((item) => item.key)
+            });
+            return [];
+          }
+
           const wantedCars = selectedCar ? [selectedCar] : carsSource;
 
           const title = $('[data-home2-combo-title]');
           if (title) {
-            title.textContent = selectedCar ? `Mejores tiempos · ${selectedCar}` : 'Mejores tiempos';
+            title.textContent = selectedCar ? selectedCar : 'Mejores tiempos';
           }
 
           const filteredRows = bestRowsForCombo(rawRows, gcHomeComboTrackCache, wantedCars);

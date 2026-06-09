@@ -1537,6 +1537,11 @@ type StrackerSyncResult = {
   startedAt: string;
   finishedAt: string;
   sizeBytes?: number;
+  downloadBytes?: number;
+  downloadSeconds?: number;
+  downloadMbps?: number;
+  downloadKbPerSec?: number;
+  downloadMethod?: 'fastGet' | 'get' | 'fastGet-fallback-get';
   savedPath?: string;
   backupPath?: string | null;
   backupSkipped?: boolean;
@@ -2451,6 +2456,7 @@ async function syncStrackerFromGTX() {
 
   let sftp: any = null;
   let backupSkipped = false;
+  let downloadMethod: 'fastGet' | 'get' | 'fastGet-fallback-get' = 'get';
 
   try {
     const sftpModule = await import('ssh2-sftp-client');
@@ -2472,7 +2478,25 @@ async function syncStrackerFromGTX() {
     const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
 
     await timeSyncPhase(phases, 'download', async () => {
-      await sftp.get(remoteDbPath, tempPath);
+      const downloadMode = process.env.STRACKER_SFTP_DOWNLOAD_MODE || 'fast';
+
+      if (downloadMode === 'get') {
+        downloadMethod = 'get';
+        await sftp.get(remoteDbPath, tempPath);
+      } else {
+        try {
+          await sftp.fastGet(remoteDbPath, tempPath, {
+            concurrency: Number(process.env.STRACKER_SFTP_FAST_CONCURRENCY || 8),
+            chunkSize: Number(process.env.STRACKER_SFTP_FAST_CHUNK_SIZE || 32768)
+          });
+          downloadMethod = 'fastGet';
+        } catch (fastError) {
+          downloadMethod = 'fastGet-fallback-get';
+          console.warn('[GC] sTracker fastGet falló, usando get() normal:', fastError);
+          await unlinkIfExistsAsync(tempPath);
+          await sftp.get(remoteDbPath, tempPath);
+        }
+      }
     });
 
     if (!fs.existsSync(tempPath)) {
@@ -2480,6 +2504,10 @@ async function syncStrackerFromGTX() {
     }
 
     const stats = await fs.promises.stat(tempPath);
+    const downloadSeconds = (phases.download ?? 0) > 0 ? (phases.download ?? 0) / 1000 : 0;
+    const downloadBytes = stats.size;
+    const downloadKbPerSec = downloadSeconds > 0 ? downloadBytes / 1024 / downloadSeconds : 0;
+    const downloadMbps = downloadSeconds > 0 ? downloadBytes * 8 / 1000 / 1000 / downloadSeconds : 0;
 
     await timeSyncPhase(phases, 'sqliteCheck', async () => {
       if (stats.size < 100) {
@@ -2513,6 +2541,11 @@ async function syncStrackerFromGTX() {
       startedAt: started,
       finishedAt: finished,
       sizeBytes: stats.size,
+      downloadBytes,
+      downloadSeconds,
+      downloadMbps,
+      downloadKbPerSec,
+      downloadMethod,
       savedPath: target.relativePath,
       backupPath: backupPath ? path.relative(rootDir, backupPath) : null,
       backupSkipped,
@@ -2542,6 +2575,7 @@ async function syncStrackerFromGTX() {
       ok: false,
       startedAt: started,
       finishedAt: finished,
+      downloadMethod,
       phases,
       error: error instanceof Error ? error.message : String(error)
     };
