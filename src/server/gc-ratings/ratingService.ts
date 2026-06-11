@@ -833,6 +833,14 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
             offTracks: result.lapsDetail.reduce((sum, lap) => sum + lap.cuts, 0),
             collisionsCar: result.lapsDetail.reduce((sum, lap) => sum + lap.collisionsCar, 0),
             collisionsEnv: result.lapsDetail.reduce((sum, lap) => sum + lap.collisionsEnv, 0),
+            collisionDiagnostics: Number.isFinite(Number(result.rawCollisionCount)) && Number.isFinite(Number(result.collisionClusterCount))
+              ? {
+                  rawCollisionCount: Number(result.rawCollisionCount),
+                  collisionClusterCount: Number(result.collisionClusterCount),
+                  suppressedCollisionCount: Number.isFinite(Number(result.suppressedCollisionCount)) ? Number(result.suppressedCollisionCount) : null,
+                  clusterWindowSeconds: Number.isFinite(Number(result.clusterWindowSeconds)) ? Number(result.clusterWindowSeconds) : null
+                }
+              : null,
             source: result.match.method.includes('acsm') ? 'acsm' : 'stracker.db3',
             model: srModelNote,
             penalties: {
@@ -1084,6 +1092,10 @@ export class GcRatingsService {
             newSr: sr.newSr,
             deltaSr: sr.deltaSr,
             incidentPoints: sr.incidentPoints,
+            rawCollisionCount: Number.isFinite(Number((sr as PlainObject).breakdown?.rawCollisionCount)) ? Number((sr as PlainObject).breakdown?.rawCollisionCount) : null,
+            collisionClusterCount: Number.isFinite(Number((sr as PlainObject).breakdown?.collisionClusterCount)) ? Number((sr as PlainObject).breakdown?.collisionClusterCount) : null,
+            suppressedCollisionCount: Number.isFinite(Number((sr as PlainObject).breakdown?.suppressedCollisionCount)) ? Number((sr as PlainObject).breakdown?.suppressedCollisionCount) : null,
+            clusterWindowSeconds: Number.isFinite(Number((sr as PlainObject).breakdown?.clusterWindowSeconds)) ? Number((sr as PlainObject).breakdown?.clusterWindowSeconds) : null,
             cleanRace: sr.cleanRace,
             dnf: Boolean(result.status === 'DNF') || sr.incidents.some((item) => item.type === 'DNF'),
             dsq: Boolean(result.disqualified || result.dsq),
@@ -1154,6 +1166,10 @@ export class GcRatingsService {
             gsrSigmaBefore: gsr.oldSigma,
             gsrSigmaAfter: gsr.newSigma,
             incidentPoints: row.incidentPoints,
+            rawCollisionCount: Number.isFinite(Number(row.rawCollisionCount)) ? Number(row.rawCollisionCount) : null,
+            collisionClusterCount: Number.isFinite(Number(row.collisionClusterCount)) ? Number(row.collisionClusterCount) : null,
+            suppressedCollisionCount: Number.isFinite(Number(row.suppressedCollisionCount)) ? Number(row.suppressedCollisionCount) : null,
+            clusterWindowSeconds: Number.isFinite(Number(row.clusterWindowSeconds)) ? Number(row.clusterWindowSeconds) : null,
             cleanRace: row.cleanRace,
             dnf: row.dnf,
             dsq: row.dsq,

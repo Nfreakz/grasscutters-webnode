@@ -142,6 +142,8 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
       Cuts,
       CollisionsCar,
       CollisionsEnv,
+      COALESCE(SessionTime, 0) AS SessionTime,
+      COALESCE(Timestamp, 0) AS Timestamp,
       COALESCE(TimeInPitLane, 0) AS TimeInPitLane,
       COALESCE(TimeInPit, 0) AS TimeInPit,
       ESCPressed
@@ -153,6 +155,8 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
     const collisionsCar = numberValue(lap.CollisionsCar, 0);
     const collisionsEnv = numberValue(lap.CollisionsEnv, 0);
     const valid = boolValue(lap.Valid);
+    const sessionTimeMs = numberValue(lap.SessionTime, 0);
+    const timestampUnix = numberValue(lap.Timestamp, 0);
     const timeInPitLaneMs = numberValue(lap.TimeInPitLane, 0);
     const timeInPitMs = numberValue(lap.TimeInPit, 0);
     const invalidNoCut = !valid && cuts <= 0;
@@ -170,6 +174,8 @@ export function readRaceLaps(db: StrackerDb, playerInSessionId: number) {
       cuts,
       collisionsCar,
       collisionsEnv,
+      sessionTimeMs,
+      timestampUnix,
       timeInPitLaneMs,
       timeInPitMs,
       escPressed: boolValue(lap.ESCPressed),

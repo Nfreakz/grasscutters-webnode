@@ -58,6 +58,19 @@ function mysqlDriverRatingState(row: any): DriverRatingState {
   };
 }
 
+async function addColumnIfMissing(pool: Pool, tableName: string, columnName: string, columnDefinition: string) {
+  const [rows] = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+  `, [tableName, columnName]);
+  const count = Number((rows as any[])[0]?.total || 0);
+  if (count > 0) return;
+  await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
+}
+
 export class MysqlRatingStore implements RatingStore {
   kind = 'mysql' as const;
   private poolPromise: Promise<Pool> | null = null;
@@ -154,11 +167,20 @@ export class MysqlRatingStore implements RatingStore {
         match_lap_diff INT NULL,
         match_player_in_session_id INT NULL,
         notes LONGTEXT NULL,
+        raw_collision_count INT NULL,
+        collision_cluster_count INT NULL,
+        suppressed_collision_count INT NULL,
+        cluster_window_seconds INT NULL,
         KEY idx_gc_rating_event_result_event (event_id, position),
         KEY idx_gc_rating_event_result_driver (driver_key),
         KEY idx_gc_rating_event_result_player (stracker_player_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'raw_collision_count', 'INT NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'collision_cluster_count', 'INT NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'suppressed_collision_count', 'INT NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'cluster_window_seconds', 'INT NULL');
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gc_rating_incident (
@@ -308,6 +330,10 @@ export class MysqlRatingStore implements RatingStore {
       dnf: Boolean(row.dnf),
       dsq: Boolean(row.dsq),
       processedAt: mysqlToIso(row.processed_at) || new Date().toISOString(),
+      rawCollisionCount: row.raw_collision_count ?? null,
+      collisionClusterCount: row.collision_cluster_count ?? null,
+      suppressedCollisionCount: row.suppressed_collision_count ?? null,
+      clusterWindowSeconds: row.cluster_window_seconds ?? null,
       incidents: incidentsByResult.get(row.id) || [],
       lapsDetail: lapsByResult.get(row.id) || [],
       match: {
@@ -464,8 +490,8 @@ export class MysqlRatingStore implements RatingStore {
       for (const result of snapshot.eventResults) {
         await connection.query(`
           INSERT INTO gc_rating_event_result
-          (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           result.id,
           result.eventId,
@@ -501,7 +527,11 @@ export class MysqlRatingStore implements RatingStore {
           Number.isFinite(Number(result.match?.bestLapDiffMs)) ? Number(result.match.bestLapDiffMs) : null,
           Number.isFinite(Number(result.match?.lapDiff)) ? Number(result.match.lapDiff) : null,
           Number.isFinite(Number(result.match?.strackerPlayerInSessionId)) ? Number(result.match.strackerPlayerInSessionId) : null,
-          JSON.stringify(result.notes || [])
+          JSON.stringify(result.notes || []),
+          Number.isFinite(Number(result.rawCollisionCount)) ? Number(result.rawCollisionCount) : null,
+          Number.isFinite(Number(result.collisionClusterCount)) ? Number(result.collisionClusterCount) : null,
+          Number.isFinite(Number(result.suppressedCollisionCount)) ? Number(result.suppressedCollisionCount) : null,
+          Number.isFinite(Number(result.clusterWindowSeconds)) ? Number(result.clusterWindowSeconds) : null
         ]);
 
         for (const incident of result.incidents) {
@@ -610,11 +640,11 @@ export class MysqlRatingStore implements RatingStore {
   }
 
   private async insertEventResult(connection: PoolConnection, result: RatingEventResult) {
-    await connection.query(`
-      INSERT INTO gc_rating_event_result
-      (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
+      await connection.query(`
+        INSERT INTO gc_rating_event_result
+        (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
       result.id,
       result.eventId,
       result.eventName,
@@ -649,7 +679,11 @@ export class MysqlRatingStore implements RatingStore {
       Number.isFinite(Number(result.match?.bestLapDiffMs)) ? Number(result.match.bestLapDiffMs) : null,
       Number.isFinite(Number(result.match?.lapDiff)) ? Number(result.match.lapDiff) : null,
       Number.isFinite(Number(result.match?.strackerPlayerInSessionId)) ? Number(result.match.strackerPlayerInSessionId) : null,
-      JSON.stringify(result.notes || [])
+      JSON.stringify(result.notes || []),
+      Number.isFinite(Number(result.rawCollisionCount)) ? Number(result.rawCollisionCount) : null,
+      Number.isFinite(Number(result.collisionClusterCount)) ? Number(result.collisionClusterCount) : null,
+      Number.isFinite(Number(result.suppressedCollisionCount)) ? Number(result.suppressedCollisionCount) : null,
+      Number.isFinite(Number(result.clusterWindowSeconds)) ? Number(result.clusterWindowSeconds) : null
     ]);
 
     for (const incident of result.incidents) {

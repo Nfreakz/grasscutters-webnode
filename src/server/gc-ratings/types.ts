@@ -98,6 +98,10 @@ export type RatingEventResult = {
   dnf: boolean;
   dsq: boolean;
   processedAt: string;
+  rawCollisionCount?: number | null;
+  collisionClusterCount?: number | null;
+  suppressedCollisionCount?: number | null;
+  clusterWindowSeconds?: number | null;
   incidents: RatingIncident[];
   lapsDetail: RatingLapDetail[];
   match: MatchDebug;

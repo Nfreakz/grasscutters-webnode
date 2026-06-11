@@ -1,4 +1,5 @@
 import { clamp, ratingClassFromSr, roundTo, safeFiniteInt, safeFiniteNumber, uniqueId } from './utils';
+import { clusterSrCollisions } from './srCollisionClustering';
 import type { PlainObject, RatingIncident, RatingLapDetail } from './types';
 
 const SR_MODEL_VERSION = 'gc-sr-v2-clean-time-v121';
@@ -81,6 +82,49 @@ function lapIsClean(lap: PlainObject) {
     !lapHasEsc(lap) &&
     lapEffectiveMs(lap) > 0
   );
+}
+
+function lapCollisionTimestampMs(lap: PlainObject, fallbackMs: number) {
+  const sessionTimeMs = safeSrNumber(lap.sessionTimeMs ?? lap.SessionTime ?? lap.sessionTime ?? lap.SessionTimeMs, 0);
+  if (sessionTimeMs > 0) return sessionTimeMs;
+
+  const timestampValue = safeSrNumber(lap.timestampUnix ?? lap.Timestamp ?? lap.timestamp ?? lap.TimestampMs, 0);
+  if (timestampValue > 0) return timestampValue > 1e12 ? timestampValue : timestampValue * 1000;
+
+  return fallbackMs;
+}
+
+function buildCollisionEventsFromLaps(input: {
+  driverKey: string;
+  laps: PlainObject[];
+}) {
+  const events: {
+    driverKey: string;
+    timestampMs: number;
+    type: 'CAR_CONTACT';
+    lap?: number | null;
+  }[] = [];
+  let fallbackMs = 0;
+
+  for (const lap of input.laps) {
+    const carContacts = safeSrCount(lap.collisionsCar ?? lap.CollisionsCar);
+    const effectiveMs = lapEffectiveMs(lap);
+    const lapNumber = safeSrCount(lap.lapNumber ?? lap.LapCount) || null;
+    const timestampMs = lapCollisionTimestampMs(lap, fallbackMs);
+
+    for (let index = 0; index < carContacts; index += 1) {
+      events.push({
+        driverKey: input.driverKey,
+        timestampMs,
+        type: 'CAR_CONTACT',
+        lap: lapNumber
+      });
+    }
+
+    fallbackMs = Math.max(fallbackMs, timestampMs) + (effectiveMs > 0 ? effectiveMs : 1000);
+  }
+
+  return events;
 }
 
 function clampDelta(value: number, negativeCap: number, positiveCap: number) {
@@ -241,7 +285,6 @@ export function buildSrComputation(input: {
   let currentCleanStreak = 0;
   let longestCleanStreak = 0;
   let totalCuts = 0;
-  let totalCarContacts = 0;
   let totalEnvContacts = 0;
   let totalEsc = 0;
 
@@ -257,7 +300,6 @@ export function buildSrComputation(input: {
 
     totalEffectiveMs += effectiveMs;
     totalCuts += cuts;
-    totalCarContacts += carContacts;
     totalEnvContacts += envContacts;
     totalEsc += escPressed ? 1 : 0;
 
@@ -298,11 +340,21 @@ export function buildSrComputation(input: {
   const safetyMinutes = totalEffectiveMs > 0 ? totalEffectiveMs / 60000 : Math.max(0, officialLaps * 1.5);
   const cleanMinutes = cleanEffectiveMs > 0 ? cleanEffectiveMs / 60000 : 0;
   const safetyMinutesForRate = Math.max(SR_V2.minSafetyMinutes, safetyMinutes);
+  const rawCollisionEvents = buildCollisionEventsFromLaps({
+    driverKey: input.driverKey,
+    laps
+  });
+  const clusterWindowSeconds = safeSrNumber(process.env.GC_SR_COLLISION_CLUSTER_WINDOW_SECONDS, 10);
+  const collisionClusters = clusterSrCollisions(rawCollisionEvents, clusterWindowSeconds);
+  const rawCollisionCount = rawCollisionEvents.length;
+  const collisionClusterCount = collisionClusters.length;
+  const suppressedCollisionCount = Math.max(0, rawCollisionCount - collisionClusterCount);
+  const collisionCount = collisionClusterCount;
 
   const incidentPoints = roundTo(
     totalCuts * SR_V2.cutIncidentPoints +
     totalEnvContacts * SR_V2.envIncidentPoints +
-    totalCarContacts * SR_V2.carIncidentPoints,
+    collisionCount * SR_V2.carIncidentPoints,
     3
   );
   const incidentRate = incidentPoints / safetyMinutesForRate;
@@ -310,17 +362,17 @@ export function buildSrComputation(input: {
 
   const cleanTimeBonus = roundTo(Math.min(SR_V2.cleanMinuteBonusCap, cleanMinutes * SR_V2.cleanMinuteBonus), 3);
   const finishBonus = completionRatio >= 0.8 ? SR_V2.finishBonus : 0;
-  const noCarContactBonus = totalCarContacts === 0 ? SR_V2.noCarContactBonus : 0;
+  const noCarContactBonus = collisionCount === 0 ? SR_V2.noCarContactBonus : 0;
   const noCutBonus = totalCuts === 0 ? SR_V2.noCutBonus : 0;
   const streakBonus = roundTo(Math.min(
     SR_V2.cleanStreakBonusCap,
     Math.floor(longestCleanStreak / SR_V2.cleanStreakBlock) * SR_V2.cleanStreakBonus
   ), 3);
 
-  const carContactFlatPenalty = totalCarContacts > 0
+  const carContactFlatPenalty = collisionCount > 0
     ? roundTo(Math.min(
         SR_V2.carContactPenaltyCap,
-        SR_V2.firstCarContactPenalty + Math.max(0, totalCarContacts - 1) * SR_V2.extraCarContactPenalty
+        SR_V2.firstCarContactPenalty + Math.max(0, collisionCount - 1) * SR_V2.extraCarContactPenalty
       ), 3)
     : 0;
 
@@ -356,8 +408,8 @@ export function buildSrComputation(input: {
     );
   }
 
-  if (totalCarContacts > 0) {
-    const contactSharePenalty = (totalCarContacts * SR_V2.carIncidentPoints / Math.max(1, incidentPoints)) * incidentPenalty;
+  if (collisionCount > 0) {
+    const contactSharePenalty = (collisionCount * SR_V2.carIncidentPoints / Math.max(1, incidentPoints)) * incidentPenalty;
     pushIncident(
       incidents,
       input.eventId,
@@ -365,9 +417,9 @@ export function buildSrComputation(input: {
       input.driverKey,
       'CAR_CONTACT',
       null,
-      totalCarContacts,
+      collisionCount,
       -roundTo(contactSharePenalty + carContactFlatPenalty, 3),
-      `SR v2 · Contactos con coche x${totalCarContacts} · ratio por tiempo + penalización de contacto`,
+      `SR v2 · Contactos con coche x${collisionCount} (raw ${rawCollisionCount}) · ratio por tiempo + penalización de contacto`,
       'stracker'
     );
   }
@@ -437,7 +489,7 @@ export function buildSrComputation(input: {
   const positiveCap = positiveCapFor({
     safetyMinutes,
     cuts: totalCuts,
-    collisionsCar: totalCarContacts,
+    collisionsCar: collisionCount,
     collisionsEnv: totalEnvContacts,
     completionRatio,
     dnf,
@@ -445,7 +497,7 @@ export function buildSrComputation(input: {
   });
   const negativeCap = negativeCapFor({
     incidentRate,
-    collisionsCar: totalCarContacts,
+    collisionsCar: collisionCount,
     dnf,
     dsq
   });
@@ -464,7 +516,7 @@ export function buildSrComputation(input: {
   ];
 
   if (totalCuts > 0) summaryLines.push(`Salidas/cuts: ${totalCuts}`);
-  if (totalCarContacts > 0) summaryLines.push(`Golpes con coche: ${totalCarContacts}`);
+  if (collisionCount > 0) summaryLines.push(`Golpes con coche: ${collisionCount} clusters / ${rawCollisionCount} raw`);
   if (totalEnvContacts > 0) summaryLines.push(`Golpes con entorno: ${totalEnvContacts}`);
   if (dnfPenalty > 0) summaryLines.push(`Carrera no completada: -${dnfPenalty.toFixed(2)} SR`);
   if (dsqPenalty > 0) summaryLines.push(`Descalificación: -${dsqPenalty.toFixed(2)} SR`);
@@ -500,7 +552,11 @@ export function buildSrComputation(input: {
       dirtyLaps,
       longestCleanStreak,
       cuts: totalCuts,
-      collisionsCar: totalCarContacts,
+      collisionsCar: collisionCount,
+      rawCollisionCount,
+      collisionClusterCount,
+      suppressedCollisionCount,
+      clusterWindowSeconds,
       collisionsEnv: totalEnvContacts,
       escPressed: totalEsc,
       incidentPoints,

@@ -514,6 +514,19 @@ try {
     font-family:var(--font-mono,monospace);
     font-size:.78rem;
   }
+  .gc-acsr-safety-collision-note{
+    margin:12px 0 0;
+    padding:12px 14px;
+    border:1px solid rgba(126,255,39,.16);
+    border-radius:14px;
+    background:rgba(126,255,39,.04);
+    color:var(--gc-mk-muted,#9ca59a);
+    font-size:.9rem;
+    line-height:1.45;
+  }
+  .gc-acsr-safety-collision-note strong{
+    color:var(--gc-mk-text,#f2f6ef);
+  }
   .gc-acsr-safety-chip.is-clean{
     border-color:rgba(126,255,39,.24);
     background:rgba(126,255,39,.06);
@@ -692,9 +705,15 @@ try {
         const isStrackerSource = sr.source === 'stracker.db3' || String(sr.source || '').includes('stracker');
         const penalties = sr.penalties || {};
         const laps = Array.isArray(sr.laps) ? sr.laps : [];
+        const collisionDiagnostics = sr.collisionDiagnostics || {};
         const summaryItems = Array.isArray(penalties.summary)
           ? penalties.summary.map(cleanSrSummaryItem).filter(Boolean)
           : [];
+        const rawCollisionCount = Number(collisionDiagnostics.rawCollisionCount ?? row.rawCollisionCount);
+        const collisionClusterCount = Number(collisionDiagnostics.collisionClusterCount ?? row.collisionClusterCount);
+        const suppressedCollisionCount = Number(collisionDiagnostics.suppressedCollisionCount ?? row.suppressedCollisionCount);
+        const clusterWindowSeconds = Number(collisionDiagnostics.clusterWindowSeconds ?? row.clusterWindowSeconds);
+        const hasCollisionDiagnostics = Number.isFinite(rawCollisionCount) && Number.isFinite(collisionClusterCount) && Number.isFinite(clusterWindowSeconds);
 
         const timeValue = amountFromSummary(summaryItems, 'Tiempo en pista', '--');
         const cleanTimeValue = amountFromSummary(summaryItems, 'Tiempo limpio', '--');
@@ -704,6 +723,12 @@ try {
         const penaltyValue = amountFromSummary(summaryItems, 'Penalizaciones', sr.severity ?? '--');
         const resultValue = amountFromSummary(summaryItems, 'Resultado SR', `${(sr.delta ?? row.srDelta ?? row.deltaSr ?? 0) > 0 ? '+' : ''}${sr.delta ?? row.srDelta ?? row.deltaSr ?? 0}`);
         const penaltyChips = buildPenaltyChips(summaryItems);
+        const collisionSummary = hasCollisionDiagnostics
+          ? `Contactos SR: ${collisionClusterCount} incidentes computables de ${rawCollisionCount} contactos detectados · ${Number.isFinite(suppressedCollisionCount) ? suppressedCollisionCount : Math.max(0, rawCollisionCount - collisionClusterCount)} agrupados en ventana de ${clusterWindowSeconds}s`
+          : '';
+        const collisionNote = hasCollisionDiagnostics
+          ? 'Los contactos muy seguidos se agrupan para evitar penalizar varias veces una misma montonera o rebote.'
+          : '';
 
         const summary = !isStrackerSource
           ? '<li>Este SR no viene de STRacker. Revisa que la carrera oficial esté vinculada correctamente a sTracker.</li>'
@@ -773,6 +798,7 @@ try {
                 </div>
 
                 <div class="gc-acsr-safety-chips">${chipsMarkup}</div>
+                ${hasCollisionDiagnostics ? `<p class="gc-acsr-safety-collision-note">${escapeHtml(collisionSummary)}</p><p class="gc-acsr-safety-collision-note">${escapeHtml(collisionNote)}</p>` : ''}
                 <ul class="gc-acsr-penalty-list">${summary}</ul>
                 <table class="gc-acsr-laps-table">
                   <thead><tr><th>Vuelta</th><th>Tiempo</th><th>Válida</th><th>Salidas</th><th>Golpes coche</th><th>Golpes entorno</th><th>Notas</th></tr></thead>
