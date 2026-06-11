@@ -967,6 +967,58 @@ function rebuildDriversFromEventResults(eventResults: RatingEventResult[], previ
   );
 }
 
+type OfficialAcsmRecalculationTarget = {
+  event: PlainObject;
+  eventId: string;
+  eventName: string;
+  track: string;
+  eventDate: string | null;
+  order: number;
+  hasRatingApplied: boolean;
+  hasStrackerSource: boolean;
+  strackerSessionId: number | null;
+  existingRows: RatingEventResult[];
+};
+
+function buildOfficialAcsmRecalculationTargets(snapshot: RatingsSnapshot, championship: PlainObject) {
+  const completed = completedEvents(championship || {});
+  const resultsByEvent = new Map<string, RatingEventResult[]>();
+
+  snapshot.eventResults.forEach((result) => {
+    const eventId = String(result.eventId || '');
+    if (!eventId) return;
+    const bucket = resultsByEvent.get(eventId) || [];
+    bucket.push(result);
+    resultsByEvent.set(eventId, bucket);
+  });
+
+  return completed
+    .map((event, index): OfficialAcsmRecalculationTarget => {
+      const eventId = String(event?.id || '');
+      const existingRows = resultsByEvent.get(eventId) || [];
+      const strackerSessionId = existingRows.reduce((max, row) => Math.max(max, safeFiniteNumber(row.strackerSessionId, 0)), 0) || null;
+      return {
+        event,
+        eventId,
+        eventName: textValue(event?.name, `Ronda ${event?.index ?? index + 1}`),
+        track: textValue(event?.track || event?.trackRaw || event?.name, 'Circuito'),
+        eventDate: textValue(event?.completedAt || event?.scheduledAt || event?.date) || null,
+        order: index + 1,
+        hasRatingApplied: existingRows.length > 0,
+        hasStrackerSource: Boolean(resolveStrackerDbPath()) && Boolean(strackerSessionId),
+        strackerSessionId,
+        existingRows
+      };
+    })
+    .filter((target) => target.hasRatingApplied)
+    .sort((left, right) =>
+      parseDateMs(left.eventDate || left.event?.completedAt || left.event?.scheduledAt) -
+      parseDateMs(right.eventDate || right.event?.completedAt || right.event?.scheduledAt) ||
+      left.order - right.order ||
+      left.eventId.localeCompare(right.eventId)
+    );
+}
+
 
 export class GcRatingsService {
   private readonly store = createRatingStore();
@@ -1350,6 +1402,152 @@ export class GcRatingsService {
       skippedEvents: [],
       rebuiltEvents: allCompleted.map((event: PlainObject) => ({ id: String(event.id), name: textValue(event.name, `Ronda ${event.index}`) })),
       message: okLog.message
+    };
+  }
+
+  async recalculateOfficialAcsmRaceRatings(options: PlainObject = {}) {
+    const dryRun = parseBooleanish(options.dryRun, false) === true;
+    const acsm = await fetchChampionship();
+    const championship = acsm.championship;
+    const snapshot = await this.getSnapshot();
+    const targets = buildOfficialAcsmRecalculationTargets(snapshot, championship);
+    const generatedAt = isoNow();
+    const strackerDbPath = resolveStrackerDbPath() || null;
+
+    if (dryRun) {
+      return {
+        ok: true,
+        source: 'gc-ratings-v1',
+        dryRun: true,
+        generatedAt,
+        totalDetected: targets.length,
+        targets: targets.map((target) => ({
+          eventId: target.eventId,
+          eventName: target.eventName,
+          track: target.track,
+          date: target.eventDate,
+          order: target.order,
+          hasRatingApplied: target.hasRatingApplied,
+          hasStrackerSource: target.hasStrackerSource,
+          strackerSessionId: target.strackerSessionId,
+          existingRows: target.existingRows.length
+        })),
+        message: targets.length
+          ? `Dry-run listo: ${targets.length} carrera(s) oficial(es) ACSM se recalcularían en orden cronológico.`
+          : 'Dry-run listo: no hay carreras oficiales ACSM con rating aplicado para recalcular.'
+      };
+    }
+
+    if (!targets.length) {
+      return {
+        ok: true,
+        source: 'gc-ratings-v1',
+        dryRun: false,
+        generatedAt,
+        totalDetected: 0,
+        recalculatedEvents: 0,
+        recalculatedDrivers: 0,
+        ratingsDeleted: 0,
+        ratingsCreated: 0,
+        errors: [] as Array<{ eventId: string; eventName: string; message: string }>,
+        targets: [],
+        message: 'No hay carreras oficiales ACSM con rating aplicado para recalcular.'
+      };
+    }
+
+    const targetIds = new Set(targets.map((target) => target.eventId));
+    const remainingEventResults = snapshot.eventResults.filter((row) => !targetIds.has(String(row.eventId || '')));
+    const remainingProcessedEventIds = snapshot.processedEventIds.filter((eventId) => !targetIds.has(String(eventId || '')));
+    const remainingDrivers = rebuildDriversFromEventResults(remainingEventResults, snapshot.drivers);
+
+    let currentSnapshot: RatingsSnapshot = {
+      ...snapshot,
+      source: snapshot.source || 'gc-ratings-v1',
+      storage: this.store.kind,
+      strackerDbPath: snapshot.strackerDbPath,
+      generatedAt,
+      processedEventIds: remainingProcessedEventIds,
+      drivers: remainingDrivers,
+      eventResults: remainingEventResults,
+      recalculationLogs: [...snapshot.recalculationLogs]
+    };
+
+    const recalculatedRows: RatingEventResult[] = [];
+    const errors: Array<{ eventId: string; eventName: string; message: string }> = [];
+    const warningLogs: RecalculationLog[] = [];
+
+    for (const target of targets) {
+      try {
+        const computed = await this.computeEventUpdates(currentSnapshot, [target.event], 'rebuild');
+        recalculatedRows.push(...computed.newEventResults);
+        warningLogs.push(...computed.context.warningLogs);
+        currentSnapshot = {
+          ...currentSnapshot,
+          source: computed.context.srMode === 'stracker' ? 'gc-ratings-v1' : 'gc-ratings-v1-acsm-fallback',
+          strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : strackerDbPath,
+          generatedAt,
+          processedEventIds: computed.processedEventIds,
+          drivers: computed.drivers,
+          eventResults: [...currentSnapshot.eventResults, ...computed.newEventResults],
+          recalculationLogs: [...currentSnapshot.recalculationLogs, ...computed.context.warningLogs]
+        };
+      } catch (error) {
+        errors.push({
+          eventId: target.eventId,
+          eventName: target.eventName,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    const finalLog: RecalculationLog = {
+      id: uniqueId('gc_recalc'),
+      eventId: null,
+      mode: 'rebuild',
+      status: errors.length ? 'error' : 'ok',
+      message: errors.length
+        ? `Recalculadas ${targets.length - errors.length} carrera(s) oficial(es) ACSM con ${errors.length} error(es).`
+        : `Recalculadas ${targets.length} carrera(s) oficial(es) ACSM en orden cronológico.`,
+      createdAt: generatedAt
+    };
+
+    const snapshotToSave: RatingsSnapshot = {
+      ...currentSnapshot,
+      source: currentSnapshot.source || 'gc-ratings-v1',
+      storage: this.store.kind,
+      strackerDbPath: currentSnapshot.strackerDbPath ?? strackerDbPath,
+      generatedAt,
+      recalculationLogs: [...currentSnapshot.recalculationLogs, ...warningLogs, finalLog]
+    };
+
+    await this.store.save(snapshotToSave);
+    this.cachedSnapshot = snapshotToSave;
+
+    return {
+      ok: true,
+      source: 'gc-ratings-v1',
+      dryRun: false,
+      generatedAt,
+      totalDetected: targets.length,
+      recalculatedEvents: targets.length - errors.length,
+      recalculatedDrivers: new Set(recalculatedRows.map((row) => row.driverKey)).size,
+      ratingsDeleted: targets.reduce((sum, target) => sum + target.existingRows.length, 0),
+      ratingsCreated: recalculatedRows.length,
+      errors,
+      targets: targets.map((target) => ({
+        eventId: target.eventId,
+        eventName: target.eventName,
+        track: target.track,
+        date: target.eventDate,
+        order: target.order,
+        hasRatingApplied: target.hasRatingApplied,
+        hasStrackerSource: target.hasStrackerSource,
+        strackerSessionId: target.strackerSessionId,
+        existingRows: target.existingRows.length
+      })),
+      message: errors.length
+        ? `Recalculo oficial ACSM completado con ${errors.length} error(es).`
+        : `Recalculadas ${targets.length} carrera(s) oficial(es) ACSM.`
     };
   }
 

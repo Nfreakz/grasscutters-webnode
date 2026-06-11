@@ -6412,6 +6412,40 @@ app.get('/api/admin/status', async (req, res) => {
   });
 });
 
+app.post('/api/admin/ratings/recalculate-official-acsm', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  try {
+    const dryRunValue = String(req.query.dryRun ?? req.body?.dryRun ?? '').trim().toLowerCase();
+    const payload = await getGcRatingsService().recalculateOfficialAcsmRaceRatings({
+      dryRun: ['1', 'true', 'yes', 'on'].includes(dryRunValue)
+    });
+
+    res.json({
+      ok: true,
+      source: 'gc-ratings-v1',
+      dryRun: Boolean(payload.dryRun),
+      generatedAt: payload.generatedAt,
+      totalDetected: payload.totalDetected,
+      recalculatedEvents: payload.recalculatedEvents ?? 0,
+      recalculatedDrivers: payload.recalculatedDrivers ?? 0,
+      ratingsDeleted: payload.ratingsDeleted ?? 0,
+      ratingsCreated: payload.ratingsCreated ?? 0,
+      errors: payload.errors ?? [],
+      targets: payload.targets ?? [],
+      message: payload.message
+    });
+  } catch (error) {
+    console.error('[GC] Error en recálculo oficial ACSM:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'gc-ratings-v1',
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 app.post('/api/admin/bootstrap', async (req, res) => {
   if (!assertAdminSetupSecret(req)) {
     res.status(401).json({

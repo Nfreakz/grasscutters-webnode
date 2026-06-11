@@ -73,6 +73,82 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         </article>
       </section>
 
+      <section class="gc-section gc-admin-ratings-card-v1 gc-admin-ratings-workbench-v1">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Acciones rápidas</span>
+            <h2>Recálculo oficial ACSM</h2>
+            <p>Primero simula, luego confirma. El recálculo real elimina solo las aplicaciones de rating de esas carreras oficiales y las rehace con el modelo actual.</p>
+          </div>
+          <div class="gc-actions">
+            <button class="gc-btn" id="simulateOfficialRecalc" type="button">Simular recálculo</button>
+            <button class="gc-btn gc-btn--primary" id="recalculateOfficialRecalc" type="button">Recalcular oficiales ACSM</button>
+            <button class="gc-btn" id="refreshRatings" type="button">Actualizar</button>
+          </div>
+        </div>
+        <div class="gc-admin-ratings-warning-v1">
+          Esto eliminará y recalculará los ratings de las carreras oficiales ACSM ya procesadas, en orden cronológico. No borra resultados del campeonato ni datos ACSM.
+        </div>
+      </section>
+
+      <section class="gc-section gc-admin-ratings-card-v1 gc-admin-ratings-inventory-shell-v1">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Inventario</span>
+            <h2>Filtrar carreras</h2>
+            <p>Busca por track, evento, coche, id o fecha. La vista se pagina en bloques de 20 por defecto.</p>
+          </div>
+        </div>
+        <div class="gc-admin-ratings-toolbar-v1">
+          <label class="gc-admin-ratings-field-v1">
+            <span>Buscar</span>
+            <input id="inventorySearch" type="search" placeholder="track, evento, coche, id o fecha" />
+          </label>
+          <label class="gc-admin-ratings-field-v1">
+            <span>Estado</span>
+            <select id="inventoryFilter">
+              <option value="all">Todas</option>
+              <option value="pending">Pendientes</option>
+              <option value="processed">Procesadas</option>
+              <option value="official">Oficiales ACSM</option>
+              <option value="nonofficial">No oficiales</option>
+              <option value="ignored">Ignoradas</option>
+            </select>
+          </label>
+          <label class="gc-admin-ratings-field-v1 gc-admin-ratings-field-v1--compact">
+            <span>Por página</span>
+            <select id="inventoryPageSize">
+              <option value="20">20</option>
+              <option value="40">40</option>
+              <option value="60">60</option>
+            </select>
+          </label>
+          <div class="gc-admin-ratings-pagination-v1">
+            <button class="gc-btn" id="inventoryPrev" type="button">Anterior</button>
+            <button class="gc-btn" id="inventoryNext" type="button">Siguiente</button>
+            <span id="inventoryPageInfo">Mostrando 0-0 de 0</span>
+          </div>
+        </div>
+        <div class="gc-admin-ratings-table-shell-v1">
+          <div class="gc-admin-ratings-inventory-v1" id="inventoryList">
+            <article class="gc-admin-ratings-item-v1"><div><span>Cargando</span><strong>Construyendo inventario</strong><p>Esperando datos de la API.</p></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="gc-section gc-admin-ratings-card-v1 gc-admin-ratings-log-shell-v1">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Resultado</span>
+            <h2>Última acción</h2>
+            <p>Resumen compacto del último dry-run o recálculo real.</p>
+          </div>
+        </div>
+        <div class="gc-admin-ratings-log-v1" id="actionLog">
+          <article class="gc-admin-ratings-item-v1"><div><span>Sin acciones</span><strong>Esperando ejecución</strong><p>Simula el recálculo para ver qué carreras se tocarían.</p></div></article>
+        </div>
+      </section>
+
       <section class="gc-admin-ratings-layout-v1">
         <main class="gc-admin-ratings-main-v1">
           <section class="gc-section gc-admin-ratings-card-v1">
@@ -186,8 +262,16 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
     .gc-admin-ratings-v1 {
       max-width: 1480px;
       margin: 0 auto;
+      padding-inline: clamp(12px, 2vw, 24px);
       display: grid;
       gap: clamp(18px, 2.2vw, 28px);
+      overflow-x: clip;
+      box-sizing: border-box;
+    }
+
+    .gc-admin-ratings-v1,
+    .gc-admin-ratings-v1 * {
+      box-sizing: border-box;
     }
 
     .gc-admin-ratings-hero-v1 {
@@ -274,12 +358,97 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       align-items: start;
     }
 
+    .gc-admin-ratings-workbench-v1,
+    .gc-admin-ratings-inventory-shell-v1,
+    .gc-admin-ratings-log-shell-v1 {
+      min-width: 0;
+    }
+
+    .gc-admin-ratings-toolbar-v1 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(220px, .9fr) minmax(120px, .45fr) auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 12px;
+    }
+
+    .gc-admin-ratings-field-v1 {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .gc-admin-ratings-field-v1 span,
+    .gc-admin-ratings-pagination-v1 span {
+      color: var(--dim);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-admin-ratings-field-v1 input,
+    .gc-admin-ratings-field-v1 select {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline: none;
+    }
+
+    .gc-admin-ratings-field-v1 input:focus,
+    .gc-admin-ratings-field-v1 select:focus {
+      border-color: color-mix(in srgb, var(--accent, #9dff00) 44%, rgba(255,255,255,.1));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #9dff00) 14%, transparent);
+    }
+
+    .gc-admin-ratings-field-v1--compact {
+      min-width: 120px;
+    }
+
+    .gc-admin-ratings-pagination-v1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .gc-admin-ratings-table-shell-v1 {
+      margin-top: 14px;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .gc-admin-ratings-inventory-v1 {
+      display: grid;
+      gap: 12px;
+      max-height: 68vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .gc-admin-ratings-log-v1 {
+      display: grid;
+      gap: 12px;
+    }
+
     .gc-admin-ratings-main-v1,
     .gc-admin-ratings-side-v1,
     .gc-admin-ratings-list-v1,
     .gc-admin-ratings-diagnostics-v1 {
       display: grid;
       gap: 14px;
+    }
+
+    .gc-admin-ratings-list-v1 {
+      max-height: 56vh;
+      overflow: auto;
+      padding-right: 4px;
     }
 
     .gc-admin-ratings-side-v1 {
@@ -335,6 +504,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       margin: 9px 0 0;
       color: var(--soft);
       line-height: 1.45;
+      overflow-wrap: anywhere;
     }
 
     .gc-admin-ratings-badges-v1,
@@ -544,6 +714,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       margin: 8px 0 0;
       color: var(--soft);
       line-height: 1.45;
+      overflow-wrap: anywhere;
     }
 
     .gc-admin-ratings-diagnostics-v1 strong {
@@ -557,6 +728,17 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       margin: 8px 0 0;
       color: var(--soft);
       line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1180px) {
+      .gc-admin-ratings-toolbar-v1 {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .gc-admin-ratings-pagination-v1 {
+        justify-content: flex-start;
+      }
     }
 
     @media (max-width: 1180px) {
@@ -566,6 +748,10 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
     @media (max-width: 980px) {
       .gc-admin-ratings-summary-v1,
       .gc-admin-ratings-layout-v1 { grid-template-columns: 1fr; }
+
+      .gc-admin-ratings-toolbar-v1 {
+        grid-template-columns: 1fr;
+      }
 
       .gc-admin-ratings-summary-v1 article {
         border-right: 0;
@@ -582,6 +768,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
     @media (max-width: 680px) {
       .gc-admin-ratings-info-grid-v1 { grid-template-columns: 1fr 1fr; }
       .gc-admin-ratings-item-v1 { border-radius: 18px; }
+      .gc-admin-ratings-pagination-v1 {
+        width: 100%;
+      }
     }
 
     @media (max-width: 460px) {
@@ -599,6 +788,8 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         viewMirrorDiagnostics: $('viewStrackerSqlDiagnostics'),
         retry: $('retryAdmin'),
         refresh: $('refreshRatings'),
+        simulateOfficialRecalc: $('simulateOfficialRecalc'),
+        recalculateOfficialRecalc: $('recalculateOfficialRecalc'),
         state: $('ratingsState'),
         storage: $('ratingsStorage'),
         processed: $('ratingsProcessed'),
@@ -606,6 +797,14 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         reviewed: $('ratingsReviewed'),
         ignored: $('ratingsIgnored'),
         lastCheck: $('ratingsLastCheck'),
+        inventorySearch: $('inventorySearch'),
+        inventoryFilter: $('inventoryFilter'),
+        inventoryPageSize: $('inventoryPageSize'),
+        inventoryPrev: $('inventoryPrev'),
+        inventoryNext: $('inventoryNext'),
+        inventoryPageInfo: $('inventoryPageInfo'),
+        inventoryList: $('inventoryList'),
+        actionLog: $('actionLog'),
         candidateSourceNotice: $('candidateSourceNotice'),
         detectedList: $('detectedList'),
         reviewedList: $('reviewedList'),
@@ -648,6 +847,15 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       const fmtServerDate = (value) => `${fmtDate(value, 'UTC')} UTC`;
       const fmtSpainDate = (value) => fmtDate(value, 'Europe/Madrid');
       const nowText = () => new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      const inventoryState = {
+        items: [],
+        filtered: [],
+        query: '',
+        filter: 'all',
+        page: 1,
+        pageSize: 20,
+        lastAction: null
+      };
 
       function show(mode) {
         els.gate.hidden = mode !== 'gate';
@@ -752,6 +960,261 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
       function emptyCard(kicker, title, text) {
         return `<article class="gc-admin-ratings-item-v1"><div><span>${esc(kicker)}</span><strong>${esc(title)}</strong><p>${esc(text)}</p></div></article>`;
+      }
+
+      function inventoryDateValue(item) {
+        return item.date || item.startTime || item.completedAt || item.updatedAt || item.createdAt || '';
+      }
+
+      function buildInventory(championship, candidates) {
+        const items = [];
+        const series = championship?.championship?.strackerSeries || {};
+        const officialEvents = Array.isArray(championship?.championship?.events) ? championship.championship.events : [];
+
+        for (const event of officialEvents) {
+          const raceResults = Array.isArray(event.raceResults) ? event.raceResults : [];
+          if (!raceResults.length) continue;
+          items.push({
+            kind: 'official',
+            id: String(event.id || ''),
+            title: event.name || event.id || 'Carrera oficial',
+            track: event.track || event.trackRaw || 'Circuito',
+            date: event.completedAt || event.scheduledAt || event.date || '',
+            eventId: String(event.id || ''),
+            href: event.href || `/campeonato/ronda/${encodeURIComponent(String(event.id || ''))}`,
+            meta: [
+              `${formatInt(raceResults.length)} pilotos`,
+              event.safetyRating?.score != null ? `SR ${event.safetyRating.score}` : 'SR aplicado',
+              event.safetyRating?.collisionDiagnostics ? 'Diagnóstico SR disponible' : 'Diagnóstico SR pendiente'
+            ].filter(Boolean),
+            details: [
+              `Evento oficial ACSM`,
+              event.source || 'acsm',
+              event.strackerSessionId ? `sTracker ${event.strackerSessionId}` : 'Sin sessionId sTracker'
+            ]
+          });
+        }
+
+        const pushSessionItem = (kind, event, extras = {}) => {
+          items.push({
+            kind,
+            id: String(event.eventId || event.id || `stracker:${event.sessionId || ''}`),
+            title: event.name || event.eventName || event.track || event.eventId || `Session ${event.sessionId || '--'}`,
+            track: event.track || event.trackRaw || event.eventName || 'sTracker',
+            date: event.startTime || event.completedAt || event.updatedAt || event.createdAt || '',
+            sessionId: event.sessionId || null,
+            eventId: String(event.eventId || event.id || ''),
+            href: event.eventId && !String(event.eventId).startsWith('stracker:') ? `/campeonato/ronda/${encodeURIComponent(String(event.eventId))}` : null,
+            meta: extras.meta || [],
+            details: extras.details || [],
+            reason: event.reason || event.ignoredReason || event.reviewedReason || null,
+            actionLabel: extras.actionLabel || null
+          });
+        };
+
+        for (const event of Array.isArray(candidates?.candidates) ? candidates.candidates : []) {
+          if (event.alreadyProcessed || event.linkedToAcsm || event.ignored || event.reviewed) continue;
+          pushSessionItem('pending', {
+            ...event,
+            name: event.track || `Session ${event.sessionId}`
+          }, {
+            meta: [
+              'Race pendiente',
+              event.recommended ? 'Recomendada' : 'Revisar'
+            ],
+            details: [
+              event.trackRaw || event.track || 'sTracker',
+              event.sessionId ? `Session ${event.sessionId}` : '',
+              event.playerCount ? `${formatInt(event.playerCount)} pilotos` : ''
+            ].filter(Boolean),
+            actionLabel: 'Pendiente'
+          });
+        }
+
+        for (const event of Array.isArray(series.processedEvents) ? series.processedEvents : []) {
+          pushSessionItem('processed', event, {
+            meta: ['Procesada', 'No oficial'],
+            details: [
+              event.track || 'sTracker',
+              event.strackerSessionId ? `Session ${event.strackerSessionId}` : ''
+            ].filter(Boolean),
+            actionLabel: 'Procesada'
+          });
+        }
+
+        for (const event of Array.isArray(series.reviewedEvents) ? series.reviewedEvents : []) {
+          pushSessionItem('nonofficial', event, {
+            meta: ['Revisada', 'No puntuable'],
+            details: [
+              event.track || 'sTracker',
+              event.sessionId ? `Session ${event.sessionId}` : ''
+            ].filter(Boolean),
+            actionLabel: 'Revisada'
+          });
+        }
+
+        for (const event of Array.isArray(candidates?.ignoredSessions) ? candidates.ignoredSessions : []) {
+          pushSessionItem('ignored', event, {
+            meta: ['Ignorada', 'Recuperable'],
+            details: [
+              event.track || event.trackRaw || 'sTracker',
+              event.sessionId ? `Session ${event.sessionId}` : ''
+            ].filter(Boolean),
+            actionLabel: 'Ignorada'
+          });
+        }
+
+        items.sort((left, right) => {
+          const rightMs = new Date(inventoryDateValue(right)).getTime();
+          const leftMs = new Date(inventoryDateValue(left)).getTime();
+          return (Number.isFinite(rightMs) ? rightMs : 0) - (Number.isFinite(leftMs) ? leftMs : 0) || String(left.title).localeCompare(String(right.title));
+        });
+
+        return items;
+      }
+
+      function inventoryMatches(item, query) {
+        if (!query) return true;
+        const haystack = [
+          item.kind,
+          item.id,
+          item.title,
+          item.track,
+          item.eventId,
+          item.sessionId,
+          item.date,
+          ...(Array.isArray(item.meta) ? item.meta : []),
+          ...(Array.isArray(item.details) ? item.details : []),
+          item.reason
+        ].map((value) => String(value || '').toLowerCase()).join(' | ');
+        return haystack.includes(query);
+      }
+
+      function inventoryFilterMatches(item, filter) {
+        if (filter === 'all') return true;
+        if (filter === 'official') return item.kind === 'official';
+        if (filter === 'pending') return item.kind === 'pending';
+        if (filter === 'processed') return item.kind === 'processed';
+        if (filter === 'ignored') return item.kind === 'ignored';
+        if (filter === 'nonofficial') return item.kind === 'nonofficial' || item.kind === 'processed' || item.kind === 'pending';
+        return true;
+      }
+
+      function setActionLog(payload) {
+        inventoryState.lastAction = payload || null;
+        if (!els.actionLog) return;
+        if (!payload) {
+          els.actionLog.innerHTML = `<article class="gc-admin-ratings-item-v1"><div><span>Sin acciones</span><strong>Esperando ejecución</strong><p>Simula el recálculo para ver qué carreras se tocarían.</p></div></article>`;
+          return;
+        }
+
+        const summary = [
+          payload.dryRun ? 'Simulación' : 'Recálculo real',
+          payload.totalDetected != null ? `${formatInt(payload.totalDetected)} detectadas` : null,
+          payload.recalculatedEvents != null ? `${formatInt(payload.recalculatedEvents)} recalculadas` : null,
+          payload.recalculatedDrivers != null ? `${formatInt(payload.recalculatedDrivers)} pilotos` : null
+        ].filter(Boolean).join(' · ');
+        const errorCount = Array.isArray(payload.errors) ? payload.errors.length : 0;
+        const subtitle = payload.message || 'Acción completada.';
+
+        els.actionLog.innerHTML = `
+          <article class="gc-admin-ratings-item-v1 ${errorCount ? 'is-ignored' : 'is-reviewed'}">
+            <div>
+              ${badges([
+                { label: payload.dryRun ? 'Simulación' : 'Recálculo real', tone: payload.dryRun ? 'warning' : 'processed' },
+                { label: payload.dryRun ? 'Vista previa' : 'Persistido', tone: payload.dryRun ? 'muted' : 'processed' }
+              ])}
+              <strong>${esc(summary || 'Última acción')}</strong>
+              <p>${esc(subtitle)}</p>
+              <div class="gc-admin-ratings-meta-v1">
+                <small>${esc(payload.generatedAt ? fmtSpainDate(payload.generatedAt) : nowText())}</small>
+                <small>${esc(errorCount ? `${errorCount} error(es)` : 'Sin errores')}</small>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderInventory(items) {
+        const query = String(inventoryState.query || '').trim().toLowerCase();
+        const filter = inventoryState.filter || 'all';
+        const filtered = Array.isArray(items)
+          ? items.filter((item) => inventoryFilterMatches(item, filter) && inventoryMatches(item, query))
+          : [];
+
+        inventoryState.filtered = filtered;
+
+        const total = filtered.length;
+        const pageSize = Math.max(1, intValue(inventoryState.pageSize, 20));
+        const maxPage = Math.max(1, Math.ceil(total / pageSize));
+        inventoryState.page = Math.min(Math.max(1, intValue(inventoryState.page, 1)), maxPage);
+        const start = total ? ((inventoryState.page - 1) * pageSize) : 0;
+        const end = total ? Math.min(start + pageSize, total) : 0;
+        const rows = filtered.slice(start, end);
+
+        if (els.inventoryPageInfo) {
+          els.inventoryPageInfo.textContent = total
+            ? `Mostrando ${start + 1}-${end} de ${formatInt(total)}`
+            : 'Mostrando 0-0 de 0';
+        }
+
+        if (els.inventoryPrev) els.inventoryPrev.disabled = inventoryState.page <= 1;
+        if (els.inventoryNext) els.inventoryNext.disabled = inventoryState.page >= maxPage;
+
+        if (!els.inventoryList) return;
+
+        els.inventoryList.innerHTML = rows.length ? rows.map((item) => {
+          const date = inventoryDateValue(item);
+          const isOfficial = item.kind === 'official';
+          const isPending = item.kind === 'pending';
+          const isProcessed = item.kind === 'processed';
+          const isIgnored = item.kind === 'ignored';
+          const isReviewed = item.kind === 'nonofficial';
+          const badgesItems = [];
+          if (isOfficial) badgesItems.push({ label: 'Oficial ACSM', tone: 'processed' });
+          if (isPending) badgesItems.push({ label: 'Pendiente', tone: 'detected' });
+          if (isProcessed) badgesItems.push({ label: 'Procesada', tone: 'processed' });
+          if (isReviewed) badgesItems.push({ label: 'No puntuable', tone: 'reviewed' });
+          if (isIgnored) badgesItems.push({ label: 'Ignorada', tone: 'ignored' });
+          if (item.actionLabel) badgesItems.push({ label: item.actionLabel, tone: 'muted' });
+
+          const actionButtons = [];
+          if (isPending) {
+            actionButtons.push(`<button class="gc-btn gc-btn--primary" type="button" data-process-session="${esc(item.sessionId)}" data-event-label="${esc(item.title)}">Marcar revisada</button>`);
+            actionButtons.push(`<button class="gc-btn gc-btn--warning" type="button" data-ignore-session="${esc(item.sessionId)}" data-ignore-event="${esc(item.eventId || '')}" data-event-label="${esc(item.title)}">Ignorar</button>`);
+          }
+          if (isProcessed) {
+            actionButtons.push(`<a class="gc-btn" href="/campeonato/ronda/${encodeURIComponent(String(item.eventId || item.id || ''))}">Ver carrera</a>`);
+            actionButtons.push(`<button class="gc-btn gc-btn--danger" type="button" data-remove-stracker="${esc(item.eventId || item.id || '')}" data-remove-session="${esc(item.sessionId || '')}" data-event-label="${esc(item.title)}">Quitar</button>`);
+          }
+          if (isReviewed) {
+            actionButtons.push(`<button class="gc-btn" type="button" data-unreview-session="${esc(item.sessionId)}" data-unreview-event="${esc(item.eventId || '')}" data-event-label="${esc(item.title)}">Quitar revisión</button>`);
+          }
+          if (isIgnored) {
+            actionButtons.push(`<button class="gc-btn" type="button" data-unignore-session="${esc(item.sessionId)}" data-unignore-event="${esc(item.eventId || '')}" data-event-label="${esc(item.title)}">Recuperar</button>`);
+          }
+          if (isOfficial && item.href) {
+            actionButtons.push(`<a class="gc-btn" href="${esc(item.href)}">Ver carrera</a>`);
+          }
+
+          return `
+            <article class="gc-admin-ratings-item-v1 ${isOfficial ? 'is-processed' : isPending ? 'is-pending' : isProcessed ? 'is-processed' : isReviewed ? 'is-reviewed' : 'is-ignored'}">
+              <div>
+                ${badges(badgesItems)}
+                <strong>${esc(item.title)}</strong>
+                <p>${esc([fmtSpainDate(date), item.track, ...(item.details || [])].filter(Boolean).join(' · '))}</p>
+                <div class="gc-admin-ratings-meta-v1">
+                  <small>${esc(item.eventId || item.id || '--')}</small>
+                  ${item.sessionId ? `<small>Session ${esc(item.sessionId)}</small>` : ''}
+                  ${item.reason ? `<small>${esc(item.reason)}</small>` : ''}
+                </div>
+              </div>
+              <div class="gc-actions">
+                ${actionButtons.join('')}
+              </div>
+            </article>
+          `;
+        }).join('') : emptyCard('Vacío', 'Sin resultados', 'Prueba otro filtro o reinicia la búsqueda.');
       }
 
       function renderDetected(candidates) {
@@ -986,6 +1449,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         ]);
 
         const series = championship.championship?.strackerSeries || {};
+        inventoryState.items = buildInventory(championship, candidates);
         renderCandidateSource(candidates);
         renderProcessed(series.processedEvents || []);
         renderDetected(candidates.candidates || []);
@@ -993,6 +1457,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         renderReviewed(candidates.reviewedSessions || []);
         renderDiagnostics(diagnostics);
         renderMirrorDiagnostics(mirrorDiagnostics);
+        renderInventory(inventoryState.items);
 
         els.storage.textContent = diagnostics.diagnostics?.storage || championship.diagnostics?.storage || '--';
         els.state.textContent = 'OK';
@@ -1214,6 +1679,84 @@ Quedará registrada y no modificará SR/GSR.`);
         }
       });
 
+      els.inventorySearch?.addEventListener('input', () => {
+        inventoryState.query = String(els.inventorySearch?.value || '');
+        inventoryState.page = 1;
+        renderInventory(inventoryState.items);
+      });
+
+      els.inventoryFilter?.addEventListener('change', () => {
+        inventoryState.filter = String(els.inventoryFilter?.value || 'all');
+        inventoryState.page = 1;
+        renderInventory(inventoryState.items);
+      });
+
+      els.inventoryPageSize?.addEventListener('change', () => {
+        inventoryState.pageSize = intValue(els.inventoryPageSize?.value, 20) || 20;
+        inventoryState.page = 1;
+        renderInventory(inventoryState.items);
+      });
+
+      els.inventoryPrev?.addEventListener('click', () => {
+        inventoryState.page = Math.max(1, intValue(inventoryState.page, 1) - 1);
+        renderInventory(inventoryState.items);
+      });
+
+      els.inventoryNext?.addEventListener('click', () => {
+        const total = inventoryState.filtered.length;
+        const pageSize = Math.max(1, intValue(inventoryState.pageSize, 20));
+        const maxPage = Math.max(1, Math.ceil(total / pageSize));
+        inventoryState.page = Math.min(maxPage, intValue(inventoryState.page, 1) + 1);
+        renderInventory(inventoryState.items);
+      });
+
+      els.simulateOfficialRecalc?.addEventListener('click', async () => {
+        const button = els.simulateOfficialRecalc;
+        if (!button) return;
+        const oldText = button.textContent || 'Simular recálculo';
+        button.disabled = true;
+        button.textContent = 'Simulando...';
+        try {
+          const payload = await fetchJson('/api/admin/ratings/recalculate-official-acsm?dryRun=1', {
+            method:'POST',
+            body: JSON.stringify({ dryRun: true })
+          });
+          setActionLog(payload);
+          renderInventory(inventoryState.items);
+        } catch (error) {
+          console.error(error);
+          alert(error instanceof Error ? error.message : 'No se pudo simular el recálculo.');
+        } finally {
+          button.disabled = false;
+          button.textContent = oldText;
+        }
+      });
+
+      els.recalculateOfficialRecalc?.addEventListener('click', async () => {
+        const button = els.recalculateOfficialRecalc;
+        if (!button) return;
+        const ok = window.confirm('Esto eliminará y recalculará los ratings de las carreras oficiales ACSM ya procesadas, en orden cronológico. No borra resultados del campeonato ni datos ACSM.');
+        if (!ok) return;
+
+        const oldText = button.textContent || 'Recalcular oficiales ACSM';
+        button.disabled = true;
+        button.textContent = 'Recalculando...';
+        try {
+          const payload = await fetchJson('/api/admin/ratings/recalculate-official-acsm', {
+            method:'POST',
+            body: JSON.stringify({})
+          });
+          setActionLog(payload);
+          await load();
+        } catch (error) {
+          console.error(error);
+          alert(error instanceof Error ? error.message : 'No se pudo recalcular.');
+        } finally {
+          button.disabled = false;
+          button.textContent = oldText;
+        }
+      });
+
       els.viewMirrorDiagnostics?.addEventListener('click', (event) => {
         event.preventDefault();
         window.open(els.viewMirrorDiagnostics?.href || '/api/gc/ratings/stracker-sql-diagnostics', '_blank', 'noopener,noreferrer');
@@ -1225,4 +1768,3 @@ Quedará registrada y no modificará SR/GSR.`);
     })();
   </script>
 </AppLayout>
-
