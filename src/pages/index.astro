@@ -208,7 +208,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </div>
 
         <div class="gc-home2-trackbox">
-          <img data-home2-track-map src="/ui/home2/gc-home2-track-outline.svg" alt="" width="365" height="192" loading="lazy" decoding="async" />
+          <img data-home2-track-map src="/ui/home2/gc-home2-track-fallback.svg" alt="" width="365" height="192" loading="lazy" decoding="async" />
         </div>
 
         <dl class="gc-home2-metrics">
@@ -2546,10 +2546,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
         let slug = slugify(value)
           .replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '')
           .replace(/_online$/, '')
-          .replace(/_?(layout|gp|club|international|national|short|long|full|osrw|reverse)$/, '')
+          .replace(/_?(layout|gp|club|international|national)$/, '')
           .replace(/_(spain|espana|espanya|italy|italia|belgium|belgica|france|francia|germany|alemania|uk|gb|usa|united_states|australia|japan|japon)$/g, '')
-          .replace(/^((mapa|map|outline|layout|track|circuit|circuito|trazado|trace|course)_)+/g, '')
-          .replace(/_?(mapa|map|outline|layout|track|circuit|circuito|trazado|trace|course)$/g, '')
+          .replace(/_?(mapa|map|outline)$/g, '')
           .replace(/^_+|_+$/g, '');
         return slug;
       };
@@ -2593,12 +2592,65 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return `${km.toFixed(km < 10 ? 3 : 1).replace(/\.?0+$/, '')} km`;
       };
 
+      const trackAssetBaseFromUrl = (src) => {
+        try {
+          const raw = String(src || '').split('?')[0].split('#')[0];
+          if (!raw || /^data:/i.test(raw)) return '';
+          const filename = decodeURIComponent(raw.substring(raw.lastIndexOf('/') + 1));
+          const base = filename.replace(/\.(avif|webp|jpe?g|png|svg)$/i, '');
+          return normalizeTrackMapBase(base)
+            .replace(/_?(photo|foto|hero|image|img|cover|background|bg)$/i, '')
+            .replace(/^_+|_+$/g, '');
+        } catch (_) {
+          return '';
+        }
+      };
+
+      const trackPhotoDerivedVariants = () => {
+        const photo = $('[data-home2-track-image]');
+        if (!photo) return [];
+        return uniqueValues([
+          trackAssetBaseFromUrl(photo.dataset.resolvedPhoto),
+          trackAssetBaseFromUrl(photo.currentSrc),
+          trackAssetBaseFromUrl(photo.src)
+        ]);
+      };
+
+      const trackMapCandidatesFromResolvedPhoto = () => {
+        const photo = $('[data-home2-track-image]');
+        if (!photo) return [];
+        const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
+        const suffixes = ['_mapa', '_map', '_outline', '_layout', '_track', '_circuit', '_trazado'];
+        const urls = uniqueValues([photo.dataset.resolvedPhoto, photo.currentSrc, photo.src]);
+        const generated = [];
+
+        urls.forEach((src) => {
+          try {
+            const raw = String(src || '').split('?')[0].split('#')[0];
+            if (!raw || /^data:/i.test(raw)) return;
+            const slash = raw.lastIndexOf('/');
+            if (slash < 0) return;
+            const dir = raw.slice(0, slash);
+            const filename = decodeURIComponent(raw.slice(slash + 1));
+            const base = normalizeTrackMapBase(filename.replace(/\.(avif|webp|jpe?g|png|svg)$/i, ''))
+              .replace(/_?(photo|foto|hero|image|img|cover|background|bg)$/i, '')
+              .replace(/^_+|_+$/g, '');
+            if (!base || /fallback/i.test(base)) return;
+
+            suffixes.forEach((suffix) => {
+              mapExts.forEach((ext) => generated.push(`${dir}/${base}${suffix}.${ext}`));
+            });
+          } catch (_) {}
+        });
+
+        return uniqueValues(generated);
+      };
+
       const trackImageCandidates = (kind, ...trackNames) => {
         const variants = trackSlugVariants(trackNames);
         const match = findRegisteredTrackAsset(trackNames);
         const exact = match?.[kind] ? [match[kind]] : [];
-        const photoRoots = ['/images/tracks', '/imagenes/tracks', '/images/circuits', '/imagenes/circuits', '/imagenes/circuitos'];
-        const mapRoots = [
+        const roots = [
           '/images/tracks',
           '/imagenes/tracks',
           '/images/circuits',
@@ -2606,51 +2658,50 @@ const home2ArchiveSeed = (archiveStats.items || [])
           '/imagenes/circuitos',
           '/images/track-maps',
           '/imagenes/track-maps',
-          '/images/circuit-maps',
-          '/imagenes/circuit-maps',
           '/images/maps',
           '/imagenes/maps',
-          '/ui/tracks',
-          '/ui/maps'
+          '/ui/maps',
+          '/ui/home2/maps'
         ];
-        const mapOnlyRoots = ['/images/track-maps', '/imagenes/track-maps', '/images/circuit-maps', '/imagenes/circuit-maps', '/images/maps', '/imagenes/maps', '/ui/tracks', '/ui/maps'];
         const photoExts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
         const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
         const generated = [];
 
         if (kind === 'map') {
-          // GC_HOME_AUTO_TRACK_MAP_V134
-          // Resolver automático para mapas reales: busca sufijos/prefijos habituales sin usar la foto principal como mapa.
-          const mapSuffixes = [
-            '_mapa', '_map', '_outline', '_layout', '_track', '_circuit', '_circuito', '_trazado', '_trace', '_course',
-            '-mapa', '-map', '-outline', '-layout', '-track', '-circuit', '-circuito'
+          const suffixes = [
+            '_mapa',
+            '_map',
+            '_outline',
+            '_layout',
+            '_track',
+            '_circuit',
+            '_trazado',
+            '-mapa',
+            '-map',
+            '-outline',
+            '-layout',
+            '-track',
+            '-circuit',
+            '-trazado'
           ];
-          const mapPrefixes = ['mapa_', 'map_', 'outline_', 'layout_', 'track_', 'circuit_', 'circuito_', 'trazado_', 'trace_'];
+          const prefixes = ['mapa_', 'map_', 'outline_', 'layout_', 'track_', 'circuit_', 'trazado_'];
 
           variants.forEach((variant) => {
-            mapRoots.forEach((root) => {
-              mapSuffixes.forEach((suffix) => {
+            roots.forEach((root) => {
+              suffixes.forEach((suffix) => {
                 mapExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
               });
-
-              mapPrefixes.forEach((prefix) => {
+              prefixes.forEach((prefix) => {
                 mapExts.forEach((ext) => generated.push(`${root}/${prefix}${variant}.${ext}`));
               });
             });
-
-            // Solo se permite nombre base sin sufijo en carpetas claramente dedicadas a mapas.
-            // Así evitamos coger una foto del circuito como si fuera trazado.
-            mapOnlyRoots.forEach((root) => {
-              mapExts.forEach((ext) => generated.push(`${root}/${variant}.${ext}`));
-            });
           });
-
           return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-outline.svg']);
         }
 
         variants.forEach((variant) => {
           ['', '_photo', '_foto', '_hero'].forEach((suffix) => {
-            photoRoots.forEach((root) => {
+            roots.forEach((root) => {
               photoExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
             });
           });
@@ -2682,21 +2733,19 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const img = $('[data-home2-track-map]');
         if (!img) return;
 
-        // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_MAP + GC_HOME_AUTO_TRACK_MAP_V134
-        // Mapas: rutas reales conocidas primero. No usamos la foto principal como mapa.
-        const photoImg = $('[data-home2-track-image]');
-        const photoUrl = photoImg?.dataset?.resolvedPhoto || photoImg?.currentSrc || photoImg?.src || '';
-        const sameAsPhoto = (candidate) => {
-          if (!candidate || !photoUrl) return false;
-          try {
-            return new URL(candidate, window.location.href).href === new URL(photoUrl, window.location.href).href;
-          } catch (_) {
-            return candidate === photoUrl;
-          }
-        };
+        // GC_TRACK_ASSETS_SINGLE_SOURCE_V20_MAP_AUTO
+        // El nombre que llega desde ACSM/stracker puede no coincidir con el archivo del mapa.
+        // Como la foto sí suele resolverse bien, también derivamos candidatos desde su basename
+        // (por ejemplo foto: magione.png -> mapa: magione_map.png) sin hardcodear circuitos.
+        const namesForMap = uniqueValues([
+          ...trackNames.flat(Infinity).filter(Boolean),
+          ...trackPhotoDerivedVariants()
+        ]);
 
-        for (const candidate of trackImageCandidates('map', trackNames)) {
-          if (sameAsPhoto(candidate)) continue;
+        for (const candidate of uniqueValues([
+          ...trackMapCandidatesFromResolvedPhoto(),
+          ...trackImageCandidates('map', namesForMap)
+        ])) {
           const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
@@ -4613,36 +4662,15 @@ const home2ArchiveSeed = (archiveStats.items || [])
           'distanceKm',
           'track.distanceKm',
           'track.lengthKm',
-          'track.length',
-          'track.lengthMeters',
-          'track.lengthM',
-          'trackLengthKm',
-          'trackLengthMeters',
-          'trackLengthM',
-          'trackLength',
-          'circuitLengthKm',
-          'circuitLengthMeters',
-          'circuitLengthM',
-          'circuitLength',
-          'layoutLengthKm',
-          'layoutLength',
           'lengthKm',
-          'lengthMeters',
-          'lengthM',
-          'length',
+          'trackLengthKm',
+          'trackLength',
           'track.distance',
           'distance'
         ]);
         const matchedTrackAsset = findRegisteredTrackAsset(rawTrackName, trackAssetName, track);
         const directDistance = formatTrackDistanceLocal(trackHelper?.formatDistance ? trackHelper.formatDistance(rawTrackDistance) : rawTrackDistance);
-        const registryDistance = formatTrackDistanceLocal(
-          matchedTrackAsset?.distance ||
-          matchedTrackAsset?.distanceKm ||
-          matchedTrackAsset?.lengthKm ||
-          matchedTrackAsset?.trackLengthKm ||
-          matchedTrackAsset?.length ||
-          ''
-        );
+        const registryDistance = formatTrackDistanceLocal(matchedTrackAsset?.distance || matchedTrackAsset?.distanceKm || '');
         const fallbackDistance = formatTrackDistanceLocal(trackHelper?.distance ? (trackHelper.distance(rawTrackName) || trackHelper.distance(trackAssetName) || trackHelper.distance(track)) : '');
         setText('[data-home2-now-distance]', directDistance || registryDistance || fallbackDistance || '--');
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
