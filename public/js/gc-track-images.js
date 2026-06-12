@@ -1,17 +1,20 @@
-/* GC_TRACK_IMAGE_FUZZY_RESOLVER_V1_1
- * Finds real track images with fuzzy matching.
- * It never requests guessed /images/tracks/*.webp files blindly.
+/* GC_TRACK_IMAGE_FUZZY_RESOLVER_V2
+ * Resolver compartido para imágenes y metadatos básicos de circuitos.
+ * Home y /combos deben depender de esto, no de listas manuales por circuito.
  */
 (() => {
-  const VERSION = 'v1.1';
+  const VERSION = 'v2.0';
   const registry = new Map();
   const assets = [];
+  const metaRegistry = new Map();
   let loading = null;
   let loaded = false;
+  let homeObserverInstalled = false;
+  let homeSyncTimer = null;
 
   const STOPWORDS = new Set([
-    'track', 'circuit', 'gp', 'layout', 'online', 'final', 'v1', 'v2', 'v3',
-    'ks', 'rt', 'rss', 'acu', 'actk', 'sim', 'race'
+    'track', 'circuit', 'gp', 'layout', 'online', 'offline', 'final', 'v1', 'v2', 'v3',
+    'ks', 'rt', 'rss', 'acu', 'actk', 'sim', 'race', 'full', 'club', 'national', 'international'
   ]);
 
   const ALIASES = new Map([
@@ -29,8 +32,55 @@
     ['rt_spa', ['spa', 'spa_francorchamps', 'spa_francorchamps_gp']],
     ['ks_spa', ['spa', 'spa_francorchamps']],
     ['salzburgring', ['salzburg_ring', 'salzburg']],
-    ['okayama', ['okayama_international', 'okayama_circuit']]
+    ['okayama', ['okayama_international', 'okayama_circuit']],
+    ['magione', ['autodromo_dell_umbria_magione', 'autodromo_umbria_magione', 'autodromo_umbria', 'circuito_di_magione', 'magione_circuit']]
   ]);
+
+  const BUILTIN_META = [
+    { keys: ['jerez', 'fn_jerez', 'circuito_de_jerez'], countryCode: 'ES', country: 'Spain', distance: '4,43 km' },
+    { keys: ['mugello', 'ks_mugello'], countryCode: 'IT', country: 'Italy', distance: '5,245 km' },
+    { keys: ['magione', 'autodromo_dell_umbria_magione', 'autodromo_umbria_magione', 'autodromo_umbria'], countryCode: 'IT', country: 'Italy', distance: '2,507 km' },
+    { keys: ['fuji', 'rt_fuji_speedway', 'fuji_speedway'], countryCode: 'JP', country: 'Japan', distance: '4,563 km' },
+    { keys: ['spa', 'ks_spa', 'rt_spa', 'spa_francorchamps'], countryCode: 'BE', country: 'Belgium', distance: '7,004 km' },
+    { keys: ['zolder', 'rt_zolder', 'circuit_zolder'], countryCode: 'BE', country: 'Belgium', distance: '4,011 km' },
+    { keys: ['brands_hatch', 'ks_brands_hatch'], countryCode: 'GB', country: 'United Kingdom', distance: '3,916 km' },
+    { keys: ['imola'], countryCode: 'IT', country: 'Italy', distance: '4,909 km' },
+    { keys: ['hockenheim', 'hockenheimring'], countryCode: 'DE', country: 'Germany', distance: '4,574 km' },
+    { keys: ['suzuka'], countryCode: 'JP', country: 'Japan', distance: '5,807 km' },
+    { keys: ['estoril'], countryCode: 'PT', country: 'Portugal' },
+    { keys: ['portimao', 'algarve'], countryCode: 'PT', country: 'Portugal' },
+    { keys: ['bathurst', 'mount_panorama'], countryCode: 'AU', country: 'Australia' },
+    { keys: ['phillip_island', 'phillipisland'], countryCode: 'AU', country: 'Australia' },
+    { keys: ['road_atlanta', 'road_america', 'sebring', 'laguna_seca', 'daytona', 'watkins_glen', 'vir'], countryCode: 'US', country: 'United States' },
+    { keys: ['salzburgring', 'salzburg'], countryCode: 'AT', country: 'Austria' },
+    { keys: ['nurburgring', 'nordschleife'], countryCode: 'DE', country: 'Germany' },
+    { keys: ['okayama'], countryCode: 'JP', country: 'Japan' },
+    { keys: ['vallelunga', 'monza', 'misano'], countryCode: 'IT', country: 'Italy' }
+  ];
+
+  const COUNTRY_NAME_TO_CODE = {
+    spain: 'ES', espana: 'ES', espanya: 'ES', catalunya: 'ES', cataluna: 'ES', barcelona: 'ES', jerez: 'ES', jarama: 'ES', valencia: 'ES', aragon: 'ES', navarra: 'ES',
+    italy: 'IT', italia: 'IT', italian: 'IT', mugello: 'IT', imola: 'IT', monza: 'IT', vallelunga: 'IT', misano: 'IT', magione: 'IT', umbria: 'IT',
+    belgium: 'BE', belgica: 'BE', belgique: 'BE', spa: 'BE', zolder: 'BE',
+    france: 'FR', francia: 'FR', lemans: 'FR', le_mans: 'FR', paul_ricard: 'FR', magny: 'FR', dijon: 'FR',
+    germany: 'DE', alemania: 'DE', deutschland: 'DE', nurburgring: 'DE', nordschleife: 'DE', hockenheim: 'DE', lausitz: 'DE', sachsenring: 'DE', oschersleben: 'DE',
+    united_kingdom: 'GB', uk: 'GB', great_britain: 'GB', england: 'GB', silverstone: 'GB', brands_hatch: 'GB', donington: 'GB', oulton: 'GB', snetterton: 'GB',
+    united_states: 'US', usa: 'US', eeuu: 'US', sebring: 'US', laguna_seca: 'US', road_america: 'US', road_atlanta: 'US', watkins: 'US', daytona: 'US', vir: 'US',
+    japan: 'JP', japon: 'JP', suzuka: 'JP', fuji: 'JP', okayama: 'JP', motegi: 'JP', tsukuba: 'JP',
+    australia: 'AU', bathurst: 'AU', mount_panorama: 'AU', phillip_island: 'AU', adelaide: 'AU',
+    austria: 'AT', red_bull: 'AT', spielberg: 'AT', salzburgring: 'AT',
+    portugal: 'PT', estoril: 'PT', portimao: 'PT', algarve: 'PT',
+    canada: 'CA', mosport: 'CA', mont_tremblant: 'CA', gilles_villeneuve: 'CA',
+    mexico: 'MX', mexico_city: 'MX', hermanos_rodriguez: 'MX',
+    argentina: 'AR', buenos_aires: 'AR',
+    hungary: 'HU', hungaroring: 'HU',
+    czech: 'CZ', brno: 'CZ', most: 'CZ',
+    poland: 'PL', poznan: 'PL', silesia: 'PL',
+    sweden: 'SE', mantorp: 'SE', anderstorp: 'SE',
+    norway: 'NO', rudskogen: 'NO',
+    finland: 'FI', kymi: 'FI', alastaro: 'FI',
+    brazil: 'BR', brasil: 'BR', interlagos: 'BR'
+  };
 
   const normalize = (value) => String(value || '')
     .toLowerCase()
@@ -49,6 +99,8 @@
     .filter((item) => item && !STOPWORDS.has(item));
 
   const compact = (value) => tokens(value).join('');
+
+  const uniq = (items) => Array.from(new Set(items.filter(Boolean).map((item) => String(item).trim()).filter(Boolean)));
 
   const title = (value) => String(value || '')
     .replace(/\.(jpg|jpeg|png|webp|avif|svg)$/i, '')
@@ -106,12 +158,98 @@
     ].filter(Boolean));
   };
 
+  const expandQueryKeys = (trackName) => {
+    const values = Array.isArray(trackName) ? trackName : [trackName];
+    const expanded = new Set();
+
+    values.filter(Boolean).forEach((value) => {
+      const raw = normalize(value);
+      const noYears = normalize(raw.replace(/\b20\d{2}\b/g, ''));
+      const queryTokens = tokens(value);
+      const queryCompact = compact(value);
+      [raw, noYears, queryCompact, queryTokens.join('_')].filter(Boolean).forEach((item) => expanded.add(item));
+    });
+
+    for (const key of [...expanded]) {
+      const aliases = ALIASES.get(key);
+      if (aliases) aliases.forEach((alias) => expanded.add(normalize(alias)));
+    }
+
+    for (const [key, aliases] of ALIASES.entries()) {
+      if (expanded.has(key) || aliases.some((alias) => expanded.has(normalize(alias)))) {
+        expanded.add(key);
+        aliases.forEach((alias) => expanded.add(normalize(alias)));
+      }
+    }
+
+    return expanded;
+  };
+
+  function countryCodeFromValue(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+    const normalized = normalize(raw);
+    if (COUNTRY_NAME_TO_CODE[normalized]) return COUNTRY_NAME_TO_CODE[normalized];
+    const parts = normalized.split('_').filter(Boolean);
+    for (const part of parts) {
+      if (COUNTRY_NAME_TO_CODE[part]) return COUNTRY_NAME_TO_CODE[part];
+    }
+    return '';
+  }
+
+  function formatDistance(value) {
+    if (value === undefined || value === null || value === '') return '';
+    const text = String(value).trim();
+    if (!text || text === '--') return '';
+    if (/km/i.test(text)) return text.replace('.', ',');
+    const numeric = Number(text.replace(',', '.').replace(/[^0-9.]+/g, ''));
+    if (!Number.isFinite(numeric) || numeric <= 0) return '';
+    const km = numeric > 100 ? numeric / 1000 : numeric;
+    return `${km.toLocaleString('es-ES', { maximumFractionDigits: 3 })} km`;
+  }
+
+  const metaKeys = (item = {}) => {
+    const keys = [
+      item.key,
+      item.slug,
+      item.id,
+      item.name,
+      item.title,
+      item.track,
+      item.trackName,
+      item.displayTrackName,
+      ...(Array.isArray(item.keys) ? item.keys : [])
+    ];
+    return expandQueryKeys(keys.filter(Boolean).join(' '));
+  };
+
+  const addMeta = (item = {}) => {
+    const code = countryCodeFromValue(item.countryCode || item.country_code || item.country || item.pais || item.país || item.location || '');
+    const distance = formatDistance(item.distance || item.distanceKm || item.lengthKm || item.trackLength || item.longitud || item.distancia || '');
+    const country = item.country || item.pais || item.país || item.location || '';
+
+    if (!code && !distance && !country) return;
+
+    const meta = {
+      ...item,
+      countryCode: code,
+      country: country || code,
+      distance
+    };
+
+    metaKeys(item).forEach((key) => {
+      if (key && !metaRegistry.has(key)) metaRegistry.set(key, meta);
+    });
+  };
+
   const addAsset = (item) => {
     const url = item?.url || item?.src || item?.href || '';
     const file = item?.file || url.split('/').pop() || '';
     if (!url || !file) return;
 
     const asset = {
+      ...item,
       url,
       file,
       name: removeExtension(file),
@@ -125,11 +263,23 @@
     for (const key of asset.keys) {
       if (!registry.has(key)) registry.set(key, asset);
     }
+
+    addMeta({
+      keys: [...asset.keys],
+      country: item.country,
+      countryCode: item.countryCode || item.country_code,
+      distance: item.distance || item.distanceKm || item.lengthKm || item.trackLength
+    });
   };
 
   const addManifest = (data) => {
     const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
     list.forEach(addAsset);
+  };
+
+  const addMetaManifest = (data) => {
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    list.forEach(addMeta);
   };
 
   const tryLoadJson = async (url) => {
@@ -149,11 +299,18 @@
     loading = Promise.all([
       tryLoadJson('/gc-track-images-manifest.json'),
       tryLoadJson('/js/gc-track-images-manifest.json'),
-      tryLoadJson('/api/gc/assets/tracks')
+      tryLoadJson('/api/gc/assets/tracks'),
+      tryLoadJson('/gc-track-meta.json'),
+      tryLoadJson('/js/gc-track-meta.json')
     ]).then((results) => {
       assets.length = 0;
       registry.clear();
-      results.filter(Boolean).forEach(addManifest);
+      metaRegistry.clear();
+
+      BUILTIN_META.forEach(addMeta);
+      results.slice(0, 3).filter(Boolean).forEach(addManifest);
+      results.slice(3).filter(Boolean).forEach(addMetaManifest);
+
       loaded = true;
       return true;
     }).catch(() => {
@@ -162,28 +319,6 @@
     });
 
     return loading;
-  };
-
-  const expandQueryKeys = (trackName) => {
-    const raw = normalize(trackName);
-    const noYears = normalize(raw.replace(/\b20\d{2}\b/g, ''));
-    const queryTokens = tokens(trackName);
-    const queryCompact = compact(trackName);
-    const expanded = new Set([raw, noYears, queryCompact, queryTokens.join('_')].filter(Boolean));
-
-    for (const key of [...expanded]) {
-      const aliases = ALIASES.get(key);
-      if (aliases) aliases.forEach((alias) => expanded.add(normalize(alias)));
-    }
-
-    for (const [key, aliases] of ALIASES.entries()) {
-      if (expanded.has(key) || aliases.some((alias) => expanded.has(normalize(alias)))) {
-        expanded.add(key);
-        aliases.forEach((alias) => expanded.add(normalize(alias)));
-      }
-    }
-
-    return expanded;
   };
 
   const scoreAsset = (trackName, asset) => {
@@ -230,33 +365,171 @@
     return bestScore >= 45 ? { ...best, score: bestScore } : null;
   };
 
+  const generatedCandidates = (trackName, kind = 'photo') => {
+    const roots = ['/images/tracks', '/imagenes/tracks'];
+    const photoExts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
+    const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
+    const exts = kind === 'map' ? mapExts : photoExts;
+    const suffixes = kind === 'map'
+      ? ['_mapa', '_map', '-mapa', '-map', '/map', '/mapa']
+      : ['', '_photo', '-photo', '_foto', '-foto', '_hero', '-hero'];
+    const keys = [...expandQueryKeys(trackName)];
+    const urls = [];
+
+    keys.forEach((key) => {
+      suffixes.forEach((suffix) => {
+        roots.forEach((root) => {
+          exts.forEach((ext) => urls.push(`${root}/${key}${suffix}.${ext}`));
+        });
+      });
+    });
+
+    return uniq(urls);
+  };
+
   const knownUrl = (trackName) => {
     const match = bestAsset(trackName);
-    return match?.url || null;
+    return match?.url || generatedCandidates(trackName)[0] || null;
   };
 
-  const candidates = (trackName) => {
+  const candidates = (trackName, kind = 'photo') => {
     const match = bestAsset(trackName);
-    return [match?.url || placeholderUrl(trackName)];
+    const generated = generatedCandidates(trackName, kind);
+
+    if (kind === 'map') {
+      return uniq([
+        ...generated,
+        match?.url,
+        ...generatedCandidates(trackName, 'photo'),
+        placeholderUrl(trackName)
+      ]);
+    }
+
+    return uniq([
+      match?.url,
+      ...generated,
+      placeholderUrl(trackName)
+    ]);
   };
 
-  const setImage = (img, trackName) => {
-    if (!img) return;
-    const label = trackName || img.getAttribute('data-track-name') || img.getAttribute('data-gc-track-name') || img.alt || '';
-    const match = bestAsset(label);
-    const src = match?.url || placeholderUrl(label);
+  const metadata = (trackName) => {
+    const keys = [...expandQueryKeys(trackName)];
+    for (const key of keys) {
+      const hit = metaRegistry.get(key);
+      if (hit) return hit;
+    }
 
-    img.onerror = () => {
-      img.onerror = null;
-      img.src = placeholderUrl(label);
+    const countryCode = countryCodeFromValue(keys.join(' '));
+    return countryCode ? { countryCode, country: countryCode, distance: '' } : null;
+  };
+
+  const applyImageFallbacks = (img, list, label, kind = 'photo') => {
+    if (!img || !list.length) return;
+    const cleanList = uniq(list);
+    let index = 0;
+
+    img.onerror = function () {
+      index += 1;
+      if (cleanList[index]) {
+        this.src = cleanList[index];
+        return;
+      }
+      this.onerror = null;
+      this.src = placeholderUrl(label);
     };
 
-    if (img.getAttribute('src') !== src) img.setAttribute('src', src);
-    img.dataset.gcTrackImageSource = match ? 'fuzzy' : 'placeholder';
-    if (match) {
-      img.dataset.gcTrackImageFile = match.file;
-      img.dataset.gcTrackImageScore = String(match.score);
+    if (img.getAttribute('src') !== cleanList[0]) img.setAttribute('src', cleanList[0]);
+    img.dataset.gcTrackImageSource = 'auto';
+    img.dataset.gcTrackImageResolver = VERSION;
+    img.dataset.gcTrackImageKind = kind;
+    img.dataset.gcTrackImageFallbacks = cleanList.slice(1).join('|');
+  };
+
+  const setImage = (img, trackName, kind = 'photo') => {
+    if (!img) return;
+    const label = trackName || img.getAttribute('data-track-name') || img.getAttribute('data-gc-track-name') || img.alt || '';
+    applyImageFallbacks(img, candidates(label, kind), label, kind);
+  };
+
+  const homeTrackLabel = () => {
+    const selectors = [
+      '[data-home2-now-title]',
+      '[data-home2-track]',
+      '[data-home2-champ-next-meta]'
+    ];
+
+    for (const selector of selectors) {
+      const text = document.querySelector(selector)?.textContent?.trim();
+      if (text && !/actualizando|esperando|--/i.test(text)) return text;
     }
+
+    return '';
+  };
+
+  const setHomeText = (selector, value, force = false) => {
+    const el = document.querySelector(selector);
+    if (!el || !value) return;
+    const current = el.textContent?.trim() || '';
+    if (force || !current || current === '--' || /actualizando|pendiente/i.test(current)) el.textContent = value;
+  };
+
+  const setHomeCountryBadge = (countryCode, label = '') => {
+    const badge = document.querySelector('[data-home2-track-country]');
+    if (!badge || !countryCode) return;
+
+    [...badge.classList].forEach((className) => {
+      if (/^gc-home2-country--[a-z]{2}$/i.test(className)) badge.classList.remove(className);
+    });
+
+    badge.classList.add('gc-home2-country--flag', `gc-home2-country--${countryCode.toLowerCase()}`);
+    badge.dataset.countryCode = countryCode;
+    badge.title = [label, countryCode].filter(Boolean).join(' · ');
+    badge.setAttribute('aria-label', `País: ${countryCode}`);
+    badge.innerHTML = `<span>${countryCode}</span>`;
+  };
+
+  const syncHomeImagesAndMeta = async () => {
+    await load();
+    const label = homeTrackLabel();
+    if (!label) return;
+
+    document.querySelectorAll('[data-home2-track-image]').forEach((img) => setImage(img, label, 'photo'));
+    document.querySelectorAll('[data-home2-track-map]').forEach((img) => setImage(img, label, 'map'));
+
+    const meta = metadata(label);
+    if (meta?.countryCode) {
+      setHomeText('[data-home2-now-country]', meta.countryCode, true);
+      setHomeCountryBadge(meta.countryCode, meta.country || '');
+    }
+    if (meta?.distance) setHomeText('[data-home2-now-distance]', meta.distance, true);
+  };
+
+  const scheduleHomeSync = () => {
+    window.clearTimeout(homeSyncTimer);
+    homeSyncTimer = window.setTimeout(() => {
+      syncHomeImagesAndMeta().catch(() => {});
+    }, 80);
+  };
+
+  const installHomeObserver = () => {
+    if (homeObserverInstalled) return;
+    homeObserverInstalled = true;
+
+    const targets = [
+      document.querySelector('[data-home2-now-title]'),
+      document.querySelector('[data-home2-track]')
+    ].filter(Boolean);
+
+    if (targets.length) {
+      const observer = new MutationObserver(scheduleHomeSync);
+      targets.forEach((target) => observer.observe(target, { childList: true, characterData: true, subtree: true }));
+    }
+
+    [0, 300, 900, 1800, 3500].forEach((delay) => window.setTimeout(scheduleHomeSync, delay));
+    window.setInterval(scheduleHomeSync, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') scheduleHomeSync();
+    });
   };
 
   const applyAll = async (root = document) => {
@@ -264,8 +537,10 @@
 
     root.querySelectorAll('img[data-track-name], img[data-gc-track-name], .gc-track-banner-v42 img').forEach((img) => {
       const label = img.getAttribute('data-track-name') || img.getAttribute('data-gc-track-name') || img.alt || '';
-      setImage(img, label);
+      setImage(img, label, 'photo');
     });
+
+    installHomeObserver();
   };
 
   window.GCTrackImages = {
@@ -278,11 +553,18 @@
     knownUrl,
     bestAsset,
     scoreAsset,
+    generatedCandidates,
+    metadata,
+    countryCodeFromValue,
+    formatDistance,
     load,
     applyAll,
+    setImage,
     registry,
     assets,
-    addAsset
+    metaRegistry,
+    addAsset,
+    addMeta
   };
 
   if (document.readyState === 'loading') {
