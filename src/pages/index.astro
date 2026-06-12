@@ -208,7 +208,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         </div>
 
         <div class="gc-home2-trackbox">
-          <img data-home2-track-map src="/ui/home2/gc-home2-track-fallback.svg" alt="" width="365" height="192" loading="lazy" decoding="async" />
+          <img data-home2-track-map src="/ui/home2/gc-home2-track-outline.svg" alt="" width="365" height="192" loading="lazy" decoding="async" />
         </div>
 
         <dl class="gc-home2-metrics">
@@ -2546,9 +2546,10 @@ const home2ArchiveSeed = (archiveStats.items || [])
         let slug = slugify(value)
           .replace(/^(ks_|rt_|mx_|nrms_|fn_)/, '')
           .replace(/_online$/, '')
-          .replace(/_?(layout|gp|club|international|national)$/, '')
+          .replace(/_?(layout|gp|club|international|national|short|long|full|osrw|reverse)$/, '')
           .replace(/_(spain|espana|espanya|italy|italia|belgium|belgica|france|francia|germany|alemania|uk|gb|usa|united_states|australia|japan|japon)$/g, '')
-          .replace(/_?(mapa|map|outline)$/g, '')
+          .replace(/^((mapa|map|outline|layout|track|circuit|circuito|trazado|trace|course)_)+/g, '')
+          .replace(/_?(mapa|map|outline|layout|track|circuit|circuito|trazado|trace|course)$/g, '')
           .replace(/^_+|_+$/g, '');
         return slug;
       };
@@ -2596,25 +2597,60 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const variants = trackSlugVariants(trackNames);
         const match = findRegisteredTrackAsset(trackNames);
         const exact = match?.[kind] ? [match[kind]] : [];
-        const roots = ['/images/tracks', '/imagenes/tracks'];
+        const photoRoots = ['/images/tracks', '/imagenes/tracks', '/images/circuits', '/imagenes/circuits', '/imagenes/circuitos'];
+        const mapRoots = [
+          '/images/tracks',
+          '/imagenes/tracks',
+          '/images/circuits',
+          '/imagenes/circuits',
+          '/imagenes/circuitos',
+          '/images/track-maps',
+          '/imagenes/track-maps',
+          '/images/circuit-maps',
+          '/imagenes/circuit-maps',
+          '/images/maps',
+          '/imagenes/maps',
+          '/ui/tracks',
+          '/ui/maps'
+        ];
+        const mapOnlyRoots = ['/images/track-maps', '/imagenes/track-maps', '/images/circuit-maps', '/imagenes/circuit-maps', '/images/maps', '/imagenes/maps', '/ui/tracks', '/ui/maps'];
         const photoExts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
         const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
         const generated = [];
 
         if (kind === 'map') {
+          // GC_HOME_AUTO_TRACK_MAP_V134
+          // Resolver automático para mapas reales: busca sufijos/prefijos habituales sin usar la foto principal como mapa.
+          const mapSuffixes = [
+            '_mapa', '_map', '_outline', '_layout', '_track', '_circuit', '_circuito', '_trazado', '_trace', '_course',
+            '-mapa', '-map', '-outline', '-layout', '-track', '-circuit', '-circuito'
+          ];
+          const mapPrefixes = ['mapa_', 'map_', 'outline_', 'layout_', 'track_', 'circuit_', 'circuito_', 'trazado_', 'trace_'];
+
           variants.forEach((variant) => {
-            ['_mapa', '_map'].forEach((suffix) => {
-              roots.forEach((root) => {
+            mapRoots.forEach((root) => {
+              mapSuffixes.forEach((suffix) => {
                 mapExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
               });
+
+              mapPrefixes.forEach((prefix) => {
+                mapExts.forEach((ext) => generated.push(`${root}/${prefix}${variant}.${ext}`));
+              });
+            });
+
+            // Solo se permite nombre base sin sufijo en carpetas claramente dedicadas a mapas.
+            // Así evitamos coger una foto del circuito como si fuera trazado.
+            mapOnlyRoots.forEach((root) => {
+              mapExts.forEach((ext) => generated.push(`${root}/${variant}.${ext}`));
             });
           });
+
           return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-outline.svg']);
         }
 
         variants.forEach((variant) => {
           ['', '_photo', '_foto', '_hero'].forEach((suffix) => {
-            roots.forEach((root) => {
+            photoRoots.forEach((root) => {
               photoExts.forEach((ext) => generated.push(`${root}/${variant}${suffix}.${ext}`));
             });
           });
@@ -2646,9 +2682,21 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const img = $('[data-home2-track-map]');
         if (!img) return;
 
-        // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_MAP
-        // Mapas: rutas reales conocidas primero. Nada de GCTrackImages ni manifests aquí.
+        // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_MAP + GC_HOME_AUTO_TRACK_MAP_V134
+        // Mapas: rutas reales conocidas primero. No usamos la foto principal como mapa.
+        const photoImg = $('[data-home2-track-image]');
+        const photoUrl = photoImg?.dataset?.resolvedPhoto || photoImg?.currentSrc || photoImg?.src || '';
+        const sameAsPhoto = (candidate) => {
+          if (!candidate || !photoUrl) return false;
+          try {
+            return new URL(candidate, window.location.href).href === new URL(photoUrl, window.location.href).href;
+          } catch (_) {
+            return candidate === photoUrl;
+          }
+        };
+
         for (const candidate of trackImageCandidates('map', trackNames)) {
+          if (sameAsPhoto(candidate)) continue;
           const ok = await probeImage(candidate);
           if (ok) {
             img.src = ok;
@@ -4565,15 +4613,36 @@ const home2ArchiveSeed = (archiveStats.items || [])
           'distanceKm',
           'track.distanceKm',
           'track.lengthKm',
-          'lengthKm',
+          'track.length',
+          'track.lengthMeters',
+          'track.lengthM',
           'trackLengthKm',
+          'trackLengthMeters',
+          'trackLengthM',
           'trackLength',
+          'circuitLengthKm',
+          'circuitLengthMeters',
+          'circuitLengthM',
+          'circuitLength',
+          'layoutLengthKm',
+          'layoutLength',
+          'lengthKm',
+          'lengthMeters',
+          'lengthM',
+          'length',
           'track.distance',
           'distance'
         ]);
         const matchedTrackAsset = findRegisteredTrackAsset(rawTrackName, trackAssetName, track);
         const directDistance = formatTrackDistanceLocal(trackHelper?.formatDistance ? trackHelper.formatDistance(rawTrackDistance) : rawTrackDistance);
-        const registryDistance = formatTrackDistanceLocal(matchedTrackAsset?.distance || matchedTrackAsset?.distanceKm || '');
+        const registryDistance = formatTrackDistanceLocal(
+          matchedTrackAsset?.distance ||
+          matchedTrackAsset?.distanceKm ||
+          matchedTrackAsset?.lengthKm ||
+          matchedTrackAsset?.trackLengthKm ||
+          matchedTrackAsset?.length ||
+          ''
+        );
         const fallbackDistance = formatTrackDistanceLocal(trackHelper?.distance ? (trackHelper.distance(rawTrackName) || trackHelper.distance(trackAssetName) || trackHelper.distance(track)) : '');
         setText('[data-home2-now-distance]', directDistance || registryDistance || fallbackDistance || '--');
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
