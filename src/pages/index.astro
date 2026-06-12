@@ -2619,8 +2619,10 @@ const home2ArchiveSeed = (archiveStats.items || [])
       const trackMapCandidatesFromResolvedPhoto = () => {
         const photo = $('[data-home2-track-image]');
         if (!photo) return [];
-        const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
-        const suffixes = ['_mapa', '_map', '_outline', '_layout', '_track', '_circuit', '_trazado'];
+        const mapExts = ['png', 'webp', 'jpg', 'jpeg', 'svg', 'PNG', 'WEBP', 'JPG', 'JPEG', 'SVG'];
+        // Prioridad real: si la foto resuelta es magione.* buscamos antes magione_map.png.
+        // Muchos packs usan _map y no _mapa.
+        const suffixes = ['_map', '_mapa', '_outline', '_layout', '_track', '_circuit', '_trazado'];
         const urls = uniqueValues([photo.dataset.resolvedPhoto, photo.currentSrc, photo.src]);
         const generated = [];
 
@@ -2646,6 +2648,30 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return uniqueValues(generated);
       };
 
+      const setImageWithFallbacks = (img, candidates = [], fallback = '') => {
+        const list = uniqueValues(candidates).filter((src) => src && src !== img.currentSrc && src !== img.src);
+        let index = 0;
+
+        img.onerror = function () {
+          const next = list[index++];
+          if (next) {
+            this.src = next;
+            return;
+          }
+          this.onerror = null;
+          if (fallback) this.src = fallback;
+        };
+
+        if (list[0]) {
+          img.src = list[index++];
+          return list[0];
+        }
+
+        img.onerror = null;
+        if (fallback) img.src = fallback;
+        return fallback;
+      };
+
       const trackImageCandidates = (kind, ...trackNames) => {
         const variants = trackSlugVariants(trackNames);
         const match = findRegisteredTrackAsset(trackNames);
@@ -2669,15 +2695,15 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         if (kind === 'map') {
           const suffixes = [
-            '_mapa',
             '_map',
+            '_mapa',
             '_outline',
             '_layout',
             '_track',
             '_circuit',
             '_trazado',
-            '-mapa',
             '-map',
+            '-mapa',
             '-outline',
             '-layout',
             '-track',
@@ -2742,20 +2768,16 @@ const home2ArchiveSeed = (archiveStats.items || [])
           ...trackPhotoDerivedVariants()
         ]);
 
-        for (const candidate of uniqueValues([
+        const candidates = uniqueValues([
           ...trackMapCandidatesFromResolvedPhoto(),
           ...trackImageCandidates('map', namesForMap)
-        ])) {
-          const ok = await probeImage(candidate);
-          if (ok) {
-            img.src = ok;
-            img.dataset.resolvedMap = ok;
-            return;
-          }
-        }
+        ]);
 
-        img.src = '/ui/home2/gc-home2-track-outline.svg';
-        img.dataset.resolvedMap = 'fallback-outline';
+        // No hacemos depender el mapa de un pre-probe silencioso.
+        // Ponemos una cadena de fallbacks real en el <img>; si existe magione_map.png,
+        // el navegador lo cargará aunque los candidatos anteriores no existan.
+        const chosen = setImageWithFallbacks(img, candidates, '/ui/home2/gc-home2-track-outline.svg');
+        img.dataset.resolvedMap = chosen || 'fallback-outline';
       };
 
       const renderRows = (selector, rows) => {
