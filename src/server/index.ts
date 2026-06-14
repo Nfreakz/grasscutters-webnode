@@ -5421,9 +5421,20 @@ app.post('/api/admin/users/:id/delete', async (req, res) => {
 
   try {
     const userId = gcAdminUsersV1UserIdFromReq(req);
-    const confirmText = String(req.body?.confirm || '').trim();
+    // GC_ADMIN_USERS_DELETE_CONFIRM_V4
+    // En algunas instalaciones/hosts el body JSON puede no llegar parseado para esta ruta.
+    // Aceptamos la confirmación también por query y cabecera, manteniendo DELETE_USER obligatorio.
+    const confirmText = String(
+      req.body?.confirm ||
+      req.body?.confirmation ||
+      req.body?.confirmText ||
+      req.query?.confirm ||
+      req.query?.confirmation ||
+      req.get?.('x-gc-confirm') ||
+      ''
+    ).trim();
     if (confirmText !== 'DELETE_USER') {
-      return res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'ConfirmaciÃ³n requerida: DELETE_USER.' });
+      return res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Confirmación requerida: DELETE_USER.' });
     }
 
     const store = await readUserStoreAsync();
