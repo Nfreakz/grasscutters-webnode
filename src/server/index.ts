@@ -1087,7 +1087,13 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
       },
       createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
       updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
-      lastLoginAt: mysqlDate(row.last_login_at)
+      lastLoginAt: mysqlDate(row.last_login_at),
+      forcePasswordChange: Boolean(Number(row.force_password_change || 0)),
+      disabledAt: mysqlDate(row.disabled_at),
+      disabledBy: compactNullableText(row.disabled_by),
+      deletedAt: mysqlDate(row.deleted_at),
+      deletedBy: compactNullableText(row.deleted_by),
+      status: String(row.status || (row.deleted_at ? 'deleted' : row.disabled_at ? 'disabled' : 'active')) as AppUser['status']
     })),
     sessions: sessionRows.map((row: any) => ({
       id: String(row.id),
@@ -5444,7 +5450,11 @@ app.post('/api/admin/users/:id/delete', async (req, res) => {
     store.sessions = store.sessions.filter((session) => session.userId !== user.id);
 
     await writeUserStoreAsync(store);
-    await writeAdminAuditLog(req, { context }, 'user.soft_delete', 'user', user.id, beforeValue, publicAdminUser(user, store));
+    try {
+      await writeAdminAuditLog(req, { context }, 'user.soft_delete', 'user', user.id, beforeValue, publicAdminUser(user, store));
+    } catch (auditError) {
+      console.warn('[GC] No se pudo registrar audit log de borrado de usuario, pero la cuenta ya fue marcada como eliminada:', auditError);
+    }
 
     res.json({ ok: true, mode: 'soft', user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta eliminada de forma segura. Se conserva el histÃ³rico sin romper relaciones.' });
   } catch (error: any) {
