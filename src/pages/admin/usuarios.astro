@@ -73,6 +73,16 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           </label>
 
           <label class="gc-field">
+            <span>Estado</span>
+            <select class="gc-select" id="statusFilter">
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="disabled">Desactivados</option>
+              <option value="deleted">Eliminados</option>
+            </select>
+          </label>
+
+          <label class="gc-field">
             <span>Vínculo</span>
             <select class="gc-select" id="linkFilter">
               <option value="all">Todos</option>
@@ -122,6 +132,10 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           <code>POST /api/admin/users/:id/role</code>
           <code>POST /api/admin/users/:id/revoke-sessions</code>
           <code>POST /api/admin/users/:id/password</code>
+          <code>POST /api/admin/users/:id/disable</code>
+          <code>POST /api/admin/users/:id/enable</code>
+          <code>POST /api/admin/users/:id/delete</code>
+          <code>POST /api/admin/users/:id/recovery-link</code>
         </div>
 
         <p class="gc-message" id="usersMessage"></p>
@@ -168,7 +182,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
     .gc-admin-users-toolbar-v1 {
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(150px, .24fr));
+      grid-template-columns: minmax(260px, 1fr) repeat(4, minmax(140px, .22fr));
       gap: 12px;
       align-items: end;
       margin-bottom: 16px;
@@ -306,6 +320,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         table: document.querySelector('#usersTable tbody'),
         search: $('userSearch'),
         role: $('roleFilter'),
+        status: $('statusFilter'),
         link: $('linkFilter'),
         pageSize: $('usersPageSize'),
         prev: $('usersPrevPage'),
@@ -383,6 +398,19 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return Boolean(user.linkedPilotName || user.linkedPlayerId || user.pilotLink);
       }
 
+      function userStatus(user) {
+        if (user?.status) return user.status;
+        if (user?.deletedAt) return 'deleted';
+        if (user?.disabledAt) return 'disabled';
+        return 'active';
+      }
+
+      function userStatusLabel(status) {
+        if (status === 'deleted') return 'Eliminada';
+        if (status === 'disabled') return 'Desactivada';
+        return 'Activa';
+      }
+
       function maxPage() {
         return Math.max(1, Math.ceil(filteredUsers.length / Number(els.pageSize.value || 25)));
       }
@@ -390,10 +418,12 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       function applyFilters() {
         const q = normalize(els.search.value);
         const role = els.role.value;
+        const status = els.status.value;
         const link = els.link.value;
 
         filteredUsers = users.filter((user) => {
           if (role !== 'all' && user.role !== role) return false;
+          if (status !== 'all' && userStatus(user) !== status) return false;
           if (link === 'linked' && !isLinked(user)) return false;
           if (link === 'unlinked' && isLinked(user)) return false;
 
@@ -401,6 +431,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
             user.displayName,
             user.email,
             user.role,
+            userStatus(user),
             user.linkedPilotName,
             user.linkedPlayerId,
             user.pilotSteamGuid,
@@ -437,7 +468,8 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
                 <span class="gc-muted-text">${esc(user.email || '-')}</span>
               </td>
               <td>
-                <span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${esc(user.role || '-')}</span>
+                <span class="gc-chip ${user.role === 'admin' ? 'gc-chip--accent' : ''}">${esc(user.role || '-')}</span><br>
+                <span class="gc-muted-text">${esc(userStatusLabel(userStatus(user)))}</span>
               </td>
               <td>
                 ${user.linkedPilotName
@@ -448,9 +480,16 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
               <td>${esc(dateText(user.createdAt))}</td>
               <td>
                 <div class="gc-admin-actions">
-                  <button class="gc-btn gc-btn--mini" data-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}">${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
-                  <button class="gc-btn gc-btn--mini" data-action="revoke">Cerrar sesiones</button>
-                  <button class="gc-btn gc-btn--mini" data-action="password">Reset pass</button>
+                  <button class="gc-btn gc-btn--mini" data-action="role" data-role="${user.role === 'admin' ? 'pilot' : 'admin'}" ${userStatus(user) === 'deleted' ? 'disabled' : ''}>${user.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>
+                  <button class="gc-btn gc-btn--mini" data-action="revoke" ${userStatus(user) === 'deleted' ? 'disabled' : ''}>Cerrar sesiones</button>
+                  <button class="gc-btn gc-btn--mini" data-action="password" ${userStatus(user) === 'deleted' ? 'disabled' : ''}>Reset pass</button>
+                  <button class="gc-btn gc-btn--mini" data-action="recovery" ${userStatus(user) === 'active' ? '' : 'disabled'}>Enlace recuperación</button>
+                  ${userStatus(user) === 'disabled'
+                    ? '<button class="gc-btn gc-btn--mini" data-action="enable">Reactivar</button>'
+                    : userStatus(user) === 'active'
+                      ? '<button class="gc-btn gc-btn--mini" data-action="disable">Desactivar</button>'
+                      : ''}
+                  <button class="gc-btn gc-btn--mini" data-action="delete" ${userStatus(user) === 'deleted' ? 'disabled' : ''}>Borrar</button>
                 </div>
               </td>
             </tr>
@@ -516,12 +555,39 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           });
         }
 
+        if (action === 'recovery') {
+          return fetchJson(`/api/admin/users/${encodeURIComponent(id)}/recovery-link`, {
+            method: 'POST',
+            body: JSON.stringify({ userId: id, ...payload })
+          });
+        }
+
+        if (action === 'disable' || action === 'enable' || action === 'delete') {
+          return fetchJson(`/api/admin/users/${encodeURIComponent(id)}/${action}`, {
+            method: 'POST',
+            body: JSON.stringify({ userId: id, ...payload })
+          });
+        }
+
         throw new Error('Acción no soportada.');
       }
 
       async function resetPasswordFlow(id) {
         const user = users.find((item) => item.id === id);
         const label = user?.displayName || user?.email || 'usuario';
+
+        const auto = window.confirm(`¿Generar una contraseña temporal segura para ${label}?
+
+Aceptar: generar automáticamente.
+Cancelar: escribir una contraseña manual.`);
+        if (auto) {
+          const result = await userAction(id, 'password', { autoGenerate: true, forcePasswordChange: true });
+          const temp = result?.temporaryPassword || '';
+          if (temp) {
+            window.prompt('Contraseña temporal generada. Cópiala ahora; no se volverá a mostrar:', temp);
+          }
+          return result;
+        }
 
         const first = window.prompt(`Nueva contraseña temporal para ${label} (mínimo 8 caracteres):`);
         if (first === null) return null;
@@ -531,8 +597,25 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         if (second === null) return null;
         if (first !== second) throw new Error('Las contraseñas no coinciden.');
 
-        return userAction(id, 'password', { password: first });
+        return userAction(id, 'password', { password: first, forcePasswordChange: true });
       }
+
+      async function recoveryLinkFlow(id) {
+        const user = users.find((item) => item.id === id);
+        const label = user?.displayName || user?.email || 'usuario';
+        const ok = confirm(`Generar enlace de recuperación para ${label}?
+
+La contraseña actual no se puede ver porque está hasheada. El enlace permitirá crear una nueva contraseña.`);
+        if (!ok) return null;
+
+        const result = await userAction(id, 'recovery', { expiresMinutes: 60 });
+        const link = result?.resetUrl || result?.resetPath || '';
+        if (link) {
+          window.prompt('Enlace de recuperación generado. Cópialo y envíalo al usuario:', link);
+        }
+        return result;
+      }
+
 
       els.table.addEventListener('click', async (event) => {
         const button = event.target.closest('button[data-action]');
@@ -577,7 +660,42 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
             }
           }
 
-          setMessage(action === 'password' ? 'Contraseña actualizada y sesiones cerradas.' : 'Acción aplicada.', 'ok');
+          if (action === 'recovery') {
+            const result = await recoveryLinkFlow(id);
+            if (result === null) {
+              setMessage('Recuperación cancelada.');
+              return;
+            }
+          }
+
+          if (action === 'disable') {
+            const ok = confirm(`¿Desactivar la cuenta de ${label}? Se cerrarán sus sesiones y no podrá iniciar sesión.`);
+            if (!ok) {
+              setMessage('Desactivación cancelada.');
+              return;
+            }
+            await userAction(id, 'disable');
+          }
+
+          if (action === 'enable') {
+            const ok = confirm(`¿Reactivar la cuenta de ${label}?`);
+            if (!ok) {
+              setMessage('Reactivación cancelada.');
+              return;
+            }
+            await userAction(id, 'enable');
+          }
+
+          if (action === 'delete') {
+            const confirmText = window.prompt(`Borrar/anonymizar cuenta de ${label}. No borra histórico de ratings ni carreras. Escribe DELETE_USER para confirmar:`);
+            if (confirmText !== 'DELETE_USER') {
+              setMessage('Borrado cancelado.');
+              return;
+            }
+            await userAction(id, 'delete', { confirm: 'DELETE_USER', mode: 'soft' });
+          }
+
+          setMessage(action === 'password' ? 'Contraseña actualizada y sesiones cerradas.' : action === 'recovery' ? 'Enlace de recuperación generado.' : 'Acción aplicada.', 'ok');
           await loadUsers();
         } catch (error) {
           setMessage(error.message || 'No se pudo aplicar la acción.', 'bad');
@@ -586,7 +704,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         }
       });
 
-      [els.search, els.role, els.link, els.pageSize].forEach((node) => {
+      [els.search, els.role, els.status, els.link, els.pageSize].forEach((node) => {
         node.addEventListener('input', () => {
           page = 1;
           applyFilters();

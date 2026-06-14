@@ -167,10 +167,36 @@ async function ensureMysqlSchema() {
       created_at DATETIME(3) NOT NULL,
       updated_at DATETIME(3) NOT NULL,
       last_login_at DATETIME(3) NULL,
+      force_password_change TINYINT(1) NOT NULL DEFAULT 0,
+      disabled_at DATETIME(3) NULL,
+      disabled_by VARCHAR(64) NULL,
+      deleted_at DATETIME(3) NULL,
+      deleted_by VARCHAR(64) NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
       INDEX idx_gc_users_role (role),
       INDEX idx_gc_users_pilot_player_id (pilot_player_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+
+
+  for (const statement of [
+    "ALTER TABLE gc_users ADD COLUMN force_password_change TINYINT(1) NOT NULL DEFAULT 0",
+    "ALTER TABLE gc_users ADD COLUMN disabled_at DATETIME(3) NULL",
+    "ALTER TABLE gc_users ADD COLUMN disabled_by VARCHAR(64) NULL",
+    "ALTER TABLE gc_users ADD COLUMN deleted_at DATETIME(3) NULL",
+    "ALTER TABLE gc_users ADD COLUMN deleted_by VARCHAR(64) NULL",
+    "ALTER TABLE gc_users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'",
+    "ALTER TABLE gc_users ADD INDEX idx_gc_users_status (status)"
+  ]) {
+    try {
+      await mysqlExecute(statement);
+    } catch (error: any) {
+      const code = String(error?.code || '');
+      const message = String(error?.message || '').toLowerCase();
+      if (!['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME'].includes(code) && !message.includes('duplicate')) throw error;
+    }
+  }
 
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -309,11 +335,32 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       pilot_linked_at TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      last_login_at TEXT NULL
+      last_login_at TEXT NULL,
+      force_password_change INTEGER NOT NULL DEFAULT 0,
+      disabled_at TEXT NULL,
+      disabled_by TEXT NULL,
+      deleted_at TEXT NULL,
+      deleted_by TEXT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
+
+  const gcUsersColumns = new Set(
+    sqliteQuery(db, 'PRAGMA table_info(gc_users)').map((row: any) => String(row.name || ''))
+  );
+  const addGcUserColumn = (name: string, definition: string) => {
+    if (!gcUsersColumns.has(name)) db.run(`ALTER TABLE gc_users ADD COLUMN ${definition}`);
+  };
+  addGcUserColumn('force_password_change', 'force_password_change INTEGER NOT NULL DEFAULT 0');
+  addGcUserColumn('disabled_at', 'disabled_at TEXT NULL');
+  addGcUserColumn('disabled_by', 'disabled_by TEXT NULL');
+  addGcUserColumn('deleted_at', 'deleted_at TEXT NULL');
+  addGcUserColumn('deleted_by', 'deleted_by TEXT NULL');
+  addGcUserColumn('status', "status TEXT NOT NULL DEFAULT 'active'");
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_status ON gc_users(status)`);
+
 
   db.run(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -420,6 +467,12 @@ type AppUser = {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
+  forcePasswordChange?: boolean;
+  disabledAt?: string | null;
+  disabledBy?: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  status?: 'active' | 'disabled' | 'deleted';
 };
 
 type AppSession = {
@@ -989,7 +1042,13 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
         },
         createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
         updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
-        lastLoginAt: mysqlDate(row.last_login_at)
+        lastLoginAt: mysqlDate(row.last_login_at),
+        forcePasswordChange: Boolean(Number(row.force_password_change || 0)),
+        disabledAt: mysqlDate(row.disabled_at),
+        disabledBy: compactNullableText(row.disabled_by),
+        deletedAt: mysqlDate(row.deleted_at),
+        deletedBy: compactNullableText(row.deleted_by),
+        status: String(row.status || (row.deleted_at ? 'deleted' : row.disabled_at ? 'disabled' : 'active')) as AppUser['status']
       })),
       sessions: sessionRows.map((row: any) => ({
         id: String(row.id),
@@ -1060,8 +1119,9 @@ async function writeUserStoreAsync(store: AppUserStore) {
           db.run(
             `INSERT INTO gc_users
               (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at,
+               force_password_change, disabled_at, disabled_by, deleted_at, deleted_by, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id,
               user.email,
@@ -1077,7 +1137,13 @@ async function writeUserStoreAsync(store: AppUserStore) {
               user.pilotLink?.linkedAt ?? null,
               user.createdAt || new Date().toISOString(),
               user.updatedAt || new Date().toISOString(),
-              user.lastLoginAt ?? null
+              user.lastLoginAt ?? null,
+              user.forcePasswordChange ? 1 : 0,
+              user.disabledAt ?? null,
+              user.disabledBy ?? null,
+              user.deletedAt ?? null,
+              user.deletedBy ?? null,
+              user.status || (user.deletedAt ? 'deleted' : user.disabledAt ? 'disabled' : 'active')
             ]
           );
         }
@@ -1118,8 +1184,9 @@ async function writeUserStoreAsync(store: AppUserStore) {
       await connection.query(
         `INSERT INTO gc_users
           (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at,
+           force_password_change, disabled_at, disabled_by, deleted_at, deleted_by, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.id,
           user.email,
@@ -1135,7 +1202,13 @@ async function writeUserStoreAsync(store: AppUserStore) {
           isoToMysql(user.pilotLink?.linkedAt),
           isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
-          isoToMysql(user.lastLoginAt)
+          isoToMysql(user.lastLoginAt),
+          user.forcePasswordChange ? 1 : 0,
+          isoToMysql(user.disabledAt),
+          user.disabledBy ?? null,
+          isoToMysql(user.deletedAt),
+          user.deletedBy ?? null,
+          user.status || (user.deletedAt ? 'deleted' : user.disabledAt ? 'disabled' : 'active')
         ]
       );
     }
@@ -1267,6 +1340,135 @@ function verifyPassword(password: string, stored: AppUser['password']) {
   return safeTimingCompareHex(next.hash, stored.hash);
 }
 
+function userAccountStatus(user: AppUser) {
+  if (user.deletedAt || user.status === 'deleted') return 'deleted';
+  if (user.disabledAt || user.status === 'disabled') return 'disabled';
+  return 'active';
+}
+
+function isUserLoginEnabled(user: AppUser | null | undefined) {
+  return Boolean(user && userAccountStatus(user) === 'active');
+}
+
+function generateTemporaryPassword() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  const bytes = crypto.randomBytes(12);
+  const suffix = Array.from(bytes).map((byte) => alphabet[byte % alphabet.length]).join('');
+  return `GC-${suffix.slice(0, 4)}-${suffix.slice(4, 8)}-${suffix.slice(8, 12)}`;
+}
+
+
+// GC_PASSWORD_RECOVERY_LINKS_V2 START
+function gcPasswordRecoveryBase64UrlEncode(value: string) {
+  return Buffer.from(value, 'utf8')
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function gcPasswordRecoveryBase64UrlDecode(value: string) {
+  const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
+  return Buffer.from(padded, 'base64').toString('utf8');
+}
+
+function gcPasswordRecoverySecret() {
+  return (
+    process.env.AUTH_PASSWORD_RECOVERY_SECRET?.trim() ||
+    process.env.AUTH_RESET_SECRET?.trim() ||
+    process.env.ADMIN_SETUP_SECRET?.trim() ||
+    process.env.STRACKER_SYNC_SECRET?.trim() ||
+    'grasscutters-local-password-recovery-secret'
+  );
+}
+
+function gcPasswordRecoverySignature(body: string) {
+  return crypto
+    .createHmac('sha256', gcPasswordRecoverySecret())
+    .update(body)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function gcPasswordRecoverySafeEqual(a: string, b: string) {
+  const left = Buffer.from(String(a || ''));
+  const right = Buffer.from(String(b || ''));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function gcPasswordRecoveryPublicOrigin(req: express.Request) {
+  const configured = process.env.FRONTEND_URL?.trim() || process.env.PUBLIC_BASE_URL?.trim() || '';
+  if (configured) return configured.replace(/\/+$/, '');
+  const host = req.get('host') || 'localhost:4321';
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+  return `${proto}://${host}`.replace(/\/+$/, '');
+}
+
+function gcCreatePasswordRecoveryToken(user: AppUser, minutes = 60) {
+  const now = Date.now();
+  const safeMinutes = Math.max(10, Math.min(Number(minutes) || 60, 24 * 60));
+  const payload = {
+    v: 2,
+    type: 'gc-password-recovery',
+    sub: user.id,
+    email: user.email,
+    iat: now,
+    exp: now + safeMinutes * 60 * 1000,
+    pwd: String(user.password?.hash || '').slice(0, 24),
+    nonce: crypto.randomBytes(10).toString('hex')
+  };
+  const body = gcPasswordRecoveryBase64UrlEncode(JSON.stringify(payload));
+  const signature = gcPasswordRecoverySignature(body);
+  return {
+    token: `${body}.${signature}`,
+    expiresAt: new Date(payload.exp).toISOString(),
+    minutes: safeMinutes
+  };
+}
+
+function gcVerifyPasswordRecoveryToken(token: unknown, store: AppUserStore) {
+  const raw = String(token || '').trim();
+  const [body, signature] = raw.split('.');
+  if (!body || !signature) return { ok: false as const, message: 'Token de recuperación no válido.' };
+
+  const expected = gcPasswordRecoverySignature(body);
+  if (!gcPasswordRecoverySafeEqual(signature, expected)) {
+    return { ok: false as const, message: 'Token de recuperación no válido o manipulado.' };
+  }
+
+  let payload: any = null;
+  try {
+    payload = JSON.parse(gcPasswordRecoveryBase64UrlDecode(body));
+  } catch (_) {
+    return { ok: false as const, message: 'Token de recuperación ilegible.' };
+  }
+
+  if (payload?.type !== 'gc-password-recovery' || !payload?.sub) {
+    return { ok: false as const, message: 'Token de recuperación no válido.' };
+  }
+
+  if (!Number.isFinite(Number(payload.exp)) || Number(payload.exp) < Date.now()) {
+    return { ok: false as const, message: 'El enlace de recuperación ha caducado.' };
+  }
+
+  const user = store.users.find((item) => item.id === String(payload.sub));
+  if (!user) return { ok: false as const, message: 'La cuenta ya no existe.' };
+  if (userAccountStatus(user) !== 'active') {
+    return { ok: false as const, message: 'La cuenta está desactivada o eliminada.' };
+  }
+
+  const currentPasswordFingerprint = String(user.password?.hash || '').slice(0, 24);
+  if (!payload.pwd || payload.pwd !== currentPasswordFingerprint) {
+    return { ok: false as const, message: 'Este enlace ya no es válido porque la contraseña ha cambiado.' };
+  }
+
+  return { ok: true as const, user, payload };
+}
+// GC_PASSWORD_RECOVERY_LINKS_V2 END
+
 function tokenHash(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -1356,7 +1558,7 @@ function getAuthContext(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user) return null;
+  if (!user || !isUserLoginEnabled(user)) return null;
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1379,7 +1581,7 @@ async function getAuthContextAsync(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user) return null;
+  if (!user || !isUserLoginEnabled(user)) return null;
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1392,15 +1594,20 @@ async function getAuthContextAsync(req: express.Request) {
 }
 
 function publicUser(user: AppUser) {
+  const status = userAccountStatus(user);
   return {
     id: user.id,
-    email: user.email,
+    email: status === 'deleted' ? null : user.email,
     displayName: user.displayName,
     role: user.role,
-    pilotLink: user.pilotLink,
+    pilotLink: status === 'deleted' ? null : user.pilotLink,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    lastLoginAt: user.lastLoginAt
+    lastLoginAt: user.lastLoginAt,
+    status,
+    forcePasswordChange: Boolean(user.forcePasswordChange),
+    disabledAt: user.disabledAt ?? null,
+    deletedAt: user.deletedAt ?? null
   };
 }
 
@@ -1481,8 +1688,10 @@ function publicAdminUser(user: AppUser, store: AppUserStore) {
     ...publicUser(user),
     activeSessions: countSessionsForUser(store, user.id),
     hasPassword: Boolean(user.password?.hash),
-    linkedPilotName: user.pilotLink?.strackerName ?? null,
-    linkedPlayerId: user.pilotLink?.playerId ?? null
+    linkedPilotName: userAccountStatus(user) === 'deleted' ? null : user.pilotLink?.strackerName ?? null,
+    linkedPlayerId: userAccountStatus(user) === 'deleted' ? null : user.pilotLink?.playerId ?? null,
+    disabledBy: user.disabledBy ?? null,
+    deletedBy: user.deletedBy ?? null
   };
 }
 
@@ -1497,6 +1706,8 @@ function getUserStoreAdminSummary(store = readUserStore()) {
     linkedUsersCount: linkedUsers.length,
     unlinkedUsersCount: store.users.length - linkedUsers.length,
     activeSessionsCount: activeSessions.length,
+    disabledUsersCount: store.users.filter((user) => userAccountStatus(user) === 'disabled').length,
+    deletedUsersCount: store.users.filter((user) => userAccountStatus(user) === 'deleted').length,
     setupRequired: admins.length === 0,
     storage: getUsersDbInfo()
   };
@@ -5056,7 +5267,9 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
 
   try {
     const userId = gcAdminUsersV1UserIdFromReq(req);
-    const password = String(req.body?.password || '');
+    const requestedPassword = String(req.body?.password || '');
+    const autoGenerate = req.body?.autoGenerate === true || req.body?.generate === true || !requestedPassword;
+    const password = autoGenerate ? generateTemporaryPassword() : requestedPassword;
 
     if (!userId) {
       res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Falta userId.' });
@@ -5068,6 +5281,11 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       return;
     }
 
+    if (password.length > 128) {
+      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La contraseÃ±a es demasiado larga.' });
+      return;
+    }
+
     const store = await readUserStoreAsync();
     const user = gcAdminUsersV1FindMutableUser(store, userId);
 
@@ -5076,23 +5294,49 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       return;
     }
 
+    if (userAccountStatus(user) === 'deleted') {
+      res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No se puede resetear una cuenta eliminada.' });
+      return;
+    }
+
+    const beforeValue = {
+      userId: user.id,
+      email: user.email,
+      activeSessions: countSessionsForUser(store, user.id),
+      forcePasswordChange: Boolean(user.forcePasswordChange)
+    };
+
     user.password = hashPassword(password);
+    user.forcePasswordChange = req.body?.forcePasswordChange !== false;
     user.updatedAt = new Date().toISOString();
 
     const before = store.sessions.length;
-    store.sessions = store.sessions.filter((session) => session.userId !== userId);
+    store.sessions = store.sessions.filter((session) => {
+      if (session.userId !== userId) return true;
+      if (user.id === context.user.id && session.id === context.session.id) return true;
+      return false;
+    });
     const revoked = before - store.sessions.length;
 
     await writeUserStoreAsync(store);
+    await writeAdminAuditLog(req, { context }, 'user.password_reset', 'user', user.id, beforeValue, {
+      userId: user.id,
+      email: user.email,
+      sessionsRevoked: revoked,
+      temporaryPasswordGenerated: autoGenerate,
+      forcePasswordChange: Boolean(user.forcePasswordChange)
+    });
 
     res.json({
       ok: true,
       revokedSessions: revoked,
+      temporaryPassword: autoGenerate ? password : undefined,
+      forcePasswordChange: Boolean(user.forcePasswordChange),
       user: gcAdminUsersV1Public(user, store),
       users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)),
       summary: getUserStoreAdminSummary(store),
       source: 'admin-users-backend-endpoints-v1',
-      message: 'ContraseÃ±a actualizada.'
+      message: autoGenerate ? 'ContraseÃ±a temporal generada. CÃ³piala ahora; no se volverÃ¡ a mostrar.' : 'ContraseÃ±a actualizada.'
     });
   } catch (error: any) {
     console.error('[GC] Error reseteando contraseÃ±a usuario admin v1:', error);
@@ -5101,6 +5345,111 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       source: 'admin-users-backend-endpoints-v1',
       message: error?.message || 'No se pudo cambiar la contraseÃ±a.'
     });
+  }
+});
+
+app.post('/api/admin/users/:id/disable', async (req, res) => {
+  const context = await gcAdminUsersV1Require(req, res);
+  if (!context) return;
+
+  try {
+    const userId = gcAdminUsersV1UserIdFromReq(req);
+    const store = await readUserStoreAsync();
+    const user = gcAdminUsersV1FindMutableUser(store, userId);
+
+    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
+    if (user.id === context.user.id) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes desactivar tu propia cuenta.' });
+    if (user.role === 'admin' && isLastAdmin(store, user.id)) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes desactivar el Ãºltimo administrador.' });
+    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La cuenta ya estÃ¡ eliminada.' });
+
+    const beforeValue = publicAdminUser(user, store);
+    user.disabledAt = new Date().toISOString();
+    user.disabledBy = context.user.id;
+    user.status = 'disabled';
+    user.updatedAt = new Date().toISOString();
+    const beforeSessions = store.sessions.length;
+    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
+    const revoked = beforeSessions - store.sessions.length;
+
+    await writeUserStoreAsync(store);
+    await writeAdminAuditLog(req, { context }, 'user.disable', 'user', user.id, beforeValue, publicAdminUser(user, store));
+
+    res.json({ ok: true, revokedSessions: revoked, user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta desactivada y sesiones cerradas.' });
+  } catch (error: any) {
+    console.error('[GC] Error desactivando usuario admin v1:', error);
+    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo desactivar la cuenta.' });
+  }
+});
+
+app.post('/api/admin/users/:id/enable', async (req, res) => {
+  const context = await gcAdminUsersV1Require(req, res);
+  if (!context) return;
+
+  try {
+    const userId = gcAdminUsersV1UserIdFromReq(req);
+    const store = await readUserStoreAsync();
+    const user = gcAdminUsersV1FindMutableUser(store, userId);
+
+    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
+    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes reactivar una cuenta eliminada.' });
+
+    const beforeValue = publicAdminUser(user, store);
+    user.disabledAt = null;
+    user.disabledBy = null;
+    user.status = 'active';
+    user.updatedAt = new Date().toISOString();
+
+    await writeUserStoreAsync(store);
+    await writeAdminAuditLog(req, { context }, 'user.enable', 'user', user.id, beforeValue, publicAdminUser(user, store));
+
+    res.json({ ok: true, user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta reactivada.' });
+  } catch (error: any) {
+    console.error('[GC] Error reactivando usuario admin v1:', error);
+    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo reactivar la cuenta.' });
+  }
+});
+
+app.post('/api/admin/users/:id/delete', async (req, res) => {
+  const context = await gcAdminUsersV1Require(req, res);
+  if (!context) return;
+
+  try {
+    const userId = gcAdminUsersV1UserIdFromReq(req);
+    const confirmText = String(req.body?.confirm || '').trim();
+    if (confirmText !== 'DELETE_USER') {
+      return res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'ConfirmaciÃ³n requerida: DELETE_USER.' });
+    }
+
+    const store = await readUserStoreAsync();
+    const user = gcAdminUsersV1FindMutableUser(store, userId);
+
+    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
+    if (user.id === context.user.id) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes borrar tu propia cuenta.' });
+    if (user.role === 'admin' && isLastAdmin(store, user.id)) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes borrar el Ãºltimo administrador.' });
+    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La cuenta ya estaba eliminada.' });
+
+    const beforeValue = publicAdminUser(user, store);
+    const now = new Date().toISOString();
+    user.email = `deleted-user-${user.id}@local.invalid`;
+    user.displayName = 'Usuario eliminado';
+    user.password = hashPassword(crypto.randomBytes(32).toString('hex'));
+    user.pilotLink = null;
+    user.forcePasswordChange = false;
+    user.disabledAt = now;
+    user.disabledBy = context.user.id;
+    user.deletedAt = now;
+    user.deletedBy = context.user.id;
+    user.status = 'deleted';
+    user.updatedAt = now;
+    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
+
+    await writeUserStoreAsync(store);
+    await writeAdminAuditLog(req, { context }, 'user.soft_delete', 'user', user.id, beforeValue, publicAdminUser(user, store));
+
+    res.json({ ok: true, mode: 'soft', user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta eliminada de forma segura. Se conserva el histÃ³rico sin romper relaciones.' });
+  } catch (error: any) {
+    console.error('[GC] Error eliminando usuario admin v1:', error);
+    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo eliminar la cuenta.' });
   }
 });
 
@@ -5151,6 +5500,133 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
     });
   }
 });
+
+
+app.post('/api/admin/users/:id/recovery-link', async (req, res) => {
+  const context = await gcAdminUsersV1Require(req, res);
+  if (!context) return;
+
+  try {
+    const userId = gcAdminUsersV1UserIdFromReq(req);
+    const expiresMinutes = Number(req.body?.expiresMinutes || req.query?.expiresMinutes || 60);
+
+    if (!userId) {
+      res.status(400).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Falta userId.' });
+      return;
+    }
+
+    const store = await readUserStoreAsync();
+    const user = gcAdminUsersV1FindMutableUser(store, userId);
+
+    if (!user) {
+      res.status(404).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Usuario no encontrado.' });
+      return;
+    }
+
+    if (userAccountStatus(user) !== 'active') {
+      res.status(400).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Solo se puede generar recuperación para cuentas activas.' });
+      return;
+    }
+
+    const generated = gcCreatePasswordRecoveryToken(user, expiresMinutes);
+    const resetPath = `/recuperar-password?token=${encodeURIComponent(generated.token)}`;
+    const resetUrl = `${gcPasswordRecoveryPublicOrigin(req)}${resetPath}`;
+
+    res.json({
+      ok: true,
+      source: 'admin-users-password-recovery-v2',
+      user: gcAdminUsersV1Public(user, store),
+      token: generated.token,
+      resetPath,
+      resetUrl,
+      expiresAt: generated.expiresAt,
+      expiresMinutes: generated.minutes,
+      message: 'Enlace de recuperación generado. La contraseña actual no se puede ver porque está cifrada/hasheada.'
+    });
+  } catch (error: any) {
+    console.error('[GC] Error generando enlace recuperación password v2:', error);
+    res.status(500).json({
+      ok: false,
+      source: 'admin-users-password-recovery-v2',
+      message: error?.message || 'No se pudo generar el enlace de recuperación.'
+    });
+  }
+});
+
+app.post('/api/auth/password-recovery/verify', async (req, res) => {
+  try {
+    const token = req.body?.token || req.query?.token;
+    const store = await readUserStoreAsync();
+    const verification = gcVerifyPasswordRecoveryToken(token, store);
+
+    if (!verification.ok) {
+      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: verification.message });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      source: 'password-recovery-v2',
+      user: {
+        id: verification.user.id,
+        email: verification.user.email,
+        displayName: verification.user.displayName
+      },
+      expiresAt: new Date(Number(verification.payload.exp)).toISOString()
+    });
+  } catch (error: any) {
+    console.error('[GC] Error verificando recuperación password v2:', error);
+    res.status(500).json({ ok: false, source: 'password-recovery-v2', message: error?.message || 'No se pudo verificar el enlace.' });
+  }
+});
+
+app.post('/api/auth/password-recovery/complete', async (req, res) => {
+  try {
+    const token = req.body?.token;
+    const password = String(req.body?.password || req.body?.newPassword || '');
+    const confirmPassword = String(req.body?.confirmPassword || req.body?.passwordConfirm || password);
+
+    if (password.length < 8) {
+      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: 'La contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: 'Las contraseñas no coinciden.' });
+      return;
+    }
+
+    const store = await readUserStoreAsync();
+    const verification = gcVerifyPasswordRecoveryToken(token, store);
+
+    if (!verification.ok) {
+      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: verification.message });
+      return;
+    }
+
+    const user = verification.user;
+    user.password = hashPassword(password);
+    user.forcePasswordChange = false;
+    user.updatedAt = new Date().toISOString();
+
+    const before = store.sessions.length;
+    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
+    const revoked = before - store.sessions.length;
+
+    await writeUserStoreAsync(store);
+
+    res.json({
+      ok: true,
+      source: 'password-recovery-v2',
+      revokedSessions: revoked,
+      message: 'Contraseña actualizada. Ya puedes iniciar sesión.'
+    });
+  } catch (error: any) {
+    console.error('[GC] Error completando recuperación password v2:', error);
+    res.status(500).json({ ok: false, source: 'password-recovery-v2', message: error?.message || 'No se pudo actualizar la contraseña.' });
+  }
+});
+
 // GC_ADMIN_USERS_BACKEND_ENDPOINTS_V1 END
 
 
@@ -7229,7 +7705,13 @@ app.post('/api/auth/register', async (req, res) => {
     pilotLink,
     createdAt: now,
     updatedAt: now,
-    lastLoginAt: now
+    lastLoginAt: now,
+    forcePasswordChange: false,
+    disabledAt: null,
+    disabledBy: null,
+    deletedAt: null,
+    deletedBy: null,
+    status: 'active'
   };
 
   store.users.push(user);
@@ -7260,6 +7742,11 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (!user || !verifyPassword(password, user.password)) {
     res.status(401).json({ ok: false, message: 'Email o contraseÃƒÂ±a incorrectos.' });
+    return;
+  }
+
+  if (!isUserLoginEnabled(user)) {
+    res.status(403).json({ ok: false, message: userAccountStatus(user) === 'deleted' ? 'Esta cuenta ha sido eliminada.' : 'Esta cuenta estÃƒÂ¡ desactivada.' });
     return;
   }
 
