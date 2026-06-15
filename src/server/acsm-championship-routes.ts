@@ -1,5 +1,6 @@
 import type express from 'express';
 import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName } from './gc-ratings/utils';
+import { gcTrackMapCandidates, gcTrackPhotoCandidates, resolveGcTrackAssets } from './gc-track-assets-resolver';
 
 type PlainObject = Record<string, any>;
 
@@ -256,50 +257,11 @@ function trackBaseNames(trackName: unknown, trackRaw?: unknown, eventName?: unkn
 }
 
 function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
-  const names = trackBaseNames(trackName, trackRaw, eventName);
-  const exact = registeredTrackAsset(names)?.map ? [registeredTrackAsset(names)!.map as string] : [];
-
-  const bases = [...new Set([
-    ...names.map((name) => `${name}_mapa`),
-    ...names.map((name) => `${name}_map`)
-  ])];
-
-  const roots = ['/images/tracks', '/imagenes/tracks'];
-  const exts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
-
-  const out: string[] = [];
-  bases.forEach((base) => {
-    roots.forEach((root) => {
-      exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
-    });
-  });
-
-  return [...new Set([...exact, ...out])];
+  return gcTrackMapCandidates(trackName, trackRaw, eventName);
 }
 
 function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
-  const names = trackBaseNames(trackName, trackRaw, eventName);
-  const exact = registeredTrackAsset(names)?.photo ? [registeredTrackAsset(names)!.photo as string] : [];
-
-  const bases = [...new Set([
-    ...names,
-    ...names.map((name) => `${name}_foto`),
-    ...names.map((name) => `${name}_photo`),
-    ...names.map((name) => `${name}_imagen`),
-    ...names.map((name) => `${name}_hero`)
-  ])].filter((base) => !/_?(mapa|map|outline)$/i.test(base));
-
-  const roots = ['/images/tracks', '/imagenes/tracks'];
-  const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
-
-  const out: string[] = [];
-  bases.forEach((base) => {
-    roots.forEach((root) => {
-      exts.forEach((ext) => out.push(`${root}/${base}.${ext}`));
-    });
-  });
-
-  return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
+  return gcTrackPhotoCandidates(trackName, trackRaw, eventName);
 }
 
 function prettifyName(value: unknown, fallback = '-') {
@@ -614,6 +576,8 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
 
   const id = textValue(pick(event, ['ID', 'Id', 'id'], `event-${index + 1}`));
 
+  const trackAssets = resolveGcTrackAssets([track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')]);
+
   return {
     index: index + 1,
     id,
@@ -623,8 +587,12 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     track,
     trackRaw: textValue(trackRaw, ''),
     trackSlug: normalizeTrackSlug(trackRaw),
+    trackAssets,
     trackMapCandidates: trackMapCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
     trackPhotoCandidates: trackPhotoCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
+    trackDistanceKm: trackAssets.distanceKm ?? null,
+    trackDistance: trackAssets.distance || '',
+    trackCountryCode: trackAssets.countryCode || '',
     cars,
     carSummary: cars.length ? cars.slice(0, 4).join(' + ') + (cars.length > 4 ? ` +${cars.length - 4}` : '') : '',
     scheduledAt: scheduled,

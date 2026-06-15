@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +22,7 @@ import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
 import { syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
+import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -167,36 +168,10 @@ async function ensureMysqlSchema() {
       created_at DATETIME(3) NOT NULL,
       updated_at DATETIME(3) NOT NULL,
       last_login_at DATETIME(3) NULL,
-      force_password_change TINYINT(1) NOT NULL DEFAULT 0,
-      disabled_at DATETIME(3) NULL,
-      disabled_by VARCHAR(64) NULL,
-      deleted_at DATETIME(3) NULL,
-      deleted_by VARCHAR(64) NULL,
-      status VARCHAR(20) NOT NULL DEFAULT 'active',
       INDEX idx_gc_users_role (role),
       INDEX idx_gc_users_pilot_player_id (pilot_player_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
-
-
-
-  for (const statement of [
-    "ALTER TABLE gc_users ADD COLUMN force_password_change TINYINT(1) NOT NULL DEFAULT 0",
-    "ALTER TABLE gc_users ADD COLUMN disabled_at DATETIME(3) NULL",
-    "ALTER TABLE gc_users ADD COLUMN disabled_by VARCHAR(64) NULL",
-    "ALTER TABLE gc_users ADD COLUMN deleted_at DATETIME(3) NULL",
-    "ALTER TABLE gc_users ADD COLUMN deleted_by VARCHAR(64) NULL",
-    "ALTER TABLE gc_users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'",
-    "ALTER TABLE gc_users ADD INDEX idx_gc_users_status (status)"
-  ]) {
-    try {
-      await mysqlExecute(statement);
-    } catch (error: any) {
-      const code = String(error?.code || '');
-      const message = String(error?.message || '').toLowerCase();
-      if (!['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME'].includes(code) && !message.includes('duplicate')) throw error;
-    }
-  }
 
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -335,32 +310,11 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       pilot_linked_at TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      last_login_at TEXT NULL,
-      force_password_change INTEGER NOT NULL DEFAULT 0,
-      disabled_at TEXT NULL,
-      disabled_by TEXT NULL,
-      deleted_at TEXT NULL,
-      deleted_by TEXT NULL,
-      status TEXT NOT NULL DEFAULT 'active'
+      last_login_at TEXT NULL
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
-
-  const gcUsersColumns = new Set(
-    sqliteQuery(db, 'PRAGMA table_info(gc_users)').map((row: any) => String(row.name || ''))
-  );
-  const addGcUserColumn = (name: string, definition: string) => {
-    if (!gcUsersColumns.has(name)) db.run(`ALTER TABLE gc_users ADD COLUMN ${definition}`);
-  };
-  addGcUserColumn('force_password_change', 'force_password_change INTEGER NOT NULL DEFAULT 0');
-  addGcUserColumn('disabled_at', 'disabled_at TEXT NULL');
-  addGcUserColumn('disabled_by', 'disabled_by TEXT NULL');
-  addGcUserColumn('deleted_at', 'deleted_at TEXT NULL');
-  addGcUserColumn('deleted_by', 'deleted_by TEXT NULL');
-  addGcUserColumn('status', "status TEXT NOT NULL DEFAULT 'active'");
-  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_status ON gc_users(status)`);
-
 
   db.run(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -467,12 +421,6 @@ type AppUser = {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
-  forcePasswordChange?: boolean;
-  disabledAt?: string | null;
-  disabledBy?: string | null;
-  deletedAt?: string | null;
-  deletedBy?: string | null;
-  status?: 'active' | 'disabled' | 'deleted';
 };
 
 type AppSession = {
@@ -1042,13 +990,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
         },
         createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
         updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
-        lastLoginAt: mysqlDate(row.last_login_at),
-        forcePasswordChange: Boolean(Number(row.force_password_change || 0)),
-        disabledAt: mysqlDate(row.disabled_at),
-        disabledBy: compactNullableText(row.disabled_by),
-        deletedAt: mysqlDate(row.deleted_at),
-        deletedBy: compactNullableText(row.deleted_by),
-        status: String(row.status || (row.deleted_at ? 'deleted' : row.disabled_at ? 'disabled' : 'active')) as AppUser['status']
+        lastLoginAt: mysqlDate(row.last_login_at)
       })),
       sessions: sessionRows.map((row: any) => ({
         id: String(row.id),
@@ -1087,13 +1029,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
       },
       createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
       updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
-      lastLoginAt: mysqlDate(row.last_login_at),
-      forcePasswordChange: Boolean(Number(row.force_password_change || 0)),
-      disabledAt: mysqlDate(row.disabled_at),
-      disabledBy: compactNullableText(row.disabled_by),
-      deletedAt: mysqlDate(row.deleted_at),
-      deletedBy: compactNullableText(row.deleted_by),
-      status: String(row.status || (row.deleted_at ? 'deleted' : row.disabled_at ? 'disabled' : 'active')) as AppUser['status']
+      lastLoginAt: mysqlDate(row.last_login_at)
     })),
     sessions: sessionRows.map((row: any) => ({
       id: String(row.id),
@@ -1125,9 +1061,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
           db.run(
             `INSERT INTO gc_users
               (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at,
-               force_password_change, disabled_at, disabled_by, deleted_at, deleted_by, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id,
               user.email,
@@ -1143,13 +1078,7 @@ async function writeUserStoreAsync(store: AppUserStore) {
               user.pilotLink?.linkedAt ?? null,
               user.createdAt || new Date().toISOString(),
               user.updatedAt || new Date().toISOString(),
-              user.lastLoginAt ?? null,
-              user.forcePasswordChange ? 1 : 0,
-              user.disabledAt ?? null,
-              user.disabledBy ?? null,
-              user.deletedAt ?? null,
-              user.deletedBy ?? null,
-              user.status || (user.deletedAt ? 'deleted' : user.disabledAt ? 'disabled' : 'active')
+              user.lastLoginAt ?? null
             ]
           );
         }
@@ -1190,9 +1119,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
       await connection.query(
         `INSERT INTO gc_users
           (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at,
-           force_password_change, disabled_at, disabled_by, deleted_at, deleted_by, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.id,
           user.email,
@@ -1208,13 +1136,7 @@ async function writeUserStoreAsync(store: AppUserStore) {
           isoToMysql(user.pilotLink?.linkedAt),
           isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
-          isoToMysql(user.lastLoginAt),
-          user.forcePasswordChange ? 1 : 0,
-          isoToMysql(user.disabledAt),
-          user.disabledBy ?? null,
-          isoToMysql(user.deletedAt),
-          user.deletedBy ?? null,
-          user.status || (user.deletedAt ? 'deleted' : user.disabledAt ? 'disabled' : 'active')
+          isoToMysql(user.lastLoginAt)
         ]
       );
     }
@@ -1346,135 +1268,6 @@ function verifyPassword(password: string, stored: AppUser['password']) {
   return safeTimingCompareHex(next.hash, stored.hash);
 }
 
-function userAccountStatus(user: AppUser) {
-  if (user.deletedAt || user.status === 'deleted') return 'deleted';
-  if (user.disabledAt || user.status === 'disabled') return 'disabled';
-  return 'active';
-}
-
-function isUserLoginEnabled(user: AppUser | null | undefined) {
-  return Boolean(user && userAccountStatus(user) === 'active');
-}
-
-function generateTemporaryPassword() {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  const bytes = crypto.randomBytes(12);
-  const suffix = Array.from(bytes).map((byte) => alphabet[byte % alphabet.length]).join('');
-  return `GC-${suffix.slice(0, 4)}-${suffix.slice(4, 8)}-${suffix.slice(8, 12)}`;
-}
-
-
-// GC_PASSWORD_RECOVERY_LINKS_V2 START
-function gcPasswordRecoveryBase64UrlEncode(value: string) {
-  return Buffer.from(value, 'utf8')
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
-
-function gcPasswordRecoveryBase64UrlDecode(value: string) {
-  const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
-  return Buffer.from(padded, 'base64').toString('utf8');
-}
-
-function gcPasswordRecoverySecret() {
-  return (
-    process.env.AUTH_PASSWORD_RECOVERY_SECRET?.trim() ||
-    process.env.AUTH_RESET_SECRET?.trim() ||
-    process.env.ADMIN_SETUP_SECRET?.trim() ||
-    process.env.STRACKER_SYNC_SECRET?.trim() ||
-    'grasscutters-local-password-recovery-secret'
-  );
-}
-
-function gcPasswordRecoverySignature(body: string) {
-  return crypto
-    .createHmac('sha256', gcPasswordRecoverySecret())
-    .update(body)
-    .digest('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
-
-function gcPasswordRecoverySafeEqual(a: string, b: string) {
-  const left = Buffer.from(String(a || ''));
-  const right = Buffer.from(String(b || ''));
-  return left.length === right.length && crypto.timingSafeEqual(left, right);
-}
-
-function gcPasswordRecoveryPublicOrigin(req: express.Request) {
-  const configured = process.env.FRONTEND_URL?.trim() || process.env.PUBLIC_BASE_URL?.trim() || '';
-  if (configured) return configured.replace(/\/+$/, '');
-  const host = req.get('host') || 'localhost:4321';
-  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
-  return `${proto}://${host}`.replace(/\/+$/, '');
-}
-
-function gcCreatePasswordRecoveryToken(user: AppUser, minutes = 60) {
-  const now = Date.now();
-  const safeMinutes = Math.max(10, Math.min(Number(minutes) || 60, 24 * 60));
-  const payload = {
-    v: 2,
-    type: 'gc-password-recovery',
-    sub: user.id,
-    email: user.email,
-    iat: now,
-    exp: now + safeMinutes * 60 * 1000,
-    pwd: String(user.password?.hash || '').slice(0, 24),
-    nonce: crypto.randomBytes(10).toString('hex')
-  };
-  const body = gcPasswordRecoveryBase64UrlEncode(JSON.stringify(payload));
-  const signature = gcPasswordRecoverySignature(body);
-  return {
-    token: `${body}.${signature}`,
-    expiresAt: new Date(payload.exp).toISOString(),
-    minutes: safeMinutes
-  };
-}
-
-function gcVerifyPasswordRecoveryToken(token: unknown, store: AppUserStore) {
-  const raw = String(token || '').trim();
-  const [body, signature] = raw.split('.');
-  if (!body || !signature) return { ok: false as const, message: 'Token de recuperación no válido.' };
-
-  const expected = gcPasswordRecoverySignature(body);
-  if (!gcPasswordRecoverySafeEqual(signature, expected)) {
-    return { ok: false as const, message: 'Token de recuperación no válido o manipulado.' };
-  }
-
-  let payload: any = null;
-  try {
-    payload = JSON.parse(gcPasswordRecoveryBase64UrlDecode(body));
-  } catch (_) {
-    return { ok: false as const, message: 'Token de recuperación ilegible.' };
-  }
-
-  if (payload?.type !== 'gc-password-recovery' || !payload?.sub) {
-    return { ok: false as const, message: 'Token de recuperación no válido.' };
-  }
-
-  if (!Number.isFinite(Number(payload.exp)) || Number(payload.exp) < Date.now()) {
-    return { ok: false as const, message: 'El enlace de recuperación ha caducado.' };
-  }
-
-  const user = store.users.find((item) => item.id === String(payload.sub));
-  if (!user) return { ok: false as const, message: 'La cuenta ya no existe.' };
-  if (userAccountStatus(user) !== 'active') {
-    return { ok: false as const, message: 'La cuenta está desactivada o eliminada.' };
-  }
-
-  const currentPasswordFingerprint = String(user.password?.hash || '').slice(0, 24);
-  if (!payload.pwd || payload.pwd !== currentPasswordFingerprint) {
-    return { ok: false as const, message: 'Este enlace ya no es válido porque la contraseña ha cambiado.' };
-  }
-
-  return { ok: true as const, user, payload };
-}
-// GC_PASSWORD_RECOVERY_LINKS_V2 END
-
 function tokenHash(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -1564,7 +1357,7 @@ function getAuthContext(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user || !isUserLoginEnabled(user)) return null;
+  if (!user) return null;
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1587,7 +1380,7 @@ async function getAuthContextAsync(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user || !isUserLoginEnabled(user)) return null;
+  if (!user) return null;
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1600,20 +1393,15 @@ async function getAuthContextAsync(req: express.Request) {
 }
 
 function publicUser(user: AppUser) {
-  const status = userAccountStatus(user);
   return {
     id: user.id,
-    email: status === 'deleted' ? null : user.email,
+    email: user.email,
     displayName: user.displayName,
     role: user.role,
-    pilotLink: status === 'deleted' ? null : user.pilotLink,
+    pilotLink: user.pilotLink,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    lastLoginAt: user.lastLoginAt,
-    status,
-    forcePasswordChange: Boolean(user.forcePasswordChange),
-    disabledAt: user.disabledAt ?? null,
-    deletedAt: user.deletedAt ?? null
+    lastLoginAt: user.lastLoginAt
   };
 }
 
@@ -1694,10 +1482,8 @@ function publicAdminUser(user: AppUser, store: AppUserStore) {
     ...publicUser(user),
     activeSessions: countSessionsForUser(store, user.id),
     hasPassword: Boolean(user.password?.hash),
-    linkedPilotName: userAccountStatus(user) === 'deleted' ? null : user.pilotLink?.strackerName ?? null,
-    linkedPlayerId: userAccountStatus(user) === 'deleted' ? null : user.pilotLink?.playerId ?? null,
-    disabledBy: user.disabledBy ?? null,
-    deletedBy: user.deletedBy ?? null
+    linkedPilotName: user.pilotLink?.strackerName ?? null,
+    linkedPlayerId: user.pilotLink?.playerId ?? null
   };
 }
 
@@ -1712,8 +1498,6 @@ function getUserStoreAdminSummary(store = readUserStore()) {
     linkedUsersCount: linkedUsers.length,
     unlinkedUsersCount: store.users.length - linkedUsers.length,
     activeSessionsCount: activeSessions.length,
-    disabledUsersCount: store.users.filter((user) => userAccountStatus(user) === 'disabled').length,
-    deletedUsersCount: store.users.filter((user) => userAccountStatus(user) === 'deleted').length,
     setupRequired: admins.length === 0,
     storage: getUsersDbInfo()
   };
@@ -1747,27 +1531,18 @@ function findUserByPilotId(store: AppUserStore, playerId: number, exceptUserId?:
 }
 
 let syncInProgress = false;
-type SyncPhaseDurations = Partial<Record<'connect' | 'download' | 'sqliteCheck' | 'backup' | 'rename' | 'mirror' | 'retention' | 'total', number>>;
-
-type StrackerSyncResult = {
+let lastSyncResult: null | {
   ok: boolean;
   startedAt: string;
   finishedAt: string;
   sizeBytes?: number;
-  downloadBytes?: number;
-  downloadSeconds?: number;
-  downloadMbps?: number;
-  downloadKbPerSec?: number;
-  downloadMethod?: 'fastGet' | 'get' | 'fastGet-fallback-get';
   savedPath?: string;
   backupPath?: string | null;
-  backupSkipped?: boolean;
-  phases?: SyncPhaseDurations;
   sqlMirror?: any;
   error?: string;
-};
+} = null;
 
-type StrackerSqlMirrorAutoSyncResult = {
+let lastStrackerSqlMirrorAutoSyncResult: null | {
   ok: boolean;
   enabled: boolean;
   reason: string;
@@ -1783,17 +1558,7 @@ type StrackerSqlMirrorAutoSyncResult = {
   durationMs?: number;
   message: string;
   error?: string;
-};
-
-let currentSyncTelemetry: null | {
-  startedAt: string;
-  phase: string;
-  phases: SyncPhaseDurations;
 } = null;
-
-let lastSyncResult: StrackerSyncResult | null = null;
-
-let lastStrackerSqlMirrorAutoSyncResult: StrackerSqlMirrorAutoSyncResult | null = null;
 
 let autoSyncTimer: NodeJS.Timeout | null = null;
 let nextAutoSyncAt: string | null = null;
@@ -1806,8 +1571,8 @@ let lastAutoSyncResult: null | {
   finishedAt: string;
   message: string;
   statusCode?: number;
-  sync?: StrackerSyncResult | null;
-  sqlMirror?: StrackerSqlMirrorAutoSyncResult | null;
+  sync?: typeof lastSyncResult;
+  sqlMirror?: typeof lastStrackerSqlMirrorAutoSyncResult;
   ratings?: any;
   error?: string;
 } = null;
@@ -1890,24 +1655,6 @@ function readNumberEnv(name: string, fallback: number, min: number, max: number)
   const value = Number(process.env[name]);
   if (!Number.isFinite(value)) return fallback;
   return Math.max(min, Math.min(max, value));
-}
-
-async function timeSyncPhase<T>(phases: SyncPhaseDurations, phase: keyof SyncPhaseDurations, work: () => Promise<T>) {
-  if (currentSyncTelemetry) currentSyncTelemetry.phase = phase;
-  const started = Date.now();
-  try {
-    return await work();
-  } finally {
-    phases[phase] = (phases[phase] ?? 0) + Date.now() - started;
-  }
-}
-
-async function unlinkIfExistsAsync(filePath: string) {
-  try {
-    await fs.promises.unlink(filePath);
-  } catch (error: any) {
-    if (error?.code !== 'ENOENT') throw error;
-  }
 }
 
 function getStrackerSqlMirrorAutoSyncConfig() {
@@ -1997,7 +1744,6 @@ function getAutoSyncConfig() {
     remoteConfigured: remote.configured,
     nextAutoSyncAt,
     syncInProgress,
-    currentSync: currentSyncTelemetry,
     runCount: autoSyncRunCount,
     failureCount: autoSyncFailureCount,
     lastAutoSync: lastAutoSyncResult,
@@ -2045,21 +1791,6 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     return;
   }
 
-  if (syncInProgress) {
-    console.warn('[GC] Auto-sync omitido: ya hay una sincronización sTracker en curso.');
-    lastAutoSyncResult = {
-      ok: false,
-      reason,
-      startedAt: new Date().toISOString(),
-      finishedAt: new Date().toISOString(),
-      message: 'Auto-sync omitido: ya hay una sincronización sTracker en curso.',
-      statusCode: 409,
-      sync: lastSyncResult
-    };
-    scheduleNextAutoSync(config.intervalMs);
-    return;
-  }
-
   const started = new Date().toISOString();
   autoSyncRunCount += 1;
   console.log(`[GC] Auto-sync stracker iniciado (${reason}).`);
@@ -2069,16 +1800,6 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
     const ok = Boolean(result.ok);
     if (!ok) autoSyncFailureCount += 1;
-
-    let sqlMirror: typeof lastStrackerSqlMirrorAutoSyncResult = null;
-    if (ok) {
-      const mirrorStarted = Date.now();
-      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync');
-      if (lastSyncResult?.phases) {
-        lastSyncResult.phases.mirror = Date.now() - mirrorStarted;
-      }
-      console.log(`[GC] sTracker phase mirror ${Date.now() - mirrorStarted}ms (${sqlMirror?.enabled ? 'enabled' : 'disabled'}).`);
-    }
 
     let ratingsAutoProcess: any = null;
     if (ok && String(process.env.GC_RATINGS_AUTO_PROCESS_ACSM || 'true').toLowerCase() !== 'false') {
@@ -2118,7 +1839,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
-      sqlMirror,
+      sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
       ratings: ratingsAutoProcess,
       error: ok ? undefined : result.sync?.error
     };
@@ -2653,152 +2374,115 @@ async function syncStrackerFromGTX() {
       message: 'No se pudo resolver la ruta local de stracker.db3.'
     };
   }
-  const targetPath = target.resolvedPath;
 
   syncInProgress = true;
-  ensureDirForFile(targetPath);
+  ensureDirForFile(target.resolvedPath);
 
-  const phases: SyncPhaseDurations = {};
-  const totalStarted = Date.now();
-  currentSyncTelemetry = {
-    startedAt: started,
-    phase: 'starting',
-    phases
-  };
-
-  const tempPath = `${targetPath}.download`;
-  let backupPath = fileExists(targetPath)
-    ? `${targetPath}.backup-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}`
+  const tempPath = `${target.resolvedPath}.download`;
+  const backupPath = fileExists(target.resolvedPath)
+    ? `${target.resolvedPath}.backup-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}`
     : null;
 
   let sftp: any = null;
-  let backupSkipped = false;
-  let downloadMethod: 'fastGet' | 'get' | 'fastGet-fallback-get' = 'get';
 
   try {
     const sftpModule = await import('ssh2-sftp-client');
     const SftpClient = sftpModule.default;
     sftp = new SftpClient('grasscutters-stracker-sync');
 
-    await timeSyncPhase(phases, 'connect', async () => {
-      await sftp.connect({
-        host: process.env.GTX_SFTP_HOST,
-        port: Number(process.env.GTX_SFTP_PORT ?? 22),
-        username: process.env.GTX_SFTP_USER,
-        password: process.env.GTX_SFTP_PASS,
-        readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
-      });
+    await sftp.connect({
+      host: process.env.GTX_SFTP_HOST,
+      port: Number(process.env.GTX_SFTP_PORT ?? 22),
+      username: process.env.GTX_SFTP_USER,
+      password: process.env.GTX_SFTP_PASS,
+      readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
     });
 
-    await unlinkIfExistsAsync(tempPath);
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
 
     const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
 
-    await timeSyncPhase(phases, 'download', async () => {
-      const downloadMode = process.env.STRACKER_SFTP_DOWNLOAD_MODE || 'fast';
-
-      if (downloadMode === 'get') {
-        downloadMethod = 'get';
-        await sftp.get(remoteDbPath, tempPath);
+    try {
+      await sftp.get(remoteDbPath, tempPath);
+    } catch (downloadError) {
+      console.warn('[GC] sTracker SFTP get(path) falló, probando get(buffer):', downloadError);
+      const remoteBuffer = await sftp.get(remoteDbPath);
+      if (Buffer.isBuffer(remoteBuffer)) {
+        fs.writeFileSync(tempPath, remoteBuffer);
+      } else if (remoteBuffer instanceof Uint8Array) {
+        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
       } else {
-        try {
-          await sftp.fastGet(remoteDbPath, tempPath, {
-            concurrency: Number(process.env.STRACKER_SFTP_FAST_CONCURRENCY || 8),
-            chunkSize: Number(process.env.STRACKER_SFTP_FAST_CHUNK_SIZE || 32768)
-          });
-          downloadMethod = 'fastGet';
-        } catch (fastError) {
-          downloadMethod = 'fastGet-fallback-get';
-          console.warn('[GC] sTracker fastGet falló, usando get() normal:', fastError);
-          await unlinkIfExistsAsync(tempPath);
-          await sftp.get(remoteDbPath, tempPath);
-        }
+        throw downloadError;
       }
-    });
+    }
+
+    if (!fs.existsSync(tempPath)) {
+      const remoteBuffer = await sftp.get(remoteDbPath);
+      if (Buffer.isBuffer(remoteBuffer)) {
+        fs.writeFileSync(tempPath, remoteBuffer);
+      } else if (remoteBuffer instanceof Uint8Array) {
+        fs.writeFileSync(tempPath, Buffer.from(remoteBuffer));
+      }
+    }
 
     if (!fs.existsSync(tempPath)) {
       throw new Error(`La descarga SFTP terminó sin crear el archivo temporal: ${tempPath}`);
     }
 
-    const stats = await fs.promises.stat(tempPath);
-    const downloadSeconds = (phases.download ?? 0) > 0 ? (phases.download ?? 0) / 1000 : 0;
-    const downloadBytes = stats.size;
-    const downloadKbPerSec = downloadSeconds > 0 ? downloadBytes / 1024 / downloadSeconds : 0;
-    const downloadMbps = downloadSeconds > 0 ? downloadBytes * 8 / 1000 / 1000 / downloadSeconds : 0;
+    const stats = fs.statSync(tempPath);
 
-    await timeSyncPhase(phases, 'sqliteCheck', async () => {
-      if (stats.size < 100) {
-        throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
-      }
+    if (stats.size < 100) {
+      throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
+    }
 
-      if (!isSQLiteFile(tempPath)) {
-        throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
-      }
-    });
+    if (!isSQLiteFile(tempPath)) {
+      throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
+    }
 
-    await timeSyncPhase(phases, 'backup', async () => {
-      if (!backupPath || !fs.existsSync(targetPath)) return;
-      try {
-        await fs.promises.link(targetPath, backupPath);
-      } catch (backupError) {
-        backupSkipped = true;
-        backupPath = null;
-        console.warn('[GC] sTracker backup hard-link omitido; no se hará copia síncrona grande:', backupError);
-      }
-    });
+    if (backupPath && fs.existsSync(target.resolvedPath)) {
+      fs.copyFileSync(target.resolvedPath, backupPath);
+    }
 
-    await timeSyncPhase(phases, 'rename', async () => {
-      await fs.promises.rename(tempPath, targetPath);
-    });
+    fs.renameSync(tempPath, target.resolvedPath);
 
     const finished = new Date().toISOString();
-    phases.total = Date.now() - totalStarted;
+    const sqlMirror = await syncStrackerSqlMirrorAfterDbSync('stracker-db-sync');
     lastSyncResult = {
       ok: true,
       startedAt: started,
       finishedAt: finished,
       sizeBytes: stats.size,
-      downloadBytes,
-      downloadSeconds,
-      downloadMbps,
-      downloadKbPerSec,
-      downloadMethod,
       savedPath: target.relativePath,
       backupPath: backupPath ? path.relative(rootDir, backupPath) : null,
-      backupSkipped,
-      phases
+      sqlMirror
     };
-    console.log(
-      `[GC] sTracker sync phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
-    );
 
     return {
       ok: true,
       statusCode: 200,
-      message: 'stracker.db3 sincronizado correctamente desde GTX.',
+      message: sqlMirror.ok
+        ? 'stracker.db3 sincronizado correctamente desde GTX y mirror SQL actualizado.'
+        : 'stracker.db3 sincronizado correctamente desde GTX, pero falló el mirror SQL.',
       sync: lastSyncResult,
+      sqlMirror,
       stracker: getStrackerConfig()
     };
   } catch (error) {
-    try {
-      await unlinkIfExistsAsync(tempPath);
-    } catch (_) {
-      // no-op
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (_) {
+        // no-op
+      }
     }
 
     const finished = new Date().toISOString();
-    phases.total = Date.now() - totalStarted;
     lastSyncResult = {
       ok: false,
       startedAt: started,
       finishedAt: finished,
-      downloadMethod,
-      phases,
       error: error instanceof Error ? error.message : String(error)
     };
-    console.warn(
-      `[GC] sTracker sync failed phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
-    );
 
     return {
       ok: false,
@@ -2808,7 +2492,6 @@ async function syncStrackerFromGTX() {
     };
   } finally {
     syncInProgress = false;
-    currentSyncTelemetry = null;
     if (sftp) {
       try {
         await sftp.end();
@@ -4793,6 +4476,7 @@ app.use((req, res, next) => {
 
 // GC ACSR/ACSM championship community integration v3.1
 /* GC_STRACKER_CHAMPIONSHIP_SAFETY_REGISTER_V1 */
+registerGcTrackAssetsResolverRoutes(app, { rootDir });
 registerAcsmChampionshipRoutes(app);
 registerGcRatingRoutes(app, {
   isAdmin: async (req) => {
@@ -5273,9 +4957,7 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
 
   try {
     const userId = gcAdminUsersV1UserIdFromReq(req);
-    const requestedPassword = String(req.body?.password || '');
-    const autoGenerate = req.body?.autoGenerate === true || req.body?.generate === true || !requestedPassword;
-    const password = autoGenerate ? generateTemporaryPassword() : requestedPassword;
+    const password = String(req.body?.password || '');
 
     if (!userId) {
       res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Falta userId.' });
@@ -5287,11 +4969,6 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       return;
     }
 
-    if (password.length > 128) {
-      res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La contraseÃ±a es demasiado larga.' });
-      return;
-    }
-
     const store = await readUserStoreAsync();
     const user = gcAdminUsersV1FindMutableUser(store, userId);
 
@@ -5300,49 +4977,23 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       return;
     }
 
-    if (userAccountStatus(user) === 'deleted') {
-      res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No se puede resetear una cuenta eliminada.' });
-      return;
-    }
-
-    const beforeValue = {
-      userId: user.id,
-      email: user.email,
-      activeSessions: countSessionsForUser(store, user.id),
-      forcePasswordChange: Boolean(user.forcePasswordChange)
-    };
-
     user.password = hashPassword(password);
-    user.forcePasswordChange = req.body?.forcePasswordChange !== false;
     user.updatedAt = new Date().toISOString();
 
     const before = store.sessions.length;
-    store.sessions = store.sessions.filter((session) => {
-      if (session.userId !== userId) return true;
-      if (user.id === context.user.id && session.id === context.session.id) return true;
-      return false;
-    });
+    store.sessions = store.sessions.filter((session) => session.userId !== userId);
     const revoked = before - store.sessions.length;
 
     await writeUserStoreAsync(store);
-    await writeAdminAuditLog(req, { context }, 'user.password_reset', 'user', user.id, beforeValue, {
-      userId: user.id,
-      email: user.email,
-      sessionsRevoked: revoked,
-      temporaryPasswordGenerated: autoGenerate,
-      forcePasswordChange: Boolean(user.forcePasswordChange)
-    });
 
     res.json({
       ok: true,
       revokedSessions: revoked,
-      temporaryPassword: autoGenerate ? password : undefined,
-      forcePasswordChange: Boolean(user.forcePasswordChange),
       user: gcAdminUsersV1Public(user, store),
       users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)),
       summary: getUserStoreAdminSummary(store),
       source: 'admin-users-backend-endpoints-v1',
-      message: autoGenerate ? 'ContraseÃ±a temporal generada. CÃ³piala ahora; no se volverÃ¡ a mostrar.' : 'ContraseÃ±a actualizada.'
+      message: 'ContraseÃ±a actualizada.'
     });
   } catch (error: any) {
     console.error('[GC] Error reseteando contraseÃ±a usuario admin v1:', error);
@@ -5351,126 +5002,6 @@ app.post('/api/admin/users/:id/password', async (req, res) => {
       source: 'admin-users-backend-endpoints-v1',
       message: error?.message || 'No se pudo cambiar la contraseÃ±a.'
     });
-  }
-});
-
-app.post('/api/admin/users/:id/disable', async (req, res) => {
-  const context = await gcAdminUsersV1Require(req, res);
-  if (!context) return;
-
-  try {
-    const userId = gcAdminUsersV1UserIdFromReq(req);
-    const store = await readUserStoreAsync();
-    const user = gcAdminUsersV1FindMutableUser(store, userId);
-
-    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
-    if (user.id === context.user.id) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes desactivar tu propia cuenta.' });
-    if (user.role === 'admin' && isLastAdmin(store, user.id)) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes desactivar el Ãºltimo administrador.' });
-    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La cuenta ya estÃ¡ eliminada.' });
-
-    const beforeValue = publicAdminUser(user, store);
-    user.disabledAt = new Date().toISOString();
-    user.disabledBy = context.user.id;
-    user.status = 'disabled';
-    user.updatedAt = new Date().toISOString();
-    const beforeSessions = store.sessions.length;
-    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
-    const revoked = beforeSessions - store.sessions.length;
-
-    await writeUserStoreAsync(store);
-    await writeAdminAuditLog(req, { context }, 'user.disable', 'user', user.id, beforeValue, publicAdminUser(user, store));
-
-    res.json({ ok: true, revokedSessions: revoked, user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta desactivada y sesiones cerradas.' });
-  } catch (error: any) {
-    console.error('[GC] Error desactivando usuario admin v1:', error);
-    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo desactivar la cuenta.' });
-  }
-});
-
-app.post('/api/admin/users/:id/enable', async (req, res) => {
-  const context = await gcAdminUsersV1Require(req, res);
-  if (!context) return;
-
-  try {
-    const userId = gcAdminUsersV1UserIdFromReq(req);
-    const store = await readUserStoreAsync();
-    const user = gcAdminUsersV1FindMutableUser(store, userId);
-
-    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
-    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes reactivar una cuenta eliminada.' });
-
-    const beforeValue = publicAdminUser(user, store);
-    user.disabledAt = null;
-    user.disabledBy = null;
-    user.status = 'active';
-    user.updatedAt = new Date().toISOString();
-
-    await writeUserStoreAsync(store);
-    await writeAdminAuditLog(req, { context }, 'user.enable', 'user', user.id, beforeValue, publicAdminUser(user, store));
-
-    res.json({ ok: true, user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta reactivada.' });
-  } catch (error: any) {
-    console.error('[GC] Error reactivando usuario admin v1:', error);
-    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo reactivar la cuenta.' });
-  }
-});
-
-app.post('/api/admin/users/:id/delete', async (req, res) => {
-  const context = await gcAdminUsersV1Require(req, res);
-  if (!context) return;
-
-  try {
-    const userId = gcAdminUsersV1UserIdFromReq(req);
-    // GC_ADMIN_USERS_DELETE_CONFIRM_V4
-    // En algunas instalaciones/hosts el body JSON puede no llegar parseado para esta ruta.
-    // Aceptamos la confirmación también por query y cabecera, manteniendo DELETE_USER obligatorio.
-    const confirmText = String(
-      req.body?.confirm ||
-      req.body?.confirmation ||
-      req.body?.confirmText ||
-      req.query?.confirm ||
-      req.query?.confirmation ||
-      req.get?.('x-gc-confirm') ||
-      ''
-    ).trim();
-    if (confirmText !== 'DELETE_USER') {
-      return res.status(400).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Confirmación requerida: DELETE_USER.' });
-    }
-
-    const store = await readUserStoreAsync();
-    const user = gcAdminUsersV1FindMutableUser(store, userId);
-
-    if (!user) return res.status(404).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'Usuario no encontrado.' });
-    if (user.id === context.user.id) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes borrar tu propia cuenta.' });
-    if (user.role === 'admin' && isLastAdmin(store, user.id)) return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'No puedes borrar el Ãºltimo administrador.' });
-    if (userAccountStatus(user) === 'deleted') return res.status(409).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: 'La cuenta ya estaba eliminada.' });
-
-    const beforeValue = publicAdminUser(user, store);
-    const now = new Date().toISOString();
-    user.email = `deleted-user-${user.id}@local.invalid`;
-    user.displayName = 'Usuario eliminado';
-    user.password = hashPassword(crypto.randomBytes(32).toString('hex'));
-    user.pilotLink = null;
-    user.forcePasswordChange = false;
-    user.disabledAt = now;
-    user.disabledBy = context.user.id;
-    user.deletedAt = now;
-    user.deletedBy = context.user.id;
-    user.status = 'deleted';
-    user.updatedAt = now;
-    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
-
-    await writeUserStoreAsync(store);
-    try {
-      await writeAdminAuditLog(req, { context }, 'user.soft_delete', 'user', user.id, beforeValue, publicAdminUser(user, store));
-    } catch (auditError) {
-      console.warn('[GC] No se pudo registrar audit log de borrado de usuario, pero la cuenta ya fue marcada como eliminada:', auditError);
-    }
-
-    res.json({ ok: true, mode: 'soft', user: gcAdminUsersV1Public(user, store), users: store.users.map((entry) => gcAdminUsersV1Public(entry, store)), summary: getUserStoreAdminSummary(store), source: 'admin-users-backend-endpoints-v1', message: 'Cuenta eliminada de forma segura. Se conserva el histÃ³rico sin romper relaciones.' });
-  } catch (error: any) {
-    console.error('[GC] Error eliminando usuario admin v1:', error);
-    res.status(500).json({ ok: false, source: 'admin-users-backend-endpoints-v1', message: error?.message || 'No se pudo eliminar la cuenta.' });
   }
 });
 
@@ -5521,133 +5052,6 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
     });
   }
 });
-
-
-app.post('/api/admin/users/:id/recovery-link', async (req, res) => {
-  const context = await gcAdminUsersV1Require(req, res);
-  if (!context) return;
-
-  try {
-    const userId = gcAdminUsersV1UserIdFromReq(req);
-    const expiresMinutes = Number(req.body?.expiresMinutes || req.query?.expiresMinutes || 60);
-
-    if (!userId) {
-      res.status(400).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Falta userId.' });
-      return;
-    }
-
-    const store = await readUserStoreAsync();
-    const user = gcAdminUsersV1FindMutableUser(store, userId);
-
-    if (!user) {
-      res.status(404).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Usuario no encontrado.' });
-      return;
-    }
-
-    if (userAccountStatus(user) !== 'active') {
-      res.status(400).json({ ok: false, source: 'admin-users-password-recovery-v2', message: 'Solo se puede generar recuperación para cuentas activas.' });
-      return;
-    }
-
-    const generated = gcCreatePasswordRecoveryToken(user, expiresMinutes);
-    const resetPath = `/recuperar-password?token=${encodeURIComponent(generated.token)}`;
-    const resetUrl = `${gcPasswordRecoveryPublicOrigin(req)}${resetPath}`;
-
-    res.json({
-      ok: true,
-      source: 'admin-users-password-recovery-v2',
-      user: gcAdminUsersV1Public(user, store),
-      token: generated.token,
-      resetPath,
-      resetUrl,
-      expiresAt: generated.expiresAt,
-      expiresMinutes: generated.minutes,
-      message: 'Enlace de recuperación generado. La contraseña actual no se puede ver porque está cifrada/hasheada.'
-    });
-  } catch (error: any) {
-    console.error('[GC] Error generando enlace recuperación password v2:', error);
-    res.status(500).json({
-      ok: false,
-      source: 'admin-users-password-recovery-v2',
-      message: error?.message || 'No se pudo generar el enlace de recuperación.'
-    });
-  }
-});
-
-app.post('/api/auth/password-recovery/verify', async (req, res) => {
-  try {
-    const token = req.body?.token || req.query?.token;
-    const store = await readUserStoreAsync();
-    const verification = gcVerifyPasswordRecoveryToken(token, store);
-
-    if (!verification.ok) {
-      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: verification.message });
-      return;
-    }
-
-    res.json({
-      ok: true,
-      source: 'password-recovery-v2',
-      user: {
-        id: verification.user.id,
-        email: verification.user.email,
-        displayName: verification.user.displayName
-      },
-      expiresAt: new Date(Number(verification.payload.exp)).toISOString()
-    });
-  } catch (error: any) {
-    console.error('[GC] Error verificando recuperación password v2:', error);
-    res.status(500).json({ ok: false, source: 'password-recovery-v2', message: error?.message || 'No se pudo verificar el enlace.' });
-  }
-});
-
-app.post('/api/auth/password-recovery/complete', async (req, res) => {
-  try {
-    const token = req.body?.token;
-    const password = String(req.body?.password || req.body?.newPassword || '');
-    const confirmPassword = String(req.body?.confirmPassword || req.body?.passwordConfirm || password);
-
-    if (password.length < 8) {
-      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: 'La contraseña debe tener al menos 8 caracteres.' });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: 'Las contraseñas no coinciden.' });
-      return;
-    }
-
-    const store = await readUserStoreAsync();
-    const verification = gcVerifyPasswordRecoveryToken(token, store);
-
-    if (!verification.ok) {
-      res.status(400).json({ ok: false, source: 'password-recovery-v2', message: verification.message });
-      return;
-    }
-
-    const user = verification.user;
-    user.password = hashPassword(password);
-    user.forcePasswordChange = false;
-    user.updatedAt = new Date().toISOString();
-
-    const before = store.sessions.length;
-    store.sessions = store.sessions.filter((session) => session.userId !== user.id);
-    const revoked = before - store.sessions.length;
-
-    await writeUserStoreAsync(store);
-
-    res.json({
-      ok: true,
-      source: 'password-recovery-v2',
-      revokedSessions: revoked,
-      message: 'Contraseña actualizada. Ya puedes iniciar sesión.'
-    });
-  } catch (error: any) {
-    console.error('[GC] Error completando recuperación password v2:', error);
-    res.status(500).json({ ok: false, source: 'password-recovery-v2', message: error?.message || 'No se pudo actualizar la contraseña.' });
-  }
-});
-
 // GC_ADMIN_USERS_BACKEND_ENDPOINTS_V1 END
 
 
@@ -6909,40 +6313,6 @@ app.get('/api/admin/status', async (req, res) => {
   });
 });
 
-app.post('/api/admin/ratings/recalculate-official-acsm', async (req, res) => {
-  const context = await requireAdmin(req, res);
-  if (!context) return;
-
-  try {
-    const dryRunValue = String(req.query.dryRun ?? req.body?.dryRun ?? '').trim().toLowerCase();
-    const payload = await getGcRatingsService().recalculateOfficialAcsmRaceRatings({
-      dryRun: ['1', 'true', 'yes', 'on'].includes(dryRunValue)
-    });
-
-    res.json({
-      ok: true,
-      source: 'gc-ratings-v1',
-      dryRun: Boolean(payload.dryRun),
-      generatedAt: payload.generatedAt,
-      totalDetected: payload.totalDetected,
-      recalculatedEvents: payload.recalculatedEvents ?? 0,
-      recalculatedDrivers: payload.recalculatedDrivers ?? 0,
-      ratingsDeleted: payload.ratingsDeleted ?? 0,
-      ratingsCreated: payload.ratingsCreated ?? 0,
-      errors: payload.errors ?? [],
-      targets: payload.targets ?? [],
-      message: payload.message
-    });
-  } catch (error) {
-    console.error('[GC] Error en recálculo oficial ACSM:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-ratings-v1',
-      message: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 app.post('/api/admin/bootstrap', async (req, res) => {
   if (!assertAdminSetupSecret(req)) {
     res.status(401).json({
@@ -7726,13 +7096,7 @@ app.post('/api/auth/register', async (req, res) => {
     pilotLink,
     createdAt: now,
     updatedAt: now,
-    lastLoginAt: now,
-    forcePasswordChange: false,
-    disabledAt: null,
-    disabledBy: null,
-    deletedAt: null,
-    deletedBy: null,
-    status: 'active'
+    lastLoginAt: now
   };
 
   store.users.push(user);
@@ -7763,11 +7127,6 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (!user || !verifyPassword(password, user.password)) {
     res.status(401).json({ ok: false, message: 'Email o contraseÃƒÂ±a incorrectos.' });
-    return;
-  }
-
-  if (!isUserLoginEnabled(user)) {
-    res.status(403).json({ ok: false, message: userAccountStatus(user) === 'deleted' ? 'Esta cuenta ha sido eliminada.' : 'Esta cuenta estÃƒÂ¡ desactivada.' });
     return;
   }
 
@@ -7932,7 +7291,6 @@ app.get('/api/stracker/status', (_req, res) => {
     ok: true,
     stracker: getModules().stracker,
     lastSync: lastSyncResult,
-    currentSync: currentSyncTelemetry,
     syncInProgress
   });
 });
@@ -7944,7 +7302,6 @@ app.get('/api/stracker/remote-config', (_req, res) => {
     autoSync: getAutoSyncConfig(),
     lastSync: lastSyncResult,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
-    currentSync: currentSyncTelemetry,
     syncInProgress,
     message: 'No se muestran usuario, contraseÃƒÂ±a ni secret. Solo si estÃƒÂ¡n configurados.'
   });
@@ -7958,7 +7315,6 @@ app.get('/api/stracker/auto-sync/status', (_req, res) => {
     remote: getRemoteStrackerConfig(),
     lastSync: lastSyncResult,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
-    currentSync: currentSyncTelemetry,
     syncInProgress
   });
 });
@@ -9435,285 +8791,6 @@ async function gcComboCanonicalReadItemsV1(strackerPath: string, sort = 'recent'
   const items = gcComboCanonicalSortItemsV1(gcComboCanonicalBuildGroupsV1(laps), sort).map(gcComboCanonicalCompatShapeV1);
   return { laps, items };
 }
-
-
-// GC_TRACK_ASSET_RESOLVER_V138_SERVER
-// Resolver server-side para Home. El navegador no puede listar public/images/tracks,
-// así que la Home dejaba de encontrar mapas/fotos cuando cambiaba el combo y el
-// nombre ACSM/sTracker no coincidía exactamente con el nombre del archivo.
-type GcTrackAssetFileV138 = {
-  url: string;
-  fileName: string;
-  baseName: string;
-  dirLabel: string;
-  kind: 'photo' | 'map';
-  ext: string;
-  tokens: string[];
-};
-
-type GcTrackAssetMetaV138 = {
-  keys?: string[];
-  name?: string;
-  title?: string;
-  track?: string;
-  photo?: string;
-  photoUrl?: string;
-  image?: string;
-  imageUrl?: string;
-  map?: string;
-  mapUrl?: string;
-  outline?: string;
-  distance?: string | number;
-  distanceKm?: string | number;
-  lengthKm?: string | number;
-  country?: string;
-  countryCode?: string;
-};
-
-let gcTrackAssetCacheV138: { builtAt: number; files: GcTrackAssetFileV138[]; metas: GcTrackAssetMetaV138[] } | null = null;
-
-function gcTrackAssetNormalizeV138(value: unknown) {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-function gcTrackAssetCleanTokensV138(value: unknown) {
-  const normalized = gcTrackAssetNormalizeV138(value)
-    .replace(/\b20\d{2}\b/g, '_')
-    .replace(/(^|_)(v|ver|version)_?\d+($|_)/g, '_')
-    .replace(/(_|^)(mapa|map|outline|layout|track|circuit|trazado|photo|foto|hero|image|img|cover|background|bg)(_|$)/g, '_');
-
-  const drop = new Set([
-    'ks', 'rt', 'mx', 'nrms', 'nrs', 'acu', 'acf', 'actk', 'sim', 'track', 'circuit',
-    'layout', 'online', 'final', 'server', 'test', 'testing', 'day', 'night', 'standing',
-    'elms', 'rss', 'vln', 'race', 'racing', 'edition', 'full', 'default', 'map', 'mapa',
-    'outline', 'trazado', 'photo', 'foto', 'hero', 'image', 'img', 'cover', 'background', 'bg'
-  ]);
-
-  return normalized
-    .split(/_+/)
-    .flatMap((token) => {
-      const compact = token.trim();
-      if (!compact) return [];
-      return compact
-        .replace(/(fuji)(speedway)?/g, 'fuji ')
-        .replace(/(portimao)/g, 'portimao ')
-        .replace(/(algarve)/g, 'algarve ')
-        .replace(/(magione)/g, 'magione ')
-        .replace(/(zolder)(20\d{2})?(online)?/g, 'zolder ')
-        .replace(/(phill?ip)(island)(20\d{2})?/g, 'phillip island ')
-        .replace(/(hockenheim)(ring|gp)?/g, 'hockenheim ')
-        .replace(/(sebring)(20\d{2})?/g, 'sebring ')
-        .split(/\s+/);
-    })
-    .map((token) => token.trim())
-    .filter((token) => token.length >= 3 && !drop.has(token));
-}
-
-function gcTrackAssetKindV138(baseName: string): 'photo' | 'map' {
-  const normalized = gcTrackAssetNormalizeV138(baseName);
-  if (/(^|_)(mapa|map|outline|trazado)(_|$)/.test(normalized)) return 'map';
-  if (/(^|_)(layout|track_map|circuit_map)(_|$)/.test(normalized)) return 'map';
-  if (/(^|_)(photo|foto|hero|image|img|cover|background|bg)(_|$)/.test(normalized)) return 'photo';
-  return 'photo';
-}
-
-function gcTrackAssetBaseNameV138(fileName: string) {
-  return String(fileName || '').replace(/\.(avif|webp|jpe?g|png|svg)$/i, '');
-}
-
-function gcTrackAssetDirsV138() {
-  return [
-    { dir: path.join(rootDir, 'public', 'images', 'tracks'), url: '/images/tracks', label: 'public/images/tracks' },
-    { dir: path.join(rootDir, 'public', 'imagenes', 'tracks'), url: '/imagenes/tracks', label: 'public/imagenes/tracks' },
-    { dir: path.join(rootDir, 'public', 'images', 'circuits'), url: '/images/circuits', label: 'public/images/circuits' },
-    { dir: path.join(rootDir, 'public', 'imagenes', 'circuitos'), url: '/imagenes/circuitos', label: 'public/imagenes/circuitos' },
-    { dir: path.join(rootDir, 'public', 'images', 'maps'), url: '/images/maps', label: 'public/images/maps' },
-    { dir: path.join(rootDir, 'public', 'images', 'track-maps'), url: '/images/track-maps', label: 'public/images/track-maps' }
-  ];
-}
-
-function gcTrackAssetReadMetasV138(): GcTrackAssetMetaV138[] {
-  const files = [
-    path.join(rootDir, 'public', 'images', 'tracks', 'track-assets.json'),
-    path.join(rootDir, 'public', 'data', 'track-assets.json'),
-    path.join(rootDir, 'data', 'track-assets.json')
-  ];
-
-  const metas: GcTrackAssetMetaV138[] = [];
-  for (const file of files) {
-    try {
-      if (!fs.existsSync(file)) continue;
-      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-      const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : Object.values(parsed || {});
-      rows.forEach((row: any) => {
-        if (row && typeof row === 'object') metas.push(row as GcTrackAssetMetaV138);
-      });
-    } catch (error) {
-      console.warn('[GC Track Assets] No se pudo leer metadata', { file, error });
-    }
-  }
-  return metas;
-}
-
-function gcTrackAssetBuildCacheV138() {
-  const now = Date.now();
-  if (gcTrackAssetCacheV138 && now - gcTrackAssetCacheV138.builtAt < 60_000) return gcTrackAssetCacheV138;
-
-  const files: GcTrackAssetFileV138[] = [];
-  const imageExt = /\.(avif|webp|jpe?g|png|svg)$/i;
-
-  for (const entry of gcTrackAssetDirsV138()) {
-    try {
-      if (!fs.existsSync(entry.dir)) continue;
-      const names = fs.readdirSync(entry.dir, { withFileTypes: true });
-      for (const item of names) {
-        if (!item.isFile() || !imageExt.test(item.name)) continue;
-        const baseName = gcTrackAssetBaseNameV138(item.name);
-        const ext = (item.name.match(imageExt)?.[1] || '').toLowerCase();
-        files.push({
-          url: `${entry.url}/${encodeURIComponent(item.name).replace(/%2F/g, '/')}`,
-          fileName: item.name,
-          baseName,
-          dirLabel: entry.label,
-          kind: gcTrackAssetKindV138(baseName),
-          ext,
-          tokens: gcTrackAssetCleanTokensV138(baseName)
-        });
-      }
-    } catch (error) {
-      console.warn('[GC Track Assets] No se pudo escanear directorio', { dir: entry.dir, error });
-    }
-  }
-
-  gcTrackAssetCacheV138 = { builtAt: now, files, metas: gcTrackAssetReadMetasV138() };
-  return gcTrackAssetCacheV138;
-}
-
-function gcTrackAssetScoreV138(file: GcTrackAssetFileV138, queryTokens: string[], querySlugs: string[], wantedKind: 'photo' | 'map') {
-  if (file.kind !== wantedKind) return -100000;
-  const fileSlug = gcTrackAssetNormalizeV138(file.baseName);
-  const fileCompact = fileSlug.replace(/_/g, '');
-  let score = 0;
-
-  for (const slug of querySlugs) {
-    if (!slug) continue;
-    const compact = slug.replace(/_/g, '');
-    if (fileSlug === slug) score += 1000;
-    else if (fileSlug.startsWith(slug + '_') || fileSlug.endsWith('_' + slug)) score += 520;
-    else if (slug.includes(fileSlug) || fileSlug.includes(slug)) score += 320;
-    else if (compact.length >= 5 && (fileCompact.includes(compact) || compact.includes(fileCompact))) score += 260;
-  }
-
-  const fileTokenSet = new Set(file.tokens);
-  let tokenHits = 0;
-  for (const token of queryTokens) {
-    if (fileTokenSet.has(token)) {
-      tokenHits += 1;
-      score += 180;
-    }
-  }
-
-  if (tokenHits >= 2) score += 140;
-  if (wantedKind === 'map' && /(^|_)(map|mapa|outline|trazado)(_|$)/.test(gcTrackAssetNormalizeV138(file.baseName))) score += 160;
-  if (wantedKind === 'photo' && /(^|_)(photo|foto|hero|image|cover)(_|$)/.test(gcTrackAssetNormalizeV138(file.baseName))) score += 60;
-  if (['png', 'webp', 'jpg', 'jpeg'].includes(file.ext)) score += 10;
-
-  return score;
-}
-
-function gcTrackAssetMetaMatchV138(meta: GcTrackAssetMetaV138, queryTokens: string[], querySlugs: string[]) {
-  const values = [meta.name, meta.title, meta.track, ...(Array.isArray(meta.keys) ? meta.keys : [])].filter(Boolean);
-  const slugs = values.map(gcTrackAssetNormalizeV138).filter(Boolean);
-  const tokens = values.flatMap(gcTrackAssetCleanTokensV138);
-  let score = 0;
-  for (const slug of querySlugs) {
-    if (slugs.includes(slug)) score += 800;
-    if (slugs.some((item) => item.includes(slug) || slug.includes(item))) score += 260;
-  }
-  const tokenSet = new Set(tokens);
-  queryTokens.forEach((token) => {
-    if (tokenSet.has(token)) score += 160;
-  });
-  return score;
-}
-
-function gcTrackAssetResolveV138(names: unknown[]) {
-  const cleanNames = names.map((value) => String(value ?? '').trim()).filter(Boolean);
-  const querySlugs = [...new Set(cleanNames.map(gcTrackAssetNormalizeV138).filter(Boolean))];
-  const queryTokens = [...new Set(cleanNames.flatMap(gcTrackAssetCleanTokensV138))];
-  const cache = gcTrackAssetBuildCacheV138();
-
-  const bestFile = (kind: 'photo' | 'map') => cache.files
-    .map((file) => ({ file, score: gcTrackAssetScoreV138(file, queryTokens, querySlugs, kind) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || a.file.fileName.localeCompare(b.file.fileName))[0] || null;
-
-  const bestMeta = cache.metas
-    .map((meta) => ({ meta, score: gcTrackAssetMetaMatchV138(meta, queryTokens, querySlugs) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)[0] || null;
-
-  const photo = bestMeta?.meta.photoUrl || bestMeta?.meta.photo || bestMeta?.meta.imageUrl || bestMeta?.meta.image || bestFile('photo')?.file.url || '';
-  const map = bestMeta?.meta.mapUrl || bestMeta?.meta.map || bestMeta?.meta.outline || bestFile('map')?.file.url || '';
-  const distanceValue = bestMeta?.meta.distanceKm ?? bestMeta?.meta.lengthKm ?? bestMeta?.meta.distance ?? '';
-  const countryCode = bestMeta?.meta.countryCode || bestMeta?.meta.country || '';
-
-  return {
-    ok: true,
-    assets: {
-      key: queryTokens.join('_') || querySlugs[0] || '',
-      photoUrl: photo,
-      mapUrl: map,
-      distanceKm: distanceValue,
-      distanceText: distanceValue ? String(distanceValue).includes('km') ? String(distanceValue) : `${distanceValue} km` : '',
-      countryCode,
-      confidence: Math.max(bestFile('photo')?.score || 0, bestFile('map')?.score || 0, bestMeta?.score || 0)
-    },
-    debug: {
-      query: cleanNames,
-      querySlugs,
-      queryTokens,
-      filesScanned: cache.files.length,
-      metaRows: cache.metas.length,
-      photoMatch: bestFile('photo') ? { url: bestFile('photo')!.file.url, score: bestFile('photo')!.score, tokens: bestFile('photo')!.file.tokens } : null,
-      mapMatch: bestFile('map') ? { url: bestFile('map')!.file.url, score: bestFile('map')!.score, tokens: bestFile('map')!.file.tokens } : null,
-      metaMatch: bestMeta ? { score: bestMeta.score, keys: bestMeta.meta.keys || bestMeta.meta.name || bestMeta.meta.title } : null
-    }
-  };
-}
-
-app.get('/api/gc/track-assets/resolve', async (req: any, res: any) => {
-  try {
-    const raw = req.query.track;
-    const tracks = Array.isArray(raw) ? raw : raw ? [raw] : [];
-    const extra = [req.query.rawTrackName, req.query.trackAssetName, req.query.displayName, req.query.canonicalKey].filter(Boolean);
-    const result = gcTrackAssetResolveV138([...tracks, ...extra]);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json(result);
-  } catch (error) {
-    console.error('[GC Track Assets] Resolve error:', error);
-    res.status(500).json({ ok: false, message: 'No se pudieron resolver assets del circuito.' });
-  }
-});
-
-app.get('/api/gc/track-assets', async (req: any, res: any) => {
-  try {
-    const raw = req.query.track;
-    const tracks = Array.isArray(raw) ? raw : raw ? [raw] : [];
-    const result = gcTrackAssetResolveV138(tracks);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json(result);
-  } catch (error) {
-    console.error('[GC Track Assets] Resolve error:', error);
-    res.status(500).json({ ok: false, message: 'No se pudieron resolver assets del circuito.' });
-  }
-});
 
 app.get('/api/gc/combos', async (req: any, res: any) => {
   const stracker = getSafeStrackerOrRespond(res);
@@ -11554,134 +10631,6 @@ function gcDataCoreLeaderboard(laps: any[], limit: number) {
   return makeBestHotlaps(laps.filter((lap) => lap?.valid !== false && lap?.Valid !== 0), 'best').slice(0, limit);
 }
 
-function gcDataCoreCarOptionKey(value: unknown) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function gcDataCoreDriverCarLeaderboard(laps: any[], limit: number) {
-  const bestMap = new Map<string, any>();
-
-  for (const lap of laps) {
-    const lapMs = Number(lap?.lapTimeMs ?? Infinity);
-    if (!Number.isFinite(lapMs) || lapMs <= 0) continue;
-
-    const driverKey =
-      lap?.driver?.id !== null && lap?.driver?.id !== undefined
-        ? `player:${lap.driver.id}`
-        : lap?.driver?.steamGuid
-          ? `steam:${lap.driver.steamGuid}`
-          : `name:${String(lap?.driver?.name ?? lap?.driverName ?? '').trim().toLowerCase()}`;
-    const carKey =
-      lap?.car?.id !== null && lap?.car?.id !== undefined
-        ? `car:${lap.car.id}`
-        : `name:${String(lap?.car?.name ?? lap?.carName ?? '').trim().toLowerCase()}`;
-
-    if (!driverKey || !carKey || driverKey === 'name:' || carKey === 'name:') continue;
-
-    const key = `${driverKey}|${carKey}`;
-    const current = bestMap.get(key);
-    if (!current || lapMs < Number(current?.lapTimeMs ?? Infinity)) {
-      bestMap.set(key, lap);
-    }
-  }
-
-  return Array.from(bestMap.values())
-    .sort((a, b) => Number(a?.lapTimeMs ?? Infinity) - Number(b?.lapTimeMs ?? Infinity))
-    .slice(0, limit);
-}
-
-async function gcDataCoreActiveComboDriverCarLeaderboard(req: express.Request, scope: GcDataCoreScope, limit: number) {
-  const stracker = getStrackerConfig();
-  if (!stracker?.resolvedPath || !stracker?.exists || !stracker?.validSQLite) {
-    return {
-      ok: false,
-      mode: 'unavailable',
-      generatedAt: new Date().toISOString(),
-      source: 'stracker',
-      stracker: gcDataCorePublicStracker(stracker),
-      activeCombo: null,
-      cars: [],
-      count: 0,
-      items: [],
-      leaderboard: [],
-      laps: [],
-      hotlaps: [],
-      data: null,
-      message: 'stracker.db3 no está disponible.'
-    };
-  }
-
-  const validParam = getQueryString(req, 'valid', 'true').toLowerCase();
-  const validOnly = !['all', 'any', '0', 'false', 'no'].includes(validParam);
-  const [laps, comboDefinitions] = await Promise.all([
-    readJoinedLaps(stracker.resolvedPath),
-    getCombos(stracker.resolvedPath)
-  ]);
-
-  const comboStats = buildComboStatsFromLaps(laps, comboDefinitions);
-  const activeCombo = gcDataCoreActiveCombo(comboStats);
-  const scopedLaps = scope === 'activeCombo'
-    ? activeCombo
-      ? laps.filter((lap: any) => gcDataCoreComboLapMatch(lap, activeCombo))
-      : []
-    : laps;
-  const filteredLaps = validOnly
-    ? scopedLaps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0)
-    : scopedLaps;
-  const grouped = gcDataCoreDriverCarLeaderboard(filteredLaps, limit);
-  const items = grouped.map((lap) => compactLapForCombo(lap)).filter(Boolean);
-  const carCounts = new Map<string, { key: string; name: string; rowsCount: number }>();
-
-  items.forEach((item: any) => {
-    const name = String(item?.carName ?? '').trim();
-    const key = gcDataCoreCarOptionKey(name);
-    if (!key || !name) return;
-    const current = carCounts.get(key);
-    if (current) current.rowsCount += 1;
-    else carCounts.set(key, { key, name, rowsCount: 1 });
-  });
-
-  return {
-    ok: true,
-    mode: 'gc-data-core-v1',
-    generatedAt: new Date().toISOString(),
-    source: 'gc-active-combo-driver-car-leaderboard',
-    scope,
-    stracker: gcDataCorePublicStracker(stracker),
-    activeCombo: activeCombo ? {
-      comboId: activeCombo.comboId ?? activeCombo.canonicalComboId ?? activeCombo.id ?? null,
-      trackName: activeCombo.track?.name ?? activeCombo.trackName ?? null,
-      cars: Array.isArray(activeCombo.cars) ? activeCombo.cars : []
-    } : null,
-    cars: Array.from(carCounts.values()).sort((a, b) => a.name.localeCompare(b.name)),
-    count: items.length,
-    items,
-    leaderboard: items,
-    laps: items,
-    hotlaps: items,
-    data: {
-      activeCombo,
-      items,
-      leaderboard: items,
-      laps: items,
-      stats: {
-        totalLaps: filteredLaps.length,
-        groupedRows: items.length,
-        validOnly
-      }
-    },
-    message: activeCombo
-      ? 'Leaderboard canónico del combo activo agrupado por piloto y coche.'
-      : 'No hay combo activo detectado.'
-  };
-}
-
 function gcDataCorePublicStracker(stracker: any) {
   return {
     exists: Boolean(stracker?.exists),
@@ -13225,7 +12174,6 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     await readDisplayNameStoreAsync();
 
     const rawScope = getQueryString(req, 'scope', 'activeCombo').toLowerCase();
-    const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
     const globalScopes = ['global', 'all', 'history', 'historico', 'histÃ³rico', 'full', 'complete', 'completo'];
     const scope = globalScopes.includes(rawScope) ? 'global' : 'activeCombo';
     const wantsRawGlobal = scope === 'global';
@@ -13235,12 +12183,6 @@ app.get('/api/gc/leaderboard', async (req, res) => {
     const limit = wantsAllReferences
       ? Number.POSITIVE_INFINITY
       : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
-
-    if (groupMode === 'driver-car') {
-      const payload = await gcDataCoreActiveComboDriverCarLeaderboard(req, scope, limit);
-      res.json(payload);
-      return;
-    }
 
     if (wantsRawGlobal) {
       const stracker = getSafeStrackerOrRespond(res);
@@ -13332,31 +12274,6 @@ app.get('/api/gc/leaderboard', async (req, res) => {
   } catch (error) {
     console.error('[GC DATA CORE] /api/gc/leaderboard:', error);
     res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, items: [], laps: [], hotlaps: [], leaderboard: [], message: 'No se pudo generar el leaderboard canÃ³nico.' });
-  }
-});
-
-app.get('/api/gc/active-combo-car-leaderboard', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-    const limit = gcDataCoreQueryNumber(req, 'limit', 3000, 1, 50000);
-    const payload = await gcDataCoreActiveComboDriverCarLeaderboard(req, 'activeCombo', limit);
-    res.json(payload);
-  } catch (error) {
-    console.error('[GC DATA CORE] /api/gc/active-combo-car-leaderboard:', error);
-    res.status(200).json({
-      ok: true,
-      mode: 'gc-data-core-v1',
-      source: 'gc-active-combo-driver-car-leaderboard',
-      activeCombo: null,
-      cars: [],
-      count: 0,
-      items: [],
-      leaderboard: [],
-      laps: [],
-      hotlaps: [],
-      data: null,
-      message: 'No se pudo generar el leaderboard del combo activo por coche.'
-    });
   }
 });
 
@@ -14515,3 +13432,6 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
+
+
+
