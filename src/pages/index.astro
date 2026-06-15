@@ -2095,9 +2095,21 @@ const home2ArchiveSeed = (archiveStats.items || [])
         img.dataset.resolvedPhoto = 'fallback-photo';
       };
 
+      const isHomeTrackMapRealV141 = (img) => {
+        if (!img) return false;
+        const value = String(img.dataset?.resolvedMap || img.currentSrc || img.src || '');
+        if (!value) return false;
+        return !/gc-home2-track-(outline|fallback)|fallback|pending|placeholder/i.test(value);
+      };
+
       const setTrackMap = async (...trackNames) => {
         const img = $('[data-home2-track-map]');
         if (!img) return;
+
+        // GC_TRACK_ASSETS_NO_DOWNGRADE_V141
+        // Si ya tenemos un mapa real cargado, nunca lo sustituimos por fallback durante
+        // un refresh posterior. Esto evita el patrón: carga bien -> un candidato viejo falla -> fallback.
+        const hadRealMap = isHomeTrackMapRealV141(img);
 
         // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_MAP
         // Mapas: rutas reales conocidas primero. Nada de GCTrackImages ni manifests aquí.
@@ -2110,6 +2122,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           }
         }
 
+        if (hadRealMap) return;
         img.src = '/ui/home2/gc-home2-track-outline.svg';
         img.dataset.resolvedMap = 'fallback-outline';
       };
@@ -2142,8 +2155,15 @@ const home2ArchiveSeed = (archiveStats.items || [])
       const setTrackMapDirectV139 = (src) => {
         const img = $('[data-home2-track-map]');
         if (!img || !src) return false;
+        const previousSrc = isHomeTrackMapRealV141(img) ? (img.currentSrc || img.src || img.dataset.resolvedMap || '') : '';
+        const previousResolved = isHomeTrackMapRealV141(img) ? (img.dataset.resolvedMap || previousSrc) : '';
         img.onerror = function () {
           this.onerror = null;
+          if (previousSrc) {
+            this.src = previousSrc;
+            this.dataset.resolvedMap = previousResolved || previousSrc;
+            return;
+          }
           this.src = '/ui/home2/gc-home2-track-outline.svg';
           this.dataset.resolvedMap = 'fallback-outline';
         };
@@ -3701,12 +3721,15 @@ const home2ArchiveSeed = (archiveStats.items || [])
           await setTrackImage(trackAssetName || track);
         }
         if (!setTrackMapDirectV139(resolvedTrackAssets?.map || '')) {
-          await setTrackMap(
-            rawTrackName,
-            trackAssetName,
-            track,
-            firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
-          );
+          const mapImg = $('[data-home2-track-map]');
+          if (!isHomeTrackMapRealV141(mapImg)) {
+            await setTrackMap(
+              rawTrackName,
+              trackAssetName,
+              track,
+              firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
+            );
+          }
         }
 
         const champTrackImageFallback = $('[data-home2-champ-track-image]');
