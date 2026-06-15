@@ -161,12 +161,23 @@ function roleFromBase(base: string): AssetRole {
 }
 
 function getPublicRoots(rootDir: string) {
-  return [
-    path.join(rootDir, 'public'),
-    path.join(rootDir, 'dist', 'client'),
+  // GC_TRACK_ASSETS_RESOLVER_V140_ROOTS
+  // Hostinger puede arrancar la app desde la raíz del proyecto o directamente desde dist/.
+  // En el segundo caso los assets de public quedan copiados como /images/... dentro del propio rootDir,
+  // no en rootDir/public. Por eso el rootDir debe ser una raíz escaneable más.
+  const candidates = [
+    rootDir,
     path.join(rootDir, 'client'),
-    path.join(rootDir, 'dist')
-  ].filter((dir, index, arr) => dir && arr.indexOf(dir) === index);
+    path.join(rootDir, 'public'),
+    path.join(rootDir, 'dist'),
+    path.join(rootDir, 'dist', 'client'),
+    path.join(rootDir, '..'),
+    path.join(rootDir, '..', 'public'),
+    path.join(rootDir, '..', 'dist'),
+    path.join(rootDir, '..', 'dist', 'client')
+  ].map((dir) => path.resolve(dir));
+
+  return candidates.filter((dir, index, arr) => dir && arr.indexOf(dir) === index);
 }
 
 function walkImages(dir: string, depth = 0): string[] {
@@ -421,12 +432,33 @@ export function registerGcTrackAssetsResolverRoutes(app: express.Express, option
       req.query.hint
     ].flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
 
+    const force = String(req.query.refresh || '') === '1';
     const resolved = resolveGcTrackAssets(values, {
       rootDir: options.rootDir,
-      force: String(req.query.refresh || '') === '1'
+      force
     });
 
     res.setHeader('Cache-Control', 'no-store');
+
+    if (String(req.query.debug || '') === '1') {
+      const rootDir = options.rootDir ? path.resolve(options.rootDir) : process.cwd();
+      const inventory = scan(rootDir, false);
+      res.json({
+        ...resolved,
+        debug: {
+          rootDir,
+          publicRoots: getPublicRoots(rootDir),
+          assetsCount: inventory.assets.length,
+          metadataCount: inventory.metadata.length,
+          matchedAssets: inventory.assets
+            .filter((asset) => resolved.queryTokens.some((token) => asset.base.includes(token) || asset.stem.includes(token) || asset.tokens.includes(token)))
+            .slice(0, 30)
+            .map((asset) => ({ url: asset.url, filename: asset.filename, role: asset.role, stem: asset.stem, tokens: asset.tokens }))
+        }
+      });
+      return;
+    }
+
     res.json(resolved);
   });
 }
