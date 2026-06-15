@@ -9436,6 +9436,285 @@ async function gcComboCanonicalReadItemsV1(strackerPath: string, sort = 'recent'
   return { laps, items };
 }
 
+
+// GC_TRACK_ASSET_RESOLVER_V138_SERVER
+// Resolver server-side para Home. El navegador no puede listar public/images/tracks,
+// así que la Home dejaba de encontrar mapas/fotos cuando cambiaba el combo y el
+// nombre ACSM/sTracker no coincidía exactamente con el nombre del archivo.
+type GcTrackAssetFileV138 = {
+  url: string;
+  fileName: string;
+  baseName: string;
+  dirLabel: string;
+  kind: 'photo' | 'map';
+  ext: string;
+  tokens: string[];
+};
+
+type GcTrackAssetMetaV138 = {
+  keys?: string[];
+  name?: string;
+  title?: string;
+  track?: string;
+  photo?: string;
+  photoUrl?: string;
+  image?: string;
+  imageUrl?: string;
+  map?: string;
+  mapUrl?: string;
+  outline?: string;
+  distance?: string | number;
+  distanceKm?: string | number;
+  lengthKm?: string | number;
+  country?: string;
+  countryCode?: string;
+};
+
+let gcTrackAssetCacheV138: { builtAt: number; files: GcTrackAssetFileV138[]; metas: GcTrackAssetMetaV138[] } | null = null;
+
+function gcTrackAssetNormalizeV138(value: unknown) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function gcTrackAssetCleanTokensV138(value: unknown) {
+  const normalized = gcTrackAssetNormalizeV138(value)
+    .replace(/\b20\d{2}\b/g, '_')
+    .replace(/(^|_)(v|ver|version)_?\d+($|_)/g, '_')
+    .replace(/(_|^)(mapa|map|outline|layout|track|circuit|trazado|photo|foto|hero|image|img|cover|background|bg)(_|$)/g, '_');
+
+  const drop = new Set([
+    'ks', 'rt', 'mx', 'nrms', 'nrs', 'acu', 'acf', 'actk', 'sim', 'track', 'circuit',
+    'layout', 'online', 'final', 'server', 'test', 'testing', 'day', 'night', 'standing',
+    'elms', 'rss', 'vln', 'race', 'racing', 'edition', 'full', 'default', 'map', 'mapa',
+    'outline', 'trazado', 'photo', 'foto', 'hero', 'image', 'img', 'cover', 'background', 'bg'
+  ]);
+
+  return normalized
+    .split(/_+/)
+    .flatMap((token) => {
+      const compact = token.trim();
+      if (!compact) return [];
+      return compact
+        .replace(/(fuji)(speedway)?/g, 'fuji ')
+        .replace(/(portimao)/g, 'portimao ')
+        .replace(/(algarve)/g, 'algarve ')
+        .replace(/(magione)/g, 'magione ')
+        .replace(/(zolder)(20\d{2})?(online)?/g, 'zolder ')
+        .replace(/(phill?ip)(island)(20\d{2})?/g, 'phillip island ')
+        .replace(/(hockenheim)(ring|gp)?/g, 'hockenheim ')
+        .replace(/(sebring)(20\d{2})?/g, 'sebring ')
+        .split(/\s+/);
+    })
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !drop.has(token));
+}
+
+function gcTrackAssetKindV138(baseName: string): 'photo' | 'map' {
+  const normalized = gcTrackAssetNormalizeV138(baseName);
+  if (/(^|_)(mapa|map|outline|trazado)(_|$)/.test(normalized)) return 'map';
+  if (/(^|_)(layout|track_map|circuit_map)(_|$)/.test(normalized)) return 'map';
+  if (/(^|_)(photo|foto|hero|image|img|cover|background|bg)(_|$)/.test(normalized)) return 'photo';
+  return 'photo';
+}
+
+function gcTrackAssetBaseNameV138(fileName: string) {
+  return String(fileName || '').replace(/\.(avif|webp|jpe?g|png|svg)$/i, '');
+}
+
+function gcTrackAssetDirsV138() {
+  return [
+    { dir: path.join(rootDir, 'public', 'images', 'tracks'), url: '/images/tracks', label: 'public/images/tracks' },
+    { dir: path.join(rootDir, 'public', 'imagenes', 'tracks'), url: '/imagenes/tracks', label: 'public/imagenes/tracks' },
+    { dir: path.join(rootDir, 'public', 'images', 'circuits'), url: '/images/circuits', label: 'public/images/circuits' },
+    { dir: path.join(rootDir, 'public', 'imagenes', 'circuitos'), url: '/imagenes/circuitos', label: 'public/imagenes/circuitos' },
+    { dir: path.join(rootDir, 'public', 'images', 'maps'), url: '/images/maps', label: 'public/images/maps' },
+    { dir: path.join(rootDir, 'public', 'images', 'track-maps'), url: '/images/track-maps', label: 'public/images/track-maps' }
+  ];
+}
+
+function gcTrackAssetReadMetasV138(): GcTrackAssetMetaV138[] {
+  const files = [
+    path.join(rootDir, 'public', 'images', 'tracks', 'track-assets.json'),
+    path.join(rootDir, 'public', 'data', 'track-assets.json'),
+    path.join(rootDir, 'data', 'track-assets.json')
+  ];
+
+  const metas: GcTrackAssetMetaV138[] = [];
+  for (const file of files) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : Object.values(parsed || {});
+      rows.forEach((row: any) => {
+        if (row && typeof row === 'object') metas.push(row as GcTrackAssetMetaV138);
+      });
+    } catch (error) {
+      console.warn('[GC Track Assets] No se pudo leer metadata', { file, error });
+    }
+  }
+  return metas;
+}
+
+function gcTrackAssetBuildCacheV138() {
+  const now = Date.now();
+  if (gcTrackAssetCacheV138 && now - gcTrackAssetCacheV138.builtAt < 60_000) return gcTrackAssetCacheV138;
+
+  const files: GcTrackAssetFileV138[] = [];
+  const imageExt = /\.(avif|webp|jpe?g|png|svg)$/i;
+
+  for (const entry of gcTrackAssetDirsV138()) {
+    try {
+      if (!fs.existsSync(entry.dir)) continue;
+      const names = fs.readdirSync(entry.dir, { withFileTypes: true });
+      for (const item of names) {
+        if (!item.isFile() || !imageExt.test(item.name)) continue;
+        const baseName = gcTrackAssetBaseNameV138(item.name);
+        const ext = (item.name.match(imageExt)?.[1] || '').toLowerCase();
+        files.push({
+          url: `${entry.url}/${encodeURIComponent(item.name).replace(/%2F/g, '/')}`,
+          fileName: item.name,
+          baseName,
+          dirLabel: entry.label,
+          kind: gcTrackAssetKindV138(baseName),
+          ext,
+          tokens: gcTrackAssetCleanTokensV138(baseName)
+        });
+      }
+    } catch (error) {
+      console.warn('[GC Track Assets] No se pudo escanear directorio', { dir: entry.dir, error });
+    }
+  }
+
+  gcTrackAssetCacheV138 = { builtAt: now, files, metas: gcTrackAssetReadMetasV138() };
+  return gcTrackAssetCacheV138;
+}
+
+function gcTrackAssetScoreV138(file: GcTrackAssetFileV138, queryTokens: string[], querySlugs: string[], wantedKind: 'photo' | 'map') {
+  if (file.kind !== wantedKind) return -100000;
+  const fileSlug = gcTrackAssetNormalizeV138(file.baseName);
+  const fileCompact = fileSlug.replace(/_/g, '');
+  let score = 0;
+
+  for (const slug of querySlugs) {
+    if (!slug) continue;
+    const compact = slug.replace(/_/g, '');
+    if (fileSlug === slug) score += 1000;
+    else if (fileSlug.startsWith(slug + '_') || fileSlug.endsWith('_' + slug)) score += 520;
+    else if (slug.includes(fileSlug) || fileSlug.includes(slug)) score += 320;
+    else if (compact.length >= 5 && (fileCompact.includes(compact) || compact.includes(fileCompact))) score += 260;
+  }
+
+  const fileTokenSet = new Set(file.tokens);
+  let tokenHits = 0;
+  for (const token of queryTokens) {
+    if (fileTokenSet.has(token)) {
+      tokenHits += 1;
+      score += 180;
+    }
+  }
+
+  if (tokenHits >= 2) score += 140;
+  if (wantedKind === 'map' && /(^|_)(map|mapa|outline|trazado)(_|$)/.test(gcTrackAssetNormalizeV138(file.baseName))) score += 160;
+  if (wantedKind === 'photo' && /(^|_)(photo|foto|hero|image|cover)(_|$)/.test(gcTrackAssetNormalizeV138(file.baseName))) score += 60;
+  if (['png', 'webp', 'jpg', 'jpeg'].includes(file.ext)) score += 10;
+
+  return score;
+}
+
+function gcTrackAssetMetaMatchV138(meta: GcTrackAssetMetaV138, queryTokens: string[], querySlugs: string[]) {
+  const values = [meta.name, meta.title, meta.track, ...(Array.isArray(meta.keys) ? meta.keys : [])].filter(Boolean);
+  const slugs = values.map(gcTrackAssetNormalizeV138).filter(Boolean);
+  const tokens = values.flatMap(gcTrackAssetCleanTokensV138);
+  let score = 0;
+  for (const slug of querySlugs) {
+    if (slugs.includes(slug)) score += 800;
+    if (slugs.some((item) => item.includes(slug) || slug.includes(item))) score += 260;
+  }
+  const tokenSet = new Set(tokens);
+  queryTokens.forEach((token) => {
+    if (tokenSet.has(token)) score += 160;
+  });
+  return score;
+}
+
+function gcTrackAssetResolveV138(names: unknown[]) {
+  const cleanNames = names.map((value) => String(value ?? '').trim()).filter(Boolean);
+  const querySlugs = [...new Set(cleanNames.map(gcTrackAssetNormalizeV138).filter(Boolean))];
+  const queryTokens = [...new Set(cleanNames.flatMap(gcTrackAssetCleanTokensV138))];
+  const cache = gcTrackAssetBuildCacheV138();
+
+  const bestFile = (kind: 'photo' | 'map') => cache.files
+    .map((file) => ({ file, score: gcTrackAssetScoreV138(file, queryTokens, querySlugs, kind) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.file.fileName.localeCompare(b.file.fileName))[0] || null;
+
+  const bestMeta = cache.metas
+    .map((meta) => ({ meta, score: gcTrackAssetMetaMatchV138(meta, queryTokens, querySlugs) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)[0] || null;
+
+  const photo = bestMeta?.meta.photoUrl || bestMeta?.meta.photo || bestMeta?.meta.imageUrl || bestMeta?.meta.image || bestFile('photo')?.file.url || '';
+  const map = bestMeta?.meta.mapUrl || bestMeta?.meta.map || bestMeta?.meta.outline || bestFile('map')?.file.url || '';
+  const distanceValue = bestMeta?.meta.distanceKm ?? bestMeta?.meta.lengthKm ?? bestMeta?.meta.distance ?? '';
+  const countryCode = bestMeta?.meta.countryCode || bestMeta?.meta.country || '';
+
+  return {
+    ok: true,
+    assets: {
+      key: queryTokens.join('_') || querySlugs[0] || '',
+      photoUrl: photo,
+      mapUrl: map,
+      distanceKm: distanceValue,
+      distanceText: distanceValue ? String(distanceValue).includes('km') ? String(distanceValue) : `${distanceValue} km` : '',
+      countryCode,
+      confidence: Math.max(bestFile('photo')?.score || 0, bestFile('map')?.score || 0, bestMeta?.score || 0)
+    },
+    debug: {
+      query: cleanNames,
+      querySlugs,
+      queryTokens,
+      filesScanned: cache.files.length,
+      metaRows: cache.metas.length,
+      photoMatch: bestFile('photo') ? { url: bestFile('photo')!.file.url, score: bestFile('photo')!.score, tokens: bestFile('photo')!.file.tokens } : null,
+      mapMatch: bestFile('map') ? { url: bestFile('map')!.file.url, score: bestFile('map')!.score, tokens: bestFile('map')!.file.tokens } : null,
+      metaMatch: bestMeta ? { score: bestMeta.score, keys: bestMeta.meta.keys || bestMeta.meta.name || bestMeta.meta.title } : null
+    }
+  };
+}
+
+app.get('/api/gc/track-assets/resolve', async (req: any, res: any) => {
+  try {
+    const raw = req.query.track;
+    const tracks = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const extra = [req.query.rawTrackName, req.query.trackAssetName, req.query.displayName, req.query.canonicalKey].filter(Boolean);
+    const result = gcTrackAssetResolveV138([...tracks, ...extra]);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (error) {
+    console.error('[GC Track Assets] Resolve error:', error);
+    res.status(500).json({ ok: false, message: 'No se pudieron resolver assets del circuito.' });
+  }
+});
+
+app.get('/api/gc/track-assets', async (req: any, res: any) => {
+  try {
+    const raw = req.query.track;
+    const tracks = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const result = gcTrackAssetResolveV138(tracks);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (error) {
+    console.error('[GC Track Assets] Resolve error:', error);
+    res.status(500).json({ ok: false, message: 'No se pudieron resolver assets del circuito.' });
+  }
+});
+
 app.get('/api/gc/combos', async (req: any, res: any) => {
   const stracker = getSafeStrackerOrRespond(res);
   if (!stracker?.resolvedPath) return;

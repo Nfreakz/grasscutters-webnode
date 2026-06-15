@@ -1963,6 +1963,33 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
       };
 
+      // GC_HOME_TRACK_ASSET_RESOLVER_V138_CLIENT
+      // La Home no debe adivinar archivos a ciegas. Pide al backend un resolver
+      // construido con el inventario real de public/images/tracks. Si el endpoint
+      // no está disponible, mantiene el resolver anterior como fallback.
+      const loadResolvedTrackAssetsHome2 = async (...trackNames) => {
+        const names = uniqueValues(trackNames.flat(Infinity).filter(Boolean));
+        if (!names.length) return null;
+
+        const params = new URLSearchParams();
+        names.slice(0, 8).forEach((name) => params.append('track', String(name)));
+
+        const payload = await fetchJson(`/api/gc/track-assets/resolve?${params.toString()}`);
+        if (!payload?.ok) return null;
+
+        const assets = payload.assets || payload;
+        return {
+          photoUrl: assets.photoUrl || assets.photo || assets.imageUrl || '',
+          mapUrl: assets.mapUrl || assets.map || assets.outlineUrl || '',
+          distanceKm: assets.distanceKm || assets.lengthKm || '',
+          distanceText: assets.distanceText || assets.distance || '',
+          countryCode: assets.countryCode || assets.country || '',
+          key: assets.key || assets.trackKey || '',
+          confidence: assets.confidence || payload.confidence || 0,
+          debug: payload.debug || assets.debug || null
+        };
+      };
+
       const slugify = (value) => String(value || '')
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -2736,9 +2763,20 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return uniqueValues([...exact, ...generated, '/ui/home2/gc-home2-track-fallback.svg']);
       };
 
-      const setTrackImage = async (trackName) => {
+      const setTrackImage = async (trackName, resolvedAssets = null) => {
         const img = $('[data-home2-track-image]');
         if (!img || !trackName) return;
+
+        if (resolvedAssets?.photoUrl) {
+          img.onerror = function () {
+            this.onerror = null;
+            this.src = '/ui/home2/gc-home2-track-fallback.svg';
+          };
+          img.src = resolvedAssets.photoUrl;
+          img.dataset.resolvedPhoto = resolvedAssets.photoUrl;
+          img.dataset.resolvedPhotoSource = 'server-track-assets-v138';
+          return;
+        }
 
         // GC_TRACK_ASSETS_SINGLE_SOURCE_V19_PHOTO
         // Primero rutas reales conocidas. No usamos GCTrackImages aquí porque su manifest puede ir por detrás.
@@ -2755,14 +2793,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
         img.dataset.resolvedPhoto = 'fallback-photo';
       };
 
-      const setTrackMap = async (...trackNames) => {
+      const setTrackMap = async (trackNames = [], resolvedAssets = null) => {
         const img = $('[data-home2-track-map]');
         if (!img) return;
 
+        if (resolvedAssets?.mapUrl) {
+          img.onerror = function () {
+            this.onerror = null;
+            this.src = '/ui/home2/gc-home2-track-outline.svg';
+          };
+          img.src = resolvedAssets.mapUrl;
+          img.dataset.resolvedMap = resolvedAssets.mapUrl;
+          img.dataset.resolvedMapSource = 'server-track-assets-v138';
+          return;
+        }
+
         // GC_TRACK_ASSETS_SINGLE_SOURCE_V20_MAP_AUTO
-        // El nombre que llega desde ACSM/stracker puede no coincidir con el archivo del mapa.
-        // Como la foto sí suele resolverse bien, también derivamos candidatos desde su basename
-        // (por ejemplo foto: magione.png -> mapa: magione_map.png) sin hardcodear circuitos.
+        // Fallback local antiguo. Solo se usa si el endpoint server-side no devuelve mapa.
         const namesForMap = uniqueValues([
           ...trackNames.flat(Infinity).filter(Boolean),
           ...trackPhotoDerivedVariants()
@@ -2773,11 +2820,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
           ...trackImageCandidates('map', namesForMap)
         ]);
 
-        // No hacemos depender el mapa de un pre-probe silencioso.
-        // Ponemos una cadena de fallbacks real en el <img>; si existe magione_map.png,
-        // el navegador lo cargará aunque los candidatos anteriores no existan.
         const chosen = setImageWithFallbacks(img, candidates, '/ui/home2/gc-home2-track-outline.svg');
         img.dataset.resolvedMap = chosen || 'fallback-outline';
+        img.dataset.resolvedMapSource = 'client-url-guess-v20';
       };
 
       const renderRows = (selector, rows) => {
@@ -4667,6 +4712,13 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
         const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']) || carList[0] || '--';
         const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime'])) || '--';
+        const trackAssetQueryNames = uniqueValues([
+          rawTrackName,
+          trackAssetName,
+          track,
+          firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name', 'track.code', 'mainVariant.rawTrackName', 'mainVariant.rawTrackCode', 'canonicalKey'])
+        ]);
+        const resolvedTrackAssets = await loadResolvedTrackAssetsHome2(trackAssetQueryNames);
 
         setText('[data-home2-track]', track);
         setText('[data-home2-now-title]', track);
@@ -4692,9 +4744,10 @@ const home2ArchiveSeed = (archiveStats.items || [])
         ]);
         const matchedTrackAsset = findRegisteredTrackAsset(rawTrackName, trackAssetName, track);
         const directDistance = formatTrackDistanceLocal(trackHelper?.formatDistance ? trackHelper.formatDistance(rawTrackDistance) : rawTrackDistance);
+        const serverAssetDistance = formatTrackDistanceLocal(resolvedTrackAssets?.distanceText || resolvedTrackAssets?.distanceKm || '');
         const registryDistance = formatTrackDistanceLocal(matchedTrackAsset?.distance || matchedTrackAsset?.distanceKm || '');
         const fallbackDistance = formatTrackDistanceLocal(trackHelper?.distance ? (trackHelper.distance(rawTrackName) || trackHelper.distance(trackAssetName) || trackHelper.distance(track)) : '');
-        setText('[data-home2-now-distance]', directDistance || registryDistance || fallbackDistance || '--');
+        setText('[data-home2-now-distance]', directDistance || serverAssetDistance || registryDistance || fallbackDistance || '--');
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
         setText('[data-home2-now-cars]', String(carList.length || '--'));
         setText('[data-home2-best-driver]', bestDriver);
@@ -4712,13 +4765,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const bestAvatar = pilotAvatarUrl(combo.best || combo.leaderboard?.[0] || combo);
         $$('[data-home2-best-avatar], [data-home2-reference-avatar]').forEach((img) => img.src = bestAvatar);
 
-        await setTrackImage(trackAssetName || track);
-        await setTrackMap(
-          rawTrackName,
-          trackAssetName,
-          track,
-          firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
-        );
+        await setTrackImage(trackAssetName || track, resolvedTrackAssets);
+        await setTrackMap(trackAssetQueryNames, resolvedTrackAssets);
 
         const champTrackImageFallback = $('[data-home2-champ-track-image]');
         const heroTrackImage = $('[data-home2-track-image]');
