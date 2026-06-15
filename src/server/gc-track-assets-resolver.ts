@@ -5,6 +5,7 @@ import type express from 'express';
 export type GcTrackAssetResolution = {
   ok: true;
   track: string;
+  displayName: string;
   queryTokens: string[];
   photo: string;
   map: string;
@@ -295,6 +296,67 @@ function formatDistanceKm(value: unknown) {
   return `${km.toFixed(km < 10 ? 3 : 1).replace(/\.?0+$/, '')} km`;
 }
 
+
+const DISPLAY_STOP_AT = new Set([
+  'layout', 'layouts', 'elms', 'gtm', 'rss', 'acsm', 'combo', 'server', 'online', 'season',
+  'version', 'reboot', 'final', 'update', 'extension', 'ext', 'race', 'racing', 'trackday',
+  'gp', 'gpx', 'full', 'national', 'international', 'internazionale', 'club', 'short', 'long',
+  'gt3', 'gt4', 'gt2', 'dtm', 'btcc', 'bayer', 'lanz', 'lancer', 'mercer', 'mercedes',
+  'porsche', 'protech', 'aero', 'evo', 'late', 'plus', 's15', 'brz', 'impreza'
+]);
+
+const DISPLAY_DROP_ANYWHERE = new Set([
+  'portugal', 'spain', 'espana', 'espanya', 'italy', 'italia', 'france', 'francia', 'germany',
+  'alemania', 'belgium', 'belgica', 'japan', 'japon', 'uk', 'gb', 'usa', 'australia', 'austria'
+]);
+
+function prettyTrackWord(word: string) {
+  const raw = String(word || '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  if (['gp', 'usa', 'uk', 'gt', 'dtm', 'btcc'].includes(lower)) return lower.toUpperCase();
+  if (lower === 'nurburgring') return 'Nurburgring';
+  if (lower === 'nordschleife') return 'Nordschleife';
+  if (lower === 'portimao') return 'Portimao';
+  if (lower === 'fuji') return 'Fuji';
+  if (lower === 'jerez') return 'Jerez';
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function displayNameFromAssetUrl(url: string) {
+  const filename = path.basename(String(url || '')).replace(/\.(avif|webp|jpe?g|png|svg)$/i, '');
+  const stem = stripRole(filename);
+  const tokens = tokensFrom(stem);
+  if (!tokens.length) return '';
+  return tokens.map(prettyTrackWord).filter(Boolean).join(' ');
+}
+
+function cleanTrackDisplayName(names: string[], resolvedPhoto = '', resolvedMap = '') {
+  const source = names.find(Boolean) || '';
+  const rawWords = String(source)
+    .replace(/\.(kn5|ini|json|txt)$/ig, ' ')
+    .replace(/[_/-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+
+  const kept: string[] = [];
+  for (const word of rawWords) {
+    const slug = gcTrackAssetSlug(word);
+    if (!slug || /^\d+$/.test(slug)) break;
+    if (/^(19|20)\d{2}$/.test(slug)) break;
+    if (DISPLAY_STOP_AT.has(slug)) break;
+    if (DISPLAY_DROP_ANYWHERE.has(slug)) continue;
+    kept.push(word);
+  }
+
+  const display = kept.map(prettyTrackWord).filter(Boolean).join(' ').trim();
+  if (display) return display;
+
+  return displayNameFromAssetUrl(resolvedPhoto) || displayNameFromAssetUrl(resolvedMap) || source;
+}
+
 function inferCountry(queryTokens: string[], metadata?: TrackAssetMetadata | null) {
   const direct = String(metadata?.countryCode || metadata?.country || '').trim().toUpperCase();
   if (/^[A-Z]{2}$/.test(direct)) return direct;
@@ -381,6 +443,7 @@ export function resolveGcTrackAssets(input: unknown, options: { rootDir?: string
   return {
     ok: true,
     track,
+    displayName: cleanTrackDisplayName(names, photoUrl, mapUrl),
     queryTokens,
     photo: photoUrl,
     map: mapUrl,

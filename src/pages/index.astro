@@ -1957,6 +1957,40 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
       const uniqueValues = (values) => [...new Set(values.filter(Boolean).map((value) => String(value).trim()).filter(Boolean))];
 
+
+      const cleanActiveTrackDisplayNameV142 = (...values) => {
+        const source = values.flat(Infinity).find(Boolean) || '';
+        const words = String(source)
+          .replace(/\.(kn5|ini|json|txt)$/ig, ' ')
+          .replace(/[_/-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .split(' ')
+          .filter(Boolean);
+        const stopAt = new Set([
+          'layout','layouts','elms','gtm','rss','acsm','combo','server','online','season','version','reboot','final','update','extension','ext','race','racing',
+          'gp','gpx','full','national','international','internazionale','club','short','long','gt3','gt4','gt2','dtm','btcc','bayer','lanz','lancer','mercer','mercedes',
+          'porsche','protech','aero','evo','late','plus','s15','brz','impreza'
+        ]);
+        const drop = new Set(['portugal','spain','espana','espanya','italy','italia','france','francia','germany','alemania','belgium','belgica','japan','japon','uk','gb','usa','australia','austria']);
+        const pretty = (word) => {
+          const raw = String(word || '').trim();
+          const lower = raw.toLowerCase();
+          if (!raw) return '';
+          if (['gp','usa','uk','gt','dtm','btcc'].includes(lower)) return lower.toUpperCase();
+          return lower.charAt(0).toUpperCase() + lower.slice(1);
+        };
+        const kept = [];
+        for (const word of words) {
+          const token = slugify(word);
+          if (!token || /^\d+$/.test(token) || /^(19|20)\d{2}$/.test(token)) break;
+          if (stopAt.has(token)) break;
+          if (drop.has(token)) continue;
+          kept.push(word);
+        }
+        return kept.map(pretty).filter(Boolean).join(' ').trim() || String(source || '').trim();
+      };
+
       // GC_TRACK_ASSETS_SINGLE_SOURCE_V19
       // Las imágenes reales están en public/images/tracks.
       // Foto y mapa se resuelven aquí antes de tocar resolvers difusos o manifests viejos.
@@ -3655,15 +3689,22 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
         const rawTrackName = firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'name']) || 'Actualizando';
         const trackHelper = window.GCHomeTrackResolver || null;
-        const track = trackHelper?.displayName ? trackHelper.displayName(rawTrackName) : rawTrackName;
         const trackAssetName = trackHelper?.assetName ? trackHelper.assetName(rawTrackName) : rawTrackName;
+        const trackRawDisplay = trackHelper?.displayName ? trackHelper.displayName(rawTrackName) : rawTrackName;
+        let track = cleanActiveTrackDisplayNameV142(trackRawDisplay, rawTrackName, trackAssetName);
         const cars = firstValue(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']);
         const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
         const resolvedTrackAssets = await resolveTrackAssetsHomeV139(
           rawTrackName,
           trackAssetName,
-          track,
+          trackRawDisplay,
           firstValue(combo, ['canonicalTrackName', 'trackName', 'track', 'circuitName', 'track.slug', 'track.name'])
+        );
+        track = cleanActiveTrackDisplayNameV142(
+          resolvedTrackAssets?.displayName,
+          trackRawDisplay,
+          rawTrackName,
+          trackAssetName
         );
         const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
         const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
