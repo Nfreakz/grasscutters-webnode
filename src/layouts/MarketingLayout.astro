@@ -114,6 +114,13 @@ const championshipNavItems = [
   { href: '/carreras-comunidad', label: 'Carreras no oficiales', match: '/carreras-comunidad' },
 ];
 
+
+const ratingsNavItems = [
+  { href: '/ratings', label: 'Safety Rating', match: '/ratings' },
+  { href: '/ratings/gsr', label: 'GrassCutters Skill Rating', match: '/ratings/gsr' },
+  { href: '/ratings/faq', label: 'FAQ', match: '/ratings/faq' },
+];
+
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
@@ -139,6 +146,11 @@ function isActive(match) {
 
 function isChampionshipActive() {
   return championshipNavItems.some((item) => isActive(item.match));
+}
+
+
+function isRatingsActive() {
+  return ratingsNavItems.some((item) => isActive(item.match));
 }
 
 const shouldShowHudPopup = !path.startsWith('/archivo');
@@ -262,7 +274,15 @@ const shouldShowHudPopup = !path.startsWith('/archivo');
             ))}
           </div>
         </details>
-        {navItems.slice(2).map((item) => (
+        <details class="gc-public-nav-dropdown" data-public-nav-dropdown data-active={isRatingsActive() ? 'true' : undefined}>
+          <summary class="gc-public-nav-trigger" aria-label="Abrir secciones de ratings">RATINGS</summary>
+          <div class="gc-public-nav-dropdown__menu" role="menu" aria-label="Secciones de ratings">
+            {ratingsNavItems.map((item) => (
+              <a href={item.href} data-active={(item.href === '/ratings' ? path === '/ratings' : isActive(item.match)) ? 'true' : undefined} role="menuitem">{item.label}</a>
+            ))}
+          </div>
+        </details>
+        {navItems.slice(3).map((item) => (
           <a href={item.href} class:list={[{ 'is-active': isActive(item.match) }]}>{item.label}</a>
         ))}
       </nav>

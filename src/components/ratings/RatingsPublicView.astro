@@ -1,0 +1,657 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import PublicHeroFrame from '../public/PublicHeroFrame.astro';
+import '../../styles/public/gc-rating-badges.css';
+
+const {
+  mode = 'sr',
+  canonicalPath = mode === 'gsr' ? '/ratings/gsr' : mode === 'faq' ? '/ratings/faq' : '/ratings',
+} = Astro.props;
+
+const safeMode = ['sr', 'gsr', 'faq'].includes(String(mode)) ? String(mode) : 'sr';
+const isSr = safeMode === 'sr';
+const isGsr = safeMode === 'gsr';
+const isFaq = safeMode === 'faq';
+
+const pageTitle = isGsr
+  ? 'Ratings GSR | GrassCutters Racing'
+  : isFaq
+    ? 'FAQ Ratings | GrassCutters Racing'
+    : 'Ratings SR | GrassCutters Racing';
+
+const pageDescription = isGsr
+  ? 'Leaderboard GSR de GrassCutters Racing. Rendimiento competitivo, clase y evolución.'
+  : isFaq
+    ? 'Preguntas frecuentes sobre SR y GSR en GrassCutters Racing.'
+    : 'Leaderboard SR de GrassCutters Racing. Limpieza en pista, clase y evolución.';
+
+const navLinks = [
+  { href: '/ratings', label: 'Safety Rating', active: isSr },
+  { href: '/ratings/gsr', label: 'GrassCutters Skill Rating', active: isGsr },
+  { href: '/ratings/faq', label: 'FAQ', active: isFaq },
+];
+---
+
+<MarketingLayout
+  title={pageTitle}
+  description={pageDescription}
+  bodyClass="gc-page-ratings"
+  canonicalPath={canonicalPath}
+>
+  <section class="gc-public-shell gc-public-section gc-ratings-page" data-gc-ratings-page data-ratings-mode={safeMode}>
+    <div class="gc-ratings-atmosphere" aria-hidden="true">
+      <video
+        class="gc-ratings-atmosphere-video"
+        src="/videos/04061.mp4"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+      ></video>
+    </div>
+
+    <header class="gc-public-section-head gc-ratings-head">
+      <div class="gc-ratings-head-copy">
+        <PublicHeroFrame
+          id="ratingsTitle"
+          kicker="Ratings"
+          title={['Dos sistemas', 'separados.']}
+          lead="SR mide limpieza en pista. GSR mide rendimiento competitivo."
+          leadId="ratingsLead"
+        />
+
+        <nav class="gc-ratings-head-actions gc-hero-actions-inline" aria-label="Secciones de ratings">
+          {navLinks.map((item) => (
+            <a class:list={['gc-public-btn', item.active ? 'gc-public-btn-primary' : 'gc-public-btn-secondary']} href={item.href}>{item.label}</a>
+          ))}
+          {!isFaq && <button class="gc-public-btn gc-public-btn-secondary" type="button" id="ratingsRefresh">Actualizar datos</button>}
+        </nav>
+      </div>
+    </header>
+
+    {isFaq && (
+      <section class="gc-ratings-summary-grid" id="ratingsSummary">
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Pilotos con rating</span>
+          <h2 id="summaryDrivers">--</h2>
+          <p>perfiles activos en leaderboard</p>
+        </article>
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Media SR</span>
+          <h2 id="summaryAverageSr">--</h2>
+          <p>seguridad media del campeonato</p>
+        </article>
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Líder GSR</span>
+          <h2 id="summaryTopGsr">--</h2>
+          <p id="summaryTopGsrMeta">sin datos</p>
+        </article>
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Carreras procesadas</span>
+          <h2 id="summaryRaces">--</h2>
+          <p>eventos cerrados con rating</p>
+        </article>
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Mejor SR</span>
+          <h2 id="summaryBestSr">--</h2>
+          <p id="summaryBestSrMeta">sin datos</p>
+        </article>
+        <article class="gc-public-card gc-ratings-stat-card">
+          <span class="gc-public-kicker">Mayor subida reciente</span>
+          <h2 id="summaryBestDelta">--</h2>
+          <p id="summaryBestDeltaMeta">sin datos</p>
+        </article>
+      </section>
+    )}
+
+    {(isSr || isFaq) && (
+      <section class="gc-ratings-map" aria-label="Guía Safety Rating">
+        <article class="gc-public-card gc-ratings-map-card">
+          <div class="gc-ratings-card-head gc-ratings-card-head--flat">
+            <span class="gc-public-kicker">SR · Safety Racecraft</span>
+            <h2 class="gc-ratings-card-title">Conducción limpia y segura.</h2>
+            <p>Mide limpieza real, control del coche y cómo completas una carrera.</p>
+          </div>
+
+          <div class="gc-ratings-scale gc-ratings-scale--badges" aria-label="Escala SR">
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-aplus gc-rating-badge--rating-label"><strong>Legend</strong></span><span>95–100</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-a gc-rating-badge--rating-label"><strong>Elite</strong></span><span>90–94</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-b gc-rating-badge--rating-label"><strong>Pro</strong></span><span>80–89</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-c gc-rating-badge--rating-label"><strong>Advanced</strong></span><span>70–79</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-d gc-rating-badge--rating-label"><strong>Rookie</strong></span><span>60–69</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--sr gc-rating-badge--sr-e gc-rating-badge--rating-label"><strong>Pitlane</strong></span><span>0–59</span></div>
+          </div>
+        </article>
+      </section>
+    )}
+
+    {(isGsr || isFaq) && (
+      <section class="gc-ratings-map" aria-label="Guía GrassCutters Skill Rating">
+        <article class="gc-public-card gc-ratings-map-card">
+          <div class="gc-ratings-card-head gc-ratings-card-head--flat">
+            <span class="gc-public-kicker">GSR · Grid Rank</span>
+            <h2 class="gc-ratings-card-title">Rendimiento competitivo.</h2>
+            <p>Mide resultado final y nivel de rivales.</p>
+          </div>
+
+          <div class="gc-ratings-scale gc-ratings-scale--badges" aria-label="Rangos GSR">
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-s gc-rating-badge--rating-label"><strong>Diamond</strong></span><span>1750+</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-a gc-rating-badge--rating-label"><strong>Ruby</strong></span><span>1650–1749</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-b gc-rating-badge--rating-label"><strong>Sapphire</strong></span><span>1550–1649</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-c gc-rating-badge--rating-label"><strong>Emerald</strong></span><span>1475–1549</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-d gc-rating-badge--rating-label"><strong>Amber</strong></span><span>1400–1474</span></div>
+            <div><span class="gc-rating-badge gc-rating-badge--gsr gc-rating-badge--gsr-rookie gc-rating-badge--rating-label"><strong>Onyx</strong></span><span>0–1399</span></div>
+          </div>
+        </article>
+      </section>
+    )}
+
+    {isSr && (
+      <section class="gc-ratings-table-shell" id="ratingsSr">
+        <div class="gc-public-section-head">
+          <div>
+            <span class="gc-public-kicker">Safety Rating</span>
+            <h2 class="gc-public-section-title">Leaderboard SR.</h2>
+          </div>
+        </div>
+
+        <div class="gc-acsr-standings-table-wrap gc-ratings-table-wrap">
+          <table class="gc-acsr-standings-table gc-ratings-table">
+            <thead>
+              <tr>
+                <th>Pos</th>
+                <th>Piloto</th>
+                <th>SR</th>
+                <th>Clase</th>
+                <th>Carreras</th>
+                <th>Limpias</th>
+                <th>Incid./carrera</th>
+                <th>Última variación</th>
+              </tr>
+            </thead>
+            <tbody id="ratingsSrBody">
+              <tr><td colspan="8">Cargando SR...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <nav class="gc-ratings-pagination" id="ratingsSrPager" aria-label="Paginación SR" hidden></nav>
+      </section>
+    )}
+
+    {isGsr && (
+      <section class="gc-ratings-table-shell" id="ratingsGsr">
+        <div class="gc-public-section-head">
+          <div>
+            <span class="gc-public-kicker">Grasscutters Skill Rating</span>
+            <h2 class="gc-public-section-title">Leaderboard GSR.</h2>
+          </div>
+        </div>
+
+        <div class="gc-acsr-standings-table-wrap gc-ratings-table-wrap">
+          <table class="gc-acsr-standings-table gc-ratings-table">
+            <thead>
+              <tr>
+                <th>Pos</th>
+                <th>Piloto</th>
+                <th>GSR</th>
+                <th>Clase</th>
+                <th>Carreras</th>
+                <th>Victorias</th>
+                <th>Podios</th>
+                <th>Última variación</th>
+              </tr>
+            </thead>
+            <tbody id="ratingsGsrBody">
+              <tr><td colspan="8">Cargando GSR...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <nav class="gc-ratings-pagination" id="ratingsGsrPager" aria-label="Paginación GSR" hidden></nav>
+      </section>
+    )}
+
+    {isFaq && (
+      <section class="gc-ratings-faq" aria-label="Preguntas frecuentes sobre SR y GSR">
+        <details class="gc-ratings-faq-item" open>
+          <summary>¿Qué mide el SR?</summary>
+          <div>
+            <p>El SR mide tu racecraft limpio: tiempo sin incidentes, vueltas limpias, rachas de conducción segura y si completas la carrera.</p>
+            <p>No es una simple resta por carrera. Una carrera larga y limpia puede compensar pequeños errores, pero los contactos repetidos siguen pesando.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Por qué varios contactos seguidos cuentan como un solo incidente SR?</summary>
+          <div>
+            <p>Para evitar penalizar varias veces el mismo accidente. Si un piloto tiene varios contactos de coche en pocos segundos, el sistema los agrupa como un único incidente SR dentro de una ventana configurable. Los offtracks se calculan aparte y no se mezclan con los contactos.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Se siguen registrando todos los contactos?</summary>
+          <div>
+            <p>Sí. El sistema conserva el número de contactos detectados y muestra cuántos se han agrupado. El SR usa los incidentes agrupados para que rebotes o montoneras no generen penalizaciones duplicadas.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Cuánto SR puedo ganar?</summary>
+          <div>
+            <p>En una carrera normal, una actuación limpia puede acercarse a <strong>+1.20 SR</strong>. Si la carrera es larga y muy limpia, el máximo positivo flexible puede llegar a <strong>+1.50 SR</strong>.</p>
+            <p>Si hay incidentes, el techo de ganancia baja: con un contacto de coche el máximo positivo se reduce, con varios contactos puede quedar casi neutro.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Cuánto SR puedo perder?</summary>
+          <div>
+            <p>Una carrera con problemas normales puede quedar limitada alrededor de <strong>-5 SR</strong>. Una carrera muy sucia, con muchos contactos o abandono, puede llegar aproximadamente a <strong>-8 SR</strong>.</p>
+            <p>Casos extremos como descalificación o una carrera caótica pueden llegar hasta <strong>-12 SR</strong>. El objetivo es castigar carreras realmente peligrosas sin destruir a un piloto por un roce aislado.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Qué cuenta más para bajar SR?</summary>
+          <div>
+            <p>Los contactos con otros coches pesan más que una salida de pista aislada. Los golpes con entorno, cuts, abandonos y sanciones también cuentan, pero el sistema mira el conjunto de la carrera.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Qué mide el GSR?</summary>
+          <div>
+            <p>El GSR mide rendimiento competitivo: posición final, resultado frente a otros pilotos y fortaleza del grupo. No mide limpieza; para eso está el SR.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Puedo subir GSR y bajar SR en la misma carrera?</summary>
+          <div>
+            <p>Sí. Puedes hacer un gran resultado y ganar GSR, pero perder SR si has tenido contactos, salidas o una carrera sucia. Son sistemas separados.</p>
+          </div>
+        </details>
+
+        <details class="gc-ratings-faq-item">
+          <summary>¿Qué carreras cuentan?</summary>
+          <div>
+            <p>Ahora mismo el rating activo cuenta solo carreras oficiales ACSM completadas y vinculadas a sTracker. Las carreras no oficiales se mantienen separadas.</p>
+          </div>
+        </details>
+      </section>
+    )}
+  </section>
+
+  <style is:global>
+    .gc-ratings-page{
+      display:grid;
+      gap:clamp(22px,3vw,34px);
+      padding-top:clamp(110px,12vw,170px);
+    }
+
+    .gc-ratings-head{align-items:end;gap:18px;}
+    .gc-ratings-head-copy{max-width:760px;}
+    .gc-ratings-head-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;}
+    .gc-ratings-head-actions .gc-public-btn-primary{box-shadow:0 0 24px rgba(126,255,39,.16);}
+
+    .gc-ratings-map-grid,.gc-ratings-summary-grid{display:grid;gap:16px;}
+    .gc-ratings-map-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .gc-ratings-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+
+    .gc-ratings-map-card,.gc-ratings-stat-card,.gc-ratings-empty-card,.gc-ratings-table-shell{
+      border:1px solid var(--gc-mk-line,rgba(126,255,39,.22));
+      border-radius:18px;
+      background:rgba(255,255,255,.025);
+      box-shadow:0 20px 60px rgba(0,0,0,.22);
+    }
+
+    .gc-ratings-map-card{display:grid;gap:18px;padding:22px;}
+    .gc-ratings-card-head{display:grid;gap:8px;padding:0;border:0;background:transparent;box-shadow:none;}
+    .gc-ratings-card-title{margin:0;font-size:clamp(1.3rem,2vw,1.9rem);}
+    .gc-ratings-card-head p,.gc-ratings-empty-card p{margin:0;color:var(--gc-mk-muted,#9ca59a);}
+
+    .gc-ratings-scale{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    .gc-ratings-scale div,.gc-ratings-note{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:11px 12px;border:1px solid rgba(126,255,39,.16);border-radius:12px;background:rgba(0,0,0,.16);
+    }
+    .gc-ratings-scale span{color:var(--gc-mk-muted,#9ca59a);text-align:right;font-size:.9rem;}
+
+    .gc-ratings-stat-card{display:grid;gap:8px;padding:18px;background:linear-gradient(135deg,rgba(126,255,39,.045),rgba(255,255,255,.018));}
+    .gc-ratings-stat-card h2{margin:0;font-size:clamp(1.7rem,3vw,2.5rem);line-height:1;}
+    .gc-ratings-stat-card p{margin:0;color:var(--gc-mk-muted,#9ca59a);}
+    .gc-ratings-empty-card{display:grid;gap:8px;padding:22px;}
+
+    .gc-ratings-table-shell{display:grid;gap:16px;padding:18px;background:linear-gradient(135deg,rgba(126,255,39,.052),rgba(255,255,255,.018));}
+    .gc-ratings-table-wrap{overflow:auto;}
+
+    .gc-ratings-table{border-collapse:separate!important;border-spacing:0 7px!important;width:100%;}
+    .gc-ratings-table thead th{padding:9px 10px;color:rgba(231,244,225,.7);font-family:var(--font-mono,monospace);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;}
+    .gc-ratings-table tbody tr{transition:background .16s ease,transform .16s ease;}
+    .gc-ratings-table tbody tr:hover{transform:translateY(-1px);}
+    .gc-ratings-table tbody td{
+      padding:7px 10px;
+      background:linear-gradient(90deg,rgba(126,255,39,.065),rgba(126,255,39,.025));
+      border-top:1px solid rgba(126,255,39,.12);
+      border-bottom:1px solid rgba(126,255,39,.12);
+      vertical-align:middle;
+    }
+    .gc-ratings-table tbody td:first-child{border-left:1px solid rgba(126,255,39,.12);border-radius:8px 0 0 8px;}
+    .gc-ratings-table tbody td:last-child{border-right:1px solid rgba(126,255,39,.12);border-radius:0 8px 8px 0;}
+
+    .gc-ratings-row--gold td{background:linear-gradient(90deg,rgba(255,196,0,.16),rgba(255,196,0,.045));border-color:rgba(255,196,0,.36)!important;}
+    .gc-ratings-row--silver td{background:linear-gradient(90deg,rgba(190,198,210,.14),rgba(190,198,210,.04));border-color:rgba(190,198,210,.32)!important;}
+    .gc-ratings-row--bronze td{background:linear-gradient(90deg,rgba(190,116,58,.16),rgba(190,116,58,.045));border-color:rgba(190,116,58,.34)!important;}
+
+    .gc-ratings-rank-badge{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:999px;font-family:var(--font-mono,monospace);font-size:.82rem;font-weight:950;}
+    .gc-ratings-rank-badge--gold,.gc-ratings-rank-badge--silver,.gc-ratings-rank-badge--bronze{font-size:1.05rem;}
+    .gc-ratings-rank-badge--plain{border:1px solid rgba(126,255,39,.28);background:rgba(126,255,39,.09);color:var(--gc-mk-accent,#80ff1f);}
+
+    .gc-ratings-driver-cell{display:grid;grid-template-columns:minmax(0,1fr) 30px;align-items:center;gap:10px;min-width:210px;}
+    .gc-ratings-driver{display:grid;gap:2px;min-width:0;}
+    .gc-ratings-driver a,.gc-ratings-driver strong{color:inherit;text-decoration:none;font-size:1.02rem;font-weight:950;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .gc-ratings-driver a:hover{color:var(--gc-mk-accent,#80ff1f);}
+    .gc-ratings-driver small{color:var(--gc-mk-muted,#9ca59a);font-family:var(--font-mono,monospace);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;line-height:1;}
+    .gc-ratings-driver-avatar{width:30px;height:30px;min-width:30px;border-radius:999px;border:1px solid rgba(126,255,39,.35);object-fit:cover;background:rgba(126,255,39,.08);}
+
+    .gc-ratings-delta{display:inline-flex;align-items:center;justify-content:center;min-width:58px;padding:5px 8px;border-radius:999px;font-family:var(--font-mono,monospace);font-size:.82rem;font-weight:900;}
+    .gc-ratings-delta--positive{border:1px solid rgba(126,255,39,.24);color:var(--gc-mk-accent,#80ff1f);background:rgba(126,255,39,.08);}
+    .gc-ratings-delta--negative{border:1px solid rgba(255,120,120,.2);color:#ffb0b0;background:rgba(255,100,100,.08);}
+    .gc-ratings-delta--neutral{border:1px solid rgba(255,255,255,.08);color:var(--gc-mk-muted,#9ca59a);background:rgba(255,255,255,.04);}
+    .gc-ratings-stat{font-family:var(--font-mono,monospace);font-weight:900;font-size:1rem;}
+
+    .gc-rating-badge--rating-label .gc-rating-badge__type{display:none!important;}
+    .gc-rating-badge--rating-label strong{text-transform:uppercase;}
+    .gc-ratings-table .gc-rating-badge{white-space:nowrap;}
+
+    .gc-ratings-pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+    .gc-ratings-pagination span{font-family:var(--font-mono,monospace);font-size:.78rem;color:var(--gc-mk-muted,#9ca59a);text-transform:uppercase;letter-spacing:.08em;}
+    .gc-ratings-pagination button{border:1px solid rgba(126,255,39,.24);border-radius:999px;background:rgba(126,255,39,.06);color:var(--gc-mk-text,#f5f7f2);font-family:var(--font-mono,monospace);font-weight:900;padding:8px 12px;cursor:pointer;}
+    .gc-ratings-pagination button:disabled{opacity:.42;cursor:not-allowed;}
+
+    .gc-ratings-card-head--flat{
+      padding:0!important;
+      border:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      outline:0!important;
+    }
+    .gc-ratings-map-card>.gc-ratings-card-head--flat{
+      border:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .gc-ratings-card-head--flat::before,.gc-ratings-card-head--flat::after{display:none!important;}
+
+    .gc-ratings-faq{display:grid;gap:10px;margin-top:0;}
+    .gc-ratings-faq-item{border:1px solid rgba(126,255,39,.16);border-radius:18px;background:rgba(255,255,255,.025);overflow:hidden;}
+    .gc-ratings-faq-item summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px;color:var(--gc-mk-text,#f2f6ef);font-weight:950;letter-spacing:-.02em;}
+    .gc-ratings-faq-item summary::-webkit-details-marker{display:none;}
+    .gc-ratings-faq-item summary::after{content:"+";display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid rgba(126,255,39,.22);border-radius:999px;color:var(--gc-mk-accent,#80ff1f);font-family:var(--font-mono,monospace);font-weight:900;}
+    .gc-ratings-faq-item[open] summary::after{content:"−";}
+    .gc-ratings-faq-item div{display:grid;gap:8px;padding:0 18px 16px;color:var(--gc-mk-muted,#aeb8aa);line-height:1.55;}
+    .gc-ratings-faq-item p{margin:0;}
+    .gc-ratings-faq-item strong{color:var(--gc-mk-accent,#80ff1f);font-weight:950;}
+
+    @media (max-width:1180px){.gc-ratings-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media (max-width:980px){
+      .gc-ratings-head{align-items:start;}
+      .gc-ratings-head-actions{justify-content:flex-start;}
+      .gc-ratings-map-grid,.gc-ratings-summary-grid,.gc-ratings-scale{grid-template-columns:1fr;}
+    }
+    @media (max-width:720px){.gc-ratings-table{min-width:760px;}}
+  </style>
+
+  <script define:vars={{ ratingsMode: safeMode }}>
+      (() => {
+        const mode = ratingsMode === 'gsr' ? 'gsr' : ratingsMode === 'faq' ? 'faq' : 'sr';
+        const pageSize = 10;
+        const srBody = document.getElementById('ratingsSrBody');
+        const gsrBody = document.getElementById('ratingsGsrBody');
+        const srPager = document.getElementById('ratingsSrPager');
+        const gsrPager = document.getElementById('ratingsGsrPager');
+        const lead = document.getElementById('ratingsLead');
+        const refreshButton = document.getElementById('ratingsRefresh');
+        const emptyCard = document.getElementById('ratingsEmpty');
+
+        const summaryDrivers = document.getElementById('summaryDrivers');
+        const summaryAverageSr = document.getElementById('summaryAverageSr');
+        const summaryTopGsr = document.getElementById('summaryTopGsr');
+        const summaryTopGsrMeta = document.getElementById('summaryTopGsrMeta');
+        const summaryRaces = document.getElementById('summaryRaces');
+        const summaryBestSr = document.getElementById('summaryBestSr');
+        const summaryBestSrMeta = document.getElementById('summaryBestSrMeta');
+        const summaryBestDelta = document.getElementById('summaryBestDelta');
+        const summaryBestDeltaMeta = document.getElementById('summaryBestDeltaMeta');
+
+        let srRowsCache = [];
+        let gsrRowsCache = [];
+        let srPage = 1;
+        let gsrPage = 1;
+
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[char]));
+
+        const toNumber = (value) => {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        const validSr = (value) => {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        };
+
+        const formatDelta = (value, digits = 1) => {
+          const numeric = toNumber(value);
+          if (numeric === null) return '--';
+          const formatted = digits === 0 ? String(Math.round(numeric)) : numeric.toFixed(digits);
+          return `${numeric > 0 ? '+' : ''}${formatted}`;
+        };
+
+        const deltaClass = (value) => {
+          const numeric = toNumber(value);
+          if (numeric === null || numeric === 0) return 'gc-ratings-delta gc-ratings-delta--neutral';
+          return numeric > 0 ? 'gc-ratings-delta gc-ratings-delta--positive' : 'gc-ratings-delta gc-ratings-delta--negative';
+        };
+
+        const readRatingValue = (obj, keys = []) => {
+          for (const key of keys) {
+            const parts = String(key).split('.').filter(Boolean);
+            let current = obj;
+            for (const part of parts) current = current?.[part];
+            if (current !== undefined && current !== null && current !== '') return current;
+          }
+          return '';
+        };
+
+        const avatarUrl = (row) => {
+          const direct = readRatingValue(row, ['avatarUrl', 'avatar_url', 'imageUrl', 'image', 'driver.avatarUrl', 'player.avatarUrl', 'pilot.avatarUrl']);
+          if (direct) return String(direct);
+          const id = readRatingValue(row, ['profilePlayerId', 'strackerPlayerId', 'pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
+          if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
+          return '/images/pilot-avatar-default.png';
+        };
+
+        const normalizeClass = (value) => String(value || '').trim().toUpperCase();
+        const srMeta = (value) => {
+          const key = normalizeClass(value);
+          if (key === 'A+' || key === 'APLUS') return { key: 'aplus', value: 'A+', label: 'Legend' };
+          if (key === 'A') return { key: 'a', value: 'A', label: 'Elite' };
+          if (key === 'B') return { key: 'b', value: 'B', label: 'Pro' };
+          if (key === 'C') return { key: 'c', value: 'C', label: 'Advanced' };
+          if (key === 'D') return { key: 'd', value: 'D', label: 'Rookie' };
+          return { key: 'e', value: key || 'E', label: 'Pitlane' };
+        };
+        const gsrMeta = (value) => {
+          const key = normalizeClass(value);
+          if (key === 'S' || key === 'DIAMOND') return { key: 's', value: 'S', label: 'Diamond' };
+          if (key === 'A' || key === 'RUBY') return { key: 'a', value: 'A', label: 'Ruby' };
+          if (key === 'B' || key === 'SAPPHIRE') return { key: 'b', value: 'B', label: 'Sapphire' };
+          if (key === 'C' || key === 'EMERALD') return { key: 'c', value: 'C', label: 'Emerald' };
+          if (key === 'D' || key === 'AMBER') return { key: 'd', value: 'D', label: 'Amber' };
+          return { key: 'rookie', value: key || 'Rookie', label: 'Onyx' };
+        };
+
+        const rankBadge = (position) => {
+          const numeric = Number(position);
+          if (numeric === 1) return '<span class="gc-ratings-rank-badge gc-ratings-rank-badge--gold" aria-label="1º">🥇</span>';
+          if (numeric === 2) return '<span class="gc-ratings-rank-badge gc-ratings-rank-badge--silver" aria-label="2º">🥈</span>';
+          if (numeric === 3) return '<span class="gc-ratings-rank-badge gc-ratings-rank-badge--bronze" aria-label="3º">🥉</span>';
+          return `<span class="gc-ratings-rank-badge gc-ratings-rank-badge--plain">${escapeHtml(position)}</span>`;
+        };
+
+        const podiumClass = (index) => index === 0 ? 'gc-ratings-row--gold' : index === 1 ? 'gc-ratings-row--silver' : index === 2 ? 'gc-ratings-row--bronze' : '';
+        const scoreBadge = (type, classValue, score) => {
+          const meta = type === 'gsr' ? gsrMeta(classValue) : srMeta(classValue);
+          const safeType = type === 'gsr' ? 'gsr' : 'sr';
+          return `<span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${meta.key} gc-rating-badge--compact" aria-label="${safeType.toUpperCase()} ${escapeHtml(score)} ${escapeHtml(meta.value)}"><span class="gc-rating-badge__type">${escapeHtml(score)}</span><strong>${escapeHtml(meta.value)}</strong></span>`;
+        };
+        const classBadge = (type, classValue) => {
+          const meta = type === 'gsr' ? gsrMeta(classValue) : srMeta(classValue);
+          const safeType = type === 'gsr' ? 'gsr' : 'sr';
+          return `<span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${meta.key} gc-rating-badge--compact gc-rating-badge--rating-label" aria-label="Clase ${escapeHtml(meta.label)}"><strong>${escapeHtml(meta.label)}</strong></span>`;
+        };
+
+        const delta = (value, digits = 1) => `<span class="${deltaClass(value)}">${escapeHtml(formatDelta(value, digits))}</span>`;
+        const driverLink = (row, label) => {
+          const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
+          const driverKey = String(row?.driverKey || '');
+          const playerId = directPlayerId || (driverKey.startsWith('player:') ? driverKey.replace('player:', '') : '');
+          if (playerId) return `<a href="/pilotos/${encodeURIComponent(String(playerId))}">${escapeHtml(label)}</a>`;
+          return `<strong>${escapeHtml(label)}</strong>`;
+        };
+        const driverCell = (row) => {
+          const name = String(row?.driver || row?.name || 'Piloto');
+          const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
+          const driverKey = String(row?.driverKey || '');
+          const playerId = directPlayerId || (driverKey.startsWith('player:') ? driverKey.replace('player:', '') : '');
+          const avatar = escapeHtml(avatarUrl(row));
+          return `<div class="gc-ratings-driver-cell"><div class="gc-ratings-driver">${driverLink(row, name)}${playerId ? '<small>Perfil público</small>' : '<small>Piloto GC</small>'}</div><img class="gc-ratings-driver-avatar" src="${avatar}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" /></div>`;
+        };
+
+        const renderPager = (type, totalRows, currentPage, totalPages) => {
+          const pager = type === 'sr' ? srPager : gsrPager;
+          if (!pager) return;
+          if (totalPages <= 1) {
+            pager.hidden = true;
+            pager.innerHTML = '';
+            return;
+          }
+          pager.hidden = false;
+          pager.innerHTML = `<button type="button" data-ratings-page="prev" data-ratings-type="${type}" ${currentPage <= 1 ? 'disabled' : ''}>Anterior</button><span>Página ${currentPage} / ${totalPages} · ${totalRows} pilotos</span><button type="button" data-ratings-page="next" data-ratings-type="${type}" ${currentPage >= totalPages ? 'disabled' : ''}>Siguiente</button>`;
+        };
+
+        function renderSrPage() {
+          if (!srBody) return;
+          const totalPages = Math.max(1, Math.ceil(srRowsCache.length / pageSize));
+          srPage = Math.min(Math.max(srPage, 1), totalPages);
+          const list = srRowsCache.slice((srPage - 1) * pageSize, srPage * pageSize);
+          if (!list.length) {
+            srBody.innerHTML = '<tr><td colspan="8">Sin datos de SR.</td></tr>';
+            renderPager('sr', 0, 1, 1);
+            return;
+          }
+          srBody.innerHTML = list.map((row, index) => {
+            const absoluteIndex = (srPage - 1) * pageSize + index;
+            const position = row.position ?? absoluteIndex + 1;
+            const sr = validSr(row.sr);
+            const score = sr === null ? '--' : sr.toFixed(1);
+            return `<tr class="gc-ratings-row ${podiumClass(absoluteIndex)}"><td>${rankBadge(position)}</td><td>${driverCell(row)}</td><td>${scoreBadge('sr', row.srClass || '--', score)}</td><td>${classBadge('sr', row.srClass || '--')}</td><td><span class="gc-ratings-stat">${escapeHtml(row.races ?? '--')}</span></td><td><span class="gc-ratings-stat">${escapeHtml(row.cleanRaces ?? '--')}</span></td><td><span class="gc-ratings-stat">${escapeHtml(row.incidentsPerRace ?? '--')}</span></td><td>${delta(row.lastDelta, 1)}</td></tr>`;
+          }).join('');
+          renderPager('sr', srRowsCache.length, srPage, totalPages);
+        }
+
+        function renderGsrPage() {
+          if (!gsrBody) return;
+          const totalPages = Math.max(1, Math.ceil(gsrRowsCache.length / pageSize));
+          gsrPage = Math.min(Math.max(gsrPage, 1), totalPages);
+          const list = gsrRowsCache.slice((gsrPage - 1) * pageSize, gsrPage * pageSize);
+          if (!list.length) {
+            gsrBody.innerHTML = '<tr><td colspan="8">Sin datos de GSR.</td></tr>';
+            renderPager('gsr', 0, 1, 1);
+            return;
+          }
+          gsrBody.innerHTML = list.map((row, index) => {
+            const absoluteIndex = (gsrPage - 1) * pageSize + index;
+            const position = row.position ?? absoluteIndex + 1;
+            const gsr = toNumber(row.gsr);
+            const score = gsr === null ? '--' : String(Math.round(gsr));
+            return `<tr class="gc-ratings-row ${podiumClass(absoluteIndex)}"><td>${rankBadge(position)}</td><td>${driverCell(row)}</td><td>${scoreBadge('gsr', row.gsrClass || '--', score)}</td><td>${classBadge('gsr', row.gsrClass || '--')}</td><td><span class="gc-ratings-stat">${escapeHtml(row.races ?? '--')}</span></td><td><span class="gc-ratings-stat">${escapeHtml(row.wins ?? '--')}</span></td><td><span class="gc-ratings-stat">${escapeHtml(row.podiums ?? '--')}</span></td><td>${delta(row.lastDelta, 0)}</td></tr>`;
+          }).join('');
+          renderPager('gsr', gsrRowsCache.length, gsrPage, totalPages);
+        }
+
+        function updateSummary(srRows, gsrRows, diagnostics) {
+          const validSrRows = srRows.filter((row) => validSr(row.sr) !== null);
+          const averageSr = validSrRows.length ? (validSrRows.reduce((sum, row) => sum + Number(validSr(row.sr) || 0), 0) / validSrRows.length).toFixed(1) : '--';
+          const topGsr = gsrRows[0] || null;
+          const bestSr = validSrRows[0] || null;
+          const biggestGain = [...srRows.map((row) => ({ ...row, type: 'SR' })), ...gsrRows.map((row) => ({ ...row, type: 'GSR' }))]
+            .filter((row) => toNumber(row.lastDelta) !== null)
+            .sort((a, b) => Number(b.lastDelta) - Number(a.lastDelta))[0] || null;
+
+          if (summaryDrivers) summaryDrivers.textContent = String(Math.max(srRows.length, gsrRows.length, 0) || '--');
+          if (summaryAverageSr) summaryAverageSr.textContent = String(averageSr);
+          if (summaryTopGsr) summaryTopGsr.textContent = topGsr ? String(topGsr.gsr ?? '--') : '--';
+          if (summaryTopGsrMeta) summaryTopGsrMeta.textContent = topGsr ? `${topGsr.driver} · ${topGsr.gsrClass}` : 'sin datos';
+          if (summaryRaces) summaryRaces.textContent = String(diagnostics?.eventsProcessed ?? '--');
+          if (summaryBestSr) summaryBestSr.textContent = bestSr ? validSr(bestSr.sr)?.toFixed(1) ?? '--' : '--';
+          if (summaryBestSrMeta) summaryBestSrMeta.textContent = bestSr ? `${bestSr.driver} · ${bestSr.srClass}` : 'sin datos';
+          if (summaryBestDelta && summaryBestDeltaMeta) {
+            if (biggestGain && Number(biggestGain.lastDelta) > 0) {
+              summaryBestDelta.textContent = formatDelta(biggestGain.lastDelta, biggestGain.type === 'SR' ? 1 : 0);
+              summaryBestDeltaMeta.textContent = `${biggestGain.driver} · ${biggestGain.type}`;
+            } else {
+              summaryBestDelta.textContent = '--';
+              summaryBestDeltaMeta.textContent = 'sin datos';
+            }
+          }
+        }
+
+        const setEmptyState = (isEmpty) => { if (emptyCard) emptyCard.hidden = !isEmpty; };
+
+        async function loadRatings() {
+          if (refreshButton) refreshButton.disabled = true;
+          if (lead) lead.textContent = 'SR mide limpieza en pista. GSR mide rendimiento competitivo.';
+          try {
+            const response = await fetch('/api/gc/ratings/championship', { cache: 'no-store' });
+            const data = await response.json();
+            if (!data?.ok) throw new Error(data?.message || 'No se pudieron cargar los ratings.');
+            srRowsCache = Array.isArray(data.leaderboard?.sr) ? data.leaderboard.sr : [];
+            gsrRowsCache = Array.isArray(data.leaderboard?.gsr) ? data.leaderboard.gsr : [];
+            updateSummary(srRowsCache, gsrRowsCache, data.diagnostics || {});
+            setEmptyState(!srRowsCache.length && !gsrRowsCache.length);
+            if (mode === 'gsr') renderGsrPage(); else if (mode === 'sr') renderSrPage();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'No se pudieron cargar los ratings.';
+            if (lead) lead.textContent = message || 'No se pudieron cargar los ratings.';
+            if (srBody) srBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings.</td></tr>';
+            if (gsrBody) gsrBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings.</td></tr>';
+            setEmptyState(false);
+          } finally {
+            if (refreshButton) refreshButton.disabled = false;
+          }
+        }
+
+        document.addEventListener('click', (event) => {
+          const button = event.target?.closest?.('[data-ratings-page]');
+          if (!button) return;
+          const type = button.getAttribute('data-ratings-type');
+          const direction = button.getAttribute('data-ratings-page');
+          if (type === 'sr') {
+            srPage += direction === 'next' ? 1 : -1;
+            renderSrPage();
+          } else if (type === 'gsr') {
+            gsrPage += direction === 'next' ? 1 : -1;
+            renderGsrPage();
+          }
+        });
+
+        refreshButton?.addEventListener('click', () => { loadRatings(); });
+        loadRatings();
+      })();
+    </script>
+</MarketingLayout>
