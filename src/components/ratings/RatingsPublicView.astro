@@ -108,7 +108,7 @@ const navLinks = [
     {(isSr || isFaq) && (
       <section class="gc-ratings-map" aria-label="Guía Safety Rating">
         <article class="gc-public-card gc-ratings-map-card">
-          <div class="gc-ratings-card-head gc-ratings-card-head--flat">
+          <div class="gc-ratings-guide-head gc-ratings-card-head--flat">
             <span class="gc-public-kicker">SR · Safety Racecraft</span>
             <h2 class="gc-ratings-card-title">Conducción limpia y segura.</h2>
             <p>Mide limpieza real, control del coche y cómo completas una carrera.</p>
@@ -129,7 +129,7 @@ const navLinks = [
     {(isGsr || isFaq) && (
       <section class="gc-ratings-map" aria-label="Guía GrassCutters Skill Rating">
         <article class="gc-public-card gc-ratings-map-card">
-          <div class="gc-ratings-card-head gc-ratings-card-head--flat">
+          <div class="gc-ratings-guide-head gc-ratings-card-head--flat">
             <span class="gc-public-kicker">GSR · Grid Rank</span>
             <h2 class="gc-ratings-card-title">Rendimiento competitivo.</h2>
             <p>Mide resultado final y nivel de rivales.</p>
@@ -306,9 +306,9 @@ const navLinks = [
     }
 
     .gc-ratings-map-card{display:grid;gap:18px;padding:22px;}
-    .gc-ratings-card-head{display:grid;gap:8px;padding:0;border:0;background:transparent;box-shadow:none;}
+    .gc-ratings-card-head,.gc-ratings-guide-head{display:grid;gap:8px;padding:0;border:0;background:transparent;box-shadow:none;}
     .gc-ratings-card-title{margin:0;font-size:clamp(1.3rem,2vw,1.9rem);}
-    .gc-ratings-card-head p,.gc-ratings-empty-card p{margin:0;color:var(--gc-mk-muted,#9ca59a);}
+    .gc-ratings-card-head p,.gc-ratings-guide-head p,.gc-ratings-empty-card p{margin:0;color:var(--gc-mk-muted,#9ca59a);}
 
     .gc-ratings-scale{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
     .gc-ratings-scale div,.gc-ratings-note{
@@ -383,6 +383,38 @@ const navLinks = [
       box-shadow:none!important;
     }
     .gc-ratings-card-head--flat::before,.gc-ratings-card-head--flat::after{display:none!important;}
+
+
+
+    /* GC_RATINGS_GUIDE_HEAD_BORDER_KILL_V151
+       The global gc-rating-badges.css has legacy selectors for .gc-ratings-card-head.
+       The guide headers use .gc-ratings-guide-head so the title area never gets the green inner box on /ratings, /ratings/gsr or /ratings/faq. */
+    .gc-ratings-map-card > .gc-ratings-guide-head{
+      display:grid!important;
+      gap:8px!important;
+      padding:0!important;
+      margin:0 0 2px 0!important;
+      border:0!important;
+      outline:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .gc-ratings-map-card > .gc-ratings-guide-head::before,
+    .gc-ratings-map-card > .gc-ratings-guide-head::after,
+    .gc-ratings-map-card > .gc-ratings-guide-head .gc-ratings-card-title::before,
+    .gc-ratings-map-card > .gc-ratings-guide-head .gc-ratings-card-title::after{
+      content:none!important;
+      display:none!important;
+    }
+    .gc-ratings-map-card > .gc-ratings-guide-head .gc-ratings-card-title,
+    .gc-ratings-map-card > .gc-ratings-guide-head p,
+    .gc-ratings-map-card > .gc-ratings-guide-head .gc-public-kicker{
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
 
     .gc-ratings-faq{display:grid;gap:10px;margin-top:0;}
     .gc-ratings-faq-item{border:1px solid rgba(126,255,39,.16);border-radius:18px;background:rgba(255,255,255,.025);overflow:hidden;}

@@ -14,33 +14,28 @@ const quickActions = [
 ];
 
 const summaryItems = [
-  ['Semanales con Stracker', 'Compite y sube puesto'],
-  ['Votados por la comunidad', 'Combos democráticos y justos'],
-  ['Coche, volante y sensaciones', 'Lo importante es rodar y pasarlo bien']
+  ['Hotlaps y carreras semanales', 'Rueda, compara tiempos y sigue tu progreso'],
+  ['Combos por votación', 'La comunidad propone y elige qué se corre'],
+  ['Pista limpia y buen ambiente', 'Competir fuerte sin convertirlo en una guerra']
 ];
 
 const steps = [
-  ['01', 'Únete', 'Entra al Discord, preséntate y forma parte del grupo.'],
-  ['02', 'Elige y vota', 'Votamos combos y horarios. La comunidad decide.'],
-  ['03', 'Entra a pista', 'Rodamos, competimos y mejoramos juntos.'],
-  ['04', 'Disfruta y mejora', 'Buen ambiente, respeto y ganas de volver.']
+  ['01', 'Únete', 'Entra al Discord o al WhatsApp y saluda sin ceremonia.'],
+  ['02', 'Vota', 'Proponemos coches, circuitos y horarios. Luego se decide entre todos.'],
+  ['03', 'Rueda', 'Entra al servidor, marca vueltas y comparte sensaciones.'],
+  ['04', 'Repite', 'Cuando el ambiente acompaña, siempre apetece volver.']
 ];
 
 const textChannels = [
-  ['#', 'bienvenida', 'Empieza por aquí'],
-  ['#', 'anuncios', 'Novedades y avisos'],
-  ['#', 'votaciones', 'Vota combos y horarios'],
-  ['#', 'general', 'Charla y buen rollo'],
-  ['#', 'setups', 'Comparte y mejora'],
-  ['#', 'clips-y-repeticiones', 'Tus mejores momentos'],
-  ['#', 'soporte', 'Ayuda y dudas']
+  ['#', 'bienvenida', 'Primer paso y presentación'],
+  ['#', 'anuncios', 'Avisos importantes'],
+  ['#', 'votaciones', 'Combos, horarios y decisiones'],
+  ['#', 'general', 'Charla de la comunidad'],
+  ['#', 'setups', 'Ajustes, dudas y pruebas'],
+  ['#', 'clips-y-repeticiones', 'Momentos de carrera'],
+  ['#', 'soporte', 'Ayuda con servidor, mods o acceso']
 ];
 
-const dailyHours = [
-  ['19:00', 'Carrera 1'],
-  ['21:00', 'Carrera 2'],
-  ['23:00', 'Carrera 3']
-];
 ---
 <MarketingLayout
   title="Comunidad | GrassCutters Racing"
@@ -74,8 +69,8 @@ const dailyHours = [
           <PublicHeroFrame
             id="gc43-title"
             kicker="Comunidad GC"
-            title={['Un paddock para', 'correr, mejorar', 'y volver.']}
-            lead="GrassCutters es una comunidad para rodar, comentar carreras, seguir campeonatos y compartir pista sin perder el buen ambiente."
+            title={['Un grupo para', 'rodar, votar', 'y volver.']}
+            lead="GrassCutters es una comunidad de Assetto Corsa para compartir pista, probar combos, seguir campeonatos y hablar de carreras con buen ambiente."
           />
 
           <div class="gc43-social" aria-label="Canales principales">
@@ -111,10 +106,10 @@ const dailyHours = [
     <section class="gc43-shell gc43-intro">
       <article class="gc43-card gc43-copy-card">
         <span class="gc43-kicker">Qué es GrassCutters</span>
-        <h2>Un servidor para correr <em>sin problemas.</em></h2>
+        <h2>Un grupo para rodar <em>a gusto.</em></h2>
         <p>
-          Aquí se viene a desconectar, probar coches, compartir setups, votar combos y hacer vueltas sin convertir cada tarde en una reunión de comisarios.
-          Si hablas español, perfecto. Si no, pero te adaptas al ambiente del grupo, también tienes sitio.
+          Aquí se viene a desconectar, probar coches, compartir setups, votar combos y hacer vueltas sin convertir cada tarde en una discusión eterna.
+          Si hablas español, perfecto. Si no, pero entiendes el ambiente del grupo, también tienes sitio.
         </p>
       </article>
 
@@ -178,29 +173,27 @@ const dailyHours = [
 
       <div class="gc43-activity-grid">
         <article class="gc43-card gc43-activity gc43-activity--wide">
-          <span class="gc43-kicker">Actividad en la pista</span>
-          <h2>Diarias</h2>
-          <p>Carreras cada día a diferentes horas.</p>
-          <div class="gc43-hour-list">
-            {dailyHours.map(([hour, title]) => (
-              <span><strong>{hour}</strong>{title}</span>
-            ))}
+          <span class="gc43-kicker">Actividad en pista</span>
+          <h2>Próximas carreras</h2>
+          <p>Entradas del calendario público. Antes de entrar, revisa ahí el combo, la hora y cualquier cambio de última hora.</p>
+          <div class="gc43-calendar-preview" data-gc43-calendar-preview aria-live="polite">
+            <span class="gc43-calendar-preview__empty">Cargando calendario...</span>
           </div>
-          <a class="gc43-outline" href="/calendario">Ver horarios</a>
+          <a class="gc43-outline" href="/calendario">Ver calendario</a>
         </article>
 
         <article class="gc43-card gc43-activity">
-          <span class="gc43-kicker">Combos</span>
-          <h2>Con 30s</h2>
-          <p>Votados por la comunidad. Variedad y equilibrio.</p>
-          <a class="gc43-outline" href="/ratings">Ver combos</a>
+          <span class="gc43-kicker">WhatsApp</span>
+          <h2>Avisos rápidos</h2>
+          <p>Para enterarte de quedadas, cambios de hora y carreras montadas sobre la marcha.</p>
+          <a class="gc43-outline gc43-outline--whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">Unirse al WhatsApp</a>
         </article>
 
         <article class="gc43-card gc43-activity">
-          <span class="gc43-kicker">Eventos y campeonatos</span>
-          <h2>Endurance 3H</h2>
-          <p>Campeonatos, endurance y eventos especiales.</p>
-          <a class="gc43-outline" href="/campeonato">Ver eventos</a>
+          <span class="gc43-kicker">Votaciones</span>
+          <h2>El combo lo elige el grupo</h2>
+          <p>Propuestas de coche, circuito y formato. Se vota, se prueba y se rueda.</p>
+          <a class="gc43-outline" href="/combos">Ver combos</a>
         </article>
       </div>
     </section>
@@ -210,15 +203,15 @@ const dailyHours = [
         <span class="gc43-kicker">Filosofía GC</span>
         <h2>Pocas normas. Buen ambiente. Pista limpia.</h2>
         <p>
-          No buscamos un servidor lleno de sanciones absurdas. Tampoco un sitio donde valga todo.
-          La línea es sencilla: respeto en el chat, respeto en pista y cero dramas cuando algo sale mal.
+          No buscamos un servidor lleno de sanciones. Tampoco un sitio donde valga todo.
+          La línea es sencilla: respeto en el chat, respeto en pista y hablar las cosas con calma cuando algo sale mal.
         </p>
       </article>
 
       <div class="gc43-rule-list">
         <article class="gc43-card"><span>01</span><h3>Actitud antes que ritmo</h3><p>No hace falta ser el más rápido. Hace falta sumar buen ambiente, respetar y querer mejorar.</p></article>
         <article class="gc43-card"><span>02</span><h3>Pista limpia</h3><p>Se puede competir fuerte, pero sin choques intencionados, sin zigzag y dejando espacio cuando toca.</p></article>
-        <article class="gc43-card"><span>03</span><h3>Sin dramas en caliente</h3><p>Si hay incidente, se enfría primero y se habla después. El chat no es dirección de carrera con fuego en el casco.</p></article>
+        <article class="gc43-card"><span>03</span><h3>Incidentes con calma</h3><p>Si hay toque, se revisa y se habla después. En caliente todos vemos la curva desde nuestro retrovisor.</p></article>
       </div>
     </section>
 
@@ -244,9 +237,9 @@ const dailyHours = [
     <section class="gc43-final">
       <div class="gc43-shell gc43-final__inner">
         <div>
-          <span class="gc43-kicker">Listo para formar parte del equipo</span>
+          <span class="gc43-kicker">¿Te apuntas?</span>
           <h2>Únete a <em>GrassCutters</em></h2>
-          <p>Buena gente, buenas carreras y muchas ganas de mejorar juntos.</p>
+          <p>Gente con ganas de correr, comentar la jugada y mejorar sin convertirlo en trabajo.</p>
         </div>
         <a class="gc43-primary" href={discordUrl} target="_blank" rel="noreferrer">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.55 5.45A16.4 16.4 0 0 0 15.45 4l-.2.4a12.6 12.6 0 0 1 3.52 1.77A14.9 14.9 0 0 0 12 4.55a14.9 14.9 0 0 0-6.77 1.62A12.6 12.6 0 0 1 8.75 4.4L8.55 4c-1.43.25-2.8.74-4.1 1.45C1.86 9.3 1.17 13.05 1.53 16.75A16.6 16.6 0 0 0 6.55 19.3l.62-.86a10.6 10.6 0 0 1-1.62-.77l.39-.29A11.55 11.55 0 0 0 12 19a11.55 11.55 0 0 0 6.06-1.62l.39.29a10.6 10.6 0 0 1-1.62.77l.62.86a16.6 16.6 0 0 0 5.02-2.55c.43-4.29-.73-8-2.92-11.3Z" /></svg>
@@ -255,6 +248,106 @@ const dailyHours = [
       </div>
     </section>
   </main>
+
+  <script is:inline>
+    (() => {
+      const preview = document.querySelector('[data-gc43-calendar-preview]');
+      if (!preview) return;
+
+      const typeLabels = {
+        combo: 'Combo semanal',
+        race_lfm: 'Carrera LFM',
+        race_gc: 'Carrera GC'
+      };
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const pad = (value) => String(value).padStart(2, '0');
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+      const parseDate = (value) => {
+        const text = String(value || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+        const [year, month, day] = text.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      };
+      const keyOf = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      const addDays = (date, days) => {
+        const next = new Date(date);
+        next.setDate(next.getDate() + days);
+        return next;
+      };
+      const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
+      const eventStart = (event) => parseDate(event.startDate || event.date);
+      const eventEnd = (event) => parseDate(event.endDate) || eventStart(event);
+      const isWeekly = (event) => Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+      const eventTime = (event) => [event.startTime, event.endTime].filter(Boolean).join(' - ') || 'Horario por confirmar';
+
+      function expandUpcoming(events, limit = 3) {
+        const today = startOfDay(new Date());
+        const rangeEnd = addDays(today, 120);
+        const output = [];
+        events
+          .filter((event) => event && event.visible !== false && ['combo', 'race_lfm', 'race_gc'].includes(String(event.type || 'combo')))
+          .forEach((event) => {
+            const baseStart = eventStart(event);
+            if (!baseStart) return;
+            const baseEnd = eventEnd(event) || baseStart;
+            const durationDays = Math.max(0, daysBetween(baseStart, baseEnd));
+            const repeatUntil = parseDate(event.repeatUntil);
+            const hardEnd = repeatUntil && repeatUntil < rangeEnd ? repeatUntil : rangeEnd;
+            let current = startOfDay(baseStart);
+            if (isWeekly(event)) {
+              while (addDays(current, durationDays) < today) current = addDays(current, 7);
+            }
+            let guard = 0;
+            do {
+              const currentEnd = addDays(current, durationDays);
+              if (currentEnd >= today && current <= rangeEnd) {
+                output.push({ ...event, occurrenceDate: keyOf(current), occurrenceEndDate: keyOf(currentEnd), isOccurrence: keyOf(current) !== keyOf(baseStart), repeatLabel: isWeekly(event) ? 'Semanal' : '' });
+              }
+              if (!isWeekly(event)) break;
+              current = addDays(current, 7);
+              guard += 1;
+            } while (current <= hardEnd && guard < 80);
+          });
+        return output
+          .sort((a, b) => String(a.occurrenceDate || a.startDate || '').localeCompare(String(b.occurrenceDate || b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')))
+          .slice(0, limit);
+      }
+
+      function renderUpcoming(items) {
+        if (!items.length) {
+          preview.innerHTML = '<span class="gc43-calendar-preview__empty">Sin carreras próximas en el calendario.</span>';
+          return;
+        }
+        preview.innerHTML = items.map((event) => {
+          const date = parseDate(event.occurrenceDate || event.startDate || event.date);
+          const dateText = date ? `${pad(date.getDate())} ${monthNames[date.getMonth()]}` : '--';
+          const type = typeLabels[String(event.type || 'combo')] || 'Evento';
+          const track = [event.trackName || event.track, event.carNames].filter(Boolean).join(' · ');
+          const meta = [eventTime(event), event.repeatLabel].filter(Boolean).join(' · ');
+          const body = `
+            <span class="gc43-calendar-preview__date">${escapeHtml(dateText)}</span>
+            <span class="gc43-calendar-preview__body">
+              <strong>${escapeHtml(event.title || type)}</strong>
+              <small>${escapeHtml(track || meta || type)}</small>
+            </span>
+            <span class="gc43-calendar-preview__time">${escapeHtml(event.startTime || '--:--')}</span>
+          `;
+          return event.linkUrl
+            ? `<a class="gc43-calendar-preview__item" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">${body}</a>`
+            : `<div class="gc43-calendar-preview__item">${body}</div>`;
+        }).join('');
+      }
+
+      fetch('/api/calendar-events', { cache: 'no-store' })
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+        .then((data) => renderUpcoming(expandUpcoming(data.events || data.items || [], 3)))
+        .catch(() => {
+          preview.innerHTML = '<span class="gc43-calendar-preview__empty">No se pudo cargar el calendario.</span>';
+        });
+    })();
+  </script>
 
   <style is:global>
     /* GC_COMMUNITY_HEADER_CLEAN_V51
@@ -831,25 +924,75 @@ const dailyHours = [
       grid-row:span 2;
     }
 
-    .gc43-hour-list{
+    .gc43-calendar-preview{
       display:grid;
       gap:8px;
       margin-top:12px;
     }
 
-    .gc43-hour-list span{
-      display:flex;
-      justify-content:space-between;
+    .gc43-calendar-preview__item{
+      display:grid;
+      grid-template-columns:54px minmax(0,1fr) 54px;
+      gap:10px;
+      align-items:center;
+      min-height:46px;
       padding:8px 10px;
-      border:1px solid rgba(255,255,255,.055);
-      background:rgba(255,255,255,.024);
-      color:rgba(245,248,241,.72);
-      font-size:12px;
+      border:1px solid rgba(150,255,47,.11);
+      background:linear-gradient(90deg, rgba(150,255,47,.065), rgba(255,255,255,.018));
+      color:rgba(245,248,241,.78);
+      text-decoration:none;
+      border-radius:7px;
+      transition:transform .18s ease, border-color .18s ease, background .18s ease;
     }
 
-    .gc43-hour-list strong{
+    .gc43-calendar-preview__item:hover{
+      transform:translateX(3px);
+      border-color:rgba(150,255,47,.28);
+      background:linear-gradient(90deg, rgba(150,255,47,.095), rgba(255,255,255,.025));
+    }
+
+    .gc43-calendar-preview__date,
+    .gc43-calendar-preview__time{
       color:var(--green);
       font-family:var(--gc-mono, "JetBrains Mono", monospace);
+      font-size:11px;
+      font-weight:950;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .gc43-calendar-preview__time{
+      text-align:right;
+    }
+
+    .gc43-calendar-preview__body{
+      display:grid;
+      gap:3px;
+      min-width:0;
+    }
+
+    .gc43-calendar-preview__body strong{
+      color:var(--ink);
+      font-size:12px;
+      line-height:1.05;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .gc43-calendar-preview__body small,
+    .gc43-calendar-preview__empty{
+      color:rgba(245,248,241,.58);
+      font-size:11px;
+      line-height:1.25;
+    }
+
+    .gc43-calendar-preview__empty{
+      display:block;
+      padding:11px 12px;
+      border:1px solid rgba(150,255,47,.10);
+      background:rgba(255,255,255,.022);
+      border-radius:7px;
     }
 
     .gc43-outline,
@@ -880,6 +1023,12 @@ const dailyHours = [
       color:#dce1ff;
       border-color:rgba(88,101,242,.40);
       background:rgba(88,101,242,.12);
+    }
+
+    .gc43-outline--whatsapp{
+      color:#eafff1;
+      border-color:rgba(37,211,102,.45);
+      background:rgba(37,211,102,.10);
     }
 
     .gc43-rules{
