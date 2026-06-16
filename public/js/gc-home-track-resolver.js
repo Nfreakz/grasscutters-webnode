@@ -75,6 +75,13 @@
       asset: 'suzuka',
       country: 'Japan',
       distance: '5,807 km'
+    },
+    {
+      keys: ['portimao', 'algarve', 'algarve_portimao', 'algarve_international_circuit', 'autodromo_internacional_do_algarve'],
+      display: 'Algarve Portimao',
+      asset: 'portimao',
+      country: 'Portugal',
+      distance: '4.653 km'
     }
   ];
 

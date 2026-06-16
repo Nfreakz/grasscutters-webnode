@@ -33,7 +33,9 @@
     ['ks_spa', ['spa', 'spa_francorchamps']],
     ['salzburgring', ['salzburg_ring', 'salzburg']],
     ['okayama', ['okayama_international', 'okayama_circuit']],
-    ['magione', ['autodromo_dell_umbria_magione', 'autodromo_umbria_magione', 'autodromo_umbria', 'circuito_di_magione', 'magione_circuit']]
+    ['magione', ['autodromo_dell_umbria_magione', 'autodromo_umbria_magione', 'autodromo_umbria', 'circuito_di_magione', 'magione_circuit']],
+    ['algarve_portimao', ['portimao', 'algarve', 'algarve_international_circuit', 'autodromo_internacional_do_algarve']],
+    ['portimao', ['algarve_portimao', 'algarve', 'algarve_international_circuit', 'autodromo_internacional_do_algarve']]
   ]);
 
   const BUILTIN_META = [
@@ -48,7 +50,14 @@
     { keys: ['hockenheim', 'hockenheimring'], countryCode: 'DE', country: 'Germany', distance: '4,574 km' },
     { keys: ['suzuka'], countryCode: 'JP', country: 'Japan', distance: '5,807 km' },
     { keys: ['estoril'], countryCode: 'PT', country: 'Portugal' },
-    { keys: ['portimao', 'algarve'], countryCode: 'PT', country: 'Portugal' },
+    {
+      keys: ['portimao', 'algarve', 'algarve_portimao'],
+      countryCode: 'PT',
+      country: 'Portugal',
+      distance: '4.653 km',
+      photo: '/images/tracks/portimao.jpg',
+      map: '/images/tracks/portimao_map.png'
+    },
     { keys: ['bathurst', 'mount_panorama'], countryCode: 'AU', country: 'Australia' },
     { keys: ['phillip_island', 'phillipisland'], countryCode: 'AU', country: 'Australia' },
     { keys: ['road_atlanta', 'road_america', 'sebring', 'laguna_seca', 'daytona', 'watkins_glen', 'vir'], countryCode: 'US', country: 'United States' },
@@ -202,7 +211,7 @@
     if (value === undefined || value === null || value === '') return '';
     const text = String(value).trim();
     if (!text || text === '--') return '';
-    if (/km/i.test(text)) return text.replace('.', ',');
+    if (/km/i.test(text)) return text;
     const numeric = Number(text.replace(',', '.').replace(/[^0-9.]+/g, ''));
     if (!Number.isFinite(numeric) || numeric <= 0) return '';
     const km = numeric > 100 ? numeric / 1000 : numeric;
@@ -216,12 +225,18 @@
       item.id,
       item.name,
       item.title,
+      item.display,
+      item.displayName,
       item.track,
       item.trackName,
       item.displayTrackName,
       ...(Array.isArray(item.keys) ? item.keys : [])
     ];
-    return expandQueryKeys(keys.filter(Boolean).join(' '));
+    const expanded = new Set();
+    keys.filter(Boolean).forEach((key) => {
+      expandQueryKeys(key).forEach((expandedKey) => expanded.add(expandedKey));
+    });
+    return expanded;
   };
 
   const addMeta = (item = {}) => {
@@ -229,7 +244,7 @@
     const distance = formatDistance(item.distance || item.distanceKm || item.lengthKm || item.trackLength || item.longitud || item.distancia || '');
     const country = item.country || item.pais || item.país || item.location || '';
 
-    if (!code && !distance && !country) return;
+    if (!code && !distance && !country && !item.photo && !item.map) return;
 
     const meta = {
       ...item,
@@ -278,7 +293,9 @@
   };
 
   const addMetaManifest = (data) => {
-    const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    const list = Array.isArray(data)
+      ? data
+      : (Array.isArray(data?.tracks) ? data.tracks : (Array.isArray(data?.items) ? data.items : []));
     list.forEach(addMeta);
   };
 
@@ -299,7 +316,6 @@
     loading = Promise.all([
       tryLoadJson('/gc-track-images-manifest.json'),
       tryLoadJson('/js/gc-track-images-manifest.json'),
-      tryLoadJson('/api/gc/assets/tracks'),
       tryLoadJson('/gc-track-meta.json'),
       tryLoadJson('/js/gc-track-meta.json')
     ]).then((results) => {
@@ -308,8 +324,8 @@
       metaRegistry.clear();
 
       BUILTIN_META.forEach(addMeta);
-      results.slice(0, 3).filter(Boolean).forEach(addManifest);
-      results.slice(3).filter(Boolean).forEach(addMetaManifest);
+      results.slice(0, 2).filter(Boolean).forEach(addManifest);
+      results.slice(2).filter(Boolean).forEach(addMetaManifest);
 
       loaded = true;
       return true;
@@ -394,10 +410,12 @@
 
   const candidates = (trackName, kind = 'photo') => {
     const match = bestAsset(trackName);
+    const meta = metadata(trackName);
     const generated = generatedCandidates(trackName, kind);
 
     if (kind === 'map') {
       return uniq([
+        meta?.map,
         ...generated,
         match?.url,
         ...generatedCandidates(trackName, 'photo'),
@@ -406,6 +424,7 @@
     }
 
     return uniq([
+      meta?.photo,
       match?.url,
       ...generated,
       placeholderUrl(trackName)
@@ -493,8 +512,14 @@
     const label = homeTrackLabel();
     if (!label) return;
 
-    document.querySelectorAll('[data-home2-track-image]').forEach((img) => setImage(img, label, 'photo'));
-    document.querySelectorAll('[data-home2-track-map]').forEach((img) => setImage(img, label, 'map'));
+    document.querySelectorAll('[data-home2-track-image]').forEach((img) => {
+      if (img.dataset.gcHomeStaticManaged === '1') return;
+      setImage(img, label, 'photo');
+    });
+    document.querySelectorAll('[data-home2-track-map]').forEach((img) => {
+      if (img.dataset.gcHomeStaticManaged === '1') return;
+      setImage(img, label, 'map');
+    });
 
     const meta = metadata(label);
     if (meta?.countryCode) {
