@@ -9443,44 +9443,6 @@ app.get('/api/stats/overview', async (_req, res) => {
 /* GC_LEGACY_SERVER_ALIASES_V1_END */
 
 
-app.get('/api/hotlaps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
-  try {
-    const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
-    const groupMode = getQueryString(req, 'group', 'best').toLowerCase();
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const filtered = filterLaps(laps, req, { validOnly: true });
-    const items = makeBestHotlaps(filtered, groupMode).slice(0, limit);
-
-    res.json({
-      ok: true,
-      mode: 'real-stracker',
-      group: groupMode,
-      count: items.length,
-      totalMatchedLaps: filtered.length,
-      filters: summarizeFilters(req),
-      options: getQueryBool(req, 'options', false) ? buildOptionsFromLaps(laps) : undefined,
-      stracker: {
-        exists: stracker.exists,
-        sizeBytes: stracker.sizeBytes,
-        modifiedAt: stracker.modifiedAt
-      },
-      items,
-      message: 'Hotlaps reales generadas desde stracker.db3.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo hotlaps reales:', error);
-    res.status(200).json({
-      ok: false,
-      items: [],
-      message: 'No se pudieron leer hotlaps reales desde stracker.db3.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 app.get('/api/pilots', async (req, res) => {
   const stracker = getStrackerConfig();
 
