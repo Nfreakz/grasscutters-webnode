@@ -9961,61 +9961,6 @@ app.get('/api/activity/recent', async (req, res) => {
   }
 });
 
-app.get('/api/stats/overview', async (_req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
-  try {
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const validLaps = laps.filter((lap) => lap.valid);
-    const bestLap = [...validLaps].sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] ?? null;
-    const latestLap = [...laps].sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))[0] ?? null;
-
-    res.json({
-      ok: true,
-      mode: 'real-stracker',
-      overview: {
-        totalLaps: laps.length,
-        validLaps: validLaps.length,
-        invalidLaps: laps.length - validLaps.length,
-        driversCount: new Set(laps.map((lap) => lap.driver.id ?? lap.driver.name)).size,
-        carsCount: new Set(laps.map((lap) => lap.car.id ?? lap.car.name)).size,
-        tracksCount: new Set(laps.map((lap) => lap.track.id ?? lap.track.name)).size,
-        bestLap,
-        latestLap,
-        stracker: {
-          sizeBytes: stracker.sizeBytes,
-          modifiedAt: stracker.modifiedAt
-        }
-      },
-      message: 'Resumen general real generado desde stracker.db3.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo stats overview:', error);
-    res.status(200).json({
-      ok: false,
-      overview: null,
-      message: 'No se pudo generar el resumen real.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-
-/* GC_DATA_CORE_V1_START */
-/**
- * GC Data Core v1
- *
- * Objetivo:
- * - crear una capa canÃ³nica de lectura para bloques nuevos.
- * - evitar que cada pÃ¡gina calcule por su cuenta combo activo, Ãºltimas vueltas,
- *   leaderboard, mejor vuelta y mÃ©tricas globales.
- *
- * Importante:
- * - no sustituye todavÃ­a los endpoints legacy.
- * - /api/hotlaps, /api/laps, /api/combos/stats, /api/stats/overview siguen vivos.
- * - los nuevos bloques deberÃ­an consumir /api/gc/*.
- */
 type GcDataCoreScope = 'global' | 'activeCombo';
 
 function gcDataCorePositiveNumber(value: unknown, fallback = 0) {
