@@ -418,6 +418,16 @@ type AppUser = {
     strackerName: string;
     linkedAt: string;
   };
+  disabledAt?: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  passwordRecovery?: null | {
+    tokenHash: string;
+    createdAt: string;
+    expiresAt: string;
+    createdBy: string | null;
+    usedAt?: string | null;
+  };
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
@@ -1357,7 +1367,15 @@ function getAuthContext(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user) return null;
+  if (!user || isUserBlocked(user)) {
+    store.sessions = store.sessions.filter((item) => item.id !== session.id);
+    try {
+      writeUserStore(store);
+    } catch (_) {
+      // no-op
+    }
+    return null;
+  }
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1370,6 +1388,45 @@ function getAuthContext(req: express.Request) {
 }
 
 
+function isUserDisabled(user: AppUser | null | undefined) {
+  return Boolean(user?.disabledAt);
+}
+
+function isUserDeleted(user: AppUser | null | undefined) {
+  return Boolean(user?.deletedAt);
+}
+
+function isUserBlocked(user: AppUser | null | undefined) {
+  return isUserDisabled(user) || isUserDeleted(user);
+}
+
+function revokeUserSessions(store: AppUserStore, userId: string, keepSessionId?: string | null) {
+  const before = store.sessions.length;
+  store.sessions = store.sessions.filter((session) => {
+    if (session.userId !== userId) return true;
+    return Boolean(keepSessionId && session.id === keepSessionId);
+  });
+  return before - store.sessions.length;
+}
+
+function readAdminConfirm(req: express.Request) {
+  return String(
+    req.body?.confirm ??
+    req.body?.confirmation ??
+    req.body?.confirmText ??
+    req.query?.confirm ??
+    req.headers['x-gc-confirm'] ??
+    ''
+  ).trim();
+}
+
+function buildAbsoluteUrl(req: express.Request, pathName: string) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0]?.trim();
+  const proto = forwardedProto || req.protocol || 'http';
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0]?.trim();
+  return host ? `${proto}://${host}${pathName}` : pathName;
+}
+
 async function getAuthContextAsync(req: express.Request) {
   const token = readAuthToken(req);
   if (!token) return null;
@@ -1380,7 +1437,15 @@ async function getAuthContextAsync(req: express.Request) {
   if (!session) return null;
 
   const user = store.users.find((item) => item.id === session.userId);
-  if (!user) return null;
+  if (!user || isUserBlocked(user)) {
+    store.sessions = store.sessions.filter((item) => item.id !== session.id);
+    try {
+      await writeUserStoreAsync(store);
+    } catch (_) {
+      // no-op
+    }
+    return null;
+  }
 
   session.lastSeenAt = new Date().toISOString();
   try {
@@ -1399,6 +1464,8 @@ function publicUser(user: AppUser) {
     displayName: user.displayName,
     role: user.role,
     pilotLink: user.pilotLink,
+    disabledAt: user.disabledAt ?? null,
+    deletedAt: user.deletedAt ?? null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     lastLoginAt: user.lastLoginAt
@@ -1407,7 +1474,7 @@ function publicUser(user: AppUser) {
 
 
 function isAdminUser(user: AppUser | null | undefined) {
-  return Boolean(user && user.role === 'admin');
+  return Boolean(user && user.role === 'admin' && !isUserBlocked(user));
 }
 
 type AdminAuthAccess =
@@ -6262,7 +6329,9 @@ app.post('/api/admin/users/:userId/password', async (req, res) => {
   const context = await requireAdmin(req, res);
   if (!context) return;
 
-  const password = String(req.body?.password ?? '');
+  const autoGenerate = req.body?.autoGenerate === true;
+  const temporaryPassword = autoGenerate ? `GC-${crypto.randomBytes(8).toString('hex')}` : '';
+  const password = autoGenerate ? temporaryPassword : String(req.body?.password ?? '');
 
   if (password.length < 8) {
     res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a debe tener al menos 8 caracteres.' });
@@ -6326,12 +6395,295 @@ app.post('/api/admin/users/:userId/password', async (req, res) => {
     ok: true,
     user: publicAdminUser(target, store),
     sessionsRevoked,
+    temporaryPassword: autoGenerate ? temporaryPassword : undefined,
     message: target.id === context.user.id
       ? 'ContraseÃƒÂ±a actualizada. Se han cerrado otras sesiones de tu cuenta.'
       : 'ContraseÃƒÂ±a actualizada y sesiones del usuario cerradas.'
   });
 });
 // GC ADMIN PASSWORD RESET V8.8.2 END
+
+// GC ADMIN USERS STATUS ACTIONS V176B START
+app.post('/api/admin/users/:userId/disable', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  if (target.id === context.user.id) {
+    res.status(409).json({ ok: false, message: 'No puedes desactivar tu propia cuenta.' });
+    return;
+  }
+
+  if (target.role === 'admin' && isLastAdmin(store, target.id)) {
+    res.status(409).json({ ok: false, message: 'No puedes desactivar el ÃƒÂºltimo administrador.' });
+    return;
+  }
+
+  if (isUserDeleted(target)) {
+    res.status(409).json({ ok: false, message: 'No puedes desactivar una cuenta eliminada.' });
+    return;
+  }
+
+  const beforeValue = publicAdminUser(target, store);
+  const now = new Date().toISOString();
+  target.disabledAt = target.disabledAt || now;
+  target.updatedAt = now;
+  const sessionsRevoked = revokeUserSessions(store, target.id);
+  await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.disable', 'user', target.id, beforeValue, publicAdminUser(target, store));
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    sessionsRevoked,
+    summary: getUserStoreAdminSummary(store),
+    message: 'Cuenta desactivada y sesiones cerradas.'
+  });
+});
+
+app.post('/api/admin/users/:userId/enable', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  if (isUserDeleted(target)) {
+    res.status(409).json({ ok: false, message: 'No puedes reactivar una cuenta eliminada.' });
+    return;
+  }
+
+  const beforeValue = publicAdminUser(target, store);
+  target.disabledAt = null;
+  target.updatedAt = new Date().toISOString();
+  await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.enable', 'user', target.id, beforeValue, publicAdminUser(target, store));
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    summary: getUserStoreAdminSummary(store),
+    message: 'Cuenta reactivada.'
+  });
+});
+
+app.post('/api/admin/users/:userId/delete', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const confirmValue = readAdminConfirm(req);
+  if (confirmValue !== 'DELETE_USER') {
+    res.status(400).json({ ok: false, message: 'ConfirmaciÃƒÂ³n requerida. Escribe DELETE_USER.' });
+    return;
+  }
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  if (target.id === context.user.id) {
+    res.status(409).json({ ok: false, message: 'No puedes eliminar tu propia cuenta.' });
+    return;
+  }
+
+  if (target.role === 'admin' && isLastAdmin(store, target.id)) {
+    res.status(409).json({ ok: false, message: 'No puedes eliminar el ÃƒÂºltimo administrador.' });
+    return;
+  }
+
+  const beforeValue = {
+    user: publicAdminUser(target, store),
+    email: target.email,
+    displayName: target.displayName,
+    pilotLink: target.pilotLink
+  };
+
+  const now = new Date().toISOString();
+  target.deletedAt = target.deletedAt || now;
+  target.deletedBy = context.user.id;
+  target.disabledAt = target.disabledAt || now;
+  target.role = 'pilot';
+  target.email = `deleted+${target.id}@grasscutters.local`;
+  target.displayName = `Usuario eliminado ${target.id.slice(0, 8)}`;
+  target.pilotLink = null;
+  target.password = hashPassword(crypto.randomBytes(32).toString('hex'));
+  target.passwordRecovery = null;
+  target.updatedAt = now;
+
+  const sessionsRevoked = revokeUserSessions(store, target.id);
+  await writeUserStoreAsync(store);
+  await writeAdminAuditLog(req, { context }, 'user.delete_soft', 'user', target.id, beforeValue, publicAdminUser(target, store));
+
+  res.json({
+    ok: true,
+    deleted: true,
+    mode: 'soft',
+    user: publicAdminUser(target, store),
+    sessionsRevoked,
+    summary: getUserStoreAdminSummary(store),
+    message: 'Cuenta eliminada/anÃƒÂ³nimizada. El histÃƒÂ³rico de carreras y ratings no se modifica.'
+  });
+});
+
+app.post('/api/admin/users/:userId/recovery-link', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  const store = await readUserStoreAsync();
+  const target = findUserById(store, req.params.userId);
+
+  if (!target) {
+    res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    return;
+  }
+
+  if (isUserDeleted(target)) {
+    res.status(409).json({ ok: false, message: 'No puedes generar recuperaciÃƒÂ³n para una cuenta eliminada.' });
+    return;
+  }
+
+  const expiresMinutes = Math.max(5, Math.min(1440, Number(req.body?.expiresMinutes ?? 60) || 60));
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + expiresMinutes * 60 * 1000).toISOString();
+
+  const beforeValue = {
+    userId: target.id,
+    email: target.email,
+    hadRecovery: Boolean(target.passwordRecovery?.tokenHash)
+  };
+
+  target.passwordRecovery = {
+    tokenHash: tokenHash(token),
+    createdAt: now.toISOString(),
+    expiresAt,
+    createdBy: context.user.id,
+    usedAt: null
+  };
+  target.updatedAt = now.toISOString();
+
+  await writeUserStoreAsync(store);
+  const resetPath = `/recuperar-password?token=${encodeURIComponent(token)}`;
+  const resetUrl = buildAbsoluteUrl(req, resetPath);
+  await writeAdminAuditLog(req, { context }, 'user.password_recovery_link', 'user', target.id, beforeValue, { userId: target.id, email: target.email, expiresAt });
+
+  res.json({
+    ok: true,
+    user: publicAdminUser(target, store),
+    expiresAt,
+    resetPath,
+    resetUrl,
+    message: 'Enlace de recuperaciÃƒÂ³n generado.'
+  });
+});
+// GC ADMIN USERS STATUS ACTIONS V176B END
+
+// GC AUTH PASSWORD RECOVERY V176B START
+app.post('/api/auth/password-recovery/verify', async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  if (!token) {
+    res.status(400).json({ ok: false, message: 'Falta el token de recuperaciÃƒÂ³n.' });
+    return;
+  }
+
+  const store = await readUserStoreAsync();
+  const hash = tokenHash(token);
+  const user = store.users.find((item) => item.passwordRecovery?.tokenHash === hash) || null;
+
+  if (!user || !user.passwordRecovery || user.passwordRecovery.usedAt || Date.parse(user.passwordRecovery.expiresAt) <= Date.now()) {
+    res.status(400).json({ ok: false, message: 'El enlace no es vÃƒÂ¡lido o ha caducado.' });
+    return;
+  }
+
+  if (isUserBlocked(user)) {
+    res.status(403).json({ ok: false, message: 'La cuenta no estÃƒÂ¡ activa.' });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName
+    },
+    expiresAt: user.passwordRecovery.expiresAt,
+    message: 'Enlace vÃƒÂ¡lido.'
+  });
+});
+
+app.post('/api/auth/password-recovery/complete', async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const password = String(req.body?.password ?? '');
+  const confirmPassword = String(req.body?.confirmPassword ?? req.body?.confirm ?? '');
+
+  if (!token) {
+    res.status(400).json({ ok: false, message: 'Falta el token de recuperaciÃƒÂ³n.' });
+    return;
+  }
+
+  if (password.length < 8) {
+    res.status(400).json({ ok: false, message: 'La contraseÃƒÂ±a debe tener al menos 8 caracteres.' });
+    return;
+  }
+
+  if (password.length > 128) {
+    res.status(400).json({ ok: false, message: 'La contraseÃƒÂ±a es demasiado larga.' });
+    return;
+  }
+
+  if (confirmPassword && password !== confirmPassword) {
+    res.status(400).json({ ok: false, message: 'Las contraseÃƒÂ±as no coinciden.' });
+    return;
+  }
+
+  const store = await readUserStoreAsync();
+  const hash = tokenHash(token);
+  const user = store.users.find((item) => item.passwordRecovery?.tokenHash === hash) || null;
+
+  if (!user || !user.passwordRecovery || user.passwordRecovery.usedAt || Date.parse(user.passwordRecovery.expiresAt) <= Date.now()) {
+    res.status(400).json({ ok: false, message: 'El enlace no es vÃƒÂ¡lido o ha caducado.' });
+    return;
+  }
+
+  if (isUserBlocked(user)) {
+    res.status(403).json({ ok: false, message: 'La cuenta no estÃƒÂ¡ activa.' });
+    return;
+  }
+
+  const beforeSessions = countSessionsForUser(store, user.id);
+  user.password = hashPassword(password);
+  user.passwordRecovery = null;
+  user.updatedAt = new Date().toISOString();
+  const sessionsRevoked = revokeUserSessions(store, user.id);
+  await writeUserStoreAsync(store);
+
+  res.json({
+    ok: true,
+    sessionsRevoked,
+    message: beforeSessions > 0
+      ? 'ContraseÃƒÂ±a actualizada. Se han cerrado las sesiones abiertas.'
+      : 'ContraseÃƒÂ±a actualizada.'
+  });
+});
+// GC AUTH PASSWORD RECOVERY V176B END
+
 
 app.post('/api/admin/stracker/sync', async (req, res) => {
   const context = await requireAdmin(req, res);
@@ -6865,6 +7217,16 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (!user || !verifyPassword(password, user.password)) {
     res.status(401).json({ ok: false, message: 'Email o contraseÃƒÂ±a incorrectos.' });
+    return;
+  }
+
+  if (isUserDeleted(user)) {
+    res.status(403).json({ ok: false, message: 'Esta cuenta ha sido eliminada.' });
+    return;
+  }
+
+  if (isUserDisabled(user)) {
+    res.status(403).json({ ok: false, message: 'Esta cuenta estÃƒÂ¡ desactivada.' });
     return;
   }
 
