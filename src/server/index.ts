@@ -4697,82 +4697,6 @@ app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
 });
 // GC ACSM PRIORITY MYSQL GUARD V6 END
 
-// GC ACSM PROFILE GUARD ROUTES V4 START
-// Rutas ACSM heredadas neutralizadas: delegan en el guard admin unificado de gc_session.
-function gcAcsmGetLocalFunctionV4(name: string) {
-  try {
-    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) return null;
-    return eval('typeof ' + name + ' !== "undefined" ? ' + name + ' : null');
-  } catch {
-    return null;
-  }
-}
-
-async function gcAcsmRequireAdminFromProfileV4(req: any, res: any) {
-  const context = await requireAdmin(req as express.Request, res as express.Response);
-  return context ? publicUser(context.user) : null;
-}
-
-app.get('/api/admin/acsm/status', async (req: any, res: any) => {
-  const adminUser = await gcAcsmRequireAdminFromProfileV4(req, res);
-  if (!adminUser) return;
-
-  try {
-    const safeConfig = gcAcsmGetLocalFunctionV4('gcAcsmSafeConfigV1');
-    const readCurrentCombo = gcAcsmGetLocalFunctionV4('gcAcsmReadCurrentComboV1');
-    const config = typeof safeConfig === 'function' ? safeConfig() : { configured: false, message: 'Funciones ACSM no encontradas.' };
-    let currentCombo = null;
-
-    if (typeof readCurrentCombo === 'function') {
-      try {
-        const result = await readCurrentCombo();
-        currentCombo = result?.event || result || null;
-      } catch (error: any) {
-        currentCombo = { ok: false, message: error?.message || 'No se pudo leer el combo actual.' };
-      }
-    }
-
-    res.json({
-      ok: true,
-      authenticated: true,
-      authorized: true,
-      source: 'acsm-profile-guard-v4',
-      currentUser: adminUser,
-      config,
-      currentCombo
-    });
-  } catch (error: any) {
-    console.error('[GC] Error comprobando ACSM v4:', error);
-    res.status(500).json({ ok: false, source: 'acsm-profile-guard-v4', message: error?.message || 'No se pudo comprobar ACSM.' });
-  }
-});
-
-app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
-  const adminUser = await gcAcsmRequireAdminFromProfileV4(req, res);
-  if (!adminUser) return;
-
-  try {
-    const syncCurrentCombo = gcAcsmGetLocalFunctionV4('gcAcsmSyncCurrentComboV1') || gcAcsmGetLocalFunctionV4('gcAcsmSyncCurrentComboV2');
-    if (typeof syncCurrentCombo !== 'function') {
-      res.status(500).json({ ok: false, source: 'acsm-profile-guard-v4', message: 'No se encontraron las funciones de sincronizaciÃƒÂ³n ACSM. Aplica primero el pack ACSM current combo sync.' });
-      return;
-    }
-
-    const result = await syncCurrentCombo();
-    res.json({
-      ok: result?.ok !== false,
-      authenticated: true,
-      authorized: true,
-      source: 'acsm-profile-guard-v4',
-      currentUser: adminUser,
-      ...result
-    });
-  } catch (error: any) {
-    console.error('[GC] Error sincronizando combo ACSM v4:', error);
-    res.status(500).json({ ok: false, source: 'acsm-profile-guard-v4', message: error?.message || 'No se pudo sincronizar el combo desde ACSM.' });
-  }
-});
-// GC ACSM PROFILE GUARD ROUTES V4 END
 
 
 // GC_PATCH_ADMIN_AUTH_UNIFIED_STATUS_START
@@ -5489,40 +5413,6 @@ async function gcAcsmSyncCurrentComboV1() {
   await gcCalendarWriteEventsDbV8(nextEvents);
   return { cfg, event, totalEvents: nextEvents.length, source: gcCalendarStorageSourceDbV8() };
 }
-
-app.get('/api/admin/acsm/status', async (req: any, res: any) => {
-  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
-  try {
-    const info = gcAcsmSafeConfigV1();
-    let combo: any = null;
-    if (info.userConfigured && info.passwordConfigured) {
-      const { cfg, event } = await gcAcsmReadCurrentComboV1();
-      combo = {
-        serverName: cfg.serverName,
-        trackCode: cfg.trackCode,
-        trackName: event.trackName,
-        carCodes: cfg.carCodes,
-        carNames: event.carNames,
-        event
-      };
-    }
-    res.json({ ok: true, config: info, combo, checkedAt: new Date().toISOString() });
-  } catch (error: any) {
-    console.error('[GC] Error comprobando ACSM:', error);
-    res.status(500).json({ ok: false, config: gcAcsmSafeConfigV1(), message: error?.message || 'No se pudo comprobar ACSM.' });
-  }
-});
-
-app.post('/api/admin/acsm/sync-current-combo', async (req: any, res: any) => {
-  if (!(await gcCalendarRequireAdminDbV8(req, res))) return;
-  try {
-    const result = await gcAcsmSyncCurrentComboV1();
-    res.json({ ok: true, ...result, syncedAt: new Date().toISOString() });
-  } catch (error: any) {
-    console.error('[GC] Error sincronizando combo ACSM:', error);
-    res.status(500).json({ ok: false, message: error?.message || 'No se pudo sincronizar el combo desde ACSM.' });
-  }
-});
 
 // GC ACSM SYNC END
 
