@@ -9443,41 +9443,6 @@ app.get('/api/stats/overview', async (_req, res) => {
 /* GC_LEGACY_SERVER_ALIASES_V1_END */
 
 
-app.get('/api/pilots', async (req, res) => {
-  const stracker = getStrackerConfig();
-
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    res.json({
-      ok: true,
-      mode: 'mock',
-      items: mockPilots,
-      message: 'ÃƒÂrea de pilotos en maqueta. Sin stracker.db3 vÃƒÂ¡lido todavÃƒÂ­a.'
-    });
-    return;
-  }
-
-  try {
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const items = reduceDriverStats(filterLaps(laps, req, { validOnly: false }));
-
-    res.json({
-      ok: true,
-      mode: 'real-stracker',
-      count: items.length,
-      items,
-      message: 'Pilotos reales generados desde stracker.db3. Login pendiente para ÃƒÂ¡rea privada.'
-    });
-  } catch (error) {
-    res.status(200).json({
-      ok: false,
-      mode: 'real-stracker',
-      items: [],
-      message: 'No se pudieron leer pilotos reales.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 app.get('/api/cars', async (req, res) => {
   const stracker = getSafeStrackerOrRespond(res);
   if (!stracker?.resolvedPath) return;
