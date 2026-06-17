@@ -12444,38 +12444,6 @@ app.get('/api/gc/recent-laps', async (req, res) => {
 /* GC_DATA_CORE_LAB_FIXES_V1_END */
 
 
-app.get('/api/gc/recent-laps', async (req, res) => {
-  try {
-    /* GC_DATA_CORE_DISPLAY_NAMES_GUARD_V1 */
-    await readDisplayNameStoreAsync();
-    const scope = getQueryString(req, 'scope', 'global') === 'activeCombo' ? 'activeCombo' : 'global';
-    const limit = gcDataCoreQueryNumber(req, 'limit', 30, 1, 200);
-    const payload = await buildGcDataCorePayload(req, {
-      scope,
-      recentLimit: limit,
-      leaderboardLimit: 1
-    });
-
-    res.json({
-      ok: payload.ok,
-      mode: payload.mode,
-      generatedAt: payload.generatedAt,
-      source: payload.source,
-      scope,
-      stracker: payload.stracker,
-      data: payload.data ? {
-        activeCombo: payload.data.activeCombo,
-        recentLaps: payload.data.recentLaps,
-        latestLap: payload.data.latestLap,
-        stats: payload.data.scopedStats
-      } : null,
-      message: payload.ok ? 'Vueltas recientes canÃ³nicas generadas desde GC Data Core.' : payload.message
-    });
-  } catch (error) {
-    console.error('[GC DATA CORE] /api/gc/recent-laps:', error);
-    res.status(200).json({ ok: false, mode: 'gc-data-core-v1', data: null, message: 'No se pudieron generar las vueltas recientes canÃ³nicas.' });
-  }
-});
 /* GC_DATA_CORE_V1_END */
 
 
