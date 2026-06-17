@@ -9517,37 +9517,6 @@ app.get('/api/laps', async (req, res) => {
   }
 });
 
-app.get('/api/drivers', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
-  try {
-    const limit = getQueryNumber(req, 'limit', 100, 1, 500);
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const filtered = filterLaps(laps, req, { validOnly: false });
-    let items = reduceDriverStats(filtered);
-    const q = getQueryString(req, 'q') || getQueryString(req, 'driver') || getQueryString(req, 'pilot');
-    if (q) items = items.filter((driver) => includesFilter(driver.name, q));
-
-    res.json({
-      ok: true,
-      mode: 'real-stracker',
-      count: Math.min(items.length, limit),
-      totalDrivers: items.length,
-      items: items.slice(0, limit),
-      message: 'Pilotos reales generados desde Players + Lap.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo drivers:', error);
-    res.status(200).json({
-      ok: false,
-      items: [],
-      message: 'No se pudieron leer pilotos reales.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 app.get('/api/pilots', async (req, res) => {
   const stracker = getStrackerConfig();
 
