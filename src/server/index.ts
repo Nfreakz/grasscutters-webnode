@@ -9481,42 +9481,6 @@ app.get('/api/hotlaps', async (req, res) => {
   }
 });
 
-app.get('/api/laps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
-  try {
-    const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
-    const sort = getQueryString(req, 'sort', 'fastest').toLowerCase();
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const filtered = filterLaps(laps, req, { validOnly: false });
-    const sorted = [...filtered].sort((a, b) => {
-      if (sort === 'recent') return Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0);
-      if (sort === 'oldest') return Number(a.timestamp ?? 0) - Number(b.timestamp ?? 0);
-      return Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity);
-    });
-
-    res.json({
-      ok: true,
-      mode: 'real-stracker',
-      sort,
-      count: Math.min(sorted.length, limit),
-      totalMatchedLaps: filtered.length,
-      filters: summarizeFilters(req),
-      items: sorted.slice(0, limit),
-      message: 'Vueltas reales leÃƒÂ­das desde stracker.db3.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo vueltas:', error);
-    res.status(200).json({
-      ok: false,
-      items: [],
-      message: 'No se pudieron leer vueltas reales.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 app.get('/api/pilots', async (req, res) => {
   const stracker = getStrackerConfig();
 
