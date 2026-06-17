@@ -41,3 +41,176 @@ html[data-gc-scope="marketing"] body.gc-page-ratings .gc-ratings-atmosphere::aft
   content: none !important;
   display: none !important;
 }
+
+/* GC_CALENDAR_COMMUNITY_HERO_ALIGNMENT_V171
+   Ajuste final para /calendario y /carreras-comunidad:
+   - el vídeo queda full-bleed a ancho real de viewport;
+   - el texto arranca en la misma columna que el contenido principal inferior;
+   - se elimina el bleed extra específico de calendario que desfasaba el hero;
+   - no toca HTML, backend ni datos.
+*/
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"],
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] {
+  --gc-calendar-hero-bleed-top: 0px !important;
+  --gc-hero-zone-width: 1240px !important;
+  --gc-hero-zone-gutter: 34px !important;
+  --gc-hero-zone-height: 490px !important;
+  --gc-hero-text-y: 84px !important;
+  --gc-hero-text-max: 650px !important;
+  --gc-hero-lead-max: 560px !important;
+  --gc-hero-after-gap: 44px !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero {
+  position: relative !important;
+  display: block !important;
+  width: 100vw !important;
+  max-width: none !important;
+  min-width: 100vw !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  margin: 0 calc(50% - 50vw) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  background: #020402 !important;
+  border: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__grid,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__grid {
+  position: relative !important;
+  display: block !important;
+  width: var(--shell) !important;
+  max-width: 1240px !important;
+  height: var(--gc-hero-zone-height) !important;
+  min-height: var(--gc-hero-zone-height) !important;
+  max-height: var(--gc-hero-zone-height) !important;
+  margin-inline: auto !important;
+  padding: 0 !important;
+  z-index: 3 !important;
+  box-sizing: border-box !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main {
+  position: absolute !important;
+  left: 0 !important;
+  right: auto !important;
+  top: var(--gc-hero-text-y) !important;
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  text-align: left !important;
+  z-index: 5 !important;
+  box-sizing: border-box !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-frame,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-text,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-title,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-frame,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-text,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-title {
+  width: min(100%, var(--gc-hero-text-max)) !important;
+  max-width: var(--gc-hero-text-max) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  text-align: left !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-kicker,
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-lead,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-kicker,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-lead {
+  text-align: left !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-unified-hero-lead,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-unified-hero-lead {
+  margin: 16px 0 0 !important;
+  max-width: var(--gc-hero-lead-max) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero__main .gc-actions,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero__main .gc-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 26px !important;
+  position: static !important;
+  transform: none !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-atmosphere,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  transform: none !important;
+  overflow: hidden !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background: #020402 !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-hero-video,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-atmosphere-video {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  transform: none !important;
+  opacity: 1 !important;
+  filter: saturate(.82) contrast(1.08) brightness(.60) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-public-page-hero::after,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-public-page-hero::after {
+  height: var(--gc-hero-zone-height) !important;
+}
+
+html[data-gc-scope="marketing"] body[data-public-route="/calendario"] .gc-calendar-shell,
+html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] .gc-community-races-page {
+  margin-top: var(--gc-hero-after-gap) !important;
+}
+
+@media (max-width: 900px) {
+  html[data-gc-scope="marketing"] body[data-public-route="/calendario"],
+  html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] {
+    --gc-hero-zone-height: 540px !important;
+    --gc-hero-text-y: 82px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-gc-scope="marketing"] body[data-public-route="/calendario"],
+  html[data-gc-scope="marketing"] body[data-public-route="/carreras-comunidad"] {
+    --gc-hero-zone-height: 560px !important;
+    --gc-hero-text-y: 74px !important;
+    --gc-hero-text-max: 100% !important;
+    --gc-hero-lead-max: 100% !important;
+    --gc-hero-after-gap: 34px !important;
+  }
+}
+
