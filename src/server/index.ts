@@ -7316,20 +7316,6 @@ app.post('/api/auth/password', async (req, res) => {
 });
 // GC AUTH CHANGE PASSWORD V8.8.4 END
 
-app.post('/api/auth/logout', async (req, res) => {
-  const token = readAuthToken(req);
-  const store = await readUserStoreAsync();
-
-  if (token) {
-    const hash = tokenHash(token);
-    store.sessions = store.sessions.filter((session) => session.tokenHash !== hash);
-    await writeUserStoreAsync(store);
-  }
-
-  clearSessionCookie(res);
-  res.json({ ok: true, authenticated: false, message: 'SesiÃƒÂ³n cerrada.' });
-});
-
 app.post('/api/auth/link-pilot', async (req, res) => {
   const context = await getAuthContextAsync(req);
   if (!context) {
