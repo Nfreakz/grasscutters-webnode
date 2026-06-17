@@ -55,7 +55,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             <span class="gc-app-label-v3">Circuito</span>
             <h3 id="gcComboTrack">Cargando...</h3>
             <div class="gc-app-chip-list-v3" id="gcComboCars"><span class="gc-chip">Leyendo coches</span></div>
-          </div>
+          </div>
+
         </div>
         <div class="gc-app-mini-stats-v3">
           <div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div>
@@ -1654,7 +1655,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         }
 
         setText('gcQuickDb', 'Activo');
-        setText('gcQuickDbMeta', stats.generatedAt ? 'Data Core · ' + dateText(stats.generatedAt) : 'Data Core');
+        setText('gcQuickDbMeta', stats.generatedAt ? 'Actualizado · ' + dateText(stats.generatedAt) : 'Actualizado');
 
         return stats;
       }
@@ -1738,14 +1739,14 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         const latest = rows.slice().sort((a, b) => lapDate(b) - lapDate(a))[0] || null;
         setText('gcQuickLast', latest ? lapTime(latest) : '--');
         setText('gcQuickLastMeta', latest ? [driverName(latest), trackName(latest), dateText(latest)].filter(Boolean).join(' · ') : 'sin datos');
-        setText('gcRefsMeta', formatNumber(recent.length) + ' vueltas recientes · Data Core single renderer');
+        setText('gcRefsMeta', formatNumber(recent.length) + ' vueltas recientes');
       }
 
       async function render() {
         state.lastRunAt = new Date().toISOString();
 
         try {
-          ensureBadge('warn', 'Data Core loading');
+          ensureBadge('warn', 'Actualizando datos');
 
           const [diagnostics, combosData, recentData, leaderboardData, identityData, adminData] = await Promise.all([
             fetchJson('/api/gc/diagnostics'),
@@ -1770,7 +1771,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           document.documentElement.dataset.gcAppDataCoreVersion = 'v1.8-single';
           document.documentElement.dataset.gcAppSingleRenderer = 'v1.8';
 
-          ensureBadge('ok', 'Data Core single');
+          ensureBadge('ok', 'Datos actualizados');
 
           state.lastOkAt = new Date().toISOString();
           state.lastError = null;
@@ -1803,7 +1804,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         } catch (error) {
           state.lastError = error?.message || String(error);
           document.documentElement.dataset.gcAppDataCore = 'single-error';
-          ensureBadge('error', 'Data Core error');
+          ensureBadge('error', 'Error al actualizar');
           window.GCAppSingleRendererStatus = () => ({ ...state });
           console.warn('[GC /app Single Renderer v1.8] failed:', error);
         }

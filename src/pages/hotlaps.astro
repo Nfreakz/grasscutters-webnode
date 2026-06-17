@@ -1293,8 +1293,8 @@ import AppLayout from '../layouts/AppLayout.astro';
 
         if (els.visible) els.visible.textContent = String(rows.length);
         if (els.hint) els.hint.textContent = rows.length
-? `${rows.length} vueltas visibles de ${state.cache.length} · Data Core primary`
-          : 'No hay resultados con esos filtros · Data Core primary';
+? `${rows.length} vueltas visibles de ${state.cache.length}`
+          : 'No hay resultados con esos filtros';
         if (els.order) els.order.textContent = orderLabel();
 
         els.rows.innerHTML = rows.map((row, index) => {
@@ -1324,11 +1324,11 @@ import AppLayout from '../layouts/AppLayout.astro';
               <td>${isInvalid(row) ? '<span class="gc-hotlap-state-v13 gc-hotlap-state-v13--bad">No válida</span>' : '<span class="gc-hotlap-state-v13">Válida</span>'}</td>
             </tr>
           `;
-        }).join('') || '<tr><td colspan="10">Sin resultados · Data Core primary</td></tr>';
+        }).join('') || '<tr><td colspan="10">Sin resultados</td></tr>';
 
         document.documentElement.dataset.gcHotlapsDataCore = 'primary';
         document.documentElement.dataset.gcHotlapsDataCoreVersion = 'all-laps-v1';
-        ensureCoreBadge('ok', 'Data Core all laps v1');
+        ensureCoreBadge('ok', 'Datos actualizados');
 
         state.lastGood = { snapshot: state.snapshot, rows: state.cache, renderedAt: new Date().toISOString() };
         window.GCHotlapsDataCorePrimary = { status: 'ok', ...state.lastGood };
@@ -1339,7 +1339,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         state.running = true;
 
         if (els.reload) els.reload.disabled = true;
-        ensureCoreBadge('warn', 'Data Core loading');
+        ensureCoreBadge('warn', 'Actualizando datos');
 
         try {
           const [snapshot, leaderboard] = await Promise.all([
@@ -1371,7 +1371,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
           if (els.loaded) els.loaded.textContent = String(state.cache.length);
           if (els.updated) els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-          if (els.source) els.source.textContent = 'Core';
+          if (els.source) els.source.textContent = 'Actualizado';
 
           drawCore();
 
@@ -1383,9 +1383,9 @@ import AppLayout from '../layouts/AppLayout.astro';
         } catch (error) {
           console.warn('[GC /hotlaps Data Core Primary v1] Core unavailable, legacy leaderboard remains active:', error);
           document.documentElement.dataset.gcHotlapsDataCore = state.lastGood ? 'primary-stale' : 'fallback';
-          ensureCoreBadge('error', state.lastGood ? 'Data Core stale' : 'Legacy fallback');
+          ensureCoreBadge('error', state.lastGood ? 'Datos guardados' : 'Datos básicos');
           window.GCHotlapsDataCorePrimary = { status: state.lastGood ? 'stale' : 'fallback', error: error?.message || String(error), ...state.lastGood };
-          if (els.source) els.source.textContent = state.lastGood ? 'Core stale' : 'Legacy';
+          if (els.source) els.source.textContent = state.lastGood ? 'Datos guardados' : 'Datos básicos';
         } finally {
           state.running = false;
           if (els.reload) els.reload.disabled = false;
