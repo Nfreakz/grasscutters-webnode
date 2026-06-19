@@ -2940,12 +2940,11 @@ function gcDataCoreMysqlFirstEnabled(req?: express.Request) {
 
 function gcDataCoreMysqlMirrorSupportsRequest(req: express.Request) {
   const requestedSource = getQueryString(req, 'source', '').toLowerCase();
+  if (['stracker', 'sqlite', 'db3', 'file'].includes(requestedSource)) return false;
   if (['mysql', 'sql', 'mirror', 'mysql-mirror'].includes(requestedSource)) return true;
 
-  // El mirror actual no guarda CarId/TrackId originales, solo nombres/códigos y combo_id.
-  // Si el usuario filtra por IDs puros de coche/circuito, es más seguro dejar que el fallback SQLite responda.
-  const hasUnsupportedIdFilter = Boolean(getQueryString(req, 'carId') || getQueryString(req, 'trackId'));
-  return !hasUnsupportedIdFilter;
+  // v129: el mirror ya guarda carId/trackId/sectores/temperaturas, así que puede responder filtros públicos normales.
+  return true;
 }
 
 async function readJoinedLapsFromMysqlMirror() {
@@ -9064,26 +9063,57 @@ function gcComboCanonicalIsPublicItemV1(item: any) {
 
 async function gcComboCanonicalReadItemsV1(strackerPath: string, sort = 'recent') {
   await readDisplayNameStoreAsync();
-  const laps = await readJoinedLaps(strackerPath);
+
+  const stracker = getStrackerConfig();
+  let laps: any[] = [];
+  let source: GcDataCoreReadSource = 'stracker-db3';
+  let mysqlMirror: any = null;
+  let fallbackReason: string | null = null;
+
+  if (gcDataCoreMysqlFirstEnabled()) {
+    try {
+      laps = await readJoinedLapsFromMysqlMirror();
+      if (laps.length > 0) {
+        source = 'mysql-mirror';
+        mysqlMirror = {
+          enabled: true,
+          rows: laps.length,
+          message: 'Combos leídos desde mirror MySQL gc_stracker_*.'
+        };
+      }
+    } catch (error) {
+      fallbackReason = error instanceof Error ? error.message : String(error);
+      console.warn('[GC Combo Canonical] MySQL mirror no disponible, fallback stracker.db3:', fallbackReason);
+    }
+  }
+
+  if (!laps.length) {
+    laps = await readJoinedLaps(strackerPath);
+    source = 'stracker-db3';
+  }
+
   const items = gcComboCanonicalSortItemsV1(gcComboCanonicalBuildGroupsV1(laps), sort).map(gcComboCanonicalCompatShapeV1);
-  return { laps, items };
+  return { laps, items, source, stracker, mysqlMirror, fallbackReason };
 }
 
 app.get('/api/gc/combos', async (req: any, res: any) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
+  const stracker = getStrackerConfig();
 
   try {
     const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
     const sort = getQueryString(req, 'sort', 'recent');
-    const { items } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath, sort);
+    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
     const publicItems = items.filter(gcComboCanonicalIsPublicItemV1).slice(0, limit);
 
     res.json({
       ok: true,
       source: 'gc-data-core',
+      dataSource: source,
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreStracker),
+      mysqlMirror: mysqlMirror ?? null,
+      fallbackReason: fallbackReason ?? null,
       count: publicItems.length,
       totalMatched: items.filter(gcComboCanonicalIsPublicItemV1).length,
       totalCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
@@ -9115,12 +9145,11 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
 });
 
 app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
+  const stracker = getStrackerConfig();
 
   try {
     const requestedId = String(req.params.comboId || '').trim();
-    const { items } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath, 'recent');
+    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', 'recent');
     const item = gcComboCanonicalFindByIdV1(items, requestedId);
 
     if (!item) {
@@ -9137,8 +9166,12 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
     res.json({
       ok: true,
       source: 'gc-data-core',
+      dataSource: source,
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreStracker),
+      mysqlMirror: mysqlMirror ?? null,
+      fallbackReason: fallbackReason ?? null,
       item,
       meta: {
         requestedComboId: requestedId,
@@ -9167,20 +9200,23 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
 });
 
 app.get('/api/combos/stats', async (req: any, res: any) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
+  const stracker = getStrackerConfig();
 
   try {
     const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
     const sort = getQueryString(req, 'sort', 'recent');
-    const { items } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath, sort);
+    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
     const publicItems = items.slice(0, limit);
 
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: source,
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreStracker),
+      mysqlMirror: mysqlMirror ?? null,
+      fallbackReason: fallbackReason ?? null,
       legacyEndpoint: '/api/combos/stats',
       canonicalEndpoint: '/api/gc/combos',
       count: publicItems.length,
@@ -9213,12 +9249,11 @@ app.get('/api/combos/stats', async (req: any, res: any) => {
 });
 
 app.get('/api/combos/:comboId', async (req: any, res: any) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
+  const stracker = getStrackerConfig();
 
   try {
     const requestedId = String(req.params.comboId || '').trim();
-    const { items } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath, 'recent');
+    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', 'recent');
     const item = gcComboCanonicalFindByIdV1(items, requestedId);
 
     if (!item) {
@@ -9237,8 +9272,12 @@ app.get('/api/combos/:comboId', async (req: any, res: any) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: source,
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreStracker),
+      mysqlMirror: mysqlMirror ?? null,
+      fallbackReason: fallbackReason ?? null,
       legacyEndpoint: '/api/combos/:comboId',
       canonicalEndpoint: '/api/gc/combos/:comboId',
       item,
@@ -9269,20 +9308,32 @@ app.get('/api/combos/:comboId', async (req: any, res: any) => {
 /* GC_COMBO_CANONICAL_PUBLIC_FILTER_V1_END */
 
 app.get('/api/hotlaps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
     const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
     const scope = getQueryString(req, 'scope', 'all');
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-data-core-legacy-server-alias',
+        dataSource: 'unavailable',
+        generatedAt: new Date().toISOString(),
+        legacyEndpoint: '/api/hotlaps',
+        canonicalEndpoint: '/api/gc/leaderboard',
+        items: [],
+        hotlaps: [],
+        leaderboard: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
-
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const { laps, comboDefinitions } = dataCoreSource;
     const combos = buildComboStatsFromLaps(laps, comboDefinitions);
     const rows = gcLegacyAliasRowsForScopeV1(laps, combos, scope);
     const leaderboard = gcLegacyAliasBuildLeaderboardV1(rows).slice(0, limit);
@@ -9290,10 +9341,14 @@ app.get('/api/hotlaps', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/hotlaps',
       canonicalEndpoint: '/api/gc/leaderboard',
       scope,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: leaderboard.length,
       items: leaderboard,
       hotlaps: leaderboard,
@@ -9315,21 +9370,32 @@ app.get('/api/hotlaps', async (req, res) => {
 });
 
 app.get('/api/laps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
     const limit = getQueryNumber(req, 'limit', 50, 1, 1000);
     const scope = getQueryString(req, 'scope', 'global');
     const sort = getQueryString(req, 'sort', getQueryString(req, 'order', 'recent')).toLowerCase();
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-data-core-legacy-server-alias',
+        dataSource: 'unavailable',
+        generatedAt: new Date().toISOString(),
+        legacyEndpoint: '/api/laps',
+        canonicalEndpoint: '/api/gc/recent-laps',
+        items: [],
+        laps: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
-
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const { laps, comboDefinitions } = dataCoreSource;
     const combos = buildComboStatsFromLaps(laps, comboDefinitions);
     const rows = gcLegacyAliasRowsForScopeV1(laps, combos, scope)
       .filter((row) => {
@@ -9348,10 +9414,14 @@ app.get('/api/laps', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/laps',
       canonicalEndpoint: '/api/gc/recent-laps',
       scope,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: rows.length,
       totalMatchedLaps: rows.length,
       items: rows,
@@ -10362,13 +10432,24 @@ app.get('/api/sessions', async (req, res) => {
 });
 
 app.get('/api/activity/recent', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     const hours = getQueryNumber(req, 'hours', 48, 1, 24 * 30);
     const limit = getQueryNumber(req, 'limit', 100, 1, 500);
-    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        mode: 'gc-data-core-v1',
+        source: 'unavailable',
+        items: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const laps = dataCoreSource.laps;
     const filtered = filterLaps(laps, { ...req, query: { ...req.query, sinceHours: String(hours), valid: 'all' } } as express.Request, { validOnly: false });
     const latestByDriverCombo = new Map<string, ReturnType<typeof mapLapRow>>();
 
@@ -10386,11 +10467,17 @@ app.get('/api/activity/recent', async (req, res) => {
 
     res.json({
       ok: true,
-      mode: 'real-stracker',
+      mode: 'gc-data-core-v1',
+      source: dataCoreSource.source,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       hours,
       count: items.length,
       items,
-      message: `Actividad reciente de las ÃƒÂºltimas ${hours}h.`
+      message: dataCoreSource.source === 'mysql-mirror'
+        ? `Actividad reciente de las ÃƒÂºltimas ${hours}h desde mirror MySQL.`
+        : `Actividad reciente de las ÃƒÂºltimas ${hours}h desde stracker.db3.`
     });
   } catch (error) {
     console.error('[GC] Error leyendo recent activity:', error);
@@ -10525,7 +10612,7 @@ function gcDataCorePublicStracker(stracker: any) {
 
 async function buildGcDataCorePayload(req: express.Request, options: { scope?: GcDataCoreScope; recentLimit?: number; leaderboardLimit?: number } = {}) {
   const readSource = await readGcDataCoreSource(req);
-  if ('ok' in readSource && readSource.ok === false) {
+  if ((readSource as any).ok === false) {
     return {
       ok: false,
       mode: 'unavailable',
@@ -12071,7 +12158,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
 
     if (wantsRawGlobal) {
       const readSource = await readGcDataCoreSource(req);
-      if ('ok' in readSource && readSource.ok === false) {
+      if ((readSource as any).ok === false) {
         res.status(200).json({
           ok: false,
           mode: 'gc-data-core-v1',
@@ -12450,20 +12537,29 @@ app.get('/api/gc/names/preview', async (req, res) => {
 });
 
 app.get('/api/gc/recent-laps', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
     const limit = getQueryNumber(req, 'limit', 20, 1, 200);
     const scope = getQueryString(req, 'scope', 'global').toLowerCase();
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        source: 'unavailable',
+        generatedAt: new Date().toISOString(),
+        scope,
+        items: [],
+        laps: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
-
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const { laps, comboDefinitions } = dataCoreSource;
     const combos = buildComboStatsFromLaps(laps, comboDefinitions);
     const activeCombo = gcLabFixBestActiveComboV1(combos);
     const warnings: string[] = [];
@@ -12489,9 +12585,12 @@ app.get('/api/gc/recent-laps', async (req, res) => {
 
     res.json({
       ok: true,
-      source: 'gc-data-core',
+      source: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       scope,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: Math.min(filtered.length, limit),
       totalMatched: filtered.length,
       activeCombo: activeCombo ? {
