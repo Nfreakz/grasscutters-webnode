@@ -4,9 +4,9 @@ import { gcTrackMapCandidates, gcTrackPhotoCandidates, resolveGcTrackAssets } fr
 
 type PlainObject = Record<string, any>;
 
-const defaultAcsmBaseUrl = 'http://185.216.144.78:8840';
+const defaultAcsmBaseUrl = 'http://145.239.131.153:8840';
 const defaultChampionshipId = 'ad89ce26-0206-40f2-adec-451cf221d4e6';
-const defaultChampionshipSignUpUrl = 'http://185.216.144.78:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam';
+const defaultChampionshipSignUpUrl = 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam';
 
 type ChampionshipCache = {
   fetchedAt: number;

@@ -8,7 +8,7 @@ const HOTLAPS_URL = `${WEB_URL}/hotlaps`;
 const ACSM_DETAILS_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.ACSM_DETAILS_URL) ||
   process.env.ACSM_DETAILS_URL ||
-  'http://185.216.144.78:8381/api/details';
+  'http://145.239.131.153:8381/api/details';
 
 type GenericRecord = Record<string, any>;
 

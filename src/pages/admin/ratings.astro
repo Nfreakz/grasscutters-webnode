@@ -1420,13 +1420,13 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const label = candidateSource === 'sql-mirror'
           ? `Candidatas desde SQL mirror · ${mirrorDriver === 'mysql' ? 'MySQL' : 'SQLite local'}`
           : candidateSource === 'stracker-db3-fallback'
-            ? 'Candidatas desde sTracker DB3 · fallback'
+            ? 'Candidatas desde sTracker DB3 · modo auxiliar'
             : 'Sin candidatas importadas';
         const message = syncRequired
           ? 'No hay carreras sincronizadas en el mirror SQL. Pulsa Sincronizar sTracker → SQL.'
           : candidateSource === 'sql-mirror'
             ? 'La lista viene del mirror SQL, no de stracker.db3.'
-            : 'Fallback activo solo para revisión puntual.';
+            : 'Modo auxiliar activo solo para revisión puntual.';
 
         if (els.candidateSourceNotice) {
           els.candidateSourceNotice.innerHTML = `

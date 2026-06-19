@@ -5360,16 +5360,16 @@ function gcAcsmCurrentWeekStartDateV1() {
 }
 
 function gcAcsmDefaultServerCfgPathV1() {
-  return process.env.ACSM_SERVER_CFG_PATH?.trim() || '/185.216.144.78_9800/cfg/server_cfg.ini';
+  return process.env.ACSM_SERVER_CFG_PATH?.trim() || '/cfg/server_cfg.ini';
 }
 
 function gcAcsmDefaultLastRaceEventPathV1() {
-  return process.env.ACSM_LAST_RACE_EVENT_PATH?.trim() || '/185.216.144.78_9800/saves/last_race_event.json';
+  return process.env.ACSM_LAST_RACE_EVENT_PATH?.trim() || '/saves/last_race_event.json';
 }
 
 function gcAcsmSftpConfigV1() {
   return {
-    host: process.env.ACSM_SFTP_HOST?.trim() || '185.216.144.78',
+    host: process.env.ACSM_SFTP_HOST?.trim() || '145.239.131.153',
     port: Number(process.env.ACSM_SFTP_PORT || 8822),
     username: process.env.ACSM_SFTP_USER?.trim() || '',
     password: process.env.ACSM_SFTP_PASSWORD || '',
@@ -5380,7 +5380,7 @@ function gcAcsmSftpConfigV1() {
 function gcAcsmSafeConfigV1() {
   const cfg = gcAcsmSftpConfigV1();
   return {
-    panelUrl: process.env.ACSM_PANEL_URL?.trim() || 'http://185.216.144.78:8840/custom',
+    panelUrl: process.env.ACSM_PANEL_URL?.trim() || 'http://145.239.131.153:8840/custom',
     hostConfigured: Boolean(cfg.host),
     port: cfg.port,
     userConfigured: Boolean(cfg.username),
@@ -5437,7 +5437,7 @@ function gcAcsmParseServerCfgV1(raw: string): GcAcsmServerCfgV1 {
 function gcAcsmBuildComboEventV1(cfg: GcAcsmServerCfgV1) {
   const trackName = gcAcsmCleanAssetNameV1(cfg.trackCode || cfg.serverName, 'Circuito por confirmar');
   const carNames = cfg.carCodes.map((car) => gcAcsmCleanAssetNameV1(car)).filter(Boolean).join(', ');
-  const panelUrl = process.env.ACSM_PANEL_URL?.trim() || 'http://185.216.144.78:8840/custom';
+  const panelUrl = process.env.ACSM_PANEL_URL?.trim() || 'http://145.239.131.153:8840/custom';
   const startDate = gcAcsmCurrentWeekStartDateV1();
   const startTime = process.env.ACSM_COMBO_START_TIME?.trim() || '';
   const titlePrefix = process.env.ACSM_COMBO_TITLE_PREFIX?.trim() || 'Combo semanal';

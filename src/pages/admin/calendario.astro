@@ -608,7 +608,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const rows = filteredEvents();
         count.textContent = String(events.length);
         readMode.textContent = adminReadOnly ? 'Pública' : 'Admin';
-        meta.textContent = `${rows.length} eventos visibles de ${events.length}${adminReadOnly ? ' · lectura fallback' : ''}`;
+        meta.textContent = `${rows.length} eventos visibles de ${events.length}${adminReadOnly ? ' · lectura pública temporal' : ''}`;
         if (!rows.length) {
           list.innerHTML = '<div class="gc-slab"><p>No hay eventos con ese filtro.</p></div>';
           return;
@@ -640,7 +640,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
             const data = await fetchJson('/api/calendar-events');
             events = normalizeEventsPayload(data);
             adminReadOnly = true;
-            setMessage('La API admin de calendario sigue devolviendo acceso restringido. Se usa lectura pública como fallback.', false);
+            setMessage('La API admin de calendario sigue devolviendo acceso restringido. Se usa lectura pública temporal.', false);
           } catch (publicError) {
             events = [];
             setMessage(publicError.message || adminError.message || 'No se pudieron cargar eventos.');

@@ -607,7 +607,7 @@ const navLinks = [
           srPage = Math.min(Math.max(srPage, 1), totalPages);
           const list = srRowsCache.slice((srPage - 1) * pageSize, srPage * pageSize);
           if (!list.length) {
-            srBody.innerHTML = '<tr><td colspan="8">Sin datos de SR.</td></tr>';
+            srBody.innerHTML = '<tr><td colspan="8">Aún no hay pilotos con SR en este campeonato.</td></tr>';
             renderPager('sr', 0, 1, 1);
             return;
           }
@@ -627,7 +627,7 @@ const navLinks = [
           gsrPage = Math.min(Math.max(gsrPage, 1), totalPages);
           const list = gsrRowsCache.slice((gsrPage - 1) * pageSize, gsrPage * pageSize);
           if (!list.length) {
-            gsrBody.innerHTML = '<tr><td colspan="8">Sin datos de GSR.</td></tr>';
+            gsrBody.innerHTML = '<tr><td colspan="8">Aún no hay pilotos con GSR en este campeonato.</td></tr>';
             renderPager('gsr', 0, 1, 1);
             return;
           }
@@ -672,7 +672,8 @@ const navLinks = [
 
         async function loadRatings() {
           if (refreshButton) refreshButton.disabled = true;
-          if (lead) lead.textContent = 'SR mide limpieza en pista. GSR mide rendimiento competitivo.';
+          if (lead) lead.textContent = mode === 'gsr' ? 'GSR mide rendimiento competitivo y evolución frente a la parrilla.' : 'SR mide limpieza en pista. GSR mide rendimiento competitivo.';
+            setEmptyState(false);
           try {
             const response = await fetch('/api/gc/ratings/championship', { cache: 'no-store' });
             const data = await response.json();
@@ -685,8 +686,8 @@ const navLinks = [
           } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudieron cargar los ratings.';
             if (lead) lead.textContent = message || 'No se pudieron cargar los ratings.';
-            if (srBody) srBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings.</td></tr>';
-            if (gsrBody) gsrBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings.</td></tr>';
+            if (srBody) srBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings. Prueba a actualizar la página.</td></tr>';
+            if (gsrBody) gsrBody.innerHTML = '<tr><td colspan="8">No se pudieron cargar los ratings. Prueba a actualizar la página.</td></tr>';
             setEmptyState(false);
           } finally {
             if (refreshButton) refreshButton.disabled = false;
