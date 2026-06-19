@@ -2902,6 +2902,180 @@ async function readJoinedLaps(dbPath: string) {
   return laps;
 }
 
+
+/* GC_DATACORE_MYSQL_FIRST_V126_START
+ * Lee vueltas públicas desde el mirror MySQL gc_stracker_* cuando está disponible.
+ * No toca SR/GSR ni procesamiento de ratings: solo cambia la fuente de lectura para leaderboard/Data Core.
+ */
+type GcDataCoreReadSource = 'mysql-mirror' | 'stracker-db3';
+
+type GcDataCoreReadResult = {
+  source: GcDataCoreReadSource;
+  laps: ReturnType<typeof mapLapRow>[];
+  comboDefinitions: any[];
+  stracker: ReturnType<typeof getStrackerConfig>;
+  mysqlMirror?: {
+    enabled: boolean;
+    rows: number;
+    message: string;
+  };
+  fallbackReason?: string | null;
+};
+
+function gcDataCoreMysqlFirstEnabled(req?: express.Request) {
+  const requestedSource = req ? getQueryString(req, 'source', '').toLowerCase() : '';
+  if (['stracker', 'sqlite', 'db3', 'file'].includes(requestedSource)) return false;
+  if (['mysql', 'sql', 'mirror', 'mysql-mirror'].includes(requestedSource)) return true;
+  return readBooleanEnv('GC_DATA_CORE_MYSQL_FIRST', true);
+}
+
+function gcDataCoreMysqlMirrorSupportsRequest(req: express.Request) {
+  const requestedSource = getQueryString(req, 'source', '').toLowerCase();
+  if (['mysql', 'sql', 'mirror', 'mysql-mirror'].includes(requestedSource)) return true;
+
+  // El mirror actual no guarda CarId/TrackId originales, solo nombres/códigos y combo_id.
+  // Si el usuario filtra por IDs puros de coche/circuito, es más seguro dejar que el fallback SQLite responda.
+  const hasUnsupportedIdFilter = Boolean(getQueryString(req, 'carId') || getQueryString(req, 'trackId'));
+  return !hasUnsupportedIdFilter;
+}
+
+async function readJoinedLapsFromMysqlMirror() {
+  await readDisplayNameStoreAsync();
+  if (!useMysqlStorage()) throw new Error('MySQL no está activo para Data Core mirror.');
+
+  const started = Date.now();
+  const rows = await mysqlQuery(`
+    SELECT
+      l.id AS LapId,
+      l.player_in_session_id AS PlayerInSessionId,
+      l.session_id AS SessionId,
+      s.combo_id AS ComboId,
+      l.player_id AS PlayerId,
+      d.driver_name AS DriverName,
+      d.steam_guid AS SteamGuid,
+      0 AS IsOnline,
+      0 AS Whitelisted,
+      0 AS Anonymized,
+      NULL AS CarId,
+      d.car_raw AS Car,
+      d.car_display AS UiCarName,
+      NULL AS Brand,
+      NULL AS TrackId,
+      s.track_raw AS Track,
+      s.track_display AS UiTrackName,
+      NULL AS TrackLength,
+      l.lap_time_ms AS LapTime,
+      l.valid AS Valid,
+      l.cuts AS Cuts,
+      l.collisions_car AS CollisionsCar,
+      l.collisions_env AS CollisionsEnv,
+      0 AS MaxSpeed_KMH,
+      s.type AS SessionType,
+      1 AS Multiplayer,
+      NULL AS ServerIpPort,
+      UNIX_TIMESTAMP(s.start_time) AS StartTimeDate,
+      UNIX_TIMESTAMP(s.end_time) AS EndTimeDate,
+      UNIX_TIMESTAMP(COALESCE(s.end_time, s.start_time, l.created_at)) AS Timestamp,
+      0 AS AidABS,
+      0 AS AidTC,
+      0 AS AidAutoBlib,
+      0 AS AidAutoBrake,
+      0 AS AidAutoClutch,
+      0 AS AidAutoShift,
+      0 AS AidIdealLine,
+      0 AS AidStabilityControl,
+      0 AS AidSlipStream,
+      0 AS AidTyreBlankets,
+      0 AS FuelRatio,
+      0 AS GripLevel,
+      0 AS Ballast,
+      NULL AS TemperatureAmbient,
+      NULL AS TemperatureTrack,
+      NULL AS ACVersion,
+      NULL AS InputMethod,
+      NULL AS Shifter,
+      NULL AS SectorTime0,
+      NULL AS SectorTime1,
+      NULL AS SectorTime2,
+      NULL AS SectorTime3,
+      NULL AS SectorTime4,
+      NULL AS SectorTime5,
+      NULL AS SectorTime6,
+      NULL AS SectorTime7,
+      NULL AS SectorTime8,
+      NULL AS SectorTime9
+    FROM gc_stracker_lap l
+    LEFT JOIN gc_stracker_session s ON s.session_id = l.session_id
+    LEFT JOIN gc_stracker_session_driver d
+      ON d.session_id = l.session_id
+      AND d.player_in_session_id = l.player_in_session_id
+    WHERE l.lap_time_ms IS NOT NULL AND l.lap_time_ms > 0
+    ORDER BY l.lap_time_ms ASC
+  `);
+
+  const laps = rows.map(mapLapRow);
+  if (gcPerformanceLogEnabled()) {
+    console.log('[GC PERF] readJoinedLapsFromMysqlMirror ' + (Date.now() - started) + 'ms · vueltas=' + laps.length);
+  }
+  return laps;
+}
+
+async function readGcDataCoreSource(req: express.Request): Promise<GcDataCoreReadResult | { ok: false; message: string; stracker: ReturnType<typeof getStrackerConfig>; fallbackReason?: string | null }> {
+  const stracker = getStrackerConfig();
+  let fallbackReason: string | null = null;
+
+  if (gcDataCoreMysqlFirstEnabled(req) && gcDataCoreMysqlMirrorSupportsRequest(req)) {
+    try {
+      const laps = await readJoinedLapsFromMysqlMirror();
+      if (laps.length > 0) {
+        return {
+          source: 'mysql-mirror',
+          laps,
+          comboDefinitions: [],
+          stracker,
+          mysqlMirror: {
+            enabled: true,
+            rows: laps.length,
+            message: 'Data Core leído desde mirror MySQL gc_stracker_*.'
+          },
+          fallbackReason: null
+        };
+      }
+      fallbackReason = 'Mirror MySQL vacío.';
+    } catch (error) {
+      fallbackReason = error instanceof Error ? error.message : String(error);
+      console.warn('[GC DATA CORE] MySQL mirror no disponible, usando fallback stracker.db3:', fallbackReason);
+    }
+  } else if (!gcDataCoreMysqlMirrorSupportsRequest(req)) {
+    fallbackReason = 'Filtro no soportado por el mirror MySQL actual; usando stracker.db3.';
+  }
+
+  if (!stracker?.resolvedPath || !stracker?.exists || !stracker?.validSQLite) {
+    return {
+      ok: false,
+      stracker,
+      fallbackReason,
+      message: fallbackReason
+        ? `stracker.db3 no está disponible y el mirror MySQL no pudo usarse: ${fallbackReason}`
+        : 'stracker.db3 no está disponible.'
+    };
+  }
+
+  const [laps, comboDefinitions] = await Promise.all([
+    readJoinedLaps(stracker.resolvedPath),
+    getCombos(stracker.resolvedPath)
+  ]);
+
+  return {
+    source: 'stracker-db3',
+    laps,
+    comboDefinitions,
+    stracker,
+    fallbackReason
+  };
+}
+/* GC_DATACORE_MYSQL_FIRST_V126_END */
+
 function filterLaps(laps: ReturnType<typeof mapLapRow>[], req: express.Request, defaults?: { validOnly?: boolean }) {
   const validParam = getQueryString(req, 'valid', defaults?.validOnly === false ? 'all' : '1').toLowerCase();
   const validOnly = !['all', 'any', '0', 'false', 'no'].includes(validParam);
@@ -10334,26 +10508,24 @@ function gcDataCorePublicStracker(stracker: any) {
 }
 
 async function buildGcDataCorePayload(req: express.Request, options: { scope?: GcDataCoreScope; recentLimit?: number; leaderboardLimit?: number } = {}) {
-  const stracker = getStrackerConfig();
-  if (!stracker?.resolvedPath || !stracker?.exists || !stracker?.validSQLite) {
+  const readSource = await readGcDataCoreSource(req);
+  if ('ok' in readSource && readSource.ok === false) {
     return {
       ok: false,
       mode: 'unavailable',
       generatedAt: new Date().toISOString(),
-      source: 'stracker',
+      source: 'unavailable',
       data: null,
-      message: 'stracker.db3 no estÃ¡ disponible.'
+      stracker: gcDataCorePublicStracker(readSource.stracker),
+      fallbackReason: readSource.fallbackReason ?? null,
+      message: readSource.message
     };
   }
 
   const scope = options.scope || 'global';
   const recentLimit = gcDataCorePositiveNumber(options.recentLimit, 20);
   const leaderboardLimit = gcDataCorePositiveNumber(options.leaderboardLimit, 20);
-
-  const [laps, comboDefinitions] = await Promise.all([
-    readJoinedLaps(stracker.resolvedPath),
-    getCombos(stracker.resolvedPath)
-  ]);
+  const { laps, comboDefinitions, stracker, source, mysqlMirror, fallbackReason } = readSource;
 
   const comboStats = buildComboStatsFromLaps(laps, comboDefinitions);
   const activeCombo = gcDataCoreActiveCombo(comboStats);
@@ -10374,13 +10546,15 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
     ok: true,
     mode: 'gc-data-core-v1',
     generatedAt: new Date().toISOString(),
-    source: 'stracker',
+    source,
     scope,
     filters: {
       recentLimit,
       leaderboardLimit
     },
     stracker: gcDataCorePublicStracker(stracker),
+    mysqlMirror: mysqlMirror ?? null,
+    fallbackReason: fallbackReason ?? null,
     data: {
       stats: {
         totalLaps: laps.length,
@@ -10410,9 +10584,11 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       combosStats: '/api/combos/stats',
       overview: '/api/stats/overview'
     },
-    message: scope === 'activeCombo'
-      ? 'Snapshot canÃ³nico del combo activo generado desde stracker.db3.'
-      : 'Snapshot canÃ³nico global generado desde stracker.db3.'
+    message: source === 'mysql-mirror'
+      ? 'Snapshot canónico generado desde mirror MySQL gc_stracker_*.'
+      : scope === 'activeCombo'
+        ? 'Snapshot canónico del combo activo generado desde stracker.db3.'
+        : 'Snapshot canónico global generado desde stracker.db3.'
   };
 }
 
@@ -11878,19 +12054,40 @@ app.get('/api/gc/leaderboard', async (req, res) => {
       : gcDataCoreQueryNumber(req, 'limit', wantsRawGlobal ? 5000 : 30, 1, 50000);
 
     if (wantsRawGlobal) {
-      const stracker = getSafeStrackerOrRespond(res);
-      if (!stracker?.resolvedPath) return;
+      const readSource = await readGcDataCoreSource(req);
+      if ('ok' in readSource && readSource.ok === false) {
+        res.status(200).json({
+          ok: false,
+          mode: 'gc-data-core-v1',
+          generatedAt: new Date().toISOString(),
+          source: 'unavailable',
+          scope,
+          requestedScope: rawScope,
+          stracker: gcDataCorePublicStracker(readSource.stracker),
+          fallbackReason: readSource.fallbackReason ?? null,
+          count: 0,
+          total: 0,
+          items: [],
+          hotlaps: [],
+          laps: [],
+          leaderboard: [],
+          data: null,
+          filters: summarizeFilters(req),
+          message: readSource.message
+        });
+        return;
+      }
 
-      const laps = await readJoinedLaps(stracker.resolvedPath);
+      const { laps, stracker, source, mysqlMirror, fallbackReason } = readSource;
       const filtered = filterLaps(laps, req, { validOnly: false });
       const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
       const rows = makeBestHotlaps(filtered, groupMode === 'driver' ? 'driver' : 'all').slice(0, limit);
       const items = rows.map((lap) => compactLapForCombo(lap));
 
       const validRows = filtered.filter((lap) => lap.valid);
-      const tracks = new Set(filtered.map((lap) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean));
-      const cars = new Set(filtered.map((lap) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean));
-      const drivers = new Set(filtered.map((lap) => String(lap.driver?.id ?? lap.driver?.name ?? '')).filter(Boolean));
+      const tracks = new Set(filtered.map((lap) => String(lap.track?.id ?? lap.track?.name)).filter(Boolean));
+      const cars = new Set(filtered.map((lap) => String(lap.car?.id ?? lap.car?.name)).filter(Boolean));
+      const drivers = new Set(filtered.map((lap) => String(lap.driver?.id ?? lap.driver?.name)).filter(Boolean));
       const bestLap = validRows.slice().sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
       const latestLap = filtered.slice().sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))[0] || null;
 
@@ -11898,10 +12095,12 @@ app.get('/api/gc/leaderboard', async (req, res) => {
         ok: true,
         mode: 'gc-data-core-v1',
         generatedAt: new Date().toISOString(),
-        source: 'gc-hotlaps-all-tracks-scope-fix-v1',
+        source,
         scope,
         requestedScope: rawScope,
-        stracker,
+        stracker: gcDataCorePublicStracker(stracker),
+        mysqlMirror: mysqlMirror ?? null,
+        fallbackReason: fallbackReason ?? null,
         count: items.length,
         total: items.length,
         limitMode: wantsAllReferences ? 'all' : 'limited',
@@ -11929,7 +12128,9 @@ app.get('/api/gc/leaderboard', async (req, res) => {
           }
         },
         filters: summarizeFilters(req),
-        message: 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histÃ³rico completo.'
+        message: source === 'mysql-mirror'
+          ? 'Hotlaps globales generadas desde mirror MySQL gc_stracker_*.'
+          : 'Hotlaps globales generadas desde stracker.db3. scope=all/global devuelve histórico completo.'
       });
       return;
     }
@@ -11950,6 +12151,8 @@ app.get('/api/gc/leaderboard', async (req, res) => {
       scope,
       requestedScope: rawScope,
       stracker: payload.stracker,
+      mysqlMirror: payload.mysqlMirror ?? null,
+      fallbackReason: payload.fallbackReason ?? null,
       count: Array.isArray(leaderboard) ? leaderboard.length : 0,
       items: leaderboard,
       hotlaps: leaderboard,
