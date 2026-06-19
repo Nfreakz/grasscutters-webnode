@@ -1,4 +1,4 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1743,6 +1743,16 @@ function readNumberEnv(name: string, fallback: number, min: number, max: number)
   return Math.max(min, Math.min(max, value));
 }
 
+function readOptionalPositiveNumberEnv(name: string, fallback: number | null, min: number, max: number) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || raw.trim() === '') return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (['0', 'all', 'full', 'complete', 'histórico', 'historico', 'none', 'false', 'no', 'off'].includes(normalized)) return null;
+  const value = Number(normalized);
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
 async function timeSyncPhase<T>(phases: SyncPhaseDurations, phase: keyof SyncPhaseDurations, work: () => Promise<T>) {
   if (currentSyncTelemetry) currentSyncTelemetry.phase = phase;
   const started = Date.now();
@@ -1763,13 +1773,16 @@ async function unlinkIfExistsAsync(filePath: string) {
 
 function getStrackerSqlMirrorAutoSyncConfig() {
   const enabled = readBooleanEnv('GC_STRACKER_SQL_MIRROR_AUTO_SYNC', true);
-  const limit = readNumberEnv('GC_STRACKER_SQL_MIRROR_AUTO_LIMIT', 500, 1, 5000);
+  const limit = readOptionalPositiveNumberEnv('GC_STRACKER_SQL_MIRROR_AUTO_LIMIT', null, 1, 100000);
   return {
     enabled,
     limit,
+    mode: limit ? 'limited' : 'full-history',
     lastSync: lastStrackerSqlMirrorAutoSyncResult,
     message: enabled
-      ? `Mirror SQL automático activo después de cada sync de stracker.db3. Límite: ${limit} sesiones recientes.`
+      ? (limit
+        ? `Mirror SQL automático activo después de cada sync de stracker.db3. Límite manual: ${limit} sesiones.`
+        : 'Mirror SQL automático activo después de cada sync de stracker.db3. Modo histórico completo: todas las sesiones.')
       : 'Mirror SQL automático desactivado. Activa GC_STRACKER_SQL_MIRROR_AUTO_SYNC=true.'
   };
 }
@@ -1786,6 +1799,7 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       startedAt,
       finishedAt: new Date().toISOString(),
       limit: config.limit,
+      mode: config.mode,
       message: 'Mirror SQL automático desactivado por configuración.'
     };
     lastStrackerSqlMirrorAutoSyncResult = disabledPayload;
@@ -1793,8 +1807,8 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
   }
 
   try {
-    console.log(`[GC] Sync mirror SQL sTracker iniciado (${reason}, limit=${config.limit}).`);
-    const payload = await syncStrackerToSqlMirror({ limit: config.limit });
+    console.log(`[GC] Sync mirror SQL sTracker iniciado (${reason}, mode=${config.mode}, limit=${config.limit ?? 'all'}).`);
+    const payload = await syncStrackerToSqlMirror({ limit: config.limit ?? undefined });
     const finishedAt = new Date().toISOString();
     const okPayload = {
       ok: true,
@@ -1803,6 +1817,9 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       startedAt,
       finishedAt,
       limit: config.limit,
+      mode: config.mode,
+      fullSync: payload.fullSync ?? false,
+      sourceSessionsTotal: payload.sourceSessionsTotal ?? payload.sessionsSeen,
       storage: payload.storage,
       sessionsSeen: payload.sessionsSeen,
       sessionsImported: payload.sessionsImported,
@@ -1810,7 +1827,7 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       lapsImported: payload.lapsImported,
       incidentsImported: payload.incidentsImported,
       durationMs: payload.durationMs,
-      message: `Mirror SQL actualizado: ${payload.sessionsImported} sesiones, ${payload.driversImported} pilotos, ${payload.lapsImported} vueltas.`
+      message: `Mirror SQL actualizado: ${payload.sessionsImported} sesiones, ${payload.driversImported} pilotos, ${payload.lapsImported} vueltas. ${payload.fullSync ? 'Histórico completo.' : 'Sync limitado.'}`
     };
     lastStrackerSqlMirrorAutoSyncResult = okPayload;
     console.log(`[GC] Sync mirror SQL sTracker OK: ${okPayload.message}`);

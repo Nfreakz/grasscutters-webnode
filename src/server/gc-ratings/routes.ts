@@ -1,4 +1,4 @@
-import type { Express, Request } from 'express';
+﻿import type { Express, Request } from 'express';
 import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
 
@@ -313,6 +313,9 @@ async function requireAdmin(req: Request) {
         driversImported: payload.driversImported,
         lapsImported: payload.lapsImported,
         incidentsImported: payload.incidentsImported,
+        fullSync: payload.fullSync ?? false,
+        limit: payload.limit ?? null,
+        sourceSessionsTotal: payload.sourceSessionsTotal ?? payload.sessionsSeen,
         durationMs: payload.durationMs
       });
     } catch (error) {
@@ -364,6 +367,9 @@ async function requireAdmin(req: Request) {
         driversImported: payload.driversImported,
         lapsImported: payload.lapsImported,
         incidentsImported: payload.incidentsImported,
+        fullSync: payload.fullSync ?? false,
+        limit: payload.limit ?? null,
+        sourceSessionsTotal: payload.sourceSessionsTotal ?? payload.sessionsSeen,
         durationMs: payload.durationMs
       });
     } catch (error) {

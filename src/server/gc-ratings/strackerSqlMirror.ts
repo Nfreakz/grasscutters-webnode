@@ -68,6 +68,16 @@ function minPositiveInt(values: unknown[]) {
   return best;
 }
 
+function parseMirrorSyncLimit(value: unknown) {
+  if (value === undefined || value === null || value === '') return 0;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return 0;
+  if (['0', 'all', 'full', 'complete', 'histórico', 'historico', 'none', 'false', 'no', 'off'].includes(normalized)) return 0;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.max(1, Math.min(100000, Math.round(parsed)));
+}
+
 function duplicateColumnError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || '');
   return /duplicate column|duplicate column name/i.test(message);
@@ -816,7 +826,7 @@ async function writeIncidentRows(backend: MirrorBackend, incidentRows: any[]) {
   }
 }
 
-export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) {
+export async function syncStrackerToSqlMirror(options: { limit?: unknown } = {}) {
   const sourcePath = resolveStrackerDbPath();
   if (!sourcePath) throw new Error('STRacker no configurado. Falta STRACKER_DB_PATH o data/stracker/stracker.db3.');
 
@@ -840,11 +850,11 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
     const sourceIds = sourceDb.all(`
       SELECT s.SessionId
       FROM Session s
-      WHERE LOWER(s.SessionType) IN ('race', 'qualy', 'practice')
-      ORDER BY s.StartTimeDate DESC, s.SessionId DESC
+      ORDER BY COALESCE(s.StartTimeDate, 0) DESC, s.SessionId DESC
     `).map((row: any) => toInt(row.SessionId, 0)).filter(Boolean);
-    const limit = Math.max(1, Math.min(5000, toInt(options.limit, sourceIds.length || 1)));
-    const sessionIds = sourceIds.slice(0, limit);
+    const requestedLimit = parseMirrorSyncLimit(options.limit);
+    const sessionIds = requestedLimit > 0 ? sourceIds.slice(0, requestedLimit) : sourceIds;
+    const fullSync = requestedLimit <= 0;
     sessionsSeen = sessionIds.length;
 
     let transactionOpen = false;
@@ -954,7 +964,7 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
         driversImported,
         lapsImported,
         incidentsImported,
-        `Mirror ${getMirrorDriverFromEnv() === 'sqlite' ? 'SQLite local activo' : 'MySQL activo'} desde ${sourcePath}.`
+        `Mirror ${getMirrorDriverFromEnv() === 'sqlite' ? 'SQLite local activo' : 'MySQL activo'} desde ${sourcePath}. ${fullSync ? 'Sync histórico completo.' : `Sync limitado a ${sessionIds.length} sesiones.`}`
       ]);
 
       if (backend.driver === 'mysql' && transactionOpen) {
@@ -989,6 +999,9 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
       driversImported,
       lapsImported,
       incidentsImported,
+      fullSync,
+      limit: requestedLimit > 0 ? requestedLimit : null,
+      sourceSessionsTotal: sourceIds.length,
       durationMs: Date.now() - startedAtDate.getTime()
     };
   } finally {
