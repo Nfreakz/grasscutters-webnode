@@ -897,7 +897,7 @@ function autoTitleFromCode(value: unknown, fallback = '') {
   if (!cleaned) return fallback || raw;
 
   const dictionary: Record<string, string> = {
-    ac: 'AC', abs: 'ABS', amg: 'AMG', audi: 'Audi', bmw: 'BMW', csp: 'CSP', cup: 'Cup', evo: 'Evo', f1: 'F1', gt: 'GT', gt1: 'GT1', gt2: 'GT2', gt3: 'GT3', gt4: 'GT4', gte: 'GTE', gr5: 'GR5', gtr: 'GTR', mx5: 'MX-5', nissan: 'Nissan', porsche: 'Porsche', rss: 'RSS', tatuus: 'Tatuus', toyota: 'Toyota', v8: 'V8', wrc: 'WRC'
+    ac: 'AC', abs: 'ABS', amg: 'AMG', audi: 'Audi', bmw: 'BMW', csp: 'CSP', cup: 'Cup', dtm: 'DTM', evo: 'Evo', f1: 'F1', fia: 'FIA', fh: 'FH', gt: 'GT', gt1: 'GT1', gt2: 'GT2', gt3: 'GT3', gt4: 'GT4', gt500: 'GT500', gt300: 'GT300', gte: 'GTE', gtm: 'GTM', gtr: 'GTR', gr5: 'GR5', lmh: 'LMH', lmp: 'LMP', lmp1: 'LMP1', lmp2: 'LMP2', mx5: 'MX-5', nissan: 'Nissan', porsche: 'Porsche', rss: 'RSS', tatuus: 'Tatuus', toyota: 'Toyota', v6: 'V6', v8: 'V8', v10: 'V10', wtcc: 'WTCC', wtcr: 'WTCR', wrc: 'WRC'
   };
 
   return cleaned.split(' ').map((part) => {
@@ -12696,6 +12696,227 @@ function gcLabFixLapMatchesComboV1(lap: any, combo: any) {
 
   return (trackMatchesById || trackMatchesByName) && (carMatchesById || carMatchesByName);
 }
+
+
+/* GC_DISPLAY_NAMES_SUGGESTIONS_V1_START */
+function gcDisplaySuggestionNormalizeV1(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function gcDisplaySuggestionLooksRawV1(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return true;
+  const normalized = gcDisplaySuggestionNormalizeV1(text);
+  const withoutSeparators = text.replace(/[\s_\-]+/g, '');
+  const lowerLettersOnly = /[a-z]/.test(text) && text === text.toLowerCase();
+  const hasCodeSeparators = /[_]/.test(text) || /(^|\s)(ks|rss|actk|gtsupreme|ftruck|vhe|rt|fn)\b/i.test(text);
+  const compactCode = /^[a-z0-9_\-]+$/i.test(text) && /[_\-]/.test(text);
+  const uglyCamel = /[a-z][A-Z]/.test(withoutSeparators);
+  return lowerLettersOnly || hasCodeSeparators || compactCode || uglyCamel || normalized.includes('unknown');
+}
+
+function gcDisplaySuggestionScoreV1(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return -100;
+  let score = 0;
+  if (/[A-Z]/.test(text)) score += 2;
+  if (/\b(GT|GT3|GTE|GTM|DTM|WTCC|WRC|RSS|BMW|AMG|V6|V8|V10|GR5|LMP2?)\b/.test(text)) score += 3;
+  if (gcDisplaySuggestionLooksRawV1(text)) score -= 3;
+  if (text.includes('_')) score -= 4;
+  if (text.length >= 3 && text.length <= 80) score += 1;
+  return score;
+}
+
+function gcDisplaySuggestionReasonV1(entity: any, suggested: string) {
+  const current = String(entity?.displayName ?? '').trim();
+  const autoName = String(entity?.autoName ?? '').trim();
+  if (!current) return 'missing-display-name';
+  if (current.includes('_')) return 'code-like-display-name';
+  if (current === current.toLowerCase() && /[a-z]/.test(current)) return 'lowercase-display-name';
+  if (gcDisplaySuggestionLooksRawV1(current) && autoName && autoName !== current) return 'raw-display-name';
+  if (gcDisplaySuggestionScoreV1(suggested) > gcDisplaySuggestionScoreV1(current)) return 'auto-name-looks-better';
+  return 'review-name';
+}
+
+function gcDisplaySuggestionEntityKeyV1(entity: any) {
+  return [
+    entity?.kind || 'unknown',
+    entity?.id !== undefined && entity?.id !== null ? String(entity.id) : '',
+    String(entity?.code ?? '').toLowerCase(),
+    gcDisplaySuggestionNormalizeV1(entity?.rawName || entity?.displayName || entity?.autoName)
+  ].join('|');
+}
+
+function gcDisplaySuggestionFromEntityV1(entity: any) {
+  const kind = sanitizeDisplayNameKind(entity?.kind) || 'car';
+  const current = cleanDisplayNameInput(entity?.displayName);
+  const rawName = cleanDisplayNameInput(entity?.rawName || current);
+  const autoName = cleanDisplayNameInput(entity?.autoName || rawName || current);
+  const suggested = autoName || rawName || current;
+
+  if (!suggested || gcDisplaySuggestionNormalizeV1(current) === gcDisplaySuggestionNormalizeV1(suggested)) return null;
+  if (!gcDisplaySuggestionLooksRawV1(current) && gcDisplaySuggestionScoreV1(suggested) <= gcDisplaySuggestionScoreV1(current)) return null;
+
+  const reason = gcDisplaySuggestionReasonV1(entity, suggested);
+  const confidence = gcDisplaySuggestionScoreV1(suggested) - gcDisplaySuggestionScoreV1(current);
+
+  return {
+    kind,
+    sourceId: numberOrNull(entity?.id),
+    sourceCode: compactNullableText(entity?.code),
+    sourceName: rawName || current || suggested,
+    currentDisplayName: current || null,
+    suggestedDisplayName: suggested,
+    autoName,
+    rawName,
+    reason,
+    confidence,
+    safeToApply: confidence >= 2 && Boolean(suggested) && suggested.length >= 2,
+    entry: {
+      kind,
+      sourceId: numberOrNull(entity?.id),
+      sourceCode: compactNullableText(entity?.code),
+      sourceName: rawName || current || suggested,
+      displayName: suggested
+    }
+  };
+}
+
+function gcBuildDisplayNameSuggestionsV1(laps: any[], options: { kind?: string | null; limit?: number; sampleRows?: number }) {
+  const requestedKind = sanitizeDisplayNameKind(options.kind || '') || null;
+  const sampleRows = Math.max(100, Math.min(Number(options.sampleRows) || 5000, 50000));
+  const limit = Math.max(1, Math.min(Number(options.limit) || 100, 500));
+  const entities = new Map<string, any>();
+
+  for (const lap of laps.slice(0, sampleRows)) {
+    for (const kind of ['driver', 'car', 'track'] as const) {
+      if (requestedKind && requestedKind !== kind) continue;
+      const entity = gcLabFixNameEntityV1(kind, lap);
+      entities.set(gcDisplaySuggestionEntityKeyV1(entity), entity);
+    }
+  }
+
+  const suggestions = [...entities.values()]
+    .map(gcDisplaySuggestionFromEntityV1)
+    .filter(Boolean)
+    .sort((a: any, b: any) =>
+      Number(b.safeToApply) - Number(a.safeToApply) ||
+      Number(b.confidence) - Number(a.confidence) ||
+      String(a.kind).localeCompare(String(b.kind), 'es', { sensitivity: 'base' }) ||
+      String(a.currentDisplayName || '').localeCompare(String(b.currentDisplayName || ''), 'es', { sensitivity: 'base' })
+    );
+
+  const byKind = suggestions.reduce((acc: Record<string, number>, item: any) => {
+    acc[item.kind] = (acc[item.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    sampledRows: Math.min(laps.length, sampleRows),
+    uniqueEntities: entities.size,
+    totalSuggestions: suggestions.length,
+    safeToApply: suggestions.filter((item: any) => item.safeToApply).length,
+    byKind,
+    items: suggestions.slice(0, limit)
+  };
+}
+
+async function gcDisplayNamesSuggestionsPayloadV1(req: express.Request) {
+  await readDisplayNameStoreAsync();
+  const limit = getQueryNumber(req, 'limit', 100, 1, 500);
+  const sampleRows = getQueryNumber(req, 'sampleRows', 5000, 100, 50000);
+  const kind = getQueryString(req, 'kind') || null;
+  const readSource = await readGcDataCoreSource(req);
+
+  if ((readSource as any).ok === false) {
+    return {
+      ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para sugerir nombres visibles.'),
+      source: 'gc-display-names-suggestions-v1',
+      items: [],
+      suggestions: []
+    };
+  }
+
+  const dataCoreSource = readSource as GcDataCoreReadResult;
+  const result = gcBuildDisplayNameSuggestionsV1(dataCoreSource.laps, { kind, limit, sampleRows });
+
+  return {
+    ok: true,
+    source: 'gc-display-names-suggestions-v1',
+    dataSource: dataCoreSource.source,
+    generatedAt: new Date().toISOString(),
+    stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+    mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+    fallbackReason: dataCoreSource.fallbackReason ?? null,
+    storage: getDisplayNamesDbInfo(),
+    filters: {
+      kind: sanitizeDisplayNameKind(kind || '') || 'all',
+      limit,
+      sampleRows
+    },
+    diagnostics: {
+      sampledRows: result.sampledRows,
+      uniqueEntities: result.uniqueEntities,
+      totalSuggestions: result.totalSuggestions,
+      safeToApply: result.safeToApply,
+      byKind: result.byKind
+    },
+    count: result.items.length,
+    items: result.items,
+    suggestions: result.items,
+    message: result.totalSuggestions
+      ? 'Sugerencias de nombres visibles generadas desde Data Core. No aplica cambios automáticamente.'
+      : 'No se detectaron sugerencias claras de nombres visibles.'
+  };
+}
+
+app.get('/api/gc/display-names/suggestions', async (req, res) => {
+  try {
+    res.json(await gcDisplayNamesSuggestionsPayloadV1(req));
+  } catch (error) {
+    console.error('[GC Display Names] suggestions error:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'gc-display-names-suggestions-v1',
+      generatedAt: new Date().toISOString(),
+      items: [],
+      suggestions: [],
+      message: 'No se pudieron generar sugerencias de nombres visibles.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+
+app.get('/api/admin/display-names/suggestions', async (req, res) => {
+  const context = await requireAdmin(req, res);
+  if (!context) return;
+
+  try {
+    res.json({
+      ...(await gcDisplayNamesSuggestionsPayloadV1(req)),
+      admin: true,
+      legacyEndpoint: '/api/admin/display-names/suggestions',
+      canonicalEndpoint: '/api/gc/display-names/suggestions'
+    });
+  } catch (error) {
+    console.error('[GC Display Names] admin suggestions error:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'gc-display-names-suggestions-v1',
+      admin: true,
+      items: [],
+      suggestions: [],
+      message: 'No se pudieron generar sugerencias admin de nombres visibles.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+/* GC_DISPLAY_NAMES_SUGGESTIONS_V1_END */
 
 app.get('/api/gc/names/preview', async (req, res) => {
   try {
