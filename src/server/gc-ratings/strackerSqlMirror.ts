@@ -49,6 +49,11 @@ function toInt(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
 }
 
+function toFloat(value: unknown, fallback: number | null = null) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function positiveInt(value: unknown) {
   const parsed = toInt(value, 0);
   return parsed > 0 ? parsed : 0;
@@ -61,6 +66,19 @@ function minPositiveInt(values: unknown[]) {
     if (parsed > 0 && (best === 0 || parsed < best)) best = parsed;
   }
   return best;
+}
+
+function duplicateColumnError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /duplicate column|duplicate column name/i.test(message);
+}
+
+async function addColumnIfMissing(backend: MirrorBackend, table: string, column: string, definition: string) {
+  try {
+    await backend.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (error) {
+    if (!duplicateColumnError(error)) throw error;
+  }
 }
 
 function isBooleanishTrue(value: unknown) {
@@ -419,9 +437,87 @@ async function ensureMysqlSchema(backend: MirrorBackend) {
   `);
 }
 
+async function ensureMirrorMetricColumns(backend: MirrorBackend) {
+  const isMysql = backend.driver === 'mysql';
+  const intType = isMysql ? 'INT NULL' : 'INTEGER NULL';
+  const bigIntType = isMysql ? 'BIGINT NULL' : 'INTEGER NULL';
+  const boolType = isMysql ? 'TINYINT(1) NOT NULL DEFAULT 0' : 'INTEGER NOT NULL DEFAULT 0';
+  const realType = isMysql ? 'DECIMAL(12,4) NULL' : 'REAL NULL';
+  const textType = isMysql ? 'VARCHAR(255) NULL' : 'TEXT NULL';
+  const shortTextType = isMysql ? 'VARCHAR(64) NULL' : 'TEXT NULL';
+
+  const sessionColumns: Array<[string, string]> = [
+    ['track_id', intType],
+    ['track_length', intType],
+    ['number_of_laps', intType],
+    ['duration_ms', intType],
+    ['multiplayer', intType],
+    ['server_ip_port', textType],
+    ['last_lap_unix', bigIntType]
+  ];
+
+  const driverColumns: Array<[string, string]> = [
+    ['car_id', intType],
+    ['car_brand', textType],
+    ['ac_version', shortTextType],
+    ['input_method', shortTextType],
+    ['shifter', intType]
+  ];
+
+  const lapColumns: Array<[string, string]> = [
+    ['lap_source_id', bigIntType],
+    ['tyre_compound_id', intType],
+    ['session_time_ms', intType],
+    ['sector_time_0', intType],
+    ['sector_time_1', intType],
+    ['sector_time_2', intType],
+    ['sector_time_3', intType],
+    ['sector_time_4', intType],
+    ['sector_time_5', intType],
+    ['sector_time_6', intType],
+    ['sector_time_7', intType],
+    ['sector_time_8', intType],
+    ['sector_time_9', intType],
+    ['fuel_ratio', realType],
+    ['sectors_are_soft_splits', boolType],
+    ['max_abs', intType],
+    ['max_tc', intType],
+    ['temperature_ambient', realType],
+    ['temperature_track', realType],
+    ['timestamp_unix', bigIntType],
+    ['aid_abs', intType],
+    ['aid_tc', intType],
+    ['aid_auto_blib', intType],
+    ['aid_auto_brake', intType],
+    ['aid_auto_clutch', intType],
+    ['aid_auto_shift', intType],
+    ['aid_ideal_line', intType],
+    ['aid_stability_control', intType],
+    ['aid_slip_stream', intType],
+    ['aid_tyre_blankets', intType],
+    ['max_speed_kmh', realType],
+    ['time_in_pit_lane_ms', intType],
+    ['time_in_pit_ms', intType],
+    ['esc_pressed', boolType],
+    ['grip_level', realType],
+    ['ballast', realType]
+  ];
+
+  for (const [column, definition] of sessionColumns) {
+    await addColumnIfMissing(backend, 'gc_stracker_session', column, definition);
+  }
+  for (const [column, definition] of driverColumns) {
+    await addColumnIfMissing(backend, 'gc_stracker_session_driver', column, definition);
+  }
+  for (const [column, definition] of lapColumns) {
+    await addColumnIfMissing(backend, 'gc_stracker_lap', column, definition);
+  }
+}
+
 async function ensureBackendSchema(backend: MirrorBackend) {
-  if (backend.driver === 'sqlite') return ensureSqliteSchema(backend);
-  return ensureMysqlSchema(backend);
+  if (backend.driver === 'sqlite') await ensureSqliteSchema(backend);
+  else await ensureMysqlSchema(backend);
+  await ensureMirrorMetricColumns(backend);
 }
 
 export async function ensureStrackerMirrorSchema() {
@@ -454,9 +550,16 @@ function sessionSqliteRow(sessionId: number, session: any) {
     type: String(session.SessionType || '').trim().toLowerCase(),
     track_raw: textValue(session.Track || '', '') || null,
     track_display: displayTrackName(session.UiTrackName || session.Track, 'Circuito'),
+    track_id: toInt(session.TrackId, 0) || null,
+    track_length: toInt(session.TrackLength, 0) || null,
     combo_id: toInt(session.ComboId, 0) || null,
     start_time: toSqlDateTime(session.StartTimeDate),
     end_time: toSqlDateTime(session.EndTimeDate),
+    number_of_laps: toInt(session.NumberOfLaps, 0) || null,
+    duration_ms: toInt(session.Duration, 0) || null,
+    multiplayer: toInt(session.Multiplayer, 0) || null,
+    server_ip_port: textValue(session.ServerIpPort, '') || null,
+    last_lap_unix: toInt(session.LastLapUnix, 0) || null,
     player_count: toInt(session.PlayerCount, 0),
     lap_count: toInt(session.LapCount, 0),
     max_lap_count: toInt(session.MaxLapCount, 0),
@@ -470,15 +573,22 @@ function sessionSqliteRow(sessionId: number, session: any) {
 async function upsertSqliteSession(backend: MirrorBackend & { driver: 'sqlite' }, row: ReturnType<typeof sessionSqliteRow>) {
   await backend.run(`
     INSERT INTO gc_stracker_session
-    (session_id, type, track_raw, track_display, combo_id, start_time, end_time, player_count, lap_count, max_lap_count, best_lap_ms, source_updated_at, imported_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (session_id, type, track_raw, track_display, track_id, track_length, combo_id, start_time, end_time, number_of_laps, duration_ms, multiplayer, server_ip_port, last_lap_unix, player_count, lap_count, max_lap_count, best_lap_ms, source_updated_at, imported_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(session_id) DO UPDATE SET
       type = excluded.type,
       track_raw = excluded.track_raw,
       track_display = excluded.track_display,
+      track_id = excluded.track_id,
+      track_length = excluded.track_length,
       combo_id = excluded.combo_id,
       start_time = excluded.start_time,
       end_time = excluded.end_time,
+      number_of_laps = excluded.number_of_laps,
+      duration_ms = excluded.duration_ms,
+      multiplayer = excluded.multiplayer,
+      server_ip_port = excluded.server_ip_port,
+      last_lap_unix = excluded.last_lap_unix,
       player_count = excluded.player_count,
       lap_count = excluded.lap_count,
       max_lap_count = excluded.max_lap_count,
@@ -490,9 +600,16 @@ async function upsertSqliteSession(backend: MirrorBackend & { driver: 'sqlite' }
     row.type,
     row.track_raw,
     row.track_display,
+    row.track_id,
+    row.track_length,
     row.combo_id,
     row.start_time,
     row.end_time,
+    row.number_of_laps,
+    row.duration_ms,
+    row.multiplayer,
+    row.server_ip_port,
+    row.last_lap_unix,
     row.player_count,
     row.lap_count,
     row.max_lap_count,
@@ -506,15 +623,22 @@ async function upsertSqliteSession(backend: MirrorBackend & { driver: 'sqlite' }
 async function upsertMysqlSession(backend: MirrorBackend & { driver: 'mysql' }, row: ReturnType<typeof sessionSqliteRow>) {
   await backend.run(`
     INSERT INTO gc_stracker_session
-    (session_id, type, track_raw, track_display, combo_id, start_time, end_time, player_count, lap_count, max_lap_count, best_lap_ms, source_updated_at, imported_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (session_id, type, track_raw, track_display, track_id, track_length, combo_id, start_time, end_time, number_of_laps, duration_ms, multiplayer, server_ip_port, last_lap_unix, player_count, lap_count, max_lap_count, best_lap_ms, source_updated_at, imported_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       type = VALUES(type),
       track_raw = VALUES(track_raw),
       track_display = VALUES(track_display),
+      track_id = VALUES(track_id),
+      track_length = VALUES(track_length),
       combo_id = VALUES(combo_id),
       start_time = VALUES(start_time),
       end_time = VALUES(end_time),
+      number_of_laps = VALUES(number_of_laps),
+      duration_ms = VALUES(duration_ms),
+      multiplayer = VALUES(multiplayer),
+      server_ip_port = VALUES(server_ip_port),
+      last_lap_unix = VALUES(last_lap_unix),
       player_count = VALUES(player_count),
       lap_count = VALUES(lap_count),
       max_lap_count = VALUES(max_lap_count),
@@ -526,9 +650,16 @@ async function upsertMysqlSession(backend: MirrorBackend & { driver: 'mysql' }, 
     row.type,
     row.track_raw,
     row.track_display,
+    row.track_id,
+    row.track_length,
     row.combo_id,
     row.start_time,
     row.end_time,
+    row.number_of_laps,
+    row.duration_ms,
+    row.multiplayer,
+    row.server_ip_port,
+    row.last_lap_unix,
     row.player_count,
     row.lap_count,
     row.max_lap_count,
@@ -546,8 +677,13 @@ function mapDriver(sessionId: number, driver: any, createdAt: string) {
     player_in_session_id: toInt(driver.PlayerInSessionId, 0),
     driver_name: displayDriverName(driver.StrackerName, `Piloto ${driver.PlayerId || driver.PlayerInSessionId || sessionId}`),
     steam_guid: textValue(driver.StrackerGuid, '') || null,
+    car_id: toInt(driver.CarId, 0) || null,
     car_raw: textValue(driver.CarFolder || driver.UiCarName, '') || null,
     car_display: displayCarName(driver.UiCarName || driver.CarFolder, 'Coche'),
+    car_brand: textValue(driver.Brand, '') || null,
+    ac_version: textValue(driver.ACVersion, '') || null,
+    input_method: textValue(driver.InputMethod, '') || null,
+    shifter: toInt(driver.Shifter, 0) || null,
     position: toInt(driver.FinishPositionOrig || driver.FinishPosition, 0),
     laps: toInt(driver.LapRows, 0),
     best_lap_ms: toInt(driver.BestLapMs, 0),
@@ -565,16 +701,21 @@ async function writeDriverRows(backend: MirrorBackend, driverRows: ReturnType<ty
   for (const row of driverRows) {
     await backend.run(`
       INSERT INTO gc_stracker_session_driver
-      (session_id, player_id, player_in_session_id, driver_name, steam_guid, car_raw, car_display, position, laps, best_lap_ms, race_time_ms, cuts, collisions_car, collisions_env, race_finished, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (session_id, player_id, player_in_session_id, driver_name, steam_guid, car_id, car_raw, car_display, car_brand, ac_version, input_method, shifter, position, laps, best_lap_ms, race_time_ms, cuts, collisions_car, collisions_env, race_finished, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       row.session_id,
       row.player_id,
       row.player_in_session_id,
       row.driver_name,
       row.steam_guid,
+      row.car_id,
       row.car_raw,
       row.car_display,
+      row.car_brand,
+      row.ac_version,
+      row.input_method,
+      row.shifter,
       row.position,
       row.laps,
       row.best_lap_ms,
@@ -593,18 +734,65 @@ async function writeLapRows(backend: MirrorBackend, lapRows: any[]) {
   for (const row of lapRows) {
     await backend.run(`
       INSERT INTO gc_stracker_lap
-      (session_id, player_id, player_in_session_id, lap_number, lap_time_ms, valid, cuts, collisions_car, collisions_env, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (
+        session_id, player_id, player_in_session_id, lap_source_id, tyre_compound_id,
+        lap_number, session_time_ms, lap_time_ms,
+        sector_time_0, sector_time_1, sector_time_2, sector_time_3, sector_time_4,
+        sector_time_5, sector_time_6, sector_time_7, sector_time_8, sector_time_9,
+        fuel_ratio, valid, sectors_are_soft_splits, max_abs, max_tc,
+        temperature_ambient, temperature_track, timestamp_unix,
+        aid_abs, aid_tc, aid_auto_blib, aid_auto_brake, aid_auto_clutch, aid_auto_shift,
+        aid_ideal_line, aid_stability_control, aid_slip_stream, aid_tyre_blankets,
+        max_speed_kmh, time_in_pit_lane_ms, time_in_pit_ms, esc_pressed,
+        cuts, collisions_car, collisions_env, grip_level, ballast, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       row.session_id,
       row.player_id,
       row.player_in_session_id,
+      row.lap_source_id,
+      row.tyre_compound_id,
       row.lap_number,
+      row.session_time_ms,
       row.lap_time_ms,
+      row.sector_time_0,
+      row.sector_time_1,
+      row.sector_time_2,
+      row.sector_time_3,
+      row.sector_time_4,
+      row.sector_time_5,
+      row.sector_time_6,
+      row.sector_time_7,
+      row.sector_time_8,
+      row.sector_time_9,
+      row.fuel_ratio,
       row.valid,
+      row.sectors_are_soft_splits,
+      row.max_abs,
+      row.max_tc,
+      row.temperature_ambient,
+      row.temperature_track,
+      row.timestamp_unix,
+      row.aid_abs,
+      row.aid_tc,
+      row.aid_auto_blib,
+      row.aid_auto_brake,
+      row.aid_auto_clutch,
+      row.aid_auto_shift,
+      row.aid_ideal_line,
+      row.aid_stability_control,
+      row.aid_slip_stream,
+      row.aid_tyre_blankets,
+      row.max_speed_kmh,
+      row.time_in_pit_lane_ms,
+      row.time_in_pit_ms,
+      row.esc_pressed,
       row.cuts,
       row.collisions_car,
       row.collisions_env,
+      row.grip_level,
+      row.ballast,
       row.created_at
     ]);
   }
@@ -683,16 +871,53 @@ export async function syncStrackerToSqlMirror(options: { limit?: number } = {}) 
           const playerId = toInt(driver.PlayerId, 0) || null;
           const laps = readRaceLaps(sourceDb, playerInSessionId) as any[];
           for (const lap of laps) {
+            const sectorTimes = Array.isArray(lap.sectorTimesMs) ? lap.sectorTimesMs : [];
             lapRows.push({
               session_id: sessionId,
               player_id: playerId,
               player_in_session_id: playerInSessionId,
+              lap_source_id: toInt(lap.lapId, 0) || null,
+              tyre_compound_id: toInt(lap.tyreCompoundId, 0) || null,
               lap_number: toInt(lap.lapNumber, 0),
+              session_time_ms: toInt(lap.sessionTimeMs, 0),
               lap_time_ms: toInt(lap.lapTimeMs, 0),
+              sector_time_0: toInt(sectorTimes[0], 0) || null,
+              sector_time_1: toInt(sectorTimes[1], 0) || null,
+              sector_time_2: toInt(sectorTimes[2], 0) || null,
+              sector_time_3: toInt(sectorTimes[3], 0) || null,
+              sector_time_4: toInt(sectorTimes[4], 0) || null,
+              sector_time_5: toInt(sectorTimes[5], 0) || null,
+              sector_time_6: toInt(sectorTimes[6], 0) || null,
+              sector_time_7: toInt(sectorTimes[7], 0) || null,
+              sector_time_8: toInt(sectorTimes[8], 0) || null,
+              sector_time_9: toInt(sectorTimes[9], 0) || null,
+              fuel_ratio: toFloat(lap.fuelRatio),
               valid: lap.valid ? 1 : 0,
+              sectors_are_soft_splits: lap.sectorsAreSoftSplits ? 1 : 0,
+              max_abs: toInt(lap.maxAbs, 0) || null,
+              max_tc: toInt(lap.maxTc, 0) || null,
+              temperature_ambient: toFloat(lap.temperatureAmbient),
+              temperature_track: toFloat(lap.temperatureTrack),
+              timestamp_unix: toInt(lap.timestampUnix, 0) || null,
+              aid_abs: toInt(lap.aidAbs, 0) || null,
+              aid_tc: toInt(lap.aidTc, 0) || null,
+              aid_auto_blib: toInt(lap.aidAutoBlib, 0) || null,
+              aid_auto_brake: toInt(lap.aidAutoBrake, 0) || null,
+              aid_auto_clutch: toInt(lap.aidAutoClutch, 0) || null,
+              aid_auto_shift: toInt(lap.aidAutoShift, 0) || null,
+              aid_ideal_line: toInt(lap.aidIdealLine, 0) || null,
+              aid_stability_control: toInt(lap.aidStabilityControl, 0) || null,
+              aid_slip_stream: toInt(lap.aidSlipStream, 0) || null,
+              aid_tyre_blankets: toInt(lap.aidTyreBlankets, 0) || null,
+              max_speed_kmh: toFloat(lap.maxSpeedKmh),
+              time_in_pit_lane_ms: toInt(lap.timeInPitLaneMs, 0) || null,
+              time_in_pit_ms: toInt(lap.timeInPitMs, 0) || null,
+              esc_pressed: lap.escPressed ? 1 : 0,
               cuts: toInt(lap.cuts, 0),
               collisions_car: toInt(lap.collisionsCar, 0),
               collisions_env: toInt(lap.collisionsEnv, 0),
+              grip_level: toFloat(lap.gripLevel),
+              ballast: toFloat(lap.ballast),
               created_at: createdAt
             });
           }
@@ -920,9 +1145,16 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
         type: session.type,
         trackRaw: cleanDisplayText(session.track_raw || session.track_display, 'Circuito'),
         track: session.track_display || displayTrackName(session.track_raw, 'Circuito'),
+        trackId: session.track_id ?? null,
+        trackLength: session.track_length ?? null,
         comboId: session.combo_id ?? null,
         startTime: session.start_time || null,
         endTime: session.end_time || null,
+        numberOfLaps: session.number_of_laps ?? null,
+        durationMs: session.duration_ms ?? null,
+        multiplayer: session.multiplayer ?? null,
+        serverIpPort: session.server_ip_port ?? null,
+        lastLapUnix: session.last_lap_unix ?? null,
         playerCount: toInt(session.player_count, 0),
         lapCount: positiveInt(session.lap_count) || lapRows.length,
         maxLapCount: positiveInt(session.max_lap_count) || driverMaxLapCount || lapMaxLapCount,
@@ -940,8 +1172,13 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
         playerInSessionId: toInt(row.player_in_session_id, 0),
         driverName: row.driver_name,
         steamGuid: row.steam_guid ?? null,
+        carId: row.car_id ?? null,
         carRaw: row.car_raw ?? null,
         carDisplay: row.car_display ?? null,
+        carBrand: row.car_brand ?? null,
+        acVersion: row.ac_version ?? null,
+        inputMethod: row.input_method ?? null,
+        shifter: row.shifter ?? null,
         position: toInt(row.position, 0),
         laps: toInt(row.laps, 0),
         bestLapMs: toInt(row.best_lap_ms, 0),
@@ -958,12 +1195,52 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
         sessionId: toInt(row.session_id, 0),
         playerId: row.player_id ?? null,
         playerInSessionId: toInt(row.player_in_session_id, 0),
+        lapSourceId: row.lap_source_id ?? null,
+        tyreCompoundId: row.tyre_compound_id ?? null,
         lapNumber: toInt(row.lap_number, 0),
+        sessionTimeMs: row.session_time_ms ?? null,
         lapTimeMs: toInt(row.lap_time_ms, 0),
+        sectorTimesMs: [
+          row.sector_time_0,
+          row.sector_time_1,
+          row.sector_time_2,
+          row.sector_time_3,
+          row.sector_time_4,
+          row.sector_time_5,
+          row.sector_time_6,
+          row.sector_time_7,
+          row.sector_time_8,
+          row.sector_time_9
+        ].map((value) => toInt(value, 0)).filter((value) => value > 0),
+        fuelRatio: row.fuel_ratio ?? null,
         valid: Boolean(row.valid),
+        sectorsAreSoftSplits: Boolean(row.sectors_are_soft_splits),
+        maxAbs: row.max_abs ?? null,
+        maxTc: row.max_tc ?? null,
+        temperatureAmbient: row.temperature_ambient ?? null,
+        temperatureTrack: row.temperature_track ?? null,
+        timestampUnix: row.timestamp_unix ?? null,
+        aids: {
+          abs: row.aid_abs ?? null,
+          tc: row.aid_tc ?? null,
+          autoBlib: row.aid_auto_blib ?? null,
+          autoBrake: row.aid_auto_brake ?? null,
+          autoClutch: row.aid_auto_clutch ?? null,
+          autoShift: row.aid_auto_shift ?? null,
+          idealLine: row.aid_ideal_line ?? null,
+          stabilityControl: row.aid_stability_control ?? null,
+          slipStream: row.aid_slip_stream ?? null,
+          tyreBlankets: row.aid_tyre_blankets ?? null
+        },
+        maxSpeedKmh: row.max_speed_kmh ?? null,
+        timeInPitLaneMs: row.time_in_pit_lane_ms ?? null,
+        timeInPitMs: row.time_in_pit_ms ?? null,
+        escPressed: Boolean(row.esc_pressed),
         cuts: toInt(row.cuts, 0),
         collisionsCar: toInt(row.collisions_car, 0),
         collisionsEnv: toInt(row.collisions_env, 0),
+        gripLevel: row.grip_level ?? null,
+        ballast: row.ballast ?? null,
         createdAt: row.created_at || null
       })),
       incidents: incidentRows.map((row: any) => ({
@@ -1007,27 +1284,71 @@ async function loadMirrorLapRows(backend: MirrorBackend) {
       l.session_id,
       l.player_id,
       l.player_in_session_id,
+      l.tyre_compound_id,
       l.lap_number,
+      l.session_time_ms,
       l.lap_time_ms,
+      l.sector_time_0,
+      l.sector_time_1,
+      l.sector_time_2,
+      l.sector_time_3,
+      l.sector_time_4,
+      l.sector_time_5,
+      l.sector_time_6,
+      l.sector_time_7,
+      l.sector_time_8,
+      l.sector_time_9,
+      l.fuel_ratio,
       l.valid,
+      l.sectors_are_soft_splits,
+      l.max_abs,
+      l.max_tc,
+      l.temperature_ambient,
+      l.temperature_track,
+      l.timestamp_unix,
+      l.aid_abs,
+      l.aid_tc,
+      l.aid_auto_blib,
+      l.aid_auto_brake,
+      l.aid_auto_clutch,
+      l.aid_auto_shift,
+      l.aid_ideal_line,
+      l.aid_stability_control,
+      l.aid_slip_stream,
+      l.aid_tyre_blankets,
+      l.max_speed_kmh,
+      l.time_in_pit_lane_ms,
+      l.time_in_pit_ms,
+      l.esc_pressed,
       l.cuts,
       l.collisions_car,
       l.collisions_env,
+      l.grip_level,
+      l.ballast,
       l.created_at AS lap_created_at,
       s.type AS session_type,
       s.track_raw,
       s.track_display,
+      s.track_id,
+      s.track_length,
       s.combo_id,
       s.start_time,
       s.end_time,
+      s.multiplayer,
+      s.server_ip_port,
       s.player_count,
       s.lap_count,
       s.max_lap_count,
       s.best_lap_ms AS session_best_lap_ms,
       d.driver_name,
       d.steam_guid,
+      d.car_id,
       d.car_raw,
       d.car_display,
+      d.car_brand,
+      d.ac_version,
+      d.input_method,
+      d.shifter,
       d.position AS driver_position,
       d.laps AS driver_laps,
       d.best_lap_ms AS driver_best_lap_ms,
@@ -1054,18 +1375,32 @@ async function loadMirrorLapRows(backend: MirrorBackend) {
     const carCode = cleanDisplayText(row.car_raw || row.car_display, 'Coche');
     const driverName = displayDriverName(row.driver_name, `Piloto ${toInt(row.player_id, 0) || toInt(row.player_in_session_id, 0) || sessionId}`);
     const createdAt = textValue(row.lap_created_at || row.start_time || row.end_time || null);
+    const sectorTimes = [
+      row.sector_time_0,
+      row.sector_time_1,
+      row.sector_time_2,
+      row.sector_time_3,
+      row.sector_time_4,
+      row.sector_time_5,
+      row.sector_time_6,
+      row.sector_time_7,
+      row.sector_time_8,
+      row.sector_time_9
+    ].map((value) => toInt(value, 0)).filter((value) => value > 0 && value <= toInt(row.lap_time_ms, 0));
     return {
       lapId: row.lap_id ?? `${sessionId}:${toInt(row.player_in_session_id, 0)}:${toInt(row.lap_number, 0)}`,
+      playerInSessionId: row.player_in_session_id ?? null,
+      tyreCompoundId: row.tyre_compound_id ?? null,
       playerId: row.player_id ?? null,
       driverId: row.player_id ?? row.player_in_session_id ?? null,
       driverName,
       playerName: driverName,
       steamGuid: row.steam_guid ?? null,
       comboId,
-      carId: row.car_raw ?? row.car_display ?? row.player_id ?? null,
+      carId: row.car_id ?? row.car_raw ?? row.car_display ?? row.player_id ?? null,
       carName,
       carCode,
-      trackId: comboId,
+      trackId: row.track_id ?? comboId,
       trackName,
       trackCode,
       lapTimeMs: toInt(row.lap_time_ms, 0),
@@ -1073,39 +1408,55 @@ async function loadMirrorLapRows(backend: MirrorBackend) {
       lapTimeFormatted: formatLapMs(row.lap_time_ms),
       valid: Boolean(row.valid),
       isValid: Boolean(row.valid),
-      maxSpeedKmh: null,
+      maxSpeedKmh: toFloat(row.max_speed_kmh),
+      sectorTimesMs: sectorTimes,
+      sectorTimes: sectorTimes.map(formatLapMs),
+      sector1Ms: sectorTimes[0] ?? null,
+      sector2Ms: sectorTimes[1] ?? null,
+      sector3Ms: sectorTimes[2] ?? null,
+      sector1: sectorTimes[0] ? formatLapMs(sectorTimes[0]) : '--',
+      sector2: sectorTimes[1] ? formatLapMs(sectorTimes[1]) : '--',
+      sector3: sectorTimes[2] ? formatLapMs(sectorTimes[2]) : '--',
+      fuelRatio: toFloat(row.fuel_ratio),
+      sectorsAreSoftSplits: Boolean(row.sectors_are_soft_splits),
+      maxAbs: row.max_abs ?? null,
+      maxTc: row.max_tc ?? null,
       cuts: toInt(row.cuts, 0),
       collisionsCar: toInt(row.collisions_car, 0),
       collisionsEnv: toInt(row.collisions_env, 0),
-      gripLevel: null,
-      temperatureTrack: null,
-      temperatureAmbient: null,
-      timestamp: mirrorTimestampSeconds(createdAt, row.start_time || row.end_time || null),
+      timeInPitLaneMs: row.time_in_pit_lane_ms ?? null,
+      timeInPitMs: row.time_in_pit_ms ?? null,
+      escPressed: Boolean(row.esc_pressed),
+      gripLevel: toFloat(row.grip_level),
+      ballast: toFloat(row.ballast),
+      temperatureTrack: toFloat(row.temperature_track),
+      temperatureAmbient: toFloat(row.temperature_ambient),
+      timestamp: toInt(row.timestamp_unix, 0) || mirrorTimestampSeconds(createdAt, row.start_time || row.end_time || null),
       timestampIso: createdAt || row.start_time || row.end_time || null,
       session: {
         type: String(row.session_type || 'race').trim().toUpperCase(),
-        multiplayer: null,
-        server: null,
+        multiplayer: row.multiplayer ?? null,
+        server: row.server_ip_port ?? null,
         startTime: row.start_time || null,
         startTimeIso: row.start_time || null,
         endTime: row.end_time || null,
         endTimeIso: row.end_time || null
       },
       aids: {
-        abs: null,
-        tc: null,
-        autoBlib: null,
-        autoBrake: null,
-        autoClutch: null,
-        autoShift: null,
-        idealLine: null,
-        stabilityControl: null,
-        slipStream: null,
-        tyreBlankets: null
+        abs: row.aid_abs ?? null,
+        tc: row.aid_tc ?? null,
+        autoBlib: row.aid_auto_blib ?? null,
+        autoBrake: row.aid_auto_brake ?? null,
+        autoClutch: row.aid_auto_clutch ?? null,
+        autoShift: row.aid_auto_shift ?? null,
+        idealLine: row.aid_ideal_line ?? null,
+        stabilityControl: row.aid_stability_control ?? null,
+        slipStream: row.aid_slip_stream ?? null,
+        tyreBlankets: row.aid_tyre_blankets ?? null
       },
       input: {
-        method: null,
-        shifter: null
+        method: row.input_method ?? null,
+        shifter: row.shifter ?? null
       },
       driver: {
         id: row.player_id ?? row.player_in_session_id ?? null,
@@ -1114,15 +1465,16 @@ async function loadMirrorLapRows(backend: MirrorBackend) {
         isOnline: false
       },
       car: {
-        id: row.car_raw ?? row.car_display ?? row.player_id ?? null,
+        id: row.car_id ?? row.car_raw ?? row.car_display ?? row.player_id ?? null,
         name: carName,
         code: carCode,
-        brand: carName.split(' ')[0] || carName
+        brand: row.car_brand ?? carName.split(' ')[0] ?? carName
       },
       track: {
-        id: comboId,
+        id: row.track_id ?? comboId,
         name: trackName,
-        code: trackCode
+        code: trackCode,
+        length: row.track_length ?? null
       },
       source: 'sql-mirror',
       mirrorDriver: backend.driver

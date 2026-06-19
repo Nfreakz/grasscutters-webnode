@@ -20,7 +20,7 @@ import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-ar
 import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
-import { syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
+import { ensureStrackerMirrorSchema, syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
 const __filename = fileURLToPath(import.meta.url);
@@ -2922,6 +2922,15 @@ type GcDataCoreReadResult = {
   fallbackReason?: string | null;
 };
 
+let gcDataCoreMirrorSchemaReady: Promise<void> | null = null;
+
+async function ensureGcDataCoreMirrorSchemaReady() {
+  if (!gcDataCoreMirrorSchemaReady) {
+    gcDataCoreMirrorSchemaReady = ensureStrackerMirrorSchema();
+  }
+  return gcDataCoreMirrorSchemaReady;
+}
+
 function gcDataCoreMysqlFirstEnabled(req?: express.Request) {
   const requestedSource = req ? getQueryString(req, 'source', '').toLowerCase() : '';
   if (['stracker', 'sqlite', 'db3', 'file'].includes(requestedSource)) return false;
@@ -2942,12 +2951,14 @@ function gcDataCoreMysqlMirrorSupportsRequest(req: express.Request) {
 async function readJoinedLapsFromMysqlMirror() {
   await readDisplayNameStoreAsync();
   if (!useMysqlStorage()) throw new Error('MySQL no está activo para Data Core mirror.');
+  await ensureGcDataCoreMirrorSchemaReady();
 
   const started = Date.now();
   const rows = await mysqlQuery(`
     SELECT
       l.id AS LapId,
       l.player_in_session_id AS PlayerInSessionId,
+      l.tyre_compound_id AS TyreCompoundId,
       l.session_id AS SessionId,
       s.combo_id AS ComboId,
       l.player_id AS PlayerId,
@@ -2956,54 +2967,59 @@ async function readJoinedLapsFromMysqlMirror() {
       0 AS IsOnline,
       0 AS Whitelisted,
       0 AS Anonymized,
-      NULL AS CarId,
+      d.car_id AS CarId,
       d.car_raw AS Car,
       d.car_display AS UiCarName,
-      NULL AS Brand,
-      NULL AS TrackId,
+      d.car_brand AS Brand,
+      s.track_id AS TrackId,
       s.track_raw AS Track,
       s.track_display AS UiTrackName,
-      NULL AS TrackLength,
+      s.track_length AS TrackLength,
+      l.lap_number AS LapCount,
+      l.session_time_ms AS SessionTime,
       l.lap_time_ms AS LapTime,
+      l.sector_time_0 AS SectorTime0,
+      l.sector_time_1 AS SectorTime1,
+      l.sector_time_2 AS SectorTime2,
+      l.sector_time_3 AS SectorTime3,
+      l.sector_time_4 AS SectorTime4,
+      l.sector_time_5 AS SectorTime5,
+      l.sector_time_6 AS SectorTime6,
+      l.sector_time_7 AS SectorTime7,
+      l.sector_time_8 AS SectorTime8,
+      l.sector_time_9 AS SectorTime9,
+      l.fuel_ratio AS FuelRatio,
       l.valid AS Valid,
+      l.sectors_are_soft_splits AS SectorsAreSoftSplits,
+      l.max_abs AS MaxABS,
+      l.max_tc AS MaxTC,
+      l.temperature_ambient AS TemperatureAmbient,
+      l.temperature_track AS TemperatureTrack,
       l.cuts AS Cuts,
       l.collisions_car AS CollisionsCar,
       l.collisions_env AS CollisionsEnv,
-      0 AS MaxSpeed_KMH,
+      l.max_speed_kmh AS MaxSpeed_KMH,
       s.type AS SessionType,
-      1 AS Multiplayer,
-      NULL AS ServerIpPort,
+      COALESCE(s.multiplayer, 1) AS Multiplayer,
+      s.server_ip_port AS ServerIpPort,
       UNIX_TIMESTAMP(s.start_time) AS StartTimeDate,
       UNIX_TIMESTAMP(s.end_time) AS EndTimeDate,
-      UNIX_TIMESTAMP(COALESCE(s.end_time, s.start_time, l.created_at)) AS Timestamp,
-      0 AS AidABS,
-      0 AS AidTC,
-      0 AS AidAutoBlib,
-      0 AS AidAutoBrake,
-      0 AS AidAutoClutch,
-      0 AS AidAutoShift,
-      0 AS AidIdealLine,
-      0 AS AidStabilityControl,
-      0 AS AidSlipStream,
-      0 AS AidTyreBlankets,
-      0 AS FuelRatio,
-      0 AS GripLevel,
-      0 AS Ballast,
-      NULL AS TemperatureAmbient,
-      NULL AS TemperatureTrack,
-      NULL AS ACVersion,
-      NULL AS InputMethod,
-      NULL AS Shifter,
-      NULL AS SectorTime0,
-      NULL AS SectorTime1,
-      NULL AS SectorTime2,
-      NULL AS SectorTime3,
-      NULL AS SectorTime4,
-      NULL AS SectorTime5,
-      NULL AS SectorTime6,
-      NULL AS SectorTime7,
-      NULL AS SectorTime8,
-      NULL AS SectorTime9
+      COALESCE(l.timestamp_unix, UNIX_TIMESTAMP(COALESCE(s.end_time, s.start_time, l.created_at))) AS Timestamp,
+      l.aid_abs AS AidABS,
+      l.aid_tc AS AidTC,
+      l.aid_auto_blib AS AidAutoBlib,
+      l.aid_auto_brake AS AidAutoBrake,
+      l.aid_auto_clutch AS AidAutoClutch,
+      l.aid_auto_shift AS AidAutoShift,
+      l.aid_ideal_line AS AidIdealLine,
+      l.aid_stability_control AS AidStabilityControl,
+      l.aid_slip_stream AS AidSlipStream,
+      l.aid_tyre_blankets AS AidTyreBlankets,
+      l.grip_level AS GripLevel,
+      l.ballast AS Ballast,
+      d.ac_version AS ACVersion,
+      d.input_method AS InputMethod,
+      d.shifter AS Shifter
     FROM gc_stracker_lap l
     LEFT JOIN gc_stracker_session s ON s.session_id = l.session_id
     LEFT JOIN gc_stracker_session_driver d
