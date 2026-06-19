@@ -1,0 +1,160 @@
+/*
+  GC_PUBLIC_RESULT_NUMBERS_V187
+
+  Enfoque correcto:
+  - SIN script global.
+  - SIN envolver todo el DOM.
+  - SIN tocar /app.
+  - Solo estilos dirigidos a elementos que ya son números/resultados/tiempos en páginas con MarketingLayout.
+
+  Motivo:
+  Los intentos anteriores eran demasiado globales. Este archivo solo cambia la fuente
+  de celdas/valores concretos, no nombres de pilotos ni texto normal.
+*/
+
+:root{
+  --gc-result-font: Verdana, "Segoe UI", Arial, sans-serif;
+}
+
+/* HOME: tiempos, métricas y resultados concretos */
+.gc-home2 :where(
+  [data-home2-best-time],
+  [data-home2-drivers],
+  [data-home2-laps],
+  [data-home2-now-distance],
+  [data-home2-now-cars],
+  [data-home2-server-total-drivers],
+  [data-home2-first-lap-days],
+  [data-home2-server-total-laps],
+  [data-home2-server-hotlaps],
+  [data-home2-server-active-cars],
+  [data-home2-server-best-time],
+  [data-home2-last-lap-card],
+  [data-home2-champ-events],
+  [data-home2-champ-completed],
+  [data-home2-champ-entrants],
+  [data-home2-champ-classes]
+),
+.gc-home2 .gc-home2-combo-rank > em,
+.gc-home2 .gc-home2-table__row > strong,
+.gc-home2 .gc-home2-table__row > small,
+.gc-home2 .gc-home2-metrics dd,
+.gc-home2 .gc-home2-now-extra dd,
+.gc-home2 .gc-home2-server-rows dd:not([data-home2-server-state]),
+.gc-home2 .gc-home2-championship-stats dd,
+.gc-home2 .gc-home2-champ-standing-pos,
+.gc-home2 .gc-home2-champ-standing-points,
+.gc-home2 .gc-home2-rating-table td:first-child,
+.gc-home2 .gc-home2-rating-table td:nth-child(3),
+.gc-home2 .gc-home2-rating-table td:nth-child(4){
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+  letter-spacing:-.01em;
+  text-rendering:geometricPrecision;
+}
+
+/* HOME: tiempo principal con más presencia, sin tocar letras del resto */
+.gc-home2 [data-home2-best-time],
+.gc-home2 .gc-home2-combo-rank > em,
+.gc-home2 .gc-home2-table__row > strong{
+  font-weight:900 !important;
+}
+
+/* HOTLAPS: solo columnas numéricas/resultados */
+.gc-hotlaps-table-v13 :where(
+  td:first-child,
+  td:nth-child(5),
+  td:nth-child(6),
+  td:nth-child(7),
+  td:nth-child(8),
+  td:nth-child(9)
+),
+.gc-hotlaps-metrics-v13 .gc-metric strong,
+.gc-hotlaps-status-v13 .gc-status-row strong,
+.gc-hotlaps-meta-v13 span{
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+}
+
+/* COMBOS: métricas y tabla, no nombres/coches */
+.gc-combos-page :where(
+  .gc-metric-card strong,
+  .gc-stat-badge-v42,
+  table td:nth-child(3),
+  table td:nth-child(4),
+  table td:nth-child(5),
+  table td:nth-child(6)
+){
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+}
+
+/* CAMPEONATO: clasificación y resultados */
+.gc-community-championship :where(
+  .gc-acsr-points,
+  .gc-acsr-stat strong,
+  .gc-acsr-kpi strong,
+  .gc-acsr-event time,
+  .gc-acsr-standings-table td:first-child,
+  .gc-acsr-standings-table td:nth-child(3),
+  .gc-acsr-standings-table td:nth-child(4),
+  .gc-acsr-standings-table td:nth-child(5),
+  .gc-acsr-standings-table td:nth-child(6),
+  .gc-acsr-standings-table td:nth-child(7),
+  .gc-acsr-standings-table td:nth-child(8),
+  .gc-acsr-standings-table td:nth-child(9)
+){
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+}
+
+/* RATINGS: valores y deltas */
+.gc-ratings-page :where(
+  .gc-ratings-stat,
+  .gc-ratings-delta,
+  .gc-rating-badge strong,
+  .gc-ratings-rank-badge,
+  .gc-ratings-table td:first-child,
+  .gc-ratings-table td:nth-child(3),
+  .gc-ratings-table td:nth-child(5),
+  .gc-ratings-table td:nth-child(6),
+  .gc-ratings-table td:nth-child(7),
+  .gc-ratings-table td:nth-child(8),
+  .gc-ratings-pagination span
+){
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+}
+
+/* CARRERAS COMUNIDAD Y CALENDARIO: fechas, pilotos, horas */
+.gc-community-races-page table :where(
+  td:nth-child(3),
+  td:nth-child(4)
+),
+.gc-calendar-page :where(
+  time,
+  dd,
+  .gc-calendar-day-number,
+  .gc-calendar-upcoming-card small
+){
+  font-family:var(--gc-result-font) !important;
+  font-weight:800 !important;
+  font-variant-numeric:tabular-nums lining-nums !important;
+  font-feature-settings:"tnum" 1, "lnum" 1 !important;
+}
+
+/* Protección: /app no debe cambiar aunque este CSS se cargase por error allí */
+.gc-app-dashboard-v3,
+.gc-app-dashboard-v3 *{
+  font-family:inherit;
+}
