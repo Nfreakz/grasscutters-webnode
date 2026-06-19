@@ -49,6 +49,20 @@ function toInt(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
 }
 
+function positiveInt(value: unknown) {
+  const parsed = toInt(value, 0);
+  return parsed > 0 ? parsed : 0;
+}
+
+function minPositiveInt(values: unknown[]) {
+  let best = 0;
+  for (const value of values) {
+    const parsed = positiveInt(value);
+    if (parsed > 0 && (best === 0 || parsed < best)) best = parsed;
+  }
+  return best;
+}
+
 function isBooleanishTrue(value: unknown) {
   if (value === true || value === 1) return true;
   if (typeof value === 'string') {
@@ -769,33 +783,52 @@ async function queryMirrorSessionRows(backend: MirrorBackend, limit: number) {
       s.start_time,
       s.end_time,
       s.player_count,
-      s.lap_count,
-      s.max_lap_count,
-      s.best_lap_ms,
-      COALESCE(laps.cuts, 0) AS cuts,
-      COALESCE(laps.collisions_car, 0) AS collisions_car,
-      COALESCE(laps.collisions_env, 0) AS collisions_env,
-      COALESCE(drivers.driver_rows, 0) AS driver_rows
+      COALESCE(NULLIF(s.lap_count, 0), lap_stats.lap_rows, 0) AS lap_count,
+      COALESCE(NULLIF(s.max_lap_count, 0), driver_stats.max_driver_laps, lap_driver_stats.max_driver_laps, 0) AS max_lap_count,
+      COALESCE(NULLIF(s.best_lap_ms, 0), lap_stats.valid_best_lap_ms, lap_stats.any_best_lap_ms, driver_stats.driver_best_lap_ms, 0) AS best_lap_ms,
+      COALESCE(lap_stats.cuts, 0) AS cuts,
+      COALESCE(lap_stats.collisions_car, 0) AS collisions_car,
+      COALESCE(lap_stats.collisions_env, 0) AS collisions_env,
+      COALESCE(driver_stats.driver_rows, 0) AS driver_rows
     FROM gc_stracker_session s
     LEFT JOIN (
       SELECT
         session_id,
-        COUNT(DISTINCT player_in_session_id) AS driver_rows
+        COUNT(DISTINCT player_in_session_id) AS driver_rows,
+        MAX(laps) AS max_driver_laps,
+        MIN(CASE WHEN best_lap_ms > 0 THEN best_lap_ms ELSE NULL END) AS driver_best_lap_ms
       FROM gc_stracker_session_driver
       GROUP BY session_id
-    ) drivers ON drivers.session_id = s.session_id
+    ) driver_stats ON driver_stats.session_id = s.session_id
     LEFT JOIN (
       SELECT
         session_id,
+        MAX(driver_lap_rows) AS max_driver_laps
+      FROM (
+        SELECT
+          session_id,
+          player_in_session_id,
+          COUNT(*) AS driver_lap_rows
+        FROM gc_stracker_lap
+        GROUP BY session_id, player_in_session_id
+      ) lap_driver_counts
+      GROUP BY session_id
+    ) lap_driver_stats ON lap_driver_stats.session_id = s.session_id
+    LEFT JOIN (
+      SELECT
+        session_id,
+        COUNT(*) AS lap_rows,
+        MIN(CASE WHEN valid = 1 AND lap_time_ms > 0 THEN lap_time_ms ELSE NULL END) AS valid_best_lap_ms,
+        MIN(CASE WHEN lap_time_ms > 0 THEN lap_time_ms ELSE NULL END) AS any_best_lap_ms,
         SUM(cuts) AS cuts,
         SUM(collisions_car) AS collisions_car,
         SUM(collisions_env) AS collisions_env
       FROM gc_stracker_lap
       GROUP BY session_id
-    ) laps ON laps.session_id = s.session_id
+    ) lap_stats ON lap_stats.session_id = s.session_id
     WHERE s.type = 'race'
       AND s.player_count >= 3
-      AND s.lap_count >= 1
+      AND COALESCE(NULLIF(s.lap_count, 0), lap_stats.lap_rows, 0) >= 1
     ORDER BY s.start_time DESC, s.session_id DESC
     LIMIT ?
   `, [limit]);
@@ -810,28 +843,35 @@ export async function getStrackerRaceCandidatesFromMirror(options: { limit?: num
       ok: true as const,
       source: 'gc-ratings-v1' as const,
       mirrorDriver: backend.driver,
-      candidates: rows.map((row: any) => ({
-        sessionId: toInt(row.session_id, 0),
-        eventId: `stracker:${toInt(row.session_id, 0)}`,
-        type: row.type,
-        name: `Carrera sTracker #${toInt(row.session_id, 0)}`,
-        trackRaw: row.track_raw || null,
-        track: row.track_display || displayTrackName(row.track_raw, 'Circuito'),
-        comboId: row.combo_id ?? null,
-        startTime: row.start_time || null,
-        endTime: row.end_time || null,
-        playerCount: toInt(row.player_count, 0),
-        lapCount: toInt(row.lap_count, 0),
-        maxLapCount: toInt(row.max_lap_count, 0),
-        bestLapMs: toInt(row.best_lap_ms, 0),
-        bestLap: formatLapMs(row.best_lap_ms),
-        cuts: toInt(row.cuts, 0),
-        collisionsCar: toInt(row.collisions_car, 0),
-        collisionsEnv: toInt(row.collisions_env, 0),
-        source: 'sql-mirror' as const,
-        mirrorDriver: backend.driver,
-        recommended: toInt(row.player_count, 0) >= 3 && toInt(row.lap_count, 0) >= 1
-      }))
+      candidates: rows.map((row: any) => {
+        const lapCount = toInt(row.lap_count, 0);
+        const maxLapCount = toInt(row.max_lap_count, 0);
+        const bestLapMs = toInt(row.best_lap_ms, 0);
+        const playerCount = toInt(row.player_count, 0);
+
+        return {
+          sessionId: toInt(row.session_id, 0),
+          eventId: `stracker:${toInt(row.session_id, 0)}`,
+          type: row.type,
+          name: `Carrera sTracker #${toInt(row.session_id, 0)}`,
+          trackRaw: row.track_raw || null,
+          track: row.track_display || displayTrackName(row.track_raw, 'Circuito'),
+          comboId: row.combo_id ?? null,
+          startTime: row.start_time || null,
+          endTime: row.end_time || null,
+          playerCount,
+          lapCount,
+          maxLapCount,
+          bestLapMs,
+          bestLap: formatLapMs(bestLapMs),
+          cuts: toInt(row.cuts, 0),
+          collisionsCar: toInt(row.collisions_car, 0),
+          collisionsEnv: toInt(row.collisions_env, 0),
+          source: 'sql-mirror' as const,
+          mirrorDriver: backend.driver,
+          recommended: playerCount >= 3 && lapCount >= 1
+        };
+      })
     };
   } finally {
     await backend.close();
@@ -862,6 +902,18 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
       backend.query('SELECT * FROM gc_stracker_incident WHERE session_id = ? ORDER BY lap_number ASC, id ASC', [sessionId])
     ]);
 
+    const driverMaxLapCount = Math.max(...driverRows.map((row: any) => positiveInt(row.laps)), 0);
+    const lapRowsByDriver = new Map<number, number>();
+    for (const row of lapRows) {
+      const playerInSessionId = toInt(row.player_in_session_id, 0);
+      if (!playerInSessionId) continue;
+      lapRowsByDriver.set(playerInSessionId, (lapRowsByDriver.get(playerInSessionId) || 0) + 1);
+    }
+    const lapMaxLapCount = Math.max(...Array.from(lapRowsByDriver.values()), 0);
+    const validBestLapMs = minPositiveInt(lapRows.filter((row: any) => Boolean(row.valid)).map((row: any) => row.lap_time_ms));
+    const anyBestLapMs = minPositiveInt(lapRows.map((row: any) => row.lap_time_ms));
+    const driverBestLapMs = minPositiveInt(driverRows.map((row: any) => row.best_lap_ms));
+
     return {
       session: {
         sessionId: toInt(session.session_id, 0),
@@ -872,9 +924,9 @@ export async function getStrackerSessionDetailFromMirror(sessionId: number) {
         startTime: session.start_time || null,
         endTime: session.end_time || null,
         playerCount: toInt(session.player_count, 0),
-        lapCount: toInt(session.lap_count, 0),
-        maxLapCount: toInt(session.max_lap_count, 0),
-        bestLapMs: toInt(session.best_lap_ms, 0),
+        lapCount: positiveInt(session.lap_count) || lapRows.length,
+        maxLapCount: positiveInt(session.max_lap_count) || driverMaxLapCount || lapMaxLapCount,
+        bestLapMs: positiveInt(session.best_lap_ms) || validBestLapMs || anyBestLapMs || driverBestLapMs,
         sourceUpdatedAt: session.source_updated_at || null,
         importedAt: session.imported_at || null,
         updatedAt: session.updated_at || null
