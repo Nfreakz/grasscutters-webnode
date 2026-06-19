@@ -3257,6 +3257,88 @@ async function getPilotStatsByPlayerId(dbPath: string, playerId: number) {
   return drivers.find((driver) => Number(driver.id) === Number(playerId)) ?? null;
 }
 
+async function getPilotStatsByPlayerIdFromDataCoreV130(playerId: number, req?: express.Request) {
+  const readSource = await readGcDataCoreSource(req || ({ query: {} } as express.Request));
+  if ((readSource as any).ok === false) return null;
+  const dataCoreSource = readSource as GcDataCoreReadResult;
+  const drivers = reduceDriverStats(dataCoreSource.laps);
+  return drivers.find((driver) => Number(driver.id) === Number(playerId)) ?? null;
+}
+
+function gcPublicDataCoreUnavailableV130(readSource: any, fallbackMessage: string) {
+  return {
+    ok: false,
+    source: 'gc-data-core-v130',
+    dataSource: 'unavailable',
+    stracker: gcDataCorePublicStracker(readSource?.stracker || getStrackerConfig()),
+    mysqlMirror: readSource?.mysqlMirror ?? null,
+    fallbackReason: readSource?.fallbackReason ?? null,
+    items: [],
+    message: readSource?.message || fallbackMessage
+  };
+}
+
+async function readSessionsFromMysqlMirrorV130(limit: number) {
+  await ensureGcDataCoreMirrorSchemaReady();
+  const safeLimit = Math.max(1, Math.min(limit, 250));
+  const rows = await mysqlQuery(`
+    SELECT
+      s.session_id AS SessionId,
+      s.track_id AS TrackId,
+      s.track_raw AS Track,
+      s.track_display AS UiTrackName,
+      s.track_length AS TrackLength,
+      s.type AS SessionType,
+      s.multiplayer AS Multiplayer,
+      s.server_ip_port AS ServerIpPort,
+      UNIX_TIMESTAMP(s.start_time) AS StartTimeDate,
+      UNIX_TIMESTAMP(s.end_time) AS EndTimeDate,
+      s.combo_id AS ComboId,
+      s.player_count AS DriversCount,
+      s.lap_count AS TotalLaps,
+      s.valid_lap_count AS ValidLaps,
+      s.max_lap_count AS NumberOfLaps,
+      s.best_lap_ms AS BestLapMs
+    FROM gc_stracker_session s
+    ORDER BY s.start_time DESC, s.session_id DESC
+    LIMIT ${safeLimit}
+  `);
+
+  return rows.map((row: any) => ({
+    id: numberOrNull(row.SessionId),
+    type: compactNullableText(row.SessionType),
+    multiplayer: numberOrNull(row.Multiplayer),
+    numberOfLaps: numberOrNull(row.NumberOfLaps),
+    duration: null,
+    server: compactNullableText(row.ServerIpPort),
+    comboId: numberOrNull(row.ComboId),
+    startTime: numberOrNull(row.StartTimeDate),
+    startTimeIso: unixToIso(row.StartTimeDate),
+    endTime: numberOrNull(row.EndTimeDate),
+    endTimeIso: unixToIso(row.EndTimeDate),
+    settings: {
+      penaltiesEnabled: null,
+      allowedTyresOut: null,
+      tyreWearFactor: null,
+      fuelRate: null,
+      damage: null
+    },
+    track: {
+      id: numberOrNull(row.TrackId),
+      code: compactNullableText(row.Track),
+      name: getDisplayTrack(row),
+      length: numberOrNull(row.TrackLength)
+    },
+    stats: {
+      totalLaps: numberOrNull(row.TotalLaps) ?? 0,
+      validLaps: numberOrNull(row.ValidLaps) ?? 0,
+      driversCount: numberOrNull(row.DriversCount) ?? 0,
+      bestLapMs: numberOrNull(row.BestLapMs),
+      bestLap: row.BestLapMs ? formatLapTime(Number(row.BestLapMs)) : null
+    }
+  }));
+}
+
 
 type PilotProfileLap = ReturnType<typeof mapLapRow>;
 
@@ -3702,14 +3784,9 @@ async function resolvePilotLink(playerIdRaw: unknown) {
     return { ok: false as const, message: 'El piloto seleccionado no es vÃƒÂ¡lido.' };
   }
 
-  const stracker = getStrackerConfig();
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    return { ok: false as const, message: 'No hay stracker.db3 vÃƒÂ¡lido para vincular piloto.' };
-  }
-
-  const pilot = await getPilotStatsByPlayerId(stracker.resolvedPath, playerId);
+  const pilot = await getPilotStatsByPlayerIdFromDataCoreV130(playerId);
   if (!pilot) {
-    return { ok: false as const, message: 'No se encontrÃƒÂ³ ese piloto en stracker.db3.' };
+    return { ok: false as const, message: 'No se encontrÃƒÂ³ ese piloto en Data Core MySQL/stracker.' };
   }
 
   return {
@@ -5994,13 +6071,12 @@ app.get('/api/auth/me', async (req, res) => {
 
   let pilot = null;
   const playerId = context.user.pilotLink?.playerId;
-  const stracker = getStrackerConfig();
 
-  if (playerId && stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+  if (playerId) {
     try {
-      pilot = await getPilotStatsByPlayerId(stracker.resolvedPath, playerId);
+      pilot = await getPilotStatsByPlayerIdFromDataCoreV130(Number(playerId), req);
     } catch (error) {
-      console.error('[GC] Error leyendo piloto vinculado:', error);
+      console.error('[GC] Error leyendo piloto vinculado desde Data Core:', error);
     }
   }
 
@@ -6027,28 +6103,32 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
     return;
   }
 
-  const stracker = getStrackerConfig();
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    res.status(200).json({
-      ok: false,
-      profile: null,
-      stracker,
-      message: 'stracker.db3 no estÃƒÂ¡ disponible para generar el perfil pÃƒÂºblico.'
-    });
-    return;
-  }
-
   try {
-    const allLaps = await readJoinedLaps(stracker.resolvedPath);
-    const profile = buildPublicPilotProfile(playerId, allLaps);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar el perfil pÃƒÂºblico.'),
+        profile: null,
+        playerId
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const profile = buildPublicPilotProfile(playerId, dataCoreSource.laps);
     const ratings = await getGcRatingsService().resolveDriverProfileByPlayerId(playerId).catch(() => null);
 
     if (!profile) {
       res.status(404).json({
         ok: false,
+        source: 'gc-data-core-v130',
+        dataSource: dataCoreSource.source,
         profile: null,
         playerId,
-        message: 'No se encontrÃƒÂ³ actividad para ese piloto en stracker.db3.'
+        stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+        mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+        fallbackReason: dataCoreSource.fallbackReason ?? null,
+        message: 'No se encontrÃƒÂ³ actividad para ese piloto en Data Core.'
       });
       return;
     }
@@ -6056,11 +6136,11 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
     res.json({
       ...profile,
       ratings,
-      stracker: {
-        exists: stracker.exists,
-        sizeBytes: stracker.sizeBytes,
-        modifiedAt: stracker.modifiedAt
-      }
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null
     });
   } catch (error) {
     console.error('[GC] Error generando perfil pÃƒÂºblico de piloto:', error);
@@ -6068,7 +6148,7 @@ app.get('/api/pilots/:playerId/profile', async (req, res) => {
       ok: false,
       profile: null,
       playerId,
-      message: 'No se pudo generar el perfil pÃƒÂºblico desde stracker.db3.',
+      message: 'No se pudo generar el perfil pÃƒÂºblico desde Data Core.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -6088,8 +6168,6 @@ app.get('/api/profile', async (req, res) => {
     return;
   }
 
-  const stracker = getStrackerConfig();
-
   if (!context.user.pilotLink) {
     res.json({
       ...buildPilotProProfile(context.user, context.session, []),
@@ -6098,31 +6176,31 @@ app.get('/api/profile', async (req, res) => {
     return;
   }
 
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    res.status(200).json({
-      ok: false,
-      authenticated: true,
-      user: publicUser(context.user),
-      linked: true,
-      pilotLink: context.user.pilotLink,
-      profile: null,
-      stracker,
-      message: 'Hay sesiÃƒÂ³n activa, pero stracker.db3 no estÃƒÂ¡ disponible para generar el perfil.'
-    });
-    return;
-  }
-
   try {
-    const allLaps = await readJoinedLaps(stracker.resolvedPath);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        authenticated: true,
+        user: publicUser(context.user),
+        linked: true,
+        pilotLink: context.user.pilotLink,
+        profile: null,
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar el perfil.')
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
     const ratings = await getGcRatingsService().resolveDriverProfileByPlayerId(Number(context.user.pilotLink.playerId)).catch(() => null);
     res.json({
-      ...buildPilotProProfile(context.user, context.session, allLaps),
+      ...buildPilotProProfile(context.user, context.session, dataCoreSource.laps),
       ratings,
-      stracker: {
-        exists: stracker.exists,
-        sizeBytes: stracker.sizeBytes,
-        modifiedAt: stracker.modifiedAt
-      }
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null
     });
   } catch (error) {
     console.error('[GC] Error generando perfil pro:', error);
@@ -6131,7 +6209,7 @@ app.get('/api/profile', async (req, res) => {
       authenticated: true,
       user: publicUser(context.user),
       profile: null,
-      message: 'No se pudo generar el Perfil Pro desde stracker.db3.',
+      message: 'No se pudo generar el Perfil Pro desde Data Core.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -7114,16 +7192,25 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
 
   const store = await readUserStoreAsync();
   const linkedIds = new Set(store.users.map((user) => user.pilotLink?.playerId).filter((value) => value !== null && value !== undefined).map(String));
-  const stracker = getStrackerConfig();
-
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
-    res.json({ ok: true, count: 0, pilots: [], message: 'stracker.db3 no estÃƒÂ¡ disponible para detectar pilotos sin cuenta.' });
-    return;
-  }
 
   try {
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const pilots = reduceDriverStats(laps)
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.json({
+        ok: true,
+        source: 'gc-data-core-v130',
+        dataSource: 'unavailable',
+        count: 0,
+        pilots: [],
+        stracker: gcDataCorePublicStracker((readSource as any).stracker),
+        fallbackReason: (readSource as any).fallbackReason ?? null,
+        message: 'Data Core no disponible para detectar pilotos sin cuenta.'
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const pilots = reduceDriverStats(dataCoreSource.laps)
       .filter((pilot) => pilot.id !== null && !linkedIds.has(String(pilot.id)))
       .sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0))
       .map((pilot) => ({
@@ -7139,9 +7226,18 @@ app.get('/api/admin/unlinked-pilots', async (req, res) => {
         lastSeenAt: pilot.lastSeenAt
       }));
 
-    res.json({ ok: true, count: pilots.length, pilots, message: 'Pilotos sin usuario vinculado cargados.' });
+    res.json({
+      ok: true,
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      count: pilots.length,
+      pilots,
+      message: 'Pilotos sin usuario vinculado cargados desde Data Core.'
+    });
   } catch (error) {
-    res.status(200).json({ ok: false, pilots: [], message: 'No se pudieron cargar pilotos sin cuenta.', error: error instanceof Error ? error.message : String(error) });
+    res.status(200).json({ ok: false, pilots: [], message: 'No se pudieron cargar pilotos sin cuenta desde Data Core.', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -9443,15 +9539,23 @@ app.get('/api/laps', async (req, res) => {
 });
 
 app.get('/api/pilots', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar pilotos.'),
+        pilots: [],
+        drivers: []
+      });
+      return;
+    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+
     const limit = getQueryNumber(req, 'limit', 800, 1, 5000);
     const validFilter = getQueryString(req, 'valid', 'all').toLowerCase();
-    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const laps = dataCoreSource.laps;
 
     const statsByDriver = new Map<string, any>();
 
@@ -9581,8 +9685,12 @@ app.get('/api/pilots', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/pilots',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       canonicalEndpoint: '/api/gc/recent-laps + pilot stats projection',
       count: items.length,
       total: items.length,
@@ -9615,15 +9723,23 @@ app.get('/api/pilots', async (req, res) => {
 });
 
 app.get('/api/drivers', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar pilotos.'),
+        pilots: [],
+        drivers: []
+      });
+      return;
+    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+
     const limit = getQueryNumber(req, 'limit', 800, 1, 5000);
     const validFilter = getQueryString(req, 'valid', 'all').toLowerCase();
-    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const laps = dataCoreSource.laps;
 
     const statsByDriver = new Map<string, any>();
 
@@ -9753,8 +9869,12 @@ app.get('/api/drivers', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/drivers',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       canonicalEndpoint: '/api/gc/recent-laps + pilot stats projection',
       count: items.length,
       total: items.length,
@@ -9786,17 +9906,22 @@ app.get('/api/drivers', async (req, res) => {
   }
 });
 
-app.get('/api/stats/overview', async (_req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
+app.get('/api/stats/overview', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar /api/stats/overview.'),
+        stats: null
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const laps = dataCoreSource.laps;
+    const comboDefinitions = dataCoreSource.comboDefinitions || [];
 
     const combos = buildComboStatsFromLaps(laps, comboDefinitions);
     const validLaps = laps.filter(gcLegacyAliasIsValidV1).length;
@@ -9808,8 +9933,12 @@ app.get('/api/stats/overview', async (_req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core-legacy-server-alias',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       legacyEndpoint: '/api/stats/overview',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       canonicalEndpoint: '/api/gc/diagnostics',
       totalLaps: laps.length,
       lapsCount: laps.length,
@@ -9841,28 +9970,36 @@ app.get('/api/stats/overview', async (_req, res) => {
 
 
 app.get('/api/cars', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     const q = getQueryString(req, 'q') || getQueryString(req, 'car');
     const brand = getQueryString(req, 'brand') || getQueryString(req, 'marca');
-    const carsRows = await runStrackerQuery(
-      stracker.resolvedPath,
-      'SELECT CarId, Car, UiCarName, Brand FROM Cars ORDER BY UiCarName ASC, Car ASC'
-    );
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    let items = reduceCarStats(laps, carsRows);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar coches.'),
+        cars: []
+      });
+      return;
+    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const laps = dataCoreSource.laps;
+    let items = reduceCarStats(laps, []);
 
     if (q) items = items.filter((car) => includesFilter(`${car.name} ${car.code}`, q));
     if (brand) items = items.filter((car) => includesFilter(car.brand, brand));
 
     res.json({
       ok: true,
-      mode: 'real-stracker',
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: items.length,
       items,
-      message: 'Coches reales generados desde Cars.'
+      cars: items,
+      message: dataCoreSource.source === 'mysql-mirror' ? 'Coches generados desde mirror MySQL.' : 'Coches reales generados desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC] Error leyendo cars:', error);
@@ -9876,26 +10013,34 @@ app.get('/api/cars', async (req, res) => {
 });
 
 app.get('/api/tracks', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     const q = getQueryString(req, 'q') || getQueryString(req, 'track') || getQueryString(req, 'circuit');
-    const tracksRows = await runStrackerQuery(
-      stracker.resolvedPath,
-      'SELECT TrackId, Track, UiTrackName, Length FROM Tracks ORDER BY UiTrackName ASC, Track ASC'
-    );
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    let items = reduceTrackStats(laps, tracksRows);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar circuitos.'),
+        tracks: []
+      });
+      return;
+    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const laps = dataCoreSource.laps;
+    let items = reduceTrackStats(laps, []);
 
     if (q) items = items.filter((track) => includesFilter(`${track.name} ${track.code}`, q));
 
     res.json({
       ok: true,
-      mode: 'real-stracker',
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: items.length,
       items,
-      message: 'Circuitos reales generados desde Tracks.'
+      tracks: items,
+      message: dataCoreSource.source === 'mysql-mirror' ? 'Circuitos generados desde mirror MySQL.' : 'Circuitos reales generados desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC] Error leyendo tracks:', error);
@@ -10209,38 +10354,49 @@ function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
 }
 
 app.get('/api/gc/combos/:comboId', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
     const requestedId = String(req.params.comboId || '').trim();
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar la ficha del combo.'),
+        item: null,
+        comboId: requestedId
+      });
+      return;
+    }
 
-    const combos = buildComboStatsFromLaps(laps, comboDefinitions);
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const combos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
     const combo = combos.find((entry: any) => gcComboDetailComboMatchesIdV1(entry, requestedId));
 
     if (!combo) {
       return res.status(404).json({
         ok: false,
         source: 'gc-data-core',
+        dataSource: dataCoreSource.source,
         generatedAt: new Date().toISOString(),
+        stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+        mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+        fallbackReason: dataCoreSource.fallbackReason ?? null,
         message: 'Combo no encontrado en Race Data Core.',
         comboId: requestedId
       });
     }
 
-    const rows = laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
+    const rows = dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
     const item = gcComboDetailBuildItemV1(combo, rows);
 
     res.json({
       ok: true,
       source: 'gc-data-core',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       item,
       meta: {
         requestedComboId: requestedId,
@@ -10249,7 +10405,7 @@ app.get('/api/gc/combos/:comboId', async (req, res) => {
         totalCombos: combos.length,
         endpoint: '/api/gc/combos/:comboId'
       },
-      message: 'Ficha de combo generada desde Race Data Core.'
+      message: dataCoreSource.source === 'mysql-mirror' ? 'Ficha de combo generada desde mirror MySQL.' : 'Ficha de combo generada desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC Combo Detail Data Core] detail error:', error);
@@ -10267,22 +10423,23 @@ app.get('/api/gc/combos/:comboId', async (req, res) => {
 
 
 app.get('/api/gc/combos', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
-    /* GC_DATA_CORE_DISPLAY_NAMES_GUARD_V1 */
     await readDisplayNameStoreAsync();
     const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
     const q = getQueryString(req, 'q') || getQueryString(req, 'search');
     const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar combos.'),
+        activeCombo: null
+      });
+      return;
+    }
 
-    let items = buildComboStatsFromLaps(laps, comboDefinitions);
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    let items = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
 
     if (q) {
       items = items.filter((combo) => includesFilter(`${combo.comboId} ${combo.track?.name} ${combo.track?.code} ${combo.carSummary} ${combo.usedCarSummary} ${(combo.cars || []).map((car: any) => `${car.name} ${car.code} ${car.brand}`).join(' ')}`, q));
@@ -10310,8 +10467,9 @@ app.get('/api/gc/combos', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
-      mode: 'real-stracker',
+      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
       sort,
       filters: { q: q || null },
       count: Math.min(items.length, limit),
@@ -10322,12 +10480,10 @@ app.get('/api/gc/combos', async (req, res) => {
       carsCount: uniqueCarIds.size,
       activeCombo,
       items: items.slice(0, limit),
-      stracker: {
-        exists: stracker.exists,
-        sizeBytes: stracker.sizeBytes,
-        modifiedAt: stracker.modifiedAt
-      },
-      message: 'Combos canÃ³nicos generados desde GC Data Core. Usa este endpoint para /combos y futuras vistas.'
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      message: dataCoreSource.source === 'mysql-mirror' ? 'Combos canÃ³nicos generados desde mirror MySQL.' : 'Combos canÃ³nicos generados desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC Data Core] Error generando /api/gc/combos:', error);
@@ -10345,86 +10501,161 @@ app.get('/api/gc/combos', async (req, res) => {
 /* GC_DATA_CORE_COMBOS_ROUTE_V1_END */
 
 
-app.get('/api/combos', async (_req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
+app.get('/api/combos', async (req, res) => {
   try {
-    const items = await getCombos(stracker.resolvedPath);
+    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
+    const sort = getQueryString(req, 'sort', 'recent');
+    const stracker = getStrackerConfig();
+    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
+    const publicItems = items.filter(gcComboCanonicalIsPublicItemV1).slice(0, limit);
 
     res.json({
       ok: true,
-      mode: 'real-stracker',
-      count: items.length,
-      items,
-      message: 'Combos reales generados desde Combos + ComboCars.'
+      source: 'gc-data-core-legacy-server-alias',
+      dataSource: source,
+      comboCore: 'gc-combo-canonical-public-filter-v1',
+      generatedAt: new Date().toISOString(),
+      legacyEndpoint: '/api/combos',
+      canonicalEndpoint: '/api/gc/combos',
+      stracker: gcDataCorePublicStracker(dataCoreStracker),
+      mysqlMirror: mysqlMirror ?? null,
+      fallbackReason: fallbackReason ?? null,
+      count: publicItems.length,
+      totalCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      activeCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      totalLaps: publicItems.reduce((sum: number, combo: any) => sum + Number(combo?.summary?.totalLaps ?? combo?.totalLaps ?? 0), 0),
+      items: publicItems,
+      message: source === 'mysql-mirror' ? 'Combos legacy generados desde mirror MySQL.' : 'Combos legacy generados desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC] Error leyendo combos:', error);
     res.status(200).json({
       ok: false,
+      source: 'gc-data-core-legacy-server-alias',
+      legacyEndpoint: '/api/combos',
+      canonicalEndpoint: '/api/gc/combos',
       items: [],
-      message: 'No se pudieron leer combos reales.',
+      message: 'No se pudieron leer combos desde Data Core.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
 });
 
-
 app.get('/api/combos/:trackId/:carId', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
-    const laps = await readJoinedLaps(stracker.resolvedPath);
-    const profile = buildLegacyComboProfile(req.params.trackId, req.params.carId, laps);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar la ficha legacy del combo.'),
+        item: null
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const profile = buildLegacyComboProfile(req.params.trackId, req.params.carId, dataCoreSource.laps);
 
     if (!profile) {
       res.status(200).json({
         ok: false,
+        source: 'gc-data-core-v130',
+        dataSource: dataCoreSource.source,
         item: null,
-        message: 'No se encontrÃƒÂ³ ese combo legacy TrackId + CarId en las vueltas reales.'
+        stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+        mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+        fallbackReason: dataCoreSource.fallbackReason ?? null,
+        message: 'No se encontrÃƒÂ³ ese combo legacy TrackId + CarId en Data Core.'
       });
       return;
     }
 
     res.json({
       ok: true,
-      mode: 'real-stracker',
+      source: 'gc-data-core-v130',
+      dataSource: dataCoreSource.source,
+      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       item: profile,
-      message: 'Ficha legacy TrackId + CarId. La vista principal usa /api/combos/:comboId.'
+      message: 'Ficha legacy TrackId + CarId generada desde Data Core. La vista principal usa /api/combos/:comboId.'
     });
   } catch (error) {
     console.error('[GC] Error generando combo legacy profile:', error);
     res.status(200).json({
       ok: false,
       item: null,
-      message: 'No se pudo generar la ficha legacy del combo.',
+      message: 'No se pudo generar la ficha legacy del combo desde Data Core.',
       error: error instanceof Error ? error.message : String(error)
     });
   }
 });
 
 app.get('/api/sessions', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
+  const limit = getQueryNumber(req, 'limit', 50, 1, 250);
+  const stracker = getStrackerConfig();
+  let fallbackReason: string | null = null;
 
   try {
-    const limit = getQueryNumber(req, 'limit', 50, 1, 250);
+    if (gcDataCoreMysqlFirstEnabled(req) && useMysqlStorage()) {
+      try {
+        const items = await readSessionsFromMysqlMirrorV130(limit);
+        if (items.length) {
+          res.json({
+            ok: true,
+            source: 'gc-data-core-v130',
+            dataSource: 'mysql-mirror',
+            mode: 'mysql-mirror',
+            stracker: gcDataCorePublicStracker(stracker),
+            mysqlMirror: { enabled: true, rows: items.length, message: 'Sesiones leÃƒÂ­das desde mirror MySQL gc_stracker_session.' },
+            fallbackReason: null,
+            count: items.length,
+            items,
+            sessions: items,
+            message: 'Sesiones generadas desde mirror MySQL.'
+          });
+          return;
+        }
+        fallbackReason = 'Mirror MySQL sin sesiones.';
+      } catch (error) {
+        fallbackReason = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-data-core-v130',
+        dataSource: 'unavailable',
+        stracker: gcDataCorePublicStracker(stracker),
+        fallbackReason,
+        items: [],
+        sessions: [],
+        message: fallbackReason ? `No se pudieron leer sesiones desde MySQL ni stracker.db3: ${fallbackReason}` : 'stracker.db3 no disponible para leer sesiones.'
+      });
+      return;
+    }
+
     const items = await getSessions(stracker.resolvedPath, limit);
 
     res.json({
       ok: true,
+      source: 'gc-data-core-v130',
+      dataSource: 'stracker-db3',
       mode: 'real-stracker',
+      stracker: gcDataCorePublicStracker(stracker),
+      fallbackReason,
       count: items.length,
       items,
-      message: 'Sesiones reales generadas desde Session.'
+      sessions: items,
+      message: 'Sesiones reales generadas desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC] Error leyendo sessions:', error);
     res.status(200).json({
       ok: false,
       items: [],
+      sessions: [],
       message: 'No se pudieron leer sesiones reales.',
       error: error instanceof Error ? error.message : String(error)
     });
@@ -11285,33 +11516,31 @@ async function gcIdentityFindLinkedUserByPlayerIdV1(playerId: number) {
 async function gcIdentityReadPilotProfileV1(playerId: number) {
   await readDisplayNameStoreAsync();
 
-  const stracker = getStrackerConfig();
-  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+  const readSource = await readGcDataCoreSource({ query: {} } as express.Request);
+  if ((readSource as any).ok === false) {
     return {
       ok: false,
-      reason: 'stracker-unavailable',
-      stracker: {
-        exists: Boolean(stracker.exists),
-        validSQLite: Boolean(stracker.validSQLite),
-        modifiedAt: stracker.modifiedAt ?? null
-      },
+      reason: 'data-core-unavailable',
+      dataSource: 'unavailable',
+      stracker: gcDataCorePublicStracker((readSource as any).stracker),
+      mysqlMirror: (readSource as any).mysqlMirror ?? null,
+      fallbackReason: (readSource as any).fallbackReason ?? null,
       linkedUser: null,
       pilot: null
     };
   }
 
-  const laps = await readJoinedLaps(stracker.resolvedPath);
-  const pilot = gcIdentityBuildPilotStatsV1(laps, playerId);
+  const dataCoreSource = readSource as GcDataCoreReadResult;
+  const pilot = gcIdentityBuildPilotStatsV1(dataCoreSource.laps, playerId);
   const linkedUser = await gcIdentityFindLinkedUserByPlayerIdV1(playerId);
 
   return {
     ok: true,
     reason: 'ok',
-    stracker: {
-      exists: true,
-      validSQLite: true,
-      modifiedAt: stracker.modifiedAt ?? null
-    },
+    dataSource: dataCoreSource.source,
+    stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+    mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+    fallbackReason: dataCoreSource.fallbackReason ?? null,
     linkedUser: gcIdentityPublicLinkedUserV1(linkedUser),
     pilot
   };
@@ -11809,7 +12038,7 @@ app.get('/api/gc/diagnostics', async (_req, res) => {
       latencyMs: 0,
       health: 'checking',
       domains: {
-        raceDataCore: 'stracker',
+        raceDataCore: 'mysql-mirror-first',
         championshipCore: 'acsm-separated',
         archiveCore: 'archive-separated',
         identityCore: 'users-pilot-links',
@@ -11865,27 +12094,24 @@ app.get('/api/gc/diagnostics', async (_req, res) => {
       warnings: []
     };
 
-    if (!stracker.exists || !stracker.resolvedPath) {
+    const readSource = await readGcDataCoreSource({ query: {} } as express.Request);
+    if ((readSource as any).ok === false) {
       diagnostics.ok = false;
       diagnostics.health = 'degraded';
-      diagnostics.warnings.push('stracker database not found');
+      diagnostics.dataSource = 'unavailable';
+      diagnostics.fallbackReason = (readSource as any).fallbackReason ?? null;
+      diagnostics.warnings.push((readSource as any).message || 'race data core unavailable');
       diagnostics.latencyMs = Date.now() - startedAt;
       return res.status(200).json(diagnostics);
     }
 
-    if (!stracker.validSQLite) {
-      diagnostics.ok = false;
-      diagnostics.health = 'degraded';
-      diagnostics.warnings.push('stracker database is not a valid SQLite file');
-      diagnostics.latencyMs = Date.now() - startedAt;
-      return res.status(200).json(diagnostics);
-    }
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    diagnostics.dataSource = dataCoreSource.source;
+    diagnostics.mysqlMirror = dataCoreSource.mysqlMirror ?? null;
+    diagnostics.fallbackReason = dataCoreSource.fallbackReason ?? null;
 
-    const [laps, comboDefinitions] = await Promise.all([
-      readJoinedLaps(stracker.resolvedPath),
-      getCombos(stracker.resolvedPath)
-    ]);
-
+    const laps = dataCoreSource.laps;
+    const comboDefinitions = dataCoreSource.comboDefinitions || [];
     const comboStats = buildComboStatsFromLaps(laps, comboDefinitions);
 
     const uniqueDrivers = new Set<string>();
@@ -12472,14 +12698,21 @@ function gcLabFixLapMatchesComboV1(lap: any, combo: any) {
 }
 
 app.get('/api/gc/names/preview', async (req, res) => {
-  const stracker = getSafeStrackerOrRespond(res);
-  if (!stracker?.resolvedPath) return;
-
   try {
     await readDisplayNameStoreAsync();
 
     const limit = getQueryNumber(req, 'limit', 50, 1, 200);
-    const laps = await readJoinedLaps(stracker.resolvedPath);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar /api/gc/names/preview.'),
+        items: []
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const laps = dataCoreSource.laps;
     const sample = laps.slice(0, limit);
 
     const uniqueDrivers = new Map<string, any>();
@@ -12499,7 +12732,11 @@ app.get('/api/gc/names/preview', async (req, res) => {
     res.json({
       ok: true,
       source: 'gc-data-core',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       count: sample.length,
       diagnostics: {
         sampledRows: Math.min(laps.length, 1000),
@@ -12521,7 +12758,9 @@ app.get('/api/gc/names/preview', async (req, res) => {
         lapTimeMs: gcLabFixLapMsV1(lap) || null,
         lapTimeFormatted: gcLabFixLapTimeV1(lap)
       })),
-      message: 'PrevisualizaciÃ³n del pipeline de nombres: rawName -> autoName -> displayName.'
+      message: dataCoreSource.source === 'mysql-mirror'
+        ? 'PrevisualizaciÃ³n del pipeline de nombres desde mirror MySQL.'
+        : 'PrevisualizaciÃ³n del pipeline de nombres desde stracker.db3.'
     });
   } catch (error) {
     console.error('[GC Data Core Lab Fixes] names preview error:', error);
