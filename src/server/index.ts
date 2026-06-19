@@ -23,6 +23,7 @@ import { registerGcRatingRoutes } from './gc-ratings/routes';
 import { ensureStrackerMirrorSchema, syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
+import { registerLiveTimingRoutes } from './live-timing-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -4929,6 +4930,7 @@ app.use((req, res, next) => {
 /* GC_STRACKER_CHAMPIONSHIP_SAFETY_REGISTER_V1 */
 registerGcTrackAssetsResolverRoutes(app, { rootDir });
 registerAcsmChampionshipRoutes(app);
+registerLiveTimingRoutes(app);
 registerGcRatingRoutes(app, {
   isAdmin: async (req) => {
     const context = await getAuthContextAsync(req);
@@ -13888,6 +13890,5 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
-
 
 
