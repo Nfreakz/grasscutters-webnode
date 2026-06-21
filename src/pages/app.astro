@@ -1,5 +1,6 @@
-﻿---
+---
 import AppLayout from '../layouts/AppLayout.astro';
+import '../styles/app-race-control.css';
 
 const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153';
 const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
@@ -7,975 +8,214 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 ---
 <AppLayout
   title="Race Control | GrassCutters Racing"
-  description="Race Control de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales."
+  description="Panel operativo de GrassCutters Racing con servidor, combo, live timing, hotlaps y actividad reciente."
   canonicalPath="/app"
   ogImage="/og/platform-og-v1531.png"
-  ogImageAlt="Panel GrassCutters Racing"
+  ogImageAlt="Race Control GrassCutters Racing"
 >
-  <div class="gc-page gc-app-dashboard-v3 gc-app-visual-v183">
-    <section class="gc-hero gc-hero--compact gc-app-hero-v3">
-      <div>
-        <span class="gc-kicker">GrassCutters Race Control</span>
-        <h1 class="gc-title">Race Control</h1>
-        <p class="gc-subtitle">Combo activo, actividad reciente y accesos rápidos para entrar a pista.</p>
-        <div class="gc-hero__meta">
-          <span class="gc-chip gc-chip--accent" id="gcAppStatusChip">Sistema listo</span>
-          <span class="gc-chip" id="gcAppComboChip">Combo</span>
-          <span class="gc-chip" id="gcAppClock">--:--</span>
-        </div>
+  <main class="rc-console" aria-labelledby="rcPageTitle">
+    <h1 id="rcPageTitle" class="rc-sr-only">GrassCutters Race Control</h1>
+
+    <section class="rc-status-tape rc-status-tape--race-data" aria-label="Estado rápido Race Control">
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">VUELTAS TOTALES</span>
+        <strong id="gcQuickRefs">--</strong>
       </div>
-      <aside class="gc-live-panel gc-app-session-v3" aria-label="Estado de sesión">
-        <div class="gc-live-panel__title"><span>Sesión</span><strong id="gcAppSessionState">Listo</strong></div>
-        <div class="gc-status-list">
-          <div class="gc-status-row"><span>Cuenta</span><strong id="gcAppSessionUser">...</strong></div>
-          <div class="gc-status-row"><span>Rol</span><strong id="gcAppSessionRole">...</strong></div>
-          <div class="gc-status-row"><span>Piloto</span><strong id="gcAppSessionPilot">...</strong></div>
-        </div>
-      </aside>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">ONLINE DESDE</span>
+        <strong id="gcServerUptimeDays">--</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">ÚLTIMA VUELTA</span>
+        <strong id="gcQuickLast">--</strong>
+      </div>
+      <div class="rc-tape-cell rc-tape-cell--track">
+        <span class="rc-tape-label">TRACK</span>
+        <strong id="gcTapeTrack">TRACK</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">LIVE</span>
+        <strong id="gcMetricDrivers">--</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">UPDATED</span>
+        <strong id="gcAppClock">--:--</strong>
+      </div>
     </section>
 
-    <section class="gc-metrics gc-app-metrics-v3" aria-label="Métricas rápidas">
-      <div class="gc-metric"><span>Pilotos</span><strong id="gcMetricDrivers">...</strong><small>detectados</small></div>
-      <div class="gc-metric"><span>Vueltas</span><strong id="gcMetricLaps">...</strong><small>registradas</small></div>
-      <div class="gc-metric"><span>Combos</span><strong id="gcMetricCombos">...</strong><small>activos</small></div>
-      <div class="gc-metric"><span>Última actividad</span><strong id="gcMetricLastActivity">...</strong><small>vueltas recientes</small></div>
-    </section>
+    <div class="rc-data-sinks" aria-hidden="true">
+      <span id="gcAppStatusChip"></span>
+      <span id="gcApiState"></span>
+      <span id="gcAppSessionState"></span>
+      <span id="gcAppSessionUser"></span>
+      <span id="gcAppSessionRole"></span>
+      <span id="gcAppSessionPilot"></span>
+      <span id="gcAppComboChip"></span>
+      <span id="gcComboTrack"></span>
+      <span id="gcComboHint"></span>
+      <span id="gcComboBest"></span>
+      <span id="gcComboBestMeta"></span>
+      <span id="gcComboLaps"></span>
+      <span id="gcComboDrivers"></span>
+      <span id="gcComboFamily"></span>
+      <span id="gcComboCars"></span>
+      <a id="gcComboLink" href="/combos"></a>
+      <span id="gcMetricLaps"></span>
+      <span id="gcMetricCombos"></span>
+      <span id="gcMetricLastActivity"></span>
+      <span id="gcFeedDrivers"></span>
+      <span id="gcFeedLastActivity"></span>
+      <span id="gcQuickDb"></span>
+      <span id="gcQuickDbMeta"></span>
+      <span id="gcQuickLastMeta"></span>
+      <span id="gcServerUptimeMeta"></span>
+    </div>
 
-    <section class="gc-app-top-grid-v3" aria-label="Resumen principal">
-      <article class="gc-section gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
-        <div class="gc-section-head gc-app-card-head-v3">
-          <div>
-            <h2>Combo activo</h2>
-            <p id="gcComboHint">Actividad reciente</p>
-          </div>
-          <a class="gc-btn gc-btn--primary gc-app-combo-open-v5" href="/combos" id="gcComboLink">Ver combo</a>
-        </div>
-        <div class="gc-app-combo-body-v3">
-          <div>
-            <span class="gc-app-label-v3">Circuito</span>
-            <h3 id="gcComboTrack">Cargando...</h3>
-            <div class="gc-app-chip-list-v3" id="gcComboCars"><span class="gc-chip">Leyendo coches</span></div>
-          </div>
-
-        </div>
-        <div class="gc-app-mini-stats-v3">
-          <div><span>Vueltas</span><strong id="gcComboLaps">--</strong></div>
-          <div><span>Pilotos</span><strong id="gcComboDrivers">--</strong></div>
-          <div><span>Estado</span><strong id="gcComboFamily">--</strong></div>
-        </div>
-
-        <div class="gc-app-pit-actions-v6" aria-label="Acciones rápidas del combo">
-          <a class="gc-btn gc-btn--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Entrar al server</a>
-          <a class="gc-btn" href={carsDriveUrl} target="_blank" rel="noreferrer">Coches</a>
-          <a class="gc-btn" href={tracksDriveUrl} target="_blank" rel="noreferrer">Circuito</a>
-          <a class="gc-btn" href="/hotlaps">Hotlaps</a>
-        </div>
-      </article>
-
-      <article class="gc-section gc-app-readout-card-v3">
-        <div class="gc-section-head gc-app-card-head-v3">
-          <div>
-            <h2>Lectura de pista</h2>
-            <p>Estado global del servidor y última actividad registrada.</p>
-          </div>
-          <span class="gc-chip" id="gcApiState">Estado</span>
-        </div>
-        <div class="gc-app-readout-grid-v3">
-          <div class="gc-app-readout-v3"><span>Vueltas servidor</span><strong id="gcQuickRefs">--</strong><small>total registradas</small></div>
-          <div class="gc-app-readout-v3 gc-app-server-uptime-v1535"><span>Servidor online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
-          <div class="gc-app-readout-v3"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
-          <div class="gc-app-readout-v3"><span>Datos</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
-        </div>
-      
-        <div class="gc-app-top-driver-v1535" aria-label="Mejor piloto del combo">
-          <div class="gc-app-top-driver-v1535__avatar">
-            <img id="gcTopDriverAvatar" src="/images/pilot-avatar-default.png" alt="" loading="lazy" decoding="async" />
-          </div>
-          <div class="gc-app-top-driver-v1535__body">
-            <span>Mejor piloto combo</span>
-            <strong id="gcTopDriverName">--</strong>
-            <small id="gcTopDriverMeta">Sin referencia cargada</small>
-          </div>
-          <div class="gc-app-top-driver-v1535__time">
-            <span>Tiempo</span>
-            <strong id="gcTopDriverTime">--</strong>
-          </div>
-        </div>
-</article>
-    </section>
-
-    <section class="gc-section gc-app-references-v3">
-      <div class="gc-section-head gc-app-card-head-v3">
+    <section class="rc-table-module rc-table-module--acsm" aria-labelledby="rcLiveDriversTitle">
+      <header class="rc-section-head">
         <div>
-          <h2>Actividad reciente</h2>
-          <p id="gcRefsMeta">Cargando vueltas...</p>
+          <span>ACSM LIVE TIMING</span>
+          <h2 id="rcLiveDriversTitle">Pilotos en pista</h2>
+          <p id="gcAcsSessionMeta">Leyendo sesión ACSM...</p>
         </div>
-        <a class="gc-feature-link" href="/hotlaps">Ver hotlaps</a>
-      </div>
-      <div class="gc-table-wrap gc-app-table-wrap-v3">
-        <table class="gc-table gc-app-table-v3">
-          <thead><tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr></thead>
-          <tbody id="gcRefsTable"><tr><td colspan="5">Leyendo vueltas recientes...</td></tr></tbody>
+        <span class="rc-mini-status" id="gcAcsLiveCount">0 LIVE</span>
+      </header>
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--live">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Estado</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Tyres</th>
+              <th>Last Lap</th>
+              <th>Best Lap</th>
+              <th>Gap</th>
+              <th>Laps</th>
+              <th>Pits</th>
+              <th>Ping</th>
+            </tr>
+          </thead>
+          <tbody id="gcAcsLiveBody">
+            <tr><td colspan="11">Leyendo pilotos conectados...</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <section class="gc-section gc-app-actions-v3">
-      <div class="gc-section-head gc-app-card-head-v3">
+    <section class="rc-table-module rc-table-module--acsm" aria-labelledby="rcStoredTimesTitle">
+      <header class="rc-section-head">
         <div>
-          <h2>Boxes</h2>
-          <p>Accesos principales para salir a pista.</p>
+          <span>ACSM SESSION REFERENCES</span>
+          <h2 id="rcStoredTimesTitle">Stored times</h2>
+          <p>Referencias guardadas por ACSM en la sesión actual.</p>
         </div>
-        <span class="gc-chip gc-chip--accent">Pit wall</span>
-      </div>
-      <div class="gc-app-action-grid-v3">
-        <a class="gc-app-action-card-v3" href="/hotlaps"><span>01</span><div><strong>Hotlaps</strong><p>Tiempos y filtros.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/combos"><span>02</span><div><strong>Combos</strong><p>Combos y referencias.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/pilotos"><span>03</span><div><strong>Pilotos</strong><p>Perfiles y actividad.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/perfil"><span>04</span><div><strong>Mi perfil</strong><p>Cuenta y piloto.</p></div></a>
-        <a class="gc-app-action-card-v3" href="/herramientas"><span>05</span><div><strong>Herramientas</strong><p>Calculadoras y ajustes.</p></div></a>
+        <span class="rc-mini-status" id="gcAcsStoredCount">0 STORED</span>
+      </header>
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--stored">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Tyres</th>
+              <th>Best Lap</th>
+              <th>S1</th>
+              <th>S2</th>
+              <th>S3</th>
+              <th>Laps</th>
+              <th>Top Speed</th>
+            </tr>
+          </thead>
+          <tbody id="gcAcsStoredBody">
+            <tr><td colspan="10">Leyendo referencias...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-  </div>
-
-  <style is:global>
-    /*
-      GC_APP_VISUAL_KEEP_SIDEBAR_V183
-      Mantiene AppLayout y sidebar. Cambia solo la piel interna de /app:
-      colores, fuentes, fondos, cards, hovers, botones, tabla y responsive para acercarlo a la home.
-    */
-
-    .gc-app-visual-v183{
-      --app-green:#8cff18;
-      --app-green-soft:#b7ff4b;
-      --app-bg:#010301;
-      --app-card:#061006;
-      --app-card-2:#0a1809;
-      --app-card-3:#10280d;
-      --app-border:rgba(140,255,24,.22);
-      --app-border-strong:rgba(140,255,24,.46);
-      --app-text:#f5fff0;
-      --app-muted:#9baa92;
-      --app-dim:#68745f;
-      --app-blue:#5b95ff;
-      --app-red:#ff5e5e;
-      --app-radius:14px;
-      --app-shadow:0 22px 70px rgba(0,0,0,.48);
-      position:relative;
-      isolation:isolate;
-      max-width:1280px;
-      margin:0 auto;
-      padding:clamp(18px,2.2vw,28px);
-      display:grid;
-      gap:clamp(16px,2vw,24px);
-      color:var(--app-text);
-      background:
-        radial-gradient(circle at 18% 0%,rgba(140,255,24,.13),transparent 34rem),
-        radial-gradient(circle at 82% 4%,rgba(58,116,255,.08),transparent 30rem),
-        linear-gradient(180deg,#061006 0%,#020502 42%,#000 100%);
-      border-left:1px solid rgba(140,255,24,.10);
-    }
-
-    .gc-app-visual-v183::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      z-index:-1;
-      pointer-events:none;
-      opacity:.13;
-      background:
-        linear-gradient(rgba(140,255,24,.075) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(140,255,24,.055) 1px,transparent 1px);
-      background-size:42px 42px;
-      mask-image:linear-gradient(180deg,black,transparent 82%);
-    }
-
-    .gc-app-visual-v183 :where(h1,h2,h3,strong){
-      color:var(--app-text);
-      font-family:var(--font-display,var(--font-sans,Inter,system-ui,sans-serif));
-      font-weight:1000;
-      letter-spacing:-.065em;
-    }
-
-    .gc-app-visual-v183 :where(p,small){
-      color:var(--app-muted);
-    }
-
-    .gc-app-visual-v183 :where(.gc-kicker,.gc-app-label-v3,.gc-metric span,.gc-app-mini-stats-v3 span,.gc-app-readout-v3 span,.gc-app-top-driver-v1535 span,.gc-live-panel__title span,.gc-app-action-card-v3 > span){
-      color:var(--app-green);
-      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace);
-      font-size:.70rem;
-      font-weight:1000;
-      letter-spacing:.13em;
-      text-transform:uppercase;
-    }
-
-    .gc-app-visual-v183 .gc-chip{
-      display:inline-flex;
-      min-height:28px;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      padding:0 10px;
-      border:1px solid rgba(140,255,24,.24);
-      border-radius:4px;
-      background:rgba(3,10,3,.82);
-      color:var(--app-text);
-      font-family:var(--font-mono,ui-monospace,monospace);
-      font-size:.68rem;
-      font-weight:950;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);
-    }
-
-    .gc-app-visual-v183 .gc-chip--accent{
-      border-color:transparent;
-      background:linear-gradient(180deg,#a4ff27,#72ee00);
-      color:#061006;
-      box-shadow:0 0 24px rgba(140,255,24,.23);
-    }
-
-    /* Hero: proporción de dashboard, piel de home */
-    .gc-app-visual-v183 .gc-app-hero-v3{
-      position:relative;
-      min-height:clamp(340px,34vw,460px);
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(310px,380px);
-      align-items:center;
-      gap:clamp(20px,4vw,56px);
-      margin:0;
-      padding:clamp(34px,5vw,66px)!important;
-      overflow:hidden;
-      border:1px solid rgba(140,255,24,.22);
-      border-radius:18px;
-      background:
-        linear-gradient(90deg,rgba(0,3,0,.94) 0%,rgba(2,8,3,.78) 48%,rgba(2,8,3,.56) 100%),
-        radial-gradient(circle at 66% 34%,rgba(140,255,24,.17),transparent 20rem),
-        linear-gradient(135deg,#17251e 0%,#08120a 56%,#020302 100%);
-      box-shadow:var(--app-shadow),inset 0 -1px 0 rgba(140,255,24,.13);
-    }
-
-    .gc-app-visual-v183 .gc-app-hero-v3::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      z-index:0;
-      opacity:.22;
-      background:
-        linear-gradient(rgba(140,255,24,.075) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(140,255,24,.055) 1px,transparent 1px);
-      background-size:48px 48px;
-      mask-image:linear-gradient(90deg,black,transparent 86%);
-    }
-
-    .gc-app-visual-v183 .gc-app-hero-v3::after{
-      content:"RACE";
-      position:absolute;
-      right:-.02em;
-      bottom:-.20em;
-      z-index:0;
-      color:rgba(140,255,24,.055);
-      font-family:var(--font-display,var(--font-sans,Inter,system-ui,sans-serif));
-      font-size:clamp(7rem,16vw,15rem);
-      font-weight:1000;
-      letter-spacing:-.11em;
-      line-height:.78;
-      pointer-events:none;
-    }
-
-    .gc-app-visual-v183 .gc-app-hero-v3 > *{
-      position:relative;
-      z-index:1;
-    }
-
-    .gc-app-visual-v183 .gc-app-hero-v3 .gc-title{
-      max-width:720px;
-      margin:.10em 0 .14em;
-      color:#f6fff2;
-      font-size:clamp(3.6rem,7vw,6.4rem);
-      line-height:.78;
-      letter-spacing:-.095em;
-      text-transform:uppercase;
-      text-wrap:balance;
-      text-shadow:0 16px 48px rgba(0,0,0,.62);
-    }
-
-    .gc-app-visual-v183 .gc-app-hero-v3 .gc-subtitle{
-      max-width:600px;
-      margin:0;
-      color:rgba(245,255,240,.74);
-      font-size:clamp(1rem,1.4vw,1.2rem);
-      line-height:1.45;
-      font-weight:750;
-    }
-
-    .gc-app-visual-v183 .gc-hero__meta{
-      display:flex;
-      flex-wrap:wrap;
-      gap:9px;
-      margin-top:clamp(18px,2.2vw,28px);
-    }
-
-    .gc-app-visual-v183 .gc-app-session-v3{
-      width:100%;
-      padding:clamp(16px,2vw,22px);
-      border:1px solid rgba(140,255,24,.28);
-      border-radius:12px;
-      background:
-        radial-gradient(circle at 100% 0%,rgba(140,255,24,.16),transparent 11rem),
-        linear-gradient(180deg,rgba(4,13,5,.95),rgba(0,4,1,.92));
-      box-shadow:0 20px 58px rgba(0,0,0,.46),inset 0 0 0 1px rgba(255,255,255,.025);
-    }
-
-    .gc-app-visual-v183 .gc-live-panel__title{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding-bottom:13px;
-      margin-bottom:12px;
-      border-bottom:1px solid rgba(140,255,24,.16);
-    }
-
-    .gc-app-visual-v183 .gc-live-panel__title strong{
-      display:inline-flex;
-      min-height:29px;
-      align-items:center;
-      padding:0 11px;
-      border:1px solid rgba(140,255,24,.32);
-      border-radius:999px;
-      background:rgba(140,255,24,.08);
-      color:var(--app-green);
-      font-family:var(--font-mono,ui-monospace,monospace);
-      font-size:.70rem;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-    }
-
-    .gc-app-visual-v183 .gc-status-list{
-      display:grid;
-      gap:0;
-    }
-
-    .gc-app-visual-v183 .gc-status-row{
-      display:grid;
-      grid-template-columns:88px minmax(0,1fr);
-      gap:14px;
-      align-items:center;
-      min-height:42px;
-      border-bottom:1px solid rgba(255,255,255,.07);
-    }
-
-    .gc-app-visual-v183 .gc-status-row:last-child{
-      border-bottom:0;
-    }
-
-    .gc-app-visual-v183 .gc-status-row span{
-      color:var(--app-muted);
-      font-size:.84rem;
-    }
-
-    .gc-app-visual-v183 .gc-status-row strong{
-      justify-self:end;
-      overflow:hidden;
-      max-width:100%;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-size:.92rem;
-      letter-spacing:-.035em;
-    }
-
-    /* Metrics */
-    .gc-app-visual-v183 .gc-app-metrics-v3{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:0;
-      margin:0;
-      border:1px solid rgba(140,255,24,.26);
-      background:rgba(1,8,2,.90);
-      box-shadow:0 18px 52px rgba(0,0,0,.38);
-    }
-
-    .gc-app-visual-v183 .gc-metric{
-      min-height:96px;
-      display:grid;
-      align-content:center;
-      gap:6px;
-      padding:17px 18px;
-      border-right:1px solid rgba(140,255,24,.15);
-      background:linear-gradient(180deg,rgba(9,24,8,.78),rgba(2,8,2,.90));
-      transition:background .16s ease,transform .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-metric:last-child{
-      border-right:0;
-    }
-
-    .gc-app-visual-v183 .gc-metric:hover{
-      background:linear-gradient(180deg,rgba(20,58,13,.80),rgba(5,16,4,.92));
-    }
-
-    .gc-app-visual-v183 .gc-metric strong{
-      display:block;
-      color:#f7fff3;
-      font-size:clamp(2.2rem,3.8vw,3.8rem);
-      line-height:.86;
-      letter-spacing:-.075em;
-    }
-
-    .gc-app-visual-v183 .gc-metric small{
-      color:var(--app-dim);
-      font-family:var(--font-mono,ui-monospace,monospace);
-      font-size:.66rem;
-      font-weight:850;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-    }
-
-    /* Common cards */
-    .gc-app-visual-v183 .gc-section{
-      border:1px solid rgba(140,255,24,.18);
-      border-radius:12px;
-      background:
-        radial-gradient(circle at 100% 0%,rgba(140,255,24,.09),transparent 14rem),
-        linear-gradient(180deg,rgba(5,15,5,.95),rgba(1,6,2,.96));
-      box-shadow:0 20px 58px rgba(0,0,0,.40);
-    }
-
-    .gc-app-visual-v183 .gc-app-top-grid-v3{
-      display:grid;
-      grid-template-columns:minmax(0,1.48fr) minmax(320px,.86fr);
-      gap:14px;
-      align-items:start;
-    }
-
-    .gc-app-visual-v183 .gc-app-combo-v3,
-    .gc-app-visual-v183 .gc-app-readout-card-v3,
-    .gc-app-visual-v183 .gc-app-references-v3,
-    .gc-app-visual-v183 .gc-app-actions-v3{
-      padding:clamp(18px,2vw,26px);
-    }
-
-    .gc-app-visual-v183 .gc-app-card-head-v3{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:18px;
-      padding-bottom:16px;
-      margin-bottom:18px;
-      border-bottom:1px solid rgba(140,255,24,.15);
-    }
-
-    .gc-app-visual-v183 .gc-app-card-head-v3 h2{
-      margin:0;
-      color:#f7fff3;
-      font-size:clamp(1.7rem,2.5vw,2.45rem);
-      line-height:.84;
-      letter-spacing:-.075em;
-      text-transform:uppercase;
-    }
-
-    .gc-app-visual-v183 .gc-app-card-head-v3 p{
-      margin:.36rem 0 0;
-      color:var(--app-muted);
-      font-size:.91rem;
-    }
-
-    /* Buttons */
-    .gc-app-visual-v183 .gc-btn,
-    .gc-app-visual-v183 .gc-feature-link{
-      min-height:41px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      padding:0 17px;
-      border:1px solid rgba(140,255,24,.30);
-      border-radius:4px;
-      background:rgba(2,8,2,.88);
-      color:#f7fff3;
-      font-family:var(--font-mono,ui-monospace,monospace);
-      font-size:.70rem;
-      font-weight:1000;
-      letter-spacing:.095em;
-      text-transform:uppercase;
-      text-decoration:none;
-      transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-btn:hover,
-    .gc-app-visual-v183 .gc-feature-link:hover{
-      transform:translateY(-2px);
-      border-color:rgba(140,255,24,.60);
-      background:rgba(140,255,24,.10);
-      box-shadow:0 14px 32px rgba(0,0,0,.30);
-    }
-
-    .gc-app-visual-v183 .gc-btn--primary{
-      border-color:transparent;
-      background:linear-gradient(180deg,#a4ff27,#76ef05);
-      color:#061006;
-      box-shadow:0 0 0 1px rgba(140,255,24,.42),0 16px 38px rgba(140,255,24,.18);
-    }
-
-    .gc-app-visual-v183 .gc-btn--primary:hover{
-      background:linear-gradient(180deg,#bdff5c,#8cff18);
-      color:#061006;
-      box-shadow:0 0 0 1px rgba(140,255,24,.62),0 20px 48px rgba(140,255,24,.26);
-    }
-
-    /* Combo */
-    .gc-app-visual-v183 .gc-app-combo-v3{
-      overflow:hidden;
-    }
-
-    .gc-app-visual-v183 .gc-app-combo-body-v3{
-      display:block;
-    }
-
-    .gc-app-visual-v183 .gc-app-combo-body-v3 h3{
-      max-width:860px;
-      margin:9px 0 16px;
-      color:#f7fff3;
-      font-size:clamp(3.3rem,6.3vw,6rem);
-      line-height:.78;
-      letter-spacing:-.105em;
-      text-transform:none;
-      text-wrap:balance;
-    }
-
-    .gc-app-visual-v183 .gc-app-chip-list-v3{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      max-width:860px;
-    }
-
-    .gc-app-visual-v183 .gc-app-chip-list-v3 .gc-chip{
-      border-color:rgba(140,255,24,.18);
-      background:rgba(0,0,0,.25);
-      color:rgba(244,255,240,.88);
-    }
-
-    .gc-app-visual-v183 .gc-app-mini-stats-v3{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:0;
-      margin-top:22px;
-      border:1px solid rgba(140,255,24,.15);
-      background:rgba(0,0,0,.20);
-    }
-
-    .gc-app-visual-v183 .gc-app-mini-stats-v3 div{
-      min-height:88px;
-      display:grid;
-      align-content:center;
-      gap:7px;
-      padding:15px;
-      border-right:1px solid rgba(140,255,24,.12);
-    }
-
-    .gc-app-visual-v183 .gc-app-mini-stats-v3 div:last-child{
-      border-right:0;
-    }
-
-    .gc-app-visual-v183 .gc-app-mini-stats-v3 strong{
-      display:block;
-      font-size:clamp(1.7rem,2.8vw,2.8rem);
-      line-height:.86;
-      letter-spacing:-.07em;
-    }
-
-    .gc-app-visual-v183 .gc-app-pit-actions-v6{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      margin-top:18px;
-      padding-top:18px;
-      border-top:1px solid rgba(140,255,24,.15);
-    }
-
-    /* Readout */
-    .gc-app-visual-v183 .gc-app-readout-grid-v3{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .gc-app-visual-v183 .gc-app-readout-v3{
-      min-height:112px;
-      display:grid;
-      align-content:space-between;
-      gap:10px;
-      padding:14px;
-      border:1px solid rgba(140,255,24,.14);
-      border-radius:8px;
-      background:rgba(0,0,0,.26);
-      transition:background .16s ease,border-color .16s ease,transform .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-app-readout-v3:hover{
-      transform:translateY(-2px);
-      border-color:rgba(140,255,24,.32);
-      background:rgba(140,255,24,.055);
-    }
-
-    .gc-app-visual-v183 .gc-app-readout-v3 strong{
-      font-size:clamp(1.35rem,2.5vw,2.2rem);
-      line-height:.88;
-      word-break:break-word;
-    }
-
-    .gc-app-visual-v183 .gc-app-readout-v3 small{
-      color:var(--app-muted);
-      line-height:1.35;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535{
-      display:grid;
-      grid-template-columns:58px minmax(0,1fr) auto;
-      align-items:center;
-      gap:13px;
-      margin-top:14px;
-      padding:14px;
-      border:1px solid rgba(140,255,24,.32);
-      border-radius:10px;
-      background:
-        radial-gradient(circle at 100% 0%,rgba(140,255,24,.18),transparent 9rem),
-        linear-gradient(180deg,rgba(13,38,11,.95),rgba(3,11,3,.94));
-      box-shadow:0 14px 36px rgba(0,0,0,.30);
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__avatar{
-      width:58px;
-      height:58px;
-      padding:3px;
-      border:1px solid rgba(140,255,24,.44);
-      border-radius:999px;
-      background:rgba(140,255,24,.08);
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__avatar img{
-      display:block;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      border-radius:999px;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__body{
-      min-width:0;
-      display:grid;
-      gap:3px;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__body strong{
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-size:1rem;
-      letter-spacing:-.035em;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__body small{
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-size:.78rem;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__time{
-      display:grid;
-      justify-items:end;
-      gap:4px;
-    }
-
-    .gc-app-visual-v183 .gc-app-top-driver-v1535__time strong{
-      color:var(--app-green);
-      font-size:clamp(1.28rem,2vw,1.86rem);
-      letter-spacing:-.05em;
-    }
-
-    /* Recent table */
-    .gc-app-visual-v183 .gc-app-table-wrap-v3{
-      max-height:440px;
-      overflow:auto;
-      border:1px solid rgba(140,255,24,.18);
-      border-radius:10px;
-      background:rgba(0,0,0,.24);
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3{
-      width:100%;
-      min-width:760px;
-      border-collapse:separate;
-      border-spacing:0;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 th{
-      position:sticky;
-      top:0;
-      z-index:2;
-      padding:13px 14px;
-      background:rgba(6,18,6,.98);
-      color:var(--app-green);
-      border-bottom:1px solid rgba(140,255,24,.24);
-      font-family:var(--font-mono,ui-monospace,monospace);
-      font-size:.68rem;
-      font-weight:1000;
-      letter-spacing:.12em;
-      text-align:left;
-      text-transform:uppercase;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 td{
-      padding:12px 14px;
-      color:rgba(245,255,240,.86);
-      border-bottom:1px solid rgba(255,255,255,.06);
-      white-space:nowrap;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 tbody tr{
-      transition:background .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 tbody tr:hover{
-      background:rgba(140,255,24,.075);
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 td:first-child,
-    .gc-app-visual-v183 .gc-app-table-v3 td:nth-child(4){
-      color:var(--app-text);
-      font-weight:950;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 td:nth-child(2){
-      min-width:220px;
-      color:var(--app-blue);
-      font-weight:850;
-    }
-
-    .gc-app-visual-v183 .gc-app-table-v3 td:nth-child(3){
-      min-width:210px;
-      color:var(--app-muted);
-    }
-
-    /* Boxes */
-    .gc-app-visual-v183 .gc-app-action-grid-v3{
-      display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3{
-      position:relative;
-      min-height:132px;
-      display:grid;
-      align-content:space-between;
-      gap:14px;
-      padding:15px;
-      overflow:hidden;
-      border:1px solid rgba(140,255,24,.17);
-      border-radius:10px;
-      background:
-        radial-gradient(circle at 100% 0%,rgba(140,255,24,.11),transparent 8rem),
-        linear-gradient(180deg,rgba(11,30,9,.88),rgba(3,10,3,.92));
-      color:var(--app-text);
-      text-decoration:none;
-      transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3::after{
-      content:"→";
-      position:absolute;
-      right:12px;
-      top:12px;
-      display:grid;
-      place-items:center;
-      width:26px;
-      height:26px;
-      border:1px solid rgba(140,255,24,.32);
-      border-radius:999px;
-      color:var(--app-green);
-      font-weight:950;
-      transition:transform .16s ease,background .16s ease,color .16s ease;
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3:hover{
-      transform:translateY(-3px);
-      border-color:rgba(140,255,24,.42);
-      background:
-        radial-gradient(circle at 100% 0%,rgba(140,255,24,.18),transparent 8rem),
-        linear-gradient(180deg,rgba(19,52,13,.94),rgba(3,10,3,.94));
-      box-shadow:0 16px 38px rgba(0,0,0,.34);
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3:hover::after{
-      transform:translateX(2px);
-      background:var(--app-green);
-      color:#061006;
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3 > span{
-      display:inline-grid;
-      place-items:center;
-      width:32px;
-      height:32px;
-      border-radius:999px;
-      background:linear-gradient(180deg,#a4ff27,#76ef05);
-      color:#061006;
-      box-shadow:0 0 22px rgba(140,255,24,.24);
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3 strong{
-      display:block;
-      font-size:1.02rem;
-      letter-spacing:-.04em;
-    }
-
-    .gc-app-visual-v183 .gc-app-action-card-v3 p{
-      margin:.32rem 0 0;
-      color:var(--app-muted);
-      font-size:.84rem;
-      line-height:1.34;
-    }
-
-    /* Compatibility */
-    .gc-app-visual-v183 .gc-app-combo-open-v5{
-      white-space:nowrap;
-    }
-
-    .gc-app-visual-v183 .gc-app-server-uptime-v1535 strong{
-      white-space:nowrap;
-    }
-
-    /* Responsive */
-    @media (max-width:1180px){
-      .gc-app-visual-v183{
-        max-width:100%;
-      }
-
-      .gc-app-visual-v183 .gc-app-hero-v3,
-      .gc-app-visual-v183 .gc-app-top-grid-v3{
-        grid-template-columns:1fr;
-      }
-
-      .gc-app-visual-v183 .gc-app-session-v3{
-        max-width:620px;
-      }
-
-      .gc-app-visual-v183 .gc-app-metrics-v3{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-      }
-
-      .gc-app-visual-v183 .gc-app-action-grid-v3{
-        grid-template-columns:repeat(3,minmax(0,1fr));
-      }
-    }
-
-    @media (max-width:760px){
-      .gc-app-visual-v183{
-        padding:12px;
-        gap:16px;
-      }
-
-      .gc-app-visual-v183 .gc-app-hero-v3{
-        min-height:auto;
-        padding:26px!important;
-        border-radius:14px;
-      }
-
-      .gc-app-visual-v183 .gc-app-hero-v3::after{
-        font-size:clamp(5rem,30vw,9rem);
-      }
-
-      .gc-app-visual-v183 .gc-app-hero-v3 .gc-title{
-        font-size:clamp(3.2rem,17vw,5.4rem);
-      }
-
-      .gc-app-visual-v183 .gc-status-row{
-        grid-template-columns:1fr;
-        gap:3px;
-        padding-block:8px;
-      }
-
-      .gc-app-visual-v183 .gc-status-row strong{
-        justify-self:start;
-      }
-
-      .gc-app-visual-v183 .gc-app-metrics-v3,
-      .gc-app-visual-v183 .gc-app-mini-stats-v3,
-      .gc-app-visual-v183 .gc-app-readout-grid-v3,
-      .gc-app-visual-v183 .gc-app-action-grid-v3{
-        grid-template-columns:1fr;
-      }
-
-      .gc-app-visual-v183 .gc-app-combo-v3,
-      .gc-app-visual-v183 .gc-app-readout-card-v3,
-      .gc-app-visual-v183 .gc-app-references-v3,
-      .gc-app-visual-v183 .gc-app-actions-v3{
-        padding:18px;
-      }
-
-      .gc-app-visual-v183 .gc-app-combo-body-v3 h3{
-        font-size:clamp(2.8rem,16vw,4.4rem);
-      }
-
-      .gc-app-visual-v183 .gc-app-pit-actions-v6{
-        display:grid;
-        grid-template-columns:1fr;
-      }
-
-      .gc-app-visual-v183 .gc-app-pit-actions-v6 .gc-btn,
-      .gc-app-visual-v183 .gc-app-card-head-v3 .gc-btn,
-      .gc-app-visual-v183 .gc-app-card-head-v3 .gc-feature-link{
-        width:100%;
-      }
-
-      .gc-app-visual-v183 .gc-app-top-driver-v1535{
-        grid-template-columns:54px minmax(0,1fr);
-      }
-
-      .gc-app-visual-v183 .gc-app-top-driver-v1535__time{
-        grid-column:1 / -1;
-        justify-items:start;
-        padding-top:12px;
-        border-top:1px solid rgba(140,255,24,.14);
-      }
-
-      .gc-app-visual-v183 .gc-app-card-head-v3{
-        display:grid;
-      }
-
-      .gc-app-visual-v183 .gc-app-table-wrap-v3{
-        margin-inline:-2px;
-      }
-    }
-
-    @media (max-width:460px){
-      .gc-app-visual-v183{
-        padding:10px;
-      }
-
-      .gc-app-visual-v183 .gc-app-hero-v3{
-        padding:22px!important;
-      }
-
-      .gc-app-visual-v183 .gc-chip{
-        max-width:100%;
-        overflow:hidden;
-        text-overflow:ellipsis;
-      }
-    }
-  </style>
-
-  
-  
-
-  
-
+    <section class="rc-table-module rc-table-module--combo-laps" aria-labelledby="rcHotlapsTitle">
+      <header class="rc-section-head rc-section-head--stacked">
+        <div>
+          <span>CURRENT COMBO HOTLAPS</span>
+          <h2 id="rcHotlapsTitle">Vueltas del combo</h2>
+          <p><strong id="gcRefsTrack">CIRCUITO CARGANDO...</strong></p>
+          <p id="gcRefsMeta">Cargando vueltas del combo...</p>
+        </div>
+        <a class="rc-mini-action" href="/hotlaps">VER HOTLAPS</a>
+      </header>
+
+      <div class="rc-hotlap-toolbar" aria-label="Filtros de vueltas del combo">
+        <label>
+          <span>Buscar</span>
+          <input id="gcHotlapSearch" type="search" placeholder="Piloto, coche o tiempo" autocomplete="off" />
+        </label>
+        <label>
+          <span>Piloto</span>
+          <select id="gcHotlapDriverFilter"><option value="">Todos</option></select>
+        </label>
+        <label>
+          <span>Coche</span>
+          <select id="gcHotlapCarFilter"><option value="">Todos</option></select>
+        </label>
+        <label>
+          <span>Validez</span>
+          <select id="gcHotlapValidFilter">
+            <option value="all">Todas</option>
+            <option value="valid">Válidas</option>
+            <option value="invalid">No válidas</option>
+          </select>
+        </label>
+        <label>
+          <span>Orden</span>
+          <select id="gcHotlapSort">
+            <option value="recent">Fecha reciente</option>
+            <option value="timeAsc">Tiempo mejor</option>
+            <option value="timeDesc">Tiempo peor</option>
+            <option value="driver">Piloto A-Z</option>
+            <option value="car">Coche A-Z</option>
+          </select>
+        </label>
+        <label>
+          <span>Por página</span>
+          <select id="gcHotlapPageSize">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--activity">
+          <thead>
+            <tr>
+              <th><button class="rc-sort-button" type="button" data-sort-key="index">#</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="driver">Piloto</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="car">Coche</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s1">S1</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s2">S2</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s3">S3</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="time">Tiempo</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="speed">Top Speed</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="valid">Validez</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="date">Fecha</button></th>
+            </tr>
+          </thead>
+          <tbody id="gcRefsTable"><tr><td colspan="10">Leyendo vueltas del combo...</td></tr></tbody>
+        </table>
+      </div>
+
+      <footer class="rc-hotlap-pager" aria-label="Paginación de vueltas del combo">
+        <button id="gcHotlapPrev" type="button">Anterior</button>
+        <span id="gcHotlapPageInfo">Página 1 / 1</span>
+        <button id="gcHotlapNext" type="button">Siguiente</button>
+      </footer>
+    </section>
+  </main>
 
 <script is:inline src="/js/gc-track-images.js"></script>
 
@@ -994,6 +234,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         setText('gcQuickRefs', '—');
         setText('gcMetricCombos', '—');
         setText('gcMetricLastActivity', '—');
+        setText('gcFeedDrivers', '—');
+        setText('gcFeedLastActivity', '—');
       };
 
       if (document.readyState === 'loading') {
@@ -1184,6 +426,26 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         'track.name',
         'track'
       ]), 'Circuito');
+
+      const splitMs = (row, index) => {
+        const direct = pick(row, [
+          `sector${index + 1}Ms`,
+          `s${index + 1}Ms`,
+          `split${index + 1}Ms`,
+          `sectorTimesMs.${index}`,
+          `sectorTimes.${index}`,
+          `splitsMs.${index}`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') {
+          const nested = pick(direct, ['timeMs','ms','time','value']);
+          return number(nested, 0) || null;
+        }
+        const parsed = number(direct, 0);
+        return parsed > 0 ? parsed : null;
+      };
 
       const speed = (row) => {
         const raw = pick(row, ['maxSpeedKmh', 'maxSpeed', 'speedKmh', 'MaxSpeed_KMH']);
@@ -1406,13 +668,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       function renderGlobal(diagnostics) {
         const stats = globalStatsFromDiagnostics(diagnostics);
-        if (stats.driversCount) setText('gcMetricDrivers', formatNumber(stats.driversCount));
+        if (stats.driversCount) {
+          setText('gcMetricDrivers', formatNumber(stats.driversCount));
+          setText('gcFeedDrivers', formatNumber(stats.driversCount));
+        }
         if (stats.totalLaps) {
           setText('gcMetricLaps', formatNumber(stats.totalLaps));
           setText('gcQuickRefs', formatNumber(stats.totalLaps));
         }
         if (stats.combosCount) setText('gcMetricCombos', formatNumber(stats.combosCount));
-        if (stats.latestLapAt) setText('gcMetricLastActivity', dateText(stats.latestLapAt).split(',')[0]);
+        if (stats.latestLapAt) {
+          const lastActivityText = dateText(stats.latestLapAt).split(',')[0];
+          setText('gcMetricLastActivity', lastActivityText);
+          setText('gcFeedLastActivity', lastActivityText);
+        }
 
         if (stats.firstSeenAt) {
           const firstMs = dateMs(stats.firstSeenAt);
@@ -1445,6 +714,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
         setText('gcAppComboChip', track || 'Combo');
         setText('gcComboTrack', track || 'Sin combo');
+        setText('gcTapeTrack', track || 'TRACK');
         setText('gcComboHint', pick(combo, ['lastSeenAt', 'summary.lastSeenAt'])
           ? 'Última actividad · ' + dateText(pick(combo, ['lastSeenAt', 'summary.lastSeenAt']))
           : 'Combo canónico cargado.');
@@ -1490,25 +760,12 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       function renderRecentTable(recent, leaderboard) {
         const rows = recent.length ? recent : leaderboard;
-        const table = byId('gcRefsTable');
-        if (table) {
-          table.innerHTML = rows.length
-            ? rows.slice(0, 10).map((lap) => `
-                <tr>
-                  <td><strong>${escapeHtml(driverName(lap))}</strong></td>
-                  <td>${escapeHtml(carName(lap))}</td>
-                  <td>${escapeHtml(trackName(lap))}</td>
-                  <td><strong>${escapeHtml(lapTime(lap))}</strong></td>
-                  <td>${escapeHtml(dateText(lap))}</td>
-                </tr>
-              `).join('')
-            : '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
-        }
-
+        // La tabla de vueltas del combo la controla GC_APP_COMBO_HOTLAPS_FILTERED_V2_5.
+        // Este renderer principal solo mantiene los readouts rápidos para no pisar filtros/paginación.
         const latest = rows.slice().sort((a, b) => lapDate(b) - lapDate(a))[0] || null;
         setText('gcQuickLast', latest ? lapTime(latest) : '--');
         setText('gcQuickLastMeta', latest ? [driverName(latest), trackName(latest), dateText(latest)].filter(Boolean).join(' · ') : 'sin datos');
-        setText('gcRefsMeta', formatNumber(recent.length) + ' vueltas recientes');
+        // gcRefsMeta lo controla el módulo de vueltas completas del combo.
       }
 
       async function render() {
@@ -1603,23 +860,207 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   </script>
 
 
+
+
   <script is:inline>
-    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_START */
+    /* GC_APP_ACSM_TIMING_INTEGRATED_V1_START */
+    (() => {
+      const ids = {
+        liveBody: 'gcAcsLiveBody',
+        storedBody: 'gcAcsStoredBody',
+        liveCount: 'gcAcsLiveCount',
+        storedCount: 'gcAcsStoredCount',
+        sessionMeta: 'gcAcsSessionMeta',
+        sessionState: 'gcAppSessionState',
+        apiState: 'gcApiState',
+        tapeTrack: 'gcTapeTrack',
+        metricDrivers: 'gcMetricDrivers',
+        clock: 'gcAppClock'
+      };
+
+      const byId = (id) => document.getElementById(id);
+      const setText = (id, value) => {
+        const node = byId(id);
+        if (node) node.textContent = String(value ?? '--');
+      };
+      const esc = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+      }[char]));
+      const clean = (value, fallback = '-') => {
+        const text = String(value ?? '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+        return text || fallback;
+      };
+      const formatSpeed = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '-';
+      };
+      const safeLap = (value) => {
+        const raw = String(value ?? '').trim();
+        if (!raw || raw === '-' || raw.includes('/') || raw.includes(',')) return '-';
+        return raw;
+      };
+      const splitAt = (row, index) => {
+        const split = Array.isArray(row?.bestSplits) ? row.bestSplits[index] : null;
+        return split?.splitTimeFormatted || split?.formatted || split?.timeFormatted || '-';
+      };
+      const fmtUpdated = (value) => {
+        const parsed = Date.parse(String(value ?? ''));
+        if (!Number.isFinite(parsed)) return '--:--';
+        return new Date(parsed).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+      const formatRemaining = (server) => {
+        const time = Number(server?.time);
+        const elapsed = Number(server?.elapsedMilliseconds);
+        if (!Number.isFinite(time) || !Number.isFinite(elapsed) || time <= 0) return '-';
+        const total = Math.max(0, time * 60000 - elapsed);
+        const days = Math.floor(total / 86400000);
+        const hours = Math.floor((total % 86400000) / 3600000);
+        const minutes = Math.floor((total % 3600000) / 60000);
+        return days > 0 ? `${days}d ${hours}h ${String(minutes).padStart(2, '0')}m` : `${hours}h ${String(minutes).padStart(2, '0')}m`;
+      };
+
+      const liveRows = (rows) => {
+        if (!rows.length) return '<tr><td colspan="11">Sin pilotos conectados en ACSM.</td></tr>';
+        return rows.map((row, index) => `
+          <tr>
+            <td>${esc(row.position ?? index + 1)}</td>
+            <td>${row.isInPits ? '<span class="rc-state rc-state--pit">PIT</span>' : '<span class="rc-state rc-state--live">LIVE</span>'}</td>
+            <td><strong>${esc(clean(row.driverName))}</strong><small>${esc(row.driverInitials || '')}</small></td>
+            <td>${esc(clean(row.carName || row.carModel))}</td>
+            <td>${esc(row.tyres || '-')}</td>
+            <td><strong>${esc(safeLap(row.lastLapFormatted || row.currentLapFormatted))}</strong></td>
+            <td><strong>${esc(safeLap(row.bestLapFormatted))}</strong></td>
+            <td>${esc(row.split ?? row.gap ?? '-')}</td>
+            <td>${esc(row.laps ?? '-')}</td>
+            <td>${esc(row.numPits ?? '-')}</td>
+            <td>${esc(row.ping ?? '-')}</td>
+          </tr>
+        `).join('');
+      };
+
+      const storedRows = (rows) => {
+        if (!rows.length) return '<tr><td colspan="10">Sin referencias stored en ACSM.</td></tr>';
+        return rows.map((row, index) => `
+          <tr>
+            <td>${esc(row.position ?? index + 1)}</td>
+            <td><strong>${esc(clean(row.driverName))}</strong><small>${esc(row.driverInitials || '')}</small></td>
+            <td>${esc(clean(row.carName || row.carModel))}</td>
+            <td>${esc(row.tyres || '-')}</td>
+            <td><strong>${esc(safeLap(row.bestLapFormatted))}</strong></td>
+            <td>${esc(splitAt(row, 0))}</td>
+            <td>${esc(splitAt(row, 1))}</td>
+            <td>${esc(splitAt(row, 2))}</td>
+            <td>${esc(row.laps ?? '-')}</td>
+            <td>${esc(formatSpeed(row.topSpeedBestLap ?? row.topSpeedThisLap))}</td>
+          </tr>
+        `).join('');
+      };
+
+      const render = (payload) => {
+        const server = payload?.server ?? {};
+        const live = Array.isArray(payload?.connectedDrivers) ? payload.connectedDrivers : [];
+        const stored = Array.isArray(payload?.storedTimes) ? payload.storedTimes : [];
+        const track = clean([server.track, server.trackConfig].filter(Boolean).join(' '), 'TRACK');
+        const session = clean(server.sessionName || server.name, 'ACSM');
+        const temps = `${server.ambientTemp ?? '-'}°C AIR / ${server.roadTemp ?? '-'}°C TRACK`;
+        const remaining = formatRemaining(server);
+
+        const liveBody = byId(ids.liveBody);
+        const storedBody = byId(ids.storedBody);
+        if (liveBody) liveBody.innerHTML = liveRows(live);
+        if (storedBody) storedBody.innerHTML = storedRows(stored);
+
+        setText(ids.liveCount, `${live.length} LIVE`);
+        setText(ids.storedCount, `${stored.length} STORED`);
+        setText(ids.sessionMeta, `${session} · ${track} · ${temps} · ${remaining}`);
+        setText(ids.sessionState, session.toUpperCase());
+        setText(ids.apiState, 'EN PISTA');
+        setText(ids.tapeTrack, track);
+        setText(ids.metricDrivers, String(live.length));
+        setText(ids.clock, fmtUpdated(payload.updatedAt));
+
+        document.documentElement.dataset.gcAppAcsTiming = 'ok';
+      };
+
+      const setError = (message) => {
+        const liveBody = byId(ids.liveBody);
+        const storedBody = byId(ids.storedBody);
+        if (liveBody) liveBody.innerHTML = '<tr><td colspan="11">ACSM sin datos.</td></tr>';
+        if (storedBody) storedBody.innerHTML = '<tr><td colspan="10">ACSM sin datos.</td></tr>';
+        setText(ids.liveCount, '0 LIVE');
+        setText(ids.storedCount, '0 STORED');
+        setText(ids.sessionMeta, message || 'ACSM sin datos');
+        document.documentElement.dataset.gcAppAcsTiming = 'error';
+      };
+
+      async function loadAcsTiming() {
+        try {
+          const response = await fetch('/api/live-timing', { cache: 'no-store', credentials: 'include' });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload || payload.ok !== true) throw new Error(payload?.error || 'ACSM unavailable');
+          render(payload);
+        } catch (error) {
+          console.warn('[GC /app ACSM timing] error', error?.message || error);
+          setError(error?.message || 'ACSM unavailable');
+        }
+      }
+
+      const start = () => {
+        loadAcsTiming();
+        window.clearInterval(window.GCAppAcsTimingTimer);
+        window.GCAppAcsTimingTimer = window.setInterval(loadAcsTiming, 5000);
+      };
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+      else start();
+    })();
+    /* GC_APP_ACSM_TIMING_INTEGRATED_V1_END */
+  </script>
+
+  <script is:inline>
+    /* GC_APP_COMBO_HOTLAPS_FILTERED_V2_5_START */
     (() => {
       const table = document.getElementById('gcRefsTable');
       if (!table) return;
 
+      const controls = {
+        search: document.getElementById('gcHotlapSearch'),
+        driver: document.getElementById('gcHotlapDriverFilter'),
+        car: document.getElementById('gcHotlapCarFilter'),
+        valid: document.getElementById('gcHotlapValidFilter'),
+        sort: document.getElementById('gcHotlapSort'),
+        pageSize: document.getElementById('gcHotlapPageSize'),
+        prev: document.getElementById('gcHotlapPrev'),
+        next: document.getElementById('gcHotlapNext'),
+        pageInfo: document.getElementById('gcHotlapPageInfo'),
+        meta: document.getElementById('gcRefsMeta'),
+        track: document.getElementById('gcRefsTrack'),
+        sortButtons: Array.from(document.querySelectorAll('[data-sort-key]'))
+      };
+
       const endpoints = [
-        '/api/gc/recent-laps?scope=all&limit=80&sort=recent&valid=all',
-        '/api/laps?scope=all&limit=80&sort=recent&valid=all',
-        '/api/gc/leaderboard?scope=all&limit=3000',
-        '/api/hotlaps?scope=all&limit=3000&valid=all'
+        '/api/gc/recent-laps?scope=activeCombo&limit=50000&sort=recent&valid=all',
+        '/api/laps?scope=activeCombo&limit=50000&sort=recent&valid=all',
+        '/api/gc/leaderboard?scope=global&limit=all&group=all&valid=all'
       ];
+
+      const state = {
+        rows: [],
+        page: 1,
+        endpoint: '',
+        updatedAt: null,
+        sortKey: 'date',
+        sortDir: 'desc'
+      };
 
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
-        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+        return String(path).split('.').reduce((acc, part) => {
+          if (acc == null) return undefined;
+          if (/^\d+$/.test(part) && Array.isArray(acc)) return acc[Number(part)];
+          return acc[part];
+        }, source);
       };
 
       const pick = (source, paths) => {
@@ -1641,6 +1082,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           payload.data?.items ||
           payload.data?.laps ||
           payload.data?.leaderboard ||
+          payload.data?.hotlaps ||
           []
         );
       };
@@ -1650,17 +1092,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (Array.isArray(value)) return value.length ? text(value[0], fallback) : fallback;
         if (typeof value === 'object') {
           return text(
-            value.displayName ??
-            value.visibleName ??
-            value.cleanName ??
-            value.uiName ??
-            value.uiCarName ??
-            value.uiTrackName ??
-            value.name ??
-            value.Name ??
-            value.driverName ??
-            value.playerName ??
-            value.code,
+            value.displayName ?? value.visibleName ?? value.cleanName ?? value.uiName ??
+            value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ??
+            value.driverName ?? value.playerName ?? value.code,
             fallback
           );
         }
@@ -1668,11 +1102,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       };
 
       const esc = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
-        '&':'&amp;',
-        '<':'&lt;',
-        '>':'&gt;',
-        "'":'&#39;',
-        '"':'&quot;'
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
       }[char]));
 
       const number = (value, fallback = 0) => {
@@ -1680,26 +1110,28 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         return Number.isFinite(parsed) ? parsed : fallback;
       };
 
+      const setText = (id, value) => {
+        const node = document.getElementById(id);
+        if (node) node.textContent = String(value ?? '--');
+      };
+
       const driverName = (row) => text(pick(row, [
-        'driver.displayName','driver.visibleName','driver.name',
-        'driverDisplayName','driverVisibleName','driverName',
-        'playerName','pilotName','name','Name'
+        'driver.displayName','driver.visibleName','driver.name','driverDisplayName','driverVisibleName',
+        'driverName','playerName','pilotName','name','Name'
       ]), 'Piloto');
 
       const carName = (row) => text(pick(row, [
-        'car.displayName','car.visibleName','car.name',
-        'carDisplayName','carVisibleName','carName',
-        'uiCarName','Car'
+        'car.displayName','car.visibleName','car.name','carDisplayName','carVisibleName',
+        'carName','uiCarName','Car','car'
       ]), 'Coche');
 
       const trackName = (row) => text(pick(row, [
-        'track.displayName','track.visibleName','track.name',
-        'trackDisplayName','trackVisibleName','trackName',
-        'uiTrackName','Track'
+        'track.displayName','track.visibleName','track.name','trackDisplayName','trackVisibleName',
+        'trackName','uiTrackName','Track','track'
       ]), 'Circuito');
 
       const lapMs = (row) => {
-        const parsed = Number(pick(row, ['lapTimeMs','bestLapMs','timeMs','LapTime']));
+        const parsed = Number(pick(row, ['lapTimeMs','bestLapMs','timeMs','LapTime','lapTimeMilliseconds']));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
       };
 
@@ -1712,38 +1144,214 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
       };
 
-      const lapDisplay = (row) => text(pick(row, ['lapTimeFormatted','lapTimeText','lapTime','bestLapTime']), '') || fmtMs(lapMs(row));
+      const lapDisplay = (row) => text(pick(row, ['lapTimeFormatted','lapTimeText','timeFormatted','lapTime','bestLapTime']), '') || fmtMs(lapMs(row));
+
+      const splitValue = (row, index) => {
+        const direct = pick(row, [
+          `s${index + 1}`,
+          `S${index + 1}`,
+          `sector${index + 1}`,
+          `sector${index + 1}Formatted`,
+          `split${index + 1}`,
+          `split${index + 1}Formatted`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `bestSplits.${index}.splitTimeFormatted`,
+          `bestSplits.${index}.timeFormatted`,
+          `bestSplits.${index}.formatted`,
+          `bestSplits.${index}.time`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') return text(direct.formatted ?? direct.timeFormatted ?? direct.splitTimeFormatted ?? direct.time, '--');
+        if (typeof direct === 'number') return fmtMs(direct);
+        return text(direct, '--');
+      };
+
+      const splitMs = (row, index) => {
+        const direct = pick(row, [
+          `sector${index + 1}Ms`,
+          `s${index + 1}Ms`,
+          `split${index + 1}Ms`,
+          `sectorTimesMs.${index}`,
+          `sectorTimes.${index}`,
+          `splitsMs.${index}`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') {
+          const nested = pick(direct, ['timeMs','ms','time','value']);
+          return number(nested, 0) || null;
+        }
+        const parsed = number(direct, 0);
+        return parsed > 0 ? parsed : null;
+      };
+
+      const speed = (row) => {
+        const raw = pick(row, ['maxSpeedKmh','topSpeedKmh','topSpeed','maxSpeed','speedKmh','MaxSpeed_KMH']);
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '--';
+      };
 
       const lapDateMs = (row) => {
-        const iso = pick(row, ['timestampIso','dateIso','createdAt','updatedAt','lastSeenAt','session.endTimeIso','session.startTimeIso']);
+        const iso = pick(row, ['timestampIso','dateIso','createdAt','updatedAt','lastSeenAt','latestLapAt','session.endTimeIso','session.startTimeIso']);
         if (iso) {
           const parsed = Date.parse(String(iso));
           if (Number.isFinite(parsed)) return parsed;
         }
         const raw = pick(row, ['timestamp','Timestamp','date']);
         if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
-        return 0;
+        const parsed = Date.parse(String(raw ?? ''));
+        return Number.isFinite(parsed) ? parsed : 0;
       };
 
       const fmtDate = (row) => {
         const ms = lapDateMs(row);
         if (!ms) return '--';
-        return new Date(ms).toLocaleString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        return new Date(ms).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
       };
 
       const isInvalid = (row) => {
         const value = pick(row, ['valid','isValid','Valid']);
-        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
+        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no' || value === 'NO';
       };
 
-      const setText = (id, value) => {
-        const node = document.getElementById(id);
-        if (node) node.textContent = value;
+      const validLabel = (row) => isInvalid(row) ? 'NO VÁLIDA' : 'VÁLIDA';
+
+      const uniqueSorted = (rows, getter) => [...new Set(rows.map(getter).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+
+      const fillSelect = (select, values, label) => {
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = `<option value="">${label}</option>` + values.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+        if (values.includes(current)) select.value = current;
+      };
+
+      const activeComboTrack = () => {
+        const comboTrack = document.getElementById('gcComboTrack')?.textContent?.trim();
+        if (comboTrack && !/cargando|sin combo/i.test(comboTrack)) return comboTrack;
+        const first = state.rows[0];
+        return first ? trackName(first) : 'Circuito del combo';
+      };
+
+      const filteredRows = () => {
+        const query = (controls.search?.value || '').trim().toLowerCase();
+        const driver = controls.driver?.value || '';
+        const car = controls.car?.value || '';
+        const valid = controls.valid?.value || 'all';
+        const sort = controls.sort?.value || 'recent';
+
+        let rows = state.rows.filter((row) => {
+          const rowDriver = driverName(row);
+          const rowCar = carName(row);
+          const haystack = [rowDriver, rowCar, trackName(row), lapDisplay(row), fmtDate(row), validLabel(row)].join(' ').toLowerCase();
+          if (query && !haystack.includes(query)) return false;
+          if (driver && rowDriver !== driver) return false;
+          if (car && rowCar !== car) return false;
+          if (valid === 'valid' && isInvalid(row)) return false;
+          if (valid === 'invalid' && !isInvalid(row)) return false;
+          return true;
+        });
+
+        const compareText = (a, b, getter) => getter(a).localeCompare(getter(b), 'es', { sensitivity: 'base' });
+        const compareNumber = (a, b, getter, emptyLast = true) => {
+          const av = getter(a);
+          const bv = getter(b);
+          const ae = av === null || av === undefined || !Number.isFinite(Number(av));
+          const be = bv === null || bv === undefined || !Number.isFinite(Number(bv));
+          if (ae && be) return 0;
+          if (ae) return emptyLast ? 1 : -1;
+          if (be) return emptyLast ? -1 : 1;
+          return Number(av) - Number(bv);
+        };
+
+        const sortByDropdown = () => {
+          if (sort === 'timeAsc') return { key: 'time', dir: 'asc' };
+          if (sort === 'timeDesc') return { key: 'time', dir: 'desc' };
+          if (sort === 'driver') return { key: 'driver', dir: 'asc' };
+          if (sort === 'car') return { key: 'car', dir: 'asc' };
+          return { key: 'date', dir: 'desc' };
+        };
+
+        const activeSort = state.sortKey ? { key: state.sortKey, dir: state.sortDir } : sortByDropdown();
+        rows = rows.sort((a, b) => {
+          let result = 0;
+          if (activeSort.key === 'index') result = 0;
+          else if (activeSort.key === 'driver') result = compareText(a, b, driverName) || compareNumber(a, b, lapMs);
+          else if (activeSort.key === 'car') result = compareText(a, b, carName) || compareText(a, b, driverName) || compareNumber(a, b, lapMs);
+          else if (activeSort.key === 's1') result = compareNumber(a, b, (row) => splitMs(row, 0));
+          else if (activeSort.key === 's2') result = compareNumber(a, b, (row) => splitMs(row, 1));
+          else if (activeSort.key === 's3') result = compareNumber(a, b, (row) => splitMs(row, 2));
+          else if (activeSort.key === 'time') result = compareNumber(a, b, lapMs);
+          else if (activeSort.key === 'speed') result = compareNumber(a, b, (row) => number(pick(row, ['maxSpeedKmh','topSpeedKmh','topSpeed','maxSpeed','speedKmh','MaxSpeed_KMH']), NaN));
+          else if (activeSort.key === 'valid') result = Number(isInvalid(a)) - Number(isInvalid(b)) || compareNumber(a, b, lapMs);
+          else result = lapDateMs(a) - lapDateMs(b);
+          return activeSort.dir === 'desc' ? -result : result;
+        });
+
+        return rows;
+      };
+
+      const updateSortButtons = () => {
+        controls.sortButtons?.forEach((button) => {
+          const key = button.getAttribute('data-sort-key');
+          const active = key === state.sortKey;
+          button.classList.toggle('is-active', active);
+          button.dataset.sortDir = active ? state.sortDir : '';
+        });
+      };
+
+      const renderRows = () => {
+        updateSortButtons();
+        const rows = filteredRows();
+        const pageSize = Math.max(1, Number(controls.pageSize?.value || 50));
+        const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+        state.page = Math.min(Math.max(1, state.page), totalPages);
+        const start = (state.page - 1) * pageSize;
+        const visible = rows.slice(start, start + pageSize);
+
+        table.innerHTML = visible.length ? visible.map((row, offset) => {
+          const absolute = start + offset + 1;
+          const invalid = isInvalid(row);
+          return `
+            <tr>
+              <td>${absolute}</td>
+              <td><strong>${esc(driverName(row))}</strong></td>
+              <td>${esc(carName(row))}</td>
+              <td>${esc(splitValue(row, 0))}</td>
+              <td>${esc(splitValue(row, 1))}</td>
+              <td>${esc(splitValue(row, 2))}</td>
+              <td><strong>${esc(lapDisplay(row))}</strong></td>
+              <td>${esc(speed(row))}</td>
+              <td><span class="rc-valid ${invalid ? 'rc-valid--bad' : 'rc-valid--ok'}">${validLabel(row)}</span></td>
+              <td>${esc(fmtDate(row))}</td>
+            </tr>
+          `;
+        }).join('') : '<tr><td colspan="10">Sin vueltas con esos filtros.</td></tr>';
+
+        if (controls.meta) {
+          controls.meta.textContent = `${rows.length.toLocaleString('es-ES')} de ${state.rows.length.toLocaleString('es-ES')} vueltas del combo · página ${state.page}/${totalPages}`;
+        }
+        if (controls.track) controls.track.textContent = activeComboTrack();
+        if (controls.pageInfo) controls.pageInfo.textContent = `Página ${state.page} / ${totalPages}`;
+        if (controls.prev) controls.prev.disabled = state.page <= 1;
+        if (controls.next) controls.next.disabled = state.page >= totalPages;
+      };
+
+      const updateMetrics = (rows, payload) => {
+        const uniqueDrivers = new Set(rows.map(driverName).filter(Boolean));
+        const latest = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a))[0] || null;
+        const totalFromPayload = Number(payload?.totalLaps) || Number(payload?.total) || Number(payload?.count) || rows.length;
+
+        setText('gcMetricDrivers', String(uniqueDrivers.size));
+        setText('gcFeedDrivers', String(uniqueDrivers.size));
+        setText('gcMetricLaps', String(totalFromPayload));
+        setText('gcQuickRefs', String(totalFromPayload));
+        setText('gcMetricLastActivity', latest ? fmtDate(latest) : '--');
+        setText('gcFeedLastActivity', latest ? fmtDate(latest) : '--');
+        setText('gcQuickLast', latest ? lapDisplay(latest) : '--');
+        setText('gcQuickDb', 'Activo');
+        setText('gcQuickDbMeta', 'Combo sincronizado');
       };
 
       async function fetchFirst() {
@@ -1757,84 +1365,71 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             if (rows.length) return { endpoint, payload, rows };
           } catch (error) {
             lastError = error;
-            console.warn('[GC /app all tracks] endpoint failed', endpoint, error?.message || error);
+            console.warn('[GC /app combo hotlaps] endpoint failed', endpoint, error?.message || error);
           }
         }
-        throw lastError || new Error('No hotlaps endpoint available');
+        throw lastError || new Error('No combo hotlaps endpoint available');
       }
 
-      function updateMetrics(rows, payload, endpoint) {
-        const uniqueDrivers = new Set(rows.map(driverName).filter(Boolean));
-        const uniqueTracks = new Set(rows.map(trackName).filter(Boolean));
-        const latest = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a))[0] || null;
-
-        const totalFromPayload =
-          Number(payload?.totalLaps) ||
-          Number(payload?.total) ||
-          Number(payload?.count) ||
-          rows.length;
-
-        setText('gcMetricDrivers', String(uniqueDrivers.size));
-        setText('gcMetricLaps', String(totalFromPayload));
-        setText('gcMetricCombos', String(uniqueTracks.size));
-        setText('gcMetricLastActivity', latest ? fmtDate(latest) : '--');
-
-        setText('gcQuickRefs', String(totalFromPayload));
-        setText('gcQuickLast', latest ? fmtDate(latest) : '--');
-        setText('gcQuickDb', 'Activo');
-        setText('gcQuickDbMeta', 'Actividad sincronizada');
-
-        const refsMeta = document.getElementById('gcRefsMeta');
-        if (refsMeta) refsMeta.textContent = `${rows.length} vueltas recientes · todos los circuitos`;
-
-        const apiState = document.getElementById('gcApiState');
-        if (apiState) apiState.textContent = 'En pista';
-      }
-
-      function renderRows(rows) {
-        const sorted = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a)).slice(0, 12);
-
-        table.innerHTML = sorted.map((row) => {
-          const valid = isInvalid(row) ? 'No válida' : 'Válida';
-          return `
-            <tr>
-              <td>${esc(driverName(row))}</td>
-              <td>${esc(carName(row))}</td>
-              <td>${esc(trackName(row))}</td>
-              <td><strong>${esc(lapDisplay(row))}</strong><span class="gc-leaderboard-sub">${esc(valid)}</span></td>
-              <td>${esc(fmtDate(row))}</td>
-            </tr>
-          `;
-        }).join('') || '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
-      }
-
-      async function loadAllTracksActivity() {
+      async function loadComboHotlaps() {
         try {
           const { endpoint, payload, rows } = await fetchFirst();
-          updateMetrics(rows, payload, endpoint);
-          renderRows(rows);
-          document.documentElement.dataset.gcAppHotlapsScope = 'all-tracks';
-          window.GCAppHotlapsAllTracks = { status: 'ok', endpoint, rows: rows.length, updatedAt: new Date().toISOString() };
+          state.rows = rows;
+          state.endpoint = endpoint;
+          state.updatedAt = new Date().toISOString();
+          // Mantener página y orden al refrescar para que la tabla no salte sola.
+
+          fillSelect(controls.driver, uniqueSorted(rows, driverName), 'Todos');
+          fillSelect(controls.car, uniqueSorted(rows, carName), 'Todos');
+          updateMetrics(rows, payload);
+          renderRows();
+
+          document.documentElement.dataset.gcAppHotlapsScope = 'active-combo';
+          window.GCAppComboHotlaps = { status: 'ok', endpoint, rows: rows.length, updatedAt: state.updatedAt };
         } catch (error) {
-          console.warn('[GC /app all tracks] error', error);
+          console.warn('[GC /app combo hotlaps] error', error);
           setText('gcApiState', 'Error');
-          const refsMeta = document.getElementById('gcRefsMeta');
-          if (refsMeta) refsMeta.textContent = 'No se pudieron cargar todas las vueltas';
-          window.GCAppHotlapsAllTracks = { status: 'error', error: error?.message || String(error) };
+          if (controls.meta) controls.meta.textContent = 'No se pudieron cargar las vueltas del combo';
+          table.innerHTML = '<tr><td colspan="10">No se pudieron cargar las vueltas del combo.</td></tr>';
+          window.GCAppComboHotlaps = { status: 'error', error: error?.message || String(error) };
         }
       }
 
-      loadAllTracksActivity();
-      window.setInterval(loadAllTracksActivity, 45000);
-    })();
-    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_END */
-  </script>
+      [controls.search, controls.driver, controls.car, controls.valid, controls.pageSize].forEach((control) => {
+        control?.addEventListener('input', () => { state.page = 1; renderRows(); });
+        control?.addEventListener('change', () => { state.page = 1; renderRows(); });
+      });
+      controls.sort?.addEventListener('change', () => {
+        const value = controls.sort.value;
+        if (value === 'timeAsc') { state.sortKey = 'time'; state.sortDir = 'asc'; }
+        else if (value === 'timeDesc') { state.sortKey = 'time'; state.sortDir = 'desc'; }
+        else if (value === 'driver') { state.sortKey = 'driver'; state.sortDir = 'asc'; }
+        else if (value === 'car') { state.sortKey = 'car'; state.sortDir = 'asc'; }
+        else { state.sortKey = 'date'; state.sortDir = 'desc'; }
+        state.page = 1;
+        renderRows();
+      });
+      controls.sortButtons?.forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.getAttribute('data-sort-key') || 'date';
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = ['date', 'speed'].includes(key) ? 'desc' : 'asc';
+          }
+          if (controls.sort) controls.sort.value = state.sortKey === 'date' && state.sortDir === 'desc' ? 'recent' : controls.sort.value;
+          state.page = 1;
+          renderRows();
+        });
+      });
+      controls.prev?.addEventListener('click', () => { state.page -= 1; renderRows(); });
+      controls.next?.addEventListener('click', () => { state.page += 1; renderRows(); });
 
-
-  <script is:inline>
-    /* GC_APP_HOTLAPS_ALL_TRACKS_SAFE_V1 */
-    (() => {
-      document.documentElement.dataset.gcAppHotlapsScope = 'all-tracks';
+      loadComboHotlaps();
+      window.clearInterval(window.GCAppComboHotlapsTimer);
+      window.GCAppComboHotlapsTimer = window.setInterval(loadComboHotlaps, 60000);
     })();
+    /* GC_APP_COMBO_HOTLAPS_FILTERED_V2_5_END */
   </script>
 </AppLayout>

@@ -1,14 +1,8 @@
 ---
 import '../styles/global.css';
-import '../styles/app-no-grid.css';
-import '../styles/auth-header-status.css';
-import '../styles/palette-unify-v7.css';
-import '../styles/app-glow-tune-v103.css';
-import ThemeSwitcher from '../components/ThemeSwitcher.astro';
-import PaletteCursor from '../components/PaletteCursor.astro';
+import '../styles/app-race-control.css';
 import AuthHeader from '../components/AuthHeader.astro';
 import PilotAvatarSystem from '../components/PilotAvatarSystem.astro';
-import AppVisualPass from '../components/AppVisualPass.astro';
 
 const {
   title = 'GrassCutters Platform',
@@ -30,7 +24,6 @@ const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toStr
 
 const pageOgImages = {
   '/app': '/og/platform-og-v1531.png',
-  '/app/live-timing': '/og/platform-og-v1531.png',
   '/hotlaps': '/og/hotlaps-og-v1531.png',
   '/combos': '/og/combos-og-v1531.png',
   '/pilotos': '/og/pilotos-og-v1531.png',
@@ -42,12 +35,6 @@ const pageOgImages = {
 
 /* GC_GLOBAL_SOCIAL_META_V15_31 START */
 const routeSocialMeta = {
-  '/app/live-timing': {
-    title: 'Live Timing | GrassCutters Racing',
-    description: 'Live Timing de GrassCutters Racing con datos directos de ACSM.',
-    image: '/og/platform-og-v1531.png',
-    imageAlt: 'Live Timing GrassCutters Racing',
-  },
   '/app': {
     title: 'Panel | GrassCutters Racing',
     description: 'Panel de pista de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales.',
@@ -135,16 +122,15 @@ const nav = [
   { href: '/hotlaps', label: 'Hotlaps', code: '02' },
   { href: '/pilotos', label: 'Pilotos', code: '03' },
   { href: '/combos', label: 'Combos', code: '04' },
-  { href: '/app/live-timing', label: 'Live Timing', code: '05' },
   {
     label: 'Herramientas',
-    code: '06',
+    code: '05',
     children: [
-      { href: '/herramientas/fov', label: 'FOV Calculator', code: '06.1' }
+      { href: '/herramientas/fov', label: 'FOV Calculator', code: '05.1' }
     ]
   },
-  { href: '/perfil', label: 'Perfil', code: '07' },
-  { href: '/admin', label: 'Admin', code: '08', adminOnly: true }
+  { href: '/perfil', label: 'Perfil', code: '06' },
+  { href: '/admin', label: 'Admin', code: '07', adminOnly: true }
 ];
 ---
 <!doctype html>
@@ -178,135 +164,6 @@ const nav = [
     <meta name="twitter:url" content={canonicalUrl} />
 
     <title>{cleanTitle}</title>
-
-    <style is:global>
-      /* GC_APP_LAYOUT_SYSTEM_POLISH_V15_35_2 */
-      .gc-topbar__kicker{
-        color:color-mix(in srgb,var(--text,#f2fff0) 42%,var(--muted,#8fa293))!important;
-        font-size:.62rem!important;
-        letter-spacing:.16em!important;
-        opacity:.62!important;
-      }
-
-      .gc-railmeta--system-v1535{
-        margin-top:auto!important;
-        padding:10px!important;
-        border-radius:14px!important;
-        border:1px solid rgba(255,255,255,.06)!important;
-        background:rgba(255,255,255,.018)!important;
-        opacity:.72;
-        transition:opacity .16s ease,border-color .16s ease,background .16s ease;
-      }
-
-      .gc-railmeta--system-v1535:hover{
-        opacity:1;
-        border-color:color-mix(in srgb,var(--accent,#9dff00) 18%,rgba(255,255,255,.08))!important;
-        background:rgba(255,255,255,.028)!important;
-      }
-
-      .gc-railmeta--system-v1535 h3{
-        margin:0 0 7px!important;
-        color:color-mix(in srgb,var(--accent,#9dff00) 54%,var(--muted,#8fa293))!important;
-        font-size:.58rem!important;
-        line-height:1!important;
-        letter-spacing:.16em!important;
-      }
-
-      .gc-railmeta--system-v1535 dl{
-        display:grid!important;
-        grid-template-columns:1fr!important;
-        gap:4px!important;
-        margin:0!important;
-      }
-
-      .gc-railmeta--system-v1535 dl div{
-        display:flex!important;
-        justify-content:space-between!important;
-        align-items:center!important;
-        gap:8px!important;
-        min-height:20px!important;
-        padding:4px 6px!important;
-        border-radius:8px!important;
-        background:rgba(0,0,0,.14)!important;
-        border:0!important;
-      }
-
-      .gc-railmeta--system-v1535 dt,
-      .gc-railmeta--system-v1535 dd{
-        margin:0!important;
-        font-size:.58rem!important;
-        line-height:1!important;
-        letter-spacing:.08em!important;
-      }
-
-      .gc-railmeta--system-v1535 dt{
-        color:color-mix(in srgb,var(--text,#f2fff0) 38%,var(--muted,#8fa293))!important;
-        text-transform:uppercase!important;
-      }
-
-      .gc-railmeta--system-v1535 dd{
-        color:color-mix(in srgb,var(--text,#f2fff0) 56%,var(--muted,#8fa293))!important;
-        font-weight:900!important;
-      }
-
-      @media(max-width:980px){
-        .gc-railmeta--system-v1535{
-          opacity:.86;
-        }
-      }
-    </style>
-
-    <style is:global>
-      /* GC_LOGO_NO_BOX_FINAL_V15_35_11_APP */
-      html[data-gc-scope="app"] .gc-rail .gc-brand{
-        background:transparent!important;
-        box-shadow:none!important;
-      }
-
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark,
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark.gc-brand__mark--logo{
-        position:relative!important;
-        width:48px!important;
-        height:48px!important;
-        min-width:48px!important;
-        background:none!important;
-        background-color:transparent!important;
-        background-image:none!important;
-        box-shadow:none!important;
-        border:0!important;
-        outline:0!important;
-        border-radius:0!important;
-        overflow:visible!important;
-        padding:0!important;
-        color:inherit!important;
-      }
-
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark::before,
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark::after,
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark.gc-brand__mark--logo::before,
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark.gc-brand__mark--logo::after{
-        content:none!important;
-        display:none!important;
-        background:none!important;
-        box-shadow:none!important;
-        border:0!important;
-      }
-
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark img,
-      html[data-gc-scope="app"] .gc-rail .gc-brand__mark.gc-brand__mark--logo img{
-        width:48px!important;
-        height:48px!important;
-        max-width:48px!important;
-        max-height:48px!important;
-        object-fit:contain!important;
-        border:0!important;
-        outline:0!important;
-        background:transparent!important;
-        box-shadow:none!important;
-        border-radius:0!important;
-        filter:drop-shadow(0 0 10px color-mix(in srgb,var(--accent,#9dff00) 16%,transparent))!important;
-      }
-    </style>
   </head>
   <body>
     <a class="gc-skip" href="#contenido">Saltar al contenido</a>
@@ -377,7 +234,7 @@ const nav = [
               <span class="gc-live-dot"></span>
               <span>Live</span>
             </div>
-            <ThemeSwitcher />
+            <span class="gc-top-status gc-top-status--palette">PALETA</span>
             <span class="gc-auth-status" data-auth-status hidden>Conectado</span>
             <a class="gc-login-link" href="/login" data-auth-link>Login</a>
             <button class="gc-auth-logout" type="button" data-auth-logout hidden>Salir</button>
@@ -418,9 +275,7 @@ const nav = [
         });
       })();
     </script>
-    <PaletteCursor />
     <PilotAvatarSystem />
-    <AppVisualPass />
     <AuthHeader />
   </body>
 </html>
