@@ -86,7 +86,7 @@ const STOPWORDS = new Set([
 ]);
 
 const COUNTRY_BY_TOKEN: Record<string, string> = {
-  portimao: 'PT', algarve: 'PT', estoril: 'PT',
+  portimao: 'PT', algarve: 'PT', estoril: 'PT', vilareal: 'PT', vila_real: 'PT', vila: 'PT', real: 'PT',
   jerez: 'ES', jarama: 'ES', montmelo: 'ES', catalunya: 'ES', barcelona: 'ES', motorland: 'ES', aragon: 'ES',
   magione: 'IT', mugello: 'IT', monza: 'IT', imola: 'IT', vallelunga: 'IT', misano: 'IT',
   spa: 'BE', francorchamps: 'BE', zolder: 'BE',

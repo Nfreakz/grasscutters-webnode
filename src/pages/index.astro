@@ -2226,28 +2226,23 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return '';
       };
 
-      const fetchJson = async (url, options = {}) => {
-        const timeoutMs = Number(options?.timeoutMs || 3500);
-        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const timeoutId = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+      const fetchJson = async (url, timeoutMs = 6500) => {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
         try {
-          const res = await fetch(url, {
-            headers: { Accept: 'application/json' },
-            signal: controller?.signal,
-            cache: 'no-store'
-          });
+          const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal });
           if (!res.ok) return null;
           return await res.json();
         } catch (_) {
           return null;
         } finally {
-          if (timeoutId) window.clearTimeout(timeoutId);
+          window.clearTimeout(timer);
         }
       };
 
-      const firstJson = async (urls, options = {}) => {
+      const fetchFirstJson = async (urls = [], timeoutMs = 6500) => {
         for (const url of urls) {
-          const payload = await fetchJson(url, options);
+          const payload = await fetchJson(url, timeoutMs);
           if (payload) return payload;
         }
         return null;
@@ -2511,7 +2506,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           [['red_bull', 'spielberg', 'salzburgring'], 'AT'],
           [['paul_ricard', 'magny', 'lemans', 'le_mans', 'dijon'], 'FR'],
           [['interlagos', 'goiania', 'curitiba'], 'BR'],
-          [['estoril', 'portimao', 'algarve'], 'PT'],
+          [['estoril', 'portimao', 'algarve', 'vilareal', 'vila_real', 'vila', 'real'], 'PT'],
           [['mosport', 'mont_tremblant', 'gilles_villeneuve', 'canadian_tire'], 'CA'],
           [['mexico_city', 'hermanos_rodriguez'], 'MX'],
           [['buenos_aires', 'potrero_de_los_funes'], 'AR'],
@@ -2823,6 +2818,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
           countryCode: 'PT',
           distance: '4.653 km'
         },
+        vilareal: {
+          keys: ['vilareal', 'vila_real', 'circuito_de_vila_real', 'vila_real_circuit', 'circuito_internacional_de_vila_real'],
+          displayName: 'Vila Real',
+          countryCode: 'PT',
+          distance: '4.785 km'
+        },
         bathurst: { keys: ['bathurst', 'mount_panorama'], photo: '/images/tracks/bathurst.png' },
         brands_hatch: { keys: ['brands_hatch', 'ks_brands_hatch'], photo: '/images/tracks/brands_hatch.webp' },
         estoril: { keys: ['estoril'], photo: '/images/tracks/estoril.webp' },
@@ -3049,7 +3050,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
           'track.displayName',
           'circuitName',
           'track.slug',
-          'track.code'
+          'track.code',
+          'liveTrackName'
         ]) || firstValue(championshipEvent || {}, [
           'canonicalTrackName',
           'trackName',
@@ -3065,7 +3067,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const backendAssets = rawTrackName
           ? await resolveTrackAssetsHomeV139(
               rawTrackName,
-              firstValue(combo, ['trackName', 'canonicalTrackName', 'circuitName']),
+              firstValue(combo, ['trackName', 'canonicalTrackName', 'circuitName', 'liveTrackName']),
+              firstValue(combo, ['track.code', 'track.slug', 'trackConfig']),
               firstValue(championshipEvent || {}, ['trackName', 'track', 'circuitName'])
             )
           : null;
@@ -3086,7 +3089,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         ].map((value) => slugify(value)));
 
         const photoUrl = meta?.photo || registry?.photo || backendAssets?.photo || '';
-        const mapUrl = meta?.map || registry?.map || backendAssets?.map || '';
+        const mapUrl = meta?.map || registry?.map || backendAssets?.map || firstValue(combo, ['mapUrl', 'trackMapUrl', 'track.mapUrl', 'track.map']) || '';
         const distanceText = formatTrackDistanceLocal(
           meta?.distanceKm ?? meta?.distance ?? registry?.distanceKm ?? registry?.distance ?? backendAssets?.distanceKm ?? backendAssets?.distance ?? ''
         );
@@ -4532,6 +4535,46 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }).join('');
       };
 
+
+      const rowTrackLabelV1 = (row) => firstValue(row, [
+        'trackName', 'canonicalTrackName', 'uiTrackName', 'trackCode', 'track.name', 'track.uiName', 'track.code', 'circuitName'
+      ]);
+
+      const runtimeTrackDistanceFromRowsV1 = (rows = [], trackNames = []) => {
+        const wanted = trackPresentationKeysFromName(...trackNames).map((value) => slugify(value));
+        const list = Array.isArray(rows) ? rows : [];
+        const candidates = list.filter((row) => {
+          const rowTrack = rowTrackLabelV1(row);
+          if (!wanted.length) return true;
+          const rowKeys = trackPresentationKeysFromName(rowTrack).map((value) => slugify(value));
+          return rowKeys.some((key) => wanted.some((needle) => key === needle || key.includes(needle) || needle.includes(key)));
+        });
+
+        for (const row of (candidates.length ? candidates : list)) {
+          const raw = firstValue(row, [
+            'trackLength',
+            'track.length',
+            'track.lengthKm',
+            'trackDistanceKm',
+            'track.distanceKm',
+            'track.distance',
+            'lengthKm',
+            'length',
+            'distanceKm',
+            'distance'
+          ]);
+          const formatted = formatTrackDistanceLocal(raw);
+          if (formatted) return formatted;
+        }
+        return '';
+      };
+
+      const runtimeLiveTrackLabelV1 = (liveTimingPayload) => {
+        const server = liveTimingPayload?.ok ? liveTimingPayload.server : null;
+        if (!server) return '';
+        return [server.track, server.trackConfig].filter(Boolean).join(' ').trim();
+      };
+
       const renderChampionship = async () => {
         const payload =
           await fetchJson('/api/community/acsr-championship') ||
@@ -4587,22 +4630,28 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const now = new Date();
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
-        const [diagnostics, combosPayload, recentPayload, leaderboardPayload] = await Promise.all([
-          firstJson(['/api/gc/diagnostics', '/api/status', '/api/stats/overview']),
-          firstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent']),
-          firstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20']),
-          firstJson([
+        const [diagnostics, combosPayload, recentPayload, leaderboardPayload, liveTimingPayload] = await Promise.all([
+          fetchFirstJson(['/api/gc/diagnostics', '/api/status', '/api/stats/overview']),
+          fetchFirstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent']),
+          fetchFirstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20']),
+          fetchFirstJson([
             '/api/gc/leaderboard?scope=activeCombo&limit=25',
             '/api/gc/leaderboard?scope=currentCombo&limit=25',
-            '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=120',
-            '/api/gc/recent-laps?limit=120&sort=recent&valid=all',
-            '/api/hotlaps?limit=120'
-          ])
+            '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200',
+            '/api/gc/recent-laps?limit=200&sort=recent&valid=all',
+            '/api/hotlaps?limit=200'
+          ]),
+          fetchJson('/api/live-timing', 3500)
         ]);
 
-        // No bloqueamos la home esperando miles de vueltas. Primero pintamos lo importante
-        // y luego refrescamos el Combo Pulse en segundo plano.
-        let comboStandoutsPayload = null;
+        const comboStandoutsPayloadPromise = fetchFirstJson([
+          '/api/gc/recent-laps?limit=1000&sort=recent&valid=all',
+          '/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=1000',
+          '/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=1000',
+          '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=1000',
+          '/api/laps?limit=1000&sort=recent&valid=all',
+          '/api/hotlaps?limit=1000&sort=recent&valid=all'
+        ], 9000);
 
         const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
         if (raceData) {
@@ -4616,8 +4665,18 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
         const combo = getArray(combosPayload)[0] || combosPayload?.activeCombo || combosPayload?.combo || {};
-        const trackPresentation = await resolveHomeTrackPresentation(combo);
-        const rawTrackName = trackPresentation.rawTrackName || 'Actualizando';
+        const liveServer = liveTimingPayload?.ok ? liveTimingPayload.server : null;
+        const liveTrackLabel = runtimeLiveTrackLabelV1(liveTimingPayload);
+        const comboForPresentation = {
+          ...combo,
+          liveTrackName: liveTrackLabel,
+          trackMapUrl: liveServer?.mapUrl || '',
+          track: combo?.track && typeof combo.track === 'object'
+            ? { ...combo.track, mapUrl: liveServer?.mapUrl || combo.track.mapUrl || combo.track.map || '' }
+            : combo?.track
+        };
+        const trackPresentation = await resolveHomeTrackPresentation(comboForPresentation);
+        const rawTrackName = trackPresentation.rawTrackName || liveTrackLabel || 'Actualizando';
         const trackAssetName = trackPresentation.trackAssetKeys[0] || rawTrackName;
         let track = trackPresentation.trackDisplayName || 'Actualizando';
         const trackPresentationKey = getHomeTrackPresentationKey(trackPresentation);
@@ -4629,8 +4688,17 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
         const bestCar = firstValue(combo, ['bestCarName', 'best.carName', 'leaderboard.0.carName']) || carList[0] || '--';
         const bestTime = formatLap(firstValue(combo, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLapTime', 'bestLap', 'best.time', 'leaderboard.0.lapTime'])) || '--';
+        const recentRows = getArray(recentPayload);
+        const leaderboardRows = getArray(leaderboardPayload);
+        const runtimeDistance = runtimeTrackDistanceFromRowsV1([
+          ...recentRows,
+          ...leaderboardRows,
+          ...getArray(combo.laps),
+          ...getArray(combo.bestLaps),
+          ...getArray(combo.leaderboard)
+        ], [rawTrackName, track, liveTrackLabel]);
 
-        const inferredCountry = trackPresentation.countryCode || inferTrackCountry(track, combo) || '--';
+        const inferredCountry = trackPresentation.countryCode || inferTrackCountry(track, comboForPresentation) || '--';
         const inferredCountryCode =
           countryCodeFromValue(inferredCountry) ||
           countryCodeFromValue(track) ||
@@ -4655,7 +4723,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
           setText('[data-home2-now-title]', track);
           setCountryBadge(inferredCountryCode || '', inferredCountry);
           setText('[data-home2-now-country]', inferredCountryCode || '--');
-          setText('[data-home2-now-distance]', trackPresentation.distanceText || directDistance || '--');
+          setText('[data-home2-now-distance]', trackPresentation.distanceText || directDistance || runtimeDistance || '--');
         }
         setText('[data-home2-cars]', carList.slice(0, 3).join(' / ') || 'Sin coches publicados');
         setText('[data-home2-now-cars]', String(carList.length || '--'));
@@ -4691,8 +4759,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         if (champTrackImageFallback && heroTrackImage && champTrackImageFallback.src.includes('gc-home2-track-fallback')) {
           champTrackImageFallback.src = heroTrackImage.currentSrc || heroTrackImage.src;
         }
-        renderRows('[data-home2-recent-laps]', getArray(recentPayload));
-        await updateReliableServerPanel(getArray(recentPayload), combo, raceData || {});
+        renderRows('[data-home2-recent-laps]', recentRows);
+        await updateReliableServerPanel(recentRows, combo, raceData || {});
 
         const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
         const activeComboRankingRows = comboDetailLeaderboardRows.length
@@ -4708,32 +4776,15 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
 
-        const fastStandoutRows = [
-          ...getArray(leaderboardPayload),
+        const comboStandoutsPayload = await comboStandoutsPayloadPromise;
+        renderRaceStandoutsV1([
+          ...getArray(comboStandoutsPayload),
+          ...leaderboardRows,
           ...getArray(combo.laps),
           ...getArray(combo.bestLaps),
           ...getArray(combo.leaderboard),
-          ...getArray(recentPayload)
-        ];
-
-        renderRaceStandoutsV1(fastStandoutRows, trackAssetName || rawTrackName || track, carList);
-
-        window.setTimeout(async () => {
-          const heavyStandoutsPayload = await firstJson([
-            '/api/gc/recent-laps?scope=activeCombo&limit=1000&sort=recent&valid=all',
-            '/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=1000',
-            '/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=1000',
-            '/api/gc/recent-laps?limit=1000&sort=recent&valid=all'
-          ], { timeoutMs: 5000 });
-
-          const heavyRows = getArray(heavyStandoutsPayload);
-          if (heavyRows.length) {
-            renderRaceStandoutsV1([
-              ...heavyRows,
-              ...fastStandoutRows
-            ], trackAssetName || rawTrackName || track, carList);
-          }
-        }, 300);
+          ...recentRows
+        ], trackAssetName || rawTrackName || track, carList);
 
         await Promise.all([
           renderChampionship(),
