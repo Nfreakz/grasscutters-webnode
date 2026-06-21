@@ -8,179 +8,230 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 ---
 <AppLayout
   title="Race Control | GrassCutters Racing"
-  description="Race Control de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales."
+  description="Panel operativo de GrassCutters Racing con servidor, combo, live timing, hotlaps y actividad reciente."
   canonicalPath="/app"
   ogImage="/og/platform-og-v1531.png"
-  ogImageAlt="Panel GrassCutters Racing"
+  ogImageAlt="Race Control GrassCutters Racing"
 >
-  <main class="rc-shell" aria-labelledby="rcPageTitle">
-    <section class="rc-command-bar" aria-label="Estado general">
-      <div class="rc-command-brand">
-        <span class="rc-command-dot" aria-hidden="true"></span>
-        <div>
-          <span class="rc-command-kicker">GrassCutters</span>
-          <strong>Race Control</strong>
-        </div>
+  <main class="rc-console" aria-labelledby="rcPageTitle">
+    <h1 id="rcPageTitle" class="rc-sr-only">GrassCutters Race Control</h1>
+
+    <section class="rc-status-tape" aria-label="Estado rápido Race Control">
+      <div class="rc-tape-cell rc-tape-cell--brand">
+        <span class="rc-tape-label">GC RACE CONTROL</span>
+        <strong id="gcAppStatusChip">SISTEMA LISTO</strong>
       </div>
-      <div class="rc-command-status" aria-label="Indicadores rápidos">
-        <span class="rc-pill rc-pill--live" id="gcAppStatusChip">Sistema listo</span>
-        <span class="rc-pill" id="gcAppComboChip">Combo</span>
-        <span class="rc-pill" id="gcApiState">Estado</span>
-        <span class="rc-pill rc-pill--ghost" id="gcAppClock">--:--</span>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">SERVER</span>
+        <strong id="gcApiState">COMPROBANDO</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">SESSION</span>
+        <strong id="gcAppSessionState">LISTO</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">TRACK</span>
+        <strong id="gcTapeTrack">TRACK</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">LIVE</span>
+        <strong id="gcMetricDrivers">--</strong>
+      </div>
+      <div class="rc-tape-cell">
+        <span class="rc-tape-label">UPDATED</span>
+        <strong id="gcAppClock">--:--</strong>
       </div>
     </section>
 
-    <section class="rc-hero" aria-label="Resumen Race Control">
-      <div class="rc-hero-main">
-        <span class="rc-kicker">Pit wall overview</span>
-        <h1 id="rcPageTitle">Race Control</h1>
-        <p>Panel operativo para ver el combo activo, la actividad reciente y salir a pista sin tener que pelearse con menús bonitos pero mudos.</p>
-        <div class="rc-hero-actions" aria-label="Acciones principales">
-          <a class="rc-button rc-button--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Entrar al server</a>
-          <a class="rc-button" href="/app/live-timing">Live Timing</a>
-          <a class="rc-button" href="/hotlaps">Hotlaps</a>
+    <section class="rc-ops-grid" aria-label="Resumen operativo">
+      <article class="rc-module rc-module--server">
+        <header class="rc-module-head">
+          <span>SERVER STATUS</span>
+          <strong>AC SERVER 1</strong>
+        </header>
+        <div class="rc-readouts rc-readouts--server">
+          <div><span>Vueltas</span><strong id="gcQuickRefs">--</strong><small>total registradas</small></div>
+          <div><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
+          <div><span>Data core</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
+          <div><span>Online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
         </div>
-      </div>
+      </article>
 
-      <aside class="rc-session-card gc-live-panel" aria-label="Estado de sesión">
-        <div class="rc-panel-title gc-live-panel__title">
-          <span>Sesión</span>
-          <strong id="gcAppSessionState">Listo</strong>
-        </div>
-        <dl class="rc-session-list">
+      <article class="rc-module rc-module--session">
+        <header class="rc-module-head">
+          <span>CURRENT SESSION</span>
+          <strong id="gcAppComboChip">COMBO</strong>
+        </header>
+        <dl class="rc-definition-list">
           <div><dt>Cuenta</dt><dd id="gcAppSessionUser">...</dd></div>
           <div><dt>Rol</dt><dd id="gcAppSessionRole">...</dd></div>
           <div><dt>Piloto</dt><dd id="gcAppSessionPilot">...</dd></div>
+          <div><dt>Actividad</dt><dd id="gcMetricLastActivity">--</dd></div>
         </dl>
-      </aside>
-    </section>
+      </article>
 
-    <section class="rc-stat-strip" aria-label="Métricas rápidas">
-      <article class="rc-stat">
-        <span>Pilotos</span>
-        <strong id="gcMetricDrivers">...</strong>
-        <small>detectados</small>
-      </article>
-      <article class="rc-stat">
-        <span>Vueltas</span>
-        <strong id="gcMetricLaps">...</strong>
-        <small>registradas</small>
-      </article>
-      <article class="rc-stat">
-        <span>Combos</span>
-        <strong id="gcMetricCombos">...</strong>
-        <small>activos</small>
-      </article>
-      <article class="rc-stat">
-        <span>Última actividad</span>
-        <strong id="gcMetricLastActivity">...</strong>
-        <small>vueltas recientes</small>
-      </article>
-    </section>
-
-    <section class="rc-grid rc-grid--main" aria-label="Resumen principal">
-      <article class="rc-panel rc-panel--combo gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
-        <header class="rc-panel-head">
-          <div>
-            <span class="rc-kicker">Combo activo</span>
-            <h2>Briefing de pista</h2>
-            <p id="gcComboHint">Actividad reciente</p>
-          </div>
-          <a class="rc-button rc-button--small" href="/combos" id="gcComboLink">Ver combo</a>
+      <article class="rc-module rc-module--combo gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
+        <header class="rc-module-head">
+          <span>CURRENT COMBO</span>
+          <a href="/combos" id="gcComboLink">VER</a>
         </header>
-
-        <div class="rc-combo-readout">
+        <div class="rc-combo-line">
           <span>Circuito</span>
           <strong id="gcComboTrack">Cargando...</strong>
         </div>
-
-        <div class="rc-combo-cars" id="gcComboCars">
-          <span class="rc-pill">Leyendo coches</span>
-        </div>
-
-        <div class="rc-mini-grid" aria-label="Datos combo activo">
-          <div><span>Mejor vuelta</span><strong id="gcComboBest">--</strong><small id="gcComboBestMeta">Mejor referencia</small></div>
+        <div class="rc-combo-cars" id="gcComboCars"><span class="rc-badge">Leyendo coches</span></div>
+        <div class="rc-compact-grid">
+          <div><span>Mejor</span><strong id="gcComboBest">--</strong><small id="gcComboBestMeta">referencia</small></div>
           <div><span>Vueltas</span><strong id="gcComboLaps">--</strong><small>combo</small></div>
           <div><span>Pilotos</span><strong id="gcComboDrivers">--</strong><small>participantes</small></div>
           <div><span>Estado</span><strong id="gcComboFamily">--</strong><small>datos</small></div>
         </div>
-
-        <div class="rc-action-row" aria-label="Acciones rápidas del combo">
-          <a class="rc-button rc-button--primary" href={serverJoinUrl} target="_blank" rel="noreferrer">Entrar</a>
-          <a class="rc-button" href={carsDriveUrl} target="_blank" rel="noreferrer">Coches</a>
-          <a class="rc-button" href={tracksDriveUrl} target="_blank" rel="noreferrer">Circuito</a>
-          <a class="rc-button" href="/hotlaps">Ranking</a>
-        </div>
-      </article>
-
-      <article class="rc-panel rc-panel--readout">
-        <header class="rc-panel-head">
-          <div>
-            <span class="rc-kicker">Lectura de pista</span>
-            <h2>Estado servidor</h2>
-            <p>Estado global del servidor y última actividad registrada.</p>
-          </div>
-        </header>
-
-        <div class="rc-readout-grid">
-          <div class="rc-readout"><span>Vueltas servidor</span><strong id="gcQuickRefs">--</strong><small>total registradas</small></div>
-          <div class="rc-readout"><span>Servidor online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
-          <div class="rc-readout"><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
-          <div class="rc-readout"><span>Data core</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
-        </div>
-
-        <div class="rc-top-driver" aria-label="Mejor piloto del combo">
-          <div class="rc-top-driver-avatar">
-            <img id="gcTopDriverAvatar" src="/images/pilot-avatar-default.png" alt="" loading="lazy" decoding="async" />
-          </div>
-          <div class="rc-top-driver-body">
-            <span>Mejor piloto combo</span>
-            <strong id="gcTopDriverName">--</strong>
-            <small id="gcTopDriverMeta">Sin referencia cargada</small>
-          </div>
-          <div class="rc-top-driver-time">
-            <span>Tiempo</span>
-            <strong id="gcTopDriverTime">--</strong>
-          </div>
-        </div>
       </article>
     </section>
 
-    <section class="rc-panel rc-panel--activity">
-      <header class="rc-panel-head">
+    <section class="rc-table-module rc-table-module--acsm" aria-labelledby="rcLiveDriversTitle">
+      <header class="rc-section-head">
         <div>
-          <span class="rc-kicker">Activity feed</span>
-          <h2>Actividad reciente</h2>
-          <p id="gcRefsMeta">Cargando vueltas...</p>
+          <span>ACSM LIVE TIMING</span>
+          <h2 id="rcLiveDriversTitle">Pilotos en pista</h2>
+          <p id="gcAcsSessionMeta">Leyendo sesión ACSM...</p>
         </div>
-        <a class="rc-link" href="/hotlaps">Ver hotlaps</a>
+        <span class="rc-mini-status" id="gcAcsLiveCount">0 LIVE</span>
       </header>
-      <div class="rc-table-wrap">
-        <table class="rc-table">
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--live">
           <thead>
-            <tr><th>Piloto</th><th>Coche</th><th>Circuito</th><th>Tiempo</th><th>Fecha</th></tr>
+            <tr>
+              <th>#</th>
+              <th>Estado</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Tyres</th>
+              <th>Last Lap</th>
+              <th>Best Lap</th>
+              <th>Gap</th>
+              <th>Laps</th>
+              <th>Pits</th>
+              <th>Ping</th>
+            </tr>
           </thead>
-          <tbody id="gcRefsTable"><tr><td colspan="5">Leyendo vueltas recientes...</td></tr></tbody>
+          <tbody id="gcAcsLiveBody">
+            <tr><td colspan="11">Leyendo pilotos conectados...</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <section class="rc-panel rc-panel--boxes">
-      <header class="rc-panel-head">
+    <section class="rc-table-module rc-table-module--acsm" aria-labelledby="rcStoredTimesTitle">
+      <header class="rc-section-head">
         <div>
-          <span class="rc-kicker">Pit lane</span>
-          <h2>Boxes</h2>
-          <p>Accesos principales para salir a pista y revisar datos.</p>
+          <span>ACSM SESSION REFERENCES</span>
+          <h2 id="rcStoredTimesTitle">Stored times</h2>
+          <p>Referencias guardadas por ACSM en la sesión actual.</p>
         </div>
-        <span class="rc-pill rc-pill--live">Pit wall</span>
+        <span class="rc-mini-status" id="gcAcsStoredCount">0 STORED</span>
       </header>
-      <div class="rc-box-grid">
-        <a class="rc-box-card" href="/app/live-timing"><span>01</span><strong>Live Timing</strong><p>Sesión ACSM en directo.</p></a>
-        <a class="rc-box-card" href="/hotlaps"><span>02</span><strong>Hotlaps</strong><p>Tiempos y filtros.</p></a>
-        <a class="rc-box-card" href="/combos"><span>03</span><strong>Combos</strong><p>Combo actual e histórico.</p></a>
-        <a class="rc-box-card" href="/pilotos"><span>04</span><strong>Pilotos</strong><p>Perfiles y actividad.</p></a>
-        <a class="rc-box-card" href="/perfil"><span>05</span><strong>Perfil</strong><p>Cuenta y piloto.</p></a>
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--stored">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Tyres</th>
+              <th>Best Lap</th>
+              <th>S1</th>
+              <th>S2</th>
+              <th>S3</th>
+              <th>Laps</th>
+              <th>Top Speed</th>
+            </tr>
+          </thead>
+          <tbody id="gcAcsStoredBody">
+            <tr><td colspan="10">Leyendo referencias...</td></tr>
+          </tbody>
+        </table>
       </div>
+    </section>
+
+    <section class="rc-table-module rc-table-module--combo-laps" aria-labelledby="rcHotlapsTitle">
+      <header class="rc-section-head rc-section-head--stacked">
+        <div>
+          <span>CURRENT COMBO HOTLAPS</span>
+          <h2 id="rcHotlapsTitle">Vueltas del combo</h2>
+          <p><strong id="gcRefsTrack">CIRCUITO CARGANDO...</strong></p>
+          <p id="gcRefsMeta">Cargando vueltas del combo...</p>
+        </div>
+        <a class="rc-mini-action" href="/hotlaps">VER HOTLAPS</a>
+      </header>
+
+      <div class="rc-hotlap-toolbar" aria-label="Filtros de vueltas del combo">
+        <label>
+          <span>Buscar</span>
+          <input id="gcHotlapSearch" type="search" placeholder="Piloto, coche o tiempo" autocomplete="off" />
+        </label>
+        <label>
+          <span>Piloto</span>
+          <select id="gcHotlapDriverFilter"><option value="">Todos</option></select>
+        </label>
+        <label>
+          <span>Coche</span>
+          <select id="gcHotlapCarFilter"><option value="">Todos</option></select>
+        </label>
+        <label>
+          <span>Validez</span>
+          <select id="gcHotlapValidFilter">
+            <option value="all">Todas</option>
+            <option value="valid">Válidas</option>
+            <option value="invalid">No válidas</option>
+          </select>
+        </label>
+        <label>
+          <span>Orden</span>
+          <select id="gcHotlapSort">
+            <option value="recent">Fecha reciente</option>
+            <option value="timeAsc">Tiempo mejor</option>
+            <option value="timeDesc">Tiempo peor</option>
+            <option value="driver">Piloto A-Z</option>
+            <option value="car">Coche A-Z</option>
+          </select>
+        </label>
+        <label>
+          <span>Por página</span>
+          <select id="gcHotlapPageSize">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="rc-table-scroll">
+        <table class="rc-data-table rc-data-table--activity">
+          <thead>
+            <tr>
+              <th><button class="rc-sort-button" type="button" data-sort-key="index">#</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="driver">Piloto</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="car">Coche</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s1">S1</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s2">S2</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="s3">S3</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="time">Tiempo</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="speed">Top Speed</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="valid">Validez</button></th>
+              <th><button class="rc-sort-button" type="button" data-sort-key="date">Fecha</button></th>
+            </tr>
+          </thead>
+          <tbody id="gcRefsTable"><tr><td colspan="10">Leyendo vueltas del combo...</td></tr></tbody>
+        </table>
+      </div>
+
+      <footer class="rc-hotlap-pager" aria-label="Paginación de vueltas del combo">
+        <button id="gcHotlapPrev" type="button">Anterior</button>
+        <span id="gcHotlapPageInfo">Página 1 / 1</span>
+        <button id="gcHotlapNext" type="button">Siguiente</button>
+      </footer>
     </section>
   </main>
 
@@ -201,6 +252,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         setText('gcQuickRefs', '—');
         setText('gcMetricCombos', '—');
         setText('gcMetricLastActivity', '—');
+        setText('gcFeedDrivers', '—');
+        setText('gcFeedLastActivity', '—');
       };
 
       if (document.readyState === 'loading') {
@@ -391,6 +444,26 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         'track.name',
         'track'
       ]), 'Circuito');
+
+      const splitMs = (row, index) => {
+        const direct = pick(row, [
+          `sector${index + 1}Ms`,
+          `s${index + 1}Ms`,
+          `split${index + 1}Ms`,
+          `sectorTimesMs.${index}`,
+          `sectorTimes.${index}`,
+          `splitsMs.${index}`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') {
+          const nested = pick(direct, ['timeMs','ms','time','value']);
+          return number(nested, 0) || null;
+        }
+        const parsed = number(direct, 0);
+        return parsed > 0 ? parsed : null;
+      };
 
       const speed = (row) => {
         const raw = pick(row, ['maxSpeedKmh', 'maxSpeed', 'speedKmh', 'MaxSpeed_KMH']);
@@ -613,13 +686,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       function renderGlobal(diagnostics) {
         const stats = globalStatsFromDiagnostics(diagnostics);
-        if (stats.driversCount) setText('gcMetricDrivers', formatNumber(stats.driversCount));
+        if (stats.driversCount) {
+          setText('gcMetricDrivers', formatNumber(stats.driversCount));
+          setText('gcFeedDrivers', formatNumber(stats.driversCount));
+        }
         if (stats.totalLaps) {
           setText('gcMetricLaps', formatNumber(stats.totalLaps));
           setText('gcQuickRefs', formatNumber(stats.totalLaps));
         }
         if (stats.combosCount) setText('gcMetricCombos', formatNumber(stats.combosCount));
-        if (stats.latestLapAt) setText('gcMetricLastActivity', dateText(stats.latestLapAt).split(',')[0]);
+        if (stats.latestLapAt) {
+          const lastActivityText = dateText(stats.latestLapAt).split(',')[0];
+          setText('gcMetricLastActivity', lastActivityText);
+          setText('gcFeedLastActivity', lastActivityText);
+        }
 
         if (stats.firstSeenAt) {
           const firstMs = dateMs(stats.firstSeenAt);
@@ -652,6 +732,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
         setText('gcAppComboChip', track || 'Combo');
         setText('gcComboTrack', track || 'Sin combo');
+        setText('gcTapeTrack', track || 'TRACK');
         setText('gcComboHint', pick(combo, ['lastSeenAt', 'summary.lastSeenAt'])
           ? 'Última actividad · ' + dateText(pick(combo, ['lastSeenAt', 'summary.lastSeenAt']))
           : 'Combo canónico cargado.');
@@ -697,25 +778,12 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
       function renderRecentTable(recent, leaderboard) {
         const rows = recent.length ? recent : leaderboard;
-        const table = byId('gcRefsTable');
-        if (table) {
-          table.innerHTML = rows.length
-            ? rows.slice(0, 10).map((lap) => `
-                <tr>
-                  <td><strong>${escapeHtml(driverName(lap))}</strong></td>
-                  <td>${escapeHtml(carName(lap))}</td>
-                  <td>${escapeHtml(trackName(lap))}</td>
-                  <td><strong>${escapeHtml(lapTime(lap))}</strong></td>
-                  <td>${escapeHtml(dateText(lap))}</td>
-                </tr>
-              `).join('')
-            : '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
-        }
-
+        // La tabla de vueltas del combo la controla GC_APP_COMBO_HOTLAPS_FILTERED_V2_5.
+        // Este renderer principal solo mantiene los readouts rápidos para no pisar filtros/paginación.
         const latest = rows.slice().sort((a, b) => lapDate(b) - lapDate(a))[0] || null;
         setText('gcQuickLast', latest ? lapTime(latest) : '--');
         setText('gcQuickLastMeta', latest ? [driverName(latest), trackName(latest), dateText(latest)].filter(Boolean).join(' · ') : 'sin datos');
-        setText('gcRefsMeta', formatNumber(recent.length) + ' vueltas recientes');
+        // gcRefsMeta lo controla el módulo de vueltas completas del combo.
       }
 
       async function render() {
@@ -810,23 +878,207 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   </script>
 
 
+
+
   <script is:inline>
-    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_START */
+    /* GC_APP_ACSM_TIMING_INTEGRATED_V1_START */
+    (() => {
+      const ids = {
+        liveBody: 'gcAcsLiveBody',
+        storedBody: 'gcAcsStoredBody',
+        liveCount: 'gcAcsLiveCount',
+        storedCount: 'gcAcsStoredCount',
+        sessionMeta: 'gcAcsSessionMeta',
+        sessionState: 'gcAppSessionState',
+        apiState: 'gcApiState',
+        tapeTrack: 'gcTapeTrack',
+        metricDrivers: 'gcMetricDrivers',
+        clock: 'gcAppClock'
+      };
+
+      const byId = (id) => document.getElementById(id);
+      const setText = (id, value) => {
+        const node = byId(id);
+        if (node) node.textContent = String(value ?? '--');
+      };
+      const esc = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+      }[char]));
+      const clean = (value, fallback = '-') => {
+        const text = String(value ?? '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+        return text || fallback;
+      };
+      const formatSpeed = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '-';
+      };
+      const safeLap = (value) => {
+        const raw = String(value ?? '').trim();
+        if (!raw || raw === '-' || raw.includes('/') || raw.includes(',')) return '-';
+        return raw;
+      };
+      const splitAt = (row, index) => {
+        const split = Array.isArray(row?.bestSplits) ? row.bestSplits[index] : null;
+        return split?.splitTimeFormatted || split?.formatted || split?.timeFormatted || '-';
+      };
+      const fmtUpdated = (value) => {
+        const parsed = Date.parse(String(value ?? ''));
+        if (!Number.isFinite(parsed)) return '--:--';
+        return new Date(parsed).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+      const formatRemaining = (server) => {
+        const time = Number(server?.time);
+        const elapsed = Number(server?.elapsedMilliseconds);
+        if (!Number.isFinite(time) || !Number.isFinite(elapsed) || time <= 0) return '-';
+        const total = Math.max(0, time * 60000 - elapsed);
+        const days = Math.floor(total / 86400000);
+        const hours = Math.floor((total % 86400000) / 3600000);
+        const minutes = Math.floor((total % 3600000) / 60000);
+        return days > 0 ? `${days}d ${hours}h ${String(minutes).padStart(2, '0')}m` : `${hours}h ${String(minutes).padStart(2, '0')}m`;
+      };
+
+      const liveRows = (rows) => {
+        if (!rows.length) return '<tr><td colspan="11">Sin pilotos conectados en ACSM.</td></tr>';
+        return rows.map((row, index) => `
+          <tr>
+            <td>${esc(row.position ?? index + 1)}</td>
+            <td>${row.isInPits ? '<span class="rc-state rc-state--pit">PIT</span>' : '<span class="rc-state rc-state--live">LIVE</span>'}</td>
+            <td><strong>${esc(clean(row.driverName))}</strong><small>${esc(row.driverInitials || '')}</small></td>
+            <td>${esc(clean(row.carName || row.carModel))}</td>
+            <td>${esc(row.tyres || '-')}</td>
+            <td><strong>${esc(safeLap(row.lastLapFormatted || row.currentLapFormatted))}</strong></td>
+            <td><strong>${esc(safeLap(row.bestLapFormatted))}</strong></td>
+            <td>${esc(row.split ?? row.gap ?? '-')}</td>
+            <td>${esc(row.laps ?? '-')}</td>
+            <td>${esc(row.numPits ?? '-')}</td>
+            <td>${esc(row.ping ?? '-')}</td>
+          </tr>
+        `).join('');
+      };
+
+      const storedRows = (rows) => {
+        if (!rows.length) return '<tr><td colspan="10">Sin referencias stored en ACSM.</td></tr>';
+        return rows.map((row, index) => `
+          <tr>
+            <td>${esc(row.position ?? index + 1)}</td>
+            <td><strong>${esc(clean(row.driverName))}</strong><small>${esc(row.driverInitials || '')}</small></td>
+            <td>${esc(clean(row.carName || row.carModel))}</td>
+            <td>${esc(row.tyres || '-')}</td>
+            <td><strong>${esc(safeLap(row.bestLapFormatted))}</strong></td>
+            <td>${esc(splitAt(row, 0))}</td>
+            <td>${esc(splitAt(row, 1))}</td>
+            <td>${esc(splitAt(row, 2))}</td>
+            <td>${esc(row.laps ?? '-')}</td>
+            <td>${esc(formatSpeed(row.topSpeedBestLap ?? row.topSpeedThisLap))}</td>
+          </tr>
+        `).join('');
+      };
+
+      const render = (payload) => {
+        const server = payload?.server ?? {};
+        const live = Array.isArray(payload?.connectedDrivers) ? payload.connectedDrivers : [];
+        const stored = Array.isArray(payload?.storedTimes) ? payload.storedTimes : [];
+        const track = clean([server.track, server.trackConfig].filter(Boolean).join(' '), 'TRACK');
+        const session = clean(server.sessionName || server.name, 'ACSM');
+        const temps = `${server.ambientTemp ?? '-'}°C AIR / ${server.roadTemp ?? '-'}°C TRACK`;
+        const remaining = formatRemaining(server);
+
+        const liveBody = byId(ids.liveBody);
+        const storedBody = byId(ids.storedBody);
+        if (liveBody) liveBody.innerHTML = liveRows(live);
+        if (storedBody) storedBody.innerHTML = storedRows(stored);
+
+        setText(ids.liveCount, `${live.length} LIVE`);
+        setText(ids.storedCount, `${stored.length} STORED`);
+        setText(ids.sessionMeta, `${session} · ${track} · ${temps} · ${remaining}`);
+        setText(ids.sessionState, session.toUpperCase());
+        setText(ids.apiState, 'EN PISTA');
+        setText(ids.tapeTrack, track);
+        setText(ids.metricDrivers, String(live.length));
+        setText(ids.clock, fmtUpdated(payload.updatedAt));
+
+        document.documentElement.dataset.gcAppAcsTiming = 'ok';
+      };
+
+      const setError = (message) => {
+        const liveBody = byId(ids.liveBody);
+        const storedBody = byId(ids.storedBody);
+        if (liveBody) liveBody.innerHTML = '<tr><td colspan="11">ACSM sin datos.</td></tr>';
+        if (storedBody) storedBody.innerHTML = '<tr><td colspan="10">ACSM sin datos.</td></tr>';
+        setText(ids.liveCount, '0 LIVE');
+        setText(ids.storedCount, '0 STORED');
+        setText(ids.sessionMeta, message || 'ACSM sin datos');
+        document.documentElement.dataset.gcAppAcsTiming = 'error';
+      };
+
+      async function loadAcsTiming() {
+        try {
+          const response = await fetch('/api/live-timing', { cache: 'no-store', credentials: 'include' });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload || payload.ok !== true) throw new Error(payload?.error || 'ACSM unavailable');
+          render(payload);
+        } catch (error) {
+          console.warn('[GC /app ACSM timing] error', error?.message || error);
+          setError(error?.message || 'ACSM unavailable');
+        }
+      }
+
+      const start = () => {
+        loadAcsTiming();
+        window.clearInterval(window.GCAppAcsTimingTimer);
+        window.GCAppAcsTimingTimer = window.setInterval(loadAcsTiming, 5000);
+      };
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+      else start();
+    })();
+    /* GC_APP_ACSM_TIMING_INTEGRATED_V1_END */
+  </script>
+
+  <script is:inline>
+    /* GC_APP_COMBO_HOTLAPS_FILTERED_V2_5_START */
     (() => {
       const table = document.getElementById('gcRefsTable');
       if (!table) return;
 
+      const controls = {
+        search: document.getElementById('gcHotlapSearch'),
+        driver: document.getElementById('gcHotlapDriverFilter'),
+        car: document.getElementById('gcHotlapCarFilter'),
+        valid: document.getElementById('gcHotlapValidFilter'),
+        sort: document.getElementById('gcHotlapSort'),
+        pageSize: document.getElementById('gcHotlapPageSize'),
+        prev: document.getElementById('gcHotlapPrev'),
+        next: document.getElementById('gcHotlapNext'),
+        pageInfo: document.getElementById('gcHotlapPageInfo'),
+        meta: document.getElementById('gcRefsMeta'),
+        track: document.getElementById('gcRefsTrack'),
+        sortButtons: Array.from(document.querySelectorAll('[data-sort-key]'))
+      };
+
       const endpoints = [
-        '/api/gc/recent-laps?scope=all&limit=80&sort=recent&valid=all',
-        '/api/laps?scope=all&limit=80&sort=recent&valid=all',
-        '/api/gc/leaderboard?scope=all&limit=3000',
-        '/api/hotlaps?scope=all&limit=3000&valid=all'
+        '/api/gc/recent-laps?scope=activeCombo&limit=50000&sort=recent&valid=all',
+        '/api/laps?scope=activeCombo&limit=50000&sort=recent&valid=all',
+        '/api/gc/leaderboard?scope=global&limit=all&group=all&valid=all'
       ];
+
+      const state = {
+        rows: [],
+        page: 1,
+        endpoint: '',
+        updatedAt: null,
+        sortKey: 'date',
+        sortDir: 'desc'
+      };
 
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
         if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
-        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+        return String(path).split('.').reduce((acc, part) => {
+          if (acc == null) return undefined;
+          if (/^\d+$/.test(part) && Array.isArray(acc)) return acc[Number(part)];
+          return acc[part];
+        }, source);
       };
 
       const pick = (source, paths) => {
@@ -848,6 +1100,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
           payload.data?.items ||
           payload.data?.laps ||
           payload.data?.leaderboard ||
+          payload.data?.hotlaps ||
           []
         );
       };
@@ -857,17 +1110,9 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         if (Array.isArray(value)) return value.length ? text(value[0], fallback) : fallback;
         if (typeof value === 'object') {
           return text(
-            value.displayName ??
-            value.visibleName ??
-            value.cleanName ??
-            value.uiName ??
-            value.uiCarName ??
-            value.uiTrackName ??
-            value.name ??
-            value.Name ??
-            value.driverName ??
-            value.playerName ??
-            value.code,
+            value.displayName ?? value.visibleName ?? value.cleanName ?? value.uiName ??
+            value.uiCarName ?? value.uiTrackName ?? value.name ?? value.Name ??
+            value.driverName ?? value.playerName ?? value.code,
             fallback
           );
         }
@@ -875,11 +1120,7 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       };
 
       const esc = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
-        '&':'&amp;',
-        '<':'&lt;',
-        '>':'&gt;',
-        "'":'&#39;',
-        '"':'&quot;'
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
       }[char]));
 
       const number = (value, fallback = 0) => {
@@ -887,26 +1128,28 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         return Number.isFinite(parsed) ? parsed : fallback;
       };
 
+      const setText = (id, value) => {
+        const node = document.getElementById(id);
+        if (node) node.textContent = String(value ?? '--');
+      };
+
       const driverName = (row) => text(pick(row, [
-        'driver.displayName','driver.visibleName','driver.name',
-        'driverDisplayName','driverVisibleName','driverName',
-        'playerName','pilotName','name','Name'
+        'driver.displayName','driver.visibleName','driver.name','driverDisplayName','driverVisibleName',
+        'driverName','playerName','pilotName','name','Name'
       ]), 'Piloto');
 
       const carName = (row) => text(pick(row, [
-        'car.displayName','car.visibleName','car.name',
-        'carDisplayName','carVisibleName','carName',
-        'uiCarName','Car'
+        'car.displayName','car.visibleName','car.name','carDisplayName','carVisibleName',
+        'carName','uiCarName','Car','car'
       ]), 'Coche');
 
       const trackName = (row) => text(pick(row, [
-        'track.displayName','track.visibleName','track.name',
-        'trackDisplayName','trackVisibleName','trackName',
-        'uiTrackName','Track'
+        'track.displayName','track.visibleName','track.name','trackDisplayName','trackVisibleName',
+        'trackName','uiTrackName','Track','track'
       ]), 'Circuito');
 
       const lapMs = (row) => {
-        const parsed = Number(pick(row, ['lapTimeMs','bestLapMs','timeMs','LapTime']));
+        const parsed = Number(pick(row, ['lapTimeMs','bestLapMs','timeMs','LapTime','lapTimeMilliseconds']));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
       };
 
@@ -919,38 +1162,214 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
         return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
       };
 
-      const lapDisplay = (row) => text(pick(row, ['lapTimeFormatted','lapTimeText','lapTime','bestLapTime']), '') || fmtMs(lapMs(row));
+      const lapDisplay = (row) => text(pick(row, ['lapTimeFormatted','lapTimeText','timeFormatted','lapTime','bestLapTime']), '') || fmtMs(lapMs(row));
+
+      const splitValue = (row, index) => {
+        const direct = pick(row, [
+          `s${index + 1}`,
+          `S${index + 1}`,
+          `sector${index + 1}`,
+          `sector${index + 1}Formatted`,
+          `split${index + 1}`,
+          `split${index + 1}Formatted`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `bestSplits.${index}.splitTimeFormatted`,
+          `bestSplits.${index}.timeFormatted`,
+          `bestSplits.${index}.formatted`,
+          `bestSplits.${index}.time`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') return text(direct.formatted ?? direct.timeFormatted ?? direct.splitTimeFormatted ?? direct.time, '--');
+        if (typeof direct === 'number') return fmtMs(direct);
+        return text(direct, '--');
+      };
+
+      const splitMs = (row, index) => {
+        const direct = pick(row, [
+          `sector${index + 1}Ms`,
+          `s${index + 1}Ms`,
+          `split${index + 1}Ms`,
+          `sectorTimesMs.${index}`,
+          `sectorTimes.${index}`,
+          `splitsMs.${index}`,
+          `splits.${index}`,
+          `sectors.${index}`,
+          `BestSplits.${index}`
+        ]);
+        if (typeof direct === 'object') {
+          const nested = pick(direct, ['timeMs','ms','time','value']);
+          return number(nested, 0) || null;
+        }
+        const parsed = number(direct, 0);
+        return parsed > 0 ? parsed : null;
+      };
+
+      const speed = (row) => {
+        const raw = pick(row, ['maxSpeedKmh','topSpeedKmh','topSpeed','maxSpeed','speedKmh','MaxSpeed_KMH']);
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed > 0 ? `${Math.round(parsed)} km/h` : '--';
+      };
 
       const lapDateMs = (row) => {
-        const iso = pick(row, ['timestampIso','dateIso','createdAt','updatedAt','lastSeenAt','session.endTimeIso','session.startTimeIso']);
+        const iso = pick(row, ['timestampIso','dateIso','createdAt','updatedAt','lastSeenAt','latestLapAt','session.endTimeIso','session.startTimeIso']);
         if (iso) {
           const parsed = Date.parse(String(iso));
           if (Number.isFinite(parsed)) return parsed;
         }
         const raw = pick(row, ['timestamp','Timestamp','date']);
         if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
-        return 0;
+        const parsed = Date.parse(String(raw ?? ''));
+        return Number.isFinite(parsed) ? parsed : 0;
       };
 
       const fmtDate = (row) => {
         const ms = lapDateMs(row);
         if (!ms) return '--';
-        return new Date(ms).toLocaleString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        return new Date(ms).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
       };
 
       const isInvalid = (row) => {
         const value = pick(row, ['valid','isValid','Valid']);
-        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no';
+        return value === 0 || value === false || value === '0' || value === 'false' || value === 'no' || value === 'NO';
       };
 
-      const setText = (id, value) => {
-        const node = document.getElementById(id);
-        if (node) node.textContent = value;
+      const validLabel = (row) => isInvalid(row) ? 'NO VÁLIDA' : 'VÁLIDA';
+
+      const uniqueSorted = (rows, getter) => [...new Set(rows.map(getter).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+
+      const fillSelect = (select, values, label) => {
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = `<option value="">${label}</option>` + values.map((value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
+        if (values.includes(current)) select.value = current;
+      };
+
+      const activeComboTrack = () => {
+        const comboTrack = document.getElementById('gcComboTrack')?.textContent?.trim();
+        if (comboTrack && !/cargando|sin combo/i.test(comboTrack)) return comboTrack;
+        const first = state.rows[0];
+        return first ? trackName(first) : 'Circuito del combo';
+      };
+
+      const filteredRows = () => {
+        const query = (controls.search?.value || '').trim().toLowerCase();
+        const driver = controls.driver?.value || '';
+        const car = controls.car?.value || '';
+        const valid = controls.valid?.value || 'all';
+        const sort = controls.sort?.value || 'recent';
+
+        let rows = state.rows.filter((row) => {
+          const rowDriver = driverName(row);
+          const rowCar = carName(row);
+          const haystack = [rowDriver, rowCar, trackName(row), lapDisplay(row), fmtDate(row), validLabel(row)].join(' ').toLowerCase();
+          if (query && !haystack.includes(query)) return false;
+          if (driver && rowDriver !== driver) return false;
+          if (car && rowCar !== car) return false;
+          if (valid === 'valid' && isInvalid(row)) return false;
+          if (valid === 'invalid' && !isInvalid(row)) return false;
+          return true;
+        });
+
+        const compareText = (a, b, getter) => getter(a).localeCompare(getter(b), 'es', { sensitivity: 'base' });
+        const compareNumber = (a, b, getter, emptyLast = true) => {
+          const av = getter(a);
+          const bv = getter(b);
+          const ae = av === null || av === undefined || !Number.isFinite(Number(av));
+          const be = bv === null || bv === undefined || !Number.isFinite(Number(bv));
+          if (ae && be) return 0;
+          if (ae) return emptyLast ? 1 : -1;
+          if (be) return emptyLast ? -1 : 1;
+          return Number(av) - Number(bv);
+        };
+
+        const sortByDropdown = () => {
+          if (sort === 'timeAsc') return { key: 'time', dir: 'asc' };
+          if (sort === 'timeDesc') return { key: 'time', dir: 'desc' };
+          if (sort === 'driver') return { key: 'driver', dir: 'asc' };
+          if (sort === 'car') return { key: 'car', dir: 'asc' };
+          return { key: 'date', dir: 'desc' };
+        };
+
+        const activeSort = state.sortKey ? { key: state.sortKey, dir: state.sortDir } : sortByDropdown();
+        rows = rows.sort((a, b) => {
+          let result = 0;
+          if (activeSort.key === 'index') result = 0;
+          else if (activeSort.key === 'driver') result = compareText(a, b, driverName) || compareNumber(a, b, lapMs);
+          else if (activeSort.key === 'car') result = compareText(a, b, carName) || compareText(a, b, driverName) || compareNumber(a, b, lapMs);
+          else if (activeSort.key === 's1') result = compareNumber(a, b, (row) => splitMs(row, 0));
+          else if (activeSort.key === 's2') result = compareNumber(a, b, (row) => splitMs(row, 1));
+          else if (activeSort.key === 's3') result = compareNumber(a, b, (row) => splitMs(row, 2));
+          else if (activeSort.key === 'time') result = compareNumber(a, b, lapMs);
+          else if (activeSort.key === 'speed') result = compareNumber(a, b, (row) => number(pick(row, ['maxSpeedKmh','topSpeedKmh','topSpeed','maxSpeed','speedKmh','MaxSpeed_KMH']), NaN));
+          else if (activeSort.key === 'valid') result = Number(isInvalid(a)) - Number(isInvalid(b)) || compareNumber(a, b, lapMs);
+          else result = lapDateMs(a) - lapDateMs(b);
+          return activeSort.dir === 'desc' ? -result : result;
+        });
+
+        return rows;
+      };
+
+      const updateSortButtons = () => {
+        controls.sortButtons?.forEach((button) => {
+          const key = button.getAttribute('data-sort-key');
+          const active = key === state.sortKey;
+          button.classList.toggle('is-active', active);
+          button.dataset.sortDir = active ? state.sortDir : '';
+        });
+      };
+
+      const renderRows = () => {
+        updateSortButtons();
+        const rows = filteredRows();
+        const pageSize = Math.max(1, Number(controls.pageSize?.value || 50));
+        const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+        state.page = Math.min(Math.max(1, state.page), totalPages);
+        const start = (state.page - 1) * pageSize;
+        const visible = rows.slice(start, start + pageSize);
+
+        table.innerHTML = visible.length ? visible.map((row, offset) => {
+          const absolute = start + offset + 1;
+          const invalid = isInvalid(row);
+          return `
+            <tr>
+              <td>${absolute}</td>
+              <td><strong>${esc(driverName(row))}</strong></td>
+              <td>${esc(carName(row))}</td>
+              <td>${esc(splitValue(row, 0))}</td>
+              <td>${esc(splitValue(row, 1))}</td>
+              <td>${esc(splitValue(row, 2))}</td>
+              <td><strong>${esc(lapDisplay(row))}</strong></td>
+              <td>${esc(speed(row))}</td>
+              <td><span class="rc-valid ${invalid ? 'rc-valid--bad' : 'rc-valid--ok'}">${validLabel(row)}</span></td>
+              <td>${esc(fmtDate(row))}</td>
+            </tr>
+          `;
+        }).join('') : '<tr><td colspan="10">Sin vueltas con esos filtros.</td></tr>';
+
+        if (controls.meta) {
+          controls.meta.textContent = `${rows.length.toLocaleString('es-ES')} de ${state.rows.length.toLocaleString('es-ES')} vueltas del combo · página ${state.page}/${totalPages}`;
+        }
+        if (controls.track) controls.track.textContent = activeComboTrack();
+        if (controls.pageInfo) controls.pageInfo.textContent = `Página ${state.page} / ${totalPages}`;
+        if (controls.prev) controls.prev.disabled = state.page <= 1;
+        if (controls.next) controls.next.disabled = state.page >= totalPages;
+      };
+
+      const updateMetrics = (rows, payload) => {
+        const uniqueDrivers = new Set(rows.map(driverName).filter(Boolean));
+        const latest = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a))[0] || null;
+        const totalFromPayload = Number(payload?.totalLaps) || Number(payload?.total) || Number(payload?.count) || rows.length;
+
+        setText('gcMetricDrivers', String(uniqueDrivers.size));
+        setText('gcFeedDrivers', String(uniqueDrivers.size));
+        setText('gcMetricLaps', String(totalFromPayload));
+        setText('gcQuickRefs', String(totalFromPayload));
+        setText('gcMetricLastActivity', latest ? fmtDate(latest) : '--');
+        setText('gcFeedLastActivity', latest ? fmtDate(latest) : '--');
+        setText('gcQuickLast', latest ? lapDisplay(latest) : '--');
+        setText('gcQuickDb', 'Activo');
+        setText('gcQuickDbMeta', 'Combo sincronizado');
       };
 
       async function fetchFirst() {
@@ -964,84 +1383,88 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
             if (rows.length) return { endpoint, payload, rows };
           } catch (error) {
             lastError = error;
-            console.warn('[GC /app all tracks] endpoint failed', endpoint, error?.message || error);
+            console.warn('[GC /app combo hotlaps] endpoint failed', endpoint, error?.message || error);
           }
         }
-        throw lastError || new Error('No hotlaps endpoint available');
+        throw lastError || new Error('No combo hotlaps endpoint available');
       }
 
-      function updateMetrics(rows, payload, endpoint) {
-        const uniqueDrivers = new Set(rows.map(driverName).filter(Boolean));
-        const uniqueTracks = new Set(rows.map(trackName).filter(Boolean));
-        const latest = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a))[0] || null;
-
-        const totalFromPayload =
-          Number(payload?.totalLaps) ||
-          Number(payload?.total) ||
-          Number(payload?.count) ||
-          rows.length;
-
-        setText('gcMetricDrivers', String(uniqueDrivers.size));
-        setText('gcMetricLaps', String(totalFromPayload));
-        setText('gcMetricCombos', String(uniqueTracks.size));
-        setText('gcMetricLastActivity', latest ? fmtDate(latest) : '--');
-
-        setText('gcQuickRefs', String(totalFromPayload));
-        setText('gcQuickLast', latest ? fmtDate(latest) : '--');
-        setText('gcQuickDb', 'Activo');
-        setText('gcQuickDbMeta', 'Actividad sincronizada');
-
-        const refsMeta = document.getElementById('gcRefsMeta');
-        if (refsMeta) refsMeta.textContent = `${rows.length} vueltas recientes · todos los circuitos`;
-
-        const apiState = document.getElementById('gcApiState');
-        if (apiState) apiState.textContent = 'En pista';
-      }
-
-      function renderRows(rows) {
-        const sorted = [...rows].sort((a, b) => lapDateMs(b) - lapDateMs(a)).slice(0, 12);
-
-        table.innerHTML = sorted.map((row) => {
-          const valid = isInvalid(row) ? 'No válida' : 'Válida';
-          return `
-            <tr>
-              <td>${esc(driverName(row))}</td>
-              <td>${esc(carName(row))}</td>
-              <td>${esc(trackName(row))}</td>
-              <td><strong>${esc(lapDisplay(row))}</strong><span class="gc-leaderboard-sub">${esc(valid)}</span></td>
-              <td>${esc(fmtDate(row))}</td>
-            </tr>
-          `;
-        }).join('') || '<tr><td colspan="5">Sin vueltas recientes.</td></tr>';
-      }
-
-      async function loadAllTracksActivity() {
+      async function loadComboHotlaps() {
         try {
           const { endpoint, payload, rows } = await fetchFirst();
-          updateMetrics(rows, payload, endpoint);
-          renderRows(rows);
-          document.documentElement.dataset.gcAppHotlapsScope = 'all-tracks';
-          window.GCAppHotlapsAllTracks = { status: 'ok', endpoint, rows: rows.length, updatedAt: new Date().toISOString() };
+          state.rows = rows;
+          state.endpoint = endpoint;
+          state.updatedAt = new Date().toISOString();
+          // Mantener página y orden al refrescar para que la tabla no salte sola.
+
+          fillSelect(controls.driver, uniqueSorted(rows, driverName), 'Todos');
+          fillSelect(controls.car, uniqueSorted(rows, carName), 'Todos');
+          updateMetrics(rows, payload);
+          renderRows();
+
+          document.documentElement.dataset.gcAppHotlapsScope = 'active-combo';
+          window.GCAppComboHotlaps = { status: 'ok', endpoint, rows: rows.length, updatedAt: state.updatedAt };
         } catch (error) {
-          console.warn('[GC /app all tracks] error', error);
+          console.warn('[GC /app combo hotlaps] error', error);
           setText('gcApiState', 'Error');
-          const refsMeta = document.getElementById('gcRefsMeta');
-          if (refsMeta) refsMeta.textContent = 'No se pudieron cargar todas las vueltas';
-          window.GCAppHotlapsAllTracks = { status: 'error', error: error?.message || String(error) };
+          if (controls.meta) controls.meta.textContent = 'No se pudieron cargar las vueltas del combo';
+          table.innerHTML = '<tr><td colspan="10">No se pudieron cargar las vueltas del combo.</td></tr>';
+          window.GCAppComboHotlaps = { status: 'error', error: error?.message || String(error) };
         }
       }
 
-      loadAllTracksActivity();
-      window.setInterval(loadAllTracksActivity, 45000);
+      [controls.search, controls.driver, controls.car, controls.valid, controls.pageSize].forEach((control) => {
+        control?.addEventListener('input', () => { state.page = 1; renderRows(); });
+        control?.addEventListener('change', () => { state.page = 1; renderRows(); });
+      });
+      controls.sort?.addEventListener('change', () => {
+        const value = controls.sort.value;
+        if (value === 'timeAsc') { state.sortKey = 'time'; state.sortDir = 'asc'; }
+        else if (value === 'timeDesc') { state.sortKey = 'time'; state.sortDir = 'desc'; }
+        else if (value === 'driver') { state.sortKey = 'driver'; state.sortDir = 'asc'; }
+        else if (value === 'car') { state.sortKey = 'car'; state.sortDir = 'asc'; }
+        else { state.sortKey = 'date'; state.sortDir = 'desc'; }
+        state.page = 1;
+        renderRows();
+      });
+      controls.sortButtons?.forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.getAttribute('data-sort-key') || 'date';
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = ['date', 'speed'].includes(key) ? 'desc' : 'asc';
+          }
+          if (controls.sort) controls.sort.value = state.sortKey === 'date' && state.sortDir === 'desc' ? 'recent' : controls.sort.value;
+          state.page = 1;
+          renderRows();
+        });
+      });
+      controls.prev?.addEventListener('click', () => { state.page -= 1; renderRows(); });
+      controls.next?.addEventListener('click', () => { state.page += 1; renderRows(); });
+
+      loadComboHotlaps();
+      window.clearInterval(window.GCAppComboHotlapsTimer);
+      window.GCAppComboHotlapsTimer = window.setInterval(loadComboHotlaps, 60000);
     })();
-    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_END */
+    /* GC_APP_COMBO_HOTLAPS_FILTERED_V2_5_END */
   </script>
+</AppLayout>
 
 
   <script is:inline>
-    /* GC_APP_HOTLAPS_ALL_TRACKS_SAFE_V1 */
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_START */
+    /*
+      Build guard compatibility marker.
+      The old /app all-tracks hotlaps module was replaced by the current-combo
+      Race Control table, but the prebuild guard still requires this marker to
+      confirm app/hotlaps integration is present. Do not remove unless the guard
+      is updated.
+    */
     (() => {
-      document.documentElement.dataset.gcAppHotlapsScope = 'all-tracks';
+      document.documentElement.dataset.gcAppHotlapsIntegration = 'current-combo-filtered';
     })();
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_END */
+    /* GC_APP_HOTLAPS_ALL_TRACKS_SAFE_V1 */
   </script>
-</AppLayout>

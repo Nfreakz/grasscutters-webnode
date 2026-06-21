@@ -5706,3 +5706,87 @@
 .gc-home2-panel--combo-ranking .gc-home2-combo-ranking-list {
   min-height: 0;
 }
+
+/* GC_HOME2_NOW_RACING_MAP_FIT_FIX_V24
+   El mapa del bloque Now Racing puede venir de ACSM o de assets locales.
+   Forzamos encuadre completo: nunca debe recortarse dentro del trackbox. */
+.gc-home2-panel--now .gc-home2-trackbox {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 148px !important;
+  height: 148px !important;
+  padding: 12px 16px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.gc-home2-panel--now .gc-home2-trackbox img[data-home2-track-map],
+.gc-home2-panel--now [data-home2-track-map] {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 88% !important;
+  max-height: 88% !important;
+  object-fit: scale-down !important;
+  object-position: center center !important;
+  transform: none !important;
+  margin: auto !important;
+  flex: 0 1 auto !important;
+}
+
+@media (max-width: 760px) {
+  .gc-home2-panel--now .gc-home2-trackbox {
+    min-height: 156px !important;
+    height: 156px !important;
+    padding: 12px !important;
+  }
+
+  .gc-home2-panel--now .gc-home2-trackbox img[data-home2-track-map],
+  .gc-home2-panel--now [data-home2-track-map] {
+    max-width: 92% !important;
+    max-height: 88% !important;
+  }
+}
+
+/* GC_HOME_NOW_RACING_MAP_SAFE_COMPACT_V25
+   Fix conservador: solo afecta al mapa de Now Racing.
+   Objetivo: que el trazado completo entre dentro del recuadro, incluso cuando el PNG de ACSM viene muy justo a los bordes. */
+.gc-home2-panel--now .gc-home2-trackbox {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 148px !important;
+  height: 148px !important;
+  padding: 18px 24px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.gc-home2-panel--now .gc-home2-trackbox img[data-home2-track-map] {
+  display: block !important;
+  width: 76% !important;
+  height: 76% !important;
+  max-width: 76% !important;
+  max-height: 76% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  transform: none !important;
+  margin: auto !important;
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 760px) {
+  .gc-home2-panel--now .gc-home2-trackbox {
+    min-height: 156px !important;
+    height: 156px !important;
+    padding: 16px !important;
+  }
+
+  .gc-home2-panel--now .gc-home2-trackbox img[data-home2-track-map] {
+    width: 82% !important;
+    height: 82% !important;
+    max-width: 82% !important;
+    max-height: 82% !important;
+  }
+}
