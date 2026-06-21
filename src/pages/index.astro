@@ -2226,14 +2226,31 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return '';
       };
 
-      const fetchJson = async (url) => {
+      const fetchJson = async (url, options = {}) => {
+        const timeoutMs = Number(options?.timeoutMs || 3500);
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
         try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' } });
+          const res = await fetch(url, {
+            headers: { Accept: 'application/json' },
+            signal: controller?.signal,
+            cache: 'no-store'
+          });
           if (!res.ok) return null;
           return await res.json();
         } catch (_) {
           return null;
+        } finally {
+          if (timeoutId) window.clearTimeout(timeoutId);
         }
+      };
+
+      const firstJson = async (urls, options = {}) => {
+        for (const url of urls) {
+          const payload = await fetchJson(url, options);
+          if (payload) return payload;
+        }
+        return null;
       };
 
       const slugify = (value) => String(value || '')
@@ -4570,23 +4587,22 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const now = new Date();
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
-        const diagnostics = await fetchJson('/api/gc/diagnostics') || await fetchJson('/api/status') || await fetchJson('/api/stats/overview');
-        const combosPayload = await fetchJson('/api/gc/combos?limit=1&sort=recent') || await fetchJson('/api/combos/stats?limit=1&sort=recent') || await fetchJson('/api/combos?limit=1&sort=recent');
-        const recentPayload = await fetchJson('/api/gc/recent-laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/laps?limit=20&sort=recent&valid=all') || await fetchJson('/api/hotlaps?limit=20');
-        const leaderboardPayload =
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&limit=25') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200') ||
-          await fetchJson('/api/gc/recent-laps?limit=200&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=200');
+        const [diagnostics, combosPayload, recentPayload, leaderboardPayload] = await Promise.all([
+          firstJson(['/api/gc/diagnostics', '/api/status', '/api/stats/overview']),
+          firstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent']),
+          firstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20']),
+          firstJson([
+            '/api/gc/leaderboard?scope=activeCombo&limit=25',
+            '/api/gc/leaderboard?scope=currentCombo&limit=25',
+            '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=120',
+            '/api/gc/recent-laps?limit=120&sort=recent&valid=all',
+            '/api/hotlaps?limit=120'
+          ])
+        ]);
 
-        const comboStandoutsPayload =
-          await fetchJson('/api/gc/recent-laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/gc/leaderboard?scope=global&valid=all&group=all&limit=3000') ||
-          await fetchJson('/api/laps?limit=3000&sort=recent&valid=all') ||
-          await fetchJson('/api/hotlaps?limit=3000&sort=recent&valid=all');
+        // No bloqueamos la home esperando miles de vueltas. Primero pintamos lo importante
+        // y luego refrescamos el Combo Pulse en segundo plano.
+        let comboStandoutsPayload = null;
 
         const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
         if (raceData) {
@@ -4692,14 +4708,32 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
 
-        renderRaceStandoutsV1([
-          ...getArray(comboStandoutsPayload),
+        const fastStandoutRows = [
           ...getArray(leaderboardPayload),
           ...getArray(combo.laps),
           ...getArray(combo.bestLaps),
           ...getArray(combo.leaderboard),
           ...getArray(recentPayload)
-        ], trackAssetName || rawTrackName || track, carList);
+        ];
+
+        renderRaceStandoutsV1(fastStandoutRows, trackAssetName || rawTrackName || track, carList);
+
+        window.setTimeout(async () => {
+          const heavyStandoutsPayload = await firstJson([
+            '/api/gc/recent-laps?scope=activeCombo&limit=1000&sort=recent&valid=all',
+            '/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=1000',
+            '/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=1000',
+            '/api/gc/recent-laps?limit=1000&sort=recent&valid=all'
+          ], { timeoutMs: 5000 });
+
+          const heavyRows = getArray(heavyStandoutsPayload);
+          if (heavyRows.length) {
+            renderRaceStandoutsV1([
+              ...heavyRows,
+              ...fastStandoutRows
+            ], trackAssetName || rawTrackName || track, carList);
+          }
+        }, 300);
 
         await Promise.all([
           renderChampionship(),
