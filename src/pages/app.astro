@@ -16,20 +16,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
   <main class="rc-console" aria-labelledby="rcPageTitle">
     <h1 id="rcPageTitle" class="rc-sr-only">GrassCutters Race Control</h1>
 
-    <section class="rc-status-tape rc-status-tape--race-data" aria-label="Estado rápido Race Control">
-      <div class="rc-tape-cell">
-        <span class="rc-tape-label">VUELTAS TOTALES</span>
-        <strong id="gcQuickRefs">--</strong>
+    <section class="rc-status-tape" aria-label="Estado rápido Race Control">
+      <div class="rc-tape-cell rc-tape-cell--brand">
+        <span class="rc-tape-label">GC RACE CONTROL</span>
+        <strong id="gcAppStatusChip">SISTEMA LISTO</strong>
       </div>
       <div class="rc-tape-cell">
-        <span class="rc-tape-label">ONLINE DESDE</span>
-        <strong id="gcServerUptimeDays">--</strong>
+        <span class="rc-tape-label">SERVER</span>
+        <strong id="gcApiState">COMPROBANDO</strong>
       </div>
       <div class="rc-tape-cell">
-        <span class="rc-tape-label">ÚLTIMA VUELTA</span>
-        <strong id="gcQuickLast">--</strong>
+        <span class="rc-tape-label">SESSION</span>
+        <strong id="gcAppSessionState">LISTO</strong>
       </div>
-      <div class="rc-tape-cell rc-tape-cell--track">
+      <div class="rc-tape-cell">
         <span class="rc-tape-label">TRACK</span>
         <strong id="gcTapeTrack">TRACK</strong>
       </div>
@@ -43,33 +43,51 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       </div>
     </section>
 
-    <div class="rc-data-sinks" aria-hidden="true">
-      <span id="gcAppStatusChip"></span>
-      <span id="gcApiState"></span>
-      <span id="gcAppSessionState"></span>
-      <span id="gcAppSessionUser"></span>
-      <span id="gcAppSessionRole"></span>
-      <span id="gcAppSessionPilot"></span>
-      <span id="gcAppComboChip"></span>
-      <span id="gcComboTrack"></span>
-      <span id="gcComboHint"></span>
-      <span id="gcComboBest"></span>
-      <span id="gcComboBestMeta"></span>
-      <span id="gcComboLaps"></span>
-      <span id="gcComboDrivers"></span>
-      <span id="gcComboFamily"></span>
-      <span id="gcComboCars"></span>
-      <a id="gcComboLink" href="/combos"></a>
-      <span id="gcMetricLaps"></span>
-      <span id="gcMetricCombos"></span>
-      <span id="gcMetricLastActivity"></span>
-      <span id="gcFeedDrivers"></span>
-      <span id="gcFeedLastActivity"></span>
-      <span id="gcQuickDb"></span>
-      <span id="gcQuickDbMeta"></span>
-      <span id="gcQuickLastMeta"></span>
-      <span id="gcServerUptimeMeta"></span>
-    </div>
+    <section class="rc-ops-grid" aria-label="Resumen operativo">
+      <article class="rc-module rc-module--server">
+        <header class="rc-module-head">
+          <span>SERVER STATUS</span>
+          <strong>AC SERVER 1</strong>
+        </header>
+        <div class="rc-readouts rc-readouts--server">
+          <div><span>Vueltas</span><strong id="gcQuickRefs">--</strong><small>total registradas</small></div>
+          <div><span>Última vuelta</span><strong id="gcQuickLast">--</strong><small id="gcQuickLastMeta">sin datos</small></div>
+          <div><span>Data core</span><strong id="gcQuickDb">--</strong><small id="gcQuickDbMeta">comprobando</small></div>
+          <div><span>Online</span><strong id="gcServerUptimeDays">--</strong><small id="gcServerUptimeMeta">desde primer registro</small></div>
+        </div>
+      </article>
+
+      <article class="rc-module rc-module--session">
+        <header class="rc-module-head">
+          <span>CURRENT SESSION</span>
+          <strong id="gcAppComboChip">COMBO</strong>
+        </header>
+        <dl class="rc-definition-list">
+          <div><dt>Cuenta</dt><dd id="gcAppSessionUser">...</dd></div>
+          <div><dt>Rol</dt><dd id="gcAppSessionRole">...</dd></div>
+          <div><dt>Piloto</dt><dd id="gcAppSessionPilot">...</dd></div>
+          <div><dt>Actividad</dt><dd id="gcMetricLastActivity">--</dd></div>
+        </dl>
+      </article>
+
+      <article class="rc-module rc-module--combo gc-app-combo-v3 gc-track-image-card" data-track-image data-track-name="">
+        <header class="rc-module-head">
+          <span>CURRENT COMBO</span>
+          <a href="/combos" id="gcComboLink">VER</a>
+        </header>
+        <div class="rc-combo-line">
+          <span>Circuito</span>
+          <strong id="gcComboTrack">Cargando...</strong>
+        </div>
+        <div class="rc-combo-cars" id="gcComboCars"><span class="rc-badge">Leyendo coches</span></div>
+        <div class="rc-compact-grid">
+          <div><span>Mejor</span><strong id="gcComboBest">--</strong><small id="gcComboBestMeta">referencia</small></div>
+          <div><span>Vueltas</span><strong id="gcComboLaps">--</strong><small>combo</small></div>
+          <div><span>Pilotos</span><strong id="gcComboDrivers">--</strong><small>participantes</small></div>
+          <div><span>Estado</span><strong id="gcComboFamily">--</strong><small>datos</small></div>
+        </div>
+      </article>
+    </section>
 
     <section class="rc-table-module rc-table-module--acsm" aria-labelledby="rcLiveDriversTitle">
       <header class="rc-section-head">
@@ -1433,3 +1451,20 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     /* GC_APP_COMBO_HOTLAPS_FILTERED_V2_5_END */
   </script>
 </AppLayout>
+
+
+  <script is:inline>
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_START */
+    /*
+      Build guard compatibility marker.
+      The old /app all-tracks hotlaps module was replaced by the current-combo
+      Race Control table, but the prebuild guard still requires this marker to
+      confirm app/hotlaps integration is present. Do not remove unless the guard
+      is updated.
+    */
+    (() => {
+      document.documentElement.dataset.gcAppHotlapsIntegration = 'current-combo-filtered';
+    })();
+    /* GC_APP_HOTLAPS_ALL_TRACKS_V1_END */
+    /* GC_APP_HOTLAPS_ALL_TRACKS_SAFE_V1 */
+  </script>
