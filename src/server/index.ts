@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -4034,14 +4034,6 @@ function compactLapForCombo(lap: ComboLap | null) {
     valid: lap.valid,
     isValid: lap.valid,
     maxSpeedKmh: lap.maxSpeedKmh,
-    sectorTimesMs: lap.sectorTimesMs ?? [],
-    sectorTimes: lap.sectorTimes ?? [],
-    sector1Ms: lap.sector1Ms ?? lap.sectorTimesMs?.[0] ?? null,
-    sector2Ms: lap.sector2Ms ?? lap.sectorTimesMs?.[1] ?? null,
-    sector3Ms: lap.sector3Ms ?? lap.sectorTimesMs?.[2] ?? null,
-    sector1: lap.sector1 ?? lap.sectorTimes?.[0] ?? '--',
-    sector2: lap.sector2 ?? lap.sectorTimes?.[1] ?? '--',
-    sector3: lap.sector3 ?? lap.sectorTimes?.[2] ?? '--',
     cuts: lap.cuts,
     collisionsCar: lap.collisionsCar,
     collisionsEnv: lap.collisionsEnv,
@@ -6009,7 +6001,7 @@ registerMotorsportArchiveUnifiedAdminRoutes(app, { rootDir, requireAdmin });
 
 
 // GC Archivo Motorsport safe API v8.2.4 routes.
-registerMotorsportArchiveSafeApiV824(app);
+registerMotorsportArchiveSafeApiV824(app, { requireAdmin });
 
 
 // GC Archivo Motorsport import/delete fix v8.2.3 routes.
@@ -6017,7 +6009,7 @@ registerMotorsportArchiveImportDeleteFixV823(app);
 
 
 // GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
-registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir });
+registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir, requireAdmin });
 
 
 
@@ -8060,14 +8052,6 @@ function gcLegacyAliasCompactLapV1(row: any, position?: number, bestMs?: number)
     isValid: gcLegacyAliasIsValidV1(row),
     maxSpeedKmh: gcLegacyAliasSpeedV1(row),
     maxSpeed: gcLegacyAliasSpeedV1(row),
-    sectorTimesMs: gcLegacyAliasPickV1(row, ['sectorTimesMs']) ?? [],
-    sectorTimes: gcLegacyAliasPickV1(row, ['sectorTimes']) ?? [],
-    sector1Ms: gcLegacyAliasPickV1(row, ['sector1Ms', 'sectorTimesMs.0']) ?? null,
-    sector2Ms: gcLegacyAliasPickV1(row, ['sector2Ms', 'sectorTimesMs.1']) ?? null,
-    sector3Ms: gcLegacyAliasPickV1(row, ['sector3Ms', 'sectorTimesMs.2']) ?? null,
-    sector1: gcLegacyAliasPickV1(row, ['sector1', 'sectorTimes.0']) ?? '--',
-    sector2: gcLegacyAliasPickV1(row, ['sector2', 'sectorTimes.1']) ?? '--',
-    sector3: gcLegacyAliasPickV1(row, ['sector3', 'sectorTimes.2']) ?? '--',
     cuts: gcLegacyAliasCutsV1(row),
     timestamp: gcLegacyAliasPickV1(row, ['timestamp', 'Timestamp']) ?? null,
     timestampIso: dateMs ? new Date(dateMs).toISOString() : null,
@@ -9456,7 +9440,7 @@ app.get('/api/hotlaps', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
 
-    const limit = getQueryNumber(req, 'limit', 300, 1, 50000);
+    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
     const scope = getQueryString(req, 'scope', 'all');
     const readSource = await readGcDataCoreSource(req);
     if ((readSource as any).ok === false) {
@@ -9518,7 +9502,7 @@ app.get('/api/laps', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
 
-    const limit = getQueryNumber(req, 'limit', 50, 1, 50000);
+    const limit = getQueryNumber(req, 'limit', 50, 1, 1000);
     const scope = getQueryString(req, 'scope', 'global');
     const sort = getQueryString(req, 'sort', getQueryString(req, 'order', 'recent')).toLowerCase();
     const readSource = await readGcDataCoreSource(req);
@@ -10474,7 +10458,7 @@ app.get('/api/gc/combos/:comboId', async (req, res) => {
 app.get('/api/gc/combos', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
-    const limit = getQueryNumber(req, 'limit', 300, 1, 50000);
+    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
     const q = getQueryString(req, 'q') || getQueryString(req, 'search');
     const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
 
@@ -10552,7 +10536,7 @@ app.get('/api/gc/combos', async (req, res) => {
 
 app.get('/api/combos', async (req, res) => {
   try {
-    const limit = getQueryNumber(req, 'limit', 300, 1, 50000);
+    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
     const sort = getQueryString(req, 'sort', 'recent');
     const stracker = getStrackerConfig();
     const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
@@ -12630,14 +12614,6 @@ function gcLabFixCompactLapV1(row: any) {
     timestamp: gcLabFixPickV1(row, ['timestamp', 'Timestamp']) ?? null,
     timestampIso: dateMs ? new Date(dateMs).toISOString() : null,
     maxSpeedKmh: gcLabFixPickV1(row, ['maxSpeedKmh', 'MaxSpeed_KMH', 'maxSpeed']) ?? null,
-    sectorTimesMs: gcLabFixPickV1(row, ['sectorTimesMs']) ?? [],
-    sectorTimes: gcLabFixPickV1(row, ['sectorTimes']) ?? [],
-    sector1Ms: gcLabFixPickV1(row, ['sector1Ms', 'sectorTimesMs.0']) ?? null,
-    sector2Ms: gcLabFixPickV1(row, ['sector2Ms', 'sectorTimesMs.1']) ?? null,
-    sector3Ms: gcLabFixPickV1(row, ['sector3Ms', 'sectorTimesMs.2']) ?? null,
-    sector1: gcLabFixPickV1(row, ['sector1', 'sectorTimes.0']) ?? '--',
-    sector2: gcLabFixPickV1(row, ['sector2', 'sectorTimes.1']) ?? '--',
-    sector3: gcLabFixPickV1(row, ['sector3', 'sectorTimes.2']) ?? '--',
     cuts: gcLabFixPickV1(row, ['cuts', 'Cuts']) ?? 0
   };
 }
@@ -13057,7 +13033,7 @@ app.get('/api/gc/recent-laps', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
 
-    const limit = getQueryNumber(req, 'limit', 20, 1, 50000);
+    const limit = getQueryNumber(req, 'limit', 20, 1, 200);
     const scope = getQueryString(req, 'scope', 'global').toLowerCase();
     const readSource = await readGcDataCoreSource(req);
     if ((readSource as any).ok === false) {
@@ -13928,4 +13904,3 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
-

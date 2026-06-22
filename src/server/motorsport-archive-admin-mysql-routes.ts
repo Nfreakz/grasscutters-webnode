@@ -1,9 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { Express, Request, Response } from 'express';
+import type { Express, Request, Response, NextFunction } from 'express';
 
 type ArchiveItem = Record<string, any>;
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-mysql-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
 
 function isMysql() {
   const driver = String(process.env.ARCHIVE_STORAGE_DRIVER || process.env.APP_STORAGE_DRIVER || 'json').trim().toLowerCase();
@@ -420,8 +439,9 @@ async function createDemoItems(rootDir: string) {
   return { ok: true, created, skipped, items, storage: 'json', filePath };
 }
 
-export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.get('/api/admin/archive/items', async (_req: Request, res: Response) => {
+export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+  app.get('/api/admin/archive/items', requireArchiveAdmin, async (_req: Request, res: Response) => {
     try {
       if (isMysql()) {
         const connection = await getConnection();
@@ -439,7 +459,7 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
     }
   });
 
-  app.post('/api/admin/archive/mysql-demo-safe-v822', async (_req: Request, res: Response) => {
+  app.post('/api/admin/archive/mysql-demo-safe-v822', requireArchiveAdmin, async (_req: Request, res: Response) => {
     try {
       return res.json(await createDemoItems(rootDir));
     } catch (error: any) {
@@ -447,7 +467,7 @@ export function registerMotorsportArchiveAdminMysqlRoutes(app: Express, { rootDi
     }
   });
 
-  app.post('/api/admin/archive/import-csv-web-v822', async (req: Request, res: Response) => {
+  app.post('/api/admin/archive/import-csv-web-v822', requireArchiveAdmin, async (req: Request, res: Response) => {
     try {
       const files = Array.isArray(req.body?.files) ? req.body.files : [];
       const publish = req.body?.publish === true || String(req.body?.publish || '').toLowerCase() === 'true';

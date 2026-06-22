@@ -1,7 +1,26 @@
 import crypto from 'node:crypto';
-import type { Express, Request, Response } from 'express';
+import type { Express, Request, Response, NextFunction } from 'express';
 
 type ArchiveItem = Record<string, any>;
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-safe-v824-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
 
 function isMysql() {
   const driver = String(process.env.ARCHIVE_STORAGE_DRIVER || process.env.APP_STORAGE_DRIVER || 'json').trim().toLowerCase();
@@ -255,8 +274,9 @@ function demoItems() {
   ];
 }
 
-export function registerMotorsportArchiveSafeApiV824(app: Express) {
-  app.get('/api/admin/archive/safe-v824/items', async (_req: Request, res: Response) => {
+export function registerMotorsportArchiveSafeApiV824(app: Express, { requireAdmin }: { requireAdmin?: AdminGuard } = {}) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+  app.get('/api/admin/archive/safe-v824/items', requireArchiveAdmin, async (_req: Request, res: Response) => {
     if (!isMysql()) return res.status(501).json({ ok: false, message: 'safe-v824 está preparado para MySQL/Hostinger.' });
     const connection = await getConnection();
     try {
@@ -269,7 +289,7 @@ export function registerMotorsportArchiveSafeApiV824(app: Express) {
     }
   });
 
-  app.get('/api/admin/archive/safe-v824/items/:id', async (req: Request, res: Response) => {
+  app.get('/api/admin/archive/safe-v824/items/:id', requireArchiveAdmin, async (req: Request, res: Response) => {
     if (!isMysql()) return res.status(501).json({ ok: false, message: 'safe-v824 está preparado para MySQL/Hostinger.' });
     const id = String(req.params.id || '').trim();
     const connection = await getConnection();
@@ -309,11 +329,11 @@ export function registerMotorsportArchiveSafeApiV824(app: Express) {
     }
   }
 
-  app.post('/api/admin/archive/safe-v824/items', saveItem);
-  app.patch('/api/admin/archive/safe-v824/items/:id', saveItem);
-  app.put('/api/admin/archive/safe-v824/items/:id', saveItem);
+  app.post('/api/admin/archive/safe-v824/items', requireArchiveAdmin, saveItem);
+  app.patch('/api/admin/archive/safe-v824/items/:id', requireArchiveAdmin, saveItem);
+  app.put('/api/admin/archive/safe-v824/items/:id', requireArchiveAdmin, saveItem);
 
-  app.delete('/api/admin/archive/safe-v824/items/:id', async (req: Request, res: Response) => {
+  app.delete('/api/admin/archive/safe-v824/items/:id', requireArchiveAdmin, async (req: Request, res: Response) => {
     if (!isMysql()) return res.status(501).json({ ok: false, deleted: false, message: 'safe-v824 está preparado para MySQL/Hostinger.' });
     const id = String(req.params.id || '').trim();
     const connection = await getConnection();
@@ -341,7 +361,7 @@ export function registerMotorsportArchiveSafeApiV824(app: Express) {
     }
   });
 
-  app.post('/api/admin/archive/safe-v824/demo', async (_req: Request, res: Response) => {
+  app.post('/api/admin/archive/safe-v824/demo', requireArchiveAdmin, async (_req: Request, res: Response) => {
     if (!isMysql()) return res.status(501).json({ ok: false, message: 'safe-v824 está preparado para MySQL/Hostinger.' });
     const connection = await getConnection();
 
