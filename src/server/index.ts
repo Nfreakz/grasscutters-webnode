@@ -4972,20 +4972,6 @@ registerAdminUserProfileLinkRoutes(app, { rootDir });
 registerMotorsportArchiveHardDeleteRoutes(app, { rootDir });
 
 
-/* GC Archivo Motorsport archive-media static mount */
-const archiveMediaDir = process.env.ARCHIVE_MEDIA_DIR?.trim()
-  ? path.resolve(process.env.ARCHIVE_MEDIA_DIR.trim())
-  : path.join(rootDir, 'public', 'archive-media');
-
-if (fs.existsSync(archiveMediaDir)) {
-  app.use('/archive-media', express.static(archiveMediaDir, {
-    index: false,
-    immutable: true,
-    maxAge: '30d'
-  }));
-}
-
-
 // GC ACSM PRIORITY MYSQL GUARD V6 START
 async function gcAcsmV6ResolveAdmin(req: any) {
   const access = await getCurrentAdminAccess(req as express.Request);
