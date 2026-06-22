@@ -161,7 +161,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
               <div class="gc-actions">
                 <button class="gc-btn" id="syncStrackerSql" type="button">Sincronizar sTracker → SQL</button>
                 <a class="gc-btn" id="viewStrackerSqlDiagnostics" href="/api/gc/ratings/stracker-sql-diagnostics" target="_blank" rel="noreferrer">Ver diagnóstico</a>
-                <button class="gc-btn gc-btn--primary" id="refreshRatings" type="button">Actualizar</button>
+                <button class="gc-btn gc-btn--primary" id="refreshRatingsSql" type="button">Actualizar</button>
               </div>
             </div>
 
@@ -788,6 +788,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         viewMirrorDiagnostics: $('viewStrackerSqlDiagnostics'),
         retry: $('retryAdmin'),
         refresh: $('refreshRatings'),
+        refreshSql: $('refreshRatingsSql'),
         simulateOfficialRecalc: $('simulateOfficialRecalc'),
         recalculateOfficialRecalc: $('recalculateOfficialRecalc'),
         state: $('ratingsState'),
@@ -1652,10 +1653,12 @@ Quedará registrada y no modificará SR/GSR.`);
         }
       });
 
-      els.refresh?.addEventListener('click', () => load().catch((error) => {
+      const refreshRatingsView = () => load().catch((error) => {
         console.error(error);
         alert(error instanceof Error ? error.message : 'No se pudo actualizar.');
-      }));
+      });
+      els.refresh?.addEventListener('click', refreshRatingsView);
+      els.refreshSql?.addEventListener('click', refreshRatingsView);
 
       els.syncMirror?.addEventListener('click', async () => {
         const button = els.syncMirror;
