@@ -4929,7 +4929,7 @@ app.use((req, res, next) => {
 // GC ACSR/ACSM championship community integration v3.1
 /* GC_STRACKER_CHAMPIONSHIP_SAFETY_REGISTER_V1 */
 registerGcTrackAssetsResolverRoutes(app, { rootDir });
-registerAcsmChampionshipRoutes(app);
+registerAcsmChampionshipRoutes(app, { requireAdmin });
 registerLiveTimingRoutes(app);
 registerGcRatingRoutes(app, {
   isAdmin: async (req) => {
@@ -4957,7 +4957,7 @@ registerGcRatingRoutes(app, {
 
 
 // GC Admin user/profile link routes.
-registerAdminUserProfileLinkRoutes(app, { rootDir });
+registerAdminUserProfileLinkRoutes(app, { rootDir, requireAdmin });
 
 
 // GC Archivo Motorsport hard-delete route must be registered before legacy archive routes.

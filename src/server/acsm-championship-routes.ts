@@ -3,6 +3,23 @@ import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName }
 import { gcTrackMapCandidates, gcTrackPhotoCandidates, resolveGcTrackAssets } from './gc-track-assets-resolver';
 
 type PlainObject = Record<string, any>;
+type RequireAdmin = (req: express.Request, res: express.Response) => Promise<any | null> | any | null;
+
+async function requireAcsmAdmin(req: express.Request, res: express.Response, requireAdmin?: RequireAdmin) {
+  if (!requireAdmin) {
+    res.status(403).json({
+      ok: false,
+      authenticated: false,
+      authorized: false,
+      message: 'Acceso admin requerido.',
+      source: 'acsm-championship-admin-auth-guard'
+    });
+    return null;
+  }
+
+  return await requireAdmin(req, res);
+}
+
 
 const defaultAcsmBaseUrl = 'http://145.239.131.153:8840';
 const defaultChampionshipId = 'ad89ce26-0206-40f2-adec-451cf221d4e6';
@@ -767,7 +784,7 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
   };
 }
 
-export function registerAcsmChampionshipRoutes(app: express.Express) {
+export function registerAcsmChampionshipRoutes(app: express.Express, { requireAdmin }: { requireAdmin?: RequireAdmin } = {}) {
   app.get('/api/community/acsr-championship', async (req, res) => {
     const config = getAcsmChampionshipConfig();
 
@@ -846,7 +863,9 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
     }
   });
 
-  app.get('/api/admin/acsm/championship/probe', async (_req, res) => {
+  app.get('/api/admin/acsm/championship/probe', async (req, res) => {
+    if (!(await requireAcsmAdmin(req, res, requireAdmin))) return;
+
     const config = getAcsmChampionshipConfig();
     const endpoints = [
       ['view', config.championshipUrl],
@@ -890,7 +909,9 @@ export function registerAcsmChampionshipRoutes(app: express.Express) {
     });
   });
 
-  app.get('/api/admin/acsm/championship/inspect', async (_req, res) => {
+  app.get('/api/admin/acsm/championship/inspect', async (req, res) => {
+    if (!(await requireAcsmAdmin(req, res, requireAdmin))) return;
+
     const config = getAcsmChampionshipConfig();
 
     try {

@@ -18,6 +18,26 @@ type PilotPayload = {
   strackerName?: unknown;
   name?: unknown;
 };
+type RequireAdmin = (req: Request, res: Response) => Promise<any | null> | any | null;
+
+function createAdminProfileGuard(requireAdmin?: RequireAdmin) {
+  return async (req: Request, res: Response, next: () => void) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'admin-user-profile-link-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
 
 function ensureDirForFile(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -425,10 +445,11 @@ function registerPilotAvatarRoutes(app: Express, rootDir: string) {
   });
 }
 
-export function registerAdminUserProfileLinkRoutes(app: Express, { rootDir }: { rootDir: string }) {
+export function registerAdminUserProfileLinkRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: RequireAdmin }) {
   registerPilotAvatarRoutes(app, rootDir);
+  const requireProfileAdmin = createAdminProfileGuard(requireAdmin);
 
-  app.post('/api/admin/users/:id/link-pilot', linkPilotJsonBody, async (req: Request, res: Response) => {
+  app.post('/api/admin/users/:id/link-pilot', requireProfileAdmin, linkPilotJsonBody, async (req: Request, res: Response) => {
     try {
       const userId = String(req.params.id || '').trim();
       if (!userId) return res.status(400).json({ ok: false, message: 'Falta usuario.' });
@@ -459,7 +480,7 @@ export function registerAdminUserProfileLinkRoutes(app: Express, { rootDir }: { 
     }
   });
 
-  app.delete('/api/admin/users/:id/link-pilot', async (req: Request, res: Response) => {
+  app.delete('/api/admin/users/:id/link-pilot', requireProfileAdmin, async (req: Request, res: Response) => {
     try {
       const userId = String(req.params.id || '').trim();
       if (!userId) return res.status(400).json({ ok: false, message: 'Falta usuario.' });
