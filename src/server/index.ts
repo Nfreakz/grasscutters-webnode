@@ -6001,11 +6001,11 @@ registerMotorsportArchiveUnifiedAdminRoutes(app, { rootDir, requireAdmin });
 
 
 // GC Archivo Motorsport safe API v8.2.4 routes.
-registerMotorsportArchiveSafeApiV824(app, { requireAdmin });
+// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveSafeApiV824(app, { requireAdmin });
 
 
 // GC Archivo Motorsport import/delete fix v8.2.3 routes.
-registerMotorsportArchiveImportDeleteFixV823(app, { requireAdmin });
+// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveImportDeleteFixV823(app, { requireAdmin });
 
 
 // GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
@@ -6014,9 +6014,9 @@ registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir, requireAdmin });
 
 
 
-registerMotorsportArchiveRoutes(app, { rootDir });
+// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveRoutes(app, { rootDir });
 registerMotorsportArchiveImageUrlRoutes(app, { rootDir, requireAdmin });
-registerMotorsportArchiveDeleteRoutes(app, { rootDir, requireAdmin });
+// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveDeleteRoutes(app, { rootDir, requireAdmin });
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
