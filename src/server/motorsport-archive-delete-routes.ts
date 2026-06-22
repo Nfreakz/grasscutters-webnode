@@ -3,6 +3,26 @@ import path from 'node:path';
 import type { Express, Request, Response } from 'express';
 
 type ArchiveItem = Record<string, any>;
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
 type ArchiveStore = {
   version?: number;
   updatedAt?: string;
@@ -86,8 +106,10 @@ function scrubRelations(store: ArchiveStore, deletedIds: string[]) {
   }
 }
 
-export function registerMotorsportArchiveDeleteRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.delete('/api/admin/archive/items/:id', async (req: Request, res: Response) => {
+export function registerMotorsportArchiveDeleteRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+
+  app.delete('/api/admin/archive/items/:id', requireArchiveAdmin, async (req: Request, res: Response) => {
     const requestedId = String(req.params.id || '').trim();
     const force = String(req.query.force || '').trim() === '1';
 

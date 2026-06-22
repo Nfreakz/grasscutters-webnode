@@ -3,6 +3,27 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
+
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
 const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.svg']);
 const MAX_BYTES = Number(process.env.ARCHIVE_MEDIA_UPLOAD_MAX_BYTES || 8 * 1024 * 1024);
@@ -238,8 +259,10 @@ function addMedia(item: any, mediaItem: any, makePrimary: boolean) {
   return item;
 }
 
-export function registerMotorsportArchiveLocalImageUploadRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.post('/api/admin/archive/unified/items/:id/media/upload', async (req: Request, res: Response) => {
+export function registerMotorsportArchiveLocalImageUploadRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+
+  app.post('/api/admin/archive/unified/items/:id/media/upload', requireArchiveAdmin, async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '').trim();
       const {

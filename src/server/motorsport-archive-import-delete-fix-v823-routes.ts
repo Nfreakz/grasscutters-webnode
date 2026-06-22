@@ -2,6 +2,26 @@ import crypto from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 
 type ArchiveItem = Record<string, any>;
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
 
 function isMysql() {
   const driver = String(process.env.ARCHIVE_STORAGE_DRIVER || process.env.APP_STORAGE_DRIVER || 'json').trim().toLowerCase();
@@ -383,8 +403,10 @@ async function mysqlUpsert(connection: any, item: ArchiveItem, existingId?: stri
   );
 }
 
-export function registerMotorsportArchiveImportDeleteFixV823(app: Express) {
-  app.post('/api/admin/archive/import-csv-web-v823', async (req: Request, res: Response) => {
+export function registerMotorsportArchiveImportDeleteFixV823(app: Express, { requireAdmin }: { requireAdmin?: AdminGuard } = {}) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+
+  app.post('/api/admin/archive/import-csv-web-v823', requireArchiveAdmin, async (req: Request, res: Response) => {
     if (!isMysql()) {
       return res.status(501).json({ ok: false, message: 'Este endpoint v8.2.3 está preparado para MySQL/Hostinger.' });
     }
@@ -466,7 +488,7 @@ export function registerMotorsportArchiveImportDeleteFixV823(app: Express) {
     }
   });
 
-  app.delete('/api/admin/archive/mysql-hard-delete-v823/:id', async (req: Request, res: Response) => {
+  app.delete('/api/admin/archive/mysql-hard-delete-v823/:id', requireArchiveAdmin, async (req: Request, res: Response) => {
     if (!isMysql()) {
       return res.status(501).json({ ok: false, deleted: false, message: 'Este endpoint v8.2.3 está preparado para MySQL/Hostinger.' });
     }

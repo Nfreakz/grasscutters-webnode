@@ -7,6 +7,26 @@ type ArchiveStore = {
   updatedAt?: string;
   items?: any[];
 };
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
 
 function ensureDirForFile(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -56,8 +76,10 @@ function sameIdOrSlug(item: any, wanted: string) {
  * It MUST be registered before legacy archive routes, because older routes may
  * turn DELETE into a soft-hide operation: { status: "hidden", deleted: false }.
  */
-export function registerMotorsportArchiveHardDeleteRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.delete('/api/admin/archive/items/:id', (req: Request, res: Response) => {
+export function registerMotorsportArchiveHardDeleteRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+
+  app.delete('/api/admin/archive/items/:id', requireArchiveAdmin, (req: Request, res: Response) => {
     try {
       const archiveStorageDriver = String(process.env.ARCHIVE_STORAGE_DRIVER || 'json').trim().toLowerCase();
       if (archiveStorageDriver === 'mysql' || archiveStorageDriver === 'mariadb') {

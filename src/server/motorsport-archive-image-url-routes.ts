@@ -4,6 +4,19 @@ import crypto from 'node:crypto';
 import { readMotorsportArchiveStoreAsync, writeMotorsportArchiveStoreAsync } from '../lib/motorsport-archive/storage';
 
 function ensureDir(dir: string) { fs.mkdirSync(dir, { recursive: true }); }
+type AdminGuard = (req: any, res: any) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: any, res: any, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({ ok: false, authenticated: false, authorized: false, message: 'Acceso admin requerido.', source: 'archive-image-url-auth-guard' });
+    }
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
 function compact(value: any) { return String(value ?? '').replace(/\s+/g, ' ').trim(); }
 function stripHtml(value: any) { return compact(String(value ?? '').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/&nbsp;/g, ' ')); }
 function slugify(value: string) { return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'item'; }
@@ -115,13 +128,14 @@ function sendArchiveMediaFile(rootDir: string, req: any, res: any, next: any) {
   return res.sendFile(filePath);
 }
 
-export function registerMotorsportArchiveImageUrlRoutes(app: any, { rootDir }: { rootDir: string }) {
+export function registerMotorsportArchiveImageUrlRoutes(app: any, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
   const mediaRoot = getArchiveMediaRoot(rootDir);
   const mediaPublicUrl = getArchiveMediaPublicUrl();
   ensureDir(mediaRoot);
   
 
-  app.post('/api/admin/archive/media/inspect-url', async (req: any, res: any) => {
+  app.post('/api/admin/archive/media/inspect-url', requireArchiveAdmin, async (req: any, res: any) => {
     try {
       const imageUrl = String(req.body?.imageUrl || req.body?.url || '').trim();
       const metadata = await inspectImageUrl(imageUrl);
@@ -131,7 +145,7 @@ export function registerMotorsportArchiveImageUrlRoutes(app: any, { rootDir }: {
     }
   });
 
-  app.post('/api/admin/archive/items/:id/media/from-url', async (req: any, res: any) => {
+  app.post('/api/admin/archive/items/:id/media/from-url', requireArchiveAdmin, async (req: any, res: any) => {
     const itemId = String(req.params.id || '').trim();
     const originalImageUrl = String(req.body?.imageUrl || req.body?.url || '').trim();
     if (!itemId) return res.status(400).json({ ok: false, error: 'Falta el ID de la ficha.' });

@@ -4961,7 +4961,7 @@ registerAdminUserProfileLinkRoutes(app, { rootDir });
 
 
 // GC Archivo Motorsport hard-delete route must be registered before legacy archive routes.
-registerMotorsportArchiveHardDeleteRoutes(app, { rootDir });
+registerMotorsportArchiveHardDeleteRoutes(app, { rootDir, requireAdmin });
 
 
 // GC ACSM PRIORITY MYSQL GUARD V6 START
@@ -5989,11 +5989,11 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 // GC Archivo Motorsport media manager v8.4.2 routes.
-registerMotorsportArchiveMediaManagerRoutes(app, { rootDir });
+registerMotorsportArchiveMediaManagerRoutes(app, { rootDir, requireAdmin });
 
 
 // GC Archivo Motorsport local image upload v8.4 routes.
-registerMotorsportArchiveLocalImageUploadRoutes(app, { rootDir });
+registerMotorsportArchiveLocalImageUploadRoutes(app, { rootDir, requireAdmin });
 
 
 // GC Archivo Motorsport unified admin v8.3 routes.
@@ -6005,7 +6005,7 @@ registerMotorsportArchiveSafeApiV824(app, { requireAdmin });
 
 
 // GC Archivo Motorsport import/delete fix v8.2.3 routes.
-registerMotorsportArchiveImportDeleteFixV823(app);
+registerMotorsportArchiveImportDeleteFixV823(app, { requireAdmin });
 
 
 // GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
@@ -6015,8 +6015,8 @@ registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir, requireAdmin });
 
 
 registerMotorsportArchiveRoutes(app, { rootDir });
-registerMotorsportArchiveImageUrlRoutes(app, { rootDir });
-registerMotorsportArchiveDeleteRoutes(app, { rootDir });
+registerMotorsportArchiveImageUrlRoutes(app, { rootDir, requireAdmin });
+registerMotorsportArchiveDeleteRoutes(app, { rootDir, requireAdmin });
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,

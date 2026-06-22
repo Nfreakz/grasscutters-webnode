@@ -2,6 +2,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Express, Request, Response } from 'express';
 
+type AdminGuard = (req: Request, res: Response) => Promise<unknown | null> | unknown | null;
+
+function createArchiveAdminGuard(requireAdmin?: AdminGuard) {
+  return async (req: Request, res: Response, next: any) => {
+    if (!requireAdmin) {
+      return res.status(403).json({
+        ok: false,
+        authenticated: false,
+        authorized: false,
+        message: 'Acceso admin requerido.',
+        source: 'archive-admin-auth-guard'
+      });
+    }
+
+    const context = await requireAdmin(req, res);
+    if (!context) return;
+    next();
+  };
+}
+
+
 function isMysql() {
   const driver = String(process.env.ARCHIVE_STORAGE_DRIVER || process.env.APP_STORAGE_DRIVER || 'json').trim().toLowerCase();
   return driver === 'mysql' || driver === 'mariadb';
@@ -166,8 +187,10 @@ async function withItem(rootDir: string, id: string, callback: (item: any) => an
   return { found: true, storage: 'json', item: store.items[index], result };
 }
 
-export function registerMotorsportArchiveMediaManagerRoutes(app: Express, { rootDir }: { rootDir: string }) {
-  app.patch('/api/admin/archive/unified/items/:id/media/:mediaId', async (req: Request, res: Response) => {
+export function registerMotorsportArchiveMediaManagerRoutes(app: Express, { rootDir, requireAdmin }: { rootDir: string; requireAdmin?: AdminGuard }) {
+  const requireArchiveAdmin = createArchiveAdminGuard(requireAdmin);
+
+  app.patch('/api/admin/archive/unified/items/:id/media/:mediaId', requireArchiveAdmin, async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '').trim();
       const mediaId = String(req.params.mediaId || '').trim();
@@ -206,13 +229,13 @@ export function registerMotorsportArchiveMediaManagerRoutes(app: Express, { root
     }
   });
 
-  app.post('/api/admin/archive/unified/items/:id/media/:mediaId/primary', async (req: Request, res: Response) => {
+  app.post('/api/admin/archive/unified/items/:id/media/:mediaId/primary', requireArchiveAdmin, async (req: Request, res: Response) => {
     req.body = { ...(req.body || {}), makePrimary: true };
     const handler = app._router?.stack;
     return res.status(307).json({ ok: false, message: 'Usa PATCH con makePrimary:true.' });
   });
 
-  app.delete('/api/admin/archive/unified/items/:id/media/:mediaId', async (req: Request, res: Response) => {
+  app.delete('/api/admin/archive/unified/items/:id/media/:mediaId', requireArchiveAdmin, async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '').trim();
       const mediaId = String(req.params.mediaId || '').trim();
