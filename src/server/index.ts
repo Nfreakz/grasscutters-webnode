@@ -9220,22 +9220,50 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
     const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
     const sort = getQueryString(req, 'sort', 'recent');
     const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
-    const publicItems = items.filter(gcComboCanonicalIsPublicItemV1).slice(0, limit);
+    const publicAllItems = items.filter(gcComboCanonicalIsPublicItemV1);
+    const publicItems = publicAllItems.slice(0, limit);
+    const activeCombo = publicAllItems[0] || null;
+    const readComboNumber = (...values: any[]) => {
+      for (const value of values) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return 0;
+    };
+    const totalLaps = publicAllItems.reduce((sum, item: any) => sum + readComboNumber(item?.totalLaps, item?.summary?.totalLaps, item?.laps, item?.lapCount), 0);
+    const totalValidLaps = publicAllItems.reduce((sum, item: any) => sum + readComboNumber(item?.validLaps, item?.summary?.validLaps, item?.validLapCount), 0);
+    const uniqueCars = new Set<string>();
+    for (const item of publicAllItems) {
+      const carGroups = [item?.publicComboCars, item?.cars, item?.allCars, item?.carList, item?.carModels];
+      for (const group of carGroups) {
+        if (!Array.isArray(group)) continue;
+        for (const car of group) {
+          const key = String(car?.id ?? car?.carId ?? car?.code ?? car?.name ?? car).trim();
+          if (key) uniqueCars.add(key);
+        }
+      }
+    }
 
     res.json({
       ok: true,
       source: 'gc-data-core',
       dataSource: source,
+      mode: source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
       comboCore: 'gc-combo-canonical-public-filter-v1',
       generatedAt: new Date().toISOString(),
       stracker: gcDataCorePublicStracker(dataCoreStracker),
       mysqlMirror: mysqlMirror ?? null,
       fallbackReason: fallbackReason ?? null,
       count: publicItems.length,
-      totalMatched: items.filter(gcComboCanonicalIsPublicItemV1).length,
-      totalCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
-      publicCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
+      totalMatched: publicAllItems.length,
+      totalCombos: publicAllItems.length,
+      publicCombos: publicAllItems.length,
+      activeCombos: publicAllItems.length,
       rawCombos: items.length,
+      activeCombo,
+      totalLaps,
+      totalValidLaps,
+      carsCount: uniqueCars.size,
       items: publicItems,
       policy: {
         canonicalGrouping: 'track variants grouped by cleaned canonical track',
@@ -13900,5 +13928,4 @@ app.listen(PORT, HOST, async () => {
   }
   startAutoSyncScheduler();
 });
-
 
