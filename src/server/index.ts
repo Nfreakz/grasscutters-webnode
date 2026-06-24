@@ -8477,6 +8477,43 @@ function gcComboCanonicalDateMsV1(row: any) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// GC_TEMP_COMBO_SPLIT_VILAREAL_CHICANE_2026_06_24_START
+const GC_TEMP_VILAREAL_CHICANE_SPLIT_ENABLED_V1 = String(process.env.GC_COMBO_VILAREAL_CHICANE_SPLIT ?? 'true').toLowerCase() !== 'false';
+const GC_TEMP_VILAREAL_CHICANE_COMBO_ID_V1 = String(process.env.GC_COMBO_VILAREAL_CHICANE_COMBO_ID ?? '67');
+const GC_TEMP_VILAREAL_CHICANE_FROM_MS_V1 = Date.parse(process.env.GC_COMBO_VILAREAL_CHICANE_FROM ?? '2026-06-22T00:00:00+02:00');
+const GC_TEMP_VILAREAL_CHICANE_CUTOFF_ISO_V1 = process.env.GC_COMBO_VILAREAL_CHICANE_CUTOFF ?? '2026-06-24T12:25:00+02:00';
+const GC_TEMP_VILAREAL_CHICANE_CUTOFF_MS_V1 = Date.parse(GC_TEMP_VILAREAL_CHICANE_CUTOFF_ISO_V1);
+
+function gcComboCanonicalTemporalSplitV1(row: any, canonicalKey: string, trackName: string, dateMs: number) {
+  if (!GC_TEMP_VILAREAL_CHICANE_SPLIT_ENABLED_V1) return null;
+  if (canonicalKey !== 'vilareal') return null;
+  if (!Number.isFinite(GC_TEMP_VILAREAL_CHICANE_CUTOFF_MS_V1)) return null;
+
+  const rowComboId = gcComboCanonicalComboIdV1(row);
+  if (String(rowComboId ?? '') !== GC_TEMP_VILAREAL_CHICANE_COMBO_ID_V1) return null;
+  if (!dateMs) return null;
+  if (Number.isFinite(GC_TEMP_VILAREAL_CHICANE_FROM_MS_V1) && dateMs < GC_TEMP_VILAREAL_CHICANE_FROM_MS_V1) return null;
+
+  const isAfterCutoff = dateMs >= GC_TEMP_VILAREAL_CHICANE_CUTOFF_MS_V1;
+  return {
+    canonicalKey: isAfterCutoff ? 'vilareal_chicane_20260624' : 'vilareal_pre_chicane_20260624',
+    trackName: isAfterCutoff ? 'Vila Real · Chicane' : 'Vila Real · Pre-chicane',
+    comboIdOverride: isAfterCutoff ? GC_TEMP_VILAREAL_CHICANE_COMBO_ID_V1 : `${GC_TEMP_VILAREAL_CHICANE_COMBO_ID_V1}-pre-chicane`,
+    variantSuffix: isAfterCutoff ? '__chicane_20260624' : '__pre_chicane_20260624',
+    temporalSplit: {
+      enabled: true,
+      source: 'GC_TEMP_COMBO_SPLIT_VILAREAL_CHICANE_2026_06_24',
+      reason: 'Cambio de configuración de pista: chicane activada durante el combo semanal.',
+      originalCanonicalKey: canonicalKey,
+      originalTrackName: trackName,
+      originalComboId: GC_TEMP_VILAREAL_CHICANE_COMBO_ID_V1,
+      window: isAfterCutoff ? 'post-chicane' : 'pre-chicane',
+      cutoffIso: GC_TEMP_VILAREAL_CHICANE_CUTOFF_ISO_V1
+    }
+  };
+}
+// GC_TEMP_COMBO_SPLIT_VILAREAL_CHICANE_2026_06_24_END
+
 function gcComboCanonicalSpeedV1(row: any) {
   return gcComboCanonicalNumberV1(gcComboCanonicalPickV1(row, ['maxSpeedKmh', 'MaxSpeed_KMH', 'maxSpeed']), 0);
 }
@@ -8745,17 +8782,22 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
   const groups = new Map<string, any>();
 
   for (const row of laps) {
-    const canonicalKey = gcComboCanonicalTrackKeyV1(row);
-    const variantKey = gcComboCanonicalVariantKeyV1(row);
-    const trackName = gcComboCanonicalTrackDisplayV1(row);
-    const variantName = gcComboCanonicalTitleV1(gcComboCanonicalTrackNameV1(row), trackName);
+    const baseCanonicalKey = gcComboCanonicalTrackKeyV1(row);
+    const baseTrackName = gcComboCanonicalTrackDisplayV1(row);
     const dateMs = gcComboCanonicalDateMsV1(row);
+    const temporalSplit = gcComboCanonicalTemporalSplitV1(row, baseCanonicalKey, baseTrackName, dateMs);
+    const canonicalKey = temporalSplit?.canonicalKey || baseCanonicalKey;
+    const variantKey = gcComboCanonicalVariantKeyV1(row) + (temporalSplit?.variantSuffix || '');
+    const trackName = temporalSplit?.trackName || baseTrackName;
+    const variantName = temporalSplit?.trackName || gcComboCanonicalTitleV1(gcComboCanonicalTrackNameV1(row), trackName);
 
     if (!groups.has(canonicalKey)) {
       groups.set(canonicalKey, {
         canonicalKey,
         canonicalTrackName: trackName,
         trackName,
+        comboIdOverride: temporalSplit?.comboIdOverride || null,
+        temporalSplit: temporalSplit?.temporalSplit || null,
         totalLaps: 0,
         validLaps: 0,
         invalidLaps: 0,
@@ -8875,7 +8917,7 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
     const publicCars = allCars;
     const hiddenLowLapCars: any[] = [];
 
-    const comboId = mainVariant?.comboId ?? [...group.comboIds][0] ?? group.canonicalKey;
+    const comboId = group.comboIdOverride ?? mainVariant?.comboId ?? [...group.comboIds][0] ?? group.canonicalKey;
     const allRows = group.rows || [];
     const leaderboard = gcComboCanonicalBuildLeaderboardV1(allRows).slice(0, 100);
     const recentLaps = [...allRows]
@@ -8898,6 +8940,7 @@ function gcComboCanonicalBuildGroupsV1(laps: any[]) {
         displayName: group.trackName,
         canonicalKey: group.canonicalKey
       },
+      temporalSplit: group.temporalSplit || null,
       cars: publicCars,
       publicComboCars: publicCars,
       mainVariantAllCars: mainCars,
