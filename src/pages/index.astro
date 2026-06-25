@@ -3838,7 +3838,11 @@ const home2ArchiveSeed = [];
           'bestLaps',
           'bestLapsCount',
           'leaderboardCount',
-          'validLapsCount'
+          'validLapsCount',
+          'validLaps',
+          'valid_laps',
+          'totalValidLaps',
+          'totalValidLapCount'
         ]);
       };
 
@@ -4144,21 +4148,15 @@ const home2ArchiveSeed = [];
         const serverSeed = Array.isArray(window.__GC_HOME2_ARCHIVE__) ? window.__GC_HOME2_ARCHIVE__ : [];
 
         const endpoints = [
-          '/api/archive/items.json?limit=100',
-          '/api/archive/items.json?limit=100&status=published',
-          '/api/archive/items.json?featured=1&limit=100',
-          '/api/archive/items?limit=100',
-          '/api/archive/items?featured=1&limit=100',
-          '/api/archive',
-          '/api/archivo',
-          '/data/archive/items.json',
-          '/data/app/motorsport-archive.json'
+          '/api/gc/archive-home?limit=80',
+          '/data/app/motorsport-archive.json',
+          '/data/archive/items.json'
         ];
 
         let items = getArray(serverSeed);
 
-        // En producción el Archivo público no depende de esos endpoints: /archivo usa archiveRuntime server-side.
-        // Por eso home2 debe usar primero el seed SSR y solo probar endpoints si no existe seed.
+        // Home no debe probar rutas legacy 404 en cascada. Usa el endpoint ligero
+        // /api/gc/archive-home y, solo si falla, datos estáticos.
         if (!items.length) {
           let payload = null;
           for (const endpoint of endpoints) {

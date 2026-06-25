@@ -2330,6 +2330,7 @@ function gcIsCachedPublicApi(url: string) {
     '/api/gc/recent-laps',
     '/api/gc/leaderboard',
     '/api/gc/cache/status',
+    '/api/gc/archive-home',
     '/api/gc/ratings/championship',
     '/api/live-timing',
     '/gc-data/hotlaps',
@@ -12417,6 +12418,120 @@ app.get('/api/gc/active-combo', async (req, res) => {
 });
 
 
+
+let gcArchiveHomeCacheV3: { createdAt: number; limit: number; payload: any } | null = null;
+
+app.get('/api/gc/archive-home', async (req, res) => {
+  try {
+    const limit = gcDataCoreQueryNumber(req, 'limit', 80, 1, 120);
+    const ttlMs = Math.max(15000, gcPublicHttpCacheSeconds() * 1000);
+    const now = Date.now();
+
+    if (gcArchiveHomeCacheV3 && gcArchiveHomeCacheV3.limit >= limit && now - gcArchiveHomeCacheV3.createdAt <= ttlMs) {
+      const cached = gcArchiveHomeCacheV3.payload;
+      res.json({
+        ...cached,
+        cache: { hit: true, ttlMs, createdAt: new Date(gcArchiveHomeCacheV3.createdAt).toISOString() },
+        items: Array.isArray(cached.items) ? cached.items.slice(0, limit) : []
+      });
+      return;
+    }
+
+    const archiveRuntime: any = await import('../lib/archive/archiveRuntime');
+    const stats = await archiveRuntime.getArchiveStats();
+    const normalizeArchiveType = archiveRuntime.normalizeArchiveType || ((value: unknown) => String(value || '').trim().toLowerCase());
+    const prettifyArchiveType = archiveRuntime.prettifyArchiveType || ((value: unknown) => String(value || 'Archivo'));
+    const archiveItemHref = archiveRuntime.archiveItemHref || ((item: any) => item?.href || (item?.slug ? '/archivo/' + encodeURIComponent(String(item.slug)) + '/' : '/archivo'));
+    const getArchiveImage = archiveRuntime.getArchiveImage || ((item: any) => item?.image || item?.imageUrl || item?.coverUrl || '');
+    const getArchiveSummary = archiveRuntime.getArchiveSummary || ((item: any) => item?.summary || item?.description || '');
+
+    const rawItems = Array.isArray(stats?.items) ? stats.items : [];
+    const items = rawItems
+      .filter((item: any) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(normalizeArchiveType(item?.tipo || item?.category || item?.type || '')))
+      .slice(0, limit)
+      .map((item: any) => {
+        const tipo = normalizeArchiveType(item?.tipo || item?.category || item?.type || '');
+        const summary = getArchiveSummary(item);
+        const image = getArchiveImage(item);
+        return {
+          id: item?.id || `${tipo}-${item?.slug || item?.nombre || item?.title || ''}`,
+          tipo,
+          type: tipo,
+          category: item?.category || item?.tipo || '',
+          slug: item?.slug || '',
+          nombre: item?.nombre || item?.title || '',
+          title: item?.title || item?.nombre || '',
+          status: item?.status || item?.estado || 'published',
+          featured: item?.featured || item?.destacado || item?.isFeatured || false,
+          href: archiveItemHref(item),
+          image,
+          imageUrl: image,
+          coverUrl: image,
+          summary,
+          descripcion_corta: summary,
+          description: summary,
+          tipoLabel: prettifyArchiveType(item?.tipo || item?.category || item?.type || ''),
+          pais: item?.pais || item?.país || item?.nacionalidad || item?.ubicacion || '',
+          periodo: item?.periodo || item?.epoca || item?.años_actividad || item?.anos_actividad || item?.fecha_apertura || '',
+          tags: item?.tags || '',
+          fabricante: item?.fabricante || '',
+          modelo: item?.modelo || item?.modelo_base || '',
+          motor: item?.motor || '',
+          disciplina: item?.disciplina || '',
+          circuitos_asociados: item?.circuitos_asociados || '',
+          coches_asociados: item?.coches_asociados || '',
+          pilotos_asociados: item?.pilotos_asociados || '',
+          search: [
+            item?.nombre,
+            item?.title,
+            item?.slug,
+            item?.tipo,
+            prettifyArchiveType(item?.tipo || item?.category || item?.type || ''),
+            summary,
+            item?.pais,
+            item?.país,
+            item?.nacionalidad,
+            item?.ubicacion,
+            item?.periodo,
+            item?.epoca,
+            item?.tags,
+            item?.fabricante,
+            item?.modelo,
+            item?.modelo_base,
+            item?.motor,
+            item?.disciplina,
+            item?.circuitos_asociados,
+            item?.coches_asociados,
+            item?.pilotos_asociados
+          ].filter(Boolean).join(' ')
+        };
+      });
+
+    const payload = {
+      ok: true,
+      source: 'gc-archive-home-v3',
+      generatedAt: new Date().toISOString(),
+      count: items.length,
+      total: rawItems.length,
+      items
+    };
+
+    gcArchiveHomeCacheV3 = { createdAt: Date.now(), limit, payload };
+    res.json({ ...payload, cache: { hit: false, ttlMs } });
+  } catch (error) {
+    console.error('[GC Archive Home] /api/gc/archive-home:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'gc-archive-home-v3',
+      generatedAt: new Date().toISOString(),
+      count: 0,
+      items: [],
+      message: 'No se pudo generar el resumen ligero del Archivo para Home.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+
 app.get('/api/gc/home-summary', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
@@ -12441,27 +12556,59 @@ app.get('/api/gc/home-summary', async (req, res) => {
       leaderboardLimit: Math.max(5, limit)
     });
 
-    const rawLeaderboard = Array.isArray(payload.data?.leaderboard) ? payload.data.leaderboard : [];
+    let canonicalActiveCombo: any = null;
+    try {
+      const stracker = getStrackerConfig();
+      const canonical = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', 'recent');
+      const publicAllItems = canonical.items.filter(gcComboCanonicalIsPublicItemV1);
+      canonicalActiveCombo = publicAllItems[0] || null;
+    } catch (canonicalError) {
+      if (process.env.GC_DEBUG_API === 'true') console.warn('[GC Home Summary] canonical active combo fallback:', canonicalError);
+    }
+
+    const activeComboRaw = canonicalActiveCombo || payload.data?.activeCombo || {};
+    const rawLeaderboard = Array.isArray(activeComboRaw?.leaderboard) && activeComboRaw.leaderboard.length
+      ? activeComboRaw.leaderboard
+      : Array.isArray(payload.data?.leaderboard) ? payload.data.leaderboard : [];
     const topComboTimes = rawLeaderboard.slice(0, limit).map((lap: any, index: number) => ({
       ...lap,
       position: index + 1,
       medal: index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : null
     }));
 
-    const activeComboRaw = payload.data?.activeCombo || {};
-    const bestLap = topComboTimes[0] || payload.data?.bestLap || null;
+    const recentLaps = Array.isArray(payload.data?.recentLaps) ? payload.data.recentLaps : [];
+    const bestLap = topComboTimes[0] || activeComboRaw?.summary?.bestLap || payload.data?.bestLap || null;
     const activeCombo = {
       ...activeComboRaw,
       leaderboard: topComboTimes,
+      recentLaps: Array.isArray(activeComboRaw?.recentLaps) ? activeComboRaw.recentLaps.slice(0, Math.max(20, limit)) : undefined,
       bestLap,
-      bestDriverName: pick(activeComboRaw, ['bestDriverName', 'bestPilotName', 'bestLap.driverName'], pick(bestLap, ['driverName', 'playerName', 'driver.name'], '--')),
-      bestCarName: pick(activeComboRaw, ['bestCarName', 'bestLap.carName'], pick(bestLap, ['carName', 'car.name'], '--')),
-      bestLapTimeFormatted: pick(activeComboRaw, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLap.lapTime'], pick(bestLap, ['lapTimeFormatted', 'lapTime'], '--'))
+      bestDriverName: pick(activeComboRaw, ['bestDriverName', 'bestPilotName', 'bestLap.driverName', 'summary.bestLap.driverName'], pick(bestLap, ['driverName', 'playerName', 'driver.name'], '--')),
+      bestCarName: pick(activeComboRaw, ['bestCarName', 'bestLap.carName', 'summary.bestLap.carName'], pick(bestLap, ['carName', 'car.name'], '--')),
+      bestLapTimeFormatted: pick(activeComboRaw, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLap.lapTime', 'summary.bestLapTime'], pick(bestLap, ['lapTimeFormatted', 'lapTime'], '--'))
     };
 
-    const recentLaps = Array.isArray(payload.data?.recentLaps) ? payload.data.recentLaps : [];
-    const stats = payload.data?.stats || {};
-    const scopedStats = payload.data?.scopedStats || {};
+    const withHomeMetricAliases = (input: any = {}) => {
+      const totalLaps = Number(input.totalLaps ?? input.lapsCount ?? 0);
+      const validLaps = Number(input.validLaps ?? input.validLapsCount ?? input.totalValidLaps ?? 0);
+      const driversCount = Number(input.driversCount ?? input.totalDrivers ?? 0);
+      const carsCount = Number(input.carsCount ?? 0);
+      return {
+        ...input,
+        lapsCount: Number.isFinite(totalLaps) && totalLaps > 0 ? totalLaps : input.lapsCount,
+        totalServerLaps: Number.isFinite(totalLaps) && totalLaps > 0 ? totalLaps : input.totalServerLaps,
+        validLapsCount: Number.isFinite(validLaps) && validLaps > 0 ? validLaps : input.validLapsCount,
+        totalValidLaps: Number.isFinite(validLaps) && validLaps > 0 ? validLaps : input.totalValidLaps,
+        hotlaps: Number.isFinite(validLaps) && validLaps > 0 ? validLaps : input.hotlaps,
+        hotlapsCount: Number.isFinite(validLaps) && validLaps > 0 ? validLaps : input.hotlapsCount,
+        totalHotlaps: Number.isFinite(validLaps) && validLaps > 0 ? validLaps : input.totalHotlaps,
+        totalDrivers: Number.isFinite(driversCount) && driversCount > 0 ? driversCount : input.totalDrivers,
+        driversTotal: Number.isFinite(driversCount) && driversCount > 0 ? driversCount : input.driversTotal,
+        totalCars: Number.isFinite(carsCount) && carsCount > 0 ? carsCount : input.totalCars
+      };
+    };
+    const stats = withHomeMetricAliases(payload.data?.stats || {});
+    const scopedStats = withHomeMetricAliases(payload.data?.scopedStats || {});
 
     res.json({
       ok: payload.ok !== false,

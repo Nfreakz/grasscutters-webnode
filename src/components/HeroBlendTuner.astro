@@ -1194,6 +1194,10 @@
          fuente que la tabla "Mejores pilotos del combo".
       */
 
+      // GC_HOME_PERF_V3: la portada ya pinta vueltas/coche/hotlaps desde /api/gc/home-summary.
+      // Evitamos que este componente vuelva a llamar /api/gc/combos?limit=1 en paralelo.
+      if (document.querySelector('[data-gc-home2]')) return;
+
       refreshComboLapTotal();
       window.setTimeout(refreshComboLapTotal, 1200);
       window.setTimeout(refreshComboLapTotal, 3200);
