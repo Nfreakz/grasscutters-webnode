@@ -10,7 +10,7 @@ import '../styles/public/gc-rating-badges.css';
           <img id="profilePilotAvatar" src="/images/pilot-avatar-default.png" alt="Avatar del piloto" loading="lazy" decoding="async" />
         </div>
         <div class="gc-profile-identity-v30">
-          <span class="gc-kicker">Ficha de piloto</span>
+          <span class="gc-kicker">Race Control ID</span>
           <h1 class="gc-title" id="profileTitle">Panel de piloto</h1>
           <p class="gc-subtitle" id="profileText">Rendimiento, equipo, hotlaps y actividad competitiva desde stracker.</p>
           <div class="gc-hero__meta" id="profileBadges">
@@ -23,7 +23,7 @@ import '../styles/public/gc-rating-badges.css';
 
       <aside class="gc-live-panel gc-profile-account-panel-v20">
         <div class="gc-live-panel__title">
-          <span>Cuenta</span>
+          <span>Licencia</span>
           <strong id="accountState">...</strong>
         </div>
         <div class="gc-status-list" id="profileMeta">
@@ -43,7 +43,7 @@ import '../styles/public/gc-rating-badges.css';
       <div class="gc-section gc-profile-summary-card-v20">
         <div class="gc-section-head">
           <div>
-            <span class="gc-kicker">Rendimiento</span>
+            <span class="gc-kicker">Race data</span>
             <h2>Resumen competitivo</h2>
             <p id="summaryMeta">Cargando métricas...</p>
           </div>
@@ -56,9 +56,9 @@ import '../styles/public/gc-rating-badges.css';
       <aside class="gc-section gc-profile-link-card-v1 gc-profile-link-card-v20">
         <div class="gc-section-head">
           <div>
-            <span class="gc-kicker">Cuenta</span>
-            <h2>Piloto vinculado</h2>
-            <p>Cuenta y vínculo stracker.</p>
+            <span class="gc-kicker">Paddock</span>
+            <h2>Identidad del piloto</h2>
+            <p>Cuenta, avatar, equipo y vínculo stracker.</p>
           </div>
         </div>
 
@@ -865,6 +865,379 @@ import '../styles/public/gc-rating-badges.css';
         padding-inline:16px;
       }
     }
+
+
+    /* GC_PROFILE_HOME_RACE_V2_START
+     * Rediseño visual de /perfil para acercarlo a Home/Race Control.
+     * No toca datos ni endpoints: solo reestructura la presencia visual.
+     */
+    .gc-profile-page-v20{
+      max-width:1500px;
+      padding-inline:0;
+      gap:16px;
+    }
+
+    .gc-profile-page-v20 .gc-kicker{
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      color:var(--accent,#9dff00);
+      letter-spacing:.14em;
+      text-shadow:0 0 16px rgba(157,255,0,.22);
+    }
+
+    .gc-profile-hero-v20{
+      isolation:isolate;
+      min-height:330px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(340px,410px);
+      gap:18px;
+      padding:0!important;
+      border-radius:0;
+      border:1px solid rgba(157,255,0,.32);
+      background:
+        linear-gradient(90deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.52) 44%,rgba(4,16,8,.18) 100%),
+        radial-gradient(circle at 20% 26%,rgba(157,255,0,.16),transparent 19rem),
+        radial-gradient(circle at 88% 8%,rgba(53,211,255,.12),transparent 17rem),
+        repeating-linear-gradient(90deg,rgba(157,255,0,.035) 0 1px,transparent 1px 72px),
+        linear-gradient(180deg,rgba(8,22,10,.78),rgba(2,5,3,.94));
+      box-shadow:0 24px 90px rgba(0,0,0,.34), inset 0 0 0 1px rgba(255,255,255,.035);
+    }
+
+    .gc-profile-hero-v20::before{
+      content:"PILOT DATA / GRASSCUTTERS";
+      position:absolute;
+      left:clamp(18px,2.4vw,34px);
+      top:16px;
+      z-index:1;
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      font-size:.64rem;
+      font-weight:900;
+      letter-spacing:.24em;
+      color:rgba(157,255,0,.42);
+      pointer-events:none;
+    }
+
+    .gc-profile-hero-v20::after{
+      opacity:.26;
+      background:
+        linear-gradient(90deg,rgba(157,255,0,.10) 1px,transparent 1px),
+        linear-gradient(0deg,rgba(157,255,0,.055) 1px,transparent 1px);
+      background-size:54px 54px;
+      mask-image:linear-gradient(90deg,rgba(0,0,0,.55),transparent 76%);
+    }
+
+    .gc-profile-driver-head-v30{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      align-items:end;
+      align-content:end;
+      gap:clamp(18px,2.5vw,34px);
+      min-height:330px;
+      padding:clamp(52px,5vw,78px) clamp(24px,4vw,54px) clamp(28px,3.6vw,46px)!important;
+    }
+
+    .gc-profile-avatar-ring-v30{
+      width:clamp(96px,11vw,150px);
+      padding:4px;
+      background:conic-gradient(from 220deg,var(--accent,#9dff00),#34d3ff,var(--accent,#9dff00));
+      box-shadow:0 0 34px rgba(157,255,0,.22),0 0 54px rgba(53,211,255,.10);
+    }
+
+    .gc-profile-avatar-ring-v30 img{
+      filter:saturate(1.05) contrast(1.05);
+    }
+
+    .gc-profile-identity-v30 .gc-title{
+      font-size:clamp(4.2rem,10.5vw,8.4rem);
+      line-height:.78;
+      letter-spacing:-.09em;
+      margin:8px 0 12px;
+      max-width:820px;
+      color:#f6fff1;
+      text-shadow:0 12px 42px rgba(0,0,0,.72),0 0 26px rgba(157,255,0,.10);
+    }
+
+    .gc-profile-identity-v30 .gc-subtitle{
+      max-width:760px;
+      color:rgba(232,255,224,.76);
+      font-size:clamp(.95rem,1.25vw,1.08rem);
+    }
+
+    .gc-profile-hero-v20 .gc-hero__meta{
+      margin-top:18px;
+      gap:8px;
+    }
+
+    .gc-profile-hero-v20 .gc-chip{
+      border-radius:0;
+      background:rgba(0,0,0,.32);
+      border-color:rgba(157,255,0,.28);
+      color:#e9ffe0;
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      letter-spacing:.1em;
+    }
+
+    .gc-profile-account-panel-v20{
+      width:auto;
+      margin:16px 16px 16px 0;
+      align-self:stretch;
+      justify-self:stretch;
+      border-radius:0;
+      border:1px solid rgba(157,255,0,.22);
+      background:rgba(0,0,0,.38);
+      backdrop-filter:blur(14px);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.028),0 16px 60px rgba(0,0,0,.28);
+    }
+
+    .gc-profile-account-panel-v20 .gc-live-panel__title{
+      min-height:50px;
+      padding:14px 16px;
+      background:linear-gradient(90deg,rgba(157,255,0,.08),rgba(0,0,0,.16));
+      border-bottom:1px solid rgba(157,255,0,.16);
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      letter-spacing:.12em;
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row{
+      min-height:47px;
+      padding:12px 16px;
+      border-color:rgba(157,255,0,.10);
+      background:rgba(0,0,0,.16);
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row span{
+      color:rgba(232,255,224,.64);
+    }
+
+    .gc-profile-account-panel-v20 .gc-status-row strong{
+      color:#fff;
+      font-weight:950;
+    }
+
+    .gc-profile-metrics-v20{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:0;
+      border-radius:0;
+      border:1px solid rgba(157,255,0,.30);
+      background:rgba(0,0,0,.34);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);
+    }
+
+    .gc-profile-metrics-v20 .gc-metric{
+      min-height:94px;
+      padding:15px 18px;
+      border-color:rgba(157,255,0,.14);
+      background:linear-gradient(180deg,rgba(157,255,0,.06),rgba(0,0,0,.12));
+    }
+
+    .gc-profile-metrics-v20 .gc-metric span,
+    .gc-profile-metrics-v20 .gc-metric small{
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+
+    .gc-profile-metrics-v20 .gc-metric span{color:rgba(157,255,0,.72);}
+    .gc-profile-metrics-v20 .gc-metric small{color:rgba(232,255,224,.38);}
+
+    .gc-profile-metrics-v20 .gc-metric strong{
+      font-size:clamp(2rem,3.4vw,3.25rem);
+      color:#fff;
+      text-shadow:0 0 24px rgba(157,255,0,.09);
+    }
+
+    .gc-profile-main-grid-v20{
+      grid-template-columns:minmax(0,1fr) minmax(380px,.62fr);
+      gap:16px;
+    }
+
+    .gc-profile-data-grid-v20{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .gc-profile-summary-card-v20,
+    .gc-profile-link-card-v20,
+    .gc-profile-password-card-v20,
+    .gc-profile-table-section-v20{
+      border-radius:0;
+      border:1px solid rgba(157,255,0,.24);
+      background:
+        repeating-linear-gradient(90deg,rgba(157,255,0,.018) 0 1px,transparent 1px 64px),
+        linear-gradient(180deg,rgba(8,20,10,.82),rgba(2,6,3,.94));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 16px 56px rgba(0,0,0,.24);
+    }
+
+    .gc-profile-summary-card-v20 .gc-section-head,
+    .gc-profile-link-card-v20 .gc-section-head,
+    .gc-profile-password-card-v20 .gc-section-head,
+    .gc-profile-table-section-v20 .gc-section-head{
+      padding:18px 20px 14px;
+      border-bottom:1px solid rgba(157,255,0,.15);
+      background:linear-gradient(90deg,rgba(157,255,0,.045),transparent);
+    }
+
+    .gc-profile-summary-card-v20 h2,
+    .gc-profile-link-card-v20 h2,
+    .gc-profile-password-card-v20 h2,
+    .gc-profile-table-section-v20 h2{
+      letter-spacing:-.055em;
+      text-transform:uppercase;
+      color:#f5fff0;
+    }
+
+    .gc-profile-summary-list-v20{
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:0;
+      padding:0!important;
+    }
+
+    .gc-profile-summary-list-v20 div{
+      min-height:78px;
+      padding:14px 16px;
+      border-width:0 1px 1px 0;
+      border-radius:0;
+      border-color:rgba(157,255,0,.12);
+      background:rgba(0,0,0,.12);
+    }
+
+    .gc-profile-summary-list-v20 div:nth-child(1),
+    .gc-profile-summary-list-v20 div:nth-child(2){
+      grid-column:span 2;
+      min-height:108px;
+      background:linear-gradient(135deg,rgba(157,255,0,.055),rgba(0,0,0,.16));
+    }
+
+    .gc-profile-summary-list-v20 div:nth-child(4n){border-right:0;}
+    .gc-profile-summary-list-v20 div:nth-last-child(-n+4){border-bottom:0;}
+
+    .gc-profile-summary-list-v20 strong{
+      margin-top:10px;
+      font-size:1.22rem;
+      color:#fff;
+    }
+
+    .gc-profile-link-card-v20{
+      background:
+        radial-gradient(circle at 92% 12%,rgba(53,211,255,.07),transparent 13rem),
+        linear-gradient(180deg,rgba(8,20,10,.82),rgba(2,6,3,.94));
+    }
+
+    .gc-profile-linked-pilot-v20{
+      padding:20px!important;
+      border-bottom:1px solid rgba(157,255,0,.12);
+    }
+
+    .gc-profile-linked-pilot-v20 strong{
+      font-size:1.7rem;
+      text-transform:uppercase;
+      letter-spacing:-.05em;
+    }
+
+    .gc-profile-team-panel-v30{
+      margin:0;
+      padding:20px;
+      border-width:0 0 1px;
+      border-color:rgba(157,255,0,.14);
+      background:linear-gradient(90deg,rgba(157,255,0,.055),rgba(0,0,0,.04));
+    }
+
+    .gc-profile-team-head-v30{
+      grid-template-columns:auto minmax(0,1fr);
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .gc-profile-team-logo-v30{
+      width:84px;
+      height:84px;
+      border-radius:0;
+      border-color:rgba(157,255,0,.42);
+      background:rgba(0,0,0,.32);
+      box-shadow:0 0 28px rgba(157,255,0,.10);
+    }
+
+    .gc-profile-team-head-v30 strong{
+      font-size:1.55rem;
+      letter-spacing:-.055em;
+      line-height:.92;
+    }
+
+    .gc-profile-team-form-v30{
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+
+    .gc-profile-team-actions-v30 .gc-btn,
+    .gc-profile-link-card-v20 .gc-actions .gc-btn{
+      border-radius:0;
+    }
+
+    .gc-profile-link-card-v20 .gc-actions{
+      padding:16px 20px 20px;
+      border-top:1px solid rgba(157,255,0,.10);
+      background:rgba(0,0,0,.10);
+    }
+
+    .gc-profile-link-panel{
+      margin:0 20px 20px;
+      border-radius:0;
+      border-color:rgba(157,255,0,.18);
+      background:rgba(0,0,0,.18);
+    }
+
+    .gc-profile-table-wrap-v20{
+      max-height:520px;
+      margin:0;
+      border-width:0;
+      border-radius:0;
+      background:rgba(0,0,0,.18);
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table{
+      min-width:820px;
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table thead th{
+      background:rgba(8,22,10,.96);
+      border-bottom:1px solid rgba(157,255,0,.18);
+      color:rgba(157,255,0,.72);
+      font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+      letter-spacing:.12em;
+    }
+
+    .gc-profile-table-wrap-v20 .gc-table td{
+      border-color:rgba(157,255,0,.09);
+      background:rgba(0,0,0,.10);
+    }
+
+    .gc-profile-password-card-v20{
+      margin-top:0;
+    }
+
+    @media(max-width:1180px){
+      .gc-profile-hero-v20{grid-template-columns:1fr;}
+      .gc-profile-account-panel-v20{margin:0 16px 16px;border-width:1px;}
+      .gc-profile-main-grid-v20,.gc-profile-data-grid-v20{grid-template-columns:1fr;}
+    }
+
+    @media(max-width:980px){
+      .gc-profile-metrics-v20{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .gc-profile-summary-list-v20{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .gc-profile-summary-list-v20 div:nth-child(1),.gc-profile-summary-list-v20 div:nth-child(2){grid-column:span 1;}
+      .gc-profile-summary-list-v20 div:nth-child(2n){border-right:0;}
+    }
+
+    @media(max-width:640px){
+      .gc-profile-page-v20{padding-inline:0;}
+      .gc-profile-driver-head-v30{grid-template-columns:1fr;align-items:start;min-height:auto;padding:58px 18px 24px!important;}
+      .gc-profile-identity-v30 .gc-title{font-size:clamp(3.3rem,22vw,5rem);}
+      .gc-profile-metrics-v20,.gc-profile-summary-list-v20{grid-template-columns:1fr;}
+      .gc-profile-metrics-v20 .gc-metric,.gc-profile-summary-list-v20 div{border-right:0;}
+      .gc-profile-table-wrap-v20 .gc-table{min-width:760px;}
+    }
+    /* GC_PROFILE_HOME_RACE_V2_END */
+
   </style>
 
   <script is:inline>
