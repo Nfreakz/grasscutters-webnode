@@ -149,6 +149,25 @@ async function mysqlQuery(sql: string, params: unknown[] = []) {
   return rows as any[];
 }
 
+async function mysqlColumnExists(tableName: string, columnName: string) {
+  if (!/^[a-zA-Z0-9_]+$/.test(tableName) || !/^[a-zA-Z0-9_]+$/.test(columnName)) return false;
+  const rows = await mysqlQuery(
+    `SELECT COUNT(*) AS total
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = ?
+       AND column_name = ?`,
+    [tableName, columnName]
+  );
+  return Number(rows?.[0]?.total ?? 0) > 0;
+}
+
+async function ensureMysqlColumn(tableName: string, columnName: string, definition: string) {
+  if (!/^[a-zA-Z0-9_]+$/.test(tableName) || !/^[a-zA-Z0-9_]+$/.test(columnName)) return;
+  if (await mysqlColumnExists(tableName, columnName)) return;
+  await mysqlExecute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+}
+
 async function ensureMysqlSchema() {
   if (!useMysqlStorage() || mysqlSchemaReady) return;
 
@@ -166,6 +185,9 @@ async function ensureMysqlSchema() {
       pilot_steam_guid VARCHAR(191) NULL,
       pilot_stracker_name VARCHAR(191) NULL,
       pilot_linked_at DATETIME(3) NULL,
+      team_name VARCHAR(191) NULL,
+      team_logo_url VARCHAR(500) NULL,
+      team_role VARCHAR(80) NULL,
       created_at DATETIME(3) NOT NULL,
       updated_at DATETIME(3) NOT NULL,
       last_login_at DATETIME(3) NULL,
@@ -173,6 +195,10 @@ async function ensureMysqlSchema() {
       INDEX idx_gc_users_pilot_player_id (pilot_player_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await ensureMysqlColumn('gc_users', 'team_name', 'VARCHAR(191) NULL');
+  await ensureMysqlColumn('gc_users', 'team_logo_url', 'VARCHAR(500) NULL');
+  await ensureMysqlColumn('gc_users', 'team_role', 'VARCHAR(80) NULL');
 
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -309,11 +335,20 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       pilot_steam_guid TEXT NULL,
       pilot_stracker_name TEXT NULL,
       pilot_linked_at TEXT NULL,
+      team_name TEXT NULL,
+      team_logo_url TEXT NULL,
+      team_role TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       last_login_at TEXT NULL
     )
   `);
+
+  const gcUserColumns = new Set(sqliteQuery(db, 'PRAGMA table_info(gc_users)').map((row: any) => String(row.name)));
+  if (!gcUserColumns.has('team_name')) db.run('ALTER TABLE gc_users ADD COLUMN team_name TEXT NULL');
+  if (!gcUserColumns.has('team_logo_url')) db.run('ALTER TABLE gc_users ADD COLUMN team_logo_url TEXT NULL');
+  if (!gcUserColumns.has('team_role')) db.run('ALTER TABLE gc_users ADD COLUMN team_role TEXT NULL');
+
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
 
@@ -418,6 +453,11 @@ type AppUser = {
     steamGuid: string | null;
     strackerName: string;
     linkedAt: string;
+  };
+  team: null | {
+    name: string;
+    logoUrl: string | null;
+    role: string | null;
   };
   disabledAt?: string | null;
   deletedAt?: string | null;
@@ -973,6 +1013,50 @@ function writeUserStore(store: AppUserStore) {
   fs.renameSync(tempPath, filePath);
 }
 
+function normalizeTeamText(value: unknown, maxLength = 80) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+}
+
+function normalizeTeamLogoUrl(value: unknown) {
+  const raw = String(value ?? '').trim().slice(0, 500);
+  if (!raw) return null;
+  if (raw.startsWith('/')) return raw;
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function teamFromRawValues(nameRaw: unknown, logoRaw: unknown, roleRaw: unknown = null): AppUser['team'] {
+  const name = normalizeTeamText(nameRaw, 80);
+  const logoUrl = normalizeTeamLogoUrl(logoRaw);
+  const role = normalizeTeamText(roleRaw, 48) || null;
+  if (!name && !logoUrl && !role) return null;
+  return {
+    name: name || 'Equipo sin nombre',
+    logoUrl,
+    role
+  };
+}
+
+function teamFromUserRow(row: any): AppUser['team'] {
+  return teamFromRawValues(row?.team_name, row?.team_logo_url, row?.team_role);
+}
+
+function publicTeam(user: AppUser | null | undefined) {
+  const team = user?.team || null;
+  if (!team) return null;
+  return {
+    name: team.name,
+    logoUrl: team.logoUrl ?? null,
+    role: team.role ?? null,
+    equipo: team.name,
+    logo_equipo: team.logoUrl ?? null
+  };
+}
+
 
 async function readUserStoreAsync(): Promise<AppUserStore> {
   if (!useMysqlStorage() && !useSqliteStorage()) return readUserStore();
@@ -999,6 +1083,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
           strackerName: compactNullableText(row.pilot_stracker_name) || 'Piloto vinculado',
           linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
         },
+        team: teamFromUserRow(row),
         createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
         updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
         lastLoginAt: mysqlDate(row.last_login_at)
@@ -1038,6 +1123,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
         strackerName: compactNullableText(row.pilot_stracker_name) || 'Piloto vinculado',
         linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
       },
+      team: teamFromUserRow(row),
       createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
       updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
       lastLoginAt: mysqlDate(row.last_login_at)
@@ -1072,8 +1158,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
           db.run(
             `INSERT INTO gc_users
               (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id,
               user.email,
@@ -1087,6 +1173,9 @@ async function writeUserStoreAsync(store: AppUserStore) {
               user.pilotLink?.steamGuid ?? null,
               user.pilotLink?.strackerName ?? null,
               user.pilotLink?.linkedAt ?? null,
+              user.team?.name ?? null,
+              user.team?.logoUrl ?? null,
+              user.team?.role ?? null,
               user.createdAt || new Date().toISOString(),
               user.updatedAt || new Date().toISOString(),
               user.lastLoginAt ?? null
@@ -1130,8 +1219,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
       await connection.query(
         `INSERT INTO gc_users
           (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, created_at, updated_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.id,
           user.email,
@@ -1145,6 +1234,9 @@ async function writeUserStoreAsync(store: AppUserStore) {
           user.pilotLink?.steamGuid ?? null,
           user.pilotLink?.strackerName ?? null,
           isoToMysql(user.pilotLink?.linkedAt),
+          user.team?.name ?? null,
+          user.team?.logoUrl ?? null,
+          user.team?.role ?? null,
           isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.lastLoginAt)
@@ -1465,6 +1557,12 @@ function publicUser(user: AppUser) {
     displayName: user.displayName,
     role: user.role,
     pilotLink: user.pilotLink,
+    team: publicTeam(user),
+    equipo: publicTeam(user)?.name ?? null,
+    logo_equipo: publicTeam(user)?.logoUrl ?? null,
+    teamName: publicTeam(user)?.name ?? null,
+    teamLogoUrl: publicTeam(user)?.logoUrl ?? null,
+    teamRole: publicTeam(user)?.role ?? null,
     disabledAt: user.disabledAt ?? null,
     deletedAt: user.deletedAt ?? null,
     createdAt: user.createdAt,
@@ -3725,6 +3823,9 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
     authenticated: true,
     generatedAt: new Date().toISOString(),
     user: publicUser(user),
+    team: publicTeam(user),
+    equipo: publicTeam(user)?.name ?? null,
+    logo_equipo: publicTeam(user)?.logoUrl ?? null,
     session: {
       id: session.id,
       createdAt: session.createdAt,
@@ -3807,6 +3908,7 @@ function buildPublicPilotProfile(playerIdRaw: unknown, allLaps: PilotProfileLap[
       strackerName: driver.name || `Piloto ${playerId}`,
       linkedAt: ''
     },
+    team: null,
     createdAt: now,
     updatedAt: now,
     lastLoginAt: null
@@ -6257,6 +6359,51 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
+app.post('/api/profile/team', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+
+    if (!context) {
+      res.status(401).json({
+        ok: false,
+        authenticated: false,
+        team: null,
+        message: 'Necesitas iniciar sesión para actualizar el equipo.'
+      });
+      return;
+    }
+
+    const body = req.body || {};
+    const teamName = body.teamName ?? body.equipo ?? body.team?.name;
+    const teamLogo = body.teamLogoUrl ?? body.logoUrl ?? body.logo_equipo ?? body.team?.logoUrl;
+    const teamRole = body.teamRole ?? body.rolEquipo ?? body.role ?? body.team?.role;
+    const nextTeam = teamFromRawValues(teamName, teamLogo, teamRole);
+
+    context.user.team = nextTeam;
+    context.user.updatedAt = new Date().toISOString();
+    await writeUserStoreAsync(context.store);
+
+    res.json({
+      ok: true,
+      authenticated: true,
+      user: publicUser(context.user),
+      team: publicTeam(context.user),
+      equipo: publicTeam(context.user)?.name ?? null,
+      logo_equipo: publicTeam(context.user)?.logoUrl ?? null,
+      message: nextTeam ? 'Equipo actualizado.' : 'Equipo eliminado del perfil.'
+    });
+  } catch (error) {
+    console.error('[GC] Error actualizando equipo de perfil:', error);
+    res.status(200).json({
+      ok: false,
+      authenticated: true,
+      team: null,
+      message: 'No se pudo actualizar el equipo del perfil.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+
 
 
 function safeRuntimeError(error: unknown) {
@@ -7511,6 +7658,7 @@ app.post('/api/auth/register', async (req, res) => {
     role: store.users.length === 0 && readBooleanEnv('FIRST_USER_ADMIN', false) ? 'admin' : 'pilot',
     password: hashPassword(password),
     pilotLink,
+    team: null,
     createdAt: now,
     updatedAt: now,
     lastLoginAt: now

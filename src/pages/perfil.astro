@@ -5,14 +5,19 @@ import '../styles/public/gc-rating-badges.css';
 <AppLayout title="Perfil piloto | GrassCutters">
   <div class="gc-page gc-profile-page gc-profile-page-v20">
     <section class="gc-hero gc-hero--compact gc-profile-hero-v20">
-      <div>
-        <span class="gc-kicker">Mi perfil</span>
-        <h1 class="gc-title" id="profileTitle">Panel de piloto</h1>
-        <p class="gc-subtitle" id="profileText">Tu garaje competitivo: ritmo, limpieza, combos, coches y circuitos desde stracker.</p>
-        <div class="gc-hero__meta" id="profileBadges">
-          <span class="gc-chip">Cuenta</span>
-          <span class="gc-chip">Piloto stracker</span>
-          <span class="gc-chip">Nombres corregidos</span>
+      <div class="gc-profile-driver-head-v30">
+        <div class="gc-profile-avatar-ring-v30">
+          <img id="profilePilotAvatar" src="/images/pilot-avatar-default.png" alt="Avatar del piloto" loading="lazy" decoding="async" />
+        </div>
+        <div class="gc-profile-identity-v30">
+          <span class="gc-kicker">Ficha de piloto</span>
+          <h1 class="gc-title" id="profileTitle">Panel de piloto</h1>
+          <p class="gc-subtitle" id="profileText">Rendimiento, equipo, hotlaps y actividad competitiva desde stracker.</p>
+          <div class="gc-hero__meta" id="profileBadges">
+            <span class="gc-chip">Cuenta</span>
+            <span class="gc-chip">Piloto stracker</span>
+            <span class="gc-chip" id="profileTeamBadge">Equipo pendiente</span>
+          </div>
         </div>
       </div>
 
@@ -59,6 +64,40 @@ import '../styles/public/gc-rating-badges.css';
 
         <div class="gc-slab gc-profile-linked-pilot-v20" id="linkedPilot">Cargando...</div>
 
+        <div class="gc-profile-team-panel-v30" id="profileTeamPanel">
+          <div class="gc-profile-team-head-v30">
+            <div class="gc-profile-team-logo-v30">
+              <img id="profileTeamLogo" src="/images/pilot-avatar-default.png" alt="Logo del equipo" loading="lazy" decoding="async" />
+            </div>
+            <div>
+              <span class="gc-kicker">Equipo</span>
+              <strong id="profileTeamName">Sin equipo</strong>
+              <small id="profileTeamRole">Añade tu equipo o escudería.</small>
+            </div>
+          </div>
+
+          <div class="gc-profile-team-form-v30">
+            <label class="gc-field">
+              <span>Equipo</span>
+              <input class="gc-input" id="profileTeamNameInput" type="text" placeholder="Nombre del equipo" maxlength="80" autocomplete="organization" />
+            </label>
+            <label class="gc-field">
+              <span>Logo equipo</span>
+              <input class="gc-input" id="profileTeamLogoInput" type="url" placeholder="https://... o /images/logo.png" maxlength="500" />
+            </label>
+            <label class="gc-field">
+              <span>Rol</span>
+              <input class="gc-input" id="profileTeamRoleInput" type="text" placeholder="Piloto, capitán..." maxlength="48" />
+            </label>
+          </div>
+
+          <div class="gc-profile-team-actions-v30">
+            <button class="gc-btn gc-btn--primary" id="saveTeamProfileBtn" type="button">Guardar equipo</button>
+            <button class="gc-btn" id="clearTeamProfileBtn" type="button">Quitar equipo</button>
+          </div>
+          <p class="gc-message" id="profileTeamMessage"></p>
+        </div>
+
         <div class="gc-actions gc-profile-link-actions">
           <button class="gc-btn gc-btn--primary" id="openPilotLink" type="button" hidden>Vincular piloto</button>
           <button class="gc-btn" id="unlinkPilotAction" type="button" hidden>Desvincular piloto</button>
@@ -93,36 +132,6 @@ import '../styles/public/gc-rating-badges.css';
           <p class="gc-message" id="pilotLinkMessage"></p>
         </div>
       </aside>
-    </section>
-
-    <section class="gc-section gc-profile-password-card gc-profile-password-card-v20" id="passwordSection" hidden>
-      <div class="gc-section-head">
-        <div>
-          <span class="gc-kicker">Seguridad</span>
-          <h2>Cambiar contraseña</h2>
-          <p>Actualiza tu acceso. Si has recibido una contraseña temporal, cámbiala aquí.</p>
-        </div>
-      </div>
-
-      <div class="gc-grid-3 gc-profile-password-grid">
-        <label class="gc-field">
-          <span>Contraseña actual</span>
-          <input class="gc-input" id="currentPasswordInput" type="password" autocomplete="current-password" />
-        </label>
-        <label class="gc-field">
-          <span>Nueva contraseña</span>
-          <input class="gc-input" id="newPasswordInput" type="password" autocomplete="new-password" minlength="8" />
-        </label>
-        <label class="gc-field">
-          <span>Repetir nueva contraseña</span>
-          <input class="gc-input" id="confirmPasswordInput" type="password" autocomplete="new-password" minlength="8" />
-        </label>
-      </div>
-
-      <div class="gc-actions">
-        <button class="gc-btn gc-btn--primary" id="changePasswordBtn" type="button">Guardar nueva contraseña</button>
-      </div>
-      <p class="gc-message" id="changePasswordMessage"></p>
     </section>
 
     <section class="gc-profile-data-grid-v20">
@@ -200,6 +209,36 @@ import '../styles/public/gc-rating-badges.css';
         </div>
       </div>
     </section>
+    <section class="gc-section gc-profile-password-card gc-profile-password-card-v20" id="passwordSection" hidden>
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Seguridad</span>
+          <h2>Cambiar contraseña</h2>
+          <p>Actualiza tu acceso. Si has recibido una contraseña temporal, cámbiala aquí.</p>
+        </div>
+      </div>
+
+      <div class="gc-grid-3 gc-profile-password-grid">
+        <label class="gc-field">
+          <span>Contraseña actual</span>
+          <input class="gc-input" id="currentPasswordInput" type="password" autocomplete="current-password" />
+        </label>
+        <label class="gc-field">
+          <span>Nueva contraseña</span>
+          <input class="gc-input" id="newPasswordInput" type="password" autocomplete="new-password" minlength="8" />
+        </label>
+        <label class="gc-field">
+          <span>Repetir nueva contraseña</span>
+          <input class="gc-input" id="confirmPasswordInput" type="password" autocomplete="new-password" minlength="8" />
+        </label>
+      </div>
+
+      <div class="gc-actions">
+        <button class="gc-btn gc-btn--primary" id="changePasswordBtn" type="button">Guardar nueva contraseña</button>
+      </div>
+      <p class="gc-message" id="changePasswordMessage"></p>
+    </section>
+
   </div>
 
   <style is:global>
@@ -576,7 +615,183 @@ import '../styles/public/gc-rating-badges.css';
       min-width:160px;
     }
 
+
+
+    /* GC_PROFILE_PADDOCK_V1_START */
+    .gc-profile-page-v20{
+      max-width:1440px;
+      gap:18px;
+    }
+
+    .gc-profile-hero-v20{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(340px,420px);
+      gap:20px;
+      padding:0!important;
+      border-radius:0;
+      background:
+        linear-gradient(90deg,rgba(157,255,0,.08),rgba(0,0,0,.22) 42%,rgba(0,0,0,.06)),
+        radial-gradient(circle at 72% 10%,rgba(53,211,255,.09),transparent 26rem),
+        rgba(4,10,6,.86);
+      box-shadow:inset 0 0 0 1px rgba(157,255,0,.16),0 22px 80px rgba(0,0,0,.26);
+    }
+
+    .gc-profile-driver-head-v30{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:22px;
+      align-items:center;
+      padding:clamp(22px,3vw,34px)!important;
+      min-width:0;
+    }
+
+    .gc-profile-avatar-ring-v30{
+      width:clamp(92px,10vw,132px);
+      aspect-ratio:1;
+      border-radius:999px;
+      padding:5px;
+      background:conic-gradient(from 210deg,var(--accent,#9dff00),rgba(53,211,255,.9),rgba(157,255,0,.25),var(--accent,#9dff00));
+      box-shadow:0 0 34px rgba(157,255,0,.18), inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+
+    .gc-profile-avatar-ring-v30 img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      border-radius:999px;
+      display:block;
+      background:#020502;
+      border:1px solid rgba(0,0,0,.8);
+    }
+
+    .gc-profile-identity-v30{min-width:0;}
+    .gc-profile-identity-v30 .gc-title{
+      font-size:clamp(2.4rem,5.6vw,5.4rem);
+      letter-spacing:-.075em;
+      line-height:.88;
+      margin:6px 0 8px;
+      text-transform:uppercase;
+    }
+
+    .gc-profile-identity-v30 .gc-subtitle{
+      max-width:760px;
+      color:rgba(226,255,218,.68);
+    }
+
+    .gc-profile-account-panel-v20{
+      width:100%;
+      margin:0;
+      align-self:stretch;
+      border-radius:0;
+      border-width:0 0 0 1px;
+      background:rgba(0,0,0,.22);
+    }
+
+    .gc-profile-metrics-v20{
+      border-radius:0;
+      background:rgba(4,12,6,.72);
+    }
+
+    .gc-profile-metrics-v20 .gc-metric{
+      min-height:86px;
+      padding:15px 18px;
+      background:linear-gradient(180deg,rgba(157,255,0,.045),rgba(0,0,0,.08));
+    }
+
+    .gc-profile-metrics-v20 .gc-metric span,
+    .gc-profile-summary-list-v20 span,
+    .gc-profile-team-panel-v30 .gc-field span{
+      color:rgba(157,255,0,.68);
+      font-family:var(--font-mono,monospace);
+      letter-spacing:.14em;
+    }
+
+    .gc-profile-summary-card-v20,
+    .gc-profile-link-card-v20,
+    .gc-profile-password-card-v20,
+    .gc-profile-table-section-v20{
+      border-radius:0;
+      background:rgba(3,9,5,.82);
+      border-color:rgba(157,255,0,.16);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 14px 54px rgba(0,0,0,.22);
+    }
+
+    .gc-profile-team-panel-v30{
+      margin:0 clamp(22px,2.6vw,34px) 18px;
+      padding:16px;
+      border:1px solid rgba(157,255,0,.18);
+      background:linear-gradient(135deg,rgba(157,255,0,.07),rgba(0,0,0,.18));
+    }
+
+    .gc-profile-team-head-v30{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:14px;
+      align-items:center;
+      margin-bottom:16px;
+    }
+
+    .gc-profile-team-logo-v30{
+      width:74px;
+      height:74px;
+      border:1px solid rgba(157,255,0,.35);
+      border-radius:12px;
+      background:rgba(0,0,0,.28);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      box-shadow:0 0 28px rgba(157,255,0,.08);
+    }
+
+    .gc-profile-team-logo-v30 img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .gc-profile-team-head-v30 strong{
+      display:block;
+      color:var(--text,#fff);
+      font-size:1.15rem;
+      text-transform:uppercase;
+      line-height:1;
+    }
+
+    .gc-profile-team-head-v30 small{
+      display:block;
+      margin-top:5px;
+      color:rgba(226,255,218,.55);
+    }
+
+    .gc-profile-team-form-v30{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+
+    .gc-profile-team-actions-v30{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .gc-profile-team-actions-v30 .gc-btn{border-radius:0;}
+    .gc-profile-rating-inline{display:flex;gap:8px;align-items:center;justify-content:flex-end;}
+    .gc-profile-table-wrap-v20{border-radius:0;}
+    /* GC_PROFILE_PADDOCK_V1_END */
+
     @media(max-width:1180px){
+
+      .gc-profile-hero-v20{
+        grid-template-columns:1fr;
+      }
+
+      .gc-profile-account-panel-v20{
+        border-width:1px 0 0;
+      }
+
       .gc-profile-main-grid-v20,
       .gc-profile-data-grid-v20{
         grid-template-columns:1fr;
@@ -838,6 +1053,20 @@ import '../styles/public/gc-rating-badges.css';
         message: $('pilotLinkMessage')
       };
 
+      const teamUi = {
+        panel: $('profileTeamPanel'),
+        name: $('profileTeamName'),
+        logo: $('profileTeamLogo'),
+        role: $('profileTeamRole'),
+        nameInput: $('profileTeamNameInput'),
+        logoInput: $('profileTeamLogoInput'),
+        roleInput: $('profileTeamRoleInput'),
+        save: $('saveTeamProfileBtn'),
+        clear: $('clearTeamProfileBtn'),
+        message: $('profileTeamMessage'),
+        badge: $('profileTeamBadge')
+      };
+
       let pilotCandidates = [];
       let currentProfileData = null;
 
@@ -857,6 +1086,78 @@ import '../styles/public/gc-rating-badges.css';
           if (el) el.disabled = Boolean(isBusy);
         });
       }
+
+      const defaultTeamLogo = '/images/pilot-avatar-default.png';
+
+      const teamFromProfileData = (data) => {
+        const team = data?.team || data?.user?.team || null;
+        const name = team?.name || data?.equipo || data?.user?.equipo || data?.teamName || data?.user?.teamName || '';
+        const logoUrl = team?.logoUrl || team?.logo_equipo || data?.logo_equipo || data?.user?.logo_equipo || data?.teamLogoUrl || data?.user?.teamLogoUrl || '';
+        const role = team?.role || data?.teamRole || data?.user?.teamRole || '';
+        return { name: String(name || '').trim(), logoUrl: String(logoUrl || '').trim(), role: String(role || '').trim() };
+      };
+
+      const setTeamMessage = (text, tone = '') => {
+        if (!teamUi.message) return;
+        teamUi.message.textContent = text || '';
+        teamUi.message.style.color = tone === 'error' ? 'var(--danger)' : tone === 'ok' ? 'var(--accent)' : 'var(--soft)';
+      };
+
+      function renderTeam(data) {
+        const team = teamFromProfileData(data);
+        const hasTeam = Boolean(team.name || team.logoUrl);
+        const name = team.name || 'Sin equipo';
+        const role = team.role || (hasTeam ? 'Piloto' : 'Añade tu equipo o escudería.');
+        const logo = team.logoUrl || defaultTeamLogo;
+
+        if (teamUi.name) teamUi.name.textContent = name;
+        if (teamUi.role) teamUi.role.textContent = role;
+        if (teamUi.logo) {
+          teamUi.logo.src = logo;
+          teamUi.logo.onerror = () => { teamUi.logo.src = defaultTeamLogo; };
+        }
+        if (teamUi.nameInput) teamUi.nameInput.value = team.name || '';
+        if (teamUi.logoInput) teamUi.logoInput.value = team.logoUrl || '';
+        if (teamUi.roleInput) teamUi.roleInput.value = team.role || '';
+        if (teamUi.badge) {
+          teamUi.badge.textContent = hasTeam ? `Equipo · ${name}` : 'Sin equipo';
+          teamUi.badge.classList.toggle('gc-chip--accent', hasTeam);
+        }
+      }
+
+      async function saveTeamProfile(clear = false) {
+        if (!currentProfileData?.authenticated) return;
+        const payload = clear ? { equipo: '', logo_equipo: '', teamRole: '' } : {
+          equipo: teamUi.nameInput?.value || '',
+          logo_equipo: teamUi.logoInput?.value || '',
+          teamRole: teamUi.roleInput?.value || ''
+        };
+
+        [teamUi.save, teamUi.clear, teamUi.nameInput, teamUi.logoInput, teamUi.roleInput].forEach((el) => { if (el) el.disabled = true; });
+        setTeamMessage(clear ? 'Quitando equipo...' : 'Guardando equipo...');
+
+        try {
+          const response = await fetch('/api/profile/team', {
+            method:'POST',
+            credentials:'include',
+            cache:'no-store',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || result?.ok === false) throw new Error(result?.message || 'No se pudo actualizar el equipo.');
+          currentProfileData = { ...currentProfileData, team: result.team, user: result.user || currentProfileData.user, equipo: result.equipo, logo_equipo: result.logo_equipo };
+          renderTeam(currentProfileData);
+          setTeamMessage(result.message || 'Equipo actualizado.', 'ok');
+        } catch (error) {
+          setTeamMessage(error.message || 'No se pudo actualizar el equipo.', 'error');
+        } finally {
+          [teamUi.save, teamUi.clear, teamUi.nameInput, teamUi.logoInput, teamUi.roleInput].forEach((el) => { if (el) el.disabled = false; });
+        }
+      }
+
+      teamUi.save?.addEventListener('click', () => saveTeamProfile(false));
+      teamUi.clear?.addEventListener('click', () => saveTeamProfile(true));
 
       function updatePilotLinkControls(data) {
         currentProfileData = data || null;
@@ -1039,6 +1340,7 @@ import '../styles/public/gc-rating-badges.css';
         if (linkUi.open) linkUi.open.hidden = true;
         if (linkUi.unlink) linkUi.unlink.hidden = true;
         if (linkUi.panel) linkUi.panel.hidden = true;
+        if (teamUi.panel) teamUi.panel.hidden = true;
 
         $('accountState').textContent = 'Sin login';
         $('accountState').style.color = 'var(--warn)';
@@ -1062,12 +1364,21 @@ import '../styles/public/gc-rating-badges.css';
         const pilot = data.pilot || {};
         const ratingDriver = data.ratings?.driver || {};
         const ratingStats = data.ratings?.stats || {};
+        const linkedPlayerId = pilot.id || data.pilotLink?.playerId || null;
+        const team = teamFromProfileData(data);
 
         updatePilotLinkControls(data);
+        if (teamUi.panel) teamUi.panel.hidden = false;
+        renderTeam(data);
+        const avatar = $('profilePilotAvatar');
+        if (avatar) {
+          avatar.src = linkedPlayerId ? `/api/pilot-avatar/${encodeURIComponent(String(linkedPlayerId))}` : '/images/pilot-avatar-default.png';
+          avatar.onerror = () => { avatar.src = '/images/pilot-avatar-default.png'; };
+        }
 
         $('profileTitle').textContent = pilotName(pilot) || cleanName(user.displayName, 'Perfil piloto');
         $('profileText').textContent = data.linked
-          ? 'Datos reales de rendimiento desde stracker con nombres corregidos.'
+          ? `Datos reales de rendimiento desde stracker${team.name ? ' · Equipo ' + team.name : ''}.`
           : 'Cuenta activa, pendiente de vincular a un piloto real.';
 
         $('accountState').textContent = data.linked ? 'Vinculado' : 'Sin piloto';
@@ -1076,7 +1387,9 @@ import '../styles/public/gc-rating-badges.css';
         $('profileBadges').innerHTML =
           `<span class="gc-chip gc-chip--accent">${escapeHtml(cleanName(user.role,'pilot'))}</span>` +
           `<span class="gc-chip">${escapeHtml(pilotName(pilot))}</span>` +
-          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>`;
+          `<span class="gc-chip">${escapeHtml(summary.totalLaps || 0)} vueltas</span>` +
+          `<span class="gc-chip${team.name ? ' gc-chip--accent' : ''}" id="profileTeamBadge">${escapeHtml(team.name ? 'Equipo · ' + team.name : 'Sin equipo')}</span>`;
+        teamUi.badge = $('profileTeamBadge');
 
         $('profileMeta').innerHTML =
           `<div class="gc-status-row"><span>Email</span><strong>${escapeHtml(user.email)}</strong></div>` +
@@ -1107,7 +1420,6 @@ import '../styles/public/gc-rating-badges.css';
           `<div><span>Coche favorito</span><strong>${escapeHtml(carName(summary.favoriteCar || {}))}</strong></div>` +
           `<div><span>Circuito favorito</span><strong>${escapeHtml(trackName(summary.favoriteTrack || {}))}</strong></div>`;
 
-        const linkedPlayerId = pilot.id || data.pilotLink?.playerId || null;
         const publicAction = $('publicProfileAction');
 
         if (publicAction) {
