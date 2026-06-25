@@ -2189,6 +2189,8 @@ type GcJoinedLapsCacheEntry = {
 let gcStrackerSqlJsPromise: Promise<any> | null = null;
 let gcStrackerBytesCache: { signatureKey: string; bytes: Uint8Array } | null = null;
 let gcJoinedLapsCache: GcJoinedLapsCacheEntry | null = null;
+let gcJoinedMysqlLapsCache: { createdAt: number; laps: ReturnType<typeof mapLapRow>[] } | null = null;
+let gcJoinedMysqlLapsPromise: Promise<ReturnType<typeof mapLapRow>[]> | null = null;
 const gcStrackerQueryCache = new Map<string, GcQueryCacheEntry>();
 
 function gcPerfBoolEnv(name: string, fallback: boolean) {
@@ -2253,8 +2255,10 @@ function gcTrimQueryCache(maxEntries = 80) {
 function invalidateStrackerRuntimeCache(reason = 'manual') {
   gcStrackerBytesCache = null;
   gcJoinedLapsCache = null;
+  gcJoinedMysqlLapsCache = null;
+  gcJoinedMysqlLapsPromise = null;
   gcStrackerQueryCache.clear();
-  if (gcPerformanceLogEnabled()) console.log('[GC PERF] CachÃ© stracker limpiada: ' + reason);
+  if (gcPerformanceLogEnabled()) console.log('[GC PERF] CachÃ© stracker/Data Core limpiada: ' + reason);
 }
 
 async function getCachedStrackerSqlJs() {
@@ -2288,6 +2292,8 @@ function gcCacheInfo() {
     api: 'performance-core-v15.29.3',
     queryCacheEntries: gcStrackerQueryCache.size,
     joinedLapsCached: Boolean(gcJoinedLapsCache),
+    mysqlJoinedLapsCached: Boolean(gcJoinedMysqlLapsCache),
+    mysqlJoinedLapsInFlight: Boolean(gcJoinedMysqlLapsPromise),
     dbBytesCached: Boolean(gcStrackerBytesCache),
     queryTtlMs: gcStrackerQueryTtlMs(),
     joinedLapsTtlMs: gcJoinedLapsTtlMs(),
@@ -2317,13 +2323,15 @@ function gcIsCachedPublicApi(url: string) {
     '/api/sessions',
     '/api/activity/recent',
     '/api/stats/overview',
+    '/api/calendar-events',
     '/api/gc/home-summary',
     '/api/gc/active-combo',
-    '/api/gc/snapshot',
     '/api/gc/combos',
     '/api/gc/recent-laps',
     '/api/gc/leaderboard',
-    '/api/calendar-events',
+    '/api/gc/cache/status',
+    '/api/gc/ratings/championship',
+    '/api/live-timing',
     '/gc-data/hotlaps',
     '/gc-data/hotlaps.php',
     '/gc-data/drivers',
@@ -2976,87 +2984,109 @@ async function readJoinedLapsFromMysqlMirror() {
   if (!useMysqlStorage()) throw new Error('MySQL no está activo para Data Core mirror.');
   await ensureGcDataCoreMirrorSchemaReady();
 
-  const started = Date.now();
-  const rows = await mysqlQuery(`
-    SELECT
-      l.id AS LapId,
-      l.player_in_session_id AS PlayerInSessionId,
-      l.tyre_compound_id AS TyreCompoundId,
-      l.session_id AS SessionId,
-      s.combo_id AS ComboId,
-      l.player_id AS PlayerId,
-      d.driver_name AS DriverName,
-      d.steam_guid AS SteamGuid,
-      0 AS IsOnline,
-      0 AS Whitelisted,
-      0 AS Anonymized,
-      d.car_id AS CarId,
-      d.car_raw AS Car,
-      d.car_display AS UiCarName,
-      d.car_brand AS Brand,
-      s.track_id AS TrackId,
-      s.track_raw AS Track,
-      s.track_display AS UiTrackName,
-      s.track_length AS TrackLength,
-      l.lap_number AS LapCount,
-      l.session_time_ms AS SessionTime,
-      l.lap_time_ms AS LapTime,
-      l.sector_time_0 AS SectorTime0,
-      l.sector_time_1 AS SectorTime1,
-      l.sector_time_2 AS SectorTime2,
-      l.sector_time_3 AS SectorTime3,
-      l.sector_time_4 AS SectorTime4,
-      l.sector_time_5 AS SectorTime5,
-      l.sector_time_6 AS SectorTime6,
-      l.sector_time_7 AS SectorTime7,
-      l.sector_time_8 AS SectorTime8,
-      l.sector_time_9 AS SectorTime9,
-      l.fuel_ratio AS FuelRatio,
-      l.valid AS Valid,
-      l.sectors_are_soft_splits AS SectorsAreSoftSplits,
-      l.max_abs AS MaxABS,
-      l.max_tc AS MaxTC,
-      l.temperature_ambient AS TemperatureAmbient,
-      l.temperature_track AS TemperatureTrack,
-      l.cuts AS Cuts,
-      l.collisions_car AS CollisionsCar,
-      l.collisions_env AS CollisionsEnv,
-      l.max_speed_kmh AS MaxSpeed_KMH,
-      s.type AS SessionType,
-      COALESCE(s.multiplayer, 1) AS Multiplayer,
-      s.server_ip_port AS ServerIpPort,
-      UNIX_TIMESTAMP(s.start_time) AS StartTimeDate,
-      UNIX_TIMESTAMP(s.end_time) AS EndTimeDate,
-      COALESCE(l.timestamp_unix, UNIX_TIMESTAMP(COALESCE(s.end_time, s.start_time, l.created_at))) AS Timestamp,
-      l.aid_abs AS AidABS,
-      l.aid_tc AS AidTC,
-      l.aid_auto_blib AS AidAutoBlib,
-      l.aid_auto_brake AS AidAutoBrake,
-      l.aid_auto_clutch AS AidAutoClutch,
-      l.aid_auto_shift AS AidAutoShift,
-      l.aid_ideal_line AS AidIdealLine,
-      l.aid_stability_control AS AidStabilityControl,
-      l.aid_slip_stream AS AidSlipStream,
-      l.aid_tyre_blankets AS AidTyreBlankets,
-      l.grip_level AS GripLevel,
-      l.ballast AS Ballast,
-      d.ac_version AS ACVersion,
-      d.input_method AS InputMethod,
-      d.shifter AS Shifter
-    FROM gc_stracker_lap l
-    LEFT JOIN gc_stracker_session s ON s.session_id = l.session_id
-    LEFT JOIN gc_stracker_session_driver d
-      ON d.session_id = l.session_id
-      AND d.player_in_session_id = l.player_in_session_id
-    WHERE l.lap_time_ms IS NOT NULL AND l.lap_time_ms > 0
-    ORDER BY l.lap_time_ms ASC
-  `);
+  const ttlMs = gcJoinedLapsTtlMs();
+  const now = Date.now();
 
-  const laps = rows.map(mapLapRow);
-  if (gcPerformanceLogEnabled()) {
-    console.log('[GC PERF] readJoinedLapsFromMysqlMirror ' + (Date.now() - started) + 'ms · vueltas=' + laps.length);
+  if (ttlMs > 0 && gcJoinedMysqlLapsCache && now - gcJoinedMysqlLapsCache.createdAt <= ttlMs) {
+    return gcJoinedMysqlLapsCache.laps;
   }
-  return laps;
+
+  if (gcJoinedMysqlLapsPromise) {
+    return gcJoinedMysqlLapsPromise;
+  }
+
+  gcJoinedMysqlLapsPromise = (async () => {
+    const started = Date.now();
+    const rows = await mysqlQuery(`
+      SELECT
+        l.id AS LapId,
+        l.player_in_session_id AS PlayerInSessionId,
+        l.tyre_compound_id AS TyreCompoundId,
+        l.session_id AS SessionId,
+        s.combo_id AS ComboId,
+        l.player_id AS PlayerId,
+        d.driver_name AS DriverName,
+        d.steam_guid AS SteamGuid,
+        0 AS IsOnline,
+        0 AS Whitelisted,
+        0 AS Anonymized,
+        d.car_id AS CarId,
+        d.car_raw AS Car,
+        d.car_display AS UiCarName,
+        d.car_brand AS Brand,
+        s.track_id AS TrackId,
+        s.track_raw AS Track,
+        s.track_display AS UiTrackName,
+        s.track_length AS TrackLength,
+        l.lap_number AS LapCount,
+        l.session_time_ms AS SessionTime,
+        l.lap_time_ms AS LapTime,
+        l.sector_time_0 AS SectorTime0,
+        l.sector_time_1 AS SectorTime1,
+        l.sector_time_2 AS SectorTime2,
+        l.sector_time_3 AS SectorTime3,
+        l.sector_time_4 AS SectorTime4,
+        l.sector_time_5 AS SectorTime5,
+        l.sector_time_6 AS SectorTime6,
+        l.sector_time_7 AS SectorTime7,
+        l.sector_time_8 AS SectorTime8,
+        l.sector_time_9 AS SectorTime9,
+        l.fuel_ratio AS FuelRatio,
+        l.valid AS Valid,
+        l.sectors_are_soft_splits AS SectorsAreSoftSplits,
+        l.max_abs AS MaxABS,
+        l.max_tc AS MaxTC,
+        l.temperature_ambient AS TemperatureAmbient,
+        l.temperature_track AS TemperatureTrack,
+        l.cuts AS Cuts,
+        l.collisions_car AS CollisionsCar,
+        l.collisions_env AS CollisionsEnv,
+        l.max_speed_kmh AS MaxSpeed_KMH,
+        s.type AS SessionType,
+        COALESCE(s.multiplayer, 1) AS Multiplayer,
+        s.server_ip_port AS ServerIpPort,
+        UNIX_TIMESTAMP(s.start_time) AS StartTimeDate,
+        UNIX_TIMESTAMP(s.end_time) AS EndTimeDate,
+        COALESCE(l.timestamp_unix, UNIX_TIMESTAMP(COALESCE(s.end_time, s.start_time, l.created_at))) AS Timestamp,
+        l.aid_abs AS AidABS,
+        l.aid_tc AS AidTC,
+        l.aid_auto_blib AS AidAutoBlib,
+        l.aid_auto_brake AS AidAutoBrake,
+        l.aid_auto_clutch AS AidAutoClutch,
+        l.aid_auto_shift AS AidAutoShift,
+        l.aid_ideal_line AS AidIdealLine,
+        l.aid_stability_control AS AidStabilityControl,
+        l.aid_slip_stream AS AidSlipStream,
+        l.aid_tyre_blankets AS AidTyreBlankets,
+        l.grip_level AS GripLevel,
+        l.ballast AS Ballast,
+        d.ac_version AS ACVersion,
+        d.input_method AS InputMethod,
+        d.shifter AS Shifter
+      FROM gc_stracker_lap l
+      LEFT JOIN gc_stracker_session s ON s.session_id = l.session_id
+      LEFT JOIN gc_stracker_session_driver d
+        ON d.session_id = l.session_id
+        AND d.player_in_session_id = l.player_in_session_id
+      WHERE l.lap_time_ms IS NOT NULL AND l.lap_time_ms > 0
+      ORDER BY l.lap_time_ms ASC
+    `);
+
+    const laps = rows.map(mapLapRow);
+    if (ttlMs > 0) {
+      gcJoinedMysqlLapsCache = { createdAt: Date.now(), laps };
+    }
+    if (gcPerformanceLogEnabled()) {
+      console.log('[GC PERF] readJoinedLapsFromMysqlMirror ' + (Date.now() - started) + 'ms · vueltas=' + laps.length + (ttlMs > 0 ? ' · cached' : ''));
+    }
+    return laps;
+  })();
+
+  try {
+    return await gcJoinedMysqlLapsPromise;
+  } finally {
+    gcJoinedMysqlLapsPromise = null;
+  }
 }
 
 async function readGcDataCoreSource(req: express.Request): Promise<GcDataCoreReadResult | { ok: false; message: string; stracker: ReturnType<typeof getStrackerConfig>; fallbackReason?: string | null }> {
@@ -10951,15 +10981,18 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
 
   const validLaps = laps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0);
   const scopedValidLaps = scopedLaps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0);
-  const lapDateValues = laps
-    .map((lap: any) => gcDataCoreLapTimestampMs(lap))
-    .filter((value: number) => Number.isFinite(value) && value > 0);
   const latestLap = gcDataCoreLatestLap(scopedLaps);
   const bestLap = gcDataCoreBestLap(scopedLaps);
   const recentLaps = [...scopedLaps]
     .sort((a: any, b: any) => gcDataCoreLapTimestampMs(b) - gcDataCoreLapTimestampMs(a) || gcDataCoreLapTimeMs(a) - gcDataCoreLapTimeMs(b))
     .slice(0, recentLimit);
   const leaderboard = gcDataCoreLeaderboard(scopedLaps, leaderboardLimit);
+  const allLatestLap = gcDataCoreLatestLap(laps);
+  const allOldestLap = [...laps]
+    .filter(Boolean)
+    .sort((a: any, b: any) => gcDataCoreLapTimestampMs(a) - gcDataCoreLapTimestampMs(b))[0] ?? null;
+  const allLatestLapAt = allLatestLap ? new Date(gcDataCoreLapTimestampMs(allLatestLap)).toISOString() : null;
+  const allOldestLapAt = allOldestLap ? new Date(gcDataCoreLapTimestampMs(allOldestLap)).toISOString() : null;
 
   return {
     ok: true,
@@ -10977,20 +11010,18 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
     data: {
       stats: {
         totalLaps: laps.length,
-        lapsCount: laps.length,
         validLaps: validLaps.length,
-        validLapsCount: validLaps.length,
-        hotlaps: validLaps.length,
-        totalHotlaps: validLaps.length,
         invalidLaps: Math.max(0, laps.length - validLaps.length),
-        invalidLapsCount: Math.max(0, laps.length - validLaps.length),
         driversCount: new Set(laps.map((lap: any) => lap?.driver?.id ?? lap?.driver?.name)).size,
-        totalDrivers: new Set(laps.map((lap: any) => lap?.driver?.id ?? lap?.driver?.name)).size,
         carsCount: new Set(laps.map((lap: any) => lap?.car?.id ?? lap?.car?.name)).size,
         tracksCount: new Set(laps.map((lap: any) => lap?.track?.id ?? lap?.track?.name)).size,
         combosCount: comboStats.length,
-        oldestLapAt: lapDateValues.length ? new Date(Math.min(...lapDateValues)).toISOString() : null,
-        latestLapAt: lapDateValues.length ? new Date(Math.max(...lapDateValues)).toISOString() : null
+        firstLapAt: allOldestLapAt,
+        firstLapDate: allOldestLapAt,
+        oldestLapAt: allOldestLapAt,
+        latestLapAt: allLatestLapAt,
+        latestLap: allLatestLap,
+        oldestLap: allOldestLap
       },
       activeCombo,
       latestLap,
@@ -10999,11 +11030,8 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       leaderboard,
       scopedStats: {
         totalLaps: scopedLaps.length,
-        lapsCount: scopedLaps.length,
         validLaps: scopedValidLaps.length,
-        validLapsCount: scopedValidLaps.length,
         invalidLaps: Math.max(0, scopedLaps.length - scopedValidLaps.length),
-        invalidLapsCount: Math.max(0, scopedLaps.length - scopedValidLaps.length),
         latestLap,
         bestLap
       }
@@ -12406,7 +12434,7 @@ app.get('/api/gc/home-summary', async (req, res) => {
       return fallback;
     };
 
-    const limit = gcDataCoreQueryNumber(req, 'limit', 5, 1, 20);
+    const limit = gcDataCoreQueryNumber(req, 'limit', 5, 1, 25);
     const payload = await buildGcDataCorePayload(req, {
       scope: 'activeCombo',
       recentLimit: Math.max(20, limit),
@@ -12432,8 +12460,8 @@ app.get('/api/gc/home-summary', async (req, res) => {
     };
 
     const recentLaps = Array.isArray(payload.data?.recentLaps) ? payload.data.recentLaps : [];
-    const stats = payload.data?.stats || null;
-    const scopedStats = payload.data?.scopedStats || null;
+    const stats = payload.data?.stats || {};
+    const scopedStats = payload.data?.scopedStats || {};
 
     res.json({
       ok: payload.ok !== false,
@@ -12445,14 +12473,23 @@ app.get('/api/gc/home-summary', async (req, res) => {
       topComboTimes,
       leaderboard: topComboTimes,
       recentLaps,
+      latestLap: payload.data?.latestLap || scopedStats.latestLap || null,
+      bestLap: bestLap || payload.data?.bestLap || scopedStats.bestLap || null,
       stats,
       scopedStats,
-      latestLap: payload.data?.latestLap || null,
-      bestLap: payload.data?.bestLap || null,
       latestSync: null,
+      data: {
+        activeCombo,
+        leaderboard: topComboTimes,
+        recentLaps,
+        latestLap: payload.data?.latestLap || scopedStats.latestLap || null,
+        bestLap: bestLap || payload.data?.bestLap || scopedStats.bestLap || null,
+        stats,
+        scopedStats
+      },
       generatedAt: new Date().toISOString(),
       message: topComboTimes.length
-        ? 'Resumen de portada generado en una sola lectura del Data Core.'
+        ? 'Resumen de portada generado en una sola respuesta desde /api/gc/home-summary.'
         : 'Sin tiempos disponibles para el combo activo.'
     });
   } catch (error) {

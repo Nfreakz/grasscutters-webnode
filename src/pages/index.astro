@@ -2,7 +2,6 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 import '../styles/public/gc-rating-badges.css';
-
 const title = 'GrassCutters Racing | Sim racing, hotlaps y comunidad';
 const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, archivo motorsport y herramientas para pilotos.';
 
@@ -17,10 +16,8 @@ const home2ToolLinks = {
   championship: '/campeonato',
 };
 
-// GC_HOME_PERF_V1: no leemos el Archivo en SSR para la portada.
-// El seed se carga en cliente desde los endpoints públicos si hace falta.
-// Esto evita que / dependa de MySQL/archiveRuntime antes de enviar HTML.
 const home2ArchiveSeed = [];
+
 
 ---
 
@@ -2100,7 +2097,7 @@ const home2ArchiveSeed = [];
 
       async function loadHomeRatings() {
         try {
-          const response = await fetch('/api/gc/ratings/championship', { cache: 'no-store' });
+          const response = await fetch('/api/gc/ratings/championship', { headers: { Accept: 'application/json' } });
           const data = await response.json();
           if (!data?.ok) throw new Error(data?.message || 'Ratings no disponibles.');
           renderRows(srBody, data.leaderboard?.sr || [], 'sr');
@@ -2112,7 +2109,7 @@ const home2ArchiveSeed = [];
         }
       }
 
-      loadHomeRatings();
+      window.setTimeout(loadHomeRatings, 1500);
     })();
   </script>
   <script>
@@ -2166,12 +2163,11 @@ const home2ArchiveSeed = [];
         return '';
       };
 
-      const fetchJson = async (url, timeoutMs = 6500, options = {}) => {
+      const fetchJson = async (url, timeoutMs = 6500) => {
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-        const cacheMode = options?.cache || 'default';
         try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: cacheMode, signal: controller.signal });
+          const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
           if (!res.ok) return null;
           return await res.json();
         } catch (_) {
@@ -2181,9 +2177,9 @@ const home2ArchiveSeed = [];
         }
       };
 
-      const fetchFirstJson = async (urls = [], timeoutMs = 6500, options = {}) => {
+      const fetchFirstJson = async (urls = [], timeoutMs = 6500) => {
         for (const url of urls) {
-          const payload = await fetchJson(url, timeoutMs, options);
+          const payload = await fetchJson(url, timeoutMs);
           if (payload) return payload;
         }
         return null;
@@ -3220,10 +3216,21 @@ const home2ArchiveSeed = [];
       ]);
 
       const fetchComboDetailLeaderboard = async (combo) => {
-        // GC_HOME_PERF_V1: la portada no debe disparar /api/gc/combos/:id.
-        // /api/gc/home-summary ya entrega el leaderboard del combo activo.
-        const leaderboard = Array.isArray(combo?.leaderboard) ? combo.leaderboard : [];
-        return leaderboard;
+        if (!combo) return [];
+
+        const inlineRows =
+          (Array.isArray(combo.leaderboard) && combo.leaderboard.length ? combo.leaderboard : null) ||
+          (Array.isArray(combo.topComboTimes) && combo.topComboTimes.length ? combo.topComboTimes : null) ||
+          (Array.isArray(combo.bestLaps) && combo.bestLaps.length ? combo.bestLaps : null) ||
+          [];
+
+        if (inlineRows.length) {
+          console.info('[GC Home] Top Combo usando leaderboard incluido en home-summary/activeCombo', {
+            rows: inlineRows.length
+          });
+        }
+
+        return inlineRows;
       };
 
 
@@ -3560,8 +3567,25 @@ const home2ArchiveSeed = [];
         return null;
       };
 
-      /* GC_HOME_PERF_V1: eliminadas funciones legacy no usadas que disparaban limit=1000. */
+      const driverKeyFromLap = (lap) => {
+        const driver =
+          firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'player.name', 'DriverName', 'steamName']) ||
+          firstValue(lap, ['guid', 'steamGuid', 'driverGuid', 'playerGuid', 'DriverGuid']);
+        return driver ? slugify(driver) : '';
+      };
 
+      const lapDateFromRow = (lap) => firstValidDate(lap, [
+        'createdAt',
+        'created_at',
+        'date',
+        'timestamp',
+        'lapDate',
+        'lap_date',
+        'finishedAt',
+        'finished_at',
+        'updatedAt',
+        'updated_at'
+      ]);
 
       const findDeepNumericServerV5 = (obj, keys, depth = 0) => {
         if (!obj || typeof obj !== 'object' || depth > 4) return null;
@@ -3853,8 +3877,6 @@ const home2ArchiveSeed = [];
 
         const lastLap = lastDates[0];
 
-        // GC_HOME_PERF_V1: no hacemos otra ronda de endpoints para Race Control.
-        // Usamos el resumen que ya ha llegado con /api/gc/home-summary.
         const summaryPayload = raceInfo || {};
         const summaryRaceData = summaryPayload && (summaryPayload.raceData || summaryPayload.stats || summaryPayload);
 
@@ -4101,9 +4123,6 @@ const home2ArchiveSeed = [];
           set('[data-home2-standout-duel-meta]', `gap combo ${(closest.gap / 1000).toFixed(3)} s`);
         }
       };
-
-      /* GC_HOME_PERF_V1: eliminada lectura legacy de primera vuelta con fallback limit=2000. */
-
 
       const mergeNewsItems = (...groups) => {
         const seen = new Set();
@@ -4440,37 +4459,46 @@ const home2ArchiveSeed = [];
         const now = new Date();
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
-        // GC_HOME_PERF_V1: una llamada canónica para la portada + live timing opcional.
-        // Antes se lanzaban diagnostics/combos/recent/leaderboard en paralelo y además limit=1000.
         const [homeSummaryPayload, liveTimingPayload] = await Promise.all([
-          fetchFirstJson(['/api/gc/home-summary?limit=25'], 4500),
-          fetchJson('/api/live-timing', 1200)
+          fetchFirstJson([
+            '/api/gc/home-summary?limit=25',
+            '/api/gc/active-combo?recentLimit=20&leaderboardLimit=25'
+          ]),
+          fetchJson('/api/live-timing', 2500)
         ]);
 
-        let diagnostics = homeSummaryPayload;
-        let combosPayload = {
-          ok: homeSummaryPayload?.ok,
-          activeCombo: homeSummaryPayload?.activeCombo || homeSummaryPayload?.data?.activeCombo || null,
-          items: [homeSummaryPayload?.activeCombo || homeSummaryPayload?.data?.activeCombo].filter(Boolean)
-        };
-        let recentPayload = homeSummaryPayload?.recentLaps || homeSummaryPayload?.data?.recentLaps || [];
-        let leaderboardPayload = homeSummaryPayload?.topComboTimes || homeSummaryPayload?.leaderboard || homeSummaryPayload?.data?.leaderboard || [];
+        const homeSummaryData = homeSummaryPayload?.data || {};
+        const homeStats = homeSummaryPayload?.stats || homeSummaryData.stats || homeSummaryData.scopedStats || {};
+        const diagnostics = homeSummaryPayload ? {
+          ok: homeSummaryPayload.ok !== false,
+          health: homeSummaryPayload.ok === false ? 'warning' : 'ok',
+          raceData: homeStats,
+          stats: homeStats
+        } : null;
+        const homeActiveCombo =
+          homeSummaryPayload?.activeCombo ||
+          homeSummaryData.activeCombo ||
+          homeSummaryPayload?.combo ||
+          {};
+        const homeLeaderboard =
+          homeSummaryPayload?.leaderboard ||
+          homeSummaryPayload?.topComboTimes ||
+          homeSummaryData.leaderboard ||
+          homeActiveCombo?.leaderboard ||
+          [];
+        const homeRecentLaps =
+          homeSummaryPayload?.recentLaps ||
+          homeSummaryData.recentLaps ||
+          homeSummaryData.laps ||
+          [];
+        const combosPayload = homeActiveCombo && Object.keys(homeActiveCombo).length
+          ? { ok: true, activeCombo: homeActiveCombo, items: [homeActiveCombo] }
+          : null;
+        const recentPayload = { ok: true, items: homeRecentLaps, laps: homeRecentLaps };
+        const leaderboardPayload = { ok: true, items: homeLeaderboard, leaderboard: homeLeaderboard, hotlaps: homeLeaderboard };
+        const comboStandoutsPayloadPromise = Promise.resolve({ ok: true, items: [] });
 
-        if (!combosPayload.activeCombo) {
-          const [fallbackCombos, fallbackRecent, fallbackLeaderboard, fallbackStats] = await Promise.all([
-            fetchFirstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent'], 2500),
-            fetchFirstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20'], 2500),
-            fetchFirstJson(['/api/gc/leaderboard?scope=activeCombo&limit=25', '/api/hotlaps?limit=25'], 2500),
-            fetchFirstJson(['/api/stats/overview', '/api/status'], 2500)
-          ]);
-
-          diagnostics = fallbackStats || diagnostics;
-          combosPayload = fallbackCombos || combosPayload;
-          recentPayload = fallbackRecent || recentPayload;
-          leaderboardPayload = fallbackLeaderboard || leaderboardPayload;
-        }
-
-        const raceData = homeSummaryPayload?.stats || homeSummaryPayload?.data?.stats || (diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics));
+        const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
         if (raceData) {
           const totalLaps = firstValue(raceData, ['lapsCount', 'validLapsCount', 'totalLaps', 'hotlaps']);
           const drivers = firstValue(raceData, ['driversCount', 'pilotsCount', 'totalDrivers', 'pilots']);
@@ -4593,7 +4621,9 @@ const home2ArchiveSeed = [];
         }
 
 
+        const comboStandoutsPayload = await comboStandoutsPayloadPromise;
         renderRaceStandoutsV1([
+          ...getArray(comboStandoutsPayload),
           ...leaderboardRows,
           ...getArray(combo.laps),
           ...getArray(combo.bestLaps),
