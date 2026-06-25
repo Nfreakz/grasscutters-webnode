@@ -2,14 +2,6 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 import '../styles/public/gc-rating-badges.css';
-import {
-  archiveItemHref,
-  getArchiveImage,
-  getArchiveStats,
-  getArchiveSummary,
-  normalizeArchiveType as normalizeArchiveTypeRuntime,
-  prettifyArchiveType,
-} from '../lib/archive/archiveRuntime';
 
 const title = 'GrassCutters Racing | Sim racing, hotlaps y comunidad';
 const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, archivo motorsport y herramientas para pilotos.';
@@ -25,62 +17,10 @@ const home2ToolLinks = {
   championship: '/campeonato',
 };
 
-const archiveStats = await getArchiveStats();
-const home2ArchiveSeed = (archiveStats.items || [])
-  .filter((item) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || '')))
-  .slice(0, 80)
-  .map((item) => ({
-    id: item.id || `${item.tipo}-${item.slug}`,
-    tipo: normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || ''),
-    type: normalizeArchiveTypeRuntime(item.tipo || item.category || item.type || ''),
-    category: item.category || item.tipo || '',
-    slug: item.slug || '',
-    nombre: item.nombre || item.title || '',
-    title: item.title || item.nombre || '',
-    status: item.status || item.estado || 'published',
-    featured: item.featured || item.destacado || item.isFeatured || false,
-    href: archiveItemHref(item),
-    image: getArchiveImage(item),
-    imageUrl: getArchiveImage(item),
-    coverUrl: getArchiveImage(item),
-    summary: getArchiveSummary(item),
-    descripcion_corta: getArchiveSummary(item),
-    description: getArchiveSummary(item),
-    tipoLabel: prettifyArchiveType(item.tipo || item.category || item.type || ''),
-    pais: item.pais || item.país || item.nacionalidad || item.ubicacion || '',
-    periodo: item.periodo || item.epoca || item.años_actividad || item.anos_actividad || item.fecha_apertura || '',
-    tags: item.tags || '',
-    fabricante: item.fabricante || '',
-    modelo: item.modelo || item.modelo_base || '',
-    motor: item.motor || '',
-    disciplina: item.disciplina || '',
-    circuitos_asociados: item.circuitos_asociados || '',
-    coches_asociados: item.coches_asociados || '',
-    pilotos_asociados: item.pilotos_asociados || '',
-    search: [
-      item.nombre,
-      item.title,
-      item.slug,
-      item.tipo,
-      prettifyArchiveType(item.tipo || item.category || item.type || ''),
-      getArchiveSummary(item),
-      item.pais,
-      item.país,
-      item.nacionalidad,
-      item.ubicacion,
-      item.periodo,
-      item.epoca,
-      item.tags,
-      item.fabricante,
-      item.modelo,
-      item.modelo_base,
-      item.motor,
-      item.disciplina,
-      item.circuitos_asociados,
-      item.coches_asociados,
-      item.pilotos_asociados,
-    ].filter(Boolean).join(' '),
-  }));
+// GC_HOME_PERF_V1: no leemos el Archivo en SSR para la portada.
+// El seed se carga en cliente desde los endpoints públicos si hace falta.
+// Esto evita que / dependa de MySQL/archiveRuntime antes de enviar HTML.
+const home2ArchiveSeed = [];
 
 ---
 
@@ -2226,11 +2166,12 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return '';
       };
 
-      const fetchJson = async (url, timeoutMs = 6500) => {
+      const fetchJson = async (url, timeoutMs = 6500, options = {}) => {
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        const cacheMode = options?.cache || 'default';
         try {
-          const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: controller.signal });
+          const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: cacheMode, signal: controller.signal });
           if (!res.ok) return null;
           return await res.json();
         } catch (_) {
@@ -2240,9 +2181,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
       };
 
-      const fetchFirstJson = async (urls = [], timeoutMs = 6500) => {
+      const fetchFirstJson = async (urls = [], timeoutMs = 6500, options = {}) => {
         for (const url of urls) {
-          const payload = await fetchJson(url, timeoutMs);
+          const payload = await fetchJson(url, timeoutMs, options);
           if (payload) return payload;
         }
         return null;
@@ -3279,24 +3220,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
       ]);
 
       const fetchComboDetailLeaderboard = async (combo) => {
-        const comboId = comboDetailId(combo);
-        if (!comboId) return [];
-
-        const detailPayload = await fetchJson(`/api/gc/combos/${encodeURIComponent(comboId)}`);
-        const item =
-          detailPayload?.item ||
-          detailPayload?.data?.item ||
-          detailPayload?.combo ||
-          detailPayload?.data?.combo ||
-          null;
-
-        const leaderboard = Array.isArray(item?.leaderboard) ? item.leaderboard : [];
-
-        console.info('[GC Home] Top Combo usando leaderboard de /combos/:id', {
-          comboId,
-          rows: leaderboard.length
-        });
-
+        // GC_HOME_PERF_V1: la portada no debe disparar /api/gc/combos/:id.
+        // /api/gc/home-summary ya entrega el leaderboard del combo activo.
+        const leaderboard = Array.isArray(combo?.leaderboard) ? combo.leaderboard : [];
         return leaderboard;
       };
 
@@ -3634,73 +3560,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         return null;
       };
 
-      const fetchJsonFirstWithSource = async (urls) => {
-        for (const url of urls) {
-          const payload = await fetchJson(url);
-          if (payload) return { payload, url };
-        }
-        return { payload: null, url: '' };
-      };
-
-      const driverKeyFromLap = (lap) => {
-        const driver =
-          firstValue(lap, ['driverName', 'pilotName', 'playerName', 'name', 'driver.displayName', 'player.name', 'DriverName', 'steamName']) ||
-          firstValue(lap, ['guid', 'steamGuid', 'driverGuid', 'playerGuid', 'DriverGuid']);
-        return driver ? slugify(driver) : '';
-      };
-
-      const lapDateFromRow = (lap) => firstValidDate(lap, [
-        'createdAt',
-        'created_at',
-        'date',
-        'timestamp',
-        'lapDate',
-        'lap_date',
-        'finishedAt',
-        'finished_at',
-        'updatedAt',
-        'updated_at'
-      ]);
-
-      const countActiveDriversLastHour = async (fallbackRows = []) => {
-        const { payload, url } = await fetchJsonFirstWithSource([
-          '/api/gc/recent-laps?limit=1000&sort=recent&valid=all&since=1h',
-          '/api/gc/recent-laps?limit=1000&sort=recent&valid=all&hours=1',
-          '/api/laps?limit=1000&sort=recent&valid=all&since=1h',
-          '/api/hotlaps?limit=1000&sort=recent&valid=all&since=1h',
-          '/api/gc/recent-laps?limit=1000&sort=recent&valid=all',
-          '/api/laps?limit=1000&sort=recent&valid=all',
-          '/api/hotlaps?limit=1000&sort=recent&valid=all'
-        ]);
-
-        const rows = getArray(payload).length ? getArray(payload) : getArray(fallbackRows);
-        const endpointClaimsLastHour = /since=1h|hours=1/.test(url);
-        const cutoff = Date.now() - (60 * 60 * 1000);
-        const drivers = new Set();
-
-        rows.forEach((lap) => {
-          const key = driverKeyFromLap(lap);
-          if (!key) return;
-
-          if (endpointClaimsLastHour) {
-            drivers.add(key);
-            return;
-          }
-
-          const date = lapDateFromRow(lap);
-          if (date && date.getTime() >= cutoff) drivers.add(key);
-        });
-
-        return drivers.size;
-      };
-
-      const updateActiveDriversLastHour = async (fallbackRows = [], maxSlots = 32) => {
-        const active = await countActiveDriversLastHour(fallbackRows);
-        const value = `${active} / ${maxSlots || 32}`;
-        /* combo card foot removed */
-        setText('[data-home2-live-connections]', value);
-        return active;
-      };
+      /* GC_HOME_PERF_V1: eliminadas funciones legacy no usadas que disparaban limit=1000. */
 
 
       const findDeepNumericServerV5 = (obj, keys, depth = 0) => {
@@ -3993,22 +3853,9 @@ const home2ArchiveSeed = (archiveStats.items || [])
 
         const lastLap = lastDates[0];
 
-        const { payload: summaryPayload } = await fetchJsonFirstWithSource([
-          '/api/gc/diagnostics',
-          '/api/stats/overview',
-          '/api/status',
-          '/api/gc/server-summary',
-          '/api/gc/server-summary.json',
-          '/api/gc/server-stats',
-          '/api/gc/server-stats.json',
-          '/api/gc/stats',
-          '/api/gc/stats.json',
-          '/api/gc/summary',
-          '/api/gc/summary.json',
-          '/api/gc/overview',
-          '/api/gc/overview.json'
-        ]);
-
+        // GC_HOME_PERF_V1: no hacemos otra ronda de endpoints para Race Control.
+        // Usamos el resumen que ya ha llegado con /api/gc/home-summary.
+        const summaryPayload = raceInfo || {};
         const summaryRaceData = summaryPayload && (summaryPayload.raceData || summaryPayload.stats || summaryPayload);
 
         // Misma idea que la home actual:
@@ -4255,45 +4102,8 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
       };
 
-      const updateServerAgeFromFirstLap = async (fallbackRows = []) => {
-        const { payload } = await fetchJsonFirstWithSource([
-          '/api/gc/first-lap',
-          '/api/gc/server-first-lap',
-          '/api/gc/stats/first-lap',
-          '/api/gc/recent-laps?limit=1&sort=oldest&valid=all',
-          '/api/gc/recent-laps?limit=1&order=asc&valid=all',
-          '/api/laps?limit=1&sort=oldest&valid=all',
-          '/api/laps?limit=1&order=asc&valid=all',
-          '/api/hotlaps?limit=1&sort=oldest',
-          '/api/hotlaps?limit=1&order=asc',
-          '/api/gc/recent-laps?limit=2000&sort=oldest&valid=all',
-          '/api/gc/recent-laps?limit=2000&sort=recent&valid=all',
-          '/api/laps?limit=2000&sort=recent&valid=all',
-          '/api/hotlaps?limit=2000&sort=recent&valid=all'
-        ]);
+      /* GC_HOME_PERF_V1: eliminada lectura legacy de primera vuelta con fallback limit=2000. */
 
-        const payloadRows = getArray(payload);
-        const rows = payloadRows.length ? payloadRows : getArray(fallbackRows);
-
-        const directDate =
-          parseDateValue(firstValue(payload || {}, ['firstLapDate', 'firstLapAt', 'first_lap_date', 'first_lap_at', 'oldestLapDate', 'oldestLapAt', 'date', 'createdAt', 'created_at'])) ||
-          parseDateValue(firstValue(payload?.stats || {}, ['firstLapDate', 'firstLapAt', 'first_lap_date', 'first_lap_at', 'oldestLapDate', 'oldestLapAt'])) ||
-          parseDateValue(firstValue(payload?.summary || {}, ['firstLapDate', 'firstLapAt', 'first_lap_date', 'first_lap_at', 'oldestLapDate', 'oldestLapAt']));
-
-        const validDates = rows
-          .map((row) => lapDateFromRow(row))
-          .filter(Boolean)
-          .sort((a, b) => a.getTime() - b.getTime());
-
-        const startDate = directDate || validDates[0];
-
-        if (!startDate) {
-          setText('[data-home2-first-lap]', '--');
-          return;
-        }
-
-        setText('[data-home2-first-lap]', startDate.toLocaleDateString('es-ES'));
-      };
 
       const mergeNewsItems = (...groups) => {
         const seen = new Set();
@@ -4630,30 +4440,37 @@ const home2ArchiveSeed = (archiveStats.items || [])
         const now = new Date();
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
-        const [diagnostics, combosPayload, recentPayload, leaderboardPayload, liveTimingPayload] = await Promise.all([
-          fetchFirstJson(['/api/gc/diagnostics', '/api/status', '/api/stats/overview']),
-          fetchFirstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent']),
-          fetchFirstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20']),
-          fetchFirstJson([
-            '/api/gc/leaderboard?scope=activeCombo&limit=25',
-            '/api/gc/leaderboard?scope=currentCombo&limit=25',
-            '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=200',
-            '/api/gc/recent-laps?limit=200&sort=recent&valid=all',
-            '/api/hotlaps?limit=200'
-          ]),
-          fetchJson('/api/live-timing', 3500)
+        // GC_HOME_PERF_V1: una llamada canónica para la portada + live timing opcional.
+        // Antes se lanzaban diagnostics/combos/recent/leaderboard en paralelo y además limit=1000.
+        const [homeSummaryPayload, liveTimingPayload] = await Promise.all([
+          fetchFirstJson(['/api/gc/home-summary?limit=25'], 4500),
+          fetchJson('/api/live-timing', 1200)
         ]);
 
-        const comboStandoutsPayloadPromise = fetchFirstJson([
-          '/api/gc/recent-laps?limit=1000&sort=recent&valid=all',
-          '/api/gc/leaderboard?scope=activeCombo&valid=all&group=all&limit=1000',
-          '/api/gc/leaderboard?scope=currentCombo&valid=all&group=all&limit=1000',
-          '/api/gc/leaderboard?scope=global&valid=all&group=all&limit=1000',
-          '/api/laps?limit=1000&sort=recent&valid=all',
-          '/api/hotlaps?limit=1000&sort=recent&valid=all'
-        ], 9000);
+        let diagnostics = homeSummaryPayload;
+        let combosPayload = {
+          ok: homeSummaryPayload?.ok,
+          activeCombo: homeSummaryPayload?.activeCombo || homeSummaryPayload?.data?.activeCombo || null,
+          items: [homeSummaryPayload?.activeCombo || homeSummaryPayload?.data?.activeCombo].filter(Boolean)
+        };
+        let recentPayload = homeSummaryPayload?.recentLaps || homeSummaryPayload?.data?.recentLaps || [];
+        let leaderboardPayload = homeSummaryPayload?.topComboTimes || homeSummaryPayload?.leaderboard || homeSummaryPayload?.data?.leaderboard || [];
 
-        const raceData = diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics);
+        if (!combosPayload.activeCombo) {
+          const [fallbackCombos, fallbackRecent, fallbackLeaderboard, fallbackStats] = await Promise.all([
+            fetchFirstJson(['/api/gc/combos?limit=1&sort=recent', '/api/combos/stats?limit=1&sort=recent', '/api/combos?limit=1&sort=recent'], 2500),
+            fetchFirstJson(['/api/gc/recent-laps?limit=20&sort=recent&valid=all', '/api/laps?limit=20&sort=recent&valid=all', '/api/hotlaps?limit=20'], 2500),
+            fetchFirstJson(['/api/gc/leaderboard?scope=activeCombo&limit=25', '/api/hotlaps?limit=25'], 2500),
+            fetchFirstJson(['/api/stats/overview', '/api/status'], 2500)
+          ]);
+
+          diagnostics = fallbackStats || diagnostics;
+          combosPayload = fallbackCombos || combosPayload;
+          recentPayload = fallbackRecent || recentPayload;
+          leaderboardPayload = fallbackLeaderboard || leaderboardPayload;
+        }
+
+        const raceData = homeSummaryPayload?.stats || homeSummaryPayload?.data?.stats || (diagnostics && (diagnostics.raceData || diagnostics.stats || diagnostics));
         if (raceData) {
           const totalLaps = firstValue(raceData, ['lapsCount', 'validLapsCount', 'totalLaps', 'hotlaps']);
           const drivers = firstValue(raceData, ['driversCount', 'pilotsCount', 'totalDrivers', 'pilots']);
@@ -4776,9 +4593,7 @@ const home2ArchiveSeed = (archiveStats.items || [])
         }
 
 
-        const comboStandoutsPayload = await comboStandoutsPayloadPromise;
         renderRaceStandoutsV1([
-          ...getArray(comboStandoutsPayload),
           ...leaderboardRows,
           ...getArray(combo.laps),
           ...getArray(combo.bestLaps),

@@ -2317,6 +2317,12 @@ function gcIsCachedPublicApi(url: string) {
     '/api/sessions',
     '/api/activity/recent',
     '/api/stats/overview',
+    '/api/gc/home-summary',
+    '/api/gc/active-combo',
+    '/api/gc/snapshot',
+    '/api/gc/combos',
+    '/api/gc/recent-laps',
+    '/api/gc/leaderboard',
     '/api/calendar-events',
     '/gc-data/hotlaps',
     '/gc-data/hotlaps.php',
@@ -10945,6 +10951,9 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
 
   const validLaps = laps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0);
   const scopedValidLaps = scopedLaps.filter((lap: any) => lap?.valid !== false && lap?.Valid !== 0);
+  const lapDateValues = laps
+    .map((lap: any) => gcDataCoreLapTimestampMs(lap))
+    .filter((value: number) => Number.isFinite(value) && value > 0);
   const latestLap = gcDataCoreLatestLap(scopedLaps);
   const bestLap = gcDataCoreBestLap(scopedLaps);
   const recentLaps = [...scopedLaps]
@@ -10968,12 +10977,20 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
     data: {
       stats: {
         totalLaps: laps.length,
+        lapsCount: laps.length,
         validLaps: validLaps.length,
+        validLapsCount: validLaps.length,
+        hotlaps: validLaps.length,
+        totalHotlaps: validLaps.length,
         invalidLaps: Math.max(0, laps.length - validLaps.length),
+        invalidLapsCount: Math.max(0, laps.length - validLaps.length),
         driversCount: new Set(laps.map((lap: any) => lap?.driver?.id ?? lap?.driver?.name)).size,
+        totalDrivers: new Set(laps.map((lap: any) => lap?.driver?.id ?? lap?.driver?.name)).size,
         carsCount: new Set(laps.map((lap: any) => lap?.car?.id ?? lap?.car?.name)).size,
         tracksCount: new Set(laps.map((lap: any) => lap?.track?.id ?? lap?.track?.name)).size,
-        combosCount: comboStats.length
+        combosCount: comboStats.length,
+        oldestLapAt: lapDateValues.length ? new Date(Math.min(...lapDateValues)).toISOString() : null,
+        latestLapAt: lapDateValues.length ? new Date(Math.max(...lapDateValues)).toISOString() : null
       },
       activeCombo,
       latestLap,
@@ -10982,8 +10999,11 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       leaderboard,
       scopedStats: {
         totalLaps: scopedLaps.length,
+        lapsCount: scopedLaps.length,
         validLaps: scopedValidLaps.length,
+        validLapsCount: scopedValidLaps.length,
         invalidLaps: Math.max(0, scopedLaps.length - scopedValidLaps.length),
+        invalidLapsCount: Math.max(0, scopedLaps.length - scopedValidLaps.length),
         latestLap,
         bestLap
       }
@@ -12411,18 +12431,28 @@ app.get('/api/gc/home-summary', async (req, res) => {
       bestLapTimeFormatted: pick(activeComboRaw, ['bestLapTimeFormatted', 'bestLapFormatted', 'bestLap.lapTime'], pick(bestLap, ['lapTimeFormatted', 'lapTime'], '--'))
     };
 
+    const recentLaps = Array.isArray(payload.data?.recentLaps) ? payload.data.recentLaps : [];
+    const stats = payload.data?.stats || null;
+    const scopedStats = payload.data?.scopedStats || null;
+
     res.json({
       ok: payload.ok !== false,
-      source: 'gc-ratings-v1',
+      source: 'gc-home-summary-v2',
       dataSource: payload.source || 'gc-data-core',
       mirrorDriver: (payload as any).mirrorDriver || null,
       syncRequired: !topComboTimes.length,
       activeCombo,
       topComboTimes,
+      leaderboard: topComboTimes,
+      recentLaps,
+      stats,
+      scopedStats,
+      latestLap: payload.data?.latestLap || null,
+      bestLap: payload.data?.bestLap || null,
       latestSync: null,
       generatedAt: new Date().toISOString(),
       message: topComboTimes.length
-        ? 'Leaderboard del combo activo generado desde /api/gc/home-summary.'
+        ? 'Resumen de portada generado en una sola lectura del Data Core.'
         : 'Sin tiempos disponibles para el combo activo.'
     });
   } catch (error) {
