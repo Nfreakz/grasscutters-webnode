@@ -1,15 +1,16 @@
 ---
-import AppLayout from '../layouts/AppLayout.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
 import '../styles/app-race-control.css';
 
 const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153';
 const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
 const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
 ---
-<AppLayout
+<MarketingLayout
   title="Race Control | GrassCutters Racing"
   description="Panel operativo de GrassCutters Racing con servidor, combo, live timing, hotlaps y actividad reciente."
   canonicalPath="/app"
+  bodyClass="gc-page-platform-data"
   ogImage="/og/platform-og-v1531.png"
   ogImageAlt="Race Control GrassCutters Racing"
 >
@@ -1447,4 +1448,15 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
     /* GC_APP_HOTLAPS_ALL_TRACKS_SAFE_V1 */
   </script>
 
-</AppLayout>
+
+  <style is:global>
+    html[data-gc-scope="marketing"] body.gc-page-platform-data .gc-public-main{padding-top:0;}
+    html[data-gc-scope="marketing"] .rc-console{
+      width:min(1680px, calc(100vw - 48px));
+      max-width:1680px;
+      margin:0 auto;
+      padding:28px 0 56px;
+      box-sizing:border-box;
+    }
+  </style>
+</MarketingLayout>

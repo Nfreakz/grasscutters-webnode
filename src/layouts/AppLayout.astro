@@ -117,11 +117,27 @@ const shouldNoindex = noindex ?? (currentPathForSeo.startsWith('/admin') || curr
 
 
 const current = normalizePath(Astro.url.pathname);
+const platformNavItems = [
+  { href: '/app', label: 'Panel', match: '/app' },
+  { href: '/hotlaps', label: 'Hotlaps', match: '/hotlaps' },
+  { href: '/pilotos', label: 'Pilotos', match: '/pilotos' },
+  { href: '/combos', label: 'Combos', match: '/combos' },
+];
+const isPlatformNavActive = (match) => current === match || current.startsWith(`${match}/`);
 const nav = [
   { href: '/app', label: 'Panel', code: '01' },
   { href: '/hotlaps', label: 'Hotlaps', code: '02' },
   { href: '/pilotos', label: 'Pilotos', code: '03' },
-  { href: '/combos', label: 'Combos', code: '04' }
+  { href: '/combos', label: 'Combos', code: '04' },
+  {
+    label: 'Herramientas',
+    code: '05',
+    children: [
+      { href: '/herramientas/fov', label: 'FOV Calculator', code: '05.1' }
+    ]
+  },
+  { href: '/perfil', label: 'Perfil', code: '06' },
+  { href: '/admin', label: 'Admin', code: '07', adminOnly: true }
 ];
 ---
 <!doctype html>
@@ -217,7 +233,12 @@ const nav = [
             <button class="gc-menu-button" type="button" aria-label="Abrir navegación" aria-expanded="false" data-menu-toggle>
               <span></span><span></span><span></span>
             </button>
-            <span class="gc-topbar__kicker">Panel</span>
+            <span class="gc-topbar__kicker">Plataforma</span>
+            <nav class="gc-platform-topnav" aria-label="Navegación de plataforma">
+              {platformNavItems.map((item) => (
+                <a href={item.href} aria-current={isPlatformNavActive(item.match) ? 'page' : undefined}>{item.label}</a>
+              ))}
+            </nav>
           </div>
 
           <div class="gc-topbar__right">
@@ -237,6 +258,71 @@ const nav = [
         </main>
       </div>
     </div>
+
+    <style is:global>
+      html[data-gc-scope="app"] .gc-shell{
+        display:block!important;
+        grid-template-columns:1fr!important;
+      }
+      html[data-gc-scope="app"] .gc-shell::before,
+      html[data-gc-scope="app"] .gc-nav-backdrop,
+      html[data-gc-scope="app"] .gc-rail,
+      html[data-gc-scope="app"] .gc-menu-button{
+        display:none!important;
+      }
+      html[data-gc-scope="app"] .gc-app{
+        min-width:0!important;
+        width:100%!important;
+      }
+      html[data-gc-scope="app"] .gc-main{
+        width:100%!important;
+        max-width:none!important;
+        margin:0!important;
+      }
+      html[data-gc-scope="app"] .gc-topbar__left{
+        min-width:0;
+        gap:16px;
+      }
+      html[data-gc-scope="app"] .gc-platform-topnav{
+        display:flex;
+        align-items:center;
+        gap:4px;
+        min-width:0;
+      }
+      html[data-gc-scope="app"] .gc-platform-topnav a{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-height:34px;
+        padding:0 14px;
+        border:1px solid rgba(150,255,47,.18);
+        background:rgba(3,9,5,.70);
+        color:rgba(244,255,241,.78);
+        font-family:var(--gc-mono,"JetBrains Mono",monospace);
+        font-size:11px;
+        font-weight:950;
+        letter-spacing:.10em;
+        text-transform:uppercase;
+        text-decoration:none;
+      }
+      html[data-gc-scope="app"] .gc-platform-topnav a:hover,
+      html[data-gc-scope="app"] .gc-platform-topnav a[aria-current="page"]{
+        border-color:rgba(150,255,47,.78);
+        background:rgba(150,255,47,.14);
+        color:#96ff2f;
+      }
+      @media(max-width:760px){
+        html[data-gc-scope="app"] .gc-platform-topnav{
+          overflow:auto;
+          max-width:calc(100vw - 170px);
+          padding-bottom:2px;
+        }
+        html[data-gc-scope="app"] .gc-platform-topnav a{
+          padding-inline:10px;
+          font-size:10px;
+        }
+      }
+    </style>
 
     <script is:inline>
       (() => {

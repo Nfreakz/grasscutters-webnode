@@ -122,6 +122,13 @@ const ratingsNavItems = [
   { href: '/ratings/faq', label: 'FAQ', match: '/ratings/faq' },
 ];
 
+const platformNavItems = [
+  { href: '/app', label: 'Panel', match: '/app' },
+  { href: '/hotlaps', label: 'Hotlaps', match: '/hotlaps' },
+  { href: '/pilotos', label: 'Pilotos', match: '/pilotos' },
+  { href: '/combos', label: 'Combos', match: '/combos' },
+];
+
 const navItems = [
   { href: '/', label: 'INICIO', match: '/' },
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
@@ -135,7 +142,6 @@ const footerItems = [
   { href: '/campeonato', label: 'Campeonato' },
   { href: '/historico', label: 'Histórico' },
   { href: '/carreras-comunidad', label: 'Carreras no oficiales' },
-  { href: '/herramientas/fov', label: 'FOV Calculator' },
   { href: '/normas', label: 'Normas' },
   { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
   { href: '/privacidad', label: 'Privacidad' },
@@ -153,6 +159,10 @@ function isChampionshipActive() {
 
 function isRatingsActive() {
   return ratingsNavItems.some((item) => isActive(item.match));
+}
+
+function isPlatformActive() {
+  return platformNavItems.some((item) => isActive(item.match));
 }
 
 const shouldShowHudPopup = !path.startsWith('/archivo');
@@ -284,9 +294,17 @@ const shouldShowHudPopup = !path.startsWith('/archivo');
             ))}
           </div>
         </details>
-        {navItems.slice(3).map((item) => (
+        {navItems.slice(3, 5).map((item) => (
           <a href={item.href} class:list={[{ 'is-active': isActive(item.match) }]}>{item.label}</a>
         ))}
+        <details class="gc-public-nav-dropdown" data-public-nav-dropdown data-active={isPlatformActive() ? 'true' : undefined}>
+          <summary class="gc-public-nav-trigger" aria-label="Abrir secciones de plataforma">PLATAFORMA</summary>
+          <div class="gc-public-nav-dropdown__menu" role="menu" aria-label="Secciones de plataforma">
+            {platformNavItems.map((item) => (
+              <a href={item.href} data-active={isActive(item.match) ? 'true' : undefined} role="menuitem">{item.label}</a>
+            ))}
+          </div>
+        </details>
       </nav>
 
       <div class="gc-public-actions">

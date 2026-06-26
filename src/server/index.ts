@@ -13176,6 +13176,228 @@ app.get('/api/gc/hotlaps2', async (req, res) => {
 /* GC_HOTLAPS2_LAB_V1_END */
 
 
+/* GC_PILOTOS2_LAB_V2_START */
+app.get('/api/gc/pilots2', async (req, res) => {
+  try {
+    await readDisplayNameStoreAsync();
+
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        source: 'unavailable',
+        generatedAt: new Date().toISOString(),
+        items: [],
+        pilots: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const filtered = filterLaps(dataCoreSource.laps, req, { validOnly: false });
+
+    const normalizePilotNameForRatings = (value: unknown) => String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const ratingsByPlayerId = new Map<string, any>();
+    const ratingsByName = new Map<string, any>();
+    try {
+      const ratingService = getGcRatingsService();
+      const ratingLeaderboard: any = await ratingService.getLeaderboard();
+      for (const row of ratingLeaderboard?.leaderboard?.sr || []) {
+        const key = String(row.profilePlayerId ?? '').trim();
+        const nameKey = normalizePilotNameForRatings(row.driver);
+        const current = key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
+        const merged = { ...current, srScore: row.sr, srClass: row.srClass };
+        if (key) ratingsByPlayerId.set(key, merged);
+        if (nameKey) ratingsByName.set(nameKey, merged);
+      }
+      for (const row of ratingLeaderboard?.leaderboard?.gsr || []) {
+        const key = String(row.profilePlayerId ?? '').trim();
+        const nameKey = normalizePilotNameForRatings(row.driver);
+        const current = key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
+        const merged = { ...current, gsrScore: row.gsr, gsrClass: row.gsrClass };
+        if (key) ratingsByPlayerId.set(key, merged);
+        if (nameKey) ratingsByName.set(nameKey, merged);
+      }
+    } catch (ratingError) {
+      console.warn('[GC PILOTOS2 LAB] ratings merge unavailable:', ratingError instanceof Error ? ratingError.message : ratingError);
+    }
+
+    const fmtRatingClass = (value: unknown) => String(value ?? '').trim() || null;
+    const ratingScoreFromDriver = (driver: any, keys: string[]) => {
+      for (const key of keys) {
+        const value = driver?.[key];
+        const n = Number(value);
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    };
+
+    const timestampMs = (lap: any) => {
+      const raw = Number(lap.timestamp ?? 0);
+      if (Number.isFinite(raw) && raw > 0) return raw > 20000000000 ? raw : raw * 1000;
+      const iso = String(lap.timestampIso ?? lap.createdAt ?? '').trim();
+      if (!iso) return 0;
+      const parsed = Date.parse(iso);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const byPilot = new Map<string, any>();
+    for (const lap of filtered as any[]) {
+      const pilotId = String(lap.driver?.id ?? lap.driver?.steamGuid ?? lap.driver?.name ?? 'unknown');
+      if (!pilotId || pilotId === 'unknown') continue;
+      const name = String(lap.driver?.name ?? lap.driver?.displayName ?? pilotId).trim() || pilotId;
+      const ts = timestampMs(lap);
+      let row = byPilot.get(pilotId);
+      if (!row) {
+        row = {
+          id: pilotId,
+          playerId: lap.driver?.id ?? null,
+          steamGuid: lap.driver?.steamGuid ?? null,
+          name,
+          displayName: name,
+          team: lap.driver?.team ?? lap.driver?.teamName ?? null,
+          country: lap.driver?.countryCode ?? lap.driver?.country ?? lap.driver?.nationality ?? lap.countryCode ?? lap.country ?? null,
+          countryCode: lap.driver?.countryCode ?? lap.driver?.countryIso ?? lap.driver?.nationalityCode ?? lap.countryCode ?? lap.countryIso ?? null,
+          srScore: ratingScoreFromDriver(lap.driver, ['srScore', 'safetyRating', 'sr', 'safety']),
+          srClass: fmtRatingClass(lap.driver?.srClass ?? lap.driver?.safetyClass),
+          gsrScore: ratingScoreFromDriver(lap.driver, ['gsrScore', 'gsrRating', 'gsr', 'skillRating']),
+          gsrClass: fmtRatingClass(lap.driver?.gsrClass ?? lap.driver?.skillClass),
+          totalLaps: 0,
+          validLaps: 0,
+          invalidLaps: 0,
+          active30dLaps: 0,
+          totalTimeMs: 0,
+          maxSpeedKmh: null,
+          bestLap: null,
+          lastLap: null,
+          cars: new Map<string, number>(),
+          tracks: new Map<string, number>(),
+          combos: new Set<string>(),
+          sessions: new Set<string>()
+        };
+        byPilot.set(pilotId, row);
+      }
+
+      row.totalLaps += 1;
+      if (lap.valid) row.validLaps += 1;
+      else row.invalidLaps += 1;
+      if (ts >= thirtyDaysAgo) row.active30dLaps += 1;
+      const lapMs = Number(lap.lapTimeMs ?? 0);
+      if (Number.isFinite(lapMs) && lapMs > 0) row.totalTimeMs += lapMs;
+      const speed = Number(lap.maxSpeedKmh ?? 0);
+      if (Number.isFinite(speed) && speed > 0 && (!row.maxSpeedKmh || speed > row.maxSpeedKmh)) row.maxSpeedKmh = speed;
+      if (lap.valid && lapMs > 0 && (!row.bestLap || lapMs < Number(row.bestLap.lapTimeMs ?? Infinity))) row.bestLap = lap;
+      if (ts > 0 && (!row.lastLap || ts > timestampMs(row.lastLap))) row.lastLap = lap;
+
+      const carKey = String(lap.car?.name ?? lap.car?.code ?? lap.car?.id ?? '').trim();
+      if (carKey) row.cars.set(carKey, (row.cars.get(carKey) || 0) + 1);
+      const trackKey = String(lap.track?.name ?? lap.track?.code ?? lap.track?.id ?? '').trim();
+      if (trackKey) row.tracks.set(trackKey, (row.tracks.get(trackKey) || 0) + 1);
+      const comboKey = getComboKeyFromLap(lap as ComboLap);
+      if (comboKey) row.combos.add(comboKey);
+      const sessionId = String(lap.sessionId ?? lap.session?.id ?? '').trim();
+      if (sessionId) row.sessions.add(sessionId);
+    }
+
+    const topKey = (map: Map<string, number>) => Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const compactBestLap = (lap: any) => compactLapForCombo(lap as ComboLap) || null;
+    const items = Array.from(byPilot.values()).map((row: any) => {
+      const ratingMatch = ratingsByPlayerId.get(String(row.playerId ?? '').trim()) || ratingsByName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
+      return {
+      id: row.id,
+      playerId: row.playerId,
+      steamGuid: row.steamGuid,
+      name: row.name,
+      displayName: row.displayName,
+      team: row.team,
+      country: row.country,
+      countryCode: row.countryCode ?? row.country,
+      avatarUrl: row.playerId ? `/api/pilot-avatar/${encodeURIComponent(String(row.playerId))}` : '/images/pilot-avatar-default.png',
+      srScore: row.srScore ?? ratingMatch.srScore ?? null,
+      srClass: row.srClass ?? ratingMatch.srClass ?? null,
+      gsrScore: row.gsrScore ?? ratingMatch.gsrScore ?? null,
+      gsrClass: row.gsrClass ?? ratingMatch.gsrClass ?? null,
+      totalLaps: row.totalLaps,
+      validLaps: row.validLaps,
+      invalidLaps: row.invalidLaps,
+      cleanRate: row.totalLaps ? Math.round((row.validLaps / row.totalLaps) * 1000) / 10 : null,
+      active30dLaps: row.active30dLaps,
+      carsCount: row.cars.size,
+      tracksCount: row.tracks.size,
+      combosCount: row.combos.size,
+      sessionsCount: row.sessions.size,
+      totalTimeMs: row.totalTimeMs,
+      totalMinutes: Math.round(row.totalTimeMs / 60000),
+      totalHours: Math.round((row.totalTimeMs / 3600000) * 10) / 10,
+      maxSpeedKmh: row.maxSpeedKmh,
+      bestLap: compactBestLap(row.bestLap),
+      lastLap: compactBestLap(row.lastLap),
+      favoriteCar: topKey(row.cars),
+      favoriteTrack: topKey(row.tracks)
+      };
+    }).sort((a: any, b: any) => Number(b.totalLaps ?? 0) - Number(a.totalLaps ?? 0));
+
+    const activePilots = items.filter((pilot: any) => Number(pilot.active30dLaps ?? 0) > 0).length;
+    const validLaps = filtered.filter((lap: any) => lap.valid).length;
+    const bestLap = filtered.filter((lap: any) => lap.valid).sort((a: any, b: any) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
+    const fastestLap = filtered.slice().sort((a: any, b: any) => Number(b.maxSpeedKmh ?? 0) - Number(a.maxSpeedKmh ?? 0))[0] || null;
+
+    res.json({
+      ok: true,
+      source: dataCoreSource.source,
+      mode: 'gc-pilotos2-lab-v2',
+      generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      count: items.length,
+      items,
+      pilots: items,
+      data: {
+        items,
+        pilots: items,
+        stats: {
+          pilotsCount: items.length,
+          activePilots30d: activePilots,
+          totalLaps: filtered.length,
+          validLaps,
+          invalidLaps: Math.max(0, filtered.length - validLaps),
+          carsCount: new Set(filtered.map((lap: any) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean)).size,
+          tracksCount: new Set(filtered.map((lap: any) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean)).size,
+          bestLap: bestLap ? compactLapForCombo(bestLap as ComboLap) : null,
+          fastestLap: fastestLap ? compactLapForCombo(fastestLap as ComboLap) : null
+        }
+      },
+      message: 'Pilotos2 devuelve estadísticas agregadas por piloto desde Race Data Core.'
+    });
+  } catch (error) {
+    console.error('[GC PILOTOS2 LAB] /api/gc/pilots2:', error);
+    res.status(200).json({
+      ok: false,
+      mode: 'gc-pilotos2-lab-v2',
+      generatedAt: new Date().toISOString(),
+      items: [],
+      pilots: [],
+      message: 'No se pudieron generar pilotos2 desde Race Data Core.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+/* GC_PILOTOS2_LAB_V2_END */
+
+
 /* GC_DATA_CORE_LAB_FIXES_V1_START */
 function gcLabFixTextV1(value: unknown, fallback = '') {
   const text = String(value ?? '').trim();
