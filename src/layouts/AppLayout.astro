@@ -275,7 +275,7 @@ const nav = [
             </details>
           </nav>
 
-          <div class="gc-app-public-actions">
+          <div class="gc-app-public-actions gc-public-actions">
             <span class="gc-auth-status" data-auth-status hidden>Conectado</span>
             <a class="gc-login-link" href="/login" data-auth-link>Login</a>
             <button class="gc-auth-logout" type="button" data-auth-logout hidden>Salir</button>
@@ -459,7 +459,14 @@ const nav = [
         display:flex!important;
         align-items:center!important;
         justify-content:flex-end!important;
-        min-width:120px!important;
+        gap:10px!important;
+        min-width:180px!important;
+      }
+      html[data-gc-scope="app"] .gc-app-public-actions .gc-user-menu-v1533{
+        display:none;
+      }
+      html[data-gc-scope="app"][data-auth="true"] .gc-app-public-actions .gc-user-menu-v1533{
+        display:flex!important;
       }
       html[data-gc-scope="app"] .gc-login-link,
       html[data-gc-scope="app"] .gc-auth-logout{
