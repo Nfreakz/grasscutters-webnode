@@ -3869,6 +3869,10 @@ function buildPilotProProfile(user: AppUser, session: AppSession, allLaps: Pilot
       favoriteTrack: circuitStats[0] ?? trackStats[0] ?? null
     },
     recentLaps: sortedRecent.slice(0, 25).map(compactLapForProfile),
+    // GC_PROFILE2_LAB_V15: authenticated profile needs all pilot laps for the Hotlaps tab filters.
+    // This endpoint is private/authenticated, so the larger payload is acceptable here and avoids
+    // slow extra public Data Core calls from /perfil2.
+    laps: sortedRecent.map(compactLapForProfile),
     bestCombos: comboStats.slice(0, 25),
     cars: garageStats.slice(0, 25),
     tracks: circuitStats.slice(0, 25),
@@ -7789,6 +7793,118 @@ app.post('/api/auth/password', async (req, res) => {
   });
 });
 // GC AUTH CHANGE PASSWORD V8.8.4 END
+
+
+// GC PROFILE2 ACCOUNT MANAGEMENT V10 START
+app.post('/api/auth/account', async (req, res) => {
+  const context = await getAuthContextAsync(req);
+  if (!context) {
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+    return;
+  }
+
+  const nextDisplayName = normalizeDisplayName(req.body?.displayName ?? context.user.displayName);
+  const nextEmail = normalizeEmail(req.body?.email ?? context.user.email);
+  const currentPassword = String(req.body?.currentPassword ?? '');
+
+  if (!nextDisplayName || nextDisplayName.length < 2) {
+    res.status(400).json({ ok: false, message: 'Introduce un nombre visible de al menos 2 caracteres.' });
+    return;
+  }
+
+  if (!nextEmail || !nextEmail.includes('@') || nextEmail.length > 160) {
+    res.status(400).json({ ok: false, message: 'Introduce un correo válido.' });
+    return;
+  }
+
+  const emailChanged = nextEmail !== context.user.email;
+  if (emailChanged) {
+    if (!currentPassword) {
+      res.status(400).json({ ok: false, message: 'Introduce tu contraseña actual para cambiar el correo.' });
+      return;
+    }
+    if (!verifyPassword(currentPassword, context.user.password)) {
+      res.status(401).json({ ok: false, message: 'La contraseña actual no es correcta.' });
+      return;
+    }
+    const existing = findUserByEmail(context.store, nextEmail);
+    if (existing && existing.id !== context.user.id) {
+      res.status(409).json({ ok: false, message: 'Ya existe una cuenta con ese correo.' });
+      return;
+    }
+  }
+
+  const changed: string[] = [];
+  if (context.user.displayName !== nextDisplayName) {
+    context.user.displayName = nextDisplayName;
+    changed.push('nombre visible');
+  }
+  if (context.user.email !== nextEmail) {
+    context.user.email = nextEmail;
+    changed.push('correo');
+  }
+
+  context.user.updatedAt = new Date().toISOString();
+  await writeUserStoreAsync(context.store);
+
+  res.json({
+    ok: true,
+    user: publicUser(context.user),
+    changed,
+    message: changed.length ? `Cuenta actualizada: ${changed.join(', ')}.` : 'No había cambios pendientes.'
+  });
+});
+
+app.post('/api/auth/delete-account', async (req, res) => {
+  const context = await getAuthContextAsync(req);
+  if (!context) {
+    res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+    return;
+  }
+
+  const currentPassword = String(req.body?.currentPassword ?? '');
+  const confirmText = String(req.body?.confirmText ?? '').trim().toUpperCase();
+
+  if (confirmText !== 'ELIMINAR') {
+    res.status(400).json({ ok: false, message: 'Confirmación requerida. Escribe ELIMINAR.' });
+    return;
+  }
+
+  if (!currentPassword || !verifyPassword(currentPassword, context.user.password)) {
+    res.status(401).json({ ok: false, message: 'La contraseña actual no es correcta.' });
+    return;
+  }
+
+  if (context.user.role === 'admin' && isLastAdmin(context.store, context.user.id)) {
+    res.status(409).json({ ok: false, message: 'No puedes eliminar el último administrador.' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  context.user.deletedAt = context.user.deletedAt || now;
+  context.user.deletedBy = context.user.id;
+  context.user.disabledAt = context.user.disabledAt || now;
+  context.user.role = 'pilot';
+  context.user.email = `deleted+${context.user.id}@grasscutters.local`;
+  context.user.displayName = `Usuario eliminado ${context.user.id.slice(0, 8)}`;
+  context.user.pilotLink = null;
+  context.user.team = null;
+  context.user.password = hashPassword(crypto.randomBytes(32).toString('hex'));
+  context.user.passwordRecovery = null;
+  context.user.updatedAt = now;
+
+  const sessionsRevoked = revokeUserSessions(context.store, context.user.id);
+  await writeUserStoreAsync(context.store);
+  clearSessionCookie(res);
+
+  res.json({
+    ok: true,
+    deleted: true,
+    sessionsRevoked,
+    message: 'Cuenta eliminada. Las vueltas de sTracker no se eliminan.'
+  });
+});
+// GC PROFILE2 ACCOUNT MANAGEMENT V10 END
 
 app.post('/api/auth/link-pilot', async (req, res) => {
   const context = await getAuthContextAsync(req);
