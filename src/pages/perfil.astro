@@ -241,6 +241,35 @@ const description = 'Perfil de piloto GrassCutters Racing con identidad, equipo,
               </div>
             </div>
           </article>
+
+          <article class="gc-profile2-board gc-profile2-board--team-members">
+            <header class="gc-profile2-board__head">
+              <p class="gc-profile2-panel__eyebrow">Gestión</p>
+              <h2>Pilotos del equipo</h2>
+              <p class="gc-profile2-muted">Owner/captain pueden añadir o quitar pilotos para el ranking por equipos.</p>
+            </header>
+            <div class="gc-profile2-data-list" id="profile2TeamMembers">
+              <div><span><b>Miembros</b><small>cargando</small></span><strong>--</strong></div>
+            </div>
+            <div class="gc-profile2-form-grid">
+              <label class="gc-profile2-field">
+                <span>Añadir piloto</span>
+                <input id="profile2TeamMemberName" type="text" maxlength="120" placeholder="Nombre exacto o piloto no reclamado" />
+              </label>
+              <label class="gc-profile2-field">
+                <span>Rol</span>
+                <select id="profile2TeamMemberRole">
+                  <option value="driver">Piloto</option>
+                  <option value="reserve">Reserva</option>
+                  <option value="captain">Captain</option>
+                </select>
+              </label>
+            </div>
+            <div class="gc-profile2-actions">
+              <button class="gc-profile2-btn gc-profile2-btn--primary" id="profile2AddTeamMember" type="button">Añadir piloto</button>
+            </div>
+            <p class="gc-profile2-message" id="profile2TeamMembersMessage" aria-live="polite"></p>
+          </article>
         </div>
       </section>
 
@@ -290,6 +319,37 @@ const description = 'Perfil de piloto GrassCutters Racing con identidad, equipo,
                 <button class="gc-profile2-btn gc-profile2-btn--ghost gc-profile2-btn--small" id="profile2CancelPilotLink" type="button">Cancelar</button>
               </div>
               <p class="gc-profile2-message" id="profile2PilotMessage" aria-live="polite"></p>
+            </div>
+          </article>
+
+          <article class="gc-profile2-board gc-profile2-board--country">
+            <header class="gc-profile2-board__head">
+              <p class="gc-profile2-panel__eyebrow">Piloto</p>
+              <h2>País / bandera</h2>
+              <p class="gc-profile2-muted gc-profile2-muted--inline">Dato propio de GrassCutters. sTracker no lo aporta de forma fiable.</p>
+            </header>
+            <div class="gc-profile2-form-body">
+              <label class="gc-profile2-field">
+                <span>País del piloto</span>
+                <select id="profile2CountryInput">
+                  <option value="">Bandera blanca / sin país</option>
+                  <option value="ES">🇪🇸 España</option>
+                  <option value="AD">🇦🇩 Andorra</option>
+                  <option value="FR">🇫🇷 Francia</option>
+                  <option value="IT">🇮🇹 Italia</option>
+                  <option value="PT">🇵🇹 Portugal</option>
+                  <option value="DE">🇩🇪 Alemania</option>
+                  <option value="GB">🇬🇧 Reino Unido</option>
+                  <option value="US">🇺🇸 Estados Unidos</option>
+                  <option value="AR">🇦🇷 Argentina</option>
+                  <option value="MX">🇲🇽 México</option>
+                  <option value="BR">🇧🇷 Brasil</option>
+                </select>
+              </label>
+              <div class="gc-profile2-account-actions">
+                <button class="gc-profile2-btn gc-profile2-btn--primary gc-profile2-btn--small" id="profile2SaveCountry" type="button">Guardar país</button>
+              </div>
+              <p class="gc-profile2-message" id="profile2CountryMessage" aria-live="polite"></p>
             </div>
           </article>
 
@@ -1588,6 +1648,7 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
       const fallbackTeamLogo = '/images/team-default-gc.svg';
       let currentProfileData = null;
       let pilotCandidates = [];
+      let currentTeamData = null;
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
         '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
@@ -1600,6 +1661,15 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
         }
         return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
       };
+
+      const normalizeCountryCode = (value) => {
+        const raw = String(value || '').trim().toUpperCase().replace(/[^A-Z]/g,'');
+        const alpha3 = { ESP:'ES', SPA:'ES', ITA:'IT', FRA:'FR', DEU:'DE', GER:'DE', GBR:'GB', UK:'GB', USA:'US', PRT:'PT', POR:'PT' };
+        if (!raw) return '';
+        if (raw.length === 2) return raw;
+        return alpha3[raw] || '';
+      };
+      const flagEmoji = (code) => /^[A-Z]{2}$/.test(code) ? String.fromCodePoint(...[...code].map((c)=>127397+c.charCodeAt(0))) : '🏳️';
 
       const valueAt = (source, path) => {
         if (!source || typeof source !== 'object') return undefined;
@@ -2032,6 +2102,7 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
           `<div><span><b>Email</b><small>correo asociado a la cuenta</small></span><strong>${escapeHtml(user.email || '--')}</strong></div>`,
           `<div><span><b>Nombre visible</b><small>identidad mostrada en la plataforma</small></span><strong>${escapeHtml(cleanName(user.displayName || user.name, name))}</strong></div>`,
           `<div><span><b>Rol</b><small>permisos actuales</small></span><strong>${escapeHtml(cleanName(user.role, 'pilot'))}</strong></div>`,
+          `<div><span><b>País</b><small>bandera pública del piloto</small></span><strong>${escapeHtml(flagEmoji(normalizeCountryCode(user.countryCode || data.countryCode)) + ' ' + (normalizeCountryCode(user.countryCode || data.countryCode) || 'Sin país'))}</strong></div>`,
           `<div><span><b>Fecha de registro</b><small>alta de la cuenta</small></span><strong>${escapeHtml(fmtDate(user.createdAt || data.createdAt || data.session?.createdAt))}</strong></div>`
         ].join('');
 
@@ -2054,8 +2125,11 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
         const emailInput = $('profile2EmailInput');
         if (displayInput) displayInput.value = cleanName(user.displayName || user.name, name);
         if (emailInput) emailInput.value = user.email || '';
+        const countryInput = $('profile2CountryInput');
+        if (countryInput) countryInput.value = normalizeCountryCode(user.countryCode || data.countryCode);
         const unlinkButton = $('profile2UnlinkPilot');
         if (unlinkButton) unlinkButton.disabled = !data.linked;
+        loadTeamManagement().catch(() => {});
       }
 
       function setTeamMessage(text, tone = '') {
@@ -2067,9 +2141,10 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
 
       async function saveTeam(clear = false) {
         const payload = clear ? { equipo: '', logo_equipo: '', teamRole: '' } : {
-          equipo: $('profile2TeamNameInput')?.value || '',
-          logo_equipo: $('profile2TeamLogoInput')?.value || '',
-          teamRole: $('profile2TeamRoleInput')?.value || ''
+          name: $('profile2TeamNameInput')?.value || '',
+          logoUrl: $('profile2TeamLogoInput')?.value || '',
+          role: $('profile2TeamRoleInput')?.value || 'owner',
+          countryCode: $('profile2CountryInput')?.value || ''
         };
 
         ['profile2SaveTeam','profile2ClearTeam','profile2TeamNameInput','profile2TeamLogoInput','profile2TeamRoleInput'].forEach((id) => {
@@ -2079,7 +2154,7 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
         setTeamMessage(clear ? 'Quitando equipo...' : 'Guardando equipo...');
 
         try {
-          const response = await fetch('/api/profile/team', {
+          const response = await fetch(clear ? '/api/profile/team' : '/api/gc/teams', {
             method:'POST',
             credentials:'include',
             headers:{ 'Content-Type':'application/json' },
@@ -2109,6 +2184,74 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
 
       function setBusy(ids, busy) {
         ids.forEach((id) => { const el = $(id); if (el) el.disabled = Boolean(busy); });
+      }
+
+
+      async function saveCountry() {
+        setBusy(['profile2SaveCountry','profile2CountryInput'], true);
+        setProfile2Message('profile2CountryMessage', 'Guardando país...');
+        try {
+          const response = await fetch('/api/gc/drivers/me/profile', {
+            method:'POST', credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ countryCode: $('profile2CountryInput')?.value || '' })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || data?.ok === false) throw new Error(data?.message || 'No se pudo guardar el país.');
+          await loadProfile();
+          setProfile2Message('profile2CountryMessage', data.message || 'País actualizado.', 'ok');
+        } catch (error) {
+          setProfile2Message('profile2CountryMessage', error.message || 'No se pudo guardar el país.', 'error');
+        } finally {
+          setBusy(['profile2SaveCountry','profile2CountryInput'], false);
+        }
+      }
+
+      async function loadTeamManagement() {
+        const membersBox = $('profile2TeamMembers');
+        if (!membersBox) return;
+        const response = await fetch('/api/gc/teams/me', { credentials:'include', cache:'no-store' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data?.ok === false || !data.team) {
+          currentTeamData = null;
+          membersBox.innerHTML = '<div><span><b>Equipo</b><small>crea una escudería primero</small></span><strong>Sin equipo</strong></div>';
+          return;
+        }
+        currentTeamData = data.team;
+        const members = Array.isArray(data.members) ? data.members : (Array.isArray(data.team.members) ? data.team.members : []);
+        membersBox.innerHTML = members.length ? members.map((member) => {
+          const country = normalizeCountryCode(member.countryCode);
+          const role = cleanName(member.role, 'driver');
+          return `<div><span><b>${escapeHtml(cleanName(member.displayName || member.driverName, 'Piloto'))}</b><small>${escapeHtml(role)} · ${escapeHtml(member.playerId || member.steamGuid || 'no reclamado')}</small></span><strong>${escapeHtml(flagEmoji(country) + ' ' + (country || '--'))}</strong></div>`;
+        }).join('') : '<div><span><b>Miembros</b><small>sin pilotos todavía</small></span><strong>0</strong></div>';
+      }
+
+      async function addTeamMember() {
+        if (!currentTeamData?.id) {
+          setProfile2Message('profile2TeamMembersMessage', 'Primero crea o guarda tu equipo.', 'error');
+          return;
+        }
+        const driverName = $('profile2TeamMemberName')?.value || '';
+        if (!driverName.trim()) {
+          setProfile2Message('profile2TeamMembersMessage', 'Introduce el nombre del piloto.', 'error');
+          return;
+        }
+        setBusy(['profile2AddTeamMember','profile2TeamMemberName','profile2TeamMemberRole'], true);
+        setProfile2Message('profile2TeamMembersMessage', 'Añadiendo piloto...');
+        try {
+          const response = await fetch(`/api/gc/teams/${encodeURIComponent(currentTeamData.id)}/members`, {
+            method:'POST', credentials:'include', cache:'no-store', headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ driverName, role: $('profile2TeamMemberRole')?.value || 'driver' })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || data?.ok === false) throw new Error(data?.message || 'No se pudo añadir piloto.');
+          $('profile2TeamMemberName').value = '';
+          await loadTeamManagement();
+          setProfile2Message('profile2TeamMembersMessage', data.message || 'Piloto añadido.', 'ok');
+        } catch (error) {
+          setProfile2Message('profile2TeamMembersMessage', error.message || 'No se pudo añadir piloto.', 'error');
+        } finally {
+          setBusy(['profile2AddTeamMember','profile2TeamMemberName','profile2TeamMemberRole'], false);
+        }
       }
 
       async function saveIdentity() {
@@ -2398,6 +2541,8 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
 
 
       $('profile2SaveIdentity')?.addEventListener('click', saveIdentity);
+      $('profile2SaveCountry')?.addEventListener('click', saveCountry);
+      $('profile2AddTeamMember')?.addEventListener('click', addTeamMember);
       $('profile2SavePassword')?.addEventListener('click', changePassword);
       $('profile2UploadAvatar')?.addEventListener('click', uploadAvatar);
       $('profile2ResetAvatar')?.addEventListener('click', resetAvatar);

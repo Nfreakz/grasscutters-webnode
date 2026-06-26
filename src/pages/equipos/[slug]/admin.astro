@@ -1,0 +1,133 @@
+---
+export const prerender = false;
+import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+const slug = Astro.params.slug ?? '';
+---
+<MarketingLayout
+  title="Gestionar equipo | GrassCutters Racing"
+  description="Administración de escudería GrassCutters Racing."
+  canonicalPath={`/equipos/${slug}/admin`}
+  bodyClass="gc-page-platform-data"
+>
+  <main class="gc-team-admin gc-public-shell" data-gc-team-admin data-team-slug={slug}>
+    <header class="gc-team-admin__head">
+      <p>GRASSCUTTERS / TEAM CONTROL</p>
+      <h1>Gestionar escudería.</h1>
+      <span id="gcTeamAdminStatus">Cargando permisos y datos del equipo...</span>
+    </header>
+
+    <section class="gc-team-admin__grid">
+      <form class="gc-team-admin__card" id="gcTeamEditForm">
+        <h2>Identidad</h2>
+        <label>Nombre<input name="name" required /></label>
+        <label>Nombre corto<input name="shortName" maxlength="32" /></label>
+        <label>Logo URL<input name="logoUrl" placeholder="/images/team-default-gc.svg" /></label>
+        <label>País<input name="countryCode" maxlength="2" placeholder="ES" /></label>
+        <label>Descripción<textarea name="description" rows="4"></textarea></label>
+        <button type="submit">Guardar equipo</button>
+      </form>
+
+      <form class="gc-team-admin__card" id="gcTeamAddMemberForm">
+        <h2>Añadir piloto</h2>
+        <label>Nombre piloto<input name="driverName" required placeholder="Neo" /></label>
+        <label>Player ID<input name="playerId" inputmode="numeric" /></label>
+        <label>Steam GUID<input name="steamGuid" /></label>
+        <label>País<input name="countryCode" maxlength="2" placeholder="ES" /></label>
+        <label>Rol<select name="role"><option value="driver">Driver</option><option value="captain">Captain</option><option value="reserve">Reserve</option></select></label>
+        <button type="submit">Añadir al equipo</button>
+      </form>
+    </section>
+
+    <section class="gc-team-admin__card gc-team-admin__card--wide">
+      <header><h2>Miembros</h2><span>Solo owner/captain pueden gestionar pilotos. Solo owner cambia roles.</span></header>
+      <div id="gcTeamAdminMembers" class="gc-team-admin-members">Cargando miembros...</div>
+    </section>
+
+    <section class="gc-team-admin__danger">
+      <button id="gcTeamLeaveBtn" type="button">Salir del equipo</button>
+      <button id="gcTeamArchiveBtn" type="button">Archivar equipo</button>
+    </section>
+  </main>
+
+  <style is:global>
+    .gc-team-admin{max-width:1440px;margin:0 auto;padding:22px 18px 56px;color:var(--text,#f4fff1);display:grid;gap:16px}
+    .gc-team-admin__head{border:1px solid rgba(150,255,47,.22);background:linear-gradient(135deg,rgba(150,255,47,.10),rgba(1,7,4,.98));padding:22px}
+    .gc-team-admin__head p{margin:0 0 8px;color:#96ff2f;font:900 12px/1 var(--gc-mono,monospace);letter-spacing:.16em}.gc-team-admin__head h1{margin:0;font-size:clamp(32px,6vw,72px);line-height:.9;text-transform:uppercase}.gc-team-admin__head span{display:block;margin-top:10px;color:rgba(244,255,241,.70)}
+    .gc-team-admin__grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.gc-team-admin__card{border:1px solid rgba(150,255,47,.16);background:rgba(3,9,5,.94);padding:16px;display:grid;gap:12px}.gc-team-admin__card h2{margin:0;color:#96ff2f;font:950 16px/1 var(--gc-mono,monospace);text-transform:uppercase;letter-spacing:.12em}.gc-team-admin__card label{display:grid;gap:6px;color:rgba(244,255,241,.62);font:800 11px/1 var(--gc-mono,monospace);text-transform:uppercase;letter-spacing:.08em}.gc-team-admin__card input,.gc-team-admin__card textarea,.gc-team-admin__card select{background:#050905;border:1px solid rgba(150,255,47,.24);color:#f4fff1;padding:11px 12px;font:700 13px/1.2 var(--gc-mono,monospace)}.gc-team-admin__card button,.gc-team-admin__danger button{border:1px solid rgba(150,255,47,.48);background:rgba(150,255,47,.12);color:#96ff2f;padding:12px 14px;font:950 11px/1 var(--gc-mono,monospace);text-transform:uppercase;letter-spacing:.1em;cursor:pointer}.gc-team-admin__card--wide header{display:flex;justify-content:space-between;gap:12px;align-items:end}.gc-team-admin__card--wide header span{color:rgba(244,255,241,.55);font-size:12px}.gc-team-admin-members{display:grid;gap:1px;background:rgba(150,255,47,.10)}.gc-team-admin-member{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:#040904;padding:10px}.gc-team-admin-member b{text-transform:uppercase}.gc-team-admin-member small{display:block;color:rgba(244,255,241,.55);font:800 11px/1.2 var(--gc-mono,monospace);margin-top:4px}.gc-team-admin-member select{background:#050905;border:1px solid rgba(150,255,47,.24);color:#f4fff1;padding:8px}.gc-team-admin-member button{padding:9px 10px}.gc-team-admin__danger{display:flex;justify-content:flex-end;gap:10px}.gc-team-admin__danger button:last-child{border-color:rgba(255,73,73,.5);color:#ff6b6b;background:rgba(255,73,73,.10)}
+    @media(max-width:880px){.gc-team-admin__grid{grid-template-columns:1fr}.gc-team-admin-member{grid-template-columns:1fr}.gc-team-admin__danger{justify-content:flex-start;flex-wrap:wrap}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const root = document.querySelector('[data-gc-team-admin]');
+      const slug = root?.dataset.teamSlug || '';
+      const status = document.getElementById('gcTeamAdminStatus');
+      const editForm = document.getElementById('gcTeamEditForm');
+      const addForm = document.getElementById('gcTeamAddMemberForm');
+      const membersBox = document.getElementById('gcTeamAdminMembers');
+      const esc = (v) => String(v ?? '').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+      const flag = (code) => /^[A-Z]{2}$/.test(String(code||'')) ? String.fromCodePoint(...[...String(code).toUpperCase()].map((c)=>127397+c.charCodeAt(0))) : '🏳️';
+      let team = null;
+      let myRole = null;
+      const setStatus = (text) => { if (status) status.textContent = text; };
+      async function api(url, options = {}) {
+        const res = await fetch(url, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(options.headers || {}) }, ...options });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) throw new Error(data.message || 'Error de servidor');
+        return data;
+      }
+      function fillForm() {
+        if (!editForm || !team) return;
+        editForm.name.value = team.name || '';
+        editForm.shortName.value = team.shortName || '';
+        editForm.logoUrl.value = team.logoUrl || '';
+        editForm.countryCode.value = team.countryCode || '';
+        editForm.description.value = team.description || '';
+      }
+      function renderMembers() {
+        const members = team?.members || [];
+        membersBox.innerHTML = members.length ? members.map((m) => `
+          <article class="gc-team-admin-member" data-membership-id="${esc(m.membershipId)}">
+            <span><b>${esc(m.displayName || m.driverName || 'Piloto')}</b><small>${esc(flag(m.countryCode))} ${esc(m.countryCode || '--')} · ${esc(m.playerId || m.steamGuid || 'sin cuenta')}</small></span>
+            <select data-role ${myRole !== 'owner' ? 'disabled' : ''}><option value="owner" ${m.role==='owner'?'selected':''}>Owner</option><option value="captain" ${m.role==='captain'?'selected':''}>Captain</option><option value="driver" ${m.role==='driver'?'selected':''}>Driver</option><option value="reserve" ${m.role==='reserve'?'selected':''}>Reserve</option></select>
+            <button type="button" data-save-role ${myRole !== 'owner' ? 'disabled' : ''}>Rol</button>
+            <button type="button" data-remove ${['owner','captain'].includes(myRole) ? '' : 'disabled'}>Quitar</button>
+          </article>`).join('') : 'Sin miembros.';
+      }
+      async function load() {
+        try {
+          const publicData = await api(`/api/gc/teams/${encodeURIComponent(slug)}`);
+          team = publicData.team;
+          const me = await fetch('/api/gc/teams/me', { credentials:'include', cache:'no-store' }).then(r => r.json()).catch(() => null);
+          myRole = me?.team?.id === team?.id ? (me.membershipRole || me.team?.membershipRole || null) : null;
+          setStatus(myRole ? `Editando ${team.name} · rol ${myRole}` : `Sin permisos detectados para ${team.name}.`);
+          fillForm(); renderMembers();
+        } catch (error) { setStatus(error.message || 'No se pudo cargar el equipo.'); }
+      }
+      editForm?.addEventListener('submit', async (event) => {
+        event.preventDefault(); if (!team) return;
+        const fd = new FormData(editForm);
+        try { await api(`/api/gc/teams/${encodeURIComponent(team.id)}`, { method:'PATCH', body: JSON.stringify(Object.fromEntries(fd.entries())) }); setStatus('Equipo guardado.'); await load(); }
+        catch (error) { setStatus(error.message); }
+      });
+      addForm?.addEventListener('submit', async (event) => {
+        event.preventDefault(); if (!team) return;
+        const fd = new FormData(addForm);
+        try { await api(`/api/gc/teams/${encodeURIComponent(team.id)}/members`, { method:'POST', body: JSON.stringify(Object.fromEntries(fd.entries())) }); addForm.reset(); setStatus('Piloto añadido.'); await load(); }
+        catch (error) { setStatus(error.message); }
+      });
+      membersBox?.addEventListener('click', async (event) => {
+        const btn = event.target.closest('button'); if (!btn || !team) return;
+        const row = btn.closest('[data-membership-id]'); const membershipId = row?.dataset.membershipId; if (!membershipId) return;
+        try {
+          if (btn.matches('[data-remove]')) await api(`/api/gc/teams/${encodeURIComponent(team.id)}/members/${encodeURIComponent(membershipId)}`, { method:'DELETE' });
+          if (btn.matches('[data-save-role]')) await api(`/api/gc/teams/${encodeURIComponent(team.id)}/members/${encodeURIComponent(membershipId)}`, { method:'PATCH', body: JSON.stringify({ role: row.querySelector('[data-role]')?.value || 'driver' }) });
+          setStatus('Cambios guardados.'); await load();
+        } catch (error) { setStatus(error.message); }
+      });
+      document.getElementById('gcTeamLeaveBtn')?.addEventListener('click', async () => { if (!team || !confirm('¿Salir del equipo?')) return; try { await api(`/api/gc/teams/${encodeURIComponent(team.id)}/leave`, { method:'POST', body:'{}' }); location.href='/equipos'; } catch (e) { setStatus(e.message); } });
+      document.getElementById('gcTeamArchiveBtn')?.addEventListener('click', async () => { if (!team || !confirm('¿Archivar equipo?')) return; try { await api(`/api/gc/teams/${encodeURIComponent(team.id)}/archive`, { method:'POST', body:'{}' }); location.href='/equipos'; } catch (e) { setStatus(e.message); } });
+      load();
+    })();
+  </script>
+</MarketingLayout>

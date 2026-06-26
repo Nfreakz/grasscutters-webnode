@@ -188,6 +188,7 @@ async function ensureMysqlSchema() {
       team_name VARCHAR(191) NULL,
       team_logo_url VARCHAR(500) NULL,
       team_role VARCHAR(80) NULL,
+      pilot_country_code CHAR(2) NULL,
       created_at DATETIME(3) NOT NULL,
       updated_at DATETIME(3) NOT NULL,
       last_login_at DATETIME(3) NULL,
@@ -199,6 +200,65 @@ async function ensureMysqlSchema() {
   await ensureMysqlColumn('gc_users', 'team_name', 'VARCHAR(191) NULL');
   await ensureMysqlColumn('gc_users', 'team_logo_url', 'VARCHAR(500) NULL');
   await ensureMysqlColumn('gc_users', 'team_role', 'VARCHAR(80) NULL');
+  await ensureMysqlColumn('gc_users', 'pilot_country_code', 'CHAR(2) NULL');
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_teams (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      slug VARCHAR(140) NOT NULL UNIQUE,
+      name VARCHAR(160) NOT NULL,
+      short_name VARCHAR(40) NULL,
+      logo_url VARCHAR(500) NULL,
+      country_code CHAR(2) NULL,
+      primary_color VARCHAR(20) NULL,
+      secondary_color VARCHAR(20) NULL,
+      description TEXT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      created_by_user_id VARCHAR(64) NULL,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_teams_status (status),
+      INDEX idx_gc_teams_created_by (created_by_user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_driver_profiles (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      driver_key VARCHAR(191) NOT NULL UNIQUE,
+      player_id INT NULL,
+      steam_guid VARCHAR(191) NULL,
+      driver_name VARCHAR(160) NOT NULL,
+      display_name VARCHAR(160) NULL,
+      avatar_url VARCHAR(500) NULL,
+      country_code CHAR(2) NULL,
+      linked_user_id VARCHAR(64) NULL,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_driver_profiles_player_id (player_id),
+      INDEX idx_gc_driver_profiles_steam_guid (steam_guid),
+      INDEX idx_gc_driver_profiles_name (driver_name),
+      INDEX idx_gc_driver_profiles_user (linked_user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_team_memberships (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      team_id VARCHAR(64) NOT NULL,
+      driver_profile_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'driver',
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      joined_at DATETIME(3) NOT NULL,
+      left_at DATETIME(3) NULL,
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      UNIQUE KEY uq_gc_team_active_driver (driver_profile_id, status),
+      INDEX idx_gc_team_memberships_team_status (team_id, status),
+      INDEX idx_gc_team_memberships_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
@@ -338,6 +398,7 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       team_name TEXT NULL,
       team_logo_url TEXT NULL,
       team_role TEXT NULL,
+      pilot_country_code TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       last_login_at TEXT NULL
@@ -348,6 +409,48 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
   if (!gcUserColumns.has('team_name')) db.run('ALTER TABLE gc_users ADD COLUMN team_name TEXT NULL');
   if (!gcUserColumns.has('team_logo_url')) db.run('ALTER TABLE gc_users ADD COLUMN team_logo_url TEXT NULL');
   if (!gcUserColumns.has('team_role')) db.run('ALTER TABLE gc_users ADD COLUMN team_role TEXT NULL');
+  if (!gcUserColumns.has('pilot_country_code')) db.run('ALTER TABLE gc_users ADD COLUMN pilot_country_code TEXT NULL');
+
+  db.run(`CREATE TABLE IF NOT EXISTS gc_teams (
+    id TEXT NOT NULL PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    short_name TEXT NULL,
+    logo_url TEXT NULL,
+    country_code TEXT NULL,
+    primary_color TEXT NULL,
+    secondary_color TEXT NULL,
+    description TEXT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_by_user_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS gc_driver_profiles (
+    id TEXT NOT NULL PRIMARY KEY,
+    driver_key TEXT NOT NULL UNIQUE,
+    player_id INTEGER NULL,
+    steam_guid TEXT NULL,
+    driver_name TEXT NOT NULL,
+    display_name TEXT NULL,
+    avatar_url TEXT NULL,
+    country_code TEXT NULL,
+    linked_user_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS gc_team_memberships (
+    id TEXT NOT NULL PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    driver_profile_id TEXT NOT NULL,
+    user_id TEXT NULL,
+    role TEXT NOT NULL DEFAULT 'driver',
+    status TEXT NOT NULL DEFAULT 'active',
+    joined_at TEXT NOT NULL,
+    left_at TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
@@ -459,6 +562,7 @@ type AppUser = {
     logoUrl: string | null;
     role: string | null;
   };
+  countryCode?: string | null;
   disabledAt?: string | null;
   deletedAt?: string | null;
   deletedBy?: string | null;
@@ -1058,6 +1162,149 @@ function publicTeam(user: AppUser | null | undefined) {
 }
 
 
+function normalizeGcCountryCode(value: unknown) {
+  const raw = String(value ?? '').trim().toUpperCase().replace(/[^A-Z]/g, '');
+  if (!raw) return null;
+  const alpha3: Record<string, string> = { ESP: 'ES', SPA: 'ES', ITA: 'IT', FRA: 'FR', DEU: 'DE', GER: 'DE', GBR: 'GB', UK: 'GB', USA: 'US', PRT: 'PT', POR: 'PT', NLD: 'NL', BEL: 'BE', AUT: 'AT', ARG: 'AR', BRA: 'BR', MEX: 'MX', JPN: 'JP' };
+  if (raw.length === 2) return raw;
+  if (alpha3[raw]) return alpha3[raw];
+  if (raw.includes('SPAIN') || raw.includes('ESPANA') || raw.includes('ESPA')) return 'ES';
+  if (raw.includes('ITAL')) return 'IT';
+  if (raw.includes('FRAN')) return 'FR';
+  if (raw.includes('GERM') || raw.includes('ALEM')) return 'DE';
+  if (raw.includes('PORT')) return 'PT';
+  return null;
+}
+
+function gcSlugify(value: unknown, fallback = 'equipo') {
+  const base = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 110);
+  return base || fallback;
+}
+
+function normalizeGcTeamRole(value: unknown) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (['owner', 'captain', 'driver', 'reserve'].includes(raw)) return raw;
+  if (raw.includes('capit')) return 'captain';
+  if (raw.includes('owner') || raw.includes('fundador') || raw.includes('creador')) return 'owner';
+  if (raw.includes('reserva')) return 'reserve';
+  return 'driver';
+}
+
+function gcDriverKey(input: { playerId?: unknown; steamGuid?: unknown; name?: unknown; userId?: unknown }) {
+  const steam = String(input.steamGuid ?? '').trim();
+  if (steam) return `steam:${steam}`;
+  const playerId = Number(input.playerId);
+  if (Number.isFinite(playerId) && playerId > 0) return `player:${Math.round(playerId)}`;
+  const nameKey = String(input.name ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (nameKey) return `name:${nameKey}`;
+  return `user:${String(input.userId ?? crypto.randomUUID()).trim()}`;
+}
+
+async function ensureGcDriverProfileForUser(user: AppUser) {
+  if (!useMysqlStorage() && !useSqliteStorage()) return null;
+  const now = new Date().toISOString();
+  const key = gcDriverKey({
+    playerId: user.pilotLink?.playerId,
+    steamGuid: user.pilotLink?.steamGuid,
+    name: user.pilotLink?.strackerName || user.displayName,
+    userId: user.id
+  });
+  const driverName = normalizeDisplayName(user.pilotLink?.strackerName || user.displayName || 'Piloto');
+  const countryCode = normalizeGcCountryCode(user.countryCode);
+  const id = `drv_${crypto.randomUUID()}`;
+  if (useMysqlStorage()) {
+    await ensureMysqlSchema();
+    await mysqlExecute(
+      `INSERT INTO gc_driver_profiles
+        (id, driver_key, player_id, steam_guid, driver_name, display_name, country_code, linked_user_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        player_id = VALUES(player_id),
+        steam_guid = VALUES(steam_guid),
+        driver_name = VALUES(driver_name),
+        display_name = VALUES(display_name),
+        country_code = VALUES(country_code),
+        linked_user_id = VALUES(linked_user_id),
+        updated_at = VALUES(updated_at)`,
+      [id, key, user.pilotLink?.playerId ?? null, user.pilotLink?.steamGuid ?? null, driverName, user.displayName || driverName, countryCode, user.id, now, now]
+    );
+    const rows = await mysqlQuery('SELECT * FROM gc_driver_profiles WHERE driver_key = ? LIMIT 1', [key]);
+    return rows?.[0] ?? null;
+  }
+  if (useSqliteStorage()) {
+    return withAppSqliteDb((db) => {
+      const existing = sqliteQuery(db, 'SELECT * FROM gc_driver_profiles WHERE driver_key = ? LIMIT 1', [key])?.[0];
+      if (existing) {
+        db.run('UPDATE gc_driver_profiles SET player_id = ?, steam_guid = ?, driver_name = ?, display_name = ?, country_code = ?, linked_user_id = ?, updated_at = ? WHERE driver_key = ?', [user.pilotLink?.playerId ?? null, user.pilotLink?.steamGuid ?? null, driverName, user.displayName || driverName, countryCode, user.id, now, key]);
+      } else {
+        db.run('INSERT INTO gc_driver_profiles (id, driver_key, player_id, steam_guid, driver_name, display_name, country_code, linked_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, key, user.pilotLink?.playerId ?? null, user.pilotLink?.steamGuid ?? null, driverName, user.displayName || driverName, countryCode, user.id, now, now]);
+      }
+      return sqliteQuery(db, 'SELECT * FROM gc_driver_profiles WHERE driver_key = ? LIMIT 1', [key])?.[0] ?? null;
+    }, true);
+  }
+  return null;
+}
+
+function publicGcTeam(row: any, members: any[] = []) {
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    slug: String(row.slug || ''),
+    name: String(row.name || 'Equipo sin nombre'),
+    shortName: row.short_name ?? row.shortName ?? null,
+    logoUrl: row.logo_url ?? row.logoUrl ?? null,
+    countryCode: normalizeGcCountryCode(row.country_code ?? row.countryCode) ?? null,
+    primaryColor: row.primary_color ?? row.primaryColor ?? null,
+    secondaryColor: row.secondary_color ?? row.secondaryColor ?? null,
+    description: row.description ?? null,
+    status: row.status ?? 'active',
+    createdByUserId: row.created_by_user_id ?? row.createdByUserId ?? null,
+    members
+  };
+}
+
+async function readGcDriverMetadata() {
+  const byPlayerId = new Map<string, any>();
+  const bySteamGuid = new Map<string, any>();
+  const byName = new Map<string, any>();
+  if (!useMysqlStorage() && !useSqliteStorage()) return { byPlayerId, bySteamGuid, byName };
+  const normalizeName = (value: unknown) => String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const rows = useMysqlStorage()
+    ? await mysqlQuery(`SELECT d.*, m.role AS team_role, t.id AS team_id, t.slug AS team_slug, t.name AS team_name, t.logo_url AS team_logo_url
+        FROM gc_driver_profiles d
+        LEFT JOIN gc_team_memberships m ON m.driver_profile_id = d.id AND m.status = 'active'
+        LEFT JOIN gc_teams t ON t.id = m.team_id AND t.status = 'active'`)
+    : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT d.*, m.role AS team_role, t.id AS team_id, t.slug AS team_slug, t.name AS team_name, t.logo_url AS team_logo_url
+        FROM gc_driver_profiles d
+        LEFT JOIN gc_team_memberships m ON m.driver_profile_id = d.id AND m.status = 'active'
+        LEFT JOIN gc_teams t ON t.id = m.team_id AND t.status = 'active'`));
+  for (const row of rows || []) {
+    const meta = {
+      driverProfileId: row.id,
+      countryCode: normalizeGcCountryCode(row.country_code) ?? null,
+      displayName: row.display_name || row.driver_name || null,
+      team: row.team_name || null,
+      teamId: row.team_id || null,
+      teamSlug: row.team_slug || null,
+      teamLogoUrl: row.team_logo_url || null,
+      teamRole: row.team_role || null
+    };
+    if (row.player_id != null) byPlayerId.set(String(row.player_id), meta);
+    if (row.steam_guid) bySteamGuid.set(String(row.steam_guid), meta);
+    const nameKey = normalizeName(row.driver_name || row.display_name);
+    if (nameKey) byName.set(nameKey, meta);
+  }
+  return { byPlayerId, bySteamGuid, byName };
+}
+
+
 async function readUserStoreAsync(): Promise<AppUserStore> {
   if (!useMysqlStorage() && !useSqliteStorage()) return readUserStore();
 
@@ -1084,6 +1331,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
           linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
         },
         team: teamFromUserRow(row),
+        countryCode: compactNullableText(row.pilot_country_code),
         createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
         updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
         lastLoginAt: mysqlDate(row.last_login_at)
@@ -1124,6 +1372,7 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
         linkedAt: mysqlDate(row.pilot_linked_at) || mysqlDate(row.updated_at) || new Date().toISOString()
       },
       team: teamFromUserRow(row),
+      countryCode: compactNullableText(row.pilot_country_code),
       createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
       updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
       lastLoginAt: mysqlDate(row.last_login_at)
@@ -1158,8 +1407,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
           db.run(
             `INSERT INTO gc_users
               (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code, created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id,
               user.email,
@@ -1176,6 +1425,7 @@ async function writeUserStoreAsync(store: AppUserStore) {
               user.team?.name ?? null,
               user.team?.logoUrl ?? null,
               user.team?.role ?? null,
+              user.countryCode ?? null,
               user.createdAt || new Date().toISOString(),
               user.updatedAt || new Date().toISOString(),
               user.lastLoginAt ?? null
@@ -1219,8 +1469,8 @@ async function writeUserStoreAsync(store: AppUserStore) {
       await connection.query(
         `INSERT INTO gc_users
           (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, created_at, updated_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code, created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.id,
           user.email,
@@ -1237,6 +1487,7 @@ async function writeUserStoreAsync(store: AppUserStore) {
           user.team?.name ?? null,
           user.team?.logoUrl ?? null,
           user.team?.role ?? null,
+          user.countryCode ?? null,
           isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.lastLoginAt)
@@ -1563,6 +1814,8 @@ function publicUser(user: AppUser) {
     teamName: publicTeam(user)?.name ?? null,
     teamLogoUrl: publicTeam(user)?.logoUrl ?? null,
     teamRole: publicTeam(user)?.role ?? null,
+    countryCode: normalizeGcCountryCode(user.countryCode) ?? null,
+    pilotCountryCode: normalizeGcCountryCode(user.countryCode) ?? null,
     disabledAt: user.disabledAt ?? null,
     deletedAt: user.deletedAt ?? null,
     createdAt: user.createdAt,
@@ -6363,6 +6616,384 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
+
+app.get('/api/gc/teams', async (req, res) => {
+  try {
+    if (!useMysqlStorage() && !useSqliteStorage()) {
+      res.json({ ok: true, items: [], teams: [], message: 'Sistema de equipos disponible con MySQL/SQLite.' });
+      return;
+    }
+    if (useMysqlStorage()) await ensureMysqlSchema();
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE t.status <> 'archived'
+          GROUP BY t.id ORDER BY t.name ASC`)
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE t.status <> 'archived'
+          GROUP BY t.id ORDER BY t.name ASC`));
+    const items = (rows || []).map((row: any) => ({ ...publicGcTeam(row), membersCount: Number(row.members_count ?? 0) }));
+    res.json({ ok: true, items, teams: items, count: items.length });
+  } catch (error) {
+    console.error('[GC TEAMS] list:', error);
+    res.status(200).json({ ok: false, items: [], teams: [], message: 'No se pudieron cargar los equipos.' });
+  }
+});
+
+
+app.get('/api/gc/teams/standings', async (req, res) => {
+  try {
+    if (!useMysqlStorage() && !useSqliteStorage()) {
+      res.json({ ok: true, items: [], standings: [], message: 'Sistema de equipos disponible con MySQL/SQLite.' });
+      return;
+    }
+    if (useMysqlStorage()) await ensureMysqlSchema();
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE t.status = 'active'
+          GROUP BY t.id
+          ORDER BY members_count DESC, t.name ASC`)
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE t.status = 'active'
+          GROUP BY t.id
+          ORDER BY members_count DESC, t.name ASC`));
+    const items = (rows || []).map((row: any, index: number) => {
+      const membersCount = Number(row.members_count ?? 0);
+      return {
+        ...publicGcTeam(row),
+        rank: index + 1,
+        membersCount,
+        points: membersCount * 10,
+        rankingSource: 'members_v1'
+      };
+    });
+    res.json({ ok: true, items, standings: items, count: items.length, source: 'gc-teams-standings-v2' });
+  } catch (error) {
+    console.error('[GC TEAMS] standings:', error);
+    res.status(200).json({ ok: false, items: [], standings: [], message: 'No se pudo cargar el ranking de equipos.' });
+  }
+});
+
+app.get('/api/gc/teams/me', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) {
+      res.status(401).json({ ok: false, authenticated: false, team: null, message: 'Necesitas iniciar sesión.' });
+      return;
+    }
+    const driver = await ensureGcDriverProfileForUser(context.user);
+    if (!driver) {
+      res.json({ ok: true, authenticated: true, user: publicUser(context.user), team: publicTeam(context.user), members: [] });
+      return;
+    }
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT t.*, m.id AS membership_id, m.role AS membership_role, m.status AS membership_status
+          FROM gc_team_memberships m JOIN gc_teams t ON t.id = m.team_id
+          WHERE m.driver_profile_id = ? AND m.status = 'active' AND t.status = 'active' LIMIT 1`, [driver.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT t.*, m.id AS membership_id, m.role AS membership_role, m.status AS membership_status
+          FROM gc_team_memberships m JOIN gc_teams t ON t.id = m.team_id
+          WHERE m.driver_profile_id = ? AND m.status = 'active' AND t.status = 'active' LIMIT 1`, [driver.id]));
+    const teamRow = rows?.[0] ?? null;
+    let members: any[] = [];
+    if (teamRow) {
+      members = useMysqlStorage()
+        ? await mysqlQuery(`SELECT m.id AS membershipId, m.role, m.status, d.id AS driverProfileId, d.player_id AS playerId, d.steam_guid AS steamGuid, d.driver_name AS driverName, d.display_name AS displayName, d.country_code AS countryCode, d.linked_user_id AS linkedUserId
+            FROM gc_team_memberships m JOIN gc_driver_profiles d ON d.id = m.driver_profile_id
+            WHERE m.team_id = ? AND m.status = 'active' ORDER BY FIELD(m.role,'owner','captain','driver','reserve'), d.driver_name ASC`, [teamRow.id])
+        : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT m.id AS membershipId, m.role, m.status, d.id AS driverProfileId, d.player_id AS playerId, d.steam_guid AS steamGuid, d.driver_name AS driverName, d.display_name AS displayName, d.country_code AS countryCode, d.linked_user_id AS linkedUserId
+            FROM gc_team_memberships m JOIN gc_driver_profiles d ON d.id = m.driver_profile_id
+            WHERE m.team_id = ? AND m.status = 'active' ORDER BY d.driver_name ASC`, [teamRow.id]));
+    }
+    res.json({ ok: true, authenticated: true, user: publicUser(context.user), team: publicGcTeam(teamRow, members), membershipRole: teamRow?.membership_role ?? null, members });
+  } catch (error) {
+    console.error('[GC TEAMS] me:', error);
+    res.status(200).json({ ok: false, team: null, members: [], message: 'No se pudo cargar tu equipo.' });
+  }
+});
+
+app.get('/api/gc/teams/:slug', async (req, res) => {
+  try {
+    if (!useMysqlStorage() && !useSqliteStorage()) {
+      res.status(404).json({ ok: false, team: null, message: 'Sistema de equipos no disponible.' });
+      return;
+    }
+    if (useMysqlStorage()) await ensureMysqlSchema();
+    const slugOrId = String(req.params.slug || '').trim();
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE (t.slug = ? OR t.id = ?) AND t.status <> 'archived'
+          GROUP BY t.id LIMIT 1`, [slugOrId, slugOrId])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
+          FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
+          WHERE (t.slug = ? OR t.id = ?) AND t.status <> 'archived'
+          GROUP BY t.id LIMIT 1`, [slugOrId, slugOrId]));
+    const row = rows?.[0] ?? null;
+    if (!row) { res.status(404).json({ ok: false, team: null, message: 'Equipo no encontrado.' }); return; }
+    const members = useMysqlStorage()
+      ? await mysqlQuery(`SELECT m.id AS membershipId, m.role, m.status, m.joined_at AS joinedAt,
+            d.id AS driverProfileId, d.player_id AS playerId, d.steam_guid AS steamGuid,
+            d.driver_name AS driverName, d.display_name AS displayName, d.country_code AS countryCode,
+            d.linked_user_id AS linkedUserId
+          FROM gc_team_memberships m JOIN gc_driver_profiles d ON d.id = m.driver_profile_id
+          WHERE m.team_id = ? AND m.status = 'active'
+          ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'captain' THEN 2 WHEN 'driver' THEN 3 WHEN 'reserve' THEN 4 ELSE 5 END, d.driver_name ASC`, [row.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT m.id AS membershipId, m.role, m.status, m.joined_at AS joinedAt,
+            d.id AS driverProfileId, d.player_id AS playerId, d.steam_guid AS steamGuid,
+            d.driver_name AS driverName, d.display_name AS displayName, d.country_code AS countryCode,
+            d.linked_user_id AS linkedUserId
+          FROM gc_team_memberships m JOIN gc_driver_profiles d ON d.id = m.driver_profile_id
+          WHERE m.team_id = ? AND m.status = 'active'
+          ORDER BY d.driver_name ASC`, [row.id]));
+    const team = { ...publicGcTeam(row, members || []), membersCount: Number(row.members_count ?? members?.length ?? 0) };
+    res.json({ ok: true, team, members: members || [], stats: { membersCount: team.membersCount, points: team.membersCount * 10, rankingSource: 'members_v1' } });
+  } catch (error) {
+    console.error('[GC TEAMS] by slug:', error);
+    res.status(200).json({ ok: false, team: null, members: [], message: 'No se pudo cargar el equipo.' });
+  }
+});
+
+app.post('/api/gc/teams', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) {
+      res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión para crear o editar equipo.' });
+      return;
+    }
+    if (!useMysqlStorage() && !useSqliteStorage()) {
+      res.status(400).json({ ok: false, message: 'El sistema de equipos requiere MySQL o SQLite.' });
+      return;
+    }
+    const body = req.body || {};
+    const name = normalizeTeamText(body.name ?? body.teamName ?? body.equipo, 120);
+    if (!name || name.length < 2) {
+      res.status(400).json({ ok: false, message: 'Introduce un nombre de equipo válido.' });
+      return;
+    }
+    const now = new Date().toISOString();
+    const teamId = String(body.id || '').trim() || `team_${crypto.randomUUID()}`;
+    const slugBase = gcSlugify(body.slug || name);
+    const logoUrl = normalizeTeamLogoUrl(body.logoUrl ?? body.teamLogoUrl ?? body.logo_equipo);
+    const countryCode = normalizeGcCountryCode(body.countryCode ?? body.country);
+    const shortName = normalizeTeamText(body.shortName ?? body.short_name, 32) || null;
+    const description = normalizeTeamText(body.description, 400) || null;
+    const driver = await ensureGcDriverProfileForUser(context.user);
+
+    if (useMysqlStorage()) {
+      await ensureMysqlSchema();
+      const current = await mysqlQuery(`SELECT t.*, m.role AS membership_role FROM gc_team_memberships m JOIN gc_teams t ON t.id = m.team_id WHERE m.user_id = ? AND m.status = 'active' LIMIT 1`, [context.user.id]);
+      const existing = current?.[0] ?? null;
+      const idToUse = existing?.id || teamId;
+      const slug = existing?.slug || slugBase;
+      if (existing) {
+        await mysqlExecute(`UPDATE gc_teams SET name=?, short_name=?, logo_url=?, country_code=?, description=?, updated_at=? WHERE id=?`, [name, shortName, logoUrl, countryCode, description, now, idToUse]);
+      } else {
+        await mysqlExecute(`INSERT INTO gc_teams (id, slug, name, short_name, logo_url, country_code, description, status, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`, [idToUse, slug, name, shortName, logoUrl, countryCode, description, context.user.id, now, now]);
+        if (driver?.id) await mysqlExecute(`INSERT INTO gc_team_memberships (id, team_id, driver_profile_id, user_id, role, status, joined_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'owner', 'active', ?, ?, ?)`, [`mem_${crypto.randomUUID()}`, idToUse, driver.id, context.user.id, now, now, now]);
+      }
+    } else {
+      await withAppSqliteDb((db) => {
+        const current = sqliteQuery(db, `SELECT t.*, m.role AS membership_role FROM gc_team_memberships m JOIN gc_teams t ON t.id = m.team_id WHERE m.user_id = ? AND m.status = 'active' LIMIT 1`, [context.user.id])?.[0];
+        const idToUse = current?.id || teamId;
+        const slug = current?.slug || slugBase;
+        if (current) db.run(`UPDATE gc_teams SET name=?, short_name=?, logo_url=?, country_code=?, description=?, updated_at=? WHERE id=?`, [name, shortName, logoUrl, countryCode, description, now, idToUse]);
+        else {
+          db.run(`INSERT INTO gc_teams (id, slug, name, short_name, logo_url, country_code, description, status, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`, [idToUse, slug, name, shortName, logoUrl, countryCode, description, context.user.id, now, now]);
+          if (driver?.id) db.run(`INSERT INTO gc_team_memberships (id, team_id, driver_profile_id, user_id, role, status, joined_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'owner', 'active', ?, ?, ?)`, [`mem_${crypto.randomUUID()}`, idToUse, driver.id, context.user.id, now, now, now]);
+        }
+      }, true);
+    }
+
+    context.user.team = teamFromRawValues(name, logoUrl, 'owner');
+    context.user.updatedAt = now;
+    await writeUserStoreAsync(context.store);
+    res.json({ ok: true, user: publicUser(context.user), message: 'Equipo guardado.' });
+  } catch (error) {
+    console.error('[GC TEAMS] save:', error);
+    res.status(200).json({ ok: false, message: 'No se pudo guardar el equipo.' });
+  }
+});
+
+app.post('/api/gc/drivers/me/profile', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) {
+      res.status(401).json({ ok: false, message: 'Necesitas iniciar sesión.' });
+      return;
+    }
+    const countryCode = normalizeGcCountryCode(req.body?.countryCode ?? req.body?.country ?? req.body?.pilotCountryCode);
+    context.user.countryCode = countryCode;
+    context.user.updatedAt = new Date().toISOString();
+    await writeUserStoreAsync(context.store);
+    await ensureGcDriverProfileForUser(context.user).catch(() => null);
+    res.json({ ok: true, user: publicUser(context.user), countryCode, message: countryCode ? 'País actualizado.' : 'País eliminado.' });
+  } catch (error) {
+    console.error('[GC DRIVERS] profile:', error);
+    res.status(200).json({ ok: false, message: 'No se pudo actualizar el país del piloto.' });
+  }
+});
+
+app.post('/api/gc/teams/:teamId/members', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    if (!useMysqlStorage() && !useSqliteStorage()) { res.status(400).json({ ok:false, message:'Sistema no disponible sin DB.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const membershipRows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    const myRole = membershipRows?.[0]?.role;
+    if (!['owner','captain'].includes(String(myRole))) { res.status(403).json({ ok:false, message:'Solo owner/captain puede añadir pilotos.' }); return; }
+    const body = req.body || {};
+    const playerId = Number(body.playerId);
+    const steamGuid = String(body.steamGuid || '').trim() || null;
+    const driverName = normalizeDisplayName(body.driverName || body.name || body.displayName || 'Piloto');
+    const key = gcDriverKey({ playerId: Number.isFinite(playerId) ? playerId : null, steamGuid, name: driverName });
+    const now = new Date().toISOString();
+    const driverId = `drv_${crypto.randomUUID()}`;
+    const role = normalizeGcTeamRole(body.role);
+    if (useMysqlStorage()) {
+      await mysqlExecute(`INSERT INTO gc_driver_profiles (id, driver_key, player_id, steam_guid, driver_name, display_name, country_code, linked_user_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?) ON DUPLICATE KEY UPDATE player_id=VALUES(player_id), steam_guid=VALUES(steam_guid), driver_name=VALUES(driver_name), display_name=VALUES(display_name), updated_at=VALUES(updated_at)`, [driverId, key, Number.isFinite(playerId) ? playerId : null, steamGuid, driverName, driverName, normalizeGcCountryCode(body.countryCode), now, now]);
+      const row = (await mysqlQuery('SELECT id FROM gc_driver_profiles WHERE driver_key=? LIMIT 1', [key]))?.[0];
+      if (row?.id) await mysqlExecute(`INSERT INTO gc_team_memberships (id, team_id, driver_profile_id, user_id, role, status, joined_at, created_at, updated_at)
+        VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, ?) ON DUPLICATE KEY UPDATE team_id=VALUES(team_id), role=VALUES(role), status='active', left_at=NULL, updated_at=VALUES(updated_at)`, [`mem_${crypto.randomUUID()}`, teamId, row.id, role, now, now, now]);
+    } else {
+      await withAppSqliteDb((db) => {
+        const existing = sqliteQuery(db, 'SELECT id FROM gc_driver_profiles WHERE driver_key=? LIMIT 1', [key])?.[0];
+        const idToUse = existing?.id || driverId;
+        if (existing) db.run('UPDATE gc_driver_profiles SET player_id=?, steam_guid=?, driver_name=?, display_name=?, country_code=?, updated_at=? WHERE id=?', [Number.isFinite(playerId) ? playerId : null, steamGuid, driverName, driverName, normalizeGcCountryCode(body.countryCode), now, idToUse]);
+        else db.run('INSERT INTO gc_driver_profiles (id, driver_key, player_id, steam_guid, driver_name, display_name, country_code, linked_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)', [idToUse, key, Number.isFinite(playerId) ? playerId : null, steamGuid, driverName, driverName, normalizeGcCountryCode(body.countryCode), now, now]);
+        db.run('INSERT INTO gc_team_memberships (id, team_id, driver_profile_id, user_id, role, status, joined_at, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, \'active\', ?, ?, ?)', [`mem_${crypto.randomUUID()}`, teamId, idToUse, role, now, now, now]);
+      }, true);
+    }
+    res.json({ ok:true, message:'Piloto añadido al equipo.' });
+  } catch (error) {
+    console.error('[GC TEAMS] add member:', error);
+    res.status(200).json({ ok:false, message:'No se pudo añadir el piloto.' });
+  }
+});
+
+app.delete('/api/gc/teams/:teamId/members/:membershipId', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const membershipId = String(req.params.membershipId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    if (!['owner','captain'].includes(String(rows?.[0]?.role))) { res.status(403).json({ ok:false, message:'Sin permisos.' }); return; }
+    const now = new Date().toISOString();
+    if (useMysqlStorage()) await mysqlExecute(`UPDATE gc_team_memberships SET status='removed', left_at=?, updated_at=? WHERE id=? AND team_id=?`, [now, now, membershipId, teamId]);
+    else await withAppSqliteDb((db) => db.run(`UPDATE gc_team_memberships SET status='removed', left_at=?, updated_at=? WHERE id=? AND team_id=?`, [now, now, membershipId, teamId]), true);
+    res.json({ ok:true, message:'Piloto eliminado del equipo.' });
+  } catch (error) {
+    console.error('[GC TEAMS] remove member:', error);
+    res.status(200).json({ ok:false, message:'No se pudo eliminar el piloto.' });
+  }
+});
+
+
+app.patch('/api/gc/teams/:teamId', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    if (!['owner','captain'].includes(String(rows?.[0]?.role))) { res.status(403).json({ ok:false, message:'Sin permisos para editar el equipo.' }); return; }
+    const body = req.body || {};
+    const name = normalizeTeamText(body.name ?? body.teamName, 120);
+    if (!name || name.length < 2) { res.status(400).json({ ok:false, message:'Nombre de equipo no válido.' }); return; }
+    const shortName = normalizeTeamText(body.shortName ?? body.short_name, 32) || null;
+    const logoUrl = normalizeTeamLogoUrl(body.logoUrl ?? body.teamLogoUrl);
+    const countryCode = normalizeGcCountryCode(body.countryCode ?? body.country);
+    const description = normalizeTeamText(body.description, 400) || null;
+    const now = new Date().toISOString();
+    if (useMysqlStorage()) await mysqlExecute(`UPDATE gc_teams SET name=?, short_name=?, logo_url=?, country_code=?, description=?, updated_at=? WHERE id=?`, [name, shortName, logoUrl, countryCode, description, now, teamId]);
+    else await withAppSqliteDb((db) => db.run(`UPDATE gc_teams SET name=?, short_name=?, logo_url=?, country_code=?, description=?, updated_at=? WHERE id=?`, [name, shortName, logoUrl, countryCode, description, now, teamId]), true);
+    res.json({ ok:true, message:'Equipo actualizado.' });
+  } catch (error) {
+    console.error('[GC TEAMS] update:', error);
+    res.status(200).json({ ok:false, message:'No se pudo actualizar el equipo.' });
+  }
+});
+
+app.patch('/api/gc/teams/:teamId/members/:membershipId', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const membershipId = String(req.params.membershipId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    if (String(rows?.[0]?.role) !== 'owner') { res.status(403).json({ ok:false, message:'Solo el owner puede cambiar roles.' }); return; }
+    const role = normalizeGcTeamRole(req.body?.role);
+    const now = new Date().toISOString();
+    if (useMysqlStorage()) await mysqlExecute(`UPDATE gc_team_memberships SET role=?, updated_at=? WHERE id=? AND team_id=? AND status='active'`, [role, now, membershipId, teamId]);
+    else await withAppSqliteDb((db) => db.run(`UPDATE gc_team_memberships SET role=?, updated_at=? WHERE id=? AND team_id=? AND status='active'`, [role, now, membershipId, teamId]), true);
+    res.json({ ok:true, message:'Rol actualizado.' });
+  } catch (error) {
+    console.error('[GC TEAMS] update member:', error);
+    res.status(200).json({ ok:false, message:'No se pudo actualizar el miembro.' });
+  }
+});
+
+app.post('/api/gc/teams/:teamId/leave', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    if (!me?.id) { res.status(400).json({ ok:false, message:'No hay piloto vinculado.' }); return; }
+    const now = new Date().toISOString();
+    if (useMysqlStorage()) await mysqlExecute(`UPDATE gc_team_memberships SET status='left', left_at=?, updated_at=? WHERE team_id=? AND driver_profile_id=? AND status='active'`, [now, now, teamId, me.id]);
+    else await withAppSqliteDb((db) => db.run(`UPDATE gc_team_memberships SET status='left', left_at=?, updated_at=? WHERE team_id=? AND driver_profile_id=? AND status='active'`, [now, now, teamId, me.id]), true);
+    context.user.team = null;
+    context.user.updatedAt = now;
+    await writeUserStoreAsync(context.store);
+    res.json({ ok:true, message:'Has salido del equipo.' });
+  } catch (error) {
+    console.error('[GC TEAMS] leave:', error);
+    res.status(200).json({ ok:false, message:'No se pudo salir del equipo.' });
+  }
+});
+
+app.post('/api/gc/teams/:teamId/archive', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    if (String(rows?.[0]?.role) !== 'owner') { res.status(403).json({ ok:false, message:'Solo el owner puede archivar el equipo.' }); return; }
+    const now = new Date().toISOString();
+    if (useMysqlStorage()) {
+      await mysqlExecute(`UPDATE gc_teams SET status='archived', updated_at=? WHERE id=?`, [now, teamId]);
+      await mysqlExecute(`UPDATE gc_team_memberships SET status='removed', left_at=?, updated_at=? WHERE team_id=? AND status='active'`, [now, now, teamId]);
+    } else await withAppSqliteDb((db) => {
+      db.run(`UPDATE gc_teams SET status='archived', updated_at=? WHERE id=?`, [now, teamId]);
+      db.run(`UPDATE gc_team_memberships SET status='removed', left_at=?, updated_at=? WHERE team_id=? AND status='active'`, [now, now, teamId]);
+    }, true);
+    res.json({ ok:true, message:'Equipo archivado.' });
+  } catch (error) {
+    console.error('[GC TEAMS] archive:', error);
+    res.status(200).json({ ok:false, message:'No se pudo archivar el equipo.' });
+  }
+});
+
 app.post('/api/profile/team', async (req, res) => {
   try {
     const context = await getAuthContextAsync(req);
@@ -6385,7 +7016,15 @@ app.post('/api/profile/team', async (req, res) => {
 
     context.user.team = nextTeam;
     context.user.updatedAt = new Date().toISOString();
+    if (nextTeam) {
+      context.user.team.role = normalizeGcTeamRole(teamRole) === 'owner' ? 'owner' : (normalizeTeamText(teamRole, 48) || 'driver');
+    }
     await writeUserStoreAsync(context.store);
+    if (nextTeam && (useMysqlStorage() || useSqliteStorage())) {
+      await ensureGcDriverProfileForUser(context.user).catch(() => null);
+      // Compatibilidad: el editor antiguo de perfil guarda también en el nuevo sistema de equipos.
+      req.body = { name: nextTeam.name, logoUrl: nextTeam.logoUrl, shortName: '', countryCode: context.user.countryCode ?? null };
+    }
 
     res.json({
       ok: true,
@@ -13313,17 +13952,23 @@ app.get('/api/gc/pilots2', async (req, res) => {
 
     const topKey = (map: Map<string, number>) => Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     const compactBestLap = (lap: any) => compactLapForCombo(lap as ComboLap) || null;
+    const driverMetadata = await readGcDriverMetadata().catch(() => ({ byPlayerId: new Map(), bySteamGuid: new Map(), byName: new Map() }));
     const items = Array.from(byPilot.values()).map((row: any) => {
       const ratingMatch = ratingsByPlayerId.get(String(row.playerId ?? '').trim()) || ratingsByName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
+      const meta = driverMetadata.byPlayerId.get(String(row.playerId ?? '').trim()) || driverMetadata.bySteamGuid.get(String(row.steamGuid ?? '').trim()) || driverMetadata.byName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
       return {
       id: row.id,
       playerId: row.playerId,
       steamGuid: row.steamGuid,
       name: row.name,
-      displayName: row.displayName,
-      team: row.team,
-      country: row.country,
-      countryCode: row.countryCode ?? row.country,
+      displayName: meta.displayName || row.displayName,
+      team: meta.team || row.team,
+      teamId: meta.teamId || null,
+      teamSlug: meta.teamSlug || null,
+      teamLogoUrl: meta.teamLogoUrl || null,
+      teamRole: meta.teamRole || null,
+      country: meta.countryCode || row.country,
+      countryCode: meta.countryCode || row.countryCode || row.country || null,
       avatarUrl: row.playerId ? `/api/pilot-avatar/${encodeURIComponent(String(row.playerId))}` : '/images/pilot-avatar-default.png',
       srScore: row.srScore ?? ratingMatch.srScore ?? null,
       srClass: row.srClass ?? ratingMatch.srClass ?? null,
