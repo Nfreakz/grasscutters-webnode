@@ -13057,6 +13057,125 @@ app.get('/api/gc/leaderboard', async (req, res) => {
 });
 
 
+/* GC_HOTLAPS2_LAB_V1_START */
+app.get('/api/gc/hotlaps2', async (req, res) => {
+  try {
+    await readDisplayNameStoreAsync();
+
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        source: 'unavailable',
+        generatedAt: new Date().toISOString(),
+        items: [],
+        laps: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const rawLimit = getQueryString(req, 'limit', 'all').toLowerCase();
+    const wantsAll = ['all', 'full', 'max', 'none', '0', '-1'].includes(rawLimit);
+    const limit = wantsAll ? Number.POSITIVE_INFINITY : gcDataCoreQueryNumber(req, 'limit', 5000, 1, 50000);
+
+    const filtered = filterLaps(dataCoreSource.laps, req, { validOnly: false })
+      .sort((a: any, b: any) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0));
+
+    const compactHotlap2 = (lap: any) => {
+      const rawBase = compactLapForCombo(lap as ComboLap) || {};
+      const { cuts: _omittedCuts, collisionsCar: _omittedCollisionsCar, collisionsEnv: _omittedCollisionsEnv, ...base } = rawBase as any;
+      const sectorTimesMs = Array.isArray(lap.sectorTimesMs)
+        ? lap.sectorTimesMs.filter((value: unknown) => Number.isFinite(Number(value))).map((value: unknown) => Number(value))
+        : [];
+      const sectorTimes = Array.isArray(lap.sectorTimes)
+        ? lap.sectorTimes
+        : sectorTimesMs.map((value: number) => lapTimeToText(value));
+
+      return {
+        ...base,
+        lapNumber: lap.lapNumber ?? lap.lapCount ?? null,
+        playerInSessionId: lap.playerInSessionId ?? null,
+        sessionId: lap.sessionId ?? base.session?.id ?? null,
+        sectorTimesMs,
+        sectorTimes,
+        sector1Ms: lap.sector1Ms ?? sectorTimesMs[0] ?? null,
+        sector2Ms: lap.sector2Ms ?? sectorTimesMs[1] ?? null,
+        sector3Ms: lap.sector3Ms ?? sectorTimesMs[2] ?? null,
+        sector1: lap.sector1 ?? sectorTimes[0] ?? '--',
+        sector2: lap.sector2 ?? sectorTimes[1] ?? '--',
+        sector3: lap.sector3 ?? sectorTimes[2] ?? '--',
+        sessionType: lap.sessionType ?? lap.session?.type ?? null,
+        trackLength: lap.trackLength ?? lap.track?.length ?? null,
+        fuelRatio: lap.fuelRatio ?? null,
+        gripLevel: lap.gripLevel ?? null,
+        ballast: lap.ballast ?? null,
+        temperatureTrack: lap.temperatureTrack ?? null,
+        temperatureAmbient: lap.temperatureAmbient ?? null,
+        aids: lap.aids ?? null,
+        input: lap.input ?? null
+      };
+    };
+
+    const items = filtered.slice(0, limit).map(compactHotlap2);
+    const validRows = filtered.filter((lap: any) => lap.valid);
+    const drivers = new Set(filtered.map((lap: any) => String(lap.driver?.id ?? lap.driver?.name ?? '')).filter(Boolean));
+    const cars = new Set(filtered.map((lap: any) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean));
+    const tracks = new Set(filtered.map((lap: any) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean));
+    const bestLap = validRows.slice().sort((a: any, b: any) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
+    const fastestLap = filtered.slice().sort((a: any, b: any) => Number(b.maxSpeedKmh ?? 0) - Number(a.maxSpeedKmh ?? 0))[0] || null;
+
+    res.json({
+      ok: true,
+      source: dataCoreSource.source,
+      mode: 'gc-hotlaps2-lab-v1',
+      generatedAt: new Date().toISOString(),
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      count: items.length,
+      totalFilteredLaps: filtered.length,
+      totalLaps: dataCoreSource.laps.length,
+      limitMode: wantsAll ? 'all' : 'limited',
+      items,
+      laps: items,
+      data: {
+        items,
+        laps: items,
+        stats: {
+          totalLaps: filtered.length,
+          visibleLaps: items.length,
+          validLaps: validRows.length,
+          invalidLaps: Math.max(0, filtered.length - validRows.length),
+          driversCount: drivers.size,
+          carsCount: cars.size,
+          tracksCount: tracks.size,
+          bestLap: bestLap ? compactHotlap2(bestLap) : null,
+          fastestLap: fastestLap ? compactHotlap2(fastestLap) : null
+        }
+      },
+      filters: summarizeFilters(req),
+      message: 'Hotlaps2 devuelve vueltas completas para tabla técnica: sectores, tiempos, velocidad, fecha, sesión, temperatura, grip e input. No calcula diferencias ni devuelve datos de límites de pista.'
+    });
+  } catch (error) {
+    console.error('[GC HOTLAPS2 LAB] /api/gc/hotlaps2:', error);
+    res.status(200).json({
+      ok: false,
+      mode: 'gc-hotlaps2-lab-v1',
+      generatedAt: new Date().toISOString(),
+      items: [],
+      laps: [],
+      message: 'No se pudieron generar hotlaps2 desde Race Data Core.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+/* GC_HOTLAPS2_LAB_V1_END */
+
+
 /* GC_DATA_CORE_LAB_FIXES_V1_START */
 function gcLabFixTextV1(value: unknown, fallback = '') {
   const text = String(value ?? '').trim();

@@ -1,0 +1,657 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout
+  title="Hotlaps 2 | GrassCutters Racing"
+  description="Laboratorio de hotlaps GrassCutters con tabla técnica, filtros, ordenación y datos completos de vuelta."
+  canonicalPath="/hotlaps2"
+  noindex={true}
+>
+  <div class="gc-page gc-hotlaps2-page" data-hotlaps2-page>
+    <header class="gc-hotlaps2-head">
+      <div>
+        <p class="gc-hotlaps2-kicker">ACSM / STRACKER DATA</p>
+        <h1>Hotlaps Data.</h1>
+        <p>Consulta técnica de vueltas registradas: tiempos, sectores, velocidad máxima, fecha, sesión y estado.</p>
+      </div>
+      <aside class="gc-hotlaps2-source" aria-label="Estado de datos">
+        <dl>
+          <div><dt>Fuente</dt><dd id="hl2Source">--</dd></div>
+          <div><dt>Cargadas</dt><dd id="hl2Loaded">--</dd></div>
+          <div><dt>Visibles</dt><dd id="hl2Visible">--</dd></div>
+          <div><dt>Actualizado</dt><dd id="hl2Updated">--</dd></div>
+        </dl>
+      </aside>
+    </header>
+
+    <section class="gc-hotlaps2-pulse" aria-label="Resumen de vueltas">
+      <div><span>Vueltas</span><strong id="hl2MetricLaps">--</strong></div>
+      <div><span>Válidas</span><strong id="hl2MetricValid">--</strong></div>
+      <div><span>Pilotos</span><strong id="hl2MetricDrivers">--</strong></div>
+      <div><span>Coches</span><strong id="hl2MetricCars">--</strong></div>
+      <div><span>Circuitos</span><strong id="hl2MetricTracks">--</strong></div>
+      <div><span>Mejor tiempo</span><strong id="hl2MetricBest">--</strong></div>
+      <div><span>Vmax</span><strong id="hl2MetricSpeed">--</strong></div>
+    </section>
+
+    <section class="gc-hotlaps2-filters" aria-label="Filtros de hotlaps">
+      <label>
+        <span>Buscar</span>
+        <input id="hl2Search" type="search" placeholder="piloto, coche, circuito" autocomplete="off" />
+      </label>
+      <label>
+        <span>Piloto</span>
+        <select id="hl2Driver"><option value="all">Todos</option></select>
+      </label>
+      <label>
+        <span>Coche</span>
+        <select id="hl2Car"><option value="all">Todos</option></select>
+      </label>
+      <label>
+        <span>Circuito</span>
+        <select id="hl2Track"><option value="all">Todos</option></select>
+      </label>
+      <label>
+        <span>Validez</span>
+        <select id="hl2Valid">
+          <option value="all">Todas</option>
+          <option value="valid" selected>Válidas</option>
+          <option value="invalid">No válidas</option>
+        </select>
+      </label>
+      <label>
+        <span>Sesión</span>
+        <select id="hl2Session"><option value="all">Todas</option></select>
+      </label>
+      <label>
+        <span>Vista</span>
+        <select id="hl2View">
+          <option value="all" selected>Todas las vueltas</option>
+          <option value="best-driver-combo">Mejor piloto/combo</option>
+          <option value="best-combo">Mejor general por combo</option>
+          <option value="best-driver-track">Mejor piloto/circuito</option>
+        </select>
+      </label>
+      <label>
+        <span>Orden</span>
+        <select id="hl2Sort">
+          <option value="recent" selected>Fecha reciente</option>
+          <option value="fastest">Tiempo rápido</option>
+          <option value="speed">Velocidad máxima</option>
+          <option value="driver">Piloto</option>
+          <option value="car">Coche</option>
+          <option value="track">Circuito</option>
+        </select>
+      </label>
+      <label>
+        <span>Por página</span>
+        <select id="hl2PageSize">
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+      </label>
+      <div class="gc-hotlaps2-actions">
+        <button id="hl2Reload" type="button">Actualizar</button>
+        <button id="hl2Clear" type="button">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="gc-hotlaps2-meta" aria-label="Estado del listado">
+      <span id="hl2Hint">Cargando vueltas...</span>
+      <span id="hl2PageInfo">Página 1</span>
+      <div class="gc-hotlaps2-pager">
+        <button id="hl2Prev" type="button">Anterior</button>
+        <button id="hl2Next" type="button">Siguiente</button>
+      </div>
+    </section>
+
+    <section class="gc-hotlaps2-table-wrap" aria-label="Tabla de hotlaps">
+      <table class="gc-hotlaps2-table">
+        <thead>
+          <tr>
+            <th data-sort="rank">#</th>
+            <th data-sort="driver">Piloto</th>
+            <th data-sort="car">Coche</th>
+            <th data-sort="track">Circuito</th>
+            <th data-sort="lap">Tiempo</th>
+            <th data-sort="s1">S1</th>
+            <th data-sort="s2">S2</th>
+            <th data-sort="s3">S3</th>
+            <th>Sectores extra</th>
+            <th data-sort="speed">Vmax</th>
+            <th data-sort="date">Fecha</th>
+            <th data-sort="valid">Validez</th>
+            <th data-sort="session">Sesión</th>
+            <th data-sort="trackTemp">Pista</th>
+            <th data-sort="airTemp">Aire</th>
+            <th data-sort="grip">Grip</th>
+            <th data-sort="input">Input</th>
+          </tr>
+        </thead>
+        <tbody id="hl2Rows"><tr><td colspan="17">Cargando...</td></tr></tbody>
+      </table>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-hotlaps2-page{
+      --hl2-green:var(--accent,#96ff2f);
+      --hl2-text:var(--text,#f4fff1);
+      --hl2-muted:var(--muted,#84907c);
+      --hl2-line:rgba(150,255,47,.22);
+      --hl2-soft:rgba(150,255,47,.08);
+      display:grid;
+      gap:12px;
+      width:100%;
+      max-width:none;
+      margin:0;
+      padding:14px;
+      box-sizing:border-box;
+    }
+
+    .gc-hotlaps2-head{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(260px,380px);
+      gap:14px;
+      align-items:stretch;
+      border:1px solid var(--hl2-line);
+      background:linear-gradient(90deg,rgba(6,14,8,.96),rgba(9,24,10,.72));
+    }
+
+    .gc-hotlaps2-head > div:first-child{padding:18px 22px;}
+    .gc-hotlaps2-kicker,
+    .gc-hotlaps2-filters span,
+    .gc-hotlaps2-table th,
+    .gc-hotlaps2-source dt{
+      margin:0;
+      color:var(--hl2-green);
+      font-family:var(--gc-mono,"JetBrains Mono",monospace);
+      font-size:10px;
+      font-weight:950;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .gc-hotlaps2-head h1{
+      margin:4px 0 5px;
+      color:var(--hl2-text);
+      font-size:clamp(36px,4.6vw,74px);
+      line-height:.86;
+      letter-spacing:-.065em;
+      text-transform:uppercase;
+    }
+
+    .gc-hotlaps2-head p:not(.gc-hotlaps2-kicker){
+      margin:0;
+      max-width:840px;
+      color:rgba(244,255,241,.70);
+      font-size:14px;
+    }
+
+    .gc-hotlaps2-source{border-left:1px solid var(--hl2-line);background:rgba(0,0,0,.18);}
+    .gc-hotlaps2-source dl{display:grid;grid-template-columns:1fr 1fr;height:100%;margin:0;}
+    .gc-hotlaps2-source div{padding:14px;border-right:1px solid rgba(150,255,47,.12);border-bottom:1px solid rgba(150,255,47,.12);}
+    .gc-hotlaps2-source div:nth-child(2n){border-right:0;}
+    .gc-hotlaps2-source dd{margin:4px 0 0;color:var(--hl2-text);font-family:var(--gc-mono,"JetBrains Mono",monospace);font-size:16px;font-weight:950;}
+
+    .gc-hotlaps2-pulse{
+      display:grid;
+      grid-template-columns:repeat(7,minmax(0,1fr));
+      border:1px solid var(--hl2-line);
+      background:rgba(3,9,5,.92);
+    }
+
+    .gc-hotlaps2-pulse div{min-width:0;padding:12px 14px;border-right:1px solid rgba(150,255,47,.16);}
+    .gc-hotlaps2-pulse div:last-child{border-right:0;}
+    .gc-hotlaps2-pulse span{display:block;color:var(--hl2-muted);font-family:var(--gc-mono,"JetBrains Mono",monospace);font-size:10px;font-weight:950;letter-spacing:.12em;text-transform:uppercase;}
+    .gc-hotlaps2-pulse strong{display:block;margin-top:4px;color:var(--hl2-green);font-family:var(--gc-mono,"JetBrains Mono",monospace);font-size:18px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .gc-hotlaps2-filters{
+      display:grid;
+      grid-template-columns:minmax(210px,1.4fr) repeat(8,minmax(120px,1fr)) auto;
+      gap:8px;
+      align-items:end;
+      padding:10px;
+      border:1px solid var(--hl2-line);
+      background:rgba(3,9,5,.88);
+    }
+
+    .gc-hotlaps2-filters label{display:grid;gap:5px;min-width:0;}
+    .gc-hotlaps2-filters input,
+    .gc-hotlaps2-filters select{
+      width:100%;
+      min-width:0;
+      height:38px;
+      border:1px solid rgba(150,255,47,.24);
+      border-radius:0;
+      background:rgba(0,0,0,.42);
+      color:var(--hl2-text);
+      padding:0 10px;
+      font-family:var(--gc-mono,"JetBrains Mono",monospace);
+      font-size:12px;
+      font-weight:850;
+    }
+
+    .gc-hotlaps2-actions,
+    .gc-hotlaps2-pager{display:flex;gap:8px;align-items:center;}
+    .gc-hotlaps2-actions button,
+    .gc-hotlaps2-pager button{
+      height:38px;
+      border:1px solid rgba(150,255,47,.34);
+      border-radius:0;
+      background:rgba(0,0,0,.35);
+      color:var(--hl2-text);
+      padding:0 12px;
+      font-family:var(--gc-mono,"JetBrains Mono",monospace);
+      font-size:11px;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+    }
+    .gc-hotlaps2-actions button:first-child{background:linear-gradient(90deg,#96ff2f,#54eaff);color:#061006;border-color:#96ff2f;}
+    .gc-hotlaps2-actions button:disabled,
+    .gc-hotlaps2-pager button:disabled{opacity:.36;cursor:not-allowed;}
+
+    .gc-hotlaps2-meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:9px 12px;
+      border:1px solid rgba(150,255,47,.18);
+      background:rgba(0,0,0,.28);
+      color:var(--hl2-muted);
+      font-family:var(--gc-mono,"JetBrains Mono",monospace);
+      font-size:11px;
+      font-weight:850;
+      text-transform:uppercase;
+    }
+
+    .gc-hotlaps2-table-wrap{
+      border:1px solid var(--hl2-line);
+      background:rgba(0,0,0,.24);
+      overflow:auto;
+      max-height:calc(100vh - 265px);
+      min-height:520px;
+    }
+
+    .gc-hotlaps2-table{
+      width:100%;
+      min-width:1680px;
+      border-collapse:collapse;
+      color:var(--hl2-text);
+      font-family:var(--gc-mono,"JetBrains Mono",monospace);
+    }
+
+    .gc-hotlaps2-table th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      height:38px;
+      padding:0 10px;
+      text-align:left;
+      background:#071109;
+      border-bottom:1px solid var(--hl2-line);
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .gc-hotlaps2-table th:not([data-sort]){cursor:default;}
+    .gc-hotlaps2-table td{
+      height:42px;
+      padding:0 10px;
+      border-bottom:1px solid rgba(150,255,47,.12);
+      background:rgba(4,10,6,.78);
+      color:rgba(244,255,241,.82);
+      font-size:12px;
+      vertical-align:middle;
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+    .gc-hotlaps2-table tr:hover td{background:rgba(150,255,47,.06);}
+    .gc-hotlaps2-table td:nth-child(2),
+    .gc-hotlaps2-table td:nth-child(3),
+    .gc-hotlaps2-table td:nth-child(4){font-weight:950;color:var(--hl2-text);}
+    .gc-hotlaps2-time{color:var(--hl2-green);font-weight:1000;font-size:13px;}
+    .gc-hotlaps2-state{display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid rgba(150,255,47,.32);color:var(--hl2-green);font-size:10px;font-weight:950;text-transform:uppercase;}
+    .gc-hotlaps2-state--bad{border-color:rgba(255,200,70,.34);color:#ffd75a;}
+    .gc-hotlaps2-table a{color:inherit;text-decoration:none;}
+    .gc-hotlaps2-table a:hover{color:var(--hl2-green);}
+
+    @media(max-width:1500px){.gc-hotlaps2-filters{grid-template-columns:repeat(5,minmax(0,1fr));}.gc-hotlaps2-actions{grid-column:1 / -1;}}
+    @media(max-width:900px){.gc-hotlaps2-head{grid-template-columns:1fr}.gc-hotlaps2-source{border-left:0;border-top:1px solid var(--hl2-line)}.gc-hotlaps2-pulse{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-hotlaps2-filters{grid-template-columns:1fr 1fr}.gc-hotlaps2-meta{align-items:flex-start;flex-direction:column}}
+    @media(max-width:560px){.gc-hotlaps2-filters{grid-template-columns:1fr}.gc-hotlaps2-pulse{grid-template-columns:1fr}.gc-hotlaps2-actions,.gc-hotlaps2-pager{width:100%;}.gc-hotlaps2-actions button,.gc-hotlaps2-pager button{flex:1}}
+  </style>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        search: $('hl2Search'), driver: $('hl2Driver'), car: $('hl2Car'), track: $('hl2Track'), valid: $('hl2Valid'), session: $('hl2Session'), view: $('hl2View'), sort: $('hl2Sort'), pageSize: $('hl2PageSize'),
+        reload: $('hl2Reload'), clear: $('hl2Clear'), prev: $('hl2Prev'), next: $('hl2Next'), rows: $('hl2Rows'), hint: $('hl2Hint'), pageInfo: $('hl2PageInfo'),
+        source: $('hl2Source'), loaded: $('hl2Loaded'), visible: $('hl2Visible'), updated: $('hl2Updated'), metricLaps: $('hl2MetricLaps'), metricValid: $('hl2MetricValid'), metricDrivers: $('hl2MetricDrivers'), metricCars: $('hl2MetricCars'), metricTracks: $('hl2MetricTracks'), metricBest: $('hl2MetricBest'), metricSpeed: $('hl2MetricSpeed')
+      };
+
+      const state = { rows: [], filtered: [], page: 1, sortKey: 'recent', sortDir: 'desc' };
+
+      const escapeHtml = (value) => String(value ?? '--').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const valueAt = (source, path) => {
+        if (!source || typeof source !== 'object') return undefined;
+        if (Object.prototype.hasOwnProperty.call(source, path)) return source[path];
+        return String(path).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+      };
+      const pick = (source, paths) => {
+        for (const path of paths) {
+          const value = valueAt(source, path);
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return undefined;
+      };
+      const text = (value, fallback = '--') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        if (typeof value === 'object') return text(value.displayName ?? value.visibleName ?? value.cleanName ?? value.uiName ?? value.uiCarName ?? value.uiTrackName ?? value.name ?? value.code, fallback);
+        return String(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || fallback;
+      };
+      const norm = (value) => text(value, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const number = (value, fallback = 0) => { const n = Number(value); return Number.isFinite(n) ? n : fallback; };
+      const fmtNumber = (value) => Number.isFinite(Number(value)) ? new Intl.NumberFormat('es-ES').format(Number(value)) : '--';
+      const fmtMs = (ms) => {
+        const n = Number(ms);
+        if (!Number.isFinite(n) || n <= 0) return '--';
+        const m = Math.floor(n / 60000);
+        const s = Math.floor((n % 60000) / 1000);
+        const x = String(Math.floor(n % 1000)).padStart(3, '0');
+        return `${m}:${String(s).padStart(2, '0')}.${x}`;
+      };
+      const fmtDate = (value) => {
+        if (!value) return '--';
+        let ms = 0;
+        if (typeof value === 'number') ms = value > 20000000000 ? value : value * 1000;
+        else if (/^\d+$/.test(String(value))) { const n = Number(value); ms = n > 20000000000 ? n : n * 1000; }
+        else ms = Date.parse(String(value));
+        if (!Number.isFinite(ms) || ms <= 0) return '--';
+        return new Date(ms).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      };
+      const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
+      const fmtTemp = (value) => Number.isFinite(Number(value)) ? `${Math.round(Number(value))}ºC` : '--';
+      const fmtPercent = (value) => Number.isFinite(Number(value)) ? `${Math.round(Number(value) * 10) / 10}%` : '--';
+
+      const driverName = (row) => text(pick(row, ['driverName','playerName','driver.displayName','driver.visibleName','driver.name','pilotName','name']), 'Piloto');
+      const carName = (row) => text(pick(row, ['carName','carDisplayName','carVisibleName','car.name','car.uiName','car.code','uiCarName']), 'Coche');
+      const trackName = (row) => text(pick(row, ['trackName','trackDisplayName','trackVisibleName','track.name','track.uiName','track.code','uiTrackName']), 'Circuito');
+      const playerId = (row) => pick(row, ['playerId','driverId','driver.id','pilot.id']);
+      const comboUrl = (row) => text(pick(row, ['comboUrl']), '') || (pick(row, ['comboId']) ? `/combos/${encodeURIComponent(String(pick(row, ['comboId'])))}` : '');
+      const lapMs = (row) => number(pick(row, ['lapTimeMs','LapTime','timeMs']), NaN);
+      const lapText = (row) => text(pick(row, ['lapTimeFormatted','lapTime','lapTimeText']), '') || fmtMs(lapMs(row));
+      const sectorMs = (row, index) => {
+        const list = pick(row, ['sectorTimesMs','sectorsMs']);
+        if (Array.isArray(list) && Number.isFinite(Number(list[index]))) return Number(list[index]);
+        return number(pick(row, [`sector${index + 1}Ms`, `SectorTime${index}`, `s${index + 1}Ms`]), NaN);
+      };
+      const sectorText = (row, index) => text(pick(row, [`sector${index + 1}`, `s${index + 1}`]), '') || fmtMs(sectorMs(row, index));
+      const extraSectors = (row) => {
+        const list = pick(row, ['sectorTimesMs','sectorsMs']);
+        if (Array.isArray(list) && list.length > 3) return list.slice(3).map(fmtMs).filter((v) => v !== '--').join(' / ') || '--';
+        return '--';
+      };
+      const speed = (row) => number(pick(row, ['maxSpeedKmh','MaxSpeed_KMH','topSpeedKmh']), 0);
+      const valid = (row) => {
+        const v = pick(row, ['valid','isValid','Valid']);
+        return !(v === false || v === 0 || v === '0' || String(v).toLowerCase() === 'false');
+      };
+      const timestampValue = (row) => pick(row, ['timestampIso','dateIso','createdAt','timestamp','session.endTimeIso','session.startTimeIso']);
+      const timestampMs = (row) => {
+        const raw = timestampValue(row);
+        if (!raw) return 0;
+        if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
+        if (/^\d+$/.test(String(raw))) { const n = Number(raw); return n > 20000000000 ? n : n * 1000; }
+        const parsed = Date.parse(String(raw));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const sessionType = (row) => text(pick(row, ['session.type','sessionType','SessionType']), '--');
+      const trackTemp = (row) => number(pick(row, ['temperatureTrack','trackTemperature','session.temperatureTrack']), NaN);
+      const airTemp = (row) => number(pick(row, ['temperatureAmbient','airTemperature','session.temperatureAmbient']), NaN);
+      const grip = (row) => number(pick(row, ['gripLevel','grip','session.gripLevel']), NaN);
+      const inputMethod = (row) => text(pick(row, ['input.method','inputMethod','InputMethod']), '--');
+
+      function uniqueOptions(rows, getter) {
+        const map = new Map();
+        rows.forEach((row) => {
+          const label = getter(row);
+          const key = norm(label);
+          if (!key || key === '--') return;
+          if (!map.has(key)) map.set(key, label);
+        });
+        return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity:'base' }));
+      }
+
+      function fillSelect(select, rows, getter, label) {
+        const current = select.value || 'all';
+        const options = uniqueOptions(rows, getter);
+        select.innerHTML = `<option value="all">${escapeHtml(label)}</option>` + options.map(([key, value]) => `<option value="${escapeHtml(key)}">${escapeHtml(value)}</option>`).join('');
+        select.value = options.some(([key]) => key === current) ? current : 'all';
+      }
+
+      function populateFilters() {
+        fillSelect(els.driver, state.rows, driverName, 'Todos');
+        fillSelect(els.car, state.rows, carName, 'Todos');
+        fillSelect(els.track, state.rows, trackName, 'Todos');
+        fillSelect(els.session, state.rows, sessionType, 'Todas');
+      }
+
+      function applyFilters() {
+        const query = norm(els.search.value || '');
+        const driver = els.driver.value;
+        const car = els.car.value;
+        const track = els.track.value;
+        const validity = els.valid.value;
+        const session = els.session.value;
+        let rows = state.rows.filter((row) => {
+          const haystack = norm(`${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
+          if (query && !haystack.includes(query)) return false;
+          if (driver !== 'all' && norm(driverName(row)) !== driver) return false;
+          if (car !== 'all' && norm(carName(row)) !== car) return false;
+          if (track !== 'all' && norm(trackName(row)) !== track) return false;
+          if (session !== 'all' && norm(sessionType(row)) !== session) return false;
+          if (validity === 'valid' && !valid(row)) return false;
+          if (validity === 'invalid' && valid(row)) return false;
+          return true;
+        });
+        rows = applyView(rows);
+        syncSortFromSelect();
+        rows = sortRows(rows);
+        state.filtered = rows;
+        state.page = Math.min(state.page, Math.max(1, Math.ceil(rows.length / Number(els.pageSize.value || 50))));
+        render();
+      }
+
+      function applyView(rows) {
+        const mode = els.view.value;
+        if (mode === 'all') return rows;
+        const map = new Map();
+        rows.forEach((row) => {
+          const key = mode === 'best-combo'
+            ? `${norm(carName(row))}|${norm(trackName(row))}`
+            : mode === 'best-driver-track'
+              ? `${playerId(row) || norm(driverName(row))}|${norm(trackName(row))}`
+              : `${playerId(row) || norm(driverName(row))}|${norm(carName(row))}|${norm(trackName(row))}`;
+          const current = map.get(key);
+          if (!current || (lapMs(row) || Infinity) < (lapMs(current) || Infinity)) map.set(key, row);
+        });
+        return [...map.values()];
+      }
+
+      function sortValue(row, key) {
+        if (key === 'driver') return driverName(row).toLowerCase();
+        if (key === 'car') return carName(row).toLowerCase();
+        if (key === 'track') return trackName(row).toLowerCase();
+        if (key === 'lap' || key === 'fastest') return lapMs(row) || Infinity;
+        if (key === 's1') return sectorMs(row, 0) || Infinity;
+        if (key === 's2') return sectorMs(row, 1) || Infinity;
+        if (key === 's3') return sectorMs(row, 2) || Infinity;
+        if (key === 'speed') return speed(row) || 0;
+        if (key === 'date' || key === 'recent') return timestampMs(row) || 0;
+        if (key === 'valid') return valid(row) ? 1 : 0;
+        if (key === 'session') return sessionType(row).toLowerCase();
+        if (key === 'trackTemp') return trackTemp(row) || -999;
+        if (key === 'airTemp') return airTemp(row) || -999;
+        if (key === 'grip') return grip(row) || -999;
+        if (key === 'input') return inputMethod(row).toLowerCase();
+        return 0;
+      }
+
+      function syncSortFromSelect() {
+        const selectSort = els.sort.value;
+        if (selectSort === 'fastest') state.sortKey = 'lap', state.sortDir = 'asc';
+        if (selectSort === 'speed') state.sortKey = 'speed', state.sortDir = 'desc';
+        if (selectSort === 'recent') state.sortKey = 'date', state.sortDir = 'desc';
+        if (selectSort === 'driver') state.sortKey = 'driver', state.sortDir = 'asc';
+        if (selectSort === 'car') state.sortKey = 'car', state.sortDir = 'asc';
+        if (selectSort === 'track') state.sortKey = 'track', state.sortDir = 'asc';
+      }
+
+      function sortRows(rows) {
+        const dir = state.sortDir === 'asc' ? 1 : -1;
+        return [...rows].sort((a, b) => {
+          const av = sortValue(a, state.sortKey);
+          const bv = sortValue(b, state.sortKey);
+          if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv), 'es', { sensitivity:'base' }) * dir || ((lapMs(a)||Infinity)-(lapMs(b)||Infinity));
+          return ((av > bv ? 1 : av < bv ? -1 : 0) * dir) || ((lapMs(a)||Infinity)-(lapMs(b)||Infinity));
+        });
+      }
+
+      function updateMetrics() {
+        const all = state.filtered;
+        const validRows = all.filter(valid);
+        const best = validRows.slice().sort((a, b) => (lapMs(a) || Infinity) - (lapMs(b) || Infinity))[0];
+        const fastest = all.slice().sort((a, b) => speed(b) - speed(a))[0];
+        els.metricLaps.textContent = fmtNumber(all.length);
+        els.metricValid.textContent = fmtNumber(validRows.length);
+        els.metricDrivers.textContent = fmtNumber(uniqueOptions(all, driverName).length);
+        els.metricCars.textContent = fmtNumber(uniqueOptions(all, carName).length);
+        els.metricTracks.textContent = fmtNumber(uniqueOptions(all, trackName).length);
+        els.metricBest.textContent = best ? lapText(best) : '--';
+        els.metricSpeed.textContent = fastest ? fmtSpeed(speed(fastest)) : '--';
+      }
+
+      function render() {
+        const pageSize = Number(els.pageSize.value || 50);
+        const pages = Math.max(1, Math.ceil(state.filtered.length / pageSize));
+        state.page = Math.min(Math.max(1, state.page), pages);
+        const start = (state.page - 1) * pageSize;
+        const slice = state.filtered.slice(start, start + pageSize);
+        updateMetrics();
+        els.visible.textContent = fmtNumber(state.filtered.length);
+        els.hint.textContent = `${fmtNumber(state.filtered.length)} visibles · ${fmtNumber(state.rows.length)} cargadas`;
+        els.pageInfo.textContent = `Página ${state.page}/${pages}`;
+        els.prev.disabled = state.page <= 1;
+        els.next.disabled = state.page >= pages;
+        els.rows.innerHTML = slice.map((row, index) => {
+          const id = playerId(row);
+          const combo = comboUrl(row);
+          const pos = start + index + 1;
+          const driver = id ? `<a href="/pilotos/${encodeURIComponent(String(id))}">${escapeHtml(driverName(row))}</a>` : escapeHtml(driverName(row));
+          const car = combo ? `<a href="${escapeHtml(combo)}">${escapeHtml(carName(row))}</a>` : escapeHtml(carName(row));
+          const track = combo ? `<a href="${escapeHtml(combo)}">${escapeHtml(trackName(row))}</a>` : escapeHtml(trackName(row));
+          return `<tr>
+            <td>${pos}</td>
+            <td>${driver}</td>
+            <td>${car}</td>
+            <td>${track}</td>
+            <td><span class="gc-hotlaps2-time">${escapeHtml(lapText(row))}</span></td>
+            <td>${escapeHtml(sectorText(row, 0))}</td>
+            <td>${escapeHtml(sectorText(row, 1))}</td>
+            <td>${escapeHtml(sectorText(row, 2))}</td>
+            <td>${escapeHtml(extraSectors(row))}</td>
+            <td>${escapeHtml(fmtSpeed(speed(row)))}</td>
+            <td>${escapeHtml(fmtDate(timestampValue(row)))}</td>
+            <td>${valid(row) ? '<span class="gc-hotlaps2-state">Válida</span>' : '<span class="gc-hotlaps2-state gc-hotlaps2-state--bad">No válida</span>'}</td>
+            <td>${escapeHtml(sessionType(row))}</td>
+            <td>${escapeHtml(fmtTemp(trackTemp(row)))}</td>
+            <td>${escapeHtml(fmtTemp(airTemp(row)))}</td>
+            <td>${escapeHtml(fmtPercent(grip(row)))}</td>
+            <td>${escapeHtml(inputMethod(row))}</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="17">Sin resultados para los filtros actuales.</td></tr>';
+      }
+
+      async function load() {
+        els.reload.disabled = true;
+        els.rows.innerHTML = '<tr><td colspan="17">Cargando vueltas...</td></tr>';
+        try {
+          const response = await fetch('/api/gc/hotlaps2?limit=all', { credentials:'include', cache:'no-store' });
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          const json = await response.json();
+          state.rows = Array.isArray(json.items) ? json.items : Array.isArray(json.laps) ? json.laps : [];
+          state.page = 1;
+          populateFilters();
+          els.loaded.textContent = fmtNumber(state.rows.length);
+          els.source.textContent = json.source || 'OK';
+          els.updated.textContent = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+          applyFilters();
+        } catch (error) {
+          console.warn('[GC hotlaps2] load error', error);
+          els.source.textContent = 'Error';
+          els.hint.textContent = 'No se pudo cargar /api/gc/hotlaps2';
+          els.rows.innerHTML = '<tr><td colspan="17">Error cargando hotlaps2.</td></tr>';
+        } finally {
+          els.reload.disabled = false;
+        }
+      }
+
+      [els.search, els.driver, els.car, els.track, els.valid, els.session, els.view, els.sort, els.pageSize].forEach((el) => {
+        el.addEventListener('input', () => { state.page = 1; applyFilters(); });
+        el.addEventListener('change', () => { state.page = 1; applyFilters(); });
+      });
+      document.querySelectorAll('.gc-hotlaps2-table th[data-sort]').forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          if (!key || key === 'rank') return;
+          if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          else state.sortKey = key, state.sortDir = ['speed','date','valid','trackTemp','airTemp','grip'].includes(key) ? 'desc' : 'asc';
+          els.sort.value = key === 'lap' ? 'fastest' : key === 'date' ? 'recent' : ['speed','driver','car','track'].includes(key) ? key : els.sort.value;
+          state.filtered = sortRows(applyView(baseFilteredOnly()));
+          render();
+        });
+      });
+      function baseFilteredOnly() {
+        const query = norm(els.search.value || '');
+        const driver = els.driver.value;
+        const car = els.car.value;
+        const track = els.track.value;
+        const validity = els.valid.value;
+        const session = els.session.value;
+        return state.rows.filter((row) => {
+          const haystack = norm(`${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
+          if (query && !haystack.includes(query)) return false;
+          if (driver !== 'all' && norm(driverName(row)) !== driver) return false;
+          if (car !== 'all' && norm(carName(row)) !== car) return false;
+          if (track !== 'all' && norm(trackName(row)) !== track) return false;
+          if (session !== 'all' && norm(sessionType(row)) !== session) return false;
+          if (validity === 'valid' && !valid(row)) return false;
+          if (validity === 'invalid' && valid(row)) return false;
+          return true;
+        });
+      }
+      els.prev.addEventListener('click', () => { state.page -= 1; render(); });
+      els.next.addEventListener('click', () => { state.page += 1; render(); });
+      els.reload.addEventListener('click', load);
+      els.clear.addEventListener('click', () => {
+        els.search.value = '';
+        els.driver.value = 'all';
+        els.car.value = 'all';
+        els.track.value = 'all';
+        els.valid.value = 'valid';
+        els.session.value = 'all';
+        els.view.value = 'all';
+        els.sort.value = 'recent';
+        els.pageSize.value = '50';
+        state.page = 1;
+        applyFilters();
+      });
+      load();
+    })();
+  </script>
+</AppLayout>
