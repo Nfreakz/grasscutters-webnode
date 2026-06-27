@@ -260,6 +260,31 @@ async function ensureMysqlSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_team_palmares (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      team_id VARCHAR(64) NOT NULL,
+      season VARCHAR(32) NULL,
+      championship_slug VARCHAR(140) NULL,
+      championship_name VARCHAR(180) NULL,
+      championship_points DECIMAL(10,2) NOT NULL DEFAULT 0,
+      wins INT NOT NULL DEFAULT 0,
+      podiums INT NOT NULL DEFAULT 0,
+      poles INT NOT NULL DEFAULT 0,
+      fastest_laps INT NOT NULL DEFAULT 0,
+      races INT NOT NULL DEFAULT 0,
+      titles INT NOT NULL DEFAULT 0,
+      runner_ups INT NOT NULL DEFAULT 0,
+      source VARCHAR(40) NOT NULL DEFAULT 'manual',
+      created_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      INDEX idx_gc_team_palmares_team (team_id),
+      INDEX idx_gc_team_palmares_season (season),
+      INDEX idx_gc_team_palmares_championship (championship_slug)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_sessions (
       id VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -451,6 +476,27 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS gc_team_palmares (
+    id TEXT NOT NULL PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    season TEXT NULL,
+    championship_slug TEXT NULL,
+    championship_name TEXT NULL,
+    championship_points REAL NOT NULL DEFAULT 0,
+    wins INTEGER NOT NULL DEFAULT 0,
+    podiums INTEGER NOT NULL DEFAULT 0,
+    poles INTEGER NOT NULL DEFAULT 0,
+    fastest_laps INTEGER NOT NULL DEFAULT 0,
+    races INTEGER NOT NULL DEFAULT 0,
+    titles INTEGER NOT NULL DEFAULT 0,
+    runner_ups INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'manual',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_team_palmares_team ON gc_team_palmares(team_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_gc_team_palmares_season ON gc_team_palmares(season)`);
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_role ON gc_users(role)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_gc_users_pilot_player_id ON gc_users(pilot_player_id)`);
@@ -6642,6 +6688,7 @@ app.get('/api/gc/teams', async (req, res) => {
 });
 
 
+
 app.get('/api/gc/teams/standings', async (req, res) => {
   try {
     if (!useMysqlStorage() && !useSqliteStorage()) {
@@ -6649,31 +6696,57 @@ app.get('/api/gc/teams/standings', async (req, res) => {
       return;
     }
     if (useMysqlStorage()) await ensureMysqlSchema();
-    const rows = useMysqlStorage()
+    const teamRows = useMysqlStorage()
       ? await mysqlQuery(`SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
           FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
           WHERE t.status = 'active'
-          GROUP BY t.id
-          ORDER BY members_count DESC, t.name ASC`)
+          GROUP BY t.id`)
       : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT t.*, COUNT(CASE WHEN m.status = 'active' THEN 1 END) AS members_count
           FROM gc_teams t LEFT JOIN gc_team_memberships m ON m.team_id = t.id
           WHERE t.status = 'active'
-          GROUP BY t.id
-          ORDER BY members_count DESC, t.name ASC`));
-    const items = (rows || []).map((row: any, index: number) => {
-      const membersCount = Number(row.members_count ?? 0);
+          GROUP BY t.id`));
+    const palmaresRows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT team_id,
+            SUM(championship_points) AS championship_points,
+            SUM(wins) AS wins, SUM(podiums) AS podiums, SUM(poles) AS poles,
+            SUM(fastest_laps) AS fastest_laps, SUM(races) AS races,
+            SUM(titles) AS titles, SUM(runner_ups) AS runner_ups
+          FROM gc_team_palmares GROUP BY team_id`)
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT team_id,
+            SUM(championship_points) AS championship_points,
+            SUM(wins) AS wins, SUM(podiums) AS podiums, SUM(poles) AS poles,
+            SUM(fastest_laps) AS fastest_laps, SUM(races) AS races,
+            SUM(titles) AS titles, SUM(runner_ups) AS runner_ups
+          FROM gc_team_palmares GROUP BY team_id`));
+    const palmaresByTeam = new Map((palmaresRows || []).map((row: any) => [String(row.team_id), row]));
+    const items = (teamRows || []).map((row: any) => {
+      const p = palmaresByTeam.get(String(row.id)) || {};
       return {
         ...publicGcTeam(row),
-        rank: index + 1,
-        membersCount,
-        points: membersCount * 10,
-        rankingSource: 'members_v1'
+        membersCount: Number(row.members_count ?? 0),
+        rank: 0,
+        championshipPoints: Number(p.championship_points ?? 0),
+        points: Number(p.championship_points ?? 0),
+        wins: Number(p.wins ?? 0),
+        podiums: Number(p.podiums ?? 0),
+        poles: Number(p.poles ?? 0),
+        fastestLaps: Number(p.fastest_laps ?? 0),
+        races: Number(p.races ?? 0),
+        titles: Number(p.titles ?? 0),
+        runnerUps: Number(p.runner_ups ?? 0),
+        rankingSource: 'team_palmares_v4'
       };
-    });
-    res.json({ ok: true, items, standings: items, count: items.length, source: 'gc-teams-standings-v2' });
+    }).sort((a: any, b: any) =>
+      (b.championshipPoints - a.championshipPoints) ||
+      (b.wins - a.wins) ||
+      (b.podiums - a.podiums) ||
+      (b.titles - a.titles) ||
+      String(a.name || '').localeCompare(String(b.name || ''))
+    ).map((item: any, index: number) => ({ ...item, rank: index + 1 }));
+    res.json({ ok: true, items, standings: items, count: items.length, source: 'gc-team-palmares-v4' });
   } catch (error) {
     console.error('[GC TEAMS] standings:', error);
-    res.status(200).json({ ok: false, items: [], standings: [], message: 'No se pudo cargar el ranking de equipos.' });
+    res.status(200).json({ ok: false, items: [], standings: [], message: 'No se pudo cargar el palmarés de equipos.' });
   }
 });
 
@@ -6748,8 +6821,37 @@ app.get('/api/gc/teams/:slug', async (req, res) => {
           FROM gc_team_memberships m JOIN gc_driver_profiles d ON d.id = m.driver_profile_id
           WHERE m.team_id = ? AND m.status = 'active'
           ORDER BY d.driver_name ASC`, [row.id]));
-    const team = { ...publicGcTeam(row, members || []), membersCount: Number(row.members_count ?? members?.length ?? 0) };
-    res.json({ ok: true, team, members: members || [], stats: { membersCount: team.membersCount, points: team.membersCount * 10, rankingSource: 'members_v1' } });
+    const palmaresRows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT
+            SUM(championship_points) AS championship_points,
+            SUM(wins) AS wins, SUM(podiums) AS podiums, SUM(poles) AS poles,
+            SUM(fastest_laps) AS fastest_laps, SUM(races) AS races,
+            SUM(titles) AS titles, SUM(runner_ups) AS runner_ups,
+            MAX(season) AS season, MAX(championship_name) AS championship_name
+          FROM gc_team_palmares WHERE team_id = ?`, [row.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT
+            SUM(championship_points) AS championship_points,
+            SUM(wins) AS wins, SUM(podiums) AS podiums, SUM(poles) AS poles,
+            SUM(fastest_laps) AS fastest_laps, SUM(races) AS races,
+            SUM(titles) AS titles, SUM(runner_ups) AS runner_ups,
+            MAX(season) AS season, MAX(championship_name) AS championship_name
+          FROM gc_team_palmares WHERE team_id = ?`, [row.id]));
+    const p = palmaresRows?.[0] || {};
+    const palmares = {
+      championshipPoints: Number(p.championship_points ?? 0),
+      wins: Number(p.wins ?? 0),
+      podiums: Number(p.podiums ?? 0),
+      poles: Number(p.poles ?? 0),
+      fastestLaps: Number(p.fastest_laps ?? 0),
+      races: Number(p.races ?? 0),
+      titles: Number(p.titles ?? 0),
+      runnerUps: Number(p.runner_ups ?? 0),
+      season: p.season || null,
+      championshipName: p.championship_name || null,
+      rankingSource: 'team_palmares_v4'
+    };
+    const team = { ...publicGcTeam(row, members || []), membersCount: Number(row.members_count ?? members?.length ?? 0), palmares };
+    res.json({ ok: true, team, members: members || [], stats: { membersCount: team.membersCount, ...palmares, points: palmares.championshipPoints } });
   } catch (error) {
     console.error('[GC TEAMS] by slug:', error);
     res.status(200).json({ ok: false, team: null, members: [], message: 'No se pudo cargar el equipo.' });
@@ -6966,6 +7068,47 @@ app.post('/api/gc/teams/:teamId/leave', async (req, res) => {
   } catch (error) {
     console.error('[GC TEAMS] leave:', error);
     res.status(200).json({ ok:false, message:'No se pudo salir del equipo.' });
+  }
+});
+
+
+app.post('/api/gc/teams/:teamId/palmares', async (req, res) => {
+  try {
+    const context = await getAuthContextAsync(req);
+    if (!context) { res.status(401).json({ ok:false, message:'Necesitas iniciar sesión.' }); return; }
+    const teamId = String(req.params.teamId || '').trim();
+    const me = await ensureGcDriverProfileForUser(context.user);
+    const rows = useMysqlStorage()
+      ? await mysqlQuery(`SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id])
+      : await withAppSqliteDb((db) => sqliteQuery(db, `SELECT role FROM gc_team_memberships WHERE team_id=? AND driver_profile_id=? AND status='active' LIMIT 1`, [teamId, me?.id]));
+    if (!['owner','captain'].includes(String(rows?.[0]?.role))) { res.status(403).json({ ok:false, message:'Sin permisos para editar palmarés.' }); return; }
+    const body = req.body || {};
+    const cleanInt = (value: any) => Math.max(0, Math.floor(Number(value || 0) || 0));
+    const cleanPoints = (value: any) => Math.max(0, Number(value || 0) || 0);
+    const season = normalizeTeamText(body.season, 32) || String(new Date().getFullYear());
+    const championshipName = normalizeTeamText(body.championshipName ?? body.championship_name, 180) || 'Campeonato GrassCutters';
+    const championshipSlug = slugifyTeamName(`${season}-${championshipName}`);
+    const id = `tpal_${teamId}_${championshipSlug}`.slice(0, 64);
+    const now = new Date().toISOString();
+    const values = [
+      id, teamId, season, championshipSlug, championshipName,
+      cleanPoints(body.championshipPoints ?? body.points),
+      cleanInt(body.wins), cleanInt(body.podiums), cleanInt(body.poles), cleanInt(body.fastestLaps ?? body.fastest_laps),
+      cleanInt(body.races), cleanInt(body.titles), cleanInt(body.runnerUps ?? body.runner_ups),
+      'manual', now, now
+    ];
+    if (useMysqlStorage()) {
+      await mysqlExecute(`INSERT INTO gc_team_palmares (id, team_id, season, championship_slug, championship_name, championship_points, wins, podiums, poles, fastest_laps, races, titles, runner_ups, source, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE championship_name=VALUES(championship_name), championship_points=VALUES(championship_points), wins=VALUES(wins), podiums=VALUES(podiums), poles=VALUES(poles), fastest_laps=VALUES(fastest_laps), races=VALUES(races), titles=VALUES(titles), runner_ups=VALUES(runner_ups), updated_at=VALUES(updated_at)`, values);
+    } else {
+      await withAppSqliteDb((db) => db.run(`INSERT OR REPLACE INTO gc_team_palmares (id, team_id, season, championship_slug, championship_name, championship_points, wins, podiums, poles, fastest_laps, races, titles, runner_ups, source, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, values), true);
+    }
+    res.json({ ok:true, message:'Palmarés actualizado.' });
+  } catch (error) {
+    console.error('[GC TEAMS] palmares:', error);
+    res.status(200).json({ ok:false, message:'No se pudo actualizar el palmarés.' });
   }
 });
 

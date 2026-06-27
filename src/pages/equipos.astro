@@ -3,7 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
 <MarketingLayout
   title="Equipos | GrassCutters Racing"
-  description="Escuderías GrassCutters Racing: pilotos, identidad y base para ranking por equipos."
+  description="Escuderías GrassCutters Racing: palmarés, puntos de campeonato y pilotos vinculados."
   canonicalPath="/equipos"
   bodyClass="gc-page-platform-data"
 >
@@ -11,7 +11,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     <header class="gc-equipos-head">
       <p>GRASSCUTTERS / TEAMS</p>
       <h1>Escuderías.</h1>
-      <span>Sistema propio de equipos para rankings, pilotos vinculados, país real y gestión desde perfil.</span>
+      <span>Sistema propio de escuderías: palmarés, puntos de campeonato, pilotos vinculados y país real.</span>
     </header>
     <section class="gc-equipos-toolbar">
       <input id="gcTeamsSearch" type="search" placeholder="Buscar equipo" autocomplete="off" />
@@ -33,7 +33,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     .gc-equipos-toolbar input{min-width:260px;flex:1;background:#050905;border:1px solid rgba(150,255,47,.28);color:#f4fff1;padding:12px 14px;font:800 12px/1 var(--gc-mono,monospace);text-transform:uppercase}
     .gc-equipos-btn{border:1px solid rgba(150,255,47,.5);background:rgba(150,255,47,.12);color:#96ff2f;text-decoration:none;padding:12px 14px;font:900 12px/1 var(--gc-mono,monospace);text-transform:uppercase;letter-spacing:.08em}
     .gc-equipos-ranking{border:1px solid rgba(150,255,47,.16);background:rgba(3,9,5,.92);display:grid;gap:1px;overflow:hidden}
-    .gc-equipos-rank-row{display:grid;grid-template-columns:70px 1fr 120px 120px 120px;gap:10px;align-items:center;padding:11px 14px;background:#030904;font:900 12px/1.2 var(--gc-mono,monospace);text-transform:uppercase}
+    .gc-equipos-rank-row{display:grid;grid-template-columns:70px 1fr 120px 90px 90px 90px;gap:10px;align-items:center;padding:11px 14px;background:#030904;font:900 12px/1.2 var(--gc-mono,monospace);text-transform:uppercase}
     .gc-equipos-rank-row strong{color:#96ff2f}.gc-equipos-rank-row span{color:rgba(244,255,241,.72)}
     .gc-equipos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
     .gc-equipos-card{border:1px solid rgba(150,255,47,.18);background:rgba(3,9,5,.92);padding:16px;display:grid;gap:12px;min-height:130px;color:inherit;text-decoration:none}
@@ -59,7 +59,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         const rows = (items || teams).slice(0, 10);
         ranking.innerHTML = rows.length ? rows.map((team, index) => `
           <a class="gc-equipos-rank-row" href="/equipos/${encodeURIComponent(team.slug || team.id)}" style="color:inherit;text-decoration:none">
-            <strong>#${team.rank || index + 1}</strong><span>${esc(team.name || 'Equipo')}</span><strong>${Number(team.points || 0)}</strong><span>${Number(team.membersCount || 0)} pilotos</span><span>${esc(flag(team.countryCode))} ${esc(team.countryCode || '--')}</span>
+            <strong>#${team.rank || index + 1}</strong><span>${esc(team.name || 'Equipo')}</span><strong>${Number(team.championshipPoints || team.points || 0)} pts</strong><span>${Number(team.wins || 0)} vict.</span><span>${Number(team.podiums || 0)} pod.</span><span>${Number(team.membersCount || 0)} pilotos</span>
           </a>`).join('') : '<article class="gc-equipos-rank-row"><span>Sin ranking todavía.</span></article>';
       }
       function render() {
@@ -71,7 +71,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
               <img src="${esc(team.logoUrl || '/images/team-default-gc.svg')}" alt="" loading="lazy" onerror="this.src='/images/team-default-gc.svg'">
               <div><strong>${esc(team.name || 'Equipo')}</strong><small>${esc(flag(team.countryCode))} ${esc(team.shortName || team.slug || '')}</small></div>
             </div>
-            <dl><div><dt>Pilotos</dt><dd>${Number(team.membersCount || team.members?.length || 0)}</dd></div><div><dt>Estado</dt><dd>${esc(team.status || 'active')}</dd></div></dl>
+            <dl><div><dt>Pilotos</dt><dd>${Number(team.membersCount || team.members?.length || 0)}</dd></div><div><dt>Palmarés</dt><dd>Ver ficha</dd></div></dl>
           </a>`).join('') : '<article class="gc-equipos-card"><strong>No hay equipos todavía.</strong><small>Crea el primero desde /perfil.</small></article>';
       }
       async function load() {
