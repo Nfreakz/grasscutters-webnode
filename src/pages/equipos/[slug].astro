@@ -28,8 +28,8 @@ const slug = Astro.params.slug ?? '';
       <article><span>Puntos campeonato</span><strong>--</strong></article>
       <article><span>Victorias</span><strong>--</strong></article>
       <article><span>Podios</span><strong>--</strong></article>
-      <article><span>País</span><strong>🏳️ --</strong></article>
-      <article><span>Estado</span><strong>--</strong></article>
+      <article><span>Títulos</span><strong>--</strong></article>
+      <article><span>Estado</span><strong>Activo</strong></article>
     </section>
 
     <section class="gc-team-board">
@@ -66,7 +66,6 @@ const slug = Astro.params.slug ?? '';
       const root = document.querySelector('[data-gc-team-page]');
       const slug = root?.dataset.teamSlug || '';
       const esc = (v) => String(v ?? '').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-      const flag = (code) => /^[A-Z]{2}$/.test(String(code||'')) ? String.fromCodePoint(...[...String(code).toUpperCase()].map((c)=>127397+c.charCodeAt(0))) : '🏳️';
       const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
       async function load() {
         try {
@@ -81,17 +80,17 @@ const slug = Astro.params.slug ?? '';
           const stats = document.getElementById('gcTeamStats');
           if (stats) stats.innerHTML = `
             <article><span>Pilotos</span><strong>${members.length}</strong></article>
-            <article><span>Puntos campeonato</span><strong>${Number(data.stats?.championshipPoints || data.stats?.points || 0)}</strong></article>
+            <article><span>Puntos piloto</span><strong>${Number(data.stats?.championshipPoints || data.stats?.points || 0)}</strong></article>
             <article><span>Victorias</span><strong>${Number(data.stats?.wins || 0)}</strong></article>
             <article><span>Podios</span><strong>${Number(data.stats?.podiums || 0)}</strong></article>
             <article><span>Títulos</span><strong>${Number(data.stats?.titles || 0)}</strong></article>
-            <article><span>País</span><strong>${esc(flag(team.countryCode))} ${esc(team.countryCode || '--')}</strong></article>`;
+            <article><span>Estado</span><strong>Activo</strong></article>`;
           const box = document.getElementById('gcTeamMembers');
           if (box) box.innerHTML = members.length ? members.map((m) => `
             <article class="gc-team-member">
               <span><b>${esc(m.displayName || m.driverName || 'Piloto')}</b><small>${esc(m.playerId || m.steamGuid || 'sin cuenta vinculada')}</small></span>
               <strong>${esc(m.role || 'driver')}</strong>
-              <strong>${esc(flag(m.countryCode))} ${esc(m.countryCode || '--')}</strong>
+              <strong>${esc(m.status || 'activo')}</strong>
             </article>`).join('') : '<article class="gc-team-member"><span><b>Sin pilotos</b><small>Añade pilotos desde la gestión del equipo.</small></span></article>';
         } catch (error) {
           setText('gcTeamName', 'Equipo no encontrado');

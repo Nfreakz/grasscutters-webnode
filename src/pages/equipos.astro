@@ -3,7 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
 <MarketingLayout
   title="Equipos | GrassCutters Racing"
-  description="Escuderías GrassCutters Racing: palmarés, puntos de campeonato y pilotos vinculados."
+  description="Escuderías GrassCutters Racing: palmarés y puntos piloto."
   canonicalPath="/equipos"
   bodyClass="gc-page-platform-data"
 >
@@ -11,7 +11,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     <header class="gc-equipos-head">
       <p>GRASSCUTTERS / TEAMS</p>
       <h1>Escuderías.</h1>
-      <span>Sistema propio de escuderías: palmarés, puntos de campeonato, pilotos vinculados y país real.</span>
+      <span>Palmarés y puntos piloto.</span>
     </header>
     <section class="gc-equipos-toolbar">
       <input id="gcTeamsSearch" type="search" placeholder="Buscar equipo" autocomplete="off" />
@@ -41,9 +41,11 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     .gc-equipos-card img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid rgba(150,255,47,.45);background:#050905}
     .gc-equipos-card strong{font-size:18px;text-transform:uppercase}
     .gc-equipos-card small{color:rgba(244,255,241,.62);font:800 11px/1.3 var(--gc-mono,monospace);text-transform:uppercase}
-    .gc-equipos-card dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+    .gc-equipos-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+    .gc-equipos-card div{padding-top:8px;border-top:1px solid rgba(150,255,47,.12)}
     .gc-equipos-card div dt{color:rgba(244,255,241,.52);font-size:10px;text-transform:uppercase}
-    .gc-equipos-card div dd{margin:3px 0 0;font:900 17px/1 var(--gc-mono,monospace);color:#96ff2f}
+    .gc-equipos-card div dd{margin:4px 0 0;font:900 17px/1 var(--gc-mono,monospace);color:#96ff2f}
+    .gc-equipos-card__cta{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(150,255,47,.38);padding:10px 12px;font:900 11px/1 var(--gc-mono,monospace);text-transform:uppercase;letter-spacing:.08em;color:#f4fff1;background:rgba(150,255,47,.08)}
   </style>
 
   <script is:inline>
@@ -51,7 +53,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       const grid = document.getElementById('gcTeamsGrid');
       const search = document.getElementById('gcTeamsSearch');
       const esc = (v) => String(v ?? '').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-      const flag = (code) => /^[A-Z]{2}$/.test(String(code||'')) ? String.fromCodePoint(...[...String(code).toUpperCase()].map((c)=>127397+c.charCodeAt(0))) : '🏳️';
       const ranking = document.getElementById('gcTeamsRanking');
       let teams = [];
       function renderRanking(items) {
@@ -64,14 +65,20 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
       }
       function render() {
         const q = String(search?.value || '').trim().toLowerCase();
-        const rows = teams.filter((team) => !q || String(team.name || '').toLowerCase().includes(q));
+        const rows = teams.filter((team) => !q || String(team.name || '').toLowerCase().includes(q) || String(team.shortName || '').toLowerCase().includes(q));
         grid.innerHTML = rows.length ? rows.map((team) => `
           <a class="gc-equipos-card" href="/equipos/${encodeURIComponent(team.slug || team.id)}">
             <div class="gc-equipos-card__top">
               <img src="${esc(team.logoUrl || '/images/team-default-gc.svg')}" alt="" loading="lazy" onerror="this.src='/images/team-default-gc.svg'">
-              <div><strong>${esc(team.name || 'Equipo')}</strong><small>${esc(flag(team.countryCode))} ${esc(team.shortName || team.slug || '')}</small></div>
+              <div><strong>${esc(team.name || 'Equipo')}</strong><small>${esc(team.shortName || team.slug || 'team')}</small></div>
             </div>
-            <dl><div><dt>Pilotos</dt><dd>${Number(team.membersCount || team.members?.length || 0)}</dd></div><div><dt>Palmarés</dt><dd>Ver ficha</dd></div></dl>
+            <dl>
+              <div><dt>Pilotos</dt><dd>${Number(team.membersCount || team.members?.length || 0)}</dd></div>
+              <div><dt>Puntos piloto</dt><dd>${Number(team.championshipPoints || team.points || 0)}</dd></div>
+              <div><dt>Victorias</dt><dd>${Number(team.wins || 0)}</dd></div>
+              <div><dt>Podios</dt><dd>${Number(team.podiums || 0)}</dd></div>
+            </dl>
+            <span class="gc-equipos-card__cta">Ver ficha</span>
           </a>`).join('') : '<article class="gc-equipos-card"><strong>No hay equipos todavía.</strong><small>Crea el primero desde /perfil.</small></article>';
       }
       async function load() {

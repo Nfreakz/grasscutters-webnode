@@ -22,8 +22,7 @@ const slug = Astro.params.slug ?? '';
         <label>Nombre<input name="name" required /></label>
         <label>Nombre corto<input name="shortName" maxlength="32" /></label>
         <label>Logo URL<input name="logoUrl" placeholder="/images/team-default-gc.svg" /></label>
-        <label>País<input name="countryCode" maxlength="2" placeholder="ES" /></label>
-        <label>Descripción<textarea name="description" rows="4"></textarea></label>
+                <label>Descripción<textarea name="description" rows="4"></textarea></label>
         <button type="submit">Guardar equipo</button>
       </form>
 
@@ -32,8 +31,7 @@ const slug = Astro.params.slug ?? '';
         <label>Nombre piloto<input name="driverName" required placeholder="Neo" /></label>
         <label>Player ID<input name="playerId" inputmode="numeric" /></label>
         <label>Steam GUID<input name="steamGuid" /></label>
-        <label>País<input name="countryCode" maxlength="2" placeholder="ES" /></label>
-        <label>Rol<select name="role"><option value="driver">Driver</option><option value="captain">Captain</option><option value="reserve">Reserve</option></select></label>
+                <label>Rol<select name="role"><option value="driver">Driver</option><option value="captain">Captain</option><option value="reserve">Reserve</option></select></label>
         <button type="submit">Añadir al equipo</button>
       </form>
 
@@ -81,7 +79,6 @@ const slug = Astro.params.slug ?? '';
       const palmaresForm = document.getElementById('gcTeamPalmaresForm');
       const membersBox = document.getElementById('gcTeamAdminMembers');
       const esc = (v) => String(v ?? '').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-      const flag = (code) => /^[A-Z]{2}$/.test(String(code||'')) ? String.fromCodePoint(...[...String(code).toUpperCase()].map((c)=>127397+c.charCodeAt(0))) : '🏳️';
       let team = null;
       let myRole = null;
       const setStatus = (text) => { if (status) status.textContent = text; };
@@ -96,7 +93,6 @@ const slug = Astro.params.slug ?? '';
         editForm.name.value = team.name || '';
         editForm.shortName.value = team.shortName || '';
         editForm.logoUrl.value = team.logoUrl || '';
-        editForm.countryCode.value = team.countryCode || '';
         editForm.description.value = team.description || '';
         if (palmaresForm) {
           const p = team.palmares || {};
@@ -115,7 +111,7 @@ const slug = Astro.params.slug ?? '';
         const members = team?.members || [];
         membersBox.innerHTML = members.length ? members.map((m) => `
           <article class="gc-team-admin-member" data-membership-id="${esc(m.membershipId)}">
-            <span><b>${esc(m.displayName || m.driverName || 'Piloto')}</b><small>${esc(flag(m.countryCode))} ${esc(m.countryCode || '--')} · ${esc(m.playerId || m.steamGuid || 'sin cuenta')}</small></span>
+            <span><b>${esc(m.displayName || m.driverName || 'Piloto')}</b><small>${esc(m.playerId || m.steamGuid || 'sin cuenta')}</small></span>
             <select data-role ${myRole !== 'owner' ? 'disabled' : ''}><option value="owner" ${m.role==='owner'?'selected':''}>Owner</option><option value="captain" ${m.role==='captain'?'selected':''}>Captain</option><option value="driver" ${m.role==='driver'?'selected':''}>Driver</option><option value="reserve" ${m.role==='reserve'?'selected':''}>Reserve</option></select>
             <button type="button" data-save-role ${myRole !== 'owner' ? 'disabled' : ''}>Rol</button>
             <button type="button" data-remove ${['owner','captain'].includes(myRole) ? '' : 'disabled'}>Quitar</button>
