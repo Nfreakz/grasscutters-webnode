@@ -30,7 +30,7 @@ import AuthHeader from '../components/AuthHeader.astro';
 
 const {
   title = 'GrassCutters Racing',
-  description = 'Comunidad de sim racing, motorsport, hotlaps, archivo técnico y plataforma para pilotos.',
+  description = 'Comunidad de sim racing, motorsport, hotlaps, campeonatos y plataforma para pilotos.',
   bodyClass = '',
   canonicalPath,
   ogImage,
@@ -62,11 +62,11 @@ const pageOgImages = {
   '/': '/og/home-og-v1531.png',
   '/comunidad': '/og/comunidad-og-v1531.png',
   '/campeonato': '/og/campeonato-og-v1531.png',
+  '/campeonato-supra-gt4': '/og/campeonato-og-v1531.png',
   '/apoyo-servidor': '/og/apoyo-servidor-og-v1531.png',
   '/normas': '/og/normas-og-v1531.png',
   '/privacidad': '/og/privacidad-og-v1531.png',
   '/app-android': '/og/app-android-og-v1531.png',
-  '/archivo': '/og/archivo-og.png',
   '/historico': '/og/campeonato-og-v1531.png',
   '/carreras-comunidad': '/og/campeonato-og-v1531.png',
   '/calendario': '/og/calendario-og-v1531.png',
@@ -96,7 +96,7 @@ function absoluteUrl(value) {
 }
 
 const cleanTitle = compactText(title, 'GrassCutters Racing');
-const cleanDescription = compactText(description, 'Comunidad de sim racing, motorsport y archivo técnico de GrassCutters Racing.');
+const cleanDescription = compactText(description, 'Comunidad de sim racing, motorsport y comunidad competitiva de GrassCutters Racing.');
 const selectedOgImage = ogImage || pageOgImages[path] || '/og/grasscutters-social-card-v1531.png';
 const absoluteOgImage = absoluteUrl(selectedOgImage);
 const cleanOgImageAlt = compactText(ogImageAlt, `Imagen social de ${cleanTitle}`);
@@ -110,9 +110,9 @@ const hudOvertakeUrl = 'https://www.overtake.gg/downloads/grasscutters-lua-hud-l
 const hudPatreonUrl = 'https://www.patreon.com/c/neorsgarage';
 
 const championshipNavItems = [
-  { href: '/campeonato', label: 'Campeonato ACSM', match: '/campeonato' },
+  { href: '/campeonato', label: 'Liga GrassCutters', match: '/campeonato' },
+  { href: '/campeonato-supra-gt4', label: 'Campeonato Supra GT4', match: '/campeonato-supra-gt4' },
   { href: '/historico', label: 'Histórico ACSM', match: '/historico' },
-  { href: '/carreras-comunidad', label: 'Carreras no oficiales', match: '/carreras-comunidad' },
 ];
 
 
@@ -135,14 +135,13 @@ const navItems = [
   { href: '/comunidad', label: 'COMUNIDAD', match: '/comunidad' },
   { href: '/ratings', label: 'RATINGS', match: '/ratings' },
   { href: '/calendario', label: 'CALENDARIO', match: '/calendario' },
-  { href: '/archivo', label: 'ARCHIVO', match: '/archivo' },
   { href: '/app', label: 'PLATAFORMA', match: '/app' },
 ];
 
 const footerItems = [
-  { href: '/campeonato', label: 'Campeonato' },
+  { href: '/campeonato', label: 'Liga GrassCutters' },
+  { href: '/campeonato-supra-gt4', label: 'Campeonato Supra GT4' },
   { href: '/historico', label: 'Histórico' },
-  { href: '/carreras-comunidad', label: 'Carreras no oficiales' },
   { href: '/normas', label: 'Normas' },
   { href: '/apoyo-servidor', label: 'Apoyo al servidor' },
   { href: '/privacidad', label: 'Privacidad' },
@@ -166,7 +165,7 @@ function isPlatformActive() {
   return platformNavItems.some((item) => isActive(item.match));
 }
 
-const shouldShowHudPopup = !path.startsWith('/archivo');
+const shouldShowHudPopup = true;
 ---
 <!doctype html>
 <html lang="es" data-gc-scope="marketing">

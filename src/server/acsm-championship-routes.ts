@@ -25,12 +25,19 @@ const defaultAcsmBaseUrl = 'http://145.239.131.153:8840';
 const defaultChampionshipId = 'ad89ce26-0206-40f2-adec-451cf221d4e6';
 const defaultChampionshipSignUpUrl = 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam';
 
+const defaultGt4AcsmBaseUrl = 'http://5.39.68.161:8840';
+const defaultGt4ChampionshipId = 'bef21906-b596-4514-aebb-7235ec02bd50';
+const defaultGt4ChampionshipSignUpUrl = 'http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50/sign-up/steam';
+
 type ChampionshipCache = {
   fetchedAt: number;
   payload: PlainObject;
 };
 
-let cachedChampionship: ChampionshipCache | null = null;
+const cachedChampionships: Record<string, ChampionshipCache | null> = {
+  weekly: null,
+  gt4: null
+};
 
 function textValue(value: unknown, fallback = '') {
   if (value === undefined || value === null) return fallback;
@@ -100,29 +107,45 @@ function pick(source: PlainObject | null | undefined, paths: string[], fallback:
   return fallback;
 }
 
-function cleanAcsmBaseUrl() {
-  const configured = textValue(process.env.ACSM_BASE_URL, defaultAcsmBaseUrl);
+function cleanAcsmBaseUrl(source: string) {
+  const configured = source === 'gt4'
+    ? textValue(process.env.ACSM_GT4_BASE_URL, defaultGt4AcsmBaseUrl)
+    : textValue(process.env.ACSM_BASE_URL, defaultAcsmBaseUrl);
   return configured.replace(/\/+$/, '');
 }
 
-function getAcsmChampionshipId() {
-  return textValue(process.env.ACSM_CHAMPIONSHIP_ID, defaultChampionshipId);
+function normalizeAcsmSource(value: unknown) {
+  const source = textValue(value, 'weekly').toLowerCase();
+  return ['gt4', 'gt-4', 'gt'].includes(source) ? 'gt4' : 'weekly';
 }
 
-function getAcsmChampionshipConfig() {
-  const baseUrl = cleanAcsmBaseUrl();
-  const championshipId = getAcsmChampionshipId();
+function getAcsmChampionshipId(source: string) {
+  return source === 'gt4'
+    ? textValue(process.env.ACSM_GT4_CHAMPIONSHIP_ID, defaultGt4ChampionshipId)
+    : textValue(process.env.ACSM_CHAMPIONSHIP_ID, defaultChampionshipId);
+}
+
+function getAcsmChampionshipConfig(sourceInput: unknown = 'weekly') {
+  const source = normalizeAcsmSource(sourceInput);
+  const baseUrl = cleanAcsmBaseUrl(source);
+  const championshipId = getAcsmChampionshipId(source);
+  const signUpUrl = source === 'gt4'
+    ? textValue(process.env.ACSM_GT4_CHAMPIONSHIP_SIGNUP_URL, defaultGt4ChampionshipSignUpUrl)
+    : textValue(process.env.ACSM_CHAMPIONSHIP_SIGNUP_URL, defaultChampionshipSignUpUrl);
+  const enabledEnv = source === 'gt4' ? process.env.ACSM_GT4_CHAMPIONSHIP_ENABLED : process.env.ACSM_CHAMPIONSHIP_ENABLED;
+  const cacheSeconds = source === 'gt4' ? process.env.ACSM_GT4_CHAMPIONSHIP_CACHE_SECONDS : process.env.ACSM_CHAMPIONSHIP_CACHE_SECONDS;
 
   return {
-    enabled: String(process.env.ACSM_CHAMPIONSHIP_ENABLED ?? 'true').toLowerCase() !== 'false',
+    source,
+    enabled: String(enabledEnv ?? 'true').toLowerCase() !== 'false',
     baseUrl,
     championshipId,
     championshipUrl: `${baseUrl}/championship/${encodeURIComponent(championshipId)}`,
-    signUpUrl: textValue(process.env.ACSM_CHAMPIONSHIP_SIGNUP_URL, defaultChampionshipSignUpUrl),
+    signUpUrl,
     exportUrl: `${baseUrl}/championship/${encodeURIComponent(championshipId)}/export`,
     exportResultsUrl: `${baseUrl}/championship/${encodeURIComponent(championshipId)}/export-results`,
     icsUrl: `${baseUrl}/championship/${encodeURIComponent(championshipId)}/ics`,
-    cacheTtlMs: Math.max(10000, numberValue(process.env.ACSM_CHAMPIONSHIP_CACHE_SECONDS, 60) * 1000)
+    cacheTtlMs: Math.max(10000, numberValue(cacheSeconds, 60) * 1000)
   };
 }
 
@@ -226,11 +249,66 @@ function normalizeTrackSlug(value: unknown) {
     .replace(/^_+|_+$/g, '') || raw;
 }
 
+function isRejectedGt4Track(value: unknown) {
+  const raw = slugify(value);
+  return raw.includes('bathurst') || raw.includes('mount_panorama');
+}
+
+function collectTrackCandidatesDeep(value: unknown, depth = 0, path = ''): string[] {
+  if (depth > 6 || value === undefined || value === null) return [];
+  const candidates: string[] = [];
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const key = path.split('.').pop() || '';
+    const keyLooksTrack = /(track|circuit|circuito|layout|venue|map)/i.test(key);
+    const raw = textValue(value, '');
+    if (keyLooksTrack && raw && raw.length <= 140 && !/^(true|false|null|undefined)$/i.test(raw)) candidates.push(raw);
+    return candidates;
+  }
+
+  if (Array.isArray(value)) {
+    value.slice(0, 40).forEach((item, index) => candidates.push(...collectTrackCandidatesDeep(item, depth + 1, `${path}.${index}`)));
+    return candidates;
+  }
+
+  if (typeof value === 'object') {
+    Object.entries(value as PlainObject).forEach(([key, item]) => {
+      const keyLooksTrack = /(track|circuit|circuito|layout|venue|map)/i.test(key);
+      if (keyLooksTrack && (typeof item === 'string' || typeof item === 'number')) {
+        const raw = textValue(item, '');
+        if (raw && raw.length <= 140) candidates.push(raw);
+      }
+      candidates.push(...collectTrackCandidatesDeep(item, depth + 1, path ? `${path}.${key}` : key));
+    });
+  }
+
+  return candidates;
+}
+
+function chooseAcsmTrackCandidate(event: PlainObject, raceSetup: PlainObject, source = 'weekly') {
+  const directCandidates = [
+    pick(raceSetup, ['TrackName', 'trackName', 'CircuitName', 'circuitName', 'Circuit', 'circuit'], ''),
+    pick(raceSetup, ['Track', 'track', 'TrackID', 'TrackId', 'trackId', 'TrackLayout', 'trackLayout', 'Layout', 'layout'], ''),
+    pick(event, ['TrackName', 'trackName', 'CircuitName', 'circuitName', 'Circuit', 'circuit'], ''),
+    pick(event, ['Track', 'track', 'TrackID', 'TrackId', 'trackId', 'TrackLayout', 'trackLayout', 'Layout', 'layout'], '')
+  ].map((item) => textValue(item, '')).filter(Boolean);
+
+  const deepCandidates = collectTrackCandidatesDeep(event).filter(Boolean);
+  const unique = [...new Set([...directCandidates, ...deepCandidates]
+    .map((item) => textValue(item, '').trim())
+    .filter((item) => item && item.length <= 140))];
+
+  const visible = unique.filter((item) => !/^https?:\/\//i.test(item) && !/\.(png|jpe?g|webp|gif|svg)$/i.test(item));
+  const preferred = source === 'gt4' ? visible.filter((item) => !isRejectedGt4Track(item)) : visible;
+  return preferred[0] || (source === 'gt4' ? '' : visible[0]) || '';
+}
+
 const TRACK_ASSET_REGISTRY: Record<string, { keys: string[]; photo?: string; map?: string }> = {
   jerez: { keys: ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'], photo: '/images/tracks/jerez.png', map: '/images/tracks/jerez_mapa.png' },
   mugello: { keys: ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'], photo: '/images/tracks/mugello.webp', map: '/images/tracks/mugello_mapa.png' },
   fuji: { keys: ['fuji', 'rt_fuji_speedway', 'rt_fuji_speedway_layout_gp', 'fuji_speedway', 'fuji_speedway_gp', 'fuji_speedway_layout_gp', 'fuji_international_speedway', 'fujispeedway'], photo: '/images/tracks/fuji.jpg', map: '/images/tracks/fuji_map.png' },
   bathurst: { keys: ['bathurst', 'mount_panorama'], photo: '/images/tracks/bathurst.png' },
+  adelaide: { keys: ['adelaide', 'adelaide_500', 'vailo_adelaide', 'vailo_adelaide_500', '2024_vailo_adelaide_500', 'akr_adelaide500', 'akr_adelaide500_p64v2'], photo: '/images/tracks/adelaide.png', map: '/images/tracks/adelaide_map.png' },
   brands_hatch: { keys: ['brands_hatch', 'ks_brands_hatch'], photo: '/images/tracks/brands_hatch.webp' },
   estoril: { keys: ['estoril'], photo: '/images/tracks/estoril.webp' },
   hockenheim: { keys: ['hockenheim', 'ks_hockenheim', 've_hockenheim_gp', 'hockenheimring'], photo: '/images/tracks/hockenheim.png' },
@@ -559,10 +637,10 @@ function normalizeSession(raw: PlainObject, key: string, event: PlainObject, cha
   };
 }
 
-function normalizeEvent(event: PlainObject, index: number, championshipRaw: PlainObject) {
+function normalizeEvent(event: PlainObject, index: number, championshipRaw: PlainObject, source = 'weekly') {
   const raceSetup = objectValue(pick(event, ['RaceSetup', 'raceSetup'], {}));
   const sessionsRaw = objectValue(pick(event, ['Sessions', 'sessions'], {}));
-  const trackRaw = pick(raceSetup, ['Track', 'track', 'TrackName', 'trackName'], pick(event, ['Track', 'track', 'TrackName', 'trackName'], 'Circuito por confirmar'));
+  const trackRaw = chooseAcsmTrackCandidate(event, raceSetup, source) || 'Circuito por confirmar';
   const track = displayTrackName(trackRaw, 'Circuito por confirmar');
   const cars = extractCarsFromRaceSetup(raceSetup);
   const scheduled = isoOrNull(pick(event, ['Scheduled', 'scheduled', 'ScheduledTime', 'scheduledTime', 'ScheduledAt', 'scheduledAt', 'Date', 'date']));
@@ -730,7 +808,7 @@ function createDiagnostics(raw: PlainObject, results: unknown, registeredDrivers
 }
 
 function normalizeChampionship(raw: PlainObject, results: unknown, config: ReturnType<typeof getAcsmChampionshipConfig>, publicHtml = '') {
-  const events = collectionValue(raw.Events).map((event, index) => normalizeEvent(event, index, raw));
+  const events = collectionValue(raw.Events).map((event, index) => normalizeEvent(event, index, raw, config.source));
   const registeredDrivers = collectRegisteredDrivers(raw, publicHtml);
   const standings = buildStandings(registeredDrivers, events);
 
@@ -786,13 +864,14 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
 
 export function registerAcsmChampionshipRoutes(app: express.Express, { requireAdmin }: { requireAdmin?: RequireAdmin } = {}) {
   app.get('/api/community/acsr-championship', async (req, res) => {
-    const config = getAcsmChampionshipConfig();
+    const config = getAcsmChampionshipConfig(req.query.source || req.query.championship || req.query.server);
 
     if (!config.enabled) {
       res.json({
         ok: true,
         enabled: false,
-        source: 'acsm-championship-v16',
+        source: `acsm-championship-v16:${config.source}`,
+        acsmSource: config.source,
         message: 'Integración ACSM championship desactivada por ACSM_CHAMPIONSHIP_ENABLED=false.'
       });
       return;
@@ -801,6 +880,8 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
     try {
       const noCache = String(req.query.refresh || '') === '1';
       const now = Date.now();
+
+      const cachedChampionship = cachedChampionships[config.source] || null;
 
       if (!noCache && cachedChampionship && now - cachedChampionship.fetchedAt < config.cacheTtlMs) {
         res.json({
@@ -823,7 +904,8 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
       const payload = {
         ok: true,
         enabled: true,
-        source: 'acsm-championship-v16',
+        source: `acsm-championship-v16:${config.source}`,
+        acsmSource: config.source,
         fetchedAt: new Date().toISOString(),
         acsm: {
           baseUrl: config.baseUrl,
@@ -840,14 +922,15 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
         message: 'Campeonato leído desde ACSM export. Clasificación calculada solo desde RACE.Results.Result y puntos de Classes.Points.Places.'
       };
 
-      cachedChampionship = { fetchedAt: now, payload };
+      cachedChampionships[config.source] = { fetchedAt: now, payload };
       res.json(payload);
     } catch (error) {
       console.error('[GC] Error leyendo campeonato ACSM:', error);
       res.status(200).json({
         ok: false,
         enabled: true,
-        source: 'acsm-championship-v16',
+        source: `acsm-championship-v16:${config.source}`,
+        acsmSource: config.source,
         acsm: {
           baseUrl: config.baseUrl,
           championshipId: config.championshipId,
@@ -866,7 +949,7 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
   app.get('/api/admin/acsm/championship/probe', async (req, res) => {
     if (!(await requireAcsmAdmin(req, res, requireAdmin))) return;
 
-    const config = getAcsmChampionshipConfig();
+    const config = getAcsmChampionshipConfig(req.query.source || req.query.championship || req.query.server);
     const endpoints = [
       ['view', config.championshipUrl],
       ['export', config.exportUrl],

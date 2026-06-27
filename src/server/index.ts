@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import { registerMotorsportArchiveDeleteRoutes } from './motorsport-archive-delete-routes';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,16 +7,7 @@ import { registerAcsmChampionshipRoutes } from './acsm-championship-routes';
 import crypto from 'node:crypto';
 import { DEFAULT_PILOT_AVATAR_URL, readAvatarImage } from '../lib/pilot-avatars';
 
-import { registerMotorsportArchiveRoutes } from './motorsport-archive-routes';
-import { registerMotorsportArchiveImageUrlRoutes } from './motorsport-archive-image-url-routes';
-import { registerMotorsportArchiveHardDeleteRoutes } from './motorsport-archive-hard-delete-routes';
 import { registerAdminUserProfileLinkRoutes } from './admin-user-profile-link-routes';
-import { registerMotorsportArchiveAdminMysqlRoutes } from './motorsport-archive-admin-mysql-routes';
-import { registerMotorsportArchiveImportDeleteFixV823 } from './motorsport-archive-import-delete-fix-v823-routes';
-import { registerMotorsportArchiveSafeApiV824 } from './motorsport-archive-safe-api-v824-routes';
-import { registerMotorsportArchiveUnifiedAdminRoutes } from './motorsport-archive-unified-admin-routes';
-import { registerMotorsportArchiveLocalImageUploadRoutes } from './motorsport-archive-local-image-upload-routes';
-import { registerMotorsportArchiveMediaManagerRoutes } from './motorsport-archive-media-manager-routes';
 import { getGcRatingsService } from './gc-ratings/ratingService';
 import { registerGcRatingRoutes } from './gc-ratings/routes';
 import { ensureStrackerMirrorSchema, syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
@@ -2727,7 +2717,6 @@ function gcIsCachedPublicApi(url: string) {
     '/api/gc/recent-laps',
     '/api/gc/leaderboard',
     '/api/gc/cache/status',
-    '/api/gc/archive-home',
     '/api/gc/ratings/championship',
     '/api/live-timing',
     '/gc-data/hotlaps',
@@ -5380,30 +5369,8 @@ registerGcRatingRoutes(app, {
   }
 });
 
-/* GC Archivo Motorsport persistent archive-media static mount v8.4.1 */
-{
-  const gcArchiveMediaDir = process.env.ARCHIVE_MEDIA_DIR?.trim()
-    ? path.resolve(process.env.ARCHIVE_MEDIA_DIR.trim())
-    : path.join(rootDir, 'public', 'archive-media');
-
-  if (fs.existsSync(gcArchiveMediaDir)) {
-    app.use('/archive-media', express.static(gcArchiveMediaDir, {
-      index: false,
-      immutable: true,
-      maxAge: '30d'
-    }));
-  }
-}
-
-
-
-
 // GC Admin user/profile link routes.
 registerAdminUserProfileLinkRoutes(app, { rootDir, requireAdmin });
-
-
-// GC Archivo Motorsport hard-delete route must be registered before legacy archive routes.
-registerMotorsportArchiveHardDeleteRoutes(app, { rootDir, requireAdmin });
 
 
 // GC ACSM PRIORITY MYSQL GUARD V6 START
@@ -6431,34 +6398,13 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 // GC Archivo Motorsport media manager v8.4.2 routes.
-registerMotorsportArchiveMediaManagerRoutes(app, { rootDir, requireAdmin });
-
-
 // GC Archivo Motorsport local image upload v8.4 routes.
-registerMotorsportArchiveLocalImageUploadRoutes(app, { rootDir, requireAdmin });
-
-
 // GC Archivo Motorsport unified admin v8.3 routes.
-registerMotorsportArchiveUnifiedAdminRoutes(app, { rootDir, requireAdmin });
-
-
 // GC Archivo Motorsport safe API v8.2.4 routes.
-// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveSafeApiV824(app, { requireAdmin });
-
-
 // GC Archivo Motorsport import/delete fix v8.2.3 routes.
-// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveImportDeleteFixV823(app, { requireAdmin });
-
-
 // GC Archivo Motorsport admin MySQL/import safe v8.2.2 routes.
-registerMotorsportArchiveAdminMysqlRoutes(app, { rootDir, requireAdmin });
 
 
-
-
-// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveRoutes(app, { rootDir });
-registerMotorsportArchiveImageUrlRoutes(app, { rootDir, requireAdmin });
-// GC_LEGACY_ARCHIVE_DISABLED_2026_06_22 registerMotorsportArchiveDeleteRoutes(app, { rootDir, requireAdmin });
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -13011,93 +12957,6 @@ app.get('/images/tracks/:file', (req, res) => {
 /* GC_TRACK_IMAGE_404_GUARD_V1_END */
 
 
-app.get('/api/gc/archive/snapshot', async (_req, res) => {
-  try {
-    const archive = await gcArchiveCoreReadFromConfiguredSourceV1();
-    const summary = gcArchiveCoreSummaryV1(archive.items);
-
-    res.json({
-      ok: true,
-      source: 'gc-archive-core',
-      generatedAt: new Date().toISOString(),
-      domain: 'archive',
-      upstream: archive.source,
-      separatedFromRaceDataCore: true,
-      separatedFromChampionshipCore: true,
-      summary,
-      warnings: archive.warnings,
-      endpoints: {
-        snapshot: '/api/gc/archive/snapshot',
-        latest: '/api/gc/archive/latest'
-      },
-      message: 'Archive Core separado de Race Data Core y Championship Core.'
-    });
-  } catch (error) {
-    console.error('[GC Archive Core] snapshot error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-archive-core',
-      generatedAt: new Date().toISOString(),
-      domain: 'archive',
-      summary: { total: 0, public: 0, featured: 0, byCategory: {}, latest: [], featuredItems: [] },
-      warnings: ['archive source failed'],
-      message: 'No se pudo generar Archive Core snapshot.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/gc/archive/latest', async (req, res) => {
-  try {
-    const limit = getQueryNumber(req, 'limit', 6, 1, 24);
-    const category = getQueryString(req, 'category', 'all').toLowerCase();
-    const q = getQueryString(req, 'q') || getQueryString(req, 'search');
-
-    const archive = await gcArchiveCoreReadFromConfiguredSourceV1();
-    let items = gcArchiveCorePublicOnlyV1(archive.items);
-
-    if (category !== 'all') items = items.filter((item) => item.category.toLowerCase() === category || item.type.toLowerCase() === category);
-    if (q) {
-      items = items.filter((item) => includesFilter([
-        item.title,
-        item.summary,
-        item.category,
-        item.type,
-        item.tags.join(' ')
-      ].join(' '), q));
-    }
-
-    items = items.sort((a, b) =>
-      Date.parse(b.publishedAt || b.updatedAt || '1970-01-01') - Date.parse(a.publishedAt || a.updatedAt || '1970-01-01')
-    );
-
-    res.json({
-      ok: true,
-      source: 'gc-archive-core',
-      generatedAt: new Date().toISOString(),
-      domain: 'archive',
-      upstream: archive.source,
-      filters: { category, q: q || null },
-      count: Math.min(items.length, limit),
-      totalMatched: items.length,
-      items: items.slice(0, limit),
-      warnings: archive.warnings,
-      message: 'Ãšltimos elementos pÃºblicos de Archive Core.'
-    });
-  } catch (error) {
-    console.error('[GC Archive Core] latest error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-archive-core',
-      generatedAt: new Date().toISOString(),
-      domain: 'archive',
-      items: [],
-      warnings: ['archive source failed'],
-      message: 'No se pudieron leer elementos Archive Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
 /* GC_ARCHIVE_CORE_SKELETON_V1_END */
 
 
@@ -13466,117 +13325,6 @@ app.get('/api/gc/active-combo', async (req, res) => {
 
 
 let gcArchiveHomeCacheV3: { createdAt: number; limit: number; payload: any } | null = null;
-
-app.get('/api/gc/archive-home', async (req, res) => {
-  try {
-    const limit = gcDataCoreQueryNumber(req, 'limit', 80, 1, 120);
-    const ttlMs = Math.max(15000, gcPublicHttpCacheSeconds() * 1000);
-    const now = Date.now();
-
-    if (gcArchiveHomeCacheV3 && gcArchiveHomeCacheV3.limit >= limit && now - gcArchiveHomeCacheV3.createdAt <= ttlMs) {
-      const cached = gcArchiveHomeCacheV3.payload;
-      res.json({
-        ...cached,
-        cache: { hit: true, ttlMs, createdAt: new Date(gcArchiveHomeCacheV3.createdAt).toISOString() },
-        items: Array.isArray(cached.items) ? cached.items.slice(0, limit) : []
-      });
-      return;
-    }
-
-    const archiveRuntime: any = await import('../lib/archive/archiveRuntime');
-    const stats = await archiveRuntime.getArchiveStats();
-    const normalizeArchiveType = archiveRuntime.normalizeArchiveType || ((value: unknown) => String(value || '').trim().toLowerCase());
-    const prettifyArchiveType = archiveRuntime.prettifyArchiveType || ((value: unknown) => String(value || 'Archivo'));
-    const archiveItemHref = archiveRuntime.archiveItemHref || ((item: any) => item?.href || (item?.slug ? '/archivo/' + encodeURIComponent(String(item.slug)) + '/' : '/archivo'));
-    const getArchiveImage = archiveRuntime.getArchiveImage || ((item: any) => item?.image || item?.imageUrl || item?.coverUrl || '');
-    const getArchiveSummary = archiveRuntime.getArchiveSummary || ((item: any) => item?.summary || item?.description || '');
-
-    const rawItems = Array.isArray(stats?.items) ? stats.items : [];
-    const items = rawItems
-      .filter((item: any) => ['circuitos', 'coches', 'pilotos', 'glosario'].includes(normalizeArchiveType(item?.tipo || item?.category || item?.type || '')))
-      .slice(0, limit)
-      .map((item: any) => {
-        const tipo = normalizeArchiveType(item?.tipo || item?.category || item?.type || '');
-        const summary = getArchiveSummary(item);
-        const image = getArchiveImage(item);
-        return {
-          id: item?.id || `${tipo}-${item?.slug || item?.nombre || item?.title || ''}`,
-          tipo,
-          type: tipo,
-          category: item?.category || item?.tipo || '',
-          slug: item?.slug || '',
-          nombre: item?.nombre || item?.title || '',
-          title: item?.title || item?.nombre || '',
-          status: item?.status || item?.estado || 'published',
-          featured: item?.featured || item?.destacado || item?.isFeatured || false,
-          href: archiveItemHref(item),
-          image,
-          imageUrl: image,
-          coverUrl: image,
-          summary,
-          descripcion_corta: summary,
-          description: summary,
-          tipoLabel: prettifyArchiveType(item?.tipo || item?.category || item?.type || ''),
-          pais: item?.pais || item?.país || item?.nacionalidad || item?.ubicacion || '',
-          periodo: item?.periodo || item?.epoca || item?.años_actividad || item?.anos_actividad || item?.fecha_apertura || '',
-          tags: item?.tags || '',
-          fabricante: item?.fabricante || '',
-          modelo: item?.modelo || item?.modelo_base || '',
-          motor: item?.motor || '',
-          disciplina: item?.disciplina || '',
-          circuitos_asociados: item?.circuitos_asociados || '',
-          coches_asociados: item?.coches_asociados || '',
-          pilotos_asociados: item?.pilotos_asociados || '',
-          search: [
-            item?.nombre,
-            item?.title,
-            item?.slug,
-            item?.tipo,
-            prettifyArchiveType(item?.tipo || item?.category || item?.type || ''),
-            summary,
-            item?.pais,
-            item?.país,
-            item?.nacionalidad,
-            item?.ubicacion,
-            item?.periodo,
-            item?.epoca,
-            item?.tags,
-            item?.fabricante,
-            item?.modelo,
-            item?.modelo_base,
-            item?.motor,
-            item?.disciplina,
-            item?.circuitos_asociados,
-            item?.coches_asociados,
-            item?.pilotos_asociados
-          ].filter(Boolean).join(' ')
-        };
-      });
-
-    const payload = {
-      ok: true,
-      source: 'gc-archive-home-v3',
-      generatedAt: new Date().toISOString(),
-      count: items.length,
-      total: rawItems.length,
-      items
-    };
-
-    gcArchiveHomeCacheV3 = { createdAt: Date.now(), limit, payload };
-    res.json({ ...payload, cache: { hit: false, ttlMs } });
-  } catch (error) {
-    console.error('[GC Archive Home] /api/gc/archive-home:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-archive-home-v3',
-      generatedAt: new Date().toISOString(),
-      count: 0,
-      items: [],
-      message: 'No se pudo generar el resumen ligero del Archivo para Home.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
 
 app.get('/api/gc/home-summary', async (req, res) => {
   try {

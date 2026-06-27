@@ -103,14 +103,28 @@ function findExistingStateForIdentity(
   return null;
 }
 
-function acsmUrlCandidates() {
+function normalizeChampionshipSource(value: unknown) {
+  const source = String(value || '').trim().toLowerCase();
+  return source === 'gt4' ? 'gt4' : 'weekly';
+}
+
+function withChampionshipSource(url: string, source: string) {
+  const clean = String(url || '').trim();
+  if (!clean) return clean;
+  if (/([?&])source=/i.test(clean)) return clean;
+  return `${clean}${clean.includes('?') ? '&' : '?'}source=${encodeURIComponent(source)}`;
+}
+
+function acsmUrlCandidates(sourceInput: unknown = 'weekly') {
+  const source = normalizeChampionshipSource(sourceInput);
   const explicit = [
     process.env.GC_CHAMPIONSHIP_SOURCE_URL,
     process.env.ACSR_CHAMPIONSHIP_LOCAL_URL
   ]
     .flatMap((value) => String(value || '').split(','))
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((url) => withChampionshipSource(url, source));
 
   const origins = [
     process.env.GC_INTERNAL_BASE_URL,
@@ -125,12 +139,12 @@ function acsmUrlCandidates() {
   ]
     .map((value) => normalizeOrigin(String(value || '')))
     .filter(Boolean)
-    .map((origin) => `${origin}/api/community/acsr-championship?refresh=1`);
+    .map((origin) => `${origin}/api/community/acsr-championship?refresh=1&source=${encodeURIComponent(source)}`);
 
   const port = process.env.PORT || 3000;
   const local = [
-    `http://127.0.0.1:${port}/api/community/acsr-championship?refresh=1`,
-    `http://localhost:${port}/api/community/acsr-championship?refresh=1`
+    `http://127.0.0.1:${port}/api/community/acsr-championship?refresh=1&source=${encodeURIComponent(source)}`,
+    `http://localhost:${port}/api/community/acsr-championship?refresh=1&source=${encodeURIComponent(source)}`
   ];
 
   return [...new Set([...explicit, ...origins, ...local])];
@@ -155,9 +169,10 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 9000) {
   }
 }
 
-async function fetchChampionship() {
+async function fetchChampionship(sourceInput: unknown = 'weekly') {
+  const source = normalizeChampionshipSource(sourceInput);
   const errors: string[] = [];
-  for (const url of acsmUrlCandidates()) {
+  for (const url of acsmUrlCandidates(source)) {
     try {
       return await fetchJsonWithTimeout(url);
     } catch (error) {
@@ -1251,7 +1266,8 @@ export class GcRatingsService {
   }
 
   async processNewEvents(options: PlainObject = {}) {
-    const acsm = await fetchChampionship();
+    const source = normalizeChampionshipSource(options.source || 'weekly');
+    const acsm = await fetchChampionship(source);
     const championship = acsm.championship;
     const baseSnapshot = (await this.loadSnapshot()) || createEmptySnapshot(championship, this.store.kind);
     const allCompleted = completedEvents(championship);
@@ -1359,8 +1375,9 @@ export class GcRatingsService {
     };
   }
 
-  async rebuild() {
-    const acsm = await fetchChampionship();
+  async rebuild(options: PlainObject = {}) {
+    const source = normalizeChampionshipSource(options.source || 'weekly');
+    const acsm = await fetchChampionship(source);
     const championship = acsm.championship;
     const allCompleted = completedEvents(championship);
     const previousSnapshot = await this.getSnapshot();
@@ -2493,9 +2510,10 @@ export class GcRatingsService {
     };
   }
 
-  async getChampionshipPayload(_force = false) {
+  async getChampionshipPayload(_force = false, sourceInput: unknown = 'weekly') {
+    const source = normalizeChampionshipSource(sourceInput);
     const snapshot = await this.getSnapshot();
-    const acsm = await fetchChampionship();
+    const acsm = await fetchChampionship(source);
     const championship = enrichChampionship(acsm.championship, snapshot);
 
     try {

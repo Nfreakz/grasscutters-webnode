@@ -77,7 +77,7 @@ async function requireAdmin(req: Request) {
 
   app.get('/api/gc/ratings/championship', async (req, res) => {
     try {
-      const payload = await service.getChampionshipPayload(String(req.query.refresh || '') === '1');
+      const payload = await service.getChampionshipPayload(String(req.query.refresh || '') === '1', req.query.source || req.query.series || 'weekly');
       res.json(payload);
     } catch (error) {
       res.status(200).json(formatStrackerMirrorError(error));
@@ -130,7 +130,7 @@ async function requireAdmin(req: Request) {
       if (!cronSecret || readCronSecret(req) !== cronSecret) {
         return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Cron secret invalido.' });
       }
-      const payload = await service.processNewEvents();
+      const payload = await service.processNewEvents({ source: req.query.source || req.body?.source || 'weekly' });
       res.json({
         ok: true,
         source: 'gc-ratings-v1',
@@ -153,7 +153,7 @@ async function requireAdmin(req: Request) {
       if (mode === 'rebuild') {
         const allowed = await requireAdmin(req);
         if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
-        const payload = await service.rebuild();
+        const payload = await service.rebuild({ source: req.query.source || req.body?.source || 'weekly' });
         return res.json({
           ok: true,
           source: 'gc-ratings-v1',
@@ -168,7 +168,7 @@ async function requireAdmin(req: Request) {
 
       const allowed = await requireAdmin(req);
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
-      const payload = await service.processNewEvents();
+      const payload = await service.processNewEvents({ source: req.query.source || req.body?.source || 'weekly' });
       res.json({
         ok: true,
         source: 'gc-ratings-v1',
@@ -552,7 +552,7 @@ async function requireAdmin(req: Request) {
     try {
       const allowed = await requireAdmin(req);
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
-      const payload = await service.rebuild();
+      const payload = await service.rebuild({ source: req.query.source || req.body?.source || 'weekly' });
       res.json({
         ok: true,
         source: 'gc-ratings-v1',
