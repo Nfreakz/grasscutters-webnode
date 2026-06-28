@@ -3622,6 +3622,444 @@ async function readJoinedLaps(dbPath: string) {
 }
 
 
+/* GC_STRACKER_MIRROR_V2_MULTI_SOURCE_START
+ * Mirror paralelo para unir main + gt4 sin colisiones de IDs.
+ * No sustituye todavía /hotlaps, /pilotos, /combos ni Home.
+ */
+type GcStrackerMirrorV2SyncOptions = {
+  limit?: number | null;
+  replaceSource?: boolean;
+};
+
+let lastStrackerMirrorV2SyncResult: any = null;
+
+function gcMirrorV2Text(value: unknown, maxLength = 255) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+function gcMirrorV2Number(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function gcMirrorV2Int(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
+function gcMirrorV2Bool(value: unknown) {
+  return value ? 1 : 0;
+}
+
+function gcMirrorV2ParseLimit(value: unknown, fallback = 5000) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return fallback;
+  if (['all', 'full', 'complete', '0', '-1', 'none', 'max'].includes(raw)) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.max(1, Math.min(Math.round(parsed), 250000));
+}
+
+function gcMirrorV2EnabledSources() {
+  const definitions = buildStrackerSourceDefinitions();
+  return Object.values(definitions).filter((source) => source.enabled !== false);
+}
+
+function gcMirrorV2ResolveSourceKeys(value: unknown) {
+  const raw = String(value ?? 'all').trim().toLowerCase();
+  const definitions = buildStrackerSourceDefinitions();
+  if (!raw || ['all', 'both', 'combined', '*'].includes(raw)) {
+    return Object.values(definitions).filter((source) => source.enabled !== false).map((source) => source.key);
+  }
+  const keys = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  return keys.filter((key) => Boolean(definitions[key]));
+}
+
+async function ensureStrackerMirrorV2Schema() {
+  if (!useMysqlStorage()) {
+    throw new Error('Mirror V2 requiere APP_STORAGE_DRIVER=mysql en producción.');
+  }
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_stracker2_source (
+      source_key VARCHAR(32) NOT NULL PRIMARY KEY,
+      label VARCHAR(191) NOT NULL,
+      championship_key VARCHAR(64) NULL,
+      server_ip VARCHAR(64) NULL,
+      local_path VARCHAR(500) NULL,
+      remote_path VARCHAR(500) NULL,
+      db_size_bytes BIGINT NULL,
+      db_modified_at DATETIME(3) NULL,
+      last_import_started_at DATETIME(3) NULL,
+      last_import_finished_at DATETIME(3) NULL,
+      last_import_status VARCHAR(24) NULL,
+      last_import_message TEXT NULL,
+      updated_at DATETIME(3) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await mysqlExecute(`
+    CREATE TABLE IF NOT EXISTS gc_stracker2_lap (
+      lap_uid VARCHAR(96) NOT NULL PRIMARY KEY,
+      source_key VARCHAR(32) NOT NULL,
+      source_label VARCHAR(191) NOT NULL,
+      championship_key VARCHAR(64) NULL,
+      server_ip VARCHAR(64) NULL,
+      lap_id BIGINT NULL,
+      player_in_session_id BIGINT NULL,
+      session_id BIGINT NULL,
+      combo_id BIGINT NULL,
+      player_id BIGINT NULL,
+      steam_guid VARCHAR(191) NULL,
+      driver_name VARCHAR(191) NULL,
+      car_id INT NULL,
+      car_raw VARCHAR(255) NULL,
+      car_display VARCHAR(255) NULL,
+      car_brand VARCHAR(191) NULL,
+      track_id INT NULL,
+      track_raw VARCHAR(255) NULL,
+      track_display VARCHAR(255) NULL,
+      track_length INT NULL,
+      lap_number INT NULL,
+      session_time_ms INT NULL,
+      lap_time_ms INT NOT NULL,
+      valid TINYINT(1) NOT NULL DEFAULT 0,
+      cuts INT NULL,
+      collisions_car INT NULL,
+      collisions_env INT NULL,
+      max_speed_kmh DOUBLE NULL,
+      sector_time_0 INT NULL,
+      sector_time_1 INT NULL,
+      sector_time_2 INT NULL,
+      sector_time_3 INT NULL,
+      sector_time_4 INT NULL,
+      sector_time_5 INT NULL,
+      sector_time_6 INT NULL,
+      sector_time_7 INT NULL,
+      sector_time_8 INT NULL,
+      sector_time_9 INT NULL,
+      temperature_ambient DOUBLE NULL,
+      temperature_track DOUBLE NULL,
+      timestamp_unix BIGINT NULL,
+      session_type VARCHAR(64) NULL,
+      server_ip_port VARCHAR(191) NULL,
+      start_time_unix BIGINT NULL,
+      end_time_unix BIGINT NULL,
+      imported_at DATETIME(3) NOT NULL,
+      updated_at DATETIME(3) NOT NULL,
+      KEY idx_gc_stracker2_lap_source (source_key),
+      KEY idx_gc_stracker2_lap_championship (championship_key),
+      KEY idx_gc_stracker2_lap_time (lap_time_ms),
+      KEY idx_gc_stracker2_lap_valid (valid),
+      KEY idx_gc_stracker2_lap_timestamp (timestamp_unix),
+      KEY idx_gc_stracker2_lap_track_car (track_display, car_display),
+      KEY idx_gc_stracker2_lap_driver (steam_guid, driver_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+function gcMirrorV2LapUid(sourceKey: string, lap: any) {
+  const lapId = gcMirrorV2Text(lap?.lapId, 40);
+  if (lapId) return `${sourceKey}:lap:${lapId}`;
+  const fallback = [
+    sourceKey,
+    lap?.sessionId ?? 'session',
+    lap?.playerInSessionId ?? 'pis',
+    lap?.lapNumber ?? 'lap',
+    lap?.lapTimeMs ?? 'time',
+    lap?.timestamp ?? 'ts'
+  ].join(':');
+  return crypto.createHash('sha1').update(fallback).digest('hex').slice(0, 40).replace(/^/, `${sourceKey}:hash:`);
+}
+
+function gcMirrorV2RowFromLap(source: GcStrackerSourceDefinition, lap: any, importedAt: string) {
+  const sectorTimes = Array.isArray(lap?.sectorTimesMs) ? lap.sectorTimesMs : [];
+  return {
+    lap_uid: gcMirrorV2LapUid(source.key, lap),
+    source_key: source.key,
+    source_label: source.label,
+    championship_key: source.championshipKey,
+    server_ip: source.serverIp,
+    lap_id: gcMirrorV2Int(lap?.lapId),
+    player_in_session_id: gcMirrorV2Int(lap?.playerInSessionId),
+    session_id: gcMirrorV2Int(lap?.sessionId),
+    combo_id: gcMirrorV2Int(lap?.comboId),
+    player_id: gcMirrorV2Int(lap?.playerId),
+    steam_guid: gcMirrorV2Text(lap?.steamGuid, 191),
+    driver_name: gcMirrorV2Text(lap?.driverName ?? lap?.playerName ?? lap?.driver?.name, 191),
+    car_id: gcMirrorV2Int(lap?.carId ?? lap?.car?.id),
+    car_raw: gcMirrorV2Text(lap?.carCode ?? lap?.car?.code, 255),
+    car_display: gcMirrorV2Text(lap?.carName ?? lap?.car?.name ?? lap?.uiCarName ?? lap?.car?.uiName, 255),
+    car_brand: gcMirrorV2Text(lap?.brand ?? lap?.car?.brand, 191),
+    track_id: gcMirrorV2Int(lap?.trackId ?? lap?.track?.id),
+    track_raw: gcMirrorV2Text(lap?.trackCode ?? lap?.track?.code, 255),
+    track_display: gcMirrorV2Text(lap?.trackName ?? lap?.track?.name ?? lap?.uiTrackName ?? lap?.track?.uiName, 255),
+    track_length: gcMirrorV2Int(lap?.trackLength ?? lap?.track?.length),
+    lap_number: gcMirrorV2Int(lap?.lapNumber ?? lap?.lapCount),
+    session_time_ms: gcMirrorV2Int(lap?.sessionTimeMs ?? lap?.sessionTime),
+    lap_time_ms: gcMirrorV2Int(lap?.lapTimeMs) ?? 0,
+    valid: gcMirrorV2Bool(lap?.valid ?? lap?.isValid),
+    cuts: gcMirrorV2Int(lap?.cuts),
+    collisions_car: gcMirrorV2Int(lap?.collisionsCar),
+    collisions_env: gcMirrorV2Int(lap?.collisionsEnv),
+    max_speed_kmh: gcMirrorV2Number(lap?.maxSpeedKmh),
+    sector_time_0: gcMirrorV2Int(sectorTimes[0]),
+    sector_time_1: gcMirrorV2Int(sectorTimes[1]),
+    sector_time_2: gcMirrorV2Int(sectorTimes[2]),
+    sector_time_3: gcMirrorV2Int(sectorTimes[3]),
+    sector_time_4: gcMirrorV2Int(sectorTimes[4]),
+    sector_time_5: gcMirrorV2Int(sectorTimes[5]),
+    sector_time_6: gcMirrorV2Int(sectorTimes[6]),
+    sector_time_7: gcMirrorV2Int(sectorTimes[7]),
+    sector_time_8: gcMirrorV2Int(sectorTimes[8]),
+    sector_time_9: gcMirrorV2Int(sectorTimes[9]),
+    temperature_ambient: gcMirrorV2Number(lap?.temperatureAmbient),
+    temperature_track: gcMirrorV2Number(lap?.temperatureTrack),
+    timestamp_unix: gcMirrorV2Int(lap?.timestamp),
+    session_type: gcMirrorV2Text(lap?.sessionType ?? lap?.session?.type, 64),
+    server_ip_port: gcMirrorV2Text(lap?.session?.server, 191),
+    start_time_unix: gcMirrorV2Int(lap?.session?.startTime),
+    end_time_unix: gcMirrorV2Int(lap?.session?.endTime),
+    imported_at: importedAt,
+    updated_at: importedAt
+  };
+}
+
+const gcMirrorV2LapColumns = [
+  'lap_uid', 'source_key', 'source_label', 'championship_key', 'server_ip',
+  'lap_id', 'player_in_session_id', 'session_id', 'combo_id', 'player_id', 'steam_guid', 'driver_name',
+  'car_id', 'car_raw', 'car_display', 'car_brand',
+  'track_id', 'track_raw', 'track_display', 'track_length',
+  'lap_number', 'session_time_ms', 'lap_time_ms', 'valid', 'cuts', 'collisions_car', 'collisions_env', 'max_speed_kmh',
+  'sector_time_0', 'sector_time_1', 'sector_time_2', 'sector_time_3', 'sector_time_4', 'sector_time_5', 'sector_time_6', 'sector_time_7', 'sector_time_8', 'sector_time_9',
+  'temperature_ambient', 'temperature_track', 'timestamp_unix', 'session_type', 'server_ip_port', 'start_time_unix', 'end_time_unix', 'imported_at', 'updated_at'
+];
+
+async function writeGcMirrorV2Rows(rows: any[]) {
+  if (!rows.length) return 0;
+  const chunkSize = 250;
+  let written = 0;
+  const updateColumns = gcMirrorV2LapColumns.filter((column) => column !== 'lap_uid' && column !== 'imported_at');
+
+  for (let offset = 0; offset < rows.length; offset += chunkSize) {
+    const chunk = rows.slice(offset, offset + chunkSize);
+    const placeholders = chunk.map(() => `(${gcMirrorV2LapColumns.map(() => '?').join(',')})`).join(',');
+    const params = chunk.flatMap((row) => gcMirrorV2LapColumns.map((column) => row[column] ?? null));
+    await mysqlExecute(`
+      INSERT INTO gc_stracker2_lap (${gcMirrorV2LapColumns.map((column) => `\`${column}\``).join(',')})
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        ${updateColumns.map((column) => `\`${column}\` = VALUES(\`${column}\`)`).join(', ')}
+    `, params);
+    written += chunk.length;
+  }
+
+  return written;
+}
+
+async function upsertGcMirrorV2Source(source: GcStrackerSourceDefinition, status: string, message: string, startedAt: string, finishedAt: string) {
+  const stracker = getStrackerSourceConfig(source.key);
+  const remote = getRemoteStrackerConfigForSource(source.key);
+  await mysqlExecute(`
+    INSERT INTO gc_stracker2_source
+    (source_key, label, championship_key, server_ip, local_path, remote_path, db_size_bytes, db_modified_at, last_import_started_at, last_import_finished_at, last_import_status, last_import_message, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      label = VALUES(label),
+      championship_key = VALUES(championship_key),
+      server_ip = VALUES(server_ip),
+      local_path = VALUES(local_path),
+      remote_path = VALUES(remote_path),
+      db_size_bytes = VALUES(db_size_bytes),
+      db_modified_at = VALUES(db_modified_at),
+      last_import_started_at = VALUES(last_import_started_at),
+      last_import_finished_at = VALUES(last_import_finished_at),
+      last_import_status = VALUES(last_import_status),
+      last_import_message = VALUES(last_import_message),
+      updated_at = VALUES(updated_at)
+  `, [
+    source.key,
+    source.label,
+    source.championshipKey,
+    source.serverIp,
+    stracker.relativePath,
+    remote.remotePath,
+    stracker.sizeBytes || null,
+    stracker.modifiedAt ? stracker.modifiedAt.replace('T', ' ').replace('Z', '') : null,
+    startedAt.replace('T', ' ').replace('Z', ''),
+    finishedAt.replace('T', ' ').replace('Z', ''),
+    status,
+    message,
+    finishedAt.replace('T', ' ').replace('Z', '')
+  ]);
+}
+
+async function syncStrackerSourceToMirrorV2(sourceKey: unknown, options: GcStrackerMirrorV2SyncOptions = {}) {
+  const source = getStrackerSourceDefinition(sourceKey);
+  const stracker = getStrackerSourceConfig(source.key);
+  const startedAt = new Date().toISOString();
+  const startedMs = Date.now();
+
+  await ensureStrackerMirrorV2Schema();
+
+  if (!stracker.resolvedPath || !stracker.exists || !stracker.validSQLite) {
+    const message = `${source.label}: stracker local no existe o no es SQLite válido. Ejecuta primero /api/stracker/sync/${source.key}.`;
+    const finishedAt = new Date().toISOString();
+    await upsertGcMirrorV2Source(source, 'missing-db', message, startedAt, finishedAt);
+    return {
+      ok: false,
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      startedAt,
+      finishedAt,
+      message,
+      stracker
+    };
+  }
+
+  const rawLaps = await readJoinedLaps(stracker.resolvedPath);
+  const limit = options.limit === undefined ? 5000 : options.limit;
+  const selectedLaps = typeof limit === 'number' ? rawLaps.slice(0, Math.max(1, limit)) : rawLaps;
+  const fullSync = limit === null;
+  const replaceSource = options.replaceSource ?? fullSync;
+  const importedAt = new Date().toISOString().replace('T', ' ').replace('Z', '');
+  const rows = selectedLaps
+    .filter((lap: any) => Number(lap?.lapTimeMs) > 0)
+    .map((lap: any) => gcMirrorV2RowFromLap(source, lap, importedAt));
+
+  if (replaceSource) {
+    await mysqlExecute('DELETE FROM gc_stracker2_lap WHERE source_key = ?', [source.key]);
+  }
+
+  const rowsWritten = await writeGcMirrorV2Rows(rows);
+  const finishedAt = new Date().toISOString();
+  const message = `${source.label}: Mirror V2 importó ${rowsWritten} vueltas${fullSync ? ' en modo completo' : ` con límite ${selectedLaps.length}`}.`;
+  await upsertGcMirrorV2Source(source, 'ok', message, startedAt, finishedAt);
+
+  return {
+    ok: true,
+    sourceKey: source.key,
+    sourceLabel: source.label,
+    startedAt,
+    finishedAt,
+    durationMs: Date.now() - startedMs,
+    fullSync,
+    replaceSource,
+    sourceLapsTotal: rawLaps.length,
+    selectedLaps: selectedLaps.length,
+    rowsWritten,
+    stracker: {
+      exists: stracker.exists,
+      validSQLite: stracker.validSQLite,
+      sizeBytes: stracker.sizeBytes,
+      modifiedAt: stracker.modifiedAt
+    },
+    message
+  };
+}
+
+async function getStrackerMirrorV2Status() {
+  const sources = getStrackerSourcesStatus();
+  if (!useMysqlStorage()) {
+    return {
+      enabled: false,
+      storage: getAppStorageDriverLabel(),
+      sources,
+      lastSync: lastStrackerMirrorV2SyncResult,
+      message: 'Mirror V2 requiere APP_STORAGE_DRIVER=mysql.'
+    };
+  }
+
+  await ensureStrackerMirrorV2Schema();
+  const counts = await mysqlQuery(`
+    SELECT
+      source_key,
+      COUNT(*) AS laps,
+      SUM(CASE WHEN valid = 1 THEN 1 ELSE 0 END) AS valid_laps,
+      COUNT(DISTINCT session_id) AS sessions,
+      COUNT(DISTINCT COALESCE(NULLIF(steam_guid, ''), driver_name)) AS drivers,
+      MIN(lap_time_ms) AS best_lap_ms,
+      MAX(timestamp_unix) AS last_lap_unix
+    FROM gc_stracker2_lap
+    GROUP BY source_key
+    ORDER BY source_key ASC
+  `);
+  const sourceRows = await mysqlQuery('SELECT * FROM gc_stracker2_source ORDER BY source_key ASC');
+
+  return {
+    enabled: true,
+    storage: getAppStorageDriverLabel(),
+    table: 'gc_stracker2_lap',
+    sourceTable: 'gc_stracker2_source',
+    counts,
+    sourceRows,
+    sources,
+    lastSync: lastStrackerMirrorV2SyncResult,
+    message: 'Mirror V2 paralelo activo. Todavía no alimenta /hotlaps, /pilotos, /combos ni Home.'
+  };
+}
+
+function gcMirrorV2WhereFromRequest(req: express.Request) {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  const sourceKeys = gcMirrorV2ResolveSourceKeys(req.query.source);
+  if (sourceKeys.length) {
+    where.push(`source_key IN (${sourceKeys.map(() => '?').join(',')})`);
+    params.push(...sourceKeys);
+  }
+
+  const valid = getQueryString(req, 'valid', 'all').toLowerCase();
+  if (['1', 'true', 'yes', 'si', 'sí', 'valid', 'validas', 'válidas'].includes(valid)) where.push('valid = 1');
+  if (['0', 'false', 'no', 'invalid', 'invalidas', 'inválidas'].includes(valid)) where.push('valid = 0');
+
+  const track = getQueryString(req, 'track', '');
+  if (track) {
+    where.push('(track_display LIKE ? OR track_raw LIKE ?)');
+    params.push(`%${track}%`, `%${track}%`);
+  }
+
+  const car = getQueryString(req, 'car', '');
+  if (car) {
+    where.push('(car_display LIKE ? OR car_raw LIKE ?)');
+    params.push(`%${car}%`, `%${car}%`);
+  }
+
+  const driver = getQueryString(req, 'driver', '');
+  if (driver) {
+    where.push('(driver_name LIKE ? OR steam_guid LIKE ?)');
+    params.push(`%${driver}%`, `%${driver}%`);
+  }
+
+  return {
+    whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '',
+    params,
+    sourceKeys
+  };
+}
+
+async function readStrackerMirrorV2Laps(req: express.Request) {
+  await ensureStrackerMirrorV2Schema();
+  const limit = gcMirrorV2ParseLimit(req.query.limit, 100);
+  const safeLimit = limit === null ? 1000 : Math.max(1, Math.min(limit, 5000));
+  const { whereSql, params, sourceKeys } = gcMirrorV2WhereFromRequest(req);
+  const rows = await mysqlQuery(`
+    SELECT *
+    FROM gc_stracker2_lap
+    ${whereSql}
+    ORDER BY lap_time_ms ASC
+    LIMIT ${safeLimit}
+  `, params);
+  return {
+    sourceKeys,
+    limit: safeLimit,
+    rows
+  };
+}
+/* GC_STRACKER_MIRROR_V2_MULTI_SOURCE_END */
+
+
 /* GC_DATACORE_MYSQL_FIRST_V126_START
  * Lee vueltas públicas desde el mirror MySQL gc_stracker_* cuando está disponible.
  * No toca SR/GSR ni procesamiento de ratings: solo cambia la fuente de lectura para leaderboard/Data Core.
@@ -9287,6 +9725,170 @@ app.get('/api/stracker/preview/:table', async (req, res) => {
     });
   }
 });
+
+app.get('/api/gc/mirror-v2/status', async (_req, res) => {
+  try {
+    const status = await getStrackerMirrorV2Status();
+    res.json({
+      ok: true,
+      ...status
+    });
+  } catch (error) {
+    console.error('[GC Mirror V2] status:', error);
+    res.status(200).json({
+      ok: false,
+      enabled: false,
+      message: 'No se pudo leer el estado del Mirror V2.',
+      error: error instanceof Error ? error.message : String(error),
+      lastSync: lastStrackerMirrorV2SyncResult,
+      sources: getStrackerSourcesStatus()
+    });
+  }
+});
+
+async function handleStrackerMirrorV2Sync(req: express.Request, res: express.Response) {
+  if (!assertSyncSecret(req)) {
+    res.status(401).json({
+      ok: false,
+      message: 'Secret inválido o no configurado. Usa header x-gc-secret, Bearer token, body.secret o query ?secret=...'
+    });
+    return;
+  }
+
+  const startedAt = new Date().toISOString();
+  const limit = gcMirrorV2ParseLimit(req.query.limit, 5000);
+  const sourceKeys = gcMirrorV2ResolveSourceKeys(req.query.source);
+  const replace = getQueryBool(req, 'replace', limit === null);
+
+  if (!sourceKeys.length) {
+    res.status(400).json({
+      ok: false,
+      message: 'Fuente no válida. Usa source=all, source=main o source=gt4.'
+    });
+    return;
+  }
+
+  try {
+    const results = [];
+    for (const sourceKey of sourceKeys) {
+      results.push(await syncStrackerSourceToMirrorV2(sourceKey, {
+        limit,
+        replaceSource: replace
+      }));
+    }
+
+    const status = await getStrackerMirrorV2Status();
+    const ok = results.every((item: any) => item.ok !== false);
+    lastStrackerMirrorV2SyncResult = {
+      ok,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      sourceKeys,
+      limit,
+      replace,
+      results,
+      message: ok
+        ? 'Mirror V2 sincronizado correctamente en modo diagnóstico.'
+        : 'Mirror V2 terminó con errores en una o más fuentes.'
+    };
+
+    res.status(ok ? 200 : 207).json({
+      ok,
+      ...lastStrackerMirrorV2SyncResult,
+      status
+    });
+  } catch (error) {
+    lastStrackerMirrorV2SyncResult = {
+      ok: false,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      sourceKeys,
+      limit,
+      replace,
+      error: error instanceof Error ? error.message : String(error),
+      message: 'Mirror V2 falló durante la sincronización.'
+    };
+    console.error('[GC Mirror V2] sync:', error);
+    res.status(500).json(lastStrackerMirrorV2SyncResult);
+  }
+}
+
+app.get('/api/gc/mirror-v2/sync', handleStrackerMirrorV2Sync);
+app.post('/api/gc/mirror-v2/sync', handleStrackerMirrorV2Sync);
+
+app.get('/api/gc/mirror-v2/laps', async (req, res) => {
+  try {
+    if (!useMysqlStorage()) {
+      res.status(200).json({
+        ok: false,
+        items: [],
+        message: 'Mirror V2 requiere APP_STORAGE_DRIVER=mysql.'
+      });
+      return;
+    }
+
+    const payload = await readStrackerMirrorV2Laps(req);
+    res.json({
+      ok: true,
+      source: 'mirror-v2',
+      generatedAt: new Date().toISOString(),
+      items: payload.rows,
+      total: payload.rows.length,
+      sourceKeys: payload.sourceKeys,
+      limit: payload.limit,
+      message: 'Preview de vueltas Mirror V2. Todavía no alimenta páginas públicas.'
+    });
+  } catch (error) {
+    console.error('[GC Mirror V2] laps:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'mirror-v2',
+      items: [],
+      message: 'No se pudieron leer vueltas del Mirror V2.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get('/api/gc/mirror-v2/best-times', async (req, res) => {
+  try {
+    if (!useMysqlStorage()) {
+      res.status(200).json({ ok: false, items: [], message: 'Mirror V2 requiere APP_STORAGE_DRIVER=mysql.' });
+      return;
+    }
+    await ensureStrackerMirrorV2Schema();
+    const limit = gcMirrorV2ParseLimit(req.query.limit, 50);
+    const safeLimit = limit === null ? 200 : Math.max(1, Math.min(limit, 500));
+    const { whereSql, params, sourceKeys } = gcMirrorV2WhereFromRequest(req);
+    const rows = await mysqlQuery(`
+      SELECT *
+      FROM gc_stracker2_lap
+      ${whereSql}
+      ORDER BY lap_time_ms ASC, timestamp_unix DESC
+      LIMIT ${safeLimit}
+    `, params);
+    res.json({
+      ok: true,
+      source: 'mirror-v2',
+      generatedAt: new Date().toISOString(),
+      items: rows,
+      total: rows.length,
+      sourceKeys,
+      limit: safeLimit,
+      message: 'Mejores tiempos de diagnóstico desde Mirror V2 combinado.'
+    });
+  } catch (error) {
+    console.error('[GC Mirror V2] best-times:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'mirror-v2',
+      items: [],
+      message: 'No se pudieron leer mejores tiempos del Mirror V2.',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 
 
 /* GC_LEGACY_SERVER_ALIASES_V1_START */
