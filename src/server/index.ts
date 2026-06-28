@@ -2076,18 +2076,158 @@ function isSQLiteFile(filePath: string) {
   }
 }
 
-function getStrackerConfig() {
+type GcStrackerSourceKey = 'main' | 'gt4' | string;
+
+type GcStrackerSourceRemoteConfig = {
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  remotePath?: string;
+  timeoutMs?: number;
+};
+
+type GcStrackerSourceFileConfig = {
+  enabled?: boolean;
+  label?: string;
+  championshipKey?: string;
+  serverIp?: string;
+  localPath?: string;
+  remote?: GcStrackerSourceRemoteConfig;
+};
+
+type GcStrackerSourceDefinition = {
+  key: GcStrackerSourceKey;
+  enabled: boolean;
+  label: string;
+  championshipKey: string;
+  serverIp: string | null;
+  localPath: string;
+  resolvedPath: string;
+  configSource: 'env' | 'file' | 'default' | 'env+file';
+  remote: Required<Pick<GcStrackerSourceRemoteConfig, 'port'>> & Omit<GcStrackerSourceRemoteConfig, 'port'>;
+};
+
+let strackerSourcesFileCache: { path: string; mtimeMs: number | null; data: Record<string, GcStrackerSourceFileConfig> } | null = null;
+let lastSyncResultsBySource: Record<string, StrackerSyncResult | null> = {};
+
+function getStrackerSourcesConfigPath() {
+  return path.join(getAppDataRoot(), 'stracker/sources.json');
+}
+
+function readStrackerSourcesFile() {
+  const configPath = getStrackerSourcesConfigPath();
+  try {
+    const stats = fs.statSync(configPath);
+    if (strackerSourcesFileCache?.path === configPath && strackerSourcesFileCache.mtimeMs === stats.mtimeMs) {
+      return strackerSourcesFileCache.data;
+    }
+    const raw = fs.readFileSync(configPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    const sources = parsed?.sources && typeof parsed.sources === 'object' ? parsed.sources : parsed;
+    const data = sources && typeof sources === 'object' ? sources as Record<string, GcStrackerSourceFileConfig> : {};
+    strackerSourcesFileCache = { path: configPath, mtimeMs: stats.mtimeMs, data };
+    return data;
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') {
+      console.warn('[GC] No se pudo leer data/stracker/sources.json:', error instanceof Error ? error.message : String(error));
+    }
+    strackerSourcesFileCache = { path: configPath, mtimeMs: null, data: {} };
+    return {};
+  }
+}
+
+function resolveStrackerSourceLocalPath(localPath: string | undefined | null, fallbackSubPath: string) {
+  const raw = String(localPath ?? '').trim();
+  const value = raw || fallbackSubPath;
+  if (path.isAbsolute(value)) return value;
+  if (value.startsWith('./') || value.startsWith('../') || value === 'data' || value.startsWith('data/')) {
+    return resolveProjectPath(value) ?? path.join(rootDir, value);
+  }
+  return path.join(getAppDataRoot(), value);
+}
+
+function relativeStrackerSourcePath(localPath: string | undefined | null, fallbackSubPath: string) {
+  const raw = String(localPath ?? '').trim();
+  if (raw) return raw;
+  return fallbackSubPath;
+}
+
+function buildStrackerSourceDefinitions(): Record<string, GcStrackerSourceDefinition> {
+  const fileSources = readStrackerSourcesFile();
+  const mainFile = fileSources.main ?? {};
+  const gt4File = fileSources.gt4 ?? {};
   const envPath = process.env.STRACKER_DB_PATH?.trim();
-  const source = envPath ? 'env' : process.env.APP_DATA_DIR ? 'app_data_dir' : 'default';
-  const configuredPath = envPath || path.join(process.env.APP_DATA_DIR?.trim() || defaultAppDataDirRelativePath, 'stracker/stracker.db3');
-  const resolvedPath = envPath ? resolveProjectPath(envPath) : path.join(getAppDataRoot(), 'stracker/stracker.db3');
+  const mainLocalPath = mainFile.localPath || envPath || 'stracker/stracker.db3';
+  const mainHasFileConfig = Boolean(fileSources.main);
+  const mainUsesEnv = Boolean(envPath || process.env.GTX_SFTP_HOST || process.env.GTX_SFTP_USER || process.env.GTX_SFTP_PASS || process.env.GTX_STRACKER_REMOTE_PATH);
+
+  const mainRemote = mainFile.remote ?? {};
+  const gt4Remote = gt4File.remote ?? {};
+
+  return {
+    main: {
+      key: 'main',
+      enabled: mainFile.enabled !== false,
+      label: mainFile.label || 'Liga GrassCutters',
+      championshipKey: mainFile.championshipKey || 'weekly',
+      serverIp: mainFile.serverIp || '145.239.131.153',
+      localPath: relativeStrackerSourcePath(mainLocalPath, 'stracker/stracker.db3'),
+      resolvedPath: envPath && !mainFile.localPath
+        ? (resolveProjectPath(envPath) ?? path.join(rootDir, envPath))
+        : resolveStrackerSourceLocalPath(mainLocalPath, 'stracker/stracker.db3'),
+      configSource: mainUsesEnv && mainHasFileConfig ? 'env+file' : mainUsesEnv ? 'env' : mainHasFileConfig ? 'file' : 'default',
+      remote: {
+        host: mainRemote.host || process.env.GTX_SFTP_HOST || '',
+        port: Number(mainRemote.port ?? process.env.GTX_SFTP_PORT ?? 22),
+        username: mainRemote.username || process.env.GTX_SFTP_USER || '',
+        password: mainRemote.password || process.env.GTX_SFTP_PASS || '',
+        remotePath: mainRemote.remotePath || process.env.GTX_STRACKER_REMOTE_PATH || '',
+        timeoutMs: Number(mainRemote.timeoutMs ?? process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
+      }
+    },
+    gt4: {
+      key: 'gt4',
+      enabled: gt4File.enabled !== false,
+      label: gt4File.label || 'Supra GT4',
+      championshipKey: gt4File.championshipKey || 'gt4',
+      serverIp: gt4File.serverIp || '5.39.68.161',
+      localPath: relativeStrackerSourcePath(gt4File.localPath, 'stracker/stracker-gt4.db3'),
+      resolvedPath: resolveStrackerSourceLocalPath(gt4File.localPath, 'stracker/stracker-gt4.db3'),
+      configSource: fileSources.gt4 ? 'file' : 'default',
+      remote: {
+        host: gt4Remote.host || '',
+        port: Number(gt4Remote.port ?? 22),
+        username: gt4Remote.username || '',
+        password: gt4Remote.password || '',
+        remotePath: gt4Remote.remotePath || '',
+        timeoutMs: Number(gt4Remote.timeoutMs ?? 20000)
+      }
+    }
+  };
+}
+
+function getStrackerSourceDefinition(sourceKey: unknown = 'main') {
+  const normalized = String(sourceKey ?? 'main').trim().toLowerCase() || 'main';
+  const sources = buildStrackerSourceDefinitions();
+  return sources[normalized] || sources.main;
+}
+
+function getStrackerSourceConfig(sourceKey: unknown = 'main') {
+  const source = getStrackerSourceDefinition(sourceKey);
+  const resolvedPath = source.resolvedPath;
   const exists = resolvedPath ? fs.existsSync(resolvedPath) : false;
   const stats = exists && resolvedPath ? fs.statSync(resolvedPath) : null;
 
   return {
-    configured: Boolean(configuredPath),
-    source,
-    relativePath: configuredPath,
+    key: source.key,
+    label: source.label,
+    championshipKey: source.championshipKey,
+    serverIp: source.serverIp,
+    enabled: source.enabled,
+    configured: Boolean(source.localPath),
+    source: source.configSource,
+    relativePath: source.localPath,
     resolvedPath,
     exists,
     validSQLite: resolvedPath && exists ? isSQLiteFile(resolvedPath) : false,
@@ -2096,23 +2236,53 @@ function getStrackerConfig() {
   };
 }
 
-function getRemoteStrackerConfig() {
-  const host = process.env.GTX_SFTP_HOST ?? '';
-  const port = Number(process.env.GTX_SFTP_PORT ?? 22);
-  const username = process.env.GTX_SFTP_USER ?? '';
-  const password = process.env.GTX_SFTP_PASS ?? '';
-  const remotePath = process.env.GTX_STRACKER_REMOTE_PATH ?? '';
+function getStrackerConfig() {
+  return getStrackerSourceConfig('main');
+}
+
+function getRemoteStrackerConfigForSource(sourceKey: unknown = 'main') {
+  const source = getStrackerSourceDefinition(sourceKey);
+  const remote = source.remote;
+  const host = String(remote.host ?? '').trim();
+  const username = String(remote.username ?? '').trim();
+  const password = String(remote.password ?? '').trim();
+  const remotePath = String(remote.remotePath ?? '').trim();
   const secret = process.env.STRACKER_SYNC_SECRET ?? '';
 
   return {
-    configured: Boolean(host && username && password && remotePath && secret),
+    key: source.key,
+    label: source.label,
+    championshipKey: source.championshipKey,
+    serverIp: source.serverIp,
+    configured: Boolean(source.enabled && host && username && password && remotePath && secret),
+    sftpConfigured: Boolean(source.enabled && host && username && password && remotePath),
     host: host ? host : null,
-    port,
+    port: Number(remote.port ?? 22),
     usernameConfigured: Boolean(username),
     passwordConfigured: Boolean(password),
     remotePath: remotePath ? remotePath : null,
     secretConfigured: Boolean(secret),
-    target: getStrackerConfig()
+    configSource: source.configSource,
+    target: getStrackerSourceConfig(source.key)
+  };
+}
+
+function getRemoteStrackerConfig() {
+  return getRemoteStrackerConfigForSource('main');
+}
+
+function getStrackerSourcesStatus() {
+  const definitions = buildStrackerSourceDefinitions();
+  const sources = Object.keys(definitions).map((key) => ({
+    ...getStrackerSourceConfig(key),
+    remote: getRemoteStrackerConfigForSource(key),
+    lastSync: lastSyncResultsBySource[key] ?? null
+  }));
+
+  return {
+    configPath: getStrackerSourcesConfigPath(),
+    configFileExists: fs.existsSync(getStrackerSourcesConfigPath()),
+    sources
   };
 }
 
@@ -2894,24 +3064,42 @@ function assertSyncSecret(req: express.Request) {
   return Boolean(expected && provided && expected === provided);
 }
 
-async function syncStrackerFromGTX() {
+async function syncStrackerSourceFromRemote(sourceKey: unknown = 'main') {
+  const source = getStrackerSourceDefinition(sourceKey);
   if (syncInProgress) {
     return {
       ok: false,
       statusCode: 409,
-      message: 'Ya hay una sincronizaciÃƒÂ³n en curso.'
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: 'Ya hay una sincronización en curso.'
     };
   }
 
   const started = new Date().toISOString();
-  const remote = getRemoteStrackerConfig();
-  const target = getStrackerConfig();
+  const remote = getRemoteStrackerConfigForSource(source.key);
+  const target = getStrackerSourceConfig(source.key);
 
-  if (!remote.configured) {
+  if (!remote.sftpConfigured) {
     return {
       ok: false,
       statusCode: 400,
-      message: 'Faltan variables GTX_SFTP_HOST, GTX_SFTP_PORT, GTX_SFTP_USER, GTX_SFTP_PASS, GTX_STRACKER_REMOTE_PATH o STRACKER_SYNC_SECRET.',
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: source.key === 'main'
+        ? 'Faltan datos SFTP para la fuente principal. Mantiene compatibilidad con GTX_SFTP_HOST, GTX_SFTP_USER, GTX_SFTP_PASS y GTX_STRACKER_REMOTE_PATH.'
+        : `La fuente ${source.key} no tiene SFTP configurado. Usa data/stracker/sources.json para añadir host, usuario, password y remotePath sin crear más variables en Hostinger.`,
+      remote
+    };
+  }
+
+  if (!process.env.STRACKER_SYNC_SECRET?.trim()) {
+    return {
+      ok: false,
+      statusCode: 400,
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: 'STRACKER_SYNC_SECRET no está configurado. Se reutiliza el secret actual para todas las fuentes; no hace falta crear uno nuevo.',
       remote
     };
   }
@@ -2920,7 +3108,9 @@ async function syncStrackerFromGTX() {
     return {
       ok: false,
       statusCode: 400,
-      message: 'No se pudo resolver la ruta local de stracker.db3.'
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: `No se pudo resolver la ruta local de ${source.label}.`
     };
   }
   const targetPath = target.resolvedPath;
@@ -2932,7 +3122,7 @@ async function syncStrackerFromGTX() {
   const totalStarted = Date.now();
   currentSyncTelemetry = {
     startedAt: started,
-    phase: 'starting',
+    phase: `starting:${source.key}`,
     phases
   };
 
@@ -2948,21 +3138,21 @@ async function syncStrackerFromGTX() {
   try {
     const sftpModule = await import('ssh2-sftp-client');
     const SftpClient = sftpModule.default;
-    sftp = new SftpClient('grasscutters-stracker-sync');
+    sftp = new SftpClient(`grasscutters-stracker-sync-${source.key}`);
 
     await timeSyncPhase(phases, 'connect', async () => {
       await sftp.connect({
-        host: process.env.GTX_SFTP_HOST,
-        port: Number(process.env.GTX_SFTP_PORT ?? 22),
-        username: process.env.GTX_SFTP_USER,
-        password: process.env.GTX_SFTP_PASS,
-        readyTimeout: Number(process.env.GTX_SFTP_TIMEOUT_MS ?? 20000)
+        host: source.remote.host,
+        port: Number(source.remote.port ?? 22),
+        username: source.remote.username,
+        password: source.remote.password,
+        readyTimeout: Number(source.remote.timeoutMs ?? 20000)
       });
     });
 
     await unlinkIfExistsAsync(tempPath);
 
-    const remoteDbPath = process.env.GTX_STRACKER_REMOTE_PATH;
+    const remoteDbPath = source.remote.remotePath;
 
     await timeSyncPhase(phases, 'download', async () => {
       const downloadMode = process.env.STRACKER_SFTP_DOWNLOAD_MODE || 'fast';
@@ -2979,7 +3169,7 @@ async function syncStrackerFromGTX() {
           downloadMethod = 'fastGet';
         } catch (fastError) {
           downloadMethod = 'fastGet-fallback-get';
-          console.warn('[GC] sTracker fastGet falló, usando get() normal:', fastError);
+          console.warn(`[GC] sTracker ${source.key} fastGet falló, usando get() normal:`, fastError);
           await unlinkIfExistsAsync(tempPath);
           await sftp.get(remoteDbPath, tempPath);
         }
@@ -2998,11 +3188,11 @@ async function syncStrackerFromGTX() {
 
     await timeSyncPhase(phases, 'sqliteCheck', async () => {
       if (stats.size < 100) {
-        throw new Error(`Archivo descargado demasiado pequeÃƒÂ±o: ${stats.size} bytes.`);
+        throw new Error(`Archivo descargado demasiado pequeño: ${stats.size} bytes.`);
       }
 
       if (!isSQLiteFile(tempPath)) {
-        throw new Error('El archivo descargado no parece SQLite vÃƒÂ¡lido. Cabecera incorrecta.');
+        throw new Error('El archivo descargado no parece SQLite válido. Cabecera incorrecta.');
       }
     });
 
@@ -3013,7 +3203,7 @@ async function syncStrackerFromGTX() {
       } catch (backupError) {
         backupSkipped = true;
         backupPath = null;
-        console.warn('[GC] sTracker backup hard-link omitido; no se hará copia síncrona grande:', backupError);
+        console.warn(`[GC] sTracker ${source.key} backup hard-link omitido; no se hará copia síncrona grande:`, backupError);
       }
     });
 
@@ -3023,7 +3213,7 @@ async function syncStrackerFromGTX() {
 
     const finished = new Date().toISOString();
     phases.total = Date.now() - totalStarted;
-    lastSyncResult = {
+    const syncResult: StrackerSyncResult = {
       ok: true,
       startedAt: started,
       finishedAt: finished,
@@ -3038,16 +3228,23 @@ async function syncStrackerFromGTX() {
       backupSkipped,
       phases
     };
+    (syncResult as any).sourceKey = source.key;
+    (syncResult as any).sourceLabel = source.label;
+    lastSyncResultsBySource[source.key] = syncResult;
+    if (source.key === 'main') lastSyncResult = syncResult;
+
     console.log(
-      `[GC] sTracker sync phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
+      `[GC] sTracker ${source.key} sync phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
     );
 
     return {
       ok: true,
       statusCode: 200,
-      message: 'stracker.db3 sincronizado correctamente desde GTX.',
-      sync: lastSyncResult,
-      stracker: getStrackerConfig()
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: `${source.label} sincronizado correctamente desde SFTP.`,
+      sync: syncResult,
+      stracker: getStrackerSourceConfig(source.key)
     };
   } catch (error) {
     try {
@@ -3058,7 +3255,7 @@ async function syncStrackerFromGTX() {
 
     const finished = new Date().toISOString();
     phases.total = Date.now() - totalStarted;
-    lastSyncResult = {
+    const syncResult: StrackerSyncResult = {
       ok: false,
       startedAt: started,
       finishedAt: finished,
@@ -3066,15 +3263,22 @@ async function syncStrackerFromGTX() {
       phases,
       error: error instanceof Error ? error.message : String(error)
     };
+    (syncResult as any).sourceKey = source.key;
+    (syncResult as any).sourceLabel = source.label;
+    lastSyncResultsBySource[source.key] = syncResult;
+    if (source.key === 'main') lastSyncResult = syncResult;
+
     console.warn(
-      `[GC] sTracker sync failed phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
+      `[GC] sTracker ${source.key} sync failed phases: connect=${phases.connect ?? 0}ms download=${phases.download ?? 0}ms sqliteCheck=${phases.sqliteCheck ?? 0}ms backup=${phases.backup ?? 0}ms rename=${phases.rename ?? 0}ms mirror=${phases.mirror ?? 0}ms retention=${phases.retention ?? 0}ms total=${phases.total ?? 0}ms`
     );
 
     return {
       ok: false,
       statusCode: 500,
-      message: 'No se pudo sincronizar stracker.db3 desde GTX.',
-      sync: lastSyncResult
+      sourceKey: source.key,
+      sourceLabel: source.label,
+      message: `No se pudo sincronizar ${source.label} desde SFTP.`,
+      sync: syncResult
     };
   } finally {
     syncInProgress = false;
@@ -3087,6 +3291,10 @@ async function syncStrackerFromGTX() {
       }
     }
   }
+}
+
+async function syncStrackerFromGTX() {
+  return syncStrackerSourceFromRemote('main');
 }
 
 const joinedLapsSql = `
@@ -8695,9 +8903,19 @@ app.get('/api/stracker/status', (_req, res) => {
   res.json({
     ok: true,
     stracker: getModules().stracker,
+    sources: getStrackerSourcesStatus(),
     lastSync: lastSyncResult,
+    lastSyncBySource: lastSyncResultsBySource,
     currentSync: currentSyncTelemetry,
     syncInProgress
+  });
+});
+
+app.get('/api/stracker/sources', (_req, res) => {
+  res.json({
+    ok: true,
+    ...getStrackerSourcesStatus(),
+    message: 'Fuentes sTracker disponibles. GT4 se configura en data/stracker/sources.json sin añadir variables nuevas en Hostinger.'
   });
 });
 
@@ -8705,11 +8923,13 @@ app.get('/api/stracker/remote-config', (_req, res) => {
   res.json({
     ok: true,
     remote: getRemoteStrackerConfig(),
+    sources: getStrackerSourcesStatus(),
     autoSync: getAutoSyncConfig(),
     lastSync: lastSyncResult,
+    lastSyncBySource: lastSyncResultsBySource,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     syncInProgress,
-    message: 'No se muestran usuario, contraseÃƒÂ±a ni secret. Solo si estÃƒÂ¡n configurados.'
+    message: 'No se muestran usuario, contraseña ni secret. Solo si están configurados.'
   });
 });
 
@@ -8719,7 +8939,9 @@ app.get('/api/stracker/auto-sync/status', (_req, res) => {
     autoSync: getAutoSyncConfig(),
     stracker: getStrackerConfig(),
     remote: getRemoteStrackerConfig(),
+    sources: getStrackerSourcesStatus(),
     lastSync: lastSyncResult,
+    lastSyncBySource: lastSyncResultsBySource,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     syncInProgress
   });
@@ -8812,6 +9034,8 @@ app.get('/api/stracker/storage/debug', (req, res) => {
       backupDirEnv: process.env.STRACKER_BACKUP_DIR || null
     },
     stracker,
+    sources: getStrackerSourcesStatus(),
+    sourcesConfigFile: safePathStatForDebug(getStrackerSourcesConfigPath()),
     targetFile: safePathStatForDebug(resolvedPath),
     targetDirectory: safeReadDirForDebug(resolvedDir),
     backupDirectory: safeReadDirForDebug(backupDir),
@@ -8863,13 +9087,20 @@ async function handleStrackerSync(req: express.Request, res: express.Response) {
     return;
   }
 
-  const result = await syncStrackerFromGTX();
-  if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
+  const sourceKey = typeof req.params?.sourceKey === 'string' && req.params.sourceKey.trim()
+    ? req.params.sourceKey.trim()
+    : typeof req.query?.source === 'string' && req.query.source.trim()
+      ? req.query.source.trim()
+      : 'main';
+  const result = await syncStrackerSourceFromRemote(sourceKey);
+  if (result?.ok) invalidateStrackerRuntimeCache(`stracker-sync:${sourceKey}`);
   res.status(result.statusCode).json(result);
 }
 
 app.get('/api/stracker/sync', handleStrackerSync);
 app.post('/api/stracker/sync', handleStrackerSync);
+app.get('/api/stracker/sync/:sourceKey', handleStrackerSync);
+app.post('/api/stracker/sync/:sourceKey', handleStrackerSync);
 app.get('/gc-data/sync-stracker', handleStrackerSync);
 app.post('/gc-data/sync-stracker', handleStrackerSync);
 app.get('/gc-data/sync-stracker.php', handleStrackerSync);
@@ -8881,12 +9112,15 @@ app.get('/gc-data/health', (_req, res) => {
     service: 'gc-data-node',
     stracker: getStrackerConfig(),
     remote: getRemoteStrackerConfig(),
-    lastSync: lastSyncResult
+    sources: getStrackerSourcesStatus(),
+    lastSync: lastSyncResult,
+    lastSyncBySource: lastSyncResultsBySource
   });
 });
 
-app.get('/api/stracker/tables', async (_req, res) => {
-  const stracker = getStrackerConfig();
+app.get('/api/stracker/tables', async (req, res) => {
+  const sourceKey = typeof req.query?.source === 'string' && req.query.source.trim() ? req.query.source.trim() : 'main';
+  const stracker = getStrackerSourceConfig(sourceKey);
 
   if (!stracker.resolvedPath || !stracker.exists) {
     res.status(200).json({
@@ -8921,7 +9155,8 @@ app.get('/api/stracker/tables', async (_req, res) => {
 });
 
 app.get('/api/stracker/preview/:table', async (req, res) => {
-  const stracker = getStrackerConfig();
+  const sourceKey = typeof req.query?.source === 'string' && req.query.source.trim() ? req.query.source.trim() : 'main';
+  const stracker = getStrackerSourceConfig(sourceKey);
 
   if (!stracker.resolvedPath || !stracker.exists) {
     res.status(200).json({
