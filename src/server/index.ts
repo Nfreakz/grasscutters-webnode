@@ -2111,8 +2111,70 @@ type GcStrackerSourceDefinition = {
 let strackerSourcesFileCache: { path: string; mtimeMs: number | null; data: Record<string, GcStrackerSourceFileConfig> } | null = null;
 let lastSyncResultsBySource: Record<string, StrackerSyncResult | null> = {};
 
+type GcStrackerSourcesConfigCandidate = {
+  path: string;
+  label: string;
+  priority: number;
+  persistent: boolean;
+  exists: boolean;
+};
+
+function uniqueConfigCandidates(candidates: Array<Omit<GcStrackerSourcesConfigCandidate, 'exists'>>) {
+  const seen = new Set<string>();
+  return candidates
+    .map((candidate) => ({
+      ...candidate,
+      path: path.resolve(candidate.path)
+    }))
+    .filter((candidate) => {
+      if (seen.has(candidate.path)) return false;
+      seen.add(candidate.path);
+      return true;
+    })
+    .map((candidate) => ({
+      ...candidate,
+      exists: fs.existsSync(candidate.path)
+    }));
+}
+
+function getStrackerSourcesConfigCandidates(): GcStrackerSourcesConfigCandidate[] {
+  const candidates: Array<Omit<GcStrackerSourcesConfigCandidate, 'exists'>> = [];
+  const explicitPath = process.env.STRACKER_SOURCES_CONFIG_PATH?.trim();
+  if (explicitPath) {
+    candidates.push({
+      path: resolveProjectPath(explicitPath) ?? path.join(rootDir, explicitPath),
+      label: 'explicit-env-path',
+      priority: 0,
+      persistent: true
+    });
+  }
+
+  candidates.push({
+    path: path.join(getAppDataRoot(), 'stracker/sources.json'),
+    label: 'runtime-data',
+    priority: 10,
+    persistent: false
+  });
+
+  candidates.push({
+    path: path.join(rootDir, 'data/stracker/sources.json'),
+    label: 'legacy-project-data',
+    priority: 20,
+    persistent: false
+  });
+
+  return uniqueConfigCandidates(candidates).sort((a, b) => a.priority - b.priority);
+}
+
+function getRecommendedStrackerSourcesConfigPath() {
+  const persistent = getStrackerSourcesConfigCandidates().find((candidate) => candidate.persistent);
+  return persistent?.path ?? path.join(getAppDataRoot(), 'stracker/sources.json');
+}
+
 function getStrackerSourcesConfigPath() {
-  return path.join(getAppDataRoot(), 'stracker/sources.json');
+  const candidates = getStrackerSourcesConfigCandidates();
+  const existing = candidates.find((candidate) => candidate.exists);
+  return existing?.path ?? getRecommendedStrackerSourcesConfigPath();
 }
 
 function readStrackerSourcesFile() {
@@ -2130,7 +2192,7 @@ function readStrackerSourcesFile() {
     return data;
   } catch (error: any) {
     if (error?.code !== 'ENOENT') {
-      console.warn('[GC] No se pudo leer data/stracker/sources.json:', error instanceof Error ? error.message : String(error));
+      console.warn(`[GC] No se pudo leer configuración sTracker multi-source (${configPath}):`, error instanceof Error ? error.message : String(error));
     }
     strackerSourcesFileCache = { path: configPath, mtimeMs: null, data: {} };
     return {};
@@ -2158,9 +2220,23 @@ function buildStrackerSourceDefinitions(): Record<string, GcStrackerSourceDefini
   const mainFile = fileSources.main ?? {};
   const gt4File = fileSources.gt4 ?? {};
   const envPath = process.env.STRACKER_DB_PATH?.trim();
+  const gt4EnvPath = process.env.GT4_STRACKER_DB_PATH?.trim();
   const mainLocalPath = mainFile.localPath || envPath || 'stracker/stracker.db3';
+  const gt4LocalPath = gt4File.localPath || gt4EnvPath || 'stracker/stracker-gt4.db3';
   const mainHasFileConfig = Boolean(fileSources.main);
+  const gt4HasFileConfig = Boolean(fileSources.gt4);
   const mainUsesEnv = Boolean(envPath || process.env.GTX_SFTP_HOST || process.env.GTX_SFTP_USER || process.env.GTX_SFTP_PASS || process.env.GTX_STRACKER_REMOTE_PATH);
+  const gt4UsesEnv = Boolean(
+    gt4EnvPath
+    || process.env.GT4_LABEL
+    || process.env.GT4_CHAMPIONSHIP_KEY
+    || process.env.GT4_SERVER_IP
+    || process.env.GT4_SFTP_HOST
+    || process.env.GT4_SFTP_PORT
+    || process.env.GT4_SFTP_USER
+    || process.env.GT4_SFTP_PASS
+    || process.env.GT4_STRACKER_REMOTE_PATH
+  );
 
   const mainRemote = mainFile.remote ?? {};
   const gt4Remote = gt4File.remote ?? {};
@@ -2189,19 +2265,19 @@ function buildStrackerSourceDefinitions(): Record<string, GcStrackerSourceDefini
     gt4: {
       key: 'gt4',
       enabled: gt4File.enabled !== false,
-      label: gt4File.label || 'Supra GT4',
-      championshipKey: gt4File.championshipKey || 'gt4',
-      serverIp: gt4File.serverIp || '5.39.68.161',
-      localPath: relativeStrackerSourcePath(gt4File.localPath, 'stracker/stracker-gt4.db3'),
-      resolvedPath: resolveStrackerSourceLocalPath(gt4File.localPath, 'stracker/stracker-gt4.db3'),
-      configSource: fileSources.gt4 ? 'file' : 'default',
+      label: gt4File.label || process.env.GT4_LABEL || 'Supra GT4',
+      championshipKey: gt4File.championshipKey || process.env.GT4_CHAMPIONSHIP_KEY || 'gt4',
+      serverIp: gt4File.serverIp || process.env.GT4_SERVER_IP || '5.39.68.161',
+      localPath: relativeStrackerSourcePath(gt4LocalPath, 'stracker/stracker-gt4.db3'),
+      resolvedPath: resolveStrackerSourceLocalPath(gt4LocalPath, 'stracker/stracker-gt4.db3'),
+      configSource: gt4UsesEnv && gt4HasFileConfig ? 'env+file' : gt4UsesEnv ? 'env' : gt4HasFileConfig ? 'file' : 'default',
       remote: {
-        host: gt4Remote.host || '',
-        port: Number(gt4Remote.port ?? 22),
-        username: gt4Remote.username || '',
-        password: gt4Remote.password || '',
-        remotePath: gt4Remote.remotePath || '',
-        timeoutMs: Number(gt4Remote.timeoutMs ?? 20000)
+        host: gt4Remote.host || process.env.GT4_SFTP_HOST || '',
+        port: Number(gt4Remote.port ?? process.env.GT4_SFTP_PORT ?? 22),
+        username: gt4Remote.username || process.env.GT4_SFTP_USER || '',
+        password: gt4Remote.password || process.env.GT4_SFTP_PASS || '',
+        remotePath: gt4Remote.remotePath || process.env.GT4_STRACKER_REMOTE_PATH || '',
+        timeoutMs: Number(gt4Remote.timeoutMs ?? process.env.GT4_SFTP_TIMEOUT_MS ?? 20000)
       }
     }
   };
@@ -2279,9 +2355,19 @@ function getStrackerSourcesStatus() {
     lastSync: lastSyncResultsBySource[key] ?? null
   }));
 
+  const configPath = getStrackerSourcesConfigPath();
+  const candidates = getStrackerSourcesConfigCandidates();
+
   return {
-    configPath: getStrackerSourcesConfigPath(),
-    configFileExists: fs.existsSync(getStrackerSourcesConfigPath()),
+    configPath,
+    configFileExists: fs.existsSync(configPath),
+    recommendedConfigPath: getRecommendedStrackerSourcesConfigPath(),
+    configCandidates: candidates.map((candidate) => ({
+      label: candidate.label,
+      path: candidate.path,
+      persistent: candidate.persistent,
+      exists: candidate.exists
+    })),
     sources
   };
 }
@@ -3088,7 +3174,7 @@ async function syncStrackerSourceFromRemote(sourceKey: unknown = 'main') {
       sourceLabel: source.label,
       message: source.key === 'main'
         ? 'Faltan datos SFTP para la fuente principal. Mantiene compatibilidad con GTX_SFTP_HOST, GTX_SFTP_USER, GTX_SFTP_PASS y GTX_STRACKER_REMOTE_PATH.'
-        : `La fuente ${source.key} no tiene SFTP configurado. Usa data/stracker/sources.json para añadir host, usuario, password y remotePath sin crear más variables en Hostinger.`,
+        : `La fuente ${source.key} no tiene SFTP configurado. Configura GT4_SFTP_HOST, GT4_SFTP_USER, GT4_SFTP_PASS y GT4_STRACKER_REMOTE_PATH en Hostinger; sources.json queda solo como fallback opcional.`,
       remote
     };
   }
@@ -3167,6 +3253,12 @@ async function syncStrackerSourceFromRemote(sourceKey: unknown = 'main') {
             chunkSize: Number(process.env.STRACKER_SFTP_FAST_CHUNK_SIZE || 32768)
           });
           downloadMethod = 'fastGet';
+          if (!fs.existsSync(tempPath)) {
+            downloadMethod = 'fastGet-fallback-get';
+            console.warn(`[GC] sTracker ${source.key} fastGet terminó sin crear temporal; usando get() normal.`);
+            await unlinkIfExistsAsync(tempPath);
+            await sftp.get(remoteDbPath, tempPath);
+          }
         } catch (fastError) {
           downloadMethod = 'fastGet-fallback-get';
           console.warn(`[GC] sTracker ${source.key} fastGet falló, usando get() normal:`, fastError);
@@ -8915,7 +9007,7 @@ app.get('/api/stracker/sources', (_req, res) => {
   res.json({
     ok: true,
     ...getStrackerSourcesStatus(),
-    message: 'Fuentes sTracker disponibles. GT4 se configura en data/stracker/sources.json sin añadir variables nuevas en Hostinger.'
+    message: 'Fuentes sTracker disponibles. GT4 se configura preferentemente con variables GT4_* en Hostinger; sources.json queda como fallback opcional.'
   });
 });
 
