@@ -2178,6 +2178,61 @@ const home2ArchiveSeed = [];
       }
     }
 
+  
+
+    /* GC_HOME_PACK_5_13_COMPACT_CHAMPIONSHIP_ROWS */
+    .gc-home2 .gc-home2-championship-drivers__list{
+      gap:6px 10px !important;
+      align-content:start !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row{
+      min-height:38px !important;
+      padding:5px 7px !important;
+      grid-template-columns:26px minmax(0,1fr) minmax(28px,max-content) 24px !important;
+      gap:6px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-pos,
+    .gc-home2 .gc-home2-champ-standing-row .gc-home2-rank-badge.gc-home2-ranking-medal{
+      width:24px !important;
+      min-width:24px !important;
+      height:24px !important;
+      min-height:24px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row .gc-home2-rank-badge.gc-home2-ranking-medal:not(.gc-home2-rank-badge--plain){
+      font-size:18px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-row .gc-home2-rank-badge--plain.gc-home2-ranking-medal{
+      font-size:14px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-meta strong{
+      font-size:11.5px !important;
+      line-height:1 !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-meta small{
+      display:none !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-points strong{
+      font-size:10.8px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-points small{
+      font-size:7.8px !important;
+    }
+
+    .gc-home2 .gc-home2-champ-standing-avatar,
+    .gc-home2 .gc-home2-champ-standing-row img{
+      width:24px !important;
+      height:24px !important;
+      min-width:24px !important;
+    }
+
   </style>
 
   <script is:inline src="/js/gc-track-images.js"></script>
@@ -2331,9 +2386,9 @@ const home2ArchiveSeed = [];
     })();
   </script>
   <script>
-    /* GC_HOME_PACK_5_12_STABLE_SINGLE_SOURCE_LOADER_START */
+    /* GC_HOME_PACK_5_13_STABLE_COMBO_FIX_START */
     (() => {
-      const PACK = '5.12';
+      const PACK = '5.13';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2552,11 +2607,58 @@ const home2ArchiveSeed = [];
         return trackOk && carOk;
       };
 
+      const comboSignatureFromRow = (row) => {
+        const track = trackName(row);
+        const car = carName(row);
+        const trackKey = normalize(track);
+        const carKey = normalize(car);
+        if (!trackKey || !carKey || track === '--' || car === '--') return null;
+        return { track, car, trackKey, carKey };
+      };
+
+      const latestComboSignature = (rows, source) => {
+        const list = (Array.isArray(rows) ? rows : [])
+          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
+          .filter((row) => !source || sourceKey(row, source) === source)
+          .filter((row) => timestampMs(row) > 0)
+          .sort((a, b) => timestampMs(b) - timestampMs(a));
+        for (const row of list) {
+          const signature = comboSignatureFromRow(row);
+          if (signature) return signature;
+        }
+        return null;
+      };
+
+      const matchesComboSignature = (row, signature, source) => {
+        if (!signature) return false;
+        if (source && sourceKey(row, source) !== source) return false;
+        const rowSig = comboSignatureFromRow(row);
+        if (!rowSig) return false;
+        const trackOk = rowSig.trackKey === signature.trackKey || rowSig.trackKey.includes(signature.trackKey) || signature.trackKey.includes(rowSig.trackKey);
+        const carOk = rowSig.carKey === signature.carKey || rowSig.carKey.includes(signature.carKey) || signature.carKey.includes(rowSig.carKey);
+        return trackOk && carOk;
+      };
+
       const rowsForPanel = (activePayload, fallbackHotlaps, source) => {
+        // Fuente de verdad para los bloques de mejores tiempos:
+        // 1) hotlaps2 filtrado por source, porque representa el último combo realmente corrido en ese servidor.
+        // 2) active-combo solo como fallback si todavía no hay vueltas en hotlaps2.
+        const fallback = getArray(fallbackHotlaps)
+          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
+          .filter((row) => sourceKey(row, source) === source);
+        const latestSignature = latestComboSignature(fallback, source);
+        if (latestSignature) {
+          const scoped = fallback.filter((row) => matchesComboSignature(row, latestSignature, source));
+          const ranked = bestPerDriver(scoped);
+          if (ranked.length) return ranked;
+        }
+
         const combo = activeCombo(activePayload);
-        const primary = comboLeaderboard(activePayload).map((row) => ({ ...row, sourceKey: source }));
+        const primary = comboLeaderboard(activePayload)
+          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
+          .filter((row) => sourceKey(row, source) === source);
         if (primary.length) return bestPerDriver(primary);
-        const fallback = getArray(fallbackHotlaps).map((row) => ({ ...row, sourceKey: source }));
+
         const scoped = combo ? fallback.filter((row) => matchesCombo(row, combo, source)) : fallback;
         return bestPerDriver(scoped);
       };
@@ -2604,7 +2706,7 @@ const home2ArchiveSeed = [];
         host.dataset.gcHydrated = '1';
         host.innerHTML = list.map((row) => {
           const src = sourceKey(row, 'main') === 'gt4' ? 'GT4' : 'LIGA';
-          return `<div class="gc-home2-table__row" role="row"><span>${esc(driverName(row))}</span><span><small class="gc-home2-source-pill gc-home2-source-pill--${src === 'GT4' ? 'gt4' : 'main'}">${src}</small> ${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`;
+          return `<div class="gc-home2-table__row" role="row" data-source="${esc(src)}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`;
         }).join('');
         return list;
       };
@@ -2733,7 +2835,7 @@ const home2ArchiveSeed = [];
           const host = q('[data-home2-champ-drivers]', block);
           if (host && rows.length) {
             host.dataset.gcHydrated = '1';
-            host.innerHTML = rows.slice(0, 6).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+            host.innerHTML = rows.slice(0, 8).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
           }
           return { source, ok: true, events: events.length, rows: rows.length };
         } catch (error) {
@@ -2796,12 +2898,12 @@ const home2ArchiveSeed = [];
         }
       };
 
-      window.GCHomeStableV512 = { refresh: run };
+      window.GCHomeStableV513 = { refresh: run };
       run();
       refreshTimer = window.setInterval(run, REFRESH_MS);
       window.__GC_HOME_STABLE_INTERVAL__ = refreshTimer;
     })();
-    /* GC_HOME_PACK_5_12_STABLE_SINGLE_SOURCE_LOADER_END */
+    /* GC_HOME_PACK_5_13_STABLE_COMBO_FIX_END */
   </script>
 
 </MarketingLayout>
