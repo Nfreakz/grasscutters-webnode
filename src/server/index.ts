@@ -6109,11 +6109,10 @@ function gcComboUnifyBuildVilaRealSplitMapV1(laps: any[]) {
   for (const lap of laps || []) {
     const track = gcComboUnifyTrackFamilyV1(lap?.track);
     if (track.key !== 'vila_real') continue;
-    const car = gcComboUnifyCarFamilyV1(lap?.car);
     const rawKey = gcComboUnifyRawComboKeyV1(lap);
     if (!rawKey) continue;
     const sourceKey = gcComboUnifySourceKeyV1(lap);
-    const scope = `${sourceKey}:${car.key}`;
+    const scope = `${sourceKey}:vila_real`;
     if (!byScope.has(scope)) byScope.set(scope, new Map());
     const rawMap = byScope.get(scope)!;
     if (!rawMap.has(rawKey)) rawMap.set(rawKey, { rawKey, minTs: Number.POSITIVE_INFINITY, maxTs: 0, laps: 0 });
@@ -6174,6 +6173,47 @@ function gcComboUnifyCarMapKeyV1(car: any) {
   return tokens.code || tokens.name || tokens.slug;
 }
 
+const GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 50) || 50);
+const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 2) || 2);
+const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 5) || 5);
+
+function gcComboUnifyDriverKeyV2(sourceKey: string, lap: any) {
+  if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) return `${sourceKey}:id:${lap.driver.id}`;
+  const name = compactNullableText(lap?.driver?.name || lap?.driverName || lap?.playerName);
+  return name ? `${sourceKey}:name:${gcComboUnifySlugV1(name)}` : `${sourceKey}:unknown`;
+}
+
+function gcComboUnifyCarBucketKeyV2(lap: any) {
+  const raw = gcComboUnifyCarTokensV1(lap?.car);
+  const family = gcComboUnifyCarFamilyV1(lap?.car);
+  const rawKey = gcComboUnifySlugV1(raw.code || raw.name || raw.slug || family.key);
+  return rawKey || family.key || 'unknown_car';
+}
+
+function gcComboUnifyCarDisplayV2(lap: any) {
+  const raw = gcComboUnifyCarTokensV1(lap?.car);
+  const family = gcComboUnifyCarFamilyV1(lap?.car);
+  return {
+    ...(lap?.car || {}),
+    code: raw.code || lap?.car?.code || lap?.car?.id || family.key,
+    name: raw.name || family.displayName,
+    displayName: raw.name || family.displayName,
+    familyKey: family.key,
+    familyName: family.displayName
+  };
+}
+
+function gcComboUnifyMakePublicPolicyV2() {
+  return {
+    type: 'source-track-variant-public-v2',
+    description: 'Agrupa por servidor + circuito normalizado + variante. Los coches solo enriquecen el combo; no crean tarjetas separadas. Filtra pruebas cortas por laps/pilotos.',
+    minPublicLaps: GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2,
+    minPublicDrivers: GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2,
+    minPublicCarLaps: GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2,
+    vilaRealRule: 'pre/post chicane por nombre/código o corte temporal'
+  };
+}
+
 function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
   const vilaSplitMap = gcComboUnifyBuildVilaRealSplitMapV1(allLaps as any[]);
   const map = new Map<string, any>();
@@ -6182,10 +6222,9 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     const sourceKey = gcComboUnifySourceKeyV1(lap);
     const sourceLabel = gcComboUnifySourceLabelV1(sourceKey, lap);
     const trackFamily = gcComboUnifyTrackFamilyV1(lap.track);
-    const carFamily = gcComboUnifyCarFamilyV1(lap.car);
     const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
     const variantLabel = gcComboUnifyVariantLabelV1(trackFamily.key, variant);
-    const key = `${sourceKey}:${trackFamily.key}:${variant}:${carFamily.key}`;
+    const key = `${sourceKey}:${trackFamily.key}:${variant}`;
 
     if (!map.has(key)) {
       const displayTrackName = variantLabel ? `${trackFamily.displayName} · ${variantLabel}` : trackFamily.displayName;
@@ -6197,11 +6236,8 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
         canonicalComboId: null,
         memberComboIds: [],
         mergedCombosCount: 0,
-        mergePolicy: {
-          type: 'source-track-carclass-logical-v1',
-          description: 'Agrupa por servidor, familia de circuito y familia de coche. Vila Real se separa en pre/post chicane por código o por corte temporal.'
-        },
-        url: `/combos?source=${encodeURIComponent(sourceKey)}&track=${encodeURIComponent(trackFamily.key)}&variant=${encodeURIComponent(variant)}&carGroup=${encodeURIComponent(carFamily.key)}`,
+        mergePolicy: gcComboUnifyMakePublicPolicyV2(),
+        url: `/combos?source=${encodeURIComponent(sourceKey)}&track=${encodeURIComponent(trackFamily.key)}&variant=${encodeURIComponent(variant)}`,
         sourceKey,
         sourceLabel,
         trackId: lap.track?.id ?? null,
@@ -6219,11 +6255,11 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
         car: null,
         cars: [],
         carIds: [],
-        carGroupKey: carFamily.key,
-        carGroupName: carFamily.displayName,
-        carSummary: carFamily.displayName,
+        carGroupKey: 'public_car_pool',
+        carGroupName: 'Coches públicos del combo',
+        carSummary: 'Coches del combo',
         usedCars: [],
-        usedCarSummary: carFamily.displayName,
+        usedCarSummary: 'Coches del combo',
         totalLaps: 0,
         validLaps: 0,
         invalidLaps: 0,
@@ -6231,6 +6267,8 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
         sessions: new Set(),
         rawCombos: new Set(),
         usedCarsMap: new Map(),
+        carStatsMap: new Map(),
+        hiddenLowLapCars: [],
         bestLap: null,
         bestLapMs: null,
         bestLapTime: '--',
@@ -6253,12 +6291,29 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     entry.totalLaps += 1;
     lap.valid ? entry.validLaps += 1 : entry.invalidLaps += 1;
     entry.totalCuts += Math.max(0, Number(lap.cuts) || 0);
-    if (lap.driver?.id !== null && lap.driver?.id !== undefined) entry.drivers.set(`${sourceKey}:${lap.driver.id}`, lap.driver);
-    else if (lap.driver?.name) entry.drivers.set(`${sourceKey}:name:${lap.driver.name}`, lap.driver);
+
+    const driverKey = gcComboUnifyDriverKeyV2(sourceKey, lap);
+    if (driverKey) entry.drivers.set(driverKey, lap.driver || { name: compactNullableText(lap?.driverName || lap?.playerName) || 'Piloto' });
     if (lap.sessionId !== null && lap.sessionId !== undefined) entry.sessions.add(`${sourceKey}:${lap.sessionId}`);
 
-    const carKey = gcComboUnifyCarMapKeyV1(lap.car);
-    if (carKey) entry.usedCarsMap.set(carKey, lap.car);
+    const carKey = gcComboUnifyCarBucketKeyV2(lap);
+    const carDisplay = gcComboUnifyCarDisplayV2(lap);
+    if (!entry.carStatsMap.has(carKey)) {
+      entry.carStatsMap.set(carKey, {
+        key: carKey,
+        car: carDisplay,
+        totalLaps: 0,
+        validLaps: 0,
+        drivers: new Set(),
+        lastSeenTimestamp: 0
+      });
+    }
+    const carStats = entry.carStatsMap.get(carKey);
+    carStats.totalLaps += 1;
+    if (lap.valid) carStats.validLaps += 1;
+    carStats.drivers.add(driverKey);
+    if (Number(lap.timestamp || 0) > Number(carStats.lastSeenTimestamp || 0)) carStats.lastSeenTimestamp = Number(lap.timestamp || 0);
+    entry.usedCarsMap.set(carKey, carDisplay);
 
     if (Number.isFinite(Number(lap.maxSpeedKmh)) && Number(lap.maxSpeedKmh) > Number(entry.maxSpeedKmh ?? 0)) {
       entry.maxSpeedKmh = lap.maxSpeedKmh;
@@ -6276,24 +6331,53 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     entry.laps.push({ ...lap, comboKey: key, comboUid: key, rawComboId: rawComboId ?? null });
   }
 
-  return Array.from(map.values()).map((entry) => {
-    const usedCars = Array.from(entry.usedCarsMap.values()).filter(Boolean);
-    entry.usedCars = usedCars;
-    entry.cars = usedCars;
-    entry.carIds = usedCars.map((car: any) => car?.id).filter((id: any) => id !== null && id !== undefined);
-    entry.carSummary = carSummaryFromCars(usedCars.length ? usedCars : [{ name: entry.carGroupName }]);
-    entry.usedCarSummary = entry.carSummary;
-    return normalizeComboEntryForResponse(entry);
-  }).map((item: any) => ({
-    ...item,
-    sourceKey: item.sourceKey || (String(item.key || '').split(':')[0] || 'main'),
-    sourceLabel: item.sourceLabel || (String(item.key || '').startsWith('gt4:') ? 'Supra GT4' : 'Liga GrassCutters'),
-    comboUid: item.comboUid || item.key,
-    comboKey: item.comboKey || item.key,
-    carGroupKey: item.carGroupKey || null,
-    carGroupName: item.carGroupName || item.carSummary,
-    rawCombosCount: item.mergedCombosCount || 1
-  })).sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
+  return Array.from(map.values())
+    .map((entry) => {
+      const carStats = Array.from(entry.carStatsMap.values())
+        .sort((a: any, b: any) => Number(b.totalLaps || 0) - Number(a.totalLaps || 0) || String(a.car?.name || '').localeCompare(String(b.car?.name || ''), 'es', { sensitivity: 'base' }));
+      const publicCarStats = carStats.filter((item: any) => Number(item.totalLaps || 0) >= GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
+      const publicCars = (publicCarStats.length ? publicCarStats : carStats.slice(0, 1)).map((item: any) => item.car).filter(Boolean);
+      const hiddenLowLapCars = carStats.filter((item: any) => Number(item.totalLaps || 0) < GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
+
+      entry.hiddenLowLapCars = hiddenLowLapCars.map((item: any) => ({
+        key: item.key,
+        name: item.car?.name || item.car?.displayName || item.key,
+        totalLaps: item.totalLaps,
+        validLaps: item.validLaps,
+        driversCount: item.drivers?.size || 0
+      }));
+      entry.usedCars = publicCars;
+      entry.cars = publicCars;
+      entry.carIds = publicCars.map((car: any) => car?.id).filter((id: any) => id !== null && id !== undefined);
+      entry.carSummary = carSummaryFromCars(publicCars.length ? publicCars : [{ name: entry.carGroupName }]);
+      entry.usedCarSummary = entry.carSummary;
+      entry.allCarsCount = carStats.length;
+      entry.hiddenLowLapCarsCount = hiddenLowLapCars.length;
+      entry.publicCarsCount = publicCars.length;
+      entry.driversCount = entry.drivers.size;
+      entry.sessionsCount = entry.sessions.size;
+      return entry;
+    })
+    .filter((entry) => {
+      const totalLaps = Number(entry.totalLaps || 0);
+      const drivers = Number(entry.drivers?.size || entry.driversCount || 0);
+      return totalLaps >= GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 && drivers >= GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2;
+    })
+    .map((entry) => normalizeComboEntryForResponse(entry))
+    .map((item: any) => ({
+      ...item,
+      sourceKey: item.sourceKey || (String(item.key || '').split(':')[0] || 'main'),
+      sourceLabel: item.sourceLabel || (String(item.key || '').startsWith('gt4:') ? 'Supra GT4' : 'Liga GrassCutters'),
+      comboUid: item.comboUid || item.key,
+      comboKey: item.comboKey || item.key,
+      carGroupKey: item.carGroupKey || null,
+      carGroupName: item.carGroupName || item.carSummary,
+      rawCombosCount: item.mergedCombosCount || 1,
+      publicPolicy: item.publicPolicy || item.mergePolicy || gcComboUnifyMakePublicPolicyV2(),
+      totalCarsCount: item.allCarsCount || item.carsCount || (item.cars || []).length,
+      hiddenLowLapCarsCount: item.hiddenLowLapCarsCount || 0
+    }))
+    .sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
 }
 
 function gcComboUnifyMatchesFilterV1(combo: any, filterValue: string | null) {
@@ -12000,7 +12084,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       mode: dataCoreSource.source === 'mysql-mirror-v2' ? 'mysql-mirror-v2' : dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      comboCore: 'gc-combo-source-aware-v4',
+      comboCore: 'gc-combo-public-logical-v2',
       sort,
       filters: { q: q || null, source: getQueryString(req, 'source', '') || null },
       count: Math.min(items.length, limit),
@@ -12020,11 +12104,11 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       policy: {
         sourceAware: true,
         sourceParam: 'source=all/main/gt4',
-        identity: 'sourceKey + normalizedTrackFamily + trackVariant + carClassGroup'
+        identity: 'sourceKey + normalizedTrackFamily + trackVariant'
       },
       message: dataCoreSource.source === 'mysql-mirror-v2'
-        ? 'Combos generados desde Mirror V2 combinado con identidad source-aware.'
-        : 'Combos generados desde GC Data Core.'
+        ? 'Combos públicos generados desde Mirror V2 combinado con agrupación lógica por circuito.'
+        : 'Combos públicos generados desde GC Data Core con agrupación lógica por circuito.'
     });
   } catch (error) {
     console.error('[GC Combo Source Aware V4] /api/gc/combos error:', error);
