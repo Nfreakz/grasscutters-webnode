@@ -4908,7 +4908,7 @@ const home2ArchiveSeed = [];
   <script is:inline>
     (() => {
       'use strict';
-      const LOG_PREFIX = '[GC Home 5.3 Direct]';
+      const LOG_PREFIX = '[GC Home 5.4 Combo Scoped]';
       const REFRESH_MS = 12000;
       const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
 
@@ -4954,6 +4954,12 @@ const home2ArchiveSeed = [];
           payload.data?.results,
           payload.data?.rows,
           payload.data?.leaderboard,
+          payload.data?.recentLaps,
+          payload.data?.activeCombo?.leaderboard,
+          payload.data?.activeCombo?.recentLaps,
+          payload.data?.activeCombo?.bestLaps,
+          payload.activeCombo?.leaderboard,
+          payload.activeCombo?.recentLaps,
           payload.payload?.items,
           payload.payload?.rows
         ];
@@ -5091,6 +5097,161 @@ const home2ArchiveSeed = [];
         'steamGuid','steam_guid','guid','GUID','driver.steamGuid','driver.steam_guid','driver.id','playerId','player_id','driverId','driver_id','rawPlayerId','raw_player_id'
       ]) || driverName(row)).toLowerCase();
 
+      const norm = (value) => String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '')
+        .trim();
+
+      const splitSummary = (value) => String(value ?? '')
+        .split(/\s*(?:\+|,|\/|\||;| y | and )\s*/gi)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      const unique = (values = []) => Array.from(new Set(values.filter((value) => value !== undefined && value !== null && String(value).trim()).map(String)));
+      const normalizedSet = (values = []) => unique(values).map(norm).filter(Boolean);
+
+      const activeComboFromPayload = (payload) => (
+        payload?.data?.activeCombo ||
+        payload?.activeCombo ||
+        payload?.data?.data?.activeCombo ||
+        null
+      );
+
+      const rowsFromActivePayload = (payload) => {
+        const combo = activeComboFromPayload(payload) || {};
+        return dedupeRows([
+          ...arrayFrom(payload?.data?.leaderboard || []),
+          ...arrayFrom(payload?.data?.recentLaps || []),
+          ...arrayFrom(payload?.leaderboard || []),
+          ...arrayFrom(payload?.recentLaps || []),
+          ...arrayFrom(combo?.leaderboard || []),
+          ...arrayFrom(combo?.recentLaps || []),
+          ...arrayFrom(combo?.bestLaps || []),
+          ...(combo?.summary?.bestLap ? [combo.summary.bestLap] : []),
+          ...(combo?.bestLap ? [combo.bestLap] : [])
+        ]);
+      };
+
+      const criteriaFromActiveCombo = (payload, source = '') => {
+        const combo = activeComboFromPayload(payload) || {};
+        const cars = [
+          ...(Array.isArray(combo.cars) ? combo.cars : []),
+          ...(Array.isArray(combo.publicComboCars) ? combo.publicComboCars : []),
+          ...(Array.isArray(combo.allCars) ? combo.allCars : []),
+          ...(Array.isArray(combo.mainVariantAllCars) ? combo.mainVariantAllCars : [])
+        ];
+        const variants = Array.isArray(combo.variants) ? combo.variants : [];
+        const trackValues = unique([
+          combo.trackCode,
+          combo.track_code,
+          combo.canonicalTrackName,
+          combo.displayTrackName,
+          combo.trackName,
+          combo.circuitName,
+          combo.track?.code,
+          combo.track?.slug,
+          combo.track?.name,
+          combo.track?.displayName,
+          combo.mainVariant?.rawTrackCode,
+          combo.mainVariant?.rawTrackName,
+          ...variants.flatMap((variant) => [variant.rawTrackCode, variant.rawTrackName, variant.displayName])
+        ]);
+        const carValues = unique([
+          combo.carCode,
+          combo.car_code,
+          combo.carName,
+          combo.car_name,
+          combo.bestCarName,
+          combo.carSummary,
+          ...(Array.isArray(combo.carNames) ? combo.carNames : []),
+          ...(Array.isArray(combo.carList) ? combo.carList : []),
+          ...splitSummary(combo.carSummary),
+          ...cars.flatMap((car) => [car.code, car.carCode, car.name, car.displayName, car.uiName, car.carName])
+        ]);
+        const comboIds = unique([
+          combo.comboId,
+          combo.id,
+          combo.canonicalComboId,
+          combo.rawComboId,
+          combo.mainVariant?.comboId,
+          ...(Array.isArray(combo.comboIds) ? combo.comboIds : []),
+          ...(Array.isArray(combo.mainVariant?.comboIds) ? combo.mainVariant.comboIds : []),
+          ...variants.flatMap((variant) => [variant.comboId, ...(Array.isArray(variant.comboIds) ? variant.comboIds : [])])
+        ]);
+        const comboKeys = unique([
+          combo.comboKey,
+          combo.comboUid,
+          combo.canonicalKey,
+          combo.mainVariant?.variantKey,
+          ...variants.map((variant) => variant.variantKey)
+        ]);
+
+        return {
+          source: String(source || '').toLowerCase(),
+          combo,
+          trackValues,
+          carValues,
+          comboIds,
+          comboKeys,
+          trackTokens: normalizedSet(trackValues),
+          carTokens: normalizedSet(carValues),
+          comboKeyTokens: normalizedSet(comboKeys),
+          comboIdTokens: normalizedSet(comboIds)
+        };
+      };
+
+      const rowTrackValues = (row) => unique([
+        first(row, ['trackCode','track_code','Track','track.code','track.slug']),
+        first(row, ['trackName','track_name','UiTrackName','uiTrackName','track.uiName','track.name','track.displayName']),
+        first(row, ['rawTrackId','raw_track_id','track.rawId','TrackId','trackId'])
+      ]);
+
+      const rowCarValues = (row) => unique([
+        first(row, ['carCode','car_code','Car','car.code','car.slug']),
+        first(row, ['carName','car_name','UiCarName','uiCarName','car.uiName','car.name','car.displayName','carDisplay','car_display']),
+        first(row, ['rawCarId','raw_car_id','car.rawId','CarId','carId'])
+      ]);
+
+      const rowComboValues = (row) => unique([
+        first(row, ['comboKey','combo_key','comboUid','combo_uid','legacyComboKey','legacy_combo_key']),
+        first(row, ['rawComboId','raw_combo_id','ComboId','comboId','session.comboId'])
+      ]);
+
+      const tokenMatch = (rowValues, tokens) => {
+        if (!tokens.length) return true;
+        const rowTokens = normalizedSet(rowValues);
+        return rowTokens.some((rowToken) => tokens.some((token) => rowToken === token || (token.length >= 4 && rowToken.includes(token)) || (rowToken.length >= 4 && token.includes(rowToken))));
+      };
+
+      const rowMatchesActiveCombo = (row, criteria) => {
+        if (!row || !criteria) return false;
+        if (criteria.source) {
+          const rowSource = sourceKey(row);
+          if (criteria.source === 'main' && rowSource && !['main','weekly','liga'].includes(rowSource)) return false;
+          if (criteria.source === 'gt4' && rowSource && !rowSource.includes('gt4') && !rowSource.includes('supra')) return false;
+        }
+        const comboMatch = tokenMatch(rowComboValues(row), [...criteria.comboKeyTokens, ...criteria.comboIdTokens]);
+        if (comboMatch && (criteria.comboKeyTokens.length || criteria.comboIdTokens.length)) return true;
+        const trackMatch = tokenMatch(rowTrackValues(row), criteria.trackTokens);
+        const carMatch = tokenMatch(rowCarValues(row), criteria.carTokens);
+        return trackMatch && carMatch;
+      };
+
+      const scopedRowsForActiveCombo = (allRows, activePayload, source = '') => {
+        const criteria = criteriaFromActiveCombo(activePayload, source);
+        const activeRows = rowsFromActivePayload(activePayload);
+        const filtered = dedupeRows(allRows || []).filter((row) => rowMatchesActiveCombo(row, criteria));
+        const fallback = dedupeRows([...filtered, ...activeRows]);
+        return {
+          criteria,
+          rows: filtered.length ? filtered : fallback,
+          activeRows,
+          filteredRows: filtered
+        };
+      };
+
       const bestPerDriver = (rows, limit = 8) => {
         const map = new Map();
         rows.filter(isValidLap).forEach((row) => {
@@ -5107,7 +5268,7 @@ const home2ArchiveSeed = [];
         if (!host) return;
         const best = bestPerDriver(rows, 8);
         if (!best.length) {
-          host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>${esc(emptyLabel)}</strong><small>Endpoint sin vueltas válidas</small></div></div>`;
+          host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>${esc(emptyLabel)}</strong><small>Sin vueltas válidas para el combo activo</small></div></div>`;
           return;
         }
         host.innerHTML = best.map((row, index) => {
@@ -5359,35 +5520,50 @@ const home2ArchiveSeed = [];
 
       const loadDirect = async () => {
         const t = Date.now();
-        const [mainRows, gt4Rows, allRows] = await Promise.all([
-          fetchRows([
-            `/api/gc/mirror-v2/best-times?source=main&limit=160&t=${t}`,
-            `/api/gc/hotlaps2?source=main&limit=2000&t=${t}`
-          ], 12000),
-          fetchRows([
-            `/api/gc/mirror-v2/best-times?source=gt4&limit=160&t=${t}`,
-            `/api/gc/hotlaps2?source=gt4&limit=800&t=${t}`
-          ], 12000),
+
+        const [mainActivePayload, gt4ActivePayload, mainRows, gt4Rows, allRows] = await Promise.all([
+          fetchJson(`/api/gc/active-combo?source=main&recentLimit=120&leaderboardLimit=80&home=1&t=${t}`, 12000),
+          fetchJson(`/api/gc/active-combo?source=gt4&recentLimit=120&leaderboardLimit=80&home=1&t=${t}`, 12000),
+          fetchRows([`/api/gc/hotlaps2?source=main&limit=8000&t=${t}`], 15000),
+          fetchRows([`/api/gc/hotlaps2?source=gt4&limit=2000&t=${t}`], 12000),
           fetchRows([
             `/api/gc/hotlaps2?source=all&limit=800&t=${t}`,
             `/api/gc/mirror-v2/laps?source=all&limit=800&t=${t}`
           ], 12000)
         ]);
 
-        renderTop('[data-home2-combo-ranking]', mainRows, 'Sin datos Liga');
-        renderTop('[data-home2-combo-ranking-gt4]', gt4Rows, 'Sin datos GT4');
-        const combined = dedupeRows([...(allRows || []), ...(mainRows || []), ...(gt4Rows || [])]);
+        const mainScoped = scopedRowsForActiveCombo(mainRows, mainActivePayload, 'main');
+        const gt4Scoped = scopedRowsForActiveCombo(gt4Rows, gt4ActivePayload, 'gt4');
+
+        const mainTopRows = mainScoped.rows.length ? mainScoped.rows : rowsFromActivePayload(mainActivePayload);
+        const gt4TopRows = gt4Scoped.rows.length ? gt4Scoped.rows : rowsFromActivePayload(gt4ActivePayload);
+
+        renderTop('[data-home2-combo-ranking]', mainTopRows, 'Sin datos Liga');
+        renderTop('[data-home2-combo-ranking-gt4]', gt4TopRows, 'Sin datos GT4');
+
+        const combined = dedupeRows([...(allRows || []), ...(rowsFromActivePayload(mainActivePayload) || []), ...(rowsFromActivePayload(gt4ActivePayload) || [])]);
         renderRecent(combined);
-        updateComboPulse(combined.length ? combined : [...mainRows, ...gt4Rows]);
+
+        const pulseRows = mainScoped.filteredRows.length ? mainScoped.filteredRows : mainTopRows;
+        updateComboPulse(pulseRows);
+
         await renderChampionshipsDirect();
-        console.info(LOG_PREFIX, 'datos pintados', { main: mainRows.length, gt4: gt4Rows.length, all: combined.length });
+        console.info(LOG_PREFIX, 'datos pintados por combo activo', {
+          main: mainTopRows.length,
+          gt4: gt4TopRows.length,
+          allRecent: combined.length,
+          mainActiveTrack: mainScoped.criteria.trackValues.slice(0, 3),
+          mainActiveCars: mainScoped.criteria.carValues.slice(0, 6),
+          gt4ActiveTrack: gt4Scoped.criteria.trackValues.slice(0, 3),
+          gt4ActiveCars: gt4Scoped.criteria.carValues.slice(0, 6)
+        });
       };
 
       const start = () => {
-        window.clearInterval(window.__GC_HOME_5_3_INTERVAL__);
+        window.clearInterval(window.__GC_HOME_5_4_INTERVAL__);
         window.setTimeout(loadDirect, 250);
         window.setTimeout(loadDirect, 1600);
-        window.__GC_HOME_5_3_INTERVAL__ = window.setInterval(loadDirect, REFRESH_MS);
+        window.__GC_HOME_5_4_INTERVAL__ = window.setInterval(loadDirect, REFRESH_MS);
       };
 
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
