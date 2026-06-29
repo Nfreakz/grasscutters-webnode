@@ -14776,6 +14776,84 @@ async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'mai
   };
 }
 
+
+function gcHomeBootstrapBuildSourceFromLapsV11(
+  allLaps: any[],
+  sourceKey: 'main' | 'gt4',
+  leaderboardLimit: number,
+  dataSource: string | null,
+  fallbackReason: string | null
+) {
+  const sourceLaps = (allLaps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
+  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps);
+  const activeBucket = buckets[0] || null;
+  const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
+  const latestLaps = sourceLaps
+    .slice()
+    .sort((a: any, b: any) => gcHomeBootstrapLapTimestampMsV1(b) - gcHomeBootstrapLapTimestampMsV1(a))
+    .slice(0, 120)
+    .map(gcHomeBootstrapPublicLapV1);
+
+  return {
+    ok: true,
+    sourceKey,
+    sourceLabel: sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters',
+    activeCombo,
+    leaderboard: activeCombo?.leaderboard || [],
+    timingCandidates: latestLaps,
+    diagnostics: {
+      totalLaps: sourceLaps.length,
+      combos: buckets.length,
+      activeComboKey: activeCombo?.comboUid || null,
+      activeComboLaps: activeCombo?.totalLaps || 0,
+      leaderboardRows: activeCombo?.leaderboard?.length || 0,
+      dataSource: dataSource || null,
+      fallbackReason: fallbackReason ?? null
+    }
+  };
+}
+
+async function gcHomeBootstrapReadAllSourcesV11(req: express.Request, mainLimit: number, gt4Limit: number) {
+  const allReq = {
+    ...req,
+    query: {
+      ...(req.query || {}),
+      source: 'all'
+    }
+  } as express.Request;
+
+  const readSource = await readGcDataCoreSource(allReq);
+  if ((readSource as any).ok === false) {
+    const message = (readSource as any).message || 'Race Data Core no disponible.';
+    const empty = (sourceKey: 'main' | 'gt4') => ({
+      ok: false,
+      sourceKey,
+      sourceLabel: sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters',
+      activeCombo: null,
+      leaderboard: [],
+      timingCandidates: [],
+      diagnostics: {
+        totalLaps: 0,
+        combos: 0,
+        activeComboKey: null,
+        activeComboLaps: 0,
+        leaderboardRows: 0,
+        dataSource: null,
+        fallbackReason: (readSource as any).fallbackReason ?? null,
+        message
+      }
+    });
+    return { main: empty('main'), gt4: empty('gt4') };
+  }
+
+  const dataCoreSource = readSource as GcDataCoreReadResult;
+  const allLaps = dataCoreSource.laps || [];
+  return {
+    main: gcHomeBootstrapBuildSourceFromLapsV11(allLaps, 'main', mainLimit, dataCoreSource.source, dataCoreSource.fallbackReason ?? null),
+    gt4: gcHomeBootstrapBuildSourceFromLapsV11(allLaps, 'gt4', gt4Limit, dataCoreSource.source, dataCoreSource.fallbackReason ?? null)
+  };
+}
+
 function gcHomeBootstrapDeduplicateTimingV1(laps: any[]) {
   const seen = new Set<string>();
   const out: any[] = [];
@@ -14796,10 +14874,7 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
     const gt4Limit = gcHomeBootstrapNumberV1(req.query.gt4Limit, 8, 1, 20);
     const timingLimit = gcHomeBootstrapNumberV1(req.query.timingLimit, 8, 1, 30);
 
-    const [main, gt4] = await Promise.all([
-      gcHomeBootstrapReadSourceV1(req, 'main', mainLimit),
-      gcHomeBootstrapReadSourceV1(req, 'gt4', gt4Limit)
-    ]);
+    const { main, gt4 } = await gcHomeBootstrapReadAllSourcesV11(req, mainLimit, gt4Limit);
 
     const timingSheet = gcHomeBootstrapDeduplicateTimingV1([
       ...((main as any).timingCandidates || []),
@@ -14810,7 +14885,7 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
 
     res.json({
       ok: true,
-      source: 'gc-home-bootstrap-v1',
+      source: 'gc-home-bootstrap-v1.1',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: {
@@ -14837,13 +14912,13 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
         loadersExpectedOnFrontend: 1,
         recommendedFrontendRefreshMs: 60000
       },
-      message: 'Home bootstrap preparado en backend. La Home puede pintar desde este endpoint sin deducir combo activo en el navegador.'
+      message: 'Home bootstrap v1.1 preparado en backend desde una lectura única source=all; main y gt4 se separan sin carreras de caché.'
     });
   } catch (error) {
     console.error('[GC Home Bootstrap] /api/gc/home-bootstrap:', error);
     res.status(200).json({
       ok: false,
-      source: 'gc-home-bootstrap-v1',
+      source: 'gc-home-bootstrap-v1.1',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: null,
