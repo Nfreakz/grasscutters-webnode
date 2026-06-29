@@ -3883,6 +3883,29 @@ function gcMirrorV2LapUid(sourceKey: string, lap: any) {
   return crypto.createHash('sha1').update(fallback).digest('hex').slice(0, 40).replace(/^/, `${sourceKey}:hash:`);
 }
 
+
+function gcMirrorV2SourceAwareAssetDisplay(source: GcStrackerSourceDefinition, kind: 'car' | 'track', lap: any) {
+  const rawCode = kind === 'car'
+    ? compactNullableText(lap?.carCode ?? lap?.car?.code)
+    : compactNullableText(lap?.trackCode ?? lap?.track?.code);
+  const rawUiName = kind === 'car'
+    ? compactNullableText(lap?.uiCarName ?? lap?.car?.uiName)
+    : compactNullableText(lap?.uiTrackName ?? lap?.track?.uiName);
+  const rawMappedName = kind === 'car'
+    ? compactNullableText(lap?.carName ?? lap?.car?.name)
+    : compactNullableText(lap?.trackName ?? lap?.track?.name);
+
+  const fallback = rawUiName || autoTitleFromCode(rawCode, kind === 'car' ? 'Coche desconocido' : 'Circuito desconocido');
+
+  // En main conservamos el comportamiento histórico: sus alias por ID ya existen y son válidos.
+  if (source.key === 'main') return rawMappedName || fallback;
+
+  // En fuentes externas (gt4, futuras ligas) NO usamos rawMappedName si viene de mapLapRow(),
+  // porque puede traer alias globales por CarId/TrackId del servidor principal.
+  // Priorizamos nombre nativo de sTracker o, si falta, título derivado del código técnico.
+  return fallback;
+}
+
 function gcMirrorV2RowFromLap(source: GcStrackerSourceDefinition, lap: any, importedAt: string) {
   const sectorTimes = Array.isArray(lap?.sectorTimesMs) ? lap.sectorTimesMs : [];
   return {
@@ -3900,11 +3923,11 @@ function gcMirrorV2RowFromLap(source: GcStrackerSourceDefinition, lap: any, impo
     driver_name: gcMirrorV2Text(lap?.driverName ?? lap?.playerName ?? lap?.driver?.name, 191),
     car_id: gcMirrorV2Int(lap?.carId ?? lap?.car?.id),
     car_raw: gcMirrorV2Text(lap?.carCode ?? lap?.car?.code, 255),
-    car_display: gcMirrorV2Text(lap?.carName ?? lap?.car?.name ?? lap?.uiCarName ?? lap?.car?.uiName, 255),
+    car_display: gcMirrorV2Text(gcMirrorV2SourceAwareAssetDisplay(source, 'car', lap), 255),
     car_brand: gcMirrorV2Text(lap?.brand ?? lap?.car?.brand, 191),
     track_id: gcMirrorV2Int(lap?.trackId ?? lap?.track?.id),
     track_raw: gcMirrorV2Text(lap?.trackCode ?? lap?.track?.code, 255),
-    track_display: gcMirrorV2Text(lap?.trackName ?? lap?.track?.name ?? lap?.uiTrackName ?? lap?.track?.uiName, 255),
+    track_display: gcMirrorV2Text(gcMirrorV2SourceAwareAssetDisplay(source, 'track', lap), 255),
     track_length: gcMirrorV2Int(lap?.trackLength ?? lap?.track?.length),
     lap_number: gcMirrorV2Int(lap?.lapNumber ?? lap?.lapCount),
     session_time_ms: gcMirrorV2Int(lap?.sessionTimeMs ?? lap?.sessionTime),
@@ -4399,7 +4422,12 @@ async function readJoinedLapsFromMirrorV2(req?: express.Request) {
         lap_id AS LapId,
         player_in_session_id AS PlayerInSessionId,
         session_id AS SessionId,
-        combo_id AS ComboId,
+        combo_id AS RawComboId,
+        CASE
+          WHEN combo_id IS NULL THEN NULL
+          WHEN source_key = 'main' THEN combo_id
+          ELSE CAST(CONV(SUBSTRING(SHA1(CONCAT(source_key, ':combo:', COALESCE(combo_id, ''), ':', COALESCE(track_raw, ''), ':', COALESCE(car_raw, ''))), 1, 8), 16, 10) AS UNSIGNED)
+        END AS ComboId,
         player_id AS RawPlayerId,
         CASE
           WHEN player_id IS NULL THEN NULL
@@ -4411,11 +4439,21 @@ async function readJoinedLapsFromMirrorV2(req?: express.Request) {
         0 AS IsOnline,
         0 AS Whitelisted,
         0 AS Anonymized,
-        car_id AS CarId,
+        car_id AS RawCarId,
+        CASE
+          WHEN car_id IS NULL THEN NULL
+          WHEN source_key = 'main' THEN car_id
+          ELSE CAST(CONV(SUBSTRING(SHA1(CONCAT(source_key, ':car:', COALESCE(car_raw, car_id, ''))), 1, 8), 16, 10) AS UNSIGNED)
+        END AS CarId,
         car_raw AS Car,
         car_display AS UiCarName,
         car_brand AS Brand,
-        track_id AS TrackId,
+        track_id AS RawTrackId,
+        CASE
+          WHEN track_id IS NULL THEN NULL
+          WHEN source_key = 'main' THEN track_id
+          ELSE CAST(CONV(SUBSTRING(SHA1(CONCAT(source_key, ':track:', COALESCE(track_raw, track_id, ''))), 1, 8), 16, 10) AS UNSIGNED)
+        END AS TrackId,
         track_raw AS Track,
         track_display AS UiTrackName,
         track_length AS TrackLength,
@@ -4477,11 +4515,24 @@ async function readJoinedLapsFromMirrorV2(req?: express.Request) {
       lap.championshipKey = compactNullableText(row.ChampionshipKey);
       lap.sourceServerIp = compactNullableText(row.SourceServerIp);
       lap.rawPlayerId = numberOrNull(row.RawPlayerId);
+      lap.rawCarId = numberOrNull(row.RawCarId);
+      lap.rawTrackId = numberOrNull(row.RawTrackId);
+      lap.rawComboId = numberOrNull(row.RawComboId);
       lap.lapUid = compactNullableText(row.LapUid);
       lap.driver = {
         ...lap.driver,
         sourceKey: lap.sourceKey,
         rawId: lap.rawPlayerId
+      };
+      lap.car = {
+        ...lap.car,
+        sourceKey: lap.sourceKey,
+        rawId: lap.rawCarId
+      };
+      lap.track = {
+        ...lap.track,
+        sourceKey: lap.sourceKey,
+        rawId: lap.rawTrackId
       };
       lap.session = {
         ...lap.session,
@@ -5481,8 +5532,16 @@ function getComboKeyFromParts(trackId: unknown, carId: unknown) {
   return `${track}-${car}`;
 }
 
-function getComboKeyFromLap(lap: ComboLap) {
+function getLegacyComboKeyFromLap(lap: ComboLap) {
   return getComboKeyFromParts(lap.track?.id, lap.car?.id);
+}
+
+function getComboKeyFromLap(lap: ComboLap) {
+  const sourceKey = compactNullableText((lap as any).sourceKey);
+  const trackToken = compactNullableText(lap.track?.code) ?? compactNullableText((lap as any).rawTrackId) ?? compactNullableText(lap.track?.id);
+  const carToken = compactNullableText(lap.car?.code) ?? compactNullableText((lap as any).rawCarId) ?? compactNullableText(lap.car?.id);
+  if (sourceKey && trackToken && carToken) return `${sourceKey}:${trackToken}:${carToken}`;
+  return getLegacyComboKeyFromLap(lap);
 }
 
 function getComboIdFromLap(lap: ComboLap) {
@@ -5491,10 +5550,18 @@ function getComboIdFromLap(lap: ComboLap) {
 }
 
 function getComboUrlFromLap(lap: ComboLap) {
-  const comboId = getComboIdFromLap(lap);
-  if (comboId) return `/combos/${comboId}`;
+  const sourceKey = compactNullableText((lap as any).sourceKey);
+  const trackCode = compactNullableText(lap.track?.code);
+  const carCode = compactNullableText(lap.car?.code);
 
-  const legacyKey = getComboKeyFromLap(lap);
+  if (sourceKey && sourceKey !== 'main' && trackCode && carCode) {
+    return `/combos?source=${encodeURIComponent(sourceKey)}&track=${encodeURIComponent(trackCode)}&car=${encodeURIComponent(carCode)}`;
+  }
+
+  const comboId = getComboIdFromLap(lap);
+  if (comboId) return sourceKey && sourceKey !== 'main' ? `/combos/${comboId}?source=${encodeURIComponent(sourceKey)}` : `/combos/${comboId}`;
+
+  const legacyKey = getLegacyComboKeyFromLap(lap);
   return legacyKey ? `/combos/${lap.track?.id}/${lap.car?.id}` : null;
 }
 
@@ -5514,7 +5581,12 @@ function compactLapForCombo(lap: ComboLap | null) {
     trackId: lap.track?.id ?? null,
     trackName: lap.track?.name ?? null,
     trackCode: lap.track?.code ?? null,
+    rawComboId: (lap as any).rawComboId ?? null,
+    rawCarId: (lap as any).rawCarId ?? (lap.car as any)?.rawId ?? null,
+    rawTrackId: (lap as any).rawTrackId ?? (lap.track as any)?.rawId ?? null,
+    legacyComboKey: getLegacyComboKeyFromLap(lap),
     comboKey: getComboKeyFromLap(lap),
+    comboUid: getComboKeyFromLap(lap),
     comboUrl: getComboUrlFromLap(lap),
     lapTimeMs: lap.lapTimeMs,
     lapTime: lap.lapTime,
