@@ -60,6 +60,15 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
 
       <div class="gc-field">
+        <label for="comboSource">Servidor</label>
+        <select class="gc-select" id="comboSource">
+          <option value="all">Todos</option>
+          <option value="main">Liga GrassCutters</option>
+          <option value="gt4">Supra GT4</option>
+        </select>
+      </div>
+
+      <div class="gc-field">
         <label for="comboActivity">Actividad</label>
         <select class="gc-select" id="comboActivity">
           <option value="all">Todos</option>
@@ -1127,6 +1136,10 @@ import AppLayout from '../layouts/AppLayout.astro';
   <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline>
     (() => {
+      window.GCCombosLegacyNetworkRemoved = true;
+      console.info('[GC /combos] legacy polished loader desactivado; manda Data Core único.');
+      return;
+
       const els = {
         total: document.getElementById('comboTotal'),
         visible: document.getElementById('comboVisible'),
@@ -1139,6 +1152,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         metricCars: document.getElementById('metricCars'),
 
         search: document.getElementById('comboSearch'),
+        source: document.getElementById('comboSource'),
         activity: document.getElementById('comboActivity'),
         sort: document.getElementById('comboSort'),
         reload: document.getElementById('reloadCombos'),
@@ -1840,6 +1854,11 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       if (!els.cards) return;
 
+      const initialParams = new URLSearchParams(window.location.search || '');
+      const initialSource = initialParams.get('source');
+      if (els.source && ['all','main','gt4'].includes(initialSource || '')) els.source.value = initialSource;
+      if (els.search && initialParams.get('q')) els.search.value = initialParams.get('q');
+
       const state = {
         combos: [],
         visibleLimit: 12,
@@ -1928,8 +1947,8 @@ import AppLayout from '../layouts/AppLayout.astro';
           });
       };
 
-      const comboId = (combo) => pick(combo, ['canonicalComboId','comboId','id']);
-      const comboUrl = (combo) => combo?.url || (comboId(combo) != null ? `/combos/${encodeURIComponent(comboId(combo))}` : '/combos');
+      const comboId = (combo) => pick(combo, ['comboUid','comboKey','canonicalComboId','comboId','id']);
+      const comboUrl = (combo) => combo?.url || combo?.comboUrl || (comboId(combo) != null ? `/combos?combo=${encodeURIComponent(comboId(combo))}` : '/combos');
       const totalLaps = (combo) => number(pick(combo, ['totalLaps','stats.totalLaps','laps']), 0);
       const validLaps = (combo) => number(pick(combo, ['validLaps','stats.validLaps']), 0);
       const driversCount = (combo) => number(pick(combo, ['driversCount','stats.driversCount','pilotsCount','totalDrivers']), 0);
@@ -2185,7 +2204,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           ...state.lastGood
         };
 
-        console.info('[GC /combos Data Core Primary v1]', {
+        console.info('[GC /combos Unified Logical v1]', {
           loaded: state.combos.length,
           visible: rows.length,
           summary: state.summary
@@ -2214,14 +2233,19 @@ import AppLayout from '../layouts/AppLayout.astro';
         ensureCoreBadge('warn', 'Actualizando datos');
 
         try {
-          const data = await fetchCoreJson('/api/gc/combos?source=all&limit=1000&sort=recent');
+          const source = ['all','main','gt4'].includes(els.source?.value || '') ? els.source.value : 'all';
+          const url = new URL('/api/gc/combos', window.location.origin);
+          url.searchParams.set('source', source);
+          url.searchParams.set('limit', '1000');
+          url.searchParams.set('sort', els.sort?.value || 'recent');
+          const data = await fetchCoreJson(url.pathname + url.search);
           state.combos = items(data);
           state.summary = data;
 
           if (!state.lastGood) state.visibleLimit = 12;
           drawCore();
         } catch (error) {
-          console.warn('[GC /combos Data Core Primary v1] Core unavailable, legacy combos remain active:', error);
+          console.warn('[GC /combos Unified Logical v1] Core unavailable, legacy combos remain active:', error);
           document.documentElement.dataset.gcCombosDataCore = state.lastGood ? 'primary-stale' : 'fallback';
           ensureCoreBadge('error', state.lastGood ? 'Datos guardados' : 'Datos básicos');
           window.GCCombosDataCorePrimary = { status: state.lastGood ? 'stale' : 'fallback', error: error?.message || String(error), ...state.lastGood };
@@ -2231,9 +2255,16 @@ import AppLayout from '../layouts/AppLayout.astro';
         }
       }
 
-      [els.search, els.activity, els.sort].forEach((input) => {
+      [els.search, els.activity, els.sort, els.source].forEach((input) => {
         input?.addEventListener('input', drawCore);
-        input?.addEventListener('change', drawCore);
+        input?.addEventListener('change', () => {
+          if (input === els.source) {
+            state.visibleLimit = 12;
+            loadCore();
+            return;
+          }
+          drawCore();
+        });
       });
 
       els.loadMore?.addEventListener('click', () => {
@@ -2245,6 +2276,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       els.clear?.addEventListener('click', () => {
         if (els.search) els.search.value = '';
+        if (els.source) els.source.value = 'all';
         if (els.activity) els.activity.value = 'all';
         if (els.sort) els.sort.value = 'recent';
         state.visibleLimit = 12;
