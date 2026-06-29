@@ -5022,14 +5022,14 @@ const home2ArchiveSeed = [];
 
 <script>
 
-/* GC_HOME_PACK_5_9_TIMING_MATCH_HOTLAPS_START */
+/* GC_HOME_PACK_5_10_CHAMPIONSHIPS_ONLY_FIX_START */
 (() => {
-  const PACK = '5.9';
-  if (window.__GC_HOME_FINAL_LOADER_V59__) {
+  const PACK = '5.10';
+  if (window.__GC_HOME_FINAL_LOADER_V510__) {
     console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
     return;
   }
-  window.__GC_HOME_FINAL_LOADER_V59__ = true;
+  window.__GC_HOME_FINAL_LOADER_V510__ = true;
 
   const root = document.querySelector('[data-gc-home2]');
   if (!root) return;
@@ -5387,32 +5387,201 @@ const home2ArchiveSeed = [];
     setText('[data-home2-standout-duel-meta]', best.length >= 2 ? `gap ${((rowTimeMs(best[1]) - rowTimeMs(best[0])) / 1000).toFixed(3)} s` : 'diferencias del combo');
   };
 
-  const normalizeChampRows = (payload) => {
-    const p = payload?.data || payload || {};
-    const arrays = [p.standings, p.classification, p.results, p.drivers, p.registeredDrivers, p.entrants, payload?.standings, payload?.classification, payload?.drivers, payload?.registeredDrivers];
-    for (const arr of arrays) if (Array.isArray(arr) && arr.length) return arr;
+
+  const champPayloadRoot = (payload) => {
+    const data = payload?.data || payload || {};
+    return data.championship || payload?.championship || data;
+  };
+
+  const champArray = (...values) => {
+    for (const value of values) {
+      if (Array.isArray(value) && value.length) return value;
+    }
     return [];
+  };
+
+  const normalizeChampRows = (payload) => {
+    const data = payload?.data || payload || {};
+    const champ = champPayloadRoot(payload);
+    return champArray(
+      champ.standings,
+      champ.classification,
+      champ.results,
+      data.standings,
+      data.classification,
+      data.results,
+      payload?.standings,
+      payload?.classification,
+      champ.registeredDrivers,
+      data.registeredDrivers,
+      payload?.registeredDrivers,
+      champ.drivers,
+      data.drivers,
+      payload?.drivers,
+      champ.entrants,
+      data.entrants,
+      payload?.entrants
+    );
+  };
+
+  const normalizeChampEvents = (payload) => {
+    const data = payload?.data || payload || {};
+    const champ = champPayloadRoot(payload);
+    return champArray(
+      champ.events,
+      data.events,
+      payload?.events,
+      champ.calendar,
+      data.calendar,
+      payload?.calendar,
+      champ.sessions,
+      data.sessions,
+      payload?.sessions
+    );
+  };
+
+  const champDateText = (value) => {
+    if (!value) return 'Fecha por confirmar';
+    const numeric = Number(value);
+    const ms = Number.isFinite(numeric) && numeric > 0 ? (numeric > 1e12 ? numeric : numeric * 1000) : Date.parse(String(value));
+    if (!Number.isFinite(ms)) return String(value).slice(0, 36) || 'Fecha por confirmar';
+    try {
+      return new Date(ms).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return new Date(ms).toLocaleString();
+    }
+  };
+
+  const champTrackLabel = (event) => first(event || {}, [
+    'track', 'trackName', 'track_name', 'canonicalTrackName', 'trackDisplayName', 'circuitName',
+    'track.name', 'track.displayName', 'track.code', 'track.slug'
+  ]);
+
+  const champEventName = (event, source) => {
+    const raw = first(event || {}, ['name', 'Name', 'title', 'Title', 'eventName', 'EventName']);
+    const track = champTrackLabel(event);
+    return raw || track || (source === 'gt4' ? 'Próxima ronda GT4' : 'Próxima ronda Liga');
+  };
+
+  const champPoints = (row) => {
+    const value = first(row || {}, ['points', 'pts', 'score', 'totalPoints', 'Points', 'TotalPoints']);
+    return value === '' || value === null || value === undefined ? '0' : String(value);
+  };
+
+  const champDriverName = (row, index = 0) => {
+    const value = first(row || {}, ['driverName', 'driver_name', 'name', 'Name', 'displayName', 'playerName', 'steamName', 'DriverName', 'driver.name', 'player.name']);
+    return String(value || `Piloto ${index + 1}`).toUpperCase();
+  };
+
+  const champPosition = (row, index = 0) => {
+    const value = first(row || {}, ['position', 'pos', 'rank', 'Position', 'Rank']);
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : index + 1;
+  };
+
+  const renderChampBadge = (position) => {
+    const pos = Number(position);
+    if (pos === 1) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold gc-home2-ranking-medal" aria-label="1º">🥇</span>';
+    if (pos === 2) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--silver gc-home2-ranking-medal" aria-label="2º">🥈</span>';
+    if (pos === 3) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--bronze gc-home2-ranking-medal" aria-label="3º">🥉</span>';
+    return `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain gc-home2-ranking-medal">${htmlEscape(pos || position || '--')}</span>`;
+  };
+
+  const renderChampRows = (host, rows) => {
+    if (!host) return 0;
+    const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (!list.length) {
+      if (host.dataset.gcHydrated !== '1') {
+        host.innerHTML = '<div class="gc-home2-champ-standing-row gc-home2-champ-standing-row--plain"><span class="gc-home2-champ-standing-pos"><span class="gc-home2-rank-badge gc-home2-rank-badge--plain gc-home2-ranking-medal">--</span></span><div class="gc-home2-champ-standing-meta"><strong>Sin clasificación visible</strong><small>ACSM</small></div><span class="gc-home2-champ-standing-points"><strong>--</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="/images/pilot-avatar-default.png" alt="" width="30" height="30" loading="lazy" decoding="async" /></div>';
+      }
+      return 0;
+    }
+    host.dataset.gcHydrated = '1';
+    host.innerHTML = list.slice(0, 6).map((row, index) => {
+      const pos = champPosition(row, index);
+      const tone = pos === 1 ? 'gold' : pos === 2 ? 'silver' : pos === 3 ? 'bronze' : '';
+      const rowClass = tone ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${tone}` : ' gc-home2-champ-standing-row--plain';
+      const name = champDriverName(row, index);
+      const pts = champPoints(row);
+      const av = htmlEscape(avatar(row));
+      return `<div class="gc-home2-champ-standing-row${rowClass}"><span class="gc-home2-champ-standing-pos">${renderChampBadge(pos)}</span><div class="gc-home2-champ-standing-meta"><strong>${htmlEscape(name)}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${htmlEscape(pts)}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${av}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" /></div>`;
+    }).join('');
+    return list.length;
+  };
+
+  const setChampImage = async (block, event) => {
+    const img = q('[data-home2-champ-track-image]', block);
+    if (!img) return;
+    const label = champTrackLabel(event) || champEventName(event, block.dataset.home2ChampionshipSource || 'weekly');
+    const s = slug(label);
+    const keys = Array.from(new Set([s, s.replace(/^acu_/, ''), s.replace(/^00_/, ''), s.split('_').pop()].filter(Boolean)));
+    const candidates = [];
+    keys.forEach((k) => candidates.push(`/images/tracks/${k}.webp`, `/images/tracks/${k}.jpg`, `/images/tracks/${k}.png`));
+    for (const src of candidates) {
+      if (await imageExists(src)) {
+        img.src = src;
+        return;
+      }
+    }
   };
 
   const renderChampionshipBlock = async (source) => {
     const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
-    if (!block) return;
-    const payload = await fetchJson(`/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${Date.now()}`, 9000);
-    if (!payload) return;
-    const data = payload.data || payload;
-    setText('[data-home2-champ-name]', first(data, ['name', 'title', 'championship.name', 'championshipName']) || (source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
-    const events = getArray(first(data, ['events']) || data.events || data.calendar || data.sessions || []);
-    const standings = normalizeChampRows(payload);
-    if (events.length) setText('[data-home2-champ-events]', events.length, block);
-    if (standings.length) setText('[data-home2-champ-entrants]', standings.length, block);
-    const host = q('[data-home2-champ-drivers]', block);
-    if (host && standings.length) {
-      host.innerHTML = standings.slice(0, 6).map((row, index) => {
-        const name = first(row, ['driverName', 'name', 'displayName', 'playerName', 'steamName']) || 'Piloto';
-        const pts = first(row, ['points', 'pts', 'score', 'totalPoints']) || '0';
-        return `<div><strong>${index + 1}. ${htmlEscape(name)}</strong><small>${htmlEscape(pts)} pts</small></div>`;
-      }).join('');
+    if (!block) return { source, ok: false, reason: 'block-missing' };
+
+    const stamp = Date.now();
+    const payload = await fetchFirst([
+      `/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${stamp}`,
+      `/api/community/acsr-championship?source=${encodeURIComponent(source)}&refresh=1&home=1&t=${stamp}`
+    ], 12000);
+
+    if (!payload || payload.ok === false) {
+      console.warn(`[GC Home ${PACK}] campeonato no disponible`, source, payload?.message || 'sin payload');
+      return { source, ok: false, reason: payload?.message || 'no-payload' };
     }
+
+    const data = payload?.data || payload || {};
+    const champ = champPayloadRoot(payload);
+    const events = normalizeChampEvents(payload);
+    const rows = normalizeChampRows(payload);
+    const stats = champ.stats || data.stats || payload.stats || {};
+    const next = champ.nextEvent || data.nextEvent || payload.nextEvent || events.find((event) => String(first(event, ['status', 'Status']) || '').toLowerCase() !== 'completed') || events[0] || null;
+    const standingsForCount = champArray(champ.standings, data.standings, payload.standings);
+    const registeredForCount = champArray(champ.registeredDrivers, data.registeredDrivers, payload.registeredDrivers, rows);
+
+    const fallbackName = source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters';
+    setText('[data-home2-champ-name]', first(champ, ['name', 'title']) || first(data, ['name', 'title', 'championshipName']) || fallbackName, block);
+    setText('[data-home2-champ-sub]', source === 'gt4' ? 'Clasificación, eventos y calendario del servidor GT4' : 'Clasificación, eventos y calendario', block);
+    setText('[data-home2-champ-events]', stats.events ?? events.length ?? '--', block);
+    setText('[data-home2-champ-completed]', stats.completedEvents ?? stats.completed ?? events.filter((event) => String(first(event, ['status', 'Status']) || '').toLowerCase() === 'completed').length ?? '--', block);
+    setText('[data-home2-champ-entrants]', stats.entrants ?? registeredForCount.length ?? rows.length ?? '--', block);
+    setText('[data-home2-champ-classes]', stats.classes ?? (Array.isArray(champ.classes) ? champ.classes.length : '--'), block);
+
+    if (next) {
+      const title = champEventName(next, source);
+      const date = first(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime', 'StartTime']);
+      const carSummary = first(next, ['carSummary', 'cars', 'carName', 'car']);
+      setText('[data-home2-champ-next]', title, block);
+      setText('[data-home2-champ-date]', champDateText(date), block);
+      setText('[data-home2-champ-next-meta]', [champTrackLabel(next), carSummary].filter(Boolean).join(' · ') || 'Próxima sesión', block);
+      await setChampImage(block, next);
+    } else {
+      setText('[data-home2-champ-next]', 'Calendario activo', block);
+      setText('[data-home2-champ-date]', 'Fecha por confirmar', block);
+      setText('[data-home2-champ-next-meta]', 'Esperando próxima sesión ACSM', block);
+    }
+
+    const host = q('[data-home2-champ-drivers]', block);
+    const renderedRows = renderChampRows(host, rows);
+
+    const full = q('[data-home2-champ-full]', block);
+    const signup = q('[data-home2-champ-signup]', block);
+    const url = data.acsm?.championshipUrl || payload.acsm?.championshipUrl || champ.url || '';
+    const signUpUrl = data.acsm?.signUpUrl || payload.acsm?.signUpUrl || '';
+    if (full && url) full.href = url;
+    if (signup && signUpUrl) signup.href = signUpUrl;
+
+    return { source, ok: true, events: events.length, rows: renderedRows, standings: standingsForCount.length, registered: registeredForCount.length };
   };
 
   const refresh = async () => {
@@ -5441,8 +5610,7 @@ const home2ArchiveSeed = [];
     await setHero(mainCombo, renderedMain.length ? renderedMain : mainPanelRows);
     renderPulse([...filterRowsForCombo(mainAll, mainCombo, 'main'), ...mainPanelRows]);
     const timingRows = renderRecent(allHotlaps, mainAll, gt4All);
-    renderChampionshipBlock('weekly');
-    renderChampionshipBlock('gt4');
+    const champResults = await Promise.all([renderChampionshipBlock('weekly'), renderChampionshipBlock('gt4')]);
 
     console.info(`[GC Home ${PACK} Final]`, {
       mainActiveTrack: comboTrack(mainCombo, mainPanelRows),
@@ -5451,7 +5619,8 @@ const home2ArchiveSeed = [];
       gt4Rows: renderedGt4.length,
       timingRows: timingRows.length,
       timingMainRows: mainAll.length,
-      timingGt4Rows: gt4All.length
+      timingGt4Rows: gt4All.length,
+      championships: champResults
     });
   };
 
@@ -5464,11 +5633,11 @@ const home2ArchiveSeed = [];
     finally { running = false; }
   };
 
-  window.GCHomeFinalV59 = { refresh: run };
+  window.GCHomeFinalV510 = { refresh: run };
   run();
   window.setInterval(run, REFRESH_MS);
 })();
-/* GC_HOME_PACK_5_9_TIMING_MATCH_HOTLAPS_END */
+/* GC_HOME_PACK_5_10_CHAMPIONSHIPS_ONLY_FIX_END */
 
 </script>
 </MarketingLayout>
