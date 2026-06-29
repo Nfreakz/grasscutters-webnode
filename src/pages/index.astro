@@ -3395,7 +3395,7 @@ const home2ArchiveSeed = [];
 
       const rowTrackMatches = (row, trackName) => {
         if (!trackName) return true;
-        const rowTrack = firstValue(row, ['trackName', 'trackDisplayName', 'trackVisibleName', 'track.name', 'track.displayName', 'Track', 'track']);
+        const rowTrack = firstValue(row, ['trackName', 'trackCode', 'canonicalTrackName', 'uiTrackName', 'trackDisplayName', 'trackVisibleName', 'track.name', 'track.code', 'track.uiName', 'track.displayName', 'Track', 'track']);
         if (!rowTrack) return true;
         // GC_HOME_TRACK_RESOLVER_V3_MATCHES
         if (window.GCHomeTrackResolver?.matchesTrack) {
@@ -3410,7 +3410,7 @@ const home2ArchiveSeed = [];
 
       const rowCarMatches = (row, activeCars = []) => {
         if (!activeCars.length) return true;
-        const rowCar = firstValue(row, ['carName', 'carDisplayName', 'carVisibleName', 'car.name', 'car.displayName', 'Car', 'car']);
+        const rowCar = firstValue(row, ['carName', 'carCode', 'canonicalCarName', 'uiCarName', 'carDisplayName', 'carVisibleName', 'car.name', 'car.code', 'car.uiName', 'car.displayName', 'Car', 'car']);
         if (!rowCar) return true;
         const carSlug = slugify(rowCar);
         return activeCars.some((car) => {
@@ -4693,10 +4693,15 @@ const home2ArchiveSeed = [];
         setText('[data-home2-updated]', `ACTUALIZADO ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
 
         const homeFetchStamp = Date.now();
-        const [homeSummaryPayload, liveTimingPayload, hotlapsAllPayload, hotlapsMainPayload, hotlapsGt4Payload] = await Promise.all([
+        const [homeSummaryPayload, gt4ActivePayload, liveTimingPayload, hotlapsAllPayload, hotlapsMainPayload, hotlapsGt4Payload] = await Promise.all([
           fetchFirstJson([
-            `/api/gc/home-summary?limit=25&home=1&t=${homeFetchStamp}`,
-            `/api/gc/active-combo?recentLimit=20&leaderboardLimit=25&home=1&t=${homeFetchStamp}`
+            `/api/gc/active-combo?source=main&recentLimit=50&leaderboardLimit=50&home=1&t=${homeFetchStamp}`,
+            `/api/gc/home-summary?source=main&limit=25&home=1&t=${homeFetchStamp}`,
+            `/api/gc/home-summary?limit=25&home=1&t=${homeFetchStamp}`
+          ], 9000),
+          fetchFirstJson([
+            `/api/gc/active-combo?source=gt4&recentLimit=50&leaderboardLimit=50&home=1&t=${homeFetchStamp}`,
+            `/api/gc/home-summary?source=gt4&limit=25&home=1&t=${homeFetchStamp}`
           ], 9000),
           fetchJson(`/api/live-timing?home=1&t=${homeFetchStamp}`, 3500),
           fetchJson(`/api/gc/hotlaps2?source=all&limit=300&home=1&t=${homeFetchStamp}`, 10000),
@@ -4728,6 +4733,49 @@ const home2ArchiveSeed = [];
           homeSummaryData.recentLaps ||
           homeSummaryData.laps ||
           [];
+
+        const gt4ActiveData = gt4ActivePayload?.data || {};
+        const gt4ActiveCombo =
+          gt4ActivePayload?.activeCombo ||
+          gt4ActiveData.activeCombo ||
+          gt4ActivePayload?.combo ||
+          {};
+        const gt4ActiveLeaderboard =
+          gt4ActivePayload?.leaderboard ||
+          gt4ActivePayload?.topComboTimes ||
+          gt4ActiveData.leaderboard ||
+          gt4ActiveCombo?.leaderboard ||
+          [];
+
+        const comboFieldArray = (source, keys = ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']) => {
+          const raw = firstValue(source || {}, keys);
+          if (Array.isArray(raw)) {
+            return raw.map((item) => typeof item === 'string'
+              ? item
+              : firstValue(item, ['name', 'carName', 'displayName', 'uiName', 'code', 'carCode'])
+            ).filter(Boolean);
+          }
+          return String(raw || '').split(',').map((value) => value.trim()).filter(Boolean);
+        };
+
+        const comboTrackLabel = (source, fallbackRows = []) => {
+          const direct = firstValue(source || {}, [
+            'trackName', 'trackCode', 'canonicalTrackName', 'uiTrackName', 'trackDisplayName',
+            'track.name', 'track.code', 'track.uiName', 'track.displayName', 'circuitName', 'name'
+          ]);
+          if (direct) return direct;
+          const row = getArray(fallbackRows).find(Boolean) || null;
+          return firstValue(row || {}, ['trackName', 'trackCode', 'track.name', 'track.code', 'track.uiName']) || '';
+        };
+
+        const comboCarsOrFallback = (source, fallbackRows = []) => {
+          const fromCombo = comboFieldArray(source);
+          if (fromCombo.length) return fromCombo;
+          const latest = getArray(fallbackRows).find(Boolean) || null;
+          const car = firstValue(latest || {}, ['carName', 'carCode', 'car.name', 'car.code', 'car.uiName']);
+          return car ? [car] : [];
+        };
+
         const combosPayload = homeActiveCombo && Object.keys(homeActiveCombo).length
           ? { ok: true, activeCombo: homeActiveCombo, items: [homeActiveCombo] }
           : null;
@@ -4767,7 +4815,7 @@ const home2ArchiveSeed = [];
         const trackPresentationKey = getHomeTrackPresentationKey(trackPresentation);
         const presentationChanged = !homeTrackPresentationCache || homeTrackPresentationCache.key !== trackPresentationKey;
         const cars = firstValue(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars']);
-        const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const carList = Array.isArray(cars) ? cars.map((car) => typeof car === 'string' ? car : firstValue(car, ['name', 'carName', 'displayName', 'uiName', 'code', 'carCode'])).filter(Boolean) : String(cars || '').split(',').map((s) => s.trim()).filter(Boolean);
         const totalComboLaps = firstValue(combo, ['totalLaps', 'validLaps', 'lapsCount', 'summary.totalLaps']);
         const comboDrivers = firstValue(combo, ['driversCount', 'pilotsCount', 'summary.driversCount']);
         const bestDriver = firstValue(combo, ['bestDriverName', 'bestPilotName', 'leaderboard.0.driverName', 'best.driverName']) || '--';
@@ -4858,21 +4906,45 @@ const home2ArchiveSeed = [];
         await updateReliableServerPanel(combinedRecentRows, combo, raceData || {});
 
         const comboDetailLeaderboardRows = await fetchComboDetailLeaderboard(combo);
+        const mainActiveTrack = trackAssetName || rawTrackName || track || comboTrackLabel(combo, mainHotlapRows);
+        const mainActiveCars = carList.length ? carList : comboCarsOrFallback(combo, mainHotlapRows);
         const activeComboRankingRows = comboDetailLeaderboardRows.length
           ? comboDetailLeaderboardRows
-          : comboRankingRowsFromCombo(combo, trackAssetName || rawTrackName || track, carList);
-        const mainBestRows = bestRowsForCombo(mainHotlapRows, '', []);
+          : comboRankingRowsFromCombo(combo, mainActiveTrack, mainActiveCars);
+        const mainBestRows = bestRowsForCombo(mainHotlapRows, mainActiveTrack, mainActiveCars);
         const mainRowsForPanel = mainBestRows.length ? mainBestRows : activeComboRankingRows;
-        const renderedComboRankingRows = renderComboRanking(mainRowsForPanel, '', [], { preserveOnEmpty: true });
+        const renderedComboRankingRows = renderComboRanking(mainRowsForPanel, mainActiveTrack, mainActiveCars, { preserveOnEmpty: true });
         if (!renderedComboRankingRows.length) {
-          console.warn('[GC Home] Mejores tiempos Liga no se ha sobrescrito: faltan filas del endpoint main y del combo activo', {
+          console.warn('[GC Home 5.5] Liga preservada: no hay filas válidas para el combo activo', {
+            source: 'main',
+            track: mainActiveTrack,
+            cars: mainActiveCars,
             mainRows: mainHotlapRows.length,
             comboRows: activeComboRankingRows.length
           });
         }
 
-        const gt4BestRows = bestRowsForCombo(gt4HotlapRows, '', []);
-        renderComboRanking(gt4BestRows, '', [], { selector: '[data-home2-combo-ranking-gt4]', skipHeroSync: true });
+        const gt4ActiveTrack = comboTrackLabel(gt4ActiveCombo, gt4HotlapRows);
+        const gt4ActiveCars = comboCarsOrFallback(gt4ActiveCombo, gt4HotlapRows);
+        const gt4DetailRows = getArray(gt4ActiveLeaderboard).length
+          ? getArray(gt4ActiveLeaderboard)
+          : comboRankingRowsFromCombo(gt4ActiveCombo, gt4ActiveTrack, gt4ActiveCars);
+        const gt4BestRows = bestRowsForCombo(gt4HotlapRows, gt4ActiveTrack, gt4ActiveCars);
+        const gt4RowsForPanel = gt4BestRows.length ? gt4BestRows : gt4DetailRows;
+        const renderedGt4Rows = renderComboRanking(gt4RowsForPanel, gt4ActiveTrack, gt4ActiveCars, {
+          selector: '[data-home2-combo-ranking-gt4]',
+          skipHeroSync: true,
+          preserveOnEmpty: true
+        });
+        if (!renderedGt4Rows.length) {
+          console.warn('[GC Home 5.5] GT4 preservado: no hay filas válidas para el combo activo', {
+            source: 'gt4',
+            track: gt4ActiveTrack,
+            cars: gt4ActiveCars,
+            gt4Rows: gt4HotlapRows.length,
+            comboRows: gt4DetailRows.length
+          });
+        }
 
 
         const comboStandoutsPayload = await comboStandoutsPayloadPromise;
@@ -4886,6 +4958,14 @@ const home2ArchiveSeed = [];
         ], trackAssetName || rawTrackName || track, carList);
 
         await renderChampionship();
+        console.info('[GC Home 5.5 Single Loader]', 'home actualizada sin cargadores duplicados', {
+          mainTrack: mainActiveTrack,
+          mainCars: mainActiveCars,
+          gt4Track: gt4ActiveTrack,
+          gt4Cars: gt4ActiveCars,
+          mainRows: renderedComboRankingRows.length,
+          gt4Rows: renderedGt4Rows.length
+        });
       };
 
       let homeLiveRefreshRunning = false;
@@ -4905,671 +4985,7 @@ const home2ArchiveSeed = [];
   </script>
 
 
-  <script is:inline>
-    (() => {
-      'use strict';
-      const LOG_PREFIX = '[GC Home 5.4 Combo Scoped]';
-      const REFRESH_MS = 12000;
-      const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
 
-      const $ = (selector, scope = document) => scope.querySelector(selector);
-      const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
-      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-
-      const get = (obj, path) => {
-        if (!obj || !path) return undefined;
-        const parts = String(path).split('.');
-        let current = obj;
-        for (const part of parts) {
-          if (current === undefined || current === null) return undefined;
-          current = current[part];
-        }
-        return current;
-      };
-
-      const first = (obj, keys = []) => {
-        if (!obj) return '';
-        for (const key of keys) {
-          const value = String(key).includes('.') ? get(obj, key) : obj[key];
-          if (value !== undefined && value !== null && value !== '') return value;
-        }
-        return '';
-      };
-
-      const arrayFrom = (payload) => {
-        if (!payload) return [];
-        if (Array.isArray(payload)) return payload;
-        const candidates = [
-          payload.items,
-          payload.laps,
-          payload.hotlaps,
-          payload.results,
-          payload.rows,
-          payload.leaderboard,
-          payload.standings,
-          payload.drivers,
-          payload.data,
-          payload.data?.items,
-          payload.data?.laps,
-          payload.data?.results,
-          payload.data?.rows,
-          payload.data?.leaderboard,
-          payload.data?.recentLaps,
-          payload.data?.activeCombo?.leaderboard,
-          payload.data?.activeCombo?.recentLaps,
-          payload.data?.activeCombo?.bestLaps,
-          payload.activeCombo?.leaderboard,
-          payload.activeCombo?.recentLaps,
-          payload.payload?.items,
-          payload.payload?.rows
-        ];
-        return candidates.find(Array.isArray) || [];
-      };
-
-      const fetchJson = async (url, timeoutMs = 10000) => {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const response = await fetch(url, {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-            cache: 'no-store',
-            signal: controller.signal
-          });
-          if (!response.ok) {
-            console.warn(LOG_PREFIX, 'HTTP no OK', response.status, url);
-            return null;
-          }
-          return await response.json();
-        } catch (error) {
-          console.warn(LOG_PREFIX, 'fetch falló', url, error?.message || error);
-          return null;
-        } finally {
-          window.clearTimeout(timer);
-        }
-      };
-
-      const fetchRows = async (urls = [], timeoutMs = 10000) => {
-        for (const url of urls) {
-          const payload = await fetchJson(url, timeoutMs);
-          const rows = arrayFrom(payload);
-          if (rows.length) return rows;
-        }
-        return [];
-      };
-
-      const lapMs = (row) => {
-        const raw = first(row, [
-          'lapTimeMs','lap_time_ms','LapTime','lap_ms','lapTime','timeMs','time_ms','bestLapMs','best_lap_ms',
-          'bestLapTimeMs','best_lap_time_ms','time','bestLap','best_lap','bestLapTime','best_lap_time'
-        ]);
-        if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
-        const text = String(raw || '').trim();
-        if (!text) return Infinity;
-        if (/^\d+$/.test(text)) return Number(text);
-        const parts = text.split(':');
-        if (parts.length === 2) {
-          const minutes = Number(parts[0]);
-          const seconds = Number(parts[1].replace(',', '.'));
-          if (Number.isFinite(minutes) && Number.isFinite(seconds)) return (minutes * 60 + seconds) * 1000;
-        }
-        const numeric = Number(text.replace(',', '.'));
-        return Number.isFinite(numeric) ? numeric : Infinity;
-      };
-
-      const formatLap = (value) => {
-        const text = String(value ?? '').trim();
-        if (text && text.includes(':')) return text;
-        const ms = typeof value === 'number' ? value : lapMs({ lapTimeMs: value });
-        if (!Number.isFinite(ms) || ms <= 0) return '--';
-        const total = Math.round(ms);
-        const minutes = Math.floor(total / 60000);
-        const seconds = Math.floor((total % 60000) / 1000);
-        const millis = String(total % 1000).padStart(3, '0');
-        return `${minutes}:${String(seconds).padStart(2, '0')}.${millis}`;
-      };
-
-      const driverName = (row) => first(row, [
-        'driverName','driver_name','DriverName','playerName','player_name','pilotName','pilot_name','name','Name',
-        'driver.name','driver.displayName','driver.display_name','player.name','displayName','display_name'
-      ]) || 'Piloto';
-
-      const carName = (row) => first(row, [
-        'carName','car_name','carDisplay','car_display','UiCarName','uiCarName','car.uiName','car.ui_name','car.name',
-        'carCode','car_code','carRaw','car_raw','car','Car','vehicleName','vehicle_name'
-      ]) || 'Coche';
-
-      const sourceKey = (row) => String(first(row, [
-        'sourceKey','source_key','SourceKey','session.sourceKey','session.source_key','driver.sourceKey','championshipKey','championship_key'
-      ]) || '').toLowerCase();
-
-      const sourceShort = (row) => {
-        const source = sourceKey(row);
-        return source.includes('gt4') || source.includes('supra') ? 'GT4' : 'LIGA';
-      };
-
-      const sourceClass = (row) => sourceShort(row) === 'GT4'
-        ? 'gc-home2-source-pill gc-home2-source-pill--gt4'
-        : 'gc-home2-source-pill gc-home2-source-pill--main';
-
-      const avatar = (row) => {
-        const direct = first(row, ['avatarUrl','avatar_url','avatar','driver.avatarUrl','driver.avatar_url','pilot.avatarUrl','profile.avatarUrl']);
-        if (direct) return direct;
-        const id = first(row, ['playerId','player_id','driverId','driver_id','rawPlayerId','raw_player_id','PlayerId']);
-        if (id !== undefined && id !== null && String(id).trim()) return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
-        return DEFAULT_AVATAR;
-      };
-
-      const isValidLap = (row) => {
-        const valid = first(row, ['valid','Valid','isValid','is_valid']);
-        if (valid === false || valid === 0 || valid === '0' || String(valid).toLowerCase() === 'false') return false;
-        return Number.isFinite(lapMs(row));
-      };
-
-      const hasLapTime = (row) => Number.isFinite(lapMs(row));
-      const rowTime = (row) => first(row, [
-        'lapTimeFormatted','lap_time_formatted','timeFormatted','time_formatted','bestLapTimeFormatted','best_lap_time_formatted',
-        'lapTimeMs','lap_time_ms','LapTime','lapTime','bestLap','best_lap','bestLapMs','best_lap_ms','timeMs','time_ms'
-      ]) || lapMs(row);
-
-      const rowStamp = (row) => {
-        const raw = first(row, ['timestamp','timestamp_unix','dateUnix','createdAtUnix','lapDateUnix','session.endTime','session.startTime','timestampMs','created_at_unix']);
-        const n = Number(raw);
-        if (Number.isFinite(n) && n > 0) return n > 9999999999 ? n : n * 1000;
-        const iso = first(row, ['timestampIso','timestamp_iso','createdAt','created_at','date','lapDate','session.startTimeIso']);
-        const parsed = Date.parse(iso);
-        return Number.isFinite(parsed) ? parsed : 0;
-      };
-
-      const ago = (row) => {
-        const ts = rowStamp(row);
-        if (!ts) return '--';
-        const diff = Math.max(0, Date.now() - ts);
-        const min = Math.floor(diff / 60000);
-        if (min < 1) return 'ahora';
-        if (min < 60) return `${min} min`;
-        const h = Math.floor(min / 60);
-        if (h < 48) return `${h} h`;
-        return `${Math.floor(h / 24)} d`;
-      };
-
-      const identity = (row) => String(first(row, [
-        'steamGuid','steam_guid','guid','GUID','driver.steamGuid','driver.steam_guid','driver.id','playerId','player_id','driverId','driver_id','rawPlayerId','raw_player_id'
-      ]) || driverName(row)).toLowerCase();
-
-      const norm = (value) => String(value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '')
-        .trim();
-
-      const splitSummary = (value) => String(value ?? '')
-        .split(/\s*(?:\+|,|\/|\||;| y | and )\s*/gi)
-        .map((item) => item.trim())
-        .filter(Boolean);
-
-      const unique = (values = []) => Array.from(new Set(values.filter((value) => value !== undefined && value !== null && String(value).trim()).map(String)));
-      const normalizedSet = (values = []) => unique(values).map(norm).filter(Boolean);
-
-      const activeComboFromPayload = (payload) => (
-        payload?.data?.activeCombo ||
-        payload?.activeCombo ||
-        payload?.data?.data?.activeCombo ||
-        null
-      );
-
-      const rowsFromActivePayload = (payload) => {
-        const combo = activeComboFromPayload(payload) || {};
-        return dedupeRows([
-          ...arrayFrom(payload?.data?.leaderboard || []),
-          ...arrayFrom(payload?.data?.recentLaps || []),
-          ...arrayFrom(payload?.leaderboard || []),
-          ...arrayFrom(payload?.recentLaps || []),
-          ...arrayFrom(combo?.leaderboard || []),
-          ...arrayFrom(combo?.recentLaps || []),
-          ...arrayFrom(combo?.bestLaps || []),
-          ...(combo?.summary?.bestLap ? [combo.summary.bestLap] : []),
-          ...(combo?.bestLap ? [combo.bestLap] : [])
-        ]);
-      };
-
-      const criteriaFromActiveCombo = (payload, source = '') => {
-        const combo = activeComboFromPayload(payload) || {};
-        const cars = [
-          ...(Array.isArray(combo.cars) ? combo.cars : []),
-          ...(Array.isArray(combo.publicComboCars) ? combo.publicComboCars : []),
-          ...(Array.isArray(combo.allCars) ? combo.allCars : []),
-          ...(Array.isArray(combo.mainVariantAllCars) ? combo.mainVariantAllCars : [])
-        ];
-        const variants = Array.isArray(combo.variants) ? combo.variants : [];
-        const trackValues = unique([
-          combo.trackCode,
-          combo.track_code,
-          combo.canonicalTrackName,
-          combo.displayTrackName,
-          combo.trackName,
-          combo.circuitName,
-          combo.track?.code,
-          combo.track?.slug,
-          combo.track?.name,
-          combo.track?.displayName,
-          combo.mainVariant?.rawTrackCode,
-          combo.mainVariant?.rawTrackName,
-          ...variants.flatMap((variant) => [variant.rawTrackCode, variant.rawTrackName, variant.displayName])
-        ]);
-        const carValues = unique([
-          combo.carCode,
-          combo.car_code,
-          combo.carName,
-          combo.car_name,
-          combo.bestCarName,
-          combo.carSummary,
-          ...(Array.isArray(combo.carNames) ? combo.carNames : []),
-          ...(Array.isArray(combo.carList) ? combo.carList : []),
-          ...splitSummary(combo.carSummary),
-          ...cars.flatMap((car) => [car.code, car.carCode, car.name, car.displayName, car.uiName, car.carName])
-        ]);
-        const comboIds = unique([
-          combo.comboId,
-          combo.id,
-          combo.canonicalComboId,
-          combo.rawComboId,
-          combo.mainVariant?.comboId,
-          ...(Array.isArray(combo.comboIds) ? combo.comboIds : []),
-          ...(Array.isArray(combo.mainVariant?.comboIds) ? combo.mainVariant.comboIds : []),
-          ...variants.flatMap((variant) => [variant.comboId, ...(Array.isArray(variant.comboIds) ? variant.comboIds : [])])
-        ]);
-        const comboKeys = unique([
-          combo.comboKey,
-          combo.comboUid,
-          combo.canonicalKey,
-          combo.mainVariant?.variantKey,
-          ...variants.map((variant) => variant.variantKey)
-        ]);
-
-        return {
-          source: String(source || '').toLowerCase(),
-          combo,
-          trackValues,
-          carValues,
-          comboIds,
-          comboKeys,
-          trackTokens: normalizedSet(trackValues),
-          carTokens: normalizedSet(carValues),
-          comboKeyTokens: normalizedSet(comboKeys),
-          comboIdTokens: normalizedSet(comboIds)
-        };
-      };
-
-      const rowTrackValues = (row) => unique([
-        first(row, ['trackCode','track_code','Track','track.code','track.slug']),
-        first(row, ['trackName','track_name','UiTrackName','uiTrackName','track.uiName','track.name','track.displayName']),
-        first(row, ['rawTrackId','raw_track_id','track.rawId','TrackId','trackId'])
-      ]);
-
-      const rowCarValues = (row) => unique([
-        first(row, ['carCode','car_code','Car','car.code','car.slug']),
-        first(row, ['carName','car_name','UiCarName','uiCarName','car.uiName','car.name','car.displayName','carDisplay','car_display']),
-        first(row, ['rawCarId','raw_car_id','car.rawId','CarId','carId'])
-      ]);
-
-      const rowComboValues = (row) => unique([
-        first(row, ['comboKey','combo_key','comboUid','combo_uid','legacyComboKey','legacy_combo_key']),
-        first(row, ['rawComboId','raw_combo_id','ComboId','comboId','session.comboId'])
-      ]);
-
-      const tokenMatch = (rowValues, tokens) => {
-        if (!tokens.length) return true;
-        const rowTokens = normalizedSet(rowValues);
-        return rowTokens.some((rowToken) => tokens.some((token) => rowToken === token || (token.length >= 4 && rowToken.includes(token)) || (rowToken.length >= 4 && token.includes(rowToken))));
-      };
-
-      const rowMatchesActiveCombo = (row, criteria) => {
-        if (!row || !criteria) return false;
-        if (criteria.source) {
-          const rowSource = sourceKey(row);
-          if (criteria.source === 'main' && rowSource && !['main','weekly','liga'].includes(rowSource)) return false;
-          if (criteria.source === 'gt4' && rowSource && !rowSource.includes('gt4') && !rowSource.includes('supra')) return false;
-        }
-        const comboMatch = tokenMatch(rowComboValues(row), [...criteria.comboKeyTokens, ...criteria.comboIdTokens]);
-        if (comboMatch && (criteria.comboKeyTokens.length || criteria.comboIdTokens.length)) return true;
-        const trackMatch = tokenMatch(rowTrackValues(row), criteria.trackTokens);
-        const carMatch = tokenMatch(rowCarValues(row), criteria.carTokens);
-        return trackMatch && carMatch;
-      };
-
-      const scopedRowsForActiveCombo = (allRows, activePayload, source = '') => {
-        const criteria = criteriaFromActiveCombo(activePayload, source);
-        const activeRows = rowsFromActivePayload(activePayload);
-        const filtered = dedupeRows(allRows || []).filter((row) => rowMatchesActiveCombo(row, criteria));
-        const fallback = dedupeRows([...filtered, ...activeRows]);
-        return {
-          criteria,
-          rows: filtered.length ? filtered : fallback,
-          activeRows,
-          filteredRows: filtered
-        };
-      };
-
-      const bestPerDriver = (rows, limit = 8) => {
-        const map = new Map();
-        rows.filter(isValidLap).forEach((row) => {
-          const key = identity(row);
-          const time = lapMs(row);
-          const current = map.get(key);
-          if (!current || time < current._time) map.set(key, { ...row, _time: time });
-        });
-        return Array.from(map.values()).sort((a, b) => a._time - b._time).slice(0, limit);
-      };
-
-      const renderTop = (selector, rows, emptyLabel = 'Sin datos') => {
-        const host = $(selector);
-        if (!host) return;
-        const best = bestPerDriver(rows, 8);
-        if (!best.length) {
-          host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>${esc(emptyLabel)}</strong><small>Sin vueltas válidas para el combo activo</small></div></div>`;
-          return;
-        }
-        host.innerHTML = best.map((row, index) => {
-          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
-          const compact = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
-          const badgeClass = index === 0 ? 'gc-home2-rank-badge--gold' : index === 1 ? 'gc-home2-rank-badge--silver' : index === 2 ? 'gc-home2-rank-badge--bronze' : 'gc-home2-rank-badge--plain';
-          return `<div class="gc-home2-combo-rank${compact}">` +
-            `<span class="gc-home2-rank-badge ${badgeClass}">${medal}</span>` +
-            `<div><strong>${esc(driverName(row))}</strong><small>${esc(carName(row))}</small></div>` +
-            `<img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />` +
-            `<em>${esc(formatLap(rowTime(row)))}</em>` +
-          `</div>`;
-        }).join('');
-      };
-
-      const dedupeRows = (rows) => {
-        const map = new Map();
-        rows.filter(Boolean).forEach((row, index) => {
-          const key = String(first(row, ['lapUid','lap_uid','LapUid']) || `${sourceKey(row)}:${first(row, ['lapId','lap_id','LapId']) || index}:${identity(row)}:${lapMs(row)}:${rowStamp(row)}`);
-          if (!map.has(key)) map.set(key, row);
-        });
-        return Array.from(map.values());
-      };
-
-      const renderRecent = (rows) => {
-        const host = $('[data-home2-recent-laps]');
-        if (!host) return;
-        const clean = dedupeRows(rows).filter(hasLapTime).sort((a, b) => rowStamp(b) - rowStamp(a)).slice(0, 8);
-        if (!clean.length) {
-          host.innerHTML = '<div class="gc-home2-table__row gc-home2-table__row--loading" role="row"><span>--</span><span>Sin vueltas</span><strong>--</strong><small>--</small></div>';
-          return;
-        }
-        host.innerHTML = clean.map((row) => `<div class="gc-home2-table__row" role="row">` +
-          `<span>${esc(driverName(row))}</span>` +
-          `<span class="gc-home2-table-car"><em class="${sourceClass(row)}">${sourceShort(row)}</em>${esc(carName(row))}</span>` +
-          `<strong>${esc(formatLap(rowTime(row)))}</strong>` +
-          `<small>${esc(ago(row))}</small>` +
-        `</div>`).join('');
-      };
-
-      const updateText = (selector, text) => {
-        $$(selector).forEach((el) => { el.textContent = text === undefined || text === null || text === '' ? '--' : String(text); });
-      };
-
-      const maxSpeed = (row) => {
-        const n = Number(first(row, ['maxSpeedKmh','max_speed_kmh','maxSpeed','max_speed','topSpeedKmh','top_speed_kmh']) || 0);
-        return Number.isFinite(n) ? n : 0;
-      };
-
-      const updateComboPulse = (rows) => {
-        const all = dedupeRows(rows).filter(hasLapTime);
-        if (!all.length) return;
-
-        const byDriver = new Map();
-        all.forEach((row) => {
-          const name = driverName(row);
-          const key = identity(row) || name;
-          if (!byDriver.has(key)) {
-            byDriver.set(key, { name, laps: 0, valid: 0, invalid: 0, times: [], best: Infinity, bestRow: null, maxSpeed: 0, maxSpeedCar: '', lastStamp: 0, lastRow: null });
-          }
-          const item = byDriver.get(key);
-          const time = lapMs(row);
-          const valid = isValidLap(row);
-          item.laps += 1;
-          if (valid) {
-            item.valid += 1;
-            item.times.push(time);
-            if (time < item.best) {
-              item.best = time;
-              item.bestRow = row;
-            }
-          } else {
-            item.invalid += 1;
-          }
-          const speed = maxSpeed(row);
-          if (speed > item.maxSpeed) {
-            item.maxSpeed = speed;
-            item.maxSpeedCar = carName(row);
-          }
-          const stamp = rowStamp(row);
-          if (stamp > item.lastStamp) {
-            item.lastStamp = stamp;
-            item.lastRow = row;
-          }
-        });
-
-        const drivers = Array.from(byDriver.values());
-        const most = drivers.slice().sort((a, b) => b.laps - a.laps || b.valid - a.valid)[0];
-        const averages = drivers
-          .map((item) => {
-            const top = item.times.slice().sort((a, b) => a - b).slice(0, Math.min(5, item.times.length));
-            const avg = top.length ? top.reduce((a, b) => a + b, 0) / top.length : Infinity;
-            return { ...item, avg, samples: top.length };
-          })
-          .filter((item) => item.samples >= 2 && Number.isFinite(item.avg))
-          .sort((a, b) => a.avg - b.avg)[0];
-        const cleanest = drivers
-          .filter((item) => item.laps >= 2)
-          .map((item) => ({ ...item, cleanRate: item.laps ? item.valid / item.laps : 0 }))
-          .sort((a, b) => b.cleanRate - a.cleanRate || b.valid - a.valid || b.laps - a.laps)[0];
-        const speedKing = drivers.filter((item) => item.maxSpeed > 0).sort((a, b) => b.maxSpeed - a.maxSpeed)[0];
-        const latest = drivers.filter((item) => item.lastStamp > 0).sort((a, b) => b.lastStamp - a.lastStamp)[0];
-        const bests = drivers.filter((item) => Number.isFinite(item.best)).sort((a, b) => a.best - b.best);
-        let closest = null;
-        for (let i = 0; i < bests.length - 1; i += 1) {
-          const gap = Math.abs(bests[i + 1].best - bests[i].best);
-          if (!closest || gap < closest.gap) closest = { a: bests[i], b: bests[i + 1], gap };
-        }
-
-        if (most) {
-          updateText('[data-home2-standout-most-laps]', most.name);
-          updateText('[data-home2-standout-most-laps-meta]', `${most.laps} vueltas · ${most.valid} válidas`);
-        }
-        if (averages) {
-          updateText('[data-home2-standout-best-average]', averages.name);
-          updateText('[data-home2-standout-best-average-meta]', `${formatLap(Math.round(averages.avg))} media top ${averages.samples}`);
-        } else if (bests[0]) {
-          updateText('[data-home2-standout-best-average]', bests[0].name);
-          updateText('[data-home2-standout-best-average-meta]', `${formatLap(bests[0].best)} mejor vuelta`);
-        }
-        if (cleanest) {
-          updateText('[data-home2-standout-cleanest]', cleanest.name);
-          updateText('[data-home2-standout-cleanest-meta]', `${Math.round(cleanest.cleanRate * 100)}% válidas · ${cleanest.laps} vueltas`);
-        }
-        if (speedKing) {
-          updateText('[data-home2-standout-vmax]', speedKing.name);
-          updateText('[data-home2-standout-vmax-meta]', `${Math.round(speedKing.maxSpeed)} km/h${speedKing.maxSpeedCar ? ' · ' + speedKing.maxSpeedCar : ''}`);
-        }
-        if (latest) {
-          updateText('[data-home2-standout-last-driver]', latest.name);
-          updateText('[data-home2-standout-last-driver-meta]', `${sourceShort(latest.lastRow)} · ${ago(latest.lastRow)}`);
-        }
-        if (closest) {
-          updateText('[data-home2-standout-duel]', `${closest.a.name.split(' ')[0]} / ${closest.b.name.split(' ')[0]}`);
-          updateText('[data-home2-standout-duel-meta]', `gap ${(closest.gap / 1000).toFixed(3)} s`);
-        }
-      };
-
-      const setChampText = (root, selector, value) => {
-        const node = $(selector, root);
-        if (node) node.textContent = value === undefined || value === null || value === '' ? '--' : String(value);
-      };
-
-      const setChampHref = (root, selector, href) => {
-        const node = $(selector, root);
-        if (node && href) {
-          node.setAttribute('href', href);
-          if (/^https?:\/\//i.test(href)) {
-            node.setAttribute('target', '_blank');
-            node.setAttribute('rel', 'noopener');
-          }
-        }
-      };
-
-      const parseDate = (value) => {
-        const date = new Date(value || '');
-        return Number.isFinite(date.getTime()) ? date : null;
-      };
-
-      const formatDate = (value) => {
-        const date = parseDate(value);
-        if (!date) return 'Fecha por confirmar';
-        return date.toLocaleString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', '');
-      };
-
-      const champDriverName = (row, index = 0) => first(row, ['name','driverName','driver_name','displayName','display_name','steamName','steam_name','Name','DriverName','playerName','player_name']) || `Piloto ${index + 1}`;
-      const champPoints = (row) => first(row, ['points','totalPoints','total_points','score','Score','championshipPoints','championship_points']) || 0;
-
-      const champRankBadge = (position) => {
-        const n = Number(position);
-        if (n === 1) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold gc-home2-ranking-medal" aria-label="1º">🥇</span>';
-        if (n === 2) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--silver gc-home2-ranking-medal" aria-label="2º">🥈</span>';
-        if (n === 3) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--bronze gc-home2-ranking-medal" aria-label="3º">🥉</span>';
-        return `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain gc-home2-ranking-medal">${esc(position)}</span>`;
-      };
-
-      const renderChampStandings = (root, rows = []) => {
-        const host = $('[data-home2-champ-drivers]', root);
-        if (!host) return;
-        const list = Array.isArray(rows) ? rows.slice(0, 8) : [];
-        if (!list.length) {
-          host.innerHTML = '<div><strong>Sin clasificación visible</strong><small>ACSM</small></div>';
-          return;
-        }
-        host.innerHTML = list.map((row, index) => {
-          const position = first(row, ['position','pos','rank']) || index + 1;
-          const n = Number(position);
-          const tone = n === 1 ? ' gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--gold' : n === 2 ? ' gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--silver' : n === 3 ? ' gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--bronze' : ' gc-home2-champ-standing-row--plain';
-          const rowAvatar = first(row, ['avatarUrl','avatar_url','avatar']) || DEFAULT_AVATAR;
-          return `<div class="gc-home2-champ-standing-row${tone}">` +
-            `<span class="gc-home2-champ-standing-pos">${champRankBadge(position)}</span>` +
-            `<div class="gc-home2-champ-standing-meta"><strong>${esc(String(champDriverName(row, index)).toUpperCase())}</strong><small>${esc(first(row, ['carName','car_name','className','class_name','class']) || 'ACSM')}</small></div>` +
-            `<span class="gc-home2-champ-standing-points"><strong>${esc(champPoints(row))}</strong><small>pts</small></span>` +
-            `<img class="gc-home2-champ-standing-avatar" src="${esc(rowAvatar)}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />` +
-          `</div>`;
-        }).join('');
-      };
-
-      const extractChampRows = (championship = {}) => {
-        const standings = Array.isArray(championship.standings) ? championship.standings : [];
-        if (standings.length) return standings;
-        const registered = Array.isArray(championship.registeredDrivers) ? championship.registeredDrivers : [];
-        if (registered.length) return registered.map((row, index) => ({ ...row, position: index + 1, points: first(row, ['points','score']) || 0 }));
-        const drivers = Array.isArray(championship.drivers) ? championship.drivers : [];
-        return drivers.map((row, index) => ({ ...row, position: index + 1, points: first(row, ['points','score']) || 0 }));
-      };
-
-      const renderChampionshipsDirect = async () => {
-        const blocks = $$('[data-home2-championship]');
-        await Promise.all(blocks.map(async (block) => {
-          const source = block.dataset.home2ChampionshipSource || 'weekly';
-          const payload = await fetchJson(`/api/community/acsr-championship?source=${encodeURIComponent(source)}&refresh=1&t=${Date.now()}`, 12000);
-          if (!payload || payload.ok === false || !payload.championship) {
-            renderChampStandings(block, []);
-            return;
-          }
-          const championship = payload.championship || {};
-          const stats = championship.stats || {};
-          const next = championship.nextEvent || null;
-          const rows = extractChampRows(championship);
-          const acsm = payload.acsm || {};
-
-          const defaultFull = source === 'gt4'
-            ? 'http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50'
-            : 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6';
-          const fullUrl = acsm.championshipUrl || defaultFull;
-          setChampHref(block, '[data-home2-champ-full]', fullUrl);
-          setChampHref(block, '[data-home2-champ-signup]', acsm.signUpUrl || acsm.signupUrl || `${fullUrl}/sign-up/steam`);
-
-          setChampText(block, '[data-home2-champ-name]', source === 'gt4' ? (championship.name || 'Campeonato GT4') : 'LIGA GRASSCUTTERS');
-          setChampText(block, '[data-home2-champ-events]', stats.events ?? championship.events?.length ?? '--');
-          setChampText(block, '[data-home2-champ-completed]', stats.completedEvents ?? '--');
-          setChampText(block, '[data-home2-champ-entrants]', stats.entrants ?? championship.registeredDrivers?.length ?? rows.length ?? '--');
-          setChampText(block, '[data-home2-champ-classes]', stats.classes ?? championship.classes?.length ?? '--');
-          if (next) {
-            const track = first(next, ['name','title','trackName','track_name','track.name','track.displayName','circuitName']) || 'Próxima ronda';
-            const cars = first(next, ['carSummary','cars','carNames','className']) || 'Campeonato activo';
-            setChampText(block, '[data-home2-champ-next]', track);
-            setChampText(block, '[data-home2-champ-date]', formatDate(first(next, ['scheduledAt','date','start','startTime'])));
-            setChampText(block, '[data-home2-champ-next-meta]', cars);
-          } else {
-            setChampText(block, '[data-home2-champ-next]', 'Calendario activo');
-            setChampText(block, '[data-home2-champ-date]', 'Fecha por confirmar');
-            setChampText(block, '[data-home2-champ-next-meta]', 'Esperando próxima ronda');
-          }
-          renderChampStandings(block, rows);
-        }));
-      };
-
-      const loadDirect = async () => {
-        const t = Date.now();
-
-        const [mainActivePayload, gt4ActivePayload, mainRows, gt4Rows, allRows] = await Promise.all([
-          fetchJson(`/api/gc/active-combo?source=main&recentLimit=120&leaderboardLimit=80&home=1&t=${t}`, 12000),
-          fetchJson(`/api/gc/active-combo?source=gt4&recentLimit=120&leaderboardLimit=80&home=1&t=${t}`, 12000),
-          fetchRows([`/api/gc/hotlaps2?source=main&limit=8000&t=${t}`], 15000),
-          fetchRows([`/api/gc/hotlaps2?source=gt4&limit=2000&t=${t}`], 12000),
-          fetchRows([
-            `/api/gc/hotlaps2?source=all&limit=800&t=${t}`,
-            `/api/gc/mirror-v2/laps?source=all&limit=800&t=${t}`
-          ], 12000)
-        ]);
-
-        const mainScoped = scopedRowsForActiveCombo(mainRows, mainActivePayload, 'main');
-        const gt4Scoped = scopedRowsForActiveCombo(gt4Rows, gt4ActivePayload, 'gt4');
-
-        const mainTopRows = mainScoped.rows.length ? mainScoped.rows : rowsFromActivePayload(mainActivePayload);
-        const gt4TopRows = gt4Scoped.rows.length ? gt4Scoped.rows : rowsFromActivePayload(gt4ActivePayload);
-
-        renderTop('[data-home2-combo-ranking]', mainTopRows, 'Sin datos Liga');
-        renderTop('[data-home2-combo-ranking-gt4]', gt4TopRows, 'Sin datos GT4');
-
-        const combined = dedupeRows([...(allRows || []), ...(rowsFromActivePayload(mainActivePayload) || []), ...(rowsFromActivePayload(gt4ActivePayload) || [])]);
-        renderRecent(combined);
-
-        const pulseRows = mainScoped.filteredRows.length ? mainScoped.filteredRows : mainTopRows;
-        updateComboPulse(pulseRows);
-
-        await renderChampionshipsDirect();
-        console.info(LOG_PREFIX, 'datos pintados por combo activo', {
-          main: mainTopRows.length,
-          gt4: gt4TopRows.length,
-          allRecent: combined.length,
-          mainActiveTrack: mainScoped.criteria.trackValues.slice(0, 3),
-          mainActiveCars: mainScoped.criteria.carValues.slice(0, 6),
-          gt4ActiveTrack: gt4Scoped.criteria.trackValues.slice(0, 3),
-          gt4ActiveCars: gt4Scoped.criteria.carValues.slice(0, 6)
-        });
-      };
-
-      const start = () => {
-        window.clearInterval(window.__GC_HOME_5_4_INTERVAL__);
-        window.setTimeout(loadDirect, 250);
-        window.setTimeout(loadDirect, 1600);
-        window.__GC_HOME_5_4_INTERVAL__ = window.setInterval(loadDirect, REFRESH_MS);
-      };
-
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-      else start();
-    })();
-  </script>  </script>
 
 </MarketingLayout>
 
