@@ -4903,5 +4903,240 @@ const home2ArchiveSeed = [];
       window.setInterval(runHomeLiveRefresh, HOME_LIVE_REFRESH_MS);
     })();
   </script>
+
+
+  <script is:inline>
+    (() => {
+      'use strict';
+      const LOG_PREFIX = '[GC Home 5.2 Direct]';
+      const REFRESH_MS = 15000;
+      const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+
+      const $ = (selector) => document.querySelector(selector);
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      const first = (obj, keys) => {
+        if (!obj) return '';
+        for (const key of keys) {
+          const parts = String(key).split('.');
+          let current = obj;
+          for (const part of parts) current = current && current[part];
+          if (current !== undefined && current !== null && current !== '') return current;
+        }
+        return '';
+      };
+      const arrayFrom = (payload) => {
+        if (!payload) return [];
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload.items)) return payload.items;
+        if (Array.isArray(payload.laps)) return payload.laps;
+        if (Array.isArray(payload.hotlaps)) return payload.hotlaps;
+        if (Array.isArray(payload.results)) return payload.results;
+        if (Array.isArray(payload.rows)) return payload.rows;
+        if (Array.isArray(payload.data)) return payload.data;
+        if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
+        if (payload.data && Array.isArray(payload.data.laps)) return payload.data.laps;
+        if (payload.data && Array.isArray(payload.data.results)) return payload.data.results;
+        if (payload.data && Array.isArray(payload.data.rows)) return payload.data.rows;
+        if (payload.payload && Array.isArray(payload.payload.items)) return payload.payload.items;
+        return [];
+      };
+      const fetchJson = async (url, timeoutMs = 8500) => {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          if (!res.ok) {
+            console.warn(LOG_PREFIX, 'HTTP no OK', res.status, url);
+            return null;
+          }
+          return await res.json();
+        } catch (error) {
+          console.warn(LOG_PREFIX, 'fetch falló', url, error?.message || error);
+          return null;
+        } finally {
+          window.clearTimeout(timer);
+        }
+      };
+      const fetchRows = async (urls, timeoutMs = 8500) => {
+        for (const url of urls) {
+          const payload = await fetchJson(url, timeoutMs);
+          const rows = arrayFrom(payload);
+          if (rows.length) return rows;
+        }
+        return [];
+      };
+      const lapMs = (row) => {
+        const raw = first(row, ['lapTimeMs','lap_ms','lapTime','timeMs','bestLapMs','best_lap_ms','bestLapTimeMs','time','bestLap']);
+        if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+        const text = String(raw || '').trim();
+        if (!text) return Infinity;
+        if (/^\d+$/.test(text)) return Number(text);
+        const parts = text.split(':');
+        if (parts.length === 2) {
+          const minutes = Number(parts[0]);
+          const seconds = Number(parts[1].replace(',', '.'));
+          if (Number.isFinite(minutes) && Number.isFinite(seconds)) return (minutes * 60 + seconds) * 1000;
+        }
+        const numeric = Number(text.replace(',', '.'));
+        return Number.isFinite(numeric) ? numeric : Infinity;
+      };
+      const formatLap = (value) => {
+        const direct = String(value || '').trim();
+        if (direct && direct.includes(':')) return direct;
+        const ms = typeof value === 'number' ? value : lapMs({ lapTimeMs: value });
+        if (!Number.isFinite(ms) || ms <= 0) return '--';
+        const totalMs = Math.round(ms);
+        const minutes = Math.floor(totalMs / 60000);
+        const seconds = Math.floor((totalMs % 60000) / 1000);
+        const millis = String(totalMs % 1000).padStart(3, '0');
+        return `${minutes}:${String(seconds).padStart(2, '0')}.${millis}`;
+      };
+      const driverName = (row) => first(row, ['driverName','playerName','pilotName','name','driver.name','driver.displayName','player.name','DriverName']) || 'Piloto';
+      const carName = (row) => first(row, ['carName','car.name','car.uiName','carCode','car','vehicleName','Car']) || 'Coche';
+      const sourceKey = (row) => String(first(row, ['sourceKey','source_key','session.sourceKey','driver.sourceKey','championshipKey']) || '').toLowerCase();
+      const sourceShort = (row) => sourceKey(row).includes('gt4') ? 'GT4' : 'LIGA';
+      const sourceClass = (row) => sourceShort(row) === 'GT4' ? 'gc-home2-source-pill gc-home2-source-pill--gt4' : 'gc-home2-source-pill gc-home2-source-pill--main';
+      const avatar = (row) => first(row, ['avatarUrl','avatar','driver.avatarUrl','pilot.avatarUrl','profile.avatarUrl']) || DEFAULT_AVATAR;
+      const isValidLap = (row) => {
+        const raw = first(row, ['valid','isValid','Valid']);
+        if (raw === false || raw === 0 || raw === '0' || String(raw).toLowerCase() === 'false') return false;
+        return Number.isFinite(lapMs(row));
+      };
+      const rowTime = (row) => first(row, ['lapTimeFormatted','lapTime','timeFormatted','bestLapTimeFormatted','bestLap','bestLapMs','lapTimeMs','timeMs']) || lapMs(row);
+      const rowStamp = (row) => {
+        const raw = first(row, ['timestamp','dateUnix','createdAtUnix','lapDateUnix','session.endTime','session.startTime','timestampMs']);
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) return n > 9999999999 ? n : n * 1000;
+        const iso = first(row, ['timestampIso','createdAt','date','lapDate','session.startTimeIso']);
+        const parsed = Date.parse(iso);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const ago = (row) => {
+        const ts = rowStamp(row);
+        if (!ts) return '--';
+        const diff = Math.max(0, Date.now() - ts);
+        const min = Math.floor(diff / 60000);
+        if (min < 1) return 'ahora';
+        if (min < 60) return `${min} min`;
+        const h = Math.floor(min / 60);
+        if (h < 48) return `${h} h`;
+        return `${Math.floor(h / 24)} d`;
+      };
+      const identity = (row) => String(first(row, ['steamGuid','guid','driver.steamGuid','driver.id','playerId','driverId','rawPlayerId']) || driverName(row)).toLowerCase();
+      const bestPerDriver = (rows, limit = 8) => {
+        const map = new Map();
+        rows.filter(isValidLap).forEach((row) => {
+          const key = identity(row);
+          const time = lapMs(row);
+          const current = map.get(key);
+          if (!current || time < current._time) map.set(key, { ...row, _time: time });
+        });
+        return Array.from(map.values()).sort((a,b) => a._time - b._time).slice(0, limit);
+      };
+      const renderTop = (selector, rows, emptyLabel = 'Sin datos') => {
+        const host = $(selector);
+        if (!host) return;
+        const best = bestPerDriver(rows, 8);
+        if (!best.length) {
+          host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>${esc(emptyLabel)}</strong><small>Revisar endpoint hotlaps2</small></div></div>`;
+          return;
+        }
+        host.innerHTML = best.map((row, index) => {
+          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+          const compact = index >= 3 ? ' gc-home2-combo-rank--compact' : '';
+          return `<div class="gc-home2-combo-rank${compact}">` +
+            `<span class="gc-home2-rank-badge${index < 3 ? ' gc-home2-rank-badge--gold' : ' gc-home2-rank-badge--plain'}">${medal}</span>` +
+            `<div><strong>${esc(driverName(row))}</strong><small>${esc(carName(row))}</small></div>` +
+            `<img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />` +
+            `<em>${esc(formatLap(rowTime(row)))}</em>` +
+          `</div>`;
+        }).join('');
+      };
+      const renderRecent = (rows) => {
+        const host = $('[data-home2-recent-laps]');
+        if (!host) return;
+        const clean = rows.filter((row) => Number.isFinite(lapMs(row))).sort((a,b) => rowStamp(b) - rowStamp(a)).slice(0, 8);
+        if (!clean.length) {
+          host.innerHTML = '<div class="gc-home2-table__row gc-home2-table__row--loading" role="row"><span>--</span><span>Sin vueltas</span><strong>--</strong><small>--</small></div>';
+          return;
+        }
+        host.innerHTML = clean.map((row) => `<div class="gc-home2-table__row" role="row">` +
+          `<span>${esc(driverName(row))}</span>` +
+          `<span class="gc-home2-table-car"><em class="${sourceClass(row)}">${sourceShort(row)}</em>${esc(carName(row))}</span>` +
+          `<strong>${esc(formatLap(rowTime(row)))}</strong>` +
+          `<small>${esc(ago(row))}</small>` +
+        `</div>`).join('');
+      };
+      const updateText = (selector, text) => {
+        const el = $(selector);
+        if (el) el.textContent = text || '--';
+      };
+      const updateComboPulse = (rows) => {
+        const clean = rows.filter(isValidLap);
+        if (!clean.length) return;
+        const counts = new Map();
+        clean.forEach((row) => counts.set(driverName(row), (counts.get(driverName(row)) || 0) + 1));
+        const most = Array.from(counts.entries()).sort((a,b) => b[1] - a[1])[0];
+        const fastest = clean.slice().sort((a,b) => lapMs(a) - lapMs(b))[0];
+        const last = clean.slice().sort((a,b) => rowStamp(b) - rowStamp(a))[0];
+        const vmaxRow = clean.slice().sort((a,b) => Number(first(b, ['maxSpeedKmh','maxSpeed','topSpeedKmh']) || 0) - Number(first(a, ['maxSpeedKmh','maxSpeed','topSpeedKmh']) || 0))[0];
+        if (most) {
+          updateText('[data-home2-standout-most-laps]', most[0]);
+          updateText('[data-home2-standout-most-laps-meta]', `${most[1]} vueltas registradas`);
+        }
+        if (fastest) {
+          updateText('[data-home2-standout-best-average]', driverName(fastest));
+          updateText('[data-home2-standout-best-average-meta]', `${formatLap(rowTime(fastest))} mejor vuelta`);
+        }
+        updateText('[data-home2-standout-cleanest]', '--');
+        updateText('[data-home2-standout-cleanest-meta]', 'limpieza no disponible');
+        if (vmaxRow) {
+          const vmax = Number(first(vmaxRow, ['maxSpeedKmh','maxSpeed','topSpeedKmh']) || 0);
+          updateText('[data-home2-standout-vmax]', driverName(vmaxRow));
+          updateText('[data-home2-standout-vmax-meta]', vmax ? `${Math.round(vmax)} km/h` : 'velocidad registrada');
+        }
+        if (last) {
+          updateText('[data-home2-standout-last-driver]', driverName(last));
+          updateText('[data-home2-standout-last-driver-meta]', `${sourceShort(last)} · ${ago(last)}`);
+        }
+      };
+      const loadDirect = async () => {
+        const t = Date.now();
+        const [mainRows, gt4Rows, allRows] = await Promise.all([
+          fetchRows([
+            `/api/gc/mirror-v2/best-times?source=main&limit=80&t=${t}`,
+            `/api/gc/hotlaps2?source=main&limit=1200&t=${t}`
+          ], 10000),
+          fetchRows([
+            `/api/gc/mirror-v2/best-times?source=gt4&limit=80&t=${t}`,
+            `/api/gc/hotlaps2?source=gt4&limit=500&t=${t}`
+          ], 10000),
+          fetchRows([
+            `/api/gc/hotlaps2?source=all&limit=120&t=${t}`,
+            `/api/gc/hotlaps2?source=main&limit=80&t=${t}`
+          ], 10000)
+        ]);
+        renderTop('[data-home2-combo-ranking]', mainRows, 'Sin datos Liga');
+        renderTop('[data-home2-combo-ranking-gt4]', gt4Rows, 'Sin datos GT4');
+        const combined = allRows.length ? allRows : [...mainRows, ...gt4Rows];
+        renderRecent(combined);
+        updateComboPulse(combined.length ? combined : [...mainRows, ...gt4Rows]);
+        console.info(LOG_PREFIX, 'datos pintados', { main: mainRows.length, gt4: gt4Rows.length, all: combined.length });
+      };
+      const start = () => {
+        window.setTimeout(loadDirect, 350);
+        window.setTimeout(loadDirect, 1600);
+        window.setInterval(loadDirect, REFRESH_MS);
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+      else start();
+    })();
+  </script>
+
 </MarketingLayout>
 
