@@ -5024,7 +5024,7 @@ const home2ArchiveSeed = [];
 
 /* GC_HOME_PACK_5_10_CHAMPIONSHIPS_ONLY_FIX_START */
 (() => {
-  const PACK = '5.10';
+  const PACK = '5.11';
   if (window.__GC_HOME_FINAL_LOADER_V510__) {
     console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
     return;
@@ -5330,21 +5330,69 @@ const home2ArchiveSeed = [];
     img.src = src;
   });
 
-  const setTrackImage = async (track) => {
-    const img = q('[data-home2-track-image]');
-    if (!img || !track) return;
-    const s = slug(track);
-    const keys = Array.from(new Set([s, s.replace(/^acu_/, ''), s.replace(/^00_/, ''), s.split('_').pop()].filter(Boolean)));
+  const trackAssetKeysFinal = (...values) => {
+    const keys = [];
+    values.flat(Infinity).filter(Boolean).forEach((value) => {
+      const s = slug(value);
+      if (!s) return;
+      keys.push(s, s.replace(/^acu_/, ''), s.replace(/^00_/, ''));
+      const parts = s.split('_').filter(Boolean);
+      for (let i = 0; i < parts.length; i += 1) keys.push(parts.slice(i).join('_'));
+      for (let len = parts.length; len > 1; len -= 1) keys.push(parts.slice(0, len).join('_'));
+      if (/pascani|motorpark|a1|_a1$/.test(s)) {
+        keys.push(
+          'pascani',
+          'pascani_motorpark',
+          'pascani_motorpark_a',
+          'pascani_motorpark_a1',
+          '00_pascani_motorpark',
+          '00_pascani_motorpark_a',
+          '00_pascani_motorpark_a1',
+          'a1'
+        );
+      }
+      if (/hungaroring|hungary/.test(s)) keys.push('hungaroring', 'acu_hungaroring');
+    });
+    return Array.from(new Set(keys.filter(Boolean)));
+  };
+
+  const trackPhotoCandidatesFinal = (...values) => {
+    const keys = trackAssetKeysFinal(values);
     const candidates = [];
     keys.forEach((k) => {
-      candidates.push(`/images/tracks/${k}.webp`, `/images/tracks/${k}.jpg`, `/images/tracks/${k}.png`);
+      candidates.push(
+        `/images/tracks/${k}.webp`,
+        `/images/tracks/${k}.jpg`,
+        `/images/tracks/${k}.jpeg`,
+        `/images/tracks/${k}.png`,
+        `/imagenes/tracks/${k}.webp`,
+        `/imagenes/tracks/${k}.jpg`,
+        `/imagenes/tracks/${k}.png`
+      );
     });
-    for (const src of candidates) {
+    return Array.from(new Set(candidates));
+  };
+
+  const setImageFromTrackFinal = async (img, ...values) => {
+    if (!img) return false;
+    for (const src of trackPhotoCandidatesFinal(values)) {
       if (await imageExists(src)) {
+        img.onerror = function () {
+          this.onerror = null;
+          this.src = '/ui/home2/gc-home2-track-fallback.svg';
+        };
         img.src = src;
-        return;
+        img.dataset.resolvedPhoto = src;
+        return true;
       }
     }
+    return false;
+  };
+
+  const setTrackImage = async (track) => {
+    const img = q('[data-home2-track-image]');
+    if (!img || !track) return false;
+    return setImageFromTrackFinal(img, track);
   };
 
   const renderPulse = (rows) => {
@@ -5509,20 +5557,24 @@ const home2ArchiveSeed = [];
     return list.length;
   };
 
+  const champTrackCandidates = (event, source) => {
+    const track = champTrackLabel(event);
+    const name = champEventName(event, source);
+    const car = first(event || {}, ['carSummary', 'cars', 'carName', 'car', 'car.name', 'car.code']);
+    const raw = [track, name, first(event || {}, ['trackCode', 'track_code', 'track.slug', 'track.code']), first(event || {}, ['layout', 'layoutName', 'configuration']), car].filter(Boolean);
+    return raw;
+  };
+
   const setChampImage = async (block, event) => {
     const img = q('[data-home2-champ-track-image]', block);
-    if (!img) return;
-    const label = champTrackLabel(event) || champEventName(event, block.dataset.home2ChampionshipSource || 'weekly');
-    const s = slug(label);
-    const keys = Array.from(new Set([s, s.replace(/^acu_/, ''), s.replace(/^00_/, ''), s.split('_').pop()].filter(Boolean)));
-    const candidates = [];
-    keys.forEach((k) => candidates.push(`/images/tracks/${k}.webp`, `/images/tracks/${k}.jpg`, `/images/tracks/${k}.png`));
-    for (const src of candidates) {
-      if (await imageExists(src)) {
-        img.src = src;
-        return;
-      }
+    if (!img) return false;
+    const source = block?.dataset?.home2ChampionshipSource || 'weekly';
+    const values = champTrackCandidates(event, source);
+    const ok = await setImageFromTrackFinal(img, values);
+    if (!ok && !img.dataset.resolvedPhoto) {
+      img.src = '/ui/home2/gc-home2-track-fallback.svg';
     }
+    return ok;
   };
 
   const renderChampionshipBlock = async (source) => {
