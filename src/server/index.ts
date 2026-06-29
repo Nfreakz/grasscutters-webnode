@@ -1102,7 +1102,15 @@ function getRawDriverName(row: PlainObject) {
   return compactNullableText(row.DriverName) ?? compactNullableText(row.Name) ?? 'Piloto desconocido';
 }
 
-function buildDisplayNameCatalogItem(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown, autoName: string, store = readDisplayNameStore()) {
+function buildDisplayNameCatalogItem(
+  kind: DisplayNameKind,
+  sourceId: unknown,
+  sourceCode: unknown,
+  sourceName: unknown,
+  autoName: string,
+  store = readDisplayNameStore(),
+  meta: PlainObject = {}
+) {
   const entry = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
   const displayName = compactNullableText(entry?.displayName) || autoName;
   return {
@@ -1115,7 +1123,11 @@ function buildDisplayNameCatalogItem(kind: DisplayNameKind, sourceId: unknown, s
     hasOverride: Boolean(entry),
     entryId: entry?.id ?? null,
     notes: entry?.notes ?? null,
-    enabled: entry?.enabled ?? true
+    enabled: entry?.enabled ?? true,
+    sourceKey: compactNullableText(meta.sourceKey) || 'main',
+    sourceLabel: compactNullableText(meta.sourceLabel) || (compactNullableText(meta.sourceKey) || 'Liga GrassCutters'),
+    usageCount: numberOrNull(meta.usageCount) ?? 0,
+    lastSeenAt: numberOrNull(meta.lastSeenAt) ?? null
   };
 }
 
@@ -4510,7 +4522,24 @@ async function readJoinedLapsFromMirrorV2(req?: express.Request) {
 
     const laps = rows.map((row: any) => {
       const lap: any = mapLapRow(row);
-      lap.sourceKey = compactNullableText(row.SourceKey);
+      const sourceKey = compactNullableText(row.SourceKey);
+
+      // En fuentes externas como GT4 los IDs numéricos de sTracker pueden colisionar con main.
+      // Para aplicar nombres visibles, priorizamos código/nombre técnico y anulamos el ID.
+      if (sourceKey && sourceKey !== 'main') {
+        const driverDisplay = applyDisplayName('driver', null, row.SteamGuid, row.DriverName, lap.driverName);
+        const carDisplay = applyDisplayName('car', null, row.Car, row.UiCarName, lap.carName);
+        const trackDisplay = applyDisplayName('track', null, row.Track, row.UiTrackName, lap.trackName);
+        lap.driverName = driverDisplay;
+        lap.playerName = driverDisplay;
+        lap.carName = carDisplay;
+        lap.trackName = trackDisplay;
+        if (lap.driver) lap.driver.name = driverDisplay;
+        if (lap.car) lap.car.name = carDisplay;
+        if (lap.track) lap.track.name = trackDisplay;
+      }
+
+      lap.sourceKey = sourceKey;
       lap.sourceLabel = compactNullableText(row.SourceLabel);
       lap.championshipKey = compactNullableText(row.ChampionshipKey);
       lap.sourceServerIp = compactNullableText(row.SourceServerIp);
@@ -9582,51 +9611,202 @@ async function readAdminAuditLog(limitRaw: unknown) {
 async function buildDisplayNameCatalog() {
   const stracker = getStrackerConfig();
   const store = await readDisplayNameStoreAsync();
+  const sourceDefinitions = buildStrackerSourceDefinitions();
   const catalog = {
     drivers: [] as PlainObject[],
     cars: [] as PlainObject[],
     tracks: [] as PlainObject[]
   };
 
-  if (stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+  const seen = {
+    drivers: new Set<string>(),
+    cars: new Set<string>(),
+    tracks: new Set<string>()
+  };
+
+  const sourceLabelFor = (sourceKey: unknown, fallback?: unknown) => {
+    const key = compactNullableText(sourceKey) || 'main';
+    return compactNullableText(fallback) || compactNullableText(sourceDefinitions[key]?.label) || (key === 'gt4' ? 'Supra GT4' : key === 'main' ? 'Liga GrassCutters' : key);
+  };
+
+  const pushCatalogItem = (bucket: 'drivers' | 'cars' | 'tracks', item: PlainObject) => {
+    const key = [
+      bucket,
+      compactNullableText(item.sourceKey) || 'main',
+      item.sourceId !== null && item.sourceId !== undefined ? `id:${item.sourceId}` : '',
+      compactNullableText(item.sourceCode) ? `code:${normalizeDisplayNameKey(item.sourceCode)}` : '',
+      compactNullableText(item.sourceName) ? `name:${normalizeDisplayNameKey(item.sourceName)}` : ''
+    ].filter(Boolean).join('|');
+    if (seen[bucket].has(key)) return;
+    seen[bucket].add(key);
+    catalog[bucket].push(item);
+  };
+
+  // Fuente preferente: Mirror V2 multi-sTracker. Esto incluye main + gt4 y evita que
+  // /admin/nombres dependa solo del stracker.db3 principal.
+  let loadedFromMirrorV2 = false;
+  if (useMysqlStorage()) {
     try {
+      await ensureStrackerMirrorV2Schema();
+      const driverRows = await mysqlQuery(`
+        SELECT
+          source_key,
+          MAX(source_label) AS source_label,
+          CASE WHEN source_key = 'main' THEN player_id ELSE NULL END AS source_id,
+          steam_guid AS source_code,
+          driver_name AS source_name,
+          driver_name AS auto_name,
+          COUNT(*) AS usage_count,
+          MAX(timestamp_unix) AS last_seen_at
+        FROM gc_stracker2_lap
+        WHERE driver_name IS NOT NULL AND driver_name <> ''
+        GROUP BY source_key, CASE WHEN source_key = 'main' THEN player_id ELSE NULL END, steam_guid, driver_name
+        ORDER BY source_key ASC, driver_name ASC
+      `);
+      for (const row of driverRows) {
+        const sourceKey = compactNullableText(row.source_key) || 'main';
+        const sourceLabel = sourceLabelFor(sourceKey, row.source_label);
+        pushCatalogItem('drivers', buildDisplayNameCatalogItem(
+          'driver',
+          row.source_id,
+          row.source_code,
+          row.source_name,
+          getRawDriverName({ DriverName: row.auto_name, Name: row.source_name }),
+          store,
+          { sourceKey, sourceLabel, usageCount: row.usage_count, lastSeenAt: row.last_seen_at }
+        ));
+      }
+
+      const carRows = await mysqlQuery(`
+        SELECT
+          source_key,
+          MAX(source_label) AS source_label,
+          CASE WHEN source_key = 'main' THEN MIN(car_id) ELSE NULL END AS source_id,
+          car_raw AS source_code,
+          MAX(NULLIF(car_display, '')) AS source_name,
+          MAX(NULLIF(car_display, '')) AS auto_name,
+          COUNT(*) AS usage_count,
+          MAX(timestamp_unix) AS last_seen_at
+        FROM gc_stracker2_lap
+        WHERE (car_raw IS NOT NULL AND car_raw <> '') OR (car_display IS NOT NULL AND car_display <> '')
+        GROUP BY source_key, car_raw
+        ORDER BY source_key ASC, COALESCE(MAX(NULLIF(car_display, '')), car_raw) ASC
+      `);
+      for (const row of carRows) {
+        const sourceKey = compactNullableText(row.source_key) || 'main';
+        const sourceLabel = sourceLabelFor(sourceKey, row.source_label);
+        const sourceCode = compactNullableText(row.source_code);
+        const sourceName = compactNullableText(row.source_name) || sourceCode;
+        pushCatalogItem('cars', buildDisplayNameCatalogItem(
+          'car',
+          row.source_id,
+          sourceCode,
+          sourceName,
+          compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Coche desconocido'),
+          store,
+          { sourceKey, sourceLabel, usageCount: row.usage_count, lastSeenAt: row.last_seen_at }
+        ));
+      }
+
+      const trackRows = await mysqlQuery(`
+        SELECT
+          source_key,
+          MAX(source_label) AS source_label,
+          CASE WHEN source_key = 'main' THEN MIN(track_id) ELSE NULL END AS source_id,
+          track_raw AS source_code,
+          MAX(NULLIF(track_display, '')) AS source_name,
+          MAX(NULLIF(track_display, '')) AS auto_name,
+          COUNT(*) AS usage_count,
+          MAX(timestamp_unix) AS last_seen_at
+        FROM gc_stracker2_lap
+        WHERE (track_raw IS NOT NULL AND track_raw <> '') OR (track_display IS NOT NULL AND track_display <> '')
+        GROUP BY source_key, track_raw
+        ORDER BY source_key ASC, COALESCE(MAX(NULLIF(track_display, '')), track_raw) ASC
+      `);
+      for (const row of trackRows) {
+        const sourceKey = compactNullableText(row.source_key) || 'main';
+        const sourceLabel = sourceLabelFor(sourceKey, row.source_label);
+        const sourceCode = compactNullableText(row.source_code);
+        const sourceName = compactNullableText(row.source_name) || sourceCode;
+        pushCatalogItem('tracks', buildDisplayNameCatalogItem(
+          'track',
+          row.source_id,
+          sourceCode,
+          sourceName,
+          compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Circuito desconocido'),
+          store,
+          { sourceKey, sourceLabel, usageCount: row.usage_count, lastSeenAt: row.last_seen_at }
+        ));
+      }
+
+      loadedFromMirrorV2 = catalog.drivers.length > 0 || catalog.cars.length > 0 || catalog.tracks.length > 0;
+    } catch (error) {
+      console.error('[GC] Error generando catálogo multi-sTracker de display names:', error);
+    }
+  }
+
+  // Fallback legacy: solo stracker principal. Se usa si Mirror V2 no está disponible.
+  if (!loadedFromMirrorV2 && stracker.resolvedPath && stracker.exists && stracker.validSQLite) {
+    try {
+      const sourceKey = 'main';
+      const sourceLabel = sourceLabelFor(sourceKey);
       const drivers = await runStrackerQuery(stracker.resolvedPath, 'SELECT PlayerId, SteamGuid, Name FROM Players ORDER BY Name ASC');
-      const driverItems = drivers.map((row) => buildDisplayNameCatalogItem('driver', row.PlayerId, row.SteamGuid, row.Name, getRawDriverName({ DriverName: row.Name, Name: row.Name }), store));
+      const driverItems = drivers.map((row) => buildDisplayNameCatalogItem('driver', row.PlayerId, row.SteamGuid, row.Name, getRawDriverName({ DriverName: row.Name, Name: row.Name }), store, { sourceKey, sourceLabel }));
       const driverNameCounts = new Map<string, number>();
       for (const item of driverItems) {
         const key = normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName);
         if (!key) continue;
         driverNameCounts.set(key, (driverNameCounts.get(key) || 0) + 1);
       }
-      catalog.drivers = driverItems.map((item) => {
+      for (const item of driverItems) {
         const key = normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName);
         const duplicateNameCount = key ? driverNameCounts.get(key) || 0 : 0;
-        return {
+        pushCatalogItem('drivers', {
           ...item,
           duplicateName: duplicateNameCount > 1,
           duplicateNameCount
-        };
-      });
+        });
+      }
 
       const cars = await runStrackerQuery(stracker.resolvedPath, 'SELECT CarId, Car, UiCarName, Brand FROM Cars ORDER BY UiCarName ASC, Car ASC');
-      catalog.cars = cars.map((row) => buildDisplayNameCatalogItem('car', row.CarId, row.Car, row.UiCarName || row.Car, getRawDisplayCar(row), store));
+      for (const row of cars) pushCatalogItem('cars', buildDisplayNameCatalogItem('car', row.CarId, row.Car, row.UiCarName || row.Car, getRawDisplayCar(row), store, { sourceKey, sourceLabel }));
 
       const tracks = await runStrackerQuery(stracker.resolvedPath, 'SELECT TrackId, Track, UiTrackName, Length FROM Tracks ORDER BY UiTrackName ASC, Track ASC');
-      catalog.tracks = tracks.map((row) => buildDisplayNameCatalogItem('track', row.TrackId, row.Track, row.UiTrackName || row.Track, getRawDisplayTrack(row), store));
+      for (const row of tracks) pushCatalogItem('tracks', buildDisplayNameCatalogItem('track', row.TrackId, row.Track, row.UiTrackName || row.Track, getRawDisplayTrack(row), store, { sourceKey, sourceLabel }));
     } catch (error) {
-      console.error('[GC] Error generando catÃƒÂ¡logo de display names:', error);
+      console.error('[GC] Error generando catálogo legacy de display names:', error);
     }
+  }
+
+  for (const bucket of ['drivers', 'cars', 'tracks'] as const) {
+    const counts = new Map<string, number>();
+    for (const item of catalog[bucket]) {
+      const key = [item.sourceKey || 'main', normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName)].join('|');
+      if (!key) continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    catalog[bucket] = catalog[bucket].map((item) => {
+      const key = [item.sourceKey || 'main', normalizeDisplayNameKey(item.sourceName || item.autoName || item.displayName)].join('|');
+      const duplicateNameCount = counts.get(key) || 0;
+      return {
+        ...item,
+        duplicateName: duplicateNameCount > 1,
+        duplicateNameCount
+      };
+    });
   }
 
   return {
     catalog,
     entries: store.entries,
     storage: getDisplayNamesDbInfo(),
+    catalogSource: loadedFromMirrorV2 ? 'mirror-v2-multi-source' : 'legacy-main-stracker',
     summary: {
       drivers: catalog.drivers.length,
       cars: catalog.cars.length,
       tracks: catalog.tracks.length,
-      overrides: [...catalog.drivers, ...catalog.cars, ...catalog.tracks].filter((item) => item.hasOverride).length
+      overrides: [...catalog.drivers, ...catalog.cars, ...catalog.tracks].filter((item) => item.hasOverride).length,
+      sources: [...new Set([...catalog.drivers, ...catalog.cars, ...catalog.tracks].map((item) => item.sourceKey || 'main'))]
     }
   };
 }
@@ -9776,6 +9956,7 @@ app.post('/api/admin/name-filters/bulk', async (req, res) => {
   }
 
   await writeDisplayNameStoreAsync(store);
+  invalidateStrackerRuntimeCache('display-names.bulk-save');
   await writeAdminAuditLog(req, adminAccess, 'display_names.bulk_save', 'display_name', null, null, { count: changes.length, changes });
 
   res.json({
@@ -9843,6 +10024,7 @@ app.post('/api/admin/name-filters', async (req, res) => {
   }
 
   await writeDisplayNameStoreAsync(store);
+  invalidateStrackerRuntimeCache('display-name.save');
   await writeAdminAuditLog(req, adminAccess, beforeEntry ? 'display_name.update' : 'display_name.create', 'display_name', afterEntry.id, beforeEntry, afterEntry);
   res.json({
     ok: true,
@@ -9874,6 +10056,7 @@ app.post('/api/admin/name-filters/delete', async (req, res) => {
   });
 
   await writeDisplayNameStoreAsync(store);
+  invalidateStrackerRuntimeCache('display-name.delete');
   await writeAdminAuditLog(req, adminAccess, 'display_name.delete', 'display_name', entryId || null, { kind, entryId, sourceId, sourceCode, sourceName }, { removed: before - store.entries.length });
   res.json({
     ok: true,
