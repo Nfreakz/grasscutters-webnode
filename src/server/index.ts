@@ -2939,6 +2939,8 @@ let gcStrackerBytesCache: { signatureKey: string; bytes: Uint8Array } | null = n
 let gcJoinedLapsCache: GcJoinedLapsCacheEntry | null = null;
 let gcJoinedMysqlLapsCache: { createdAt: number; laps: ReturnType<typeof mapLapRow>[] } | null = null;
 let gcJoinedMysqlLapsPromise: Promise<ReturnType<typeof mapLapRow>[]> | null = null;
+let gcJoinedMirrorV2LapsCache: { createdAt: number; cacheKey: string; laps: ReturnType<typeof mapLapRow>[] } | null = null;
+let gcJoinedMirrorV2LapsPromise: Promise<ReturnType<typeof mapLapRow>[]> | null = null;
 const gcStrackerQueryCache = new Map<string, GcQueryCacheEntry>();
 
 function gcPerfBoolEnv(name: string, fallback: boolean) {
@@ -3005,6 +3007,8 @@ function invalidateStrackerRuntimeCache(reason = 'manual') {
   gcJoinedLapsCache = null;
   gcJoinedMysqlLapsCache = null;
   gcJoinedMysqlLapsPromise = null;
+  gcJoinedMirrorV2LapsCache = null;
+  gcJoinedMirrorV2LapsPromise = null;
   gcStrackerQueryCache.clear();
   if (gcPerformanceLogEnabled()) console.log('[GC PERF] CachÃ© stracker/Data Core limpiada: ' + reason);
 }
@@ -4109,7 +4113,7 @@ async function getStrackerMirrorV2Status() {
       usesSameScheduler: true,
       message: 'Mirror V2 se actualiza automáticamente después de cada sync sTracker usando STRACKER_AUTO_SYNC_ENABLED.'
     },
-    message: 'Mirror V2 paralelo activo. Se actualiza automático con main+gt4, pero todavía no alimenta /hotlaps, /pilotos, /combos ni Home.'
+    message: 'Mirror V2 paralelo activo. Puede alimentar APIs públicas mediante source=all/main/gt4 o GC_DATA_CORE_MIRROR_V2_ENABLED=true.'
   };
 }
 
@@ -4176,7 +4180,7 @@ async function readStrackerMirrorV2Laps(req: express.Request) {
  * Lee vueltas públicas desde el mirror MySQL gc_stracker_* cuando está disponible.
  * No toca SR/GSR ni procesamiento de ratings: solo cambia la fuente de lectura para leaderboard/Data Core.
  */
-type GcDataCoreReadSource = 'mysql-mirror' | 'stracker-db3';
+type GcDataCoreReadSource = 'mysql-mirror-v2' | 'mysql-mirror' | 'stracker-db3';
 
 type GcDataCoreReadResult = {
   source: GcDataCoreReadSource;
@@ -4326,9 +4330,212 @@ async function readJoinedLapsFromMysqlMirror() {
   }
 }
 
+
+function gcDataCoreMirrorV2Enabled(req?: express.Request) {
+  const requestedSource = req ? getQueryString(req, 'source', '').toLowerCase() : '';
+  const requestedServer = req ? getQueryString(req, 'server', '').toLowerCase() : '';
+  const requestedChampionship = req ? getQueryString(req, 'championship', '').toLowerCase() : '';
+  const requested = [requestedSource, requestedServer, requestedChampionship].filter(Boolean);
+
+  if (requested.some((value) => ['stracker', 'sqlite', 'db3', 'file', 'mysql', 'sql', 'mirror', 'mysql-mirror'].includes(value))) {
+    return false;
+  }
+
+  if (requested.some((value) => ['v2', 'mirror-v2', 'mysql-mirror-v2', 'all', 'main', 'weekly', 'liga', 'gt4', 'supra'].includes(value))) {
+    return true;
+  }
+
+  return readBooleanEnv('GC_DATA_CORE_MIRROR_V2_ENABLED', false);
+}
+
+function gcDataCoreMirrorV2SourceKeys(req?: express.Request) {
+  const raw = [
+    req ? getQueryString(req, 'server', '') : '',
+    req ? getQueryString(req, 'source', '') : '',
+    req ? getQueryString(req, 'championship', '') : ''
+  ].map((value) => value.trim().toLowerCase()).find(Boolean) || '';
+
+  if (!raw || ['all', 'todos', 'combined', 'combinado', 'v2', 'mirror-v2', 'mysql-mirror-v2'].includes(raw)) return [];
+  if (['main', 'weekly', 'liga', 'grasscutters'].includes(raw)) return ['main'];
+  if (['gt4', 'supra', 'supra-gt4'].includes(raw)) return ['gt4'];
+  return gcMirrorV2ResolveSourceKeys(raw);
+}
+
+async function readJoinedLapsFromMirrorV2(req?: express.Request) {
+  await readDisplayNameStoreAsync();
+  if (!useMysqlStorage()) throw new Error('MySQL no está activo para Data Core Mirror V2.');
+  await ensureStrackerMirrorV2Schema();
+
+  const sourceKeys = gcDataCoreMirrorV2SourceKeys(req);
+  const cacheKey = sourceKeys.length ? sourceKeys.join(',') : 'all';
+  const ttlMs = gcJoinedLapsTtlMs();
+  const now = Date.now();
+
+  if (ttlMs > 0 && gcJoinedMirrorV2LapsCache && gcJoinedMirrorV2LapsCache.cacheKey === cacheKey && now - gcJoinedMirrorV2LapsCache.createdAt <= ttlMs) {
+    return gcJoinedMirrorV2LapsCache.laps;
+  }
+
+  if (gcJoinedMirrorV2LapsPromise) {
+    return gcJoinedMirrorV2LapsPromise;
+  }
+
+  gcJoinedMirrorV2LapsPromise = (async () => {
+    const started = Date.now();
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (sourceKeys.length) {
+      where.push(`source_key IN (${sourceKeys.map(() => '?').join(',')})`);
+      params.push(...sourceKeys);
+    }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const rows = await mysqlQuery(`
+      SELECT
+        lap_uid AS LapUid,
+        source_key AS SourceKey,
+        source_label AS SourceLabel,
+        championship_key AS ChampionshipKey,
+        server_ip AS SourceServerIp,
+        lap_id AS LapId,
+        player_in_session_id AS PlayerInSessionId,
+        session_id AS SessionId,
+        combo_id AS ComboId,
+        player_id AS RawPlayerId,
+        CASE
+          WHEN player_id IS NULL THEN NULL
+          WHEN source_key = 'main' THEN player_id
+          ELSE CAST(CONV(SUBSTRING(SHA1(CONCAT(source_key, ':', player_id)), 1, 8), 16, 10) AS UNSIGNED)
+        END AS PlayerId,
+        steam_guid AS SteamGuid,
+        driver_name AS DriverName,
+        0 AS IsOnline,
+        0 AS Whitelisted,
+        0 AS Anonymized,
+        car_id AS CarId,
+        car_raw AS Car,
+        car_display AS UiCarName,
+        car_brand AS Brand,
+        track_id AS TrackId,
+        track_raw AS Track,
+        track_display AS UiTrackName,
+        track_length AS TrackLength,
+        lap_number AS LapCount,
+        session_time_ms AS SessionTime,
+        lap_time_ms AS LapTime,
+        sector_time_0 AS SectorTime0,
+        sector_time_1 AS SectorTime1,
+        sector_time_2 AS SectorTime2,
+        sector_time_3 AS SectorTime3,
+        sector_time_4 AS SectorTime4,
+        sector_time_5 AS SectorTime5,
+        sector_time_6 AS SectorTime6,
+        sector_time_7 AS SectorTime7,
+        sector_time_8 AS SectorTime8,
+        sector_time_9 AS SectorTime9,
+        valid AS Valid,
+        cuts AS Cuts,
+        collisions_car AS CollisionsCar,
+        collisions_env AS CollisionsEnv,
+        max_speed_kmh AS MaxSpeed_KMH,
+        temperature_ambient AS TemperatureAmbient,
+        temperature_track AS TemperatureTrack,
+        timestamp_unix AS Timestamp,
+        session_type AS SessionType,
+        1 AS Multiplayer,
+        server_ip_port AS ServerIpPort,
+        start_time_unix AS StartTimeDate,
+        end_time_unix AS EndTimeDate,
+        NULL AS FuelRatio,
+        NULL AS SectorsAreSoftSplits,
+        NULL AS MaxABS,
+        NULL AS MaxTC,
+        NULL AS AidABS,
+        NULL AS AidTC,
+        NULL AS AidAutoBlib,
+        NULL AS AidAutoBrake,
+        NULL AS AidAutoClutch,
+        NULL AS AidAutoShift,
+        NULL AS AidIdealLine,
+        NULL AS AidStabilityControl,
+        NULL AS AidSlipStream,
+        NULL AS AidTyreBlankets,
+        NULL AS GripLevel,
+        NULL AS Ballast,
+        NULL AS ACVersion,
+        NULL AS InputMethod,
+        NULL AS Shifter
+      FROM gc_stracker2_lap
+      ${whereSql}
+      WHERE_PLACEHOLDER
+      ORDER BY lap_time_ms ASC
+    `.replace('WHERE_PLACEHOLDER', whereSql ? '' : ''), params);
+
+    const laps = rows.map((row: any) => {
+      const lap: any = mapLapRow(row);
+      lap.sourceKey = compactNullableText(row.SourceKey);
+      lap.sourceLabel = compactNullableText(row.SourceLabel);
+      lap.championshipKey = compactNullableText(row.ChampionshipKey);
+      lap.sourceServerIp = compactNullableText(row.SourceServerIp);
+      lap.rawPlayerId = numberOrNull(row.RawPlayerId);
+      lap.lapUid = compactNullableText(row.LapUid);
+      lap.driver = {
+        ...lap.driver,
+        sourceKey: lap.sourceKey,
+        rawId: lap.rawPlayerId
+      };
+      lap.session = {
+        ...lap.session,
+        sourceKey: lap.sourceKey,
+        sourceLabel: lap.sourceLabel,
+        championshipKey: lap.championshipKey,
+        sourceServerIp: lap.sourceServerIp
+      };
+      return lap;
+    });
+
+    if (ttlMs > 0) {
+      gcJoinedMirrorV2LapsCache = { createdAt: Date.now(), cacheKey, laps };
+    }
+    if (gcPerformanceLogEnabled()) {
+      console.log('[GC PERF] readJoinedLapsFromMirrorV2 ' + (Date.now() - started) + 'ms · vueltas=' + laps.length + ' · source=' + cacheKey + (ttlMs > 0 ? ' · cached' : ''));
+    }
+    return laps;
+  })();
+
+  try {
+    return await gcJoinedMirrorV2LapsPromise;
+  } finally {
+    gcJoinedMirrorV2LapsPromise = null;
+  }
+}
+
 async function readGcDataCoreSource(req: express.Request): Promise<GcDataCoreReadResult | { ok: false; message: string; stracker: ReturnType<typeof getStrackerConfig>; fallbackReason?: string | null }> {
   const stracker = getStrackerConfig();
   let fallbackReason: string | null = null;
+
+  if (gcDataCoreMirrorV2Enabled(req)) {
+    try {
+      const laps = await readJoinedLapsFromMirrorV2(req);
+      if (laps.length > 0) {
+        return {
+          source: 'mysql-mirror-v2',
+          laps,
+          comboDefinitions: [],
+          stracker,
+          mysqlMirror: {
+            enabled: true,
+            rows: laps.length,
+            message: 'Data Core leído desde Mirror V2 combinado gc_stracker2_lap.'
+          },
+          fallbackReason: null
+        };
+      }
+      fallbackReason = 'Mirror V2 vacío para el filtro solicitado.';
+    } catch (error) {
+      fallbackReason = error instanceof Error ? error.message : String(error);
+      console.warn('[GC DATA CORE] Mirror V2 no disponible, usando fallback:', fallbackReason);
+    }
+  }
 
   if (gcDataCoreMysqlFirstEnabled(req) && gcDataCoreMysqlMirrorSupportsRequest(req)) {
     try {
@@ -5327,7 +5534,13 @@ function compactLapForCombo(lap: ComboLap | null) {
     input: lap.input,
     driver: lap.driver,
     car: lap.car,
-    track: lap.track
+    track: lap.track,
+    sourceKey: (lap as any).sourceKey ?? null,
+    sourceLabel: (lap as any).sourceLabel ?? null,
+    championshipKey: (lap as any).championshipKey ?? null,
+    sourceServerIp: (lap as any).sourceServerIp ?? null,
+    lapUid: (lap as any).lapUid ?? null,
+    rawPlayerId: (lap as any).rawPlayerId ?? null
   };
 }
 
