@@ -14544,6 +14544,319 @@ app.get('/api/gc/active-combo', async (req, res) => {
 });
 
 
+/* GC_HOME_BOOTSTRAP_PACK_1_START */
+function gcHomeBootstrapNumberV1(value: unknown, fallback: number, min = 1, max = 200) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(min, Math.min(max, Math.floor(raw)));
+}
+
+function gcHomeBootstrapLapTimestampMsV1(lap: any) {
+  const raw = lap?.timestamp ?? lap?.Timestamp ?? lap?.date ?? lap?.Date ?? lap?.timestampIso ?? lap?.dateIso;
+  if (typeof raw === 'number') return raw > 20000000000 ? raw : raw * 1000;
+  if (!raw) return 0;
+  const parsed = Date.parse(String(raw));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function gcHomeBootstrapPublicLapV1(lap: any) {
+  const compact: any = compactLapForCombo(lap as ComboLap) || {};
+  return {
+    ...compact,
+    timestampMs: gcHomeBootstrapLapTimestampMsV1(lap),
+    timestampIso: compact.timestampIso || (gcHomeBootstrapLapTimestampMsV1(lap) ? new Date(gcHomeBootstrapLapTimestampMsV1(lap)).toISOString() : null),
+    lapTimeFormatted: compact.lapTimeFormatted || compact.lapTime || lapTimeToText(compact.lapTimeMs),
+    sourceKey: compact.sourceKey || lap?.sourceKey || 'main',
+    sourceLabel: compact.sourceLabel || lap?.sourceLabel || ((compact.sourceKey || lap?.sourceKey) === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters')
+  };
+}
+
+function gcHomeBootstrapTrackImageV1(track: any) {
+  const tokens = gcComboUnifyTrackFamilyV1(track || {});
+  const key = tokens.key || gcComboUnifySlugV1(tokens.name || tokens.code || '');
+  const candidates: string[] = [];
+  const add = (url: string | null | undefined) => {
+    if (url && !candidates.includes(url)) candidates.push(url);
+  };
+
+  if (key === 'pascani_motorpark_a1') {
+    add('/images/tracks/pascani.jpg');
+    add('/images/tracks/a1.webp');
+  } else if (key === 'vila_real') {
+    add('/images/tracks/vilareal.jpg');
+    add('/images/tracks/vilareal.webp');
+  } else if (key === 'hungaroring') {
+    add('/images/tracks/hungaroring.jpg');
+    add('/images/tracks/hungaroring.webp');
+  } else if (key === 'algarve_portimao') {
+    add('/images/tracks/algarve-portimao.jpg');
+    add('/images/tracks/portimao.jpg');
+  } else if (key === 'fuji_speedway') {
+    add('/images/tracks/fuji.jpg');
+    add('/images/tracks/fuji-speedway.jpg');
+  }
+
+  if (key) {
+    add(`/images/tracks/${encodeURIComponent(key)}.jpg`);
+    add(`/images/tracks/${encodeURIComponent(key)}.webp`);
+    add(`/images/tracks/${encodeURIComponent(key)}.png`);
+  }
+
+  return {
+    key,
+    primary: candidates[0] || '/images/tracks/placeholder-track.svg',
+    candidates
+  };
+}
+
+function gcHomeBootstrapBuildComboBucketsV1(laps: any[]) {
+  const vilaSplitMap = gcComboUnifyBuildVilaRealSplitMapV1(laps || []);
+  const buckets = new Map<string, any>();
+
+  for (const lap of laps || []) {
+    const sourceKey = gcComboUnifySourceKeyV1(lap);
+    const sourceLabel = gcComboUnifySourceLabelV1(sourceKey, lap);
+    const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track);
+    const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
+    const variantLabel = gcComboUnifyVariantLabelV1(trackFamily.key, variant);
+    const key = `${sourceKey}:${trackFamily.key}:${variant}`;
+
+    if (!buckets.has(key)) {
+      const displayTrackName = variantLabel ? `${trackFamily.displayName} · ${variantLabel}` : trackFamily.displayName;
+      buckets.set(key, {
+        key,
+        comboUid: key,
+        sourceKey,
+        sourceLabel,
+        track: {
+          ...(lap?.track || {}),
+          code: trackFamily.key,
+          name: displayTrackName,
+          displayName: displayTrackName,
+          rawCode: trackFamily.code,
+          rawName: trackFamily.rawName,
+          familyKey: trackFamily.key,
+          variant
+        },
+        carsMap: new Map<string, any>(),
+        drivers: new Map<string, any>(),
+        sessions: new Set<string>(),
+        laps: [],
+        totalLaps: 0,
+        validLaps: 0,
+        invalidLaps: 0,
+        latestLap: null,
+        latestTimestampMs: 0,
+        bestLap: null,
+        bestLapMs: null,
+        maxSpeedKmh: 0,
+        totalCuts: 0
+      });
+    }
+
+    const bucket = buckets.get(key);
+    const tsMs = gcHomeBootstrapLapTimestampMsV1(lap);
+    bucket.totalLaps += 1;
+    if (lap?.valid !== false && lap?.Valid !== 0) bucket.validLaps += 1;
+    else bucket.invalidLaps += 1;
+    bucket.totalCuts += Math.max(0, Number(lap?.cuts || 0));
+    if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) bucket.drivers.set(String(lap.driver.id), lap.driver);
+    else if (lap?.driver?.name) bucket.drivers.set(String(lap.driver.name).toLowerCase(), lap.driver);
+    if (lap?.sessionId !== null && lap?.sessionId !== undefined) bucket.sessions.add(String(lap.sessionId));
+    const carKey = gcComboUnifyCarBucketKeyV2(lap);
+    bucket.carsMap.set(carKey, gcComboUnifyCarDisplayV2(lap));
+    const speed = Number(lap?.maxSpeedKmh || 0);
+    if (Number.isFinite(speed) && speed > Number(bucket.maxSpeedKmh || 0)) bucket.maxSpeedKmh = speed;
+    const lapMs = Number(lap?.lapTimeMs || 0);
+    const isValid = lap?.valid !== false && lap?.Valid !== 0;
+    if (isValid && lapMs > 0 && (!bucket.bestLapMs || lapMs < bucket.bestLapMs)) {
+      bucket.bestLapMs = lapMs;
+      bucket.bestLap = lap;
+    }
+    if (tsMs > bucket.latestTimestampMs) {
+      bucket.latestTimestampMs = tsMs;
+      bucket.latestLap = lap;
+    }
+    bucket.laps.push(lap);
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => Number(b.latestTimestampMs || 0) - Number(a.latestTimestampMs || 0));
+}
+
+function gcHomeBootstrapNormalizeBucketV1(bucket: any, leaderboardLimit: number) {
+  if (!bucket) return null;
+  const leaderboard = buildComboLeaderboard(bucket.laps as ComboLap[]).slice(0, leaderboardLimit).map(gcHomeBootstrapPublicLapV1);
+  const cars = Array.from(bucket.carsMap.values());
+  const image = gcHomeBootstrapTrackImageV1(bucket.track);
+  const bestLap = gcHomeBootstrapPublicLapV1(bucket.bestLap || leaderboard[0] || null);
+  const latestLap = gcHomeBootstrapPublicLapV1(bucket.latestLap || null);
+
+  return {
+    key: bucket.key,
+    comboUid: bucket.comboUid || bucket.key,
+    sourceKey: bucket.sourceKey,
+    sourceLabel: bucket.sourceLabel,
+    track: bucket.track,
+    cars,
+    carSummary: carSummaryFromCars(cars),
+    totalLaps: bucket.totalLaps,
+    validLaps: bucket.validLaps,
+    invalidLaps: bucket.invalidLaps,
+    cleanRate: percent(bucket.validLaps, bucket.totalLaps),
+    driversCount: bucket.drivers.size,
+    sessionsCount: bucket.sessions.size,
+    bestLap,
+    bestLapMs: bucket.bestLapMs,
+    bestLapTime: bucket.bestLapMs ? lapTimeToText(bucket.bestLapMs) : '--',
+    latestLap,
+    lastSeenAt: bucket.latestTimestampMs ? new Date(bucket.latestTimestampMs).toISOString() : null,
+    lastSeenTimestamp: bucket.latestTimestampMs ? Math.floor(bucket.latestTimestampMs / 1000) : null,
+    maxSpeedKmh: bucket.maxSpeedKmh || null,
+    totalCuts: bucket.totalCuts,
+    trackImage: image,
+    leaderboard,
+    leaderboardTop: leaderboard,
+    leaderboardCount: leaderboard.length
+  };
+}
+
+async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'main' | 'gt4', leaderboardLimit: number) {
+  const sourceReq = {
+    ...req,
+    query: {
+      ...(req.query || {}),
+      source: sourceKey
+    }
+  } as express.Request;
+
+  const readSource = await readGcDataCoreSource(sourceReq);
+  if ((readSource as any).ok === false) {
+    return {
+      ok: false,
+      sourceKey,
+      sourceLabel: sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters',
+      activeCombo: null,
+      leaderboard: [],
+      timingCandidates: [],
+      diagnostics: {
+        totalLaps: 0,
+        combos: 0,
+        message: (readSource as any).message || 'Race Data Core no disponible.'
+      }
+    };
+  }
+
+  const dataCoreSource = readSource as GcDataCoreReadResult;
+  const sourceLaps = (dataCoreSource.laps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
+  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps);
+  const activeBucket = buckets[0] || null;
+  const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
+  const latestLaps = sourceLaps
+    .slice()
+    .sort((a: any, b: any) => gcHomeBootstrapLapTimestampMsV1(b) - gcHomeBootstrapLapTimestampMsV1(a))
+    .slice(0, 120)
+    .map(gcHomeBootstrapPublicLapV1);
+
+  return {
+    ok: true,
+    sourceKey,
+    sourceLabel: sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters',
+    activeCombo,
+    leaderboard: activeCombo?.leaderboard || [],
+    timingCandidates: latestLaps,
+    diagnostics: {
+      totalLaps: sourceLaps.length,
+      combos: buckets.length,
+      activeComboKey: activeCombo?.comboUid || null,
+      activeComboLaps: activeCombo?.totalLaps || 0,
+      leaderboardRows: activeCombo?.leaderboard?.length || 0,
+      dataSource: dataCoreSource.source,
+      fallbackReason: dataCoreSource.fallbackReason ?? null
+    }
+  };
+}
+
+function gcHomeBootstrapDeduplicateTimingV1(laps: any[]) {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const lap of laps || []) {
+    const key = String(lap?.lapUid || lap?.lapId || `${lap?.sourceKey || 'main'}:${lap?.sessionId || ''}:${lap?.playerInSessionId || ''}:${lap?.lapTimeMs || ''}:${lap?.timestamp || lap?.timestampIso || ''}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(lap);
+  }
+  return out;
+}
+
+app.get('/api/gc/home-bootstrap', async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    await readDisplayNameStoreAsync();
+    const mainLimit = gcHomeBootstrapNumberV1(req.query.mainLimit, 8, 1, 20);
+    const gt4Limit = gcHomeBootstrapNumberV1(req.query.gt4Limit, 8, 1, 20);
+    const timingLimit = gcHomeBootstrapNumberV1(req.query.timingLimit, 8, 1, 30);
+
+    const [main, gt4] = await Promise.all([
+      gcHomeBootstrapReadSourceV1(req, 'main', mainLimit),
+      gcHomeBootstrapReadSourceV1(req, 'gt4', gt4Limit)
+    ]);
+
+    const timingSheet = gcHomeBootstrapDeduplicateTimingV1([
+      ...((main as any).timingCandidates || []),
+      ...((gt4 as any).timingCandidates || [])
+    ])
+      .sort((a: any, b: any) => Number(b.timestampMs || 0) - Number(a.timestampMs || 0))
+      .slice(0, timingLimit);
+
+    res.json({
+      ok: true,
+      source: 'gc-home-bootstrap-v1',
+      generatedAt: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
+      main: {
+        ok: main.ok,
+        sourceKey: main.sourceKey,
+        sourceLabel: main.sourceLabel,
+        activeCombo: main.activeCombo,
+        leaderboard: main.leaderboard,
+        diagnostics: main.diagnostics
+      },
+      gt4: {
+        ok: gt4.ok,
+        sourceKey: gt4.sourceKey,
+        sourceLabel: gt4.sourceLabel,
+        activeCombo: gt4.activeCombo,
+        leaderboard: gt4.leaderboard,
+        diagnostics: gt4.diagnostics
+      },
+      timingSheet,
+      diagnostics: {
+        main: main.diagnostics,
+        gt4: gt4.diagnostics,
+        timingRows: timingSheet.length,
+        loadersExpectedOnFrontend: 1,
+        recommendedFrontendRefreshMs: 60000
+      },
+      message: 'Home bootstrap preparado en backend. La Home puede pintar desde este endpoint sin deducir combo activo en el navegador.'
+    });
+  } catch (error) {
+    console.error('[GC Home Bootstrap] /api/gc/home-bootstrap:', error);
+    res.status(200).json({
+      ok: false,
+      source: 'gc-home-bootstrap-v1',
+      generatedAt: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
+      main: null,
+      gt4: null,
+      timingSheet: [],
+      message: 'No se pudo generar Home Bootstrap.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+/* GC_HOME_BOOTSTRAP_PACK_1_END */
+
+
 
 let gcArchiveHomeCacheV3: { createdAt: number; limit: number; payload: any } | null = null;
 
