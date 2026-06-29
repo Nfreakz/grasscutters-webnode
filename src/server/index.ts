@@ -5850,7 +5850,7 @@ function createComboStatsEntryFromLap(lap: ComboLap) {
     memberComboIds: comboId ? [comboId] : [],
     mergedCombosCount: comboId ? 1 : 0,
     mergePolicy: null,
-    url: comboId ? `/combos/${comboId}` : getComboUrlFromLap(lap),
+    url: getComboUrlFromLap(lap) || (comboId ? `/combos/${comboId}` : null),
     trackId: lap.track?.id ?? null,
     carId: comboId ? null : (lap.car?.id ?? null),
     track: lap.track,
@@ -11609,896 +11609,164 @@ async function gcComboCanonicalReadItemsV1(strackerPath: string, sort = 'recent'
 }
 
 app.get('/api/gc/combos', async (req: any, res: any) => {
-  const stracker = getStrackerConfig();
-
   try {
-    const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
-    const sort = getQueryString(req, 'sort', 'recent');
-    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
-    const publicAllItems = items.filter(gcComboCanonicalIsPublicItemV1);
-    const publicItems = publicAllItems.slice(0, limit);
-    const activeCombo = publicAllItems[0] || null;
-    const readComboNumber = (...values: any[]) => {
-      for (const value of values) {
-        const parsed = Number(value);
-        if (Number.isFinite(parsed)) return parsed;
-      }
-      return 0;
-    };
-    const totalLaps = publicAllItems.reduce((sum, item: any) => sum + readComboNumber(item?.totalLaps, item?.summary?.totalLaps, item?.laps, item?.lapCount), 0);
-    const totalValidLaps = publicAllItems.reduce((sum, item: any) => sum + readComboNumber(item?.validLaps, item?.summary?.validLaps, item?.validLapCount), 0);
-    const uniqueCars = new Set<string>();
-    for (const item of publicAllItems) {
-      const carGroups = [item?.publicComboCars, item?.cars, item?.allCars, item?.carList, item?.carModels];
-      for (const group of carGroups) {
-        if (!Array.isArray(group)) continue;
-        for (const car of group) {
-          const key = String(car?.id ?? car?.carId ?? car?.code ?? car?.name ?? car).trim();
-          if (key) uniqueCars.add(key);
-        }
-      }
+    await readDisplayNameStoreAsync();
+    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
+    const q = getQueryString(req, 'q') || getQueryString(req, 'search');
+    const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core combinado no disponible para generar combos.'),
+        activeCombo: null,
+        items: [],
+        totalCombos: 0,
+        activeCombos: 0
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    let items = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
+
+    if (q) {
+      items = items.filter((combo: any) => includesFilter(`${combo.sourceKey || ''} ${combo.sourceLabel || ''} ${combo.comboId} ${combo.track?.name} ${combo.track?.code} ${combo.carSummary} ${combo.usedCarSummary} ${(combo.cars || []).map((car: any) => `${car.name} ${car.code} ${car.brand}`).join(' ')}`, q));
+    }
+
+    if (sort === 'laps') items = items.sort((a: any, b: any) => Number(b.totalLaps ?? 0) - Number(a.totalLaps ?? 0));
+    else if (sort === 'drivers') items = items.sort((a: any, b: any) => Number(b.driversCount ?? 0) - Number(a.driversCount ?? 0));
+    else if (sort === 'fastest') items = items.sort((a: any, b: any) => Number(a.bestLapMs ?? Infinity) - Number(b.bestLapMs ?? Infinity));
+    else if (sort === 'clean') items = items.sort((a: any, b: any) => Number(b.cleanRate ?? 0) - Number(a.cleanRate ?? 0));
+    else if (sort === 'cars') items = items.sort((a: any, b: any) => Number(b.carsCount ?? 0) - Number(a.carsCount ?? 0));
+    else items = items.sort((a: any, b: any) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
+
+    const activeItems = items.filter((combo: any) => Number(combo.totalLaps ?? 0) > 0);
+    const activeCombo = [...activeItems].sort((a: any, b: any) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0) || Number(b.totalLaps ?? 0) - Number(a.totalLaps ?? 0))[0] || null;
+    const uniqueCarIds = new Set<string>();
+    for (const combo of items) {
+      for (const id of combo.carIds || []) if (id !== null && id !== undefined) uniqueCarIds.add(String(id));
     }
 
     res.json({
       ok: true,
       source: 'gc-data-core',
-      dataSource: source,
-      mode: source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      comboCore: 'gc-combo-canonical-public-filter-v1',
+      dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
-      stracker: gcDataCorePublicStracker(dataCoreStracker),
-      mysqlMirror: mysqlMirror ?? null,
-      fallbackReason: fallbackReason ?? null,
-      count: publicItems.length,
-      totalMatched: publicAllItems.length,
-      totalCombos: publicAllItems.length,
-      publicCombos: publicAllItems.length,
-      activeCombos: publicAllItems.length,
+      mode: dataCoreSource.source === 'mysql-mirror-v2' ? 'mysql-mirror-v2' : dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
+      comboCore: 'gc-combo-source-aware-v4',
+      sort,
+      filters: { q: q || null, source: getQueryString(req, 'source', '') || null },
+      count: Math.min(items.length, limit),
+      totalMatched: items.length,
+      totalCombos: items.length,
+      activeCombos: activeItems.length,
+      publicCombos: items.length,
       rawCombos: items.length,
       activeCombo,
-      totalLaps,
-      totalValidLaps,
-      carsCount: uniqueCars.size,
-      items: publicItems,
+      totalLaps: items.reduce((sum: number, combo: any) => sum + Number(combo.totalLaps ?? 0), 0),
+      totalValidLaps: items.reduce((sum: number, combo: any) => sum + Number(combo.validLaps ?? 0), 0),
+      carsCount: uniqueCarIds.size,
+      items: items.slice(0, limit),
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       policy: {
-        canonicalGrouping: 'track variants grouped by cleaned canonical track',
-        mainVariant: 'variant with most valid laps, then total laps, then most recent',
-        publicCars: 'all cars with laps across every track variant',
-        minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1,
-        minPublicDrivers: GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1,
-        scope: 'combos-only'
+        sourceAware: true,
+        sourceParam: 'source=all/main/gt4',
+        identity: 'sourceKey + trackCode + carCode when available'
       },
-      message: 'Combos públicos agrupados por circuito canónico. Coches y vueltas unificados desde todas las variantes del circuito.'
+      message: dataCoreSource.source === 'mysql-mirror-v2'
+        ? 'Combos generados desde Mirror V2 combinado con identidad source-aware.'
+        : 'Combos generados desde GC Data Core.'
     });
   } catch (error) {
-    console.error('[GC Combo Canonical Public Filter] /api/gc/combos error:', error);
+    console.error('[GC Combo Source Aware V4] /api/gc/combos error:', error);
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-canonical-public-filter-v1',
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       items: [],
-      message: 'No se pudieron generar combos canÃ³nicos.',
+      message: 'No se pudieron generar combos source-aware.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
 });
 
 app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
-  const stracker = getStrackerConfig();
-
   try {
+    await readDisplayNameStoreAsync();
     const requestedId = String(req.params.comboId || '').trim();
-    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', 'recent');
-    const item = gcComboCanonicalFindByIdV1(items, requestedId);
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core combinado no disponible para generar la ficha del combo.'),
+        item: null,
+        comboId: requestedId
+      });
+      return;
+    }
 
-    if (!item) {
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const combos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
+    const combo = combos.find((entry: any) =>
+      String(entry.comboId) === requestedId ||
+      String(entry.canonicalComboId) === requestedId ||
+      String(entry.key) === requestedId ||
+      String(entry.comboUid || '') === requestedId ||
+      String(entry.url || '').endsWith('/' + requestedId)
+    );
+
+    if (!combo) {
       return res.status(404).json({
         ok: false,
         source: 'gc-data-core',
-        comboCore: 'gc-combo-canonical-public-filter-v1',
+        dataSource: dataCoreSource.source,
+        comboCore: 'gc-combo-source-aware-v4',
         generatedAt: new Date().toISOString(),
-        message: 'Combo canÃ³nico no encontrado.',
+        stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+        mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+        fallbackReason: dataCoreSource.fallbackReason ?? null,
+        message: 'Combo no encontrado en Data Core combinado.',
         comboId: requestedId
       });
     }
 
+    const rows = dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
+    const item = gcComboDetailBuildItemV1(combo, rows.length ? rows : combo.laps || []);
+
     res.json({
       ok: true,
       source: 'gc-data-core',
-      dataSource: source,
-      comboCore: 'gc-combo-canonical-public-filter-v1',
+      dataSource: dataCoreSource.source,
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
-      stracker: gcDataCorePublicStracker(dataCoreStracker),
-      mysqlMirror: mysqlMirror ?? null,
-      fallbackReason: fallbackReason ?? null,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
       item,
       meta: {
         requestedComboId: requestedId,
         matchedComboId: item.comboId,
-        canonicalKey: item.canonicalKey,
-        mainVariant: item.mainVariant,
-        variantsCount: item.variantsCount,
-        publicCarsCount: item.publicComboCars?.length || 0,
-        hiddenLowLapCarsCount: item.hiddenLowLapCars?.length || 0,
-        minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1
+        lapsMatched: rows.length,
+        totalCombos: combos.length,
+        endpoint: '/api/gc/combos/:comboId'
       },
-      message: 'Ficha de combo canónico generada desde Race Data Core con coches unificados por circuito.'
+      message: dataCoreSource.source === 'mysql-mirror-v2' ? 'Ficha de combo generada desde Mirror V2 combinado.' : 'Ficha de combo generada desde GC Data Core.'
     });
   } catch (error) {
-    console.error('[GC Combo Canonical Public Filter] /api/gc/combos/:comboId error:', error);
+    console.error('[GC Combo Source Aware V4] /api/gc/combos/:comboId error:', error);
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-canonical-public-filter-v1',
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       item: null,
-      message: 'No se pudo generar la ficha de combo canÃ³nico.',
+      message: 'No se pudo generar la ficha del combo source-aware.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
 });
-
-app.get('/api/combos/stats', async (req: any, res: any) => {
-  const stracker = getStrackerConfig();
-
-  try {
-    const limit = getQueryNumber(req, 'limit', 100, 1, 1000);
-    const sort = getQueryString(req, 'sort', 'recent');
-    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', sort);
-    const publicItems = items.slice(0, limit);
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: source,
-      comboCore: 'gc-combo-canonical-public-filter-v1',
-      generatedAt: new Date().toISOString(),
-      stracker: gcDataCorePublicStracker(dataCoreStracker),
-      mysqlMirror: mysqlMirror ?? null,
-      fallbackReason: fallbackReason ?? null,
-      legacyEndpoint: '/api/combos/stats',
-      canonicalEndpoint: '/api/gc/combos',
-      count: publicItems.length,
-      totalCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
-      activeCombos: items.filter(gcComboCanonicalIsPublicItemV1).length,
-      totalLaps: items.filter(gcComboCanonicalIsPublicItemV1).reduce((sum, item) => sum + (item.summary?.totalLaps || 0), 0),
-      items: publicItems,
-      combos: publicItems,
-      activeCombo: publicItems[0] || null,
-      policy: {
-        minPublicCarLaps: GC_COMBO_CANONICAL_MIN_PUBLIC_CAR_LAPS_V1,
-        minPublicDrivers: GC_COMBO_CANONICAL_MIN_PUBLIC_DRIVERS_V1,
-        scope: 'combos-only'
-      }
-    });
-  } catch (error) {
-    console.error('[GC Combo Canonical Public Filter] /api/combos/stats error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      comboCore: 'gc-combo-canonical-public-filter-v1',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/combos/stats',
-      items: [],
-      combos: [],
-      message: 'No se pudieron generar combos canÃ³nicos para legacy alias.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/combos/:comboId', async (req: any, res: any) => {
-  const stracker = getStrackerConfig();
-
-  try {
-    const requestedId = String(req.params.comboId || '').trim();
-    const { items, source, stracker: dataCoreStracker, mysqlMirror, fallbackReason } = await gcComboCanonicalReadItemsV1(stracker.resolvedPath || '', 'recent');
-    const item = gcComboCanonicalFindByIdV1(items, requestedId);
-
-    if (!item) {
-      return res.status(404).json({
-        ok: false,
-        source: 'gc-data-core-legacy-server-alias',
-        comboCore: 'gc-combo-canonical-public-filter-v1',
-        generatedAt: new Date().toISOString(),
-        legacyEndpoint: '/api/combos/:comboId',
-        canonicalEndpoint: '/api/gc/combos/:comboId',
-        message: 'Combo canÃ³nico no encontrado.',
-        comboId: requestedId
-      });
-    }
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: source,
-      comboCore: 'gc-combo-canonical-public-filter-v1',
-      generatedAt: new Date().toISOString(),
-      stracker: gcDataCorePublicStracker(dataCoreStracker),
-      mysqlMirror: mysqlMirror ?? null,
-      fallbackReason: fallbackReason ?? null,
-      legacyEndpoint: '/api/combos/:comboId',
-      canonicalEndpoint: '/api/gc/combos/:comboId',
-      item,
-      meta: {
-        requestedComboId: requestedId,
-        matchedComboId: item.comboId,
-        canonicalKey: item.canonicalKey,
-        mainVariant: item.mainVariant,
-        variantsCount: item.variantsCount,
-        publicCarsCount: item.publicComboCars?.length || 0,
-        hiddenLowLapCarsCount: item.hiddenLowLapCars?.length || 0
-      }
-    });
-  } catch (error) {
-    console.error('[GC Combo Canonical Public Filter] /api/combos/:comboId error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      comboCore: 'gc-combo-canonical-public-filter-v1',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/combos/:comboId',
-      item: null,
-      message: 'No se pudo generar la ficha legacy de combo canÃ³nico.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-/* GC_COMBO_CANONICAL_PUBLIC_FILTER_V1_END */
-
-app.get('/api/hotlaps', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-
-    const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
-    const scope = getQueryString(req, 'scope', 'all');
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ok: false,
-        source: 'gc-data-core-legacy-server-alias',
-        dataSource: 'unavailable',
-        generatedAt: new Date().toISOString(),
-        legacyEndpoint: '/api/hotlaps',
-        canonicalEndpoint: '/api/gc/leaderboard',
-        items: [],
-        hotlaps: [],
-        leaderboard: [],
-        stracker: gcDataCorePublicStracker(readSource.stracker),
-        fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
-      });
-      return;
-    }
-
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-    const { laps, comboDefinitions } = dataCoreSource;
-    const combos = buildComboStatsFromLaps(laps, comboDefinitions);
-    const rows = gcLegacyAliasRowsForScopeV1(laps, combos, scope);
-    const leaderboard = gcLegacyAliasBuildLeaderboardV1(rows).slice(0, limit);
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: dataCoreSource.source,
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/hotlaps',
-      canonicalEndpoint: '/api/gc/leaderboard',
-      scope,
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      count: leaderboard.length,
-      items: leaderboard,
-      hotlaps: leaderboard,
-      leaderboard
-    });
-  } catch (error) {
-    console.error('[GC Legacy Server Alias] /api/hotlaps error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/hotlaps',
-      items: [],
-      hotlaps: [],
-      message: 'No se pudo resolver /api/hotlaps desde Data Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/laps', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-
-    const limit = getQueryNumber(req, 'limit', 50, 1, 1000);
-    const scope = getQueryString(req, 'scope', 'global');
-    const sort = getQueryString(req, 'sort', getQueryString(req, 'order', 'recent')).toLowerCase();
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ok: false,
-        source: 'gc-data-core-legacy-server-alias',
-        dataSource: 'unavailable',
-        generatedAt: new Date().toISOString(),
-        legacyEndpoint: '/api/laps',
-        canonicalEndpoint: '/api/gc/recent-laps',
-        items: [],
-        laps: [],
-        stracker: gcDataCorePublicStracker(readSource.stracker),
-        fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
-      });
-      return;
-    }
-
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-    const { laps, comboDefinitions } = dataCoreSource;
-    const combos = buildComboStatsFromLaps(laps, comboDefinitions);
-    const rows = gcLegacyAliasRowsForScopeV1(laps, combos, scope)
-      .filter((row) => {
-        const valid = getQueryString(req, 'valid', 'all').toLowerCase();
-        if (valid === 'valid') return gcLegacyAliasIsValidV1(row);
-        if (valid === 'invalid') return !gcLegacyAliasIsValidV1(row);
-        return true;
-      })
-      .sort((a, b) => {
-        if (sort === 'oldest' || sort === 'asc') return gcLegacyAliasDateMsV1(a) - gcLegacyAliasDateMsV1(b);
-        return gcLegacyAliasDateMsV1(b) - gcLegacyAliasDateMsV1(a);
-      })
-      .slice(0, limit)
-      .map((row) => gcLegacyAliasCompactLapV1(row));
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: dataCoreSource.source,
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/laps',
-      canonicalEndpoint: '/api/gc/recent-laps',
-      scope,
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      count: rows.length,
-      totalMatchedLaps: rows.length,
-      items: rows,
-      laps: rows
-    });
-  } catch (error) {
-    console.error('[GC Legacy Server Alias] /api/laps error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/laps',
-      items: [],
-      laps: [],
-      message: 'No se pudo resolver /api/laps desde Data Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/pilots', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar pilotos.'),
-        pilots: [],
-        drivers: []
-      });
-      return;
-    }
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-
-    const limit = getQueryNumber(req, 'limit', 800, 1, 5000);
-    const validFilter = getQueryString(req, 'valid', 'all').toLowerCase();
-    const laps = dataCoreSource.laps;
-
-    const statsByDriver = new Map<string, any>();
-
-    for (const row of laps) {
-      const playerId = gcLegacyAliasPickV1(row, ['playerId', 'driverId', 'driver.id', 'PlayerId']) ?? null;
-      const name = gcLegacyAliasDriverNameV1(row);
-      const key = String(playerId ?? name);
-      const lapMs = gcLegacyAliasLapMsV1(row);
-      const dateMs = gcLegacyAliasDateMsV1(row);
-      const valid = gcLegacyAliasIsValidV1(row);
-
-      if (validFilter === 'valid' && !valid) continue;
-      if (validFilter === 'invalid' && valid) continue;
-
-      if (!statsByDriver.has(key)) {
-        statsByDriver.set(key, {
-          id: playerId,
-          playerId,
-          driverId: playerId,
-          pilotId: playerId,
-          steamGuid: gcLegacyAliasPickV1(row, ['steamGuid', 'SteamGuid', 'driver.steamGuid', 'guid']) ?? null,
-          name,
-          displayName: name,
-          visibleName: name,
-          driverName: name,
-          playerName: name,
-          totalLaps: 0,
-          laps: 0,
-          lapCount: 0,
-          validLaps: 0,
-          invalidLaps: 0,
-          firstSeenMs: 0,
-          lastSeenMs: 0,
-          firstSeenAt: null,
-          lastSeenAt: null,
-          firstActivityAt: null,
-          lastActivityAt: null,
-          latestLapAt: null,
-          bestLapMs: null,
-          bestLapTime: '--',
-          bestLapTimeFormatted: '--',
-          maxSpeedKmh: 0,
-          lastCarName: null,
-          lastCarDisplayName: null,
-          carName: null,
-          lastTrackName: null,
-          trackName: null,
-          isOnline: false,
-          online: false,
-          source: 'gc-data-core-legacy-server-alias'
-        });
-      }
-
-      const item = statsByDriver.get(key);
-
-      item.totalLaps += 1;
-      item.laps += 1;
-      item.lapCount += 1;
-      if (valid) item.validLaps += 1;
-      else item.invalidLaps += 1;
-
-      if (dateMs > 0 && (!item.firstSeenMs || dateMs < item.firstSeenMs)) {
-        item.firstSeenMs = dateMs;
-        item.firstSeenAt = new Date(dateMs).toISOString();
-        item.firstActivityAt = item.firstSeenAt;
-      }
-
-      if (dateMs > 0 && (!item.lastSeenMs || dateMs > item.lastSeenMs)) {
-        item.lastSeenMs = dateMs;
-        item.lastSeenAt = new Date(dateMs).toISOString();
-        item.lastActivityAt = item.lastSeenAt;
-        item.latestLapAt = item.lastSeenAt;
-        item.lastCarName = gcLegacyAliasCarNameV1(row);
-        item.lastCarDisplayName = item.lastCarName;
-        item.carName = item.lastCarName;
-        item.lastTrackName = gcLegacyAliasTrackNameV1(row);
-        item.trackName = item.lastTrackName;
-      }
-
-      if (valid && lapMs > 0 && (!item.bestLapMs || lapMs < item.bestLapMs)) {
-        item.bestLapMs = lapMs;
-        item.bestLapTime = gcLegacyAliasLapTimeV1(row);
-        item.bestLapTimeFormatted = item.bestLapTime;
-        item.bestCarName = gcLegacyAliasCarNameV1(row);
-        item.bestTrackName = gcLegacyAliasTrackNameV1(row);
-      }
-
-      const speed = gcLegacyAliasSpeedV1(row);
-      if (speed > item.maxSpeedKmh) item.maxSpeedKmh = speed;
-    }
-
-    const now = Date.now();
-    const items = [...statsByDriver.values()]
-      .map((item) => {
-        const active7d = item.lastSeenMs > 0 && (now - item.lastSeenMs) <= 7 * 24 * 60 * 60 * 1000;
-
-        return {
-          ...item,
-          stats: {
-            totalLaps: item.totalLaps,
-            validLaps: item.validLaps,
-            invalidLaps: item.invalidLaps,
-            firstSeenAt: item.firstSeenAt,
-            lastSeenAt: item.lastSeenAt,
-            bestLapMs: item.bestLapMs,
-            bestLapTime: item.bestLapTime,
-            maxSpeedKmh: item.maxSpeedKmh
-          },
-          cleanRate: item.totalLaps ? Math.round((item.validLaps / item.totalLaps) * 100) : 0,
-          active7d,
-          avatarUrl: item.playerId ? '/api/pilot-avatar/' + encodeURIComponent(String(item.playerId)) : null,
-          profileUrl: item.playerId ? '/pilotos/' + encodeURIComponent(String(item.playerId)) : null
-        };
-      })
-      .sort((a, b) => {
-        const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
-        if (sort === 'laps') return b.totalLaps - a.totalLaps;
-        if (sort === 'name') return String(a.displayName).localeCompare(String(b.displayName), 'es', { sensitivity: 'base' });
-        return (b.lastSeenMs || 0) - (a.lastSeenMs || 0) || b.totalLaps - a.totalLaps;
-      })
-      .slice(0, limit);
-
-    const active7dCount = items.filter((item) => item.active7d).length;
-    const totalLaps = items.reduce((sum, item) => sum + item.totalLaps, 0);
-    const top = [...items].sort((a, b) => b.totalLaps - a.totalLaps)[0] || null;
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: dataCoreSource.source,
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/pilots',
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      canonicalEndpoint: '/api/gc/recent-laps + pilot stats projection',
-      count: items.length,
-      total: items.length,
-      totalDrivers: items.length,
-      active7dCount,
-      totalLaps,
-      topPilot: top ? {
-        playerId: top.playerId,
-        displayName: top.displayName,
-        totalLaps: top.totalLaps
-      } : null,
-      items,
-      pilots: items,
-      drivers: items
-    });
-  } catch (error) {
-    console.error('[GC Legacy Server Alias] /api/pilots error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/pilots',
-      items: [],
-      pilots: [],
-      drivers: [],
-      message: 'No se pudo resolver /api/pilots desde Data Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/drivers', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar pilotos.'),
-        pilots: [],
-        drivers: []
-      });
-      return;
-    }
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-
-    const limit = getQueryNumber(req, 'limit', 800, 1, 5000);
-    const validFilter = getQueryString(req, 'valid', 'all').toLowerCase();
-    const laps = dataCoreSource.laps;
-
-    const statsByDriver = new Map<string, any>();
-
-    for (const row of laps) {
-      const playerId = gcLegacyAliasPickV1(row, ['playerId', 'driverId', 'driver.id', 'PlayerId']) ?? null;
-      const name = gcLegacyAliasDriverNameV1(row);
-      const key = String(playerId ?? name);
-      const lapMs = gcLegacyAliasLapMsV1(row);
-      const dateMs = gcLegacyAliasDateMsV1(row);
-      const valid = gcLegacyAliasIsValidV1(row);
-
-      if (validFilter === 'valid' && !valid) continue;
-      if (validFilter === 'invalid' && valid) continue;
-
-      if (!statsByDriver.has(key)) {
-        statsByDriver.set(key, {
-          id: playerId,
-          playerId,
-          driverId: playerId,
-          pilotId: playerId,
-          steamGuid: gcLegacyAliasPickV1(row, ['steamGuid', 'SteamGuid', 'driver.steamGuid', 'guid']) ?? null,
-          name,
-          displayName: name,
-          visibleName: name,
-          driverName: name,
-          playerName: name,
-          totalLaps: 0,
-          laps: 0,
-          lapCount: 0,
-          validLaps: 0,
-          invalidLaps: 0,
-          firstSeenMs: 0,
-          lastSeenMs: 0,
-          firstSeenAt: null,
-          lastSeenAt: null,
-          firstActivityAt: null,
-          lastActivityAt: null,
-          latestLapAt: null,
-          bestLapMs: null,
-          bestLapTime: '--',
-          bestLapTimeFormatted: '--',
-          maxSpeedKmh: 0,
-          lastCarName: null,
-          lastCarDisplayName: null,
-          carName: null,
-          lastTrackName: null,
-          trackName: null,
-          isOnline: false,
-          online: false,
-          source: 'gc-data-core-legacy-server-alias'
-        });
-      }
-
-      const item = statsByDriver.get(key);
-
-      item.totalLaps += 1;
-      item.laps += 1;
-      item.lapCount += 1;
-      if (valid) item.validLaps += 1;
-      else item.invalidLaps += 1;
-
-      if (dateMs > 0 && (!item.firstSeenMs || dateMs < item.firstSeenMs)) {
-        item.firstSeenMs = dateMs;
-        item.firstSeenAt = new Date(dateMs).toISOString();
-        item.firstActivityAt = item.firstSeenAt;
-      }
-
-      if (dateMs > 0 && (!item.lastSeenMs || dateMs > item.lastSeenMs)) {
-        item.lastSeenMs = dateMs;
-        item.lastSeenAt = new Date(dateMs).toISOString();
-        item.lastActivityAt = item.lastSeenAt;
-        item.latestLapAt = item.lastSeenAt;
-        item.lastCarName = gcLegacyAliasCarNameV1(row);
-        item.lastCarDisplayName = item.lastCarName;
-        item.carName = item.lastCarName;
-        item.lastTrackName = gcLegacyAliasTrackNameV1(row);
-        item.trackName = item.lastTrackName;
-      }
-
-      if (valid && lapMs > 0 && (!item.bestLapMs || lapMs < item.bestLapMs)) {
-        item.bestLapMs = lapMs;
-        item.bestLapTime = gcLegacyAliasLapTimeV1(row);
-        item.bestLapTimeFormatted = item.bestLapTime;
-        item.bestCarName = gcLegacyAliasCarNameV1(row);
-        item.bestTrackName = gcLegacyAliasTrackNameV1(row);
-      }
-
-      const speed = gcLegacyAliasSpeedV1(row);
-      if (speed > item.maxSpeedKmh) item.maxSpeedKmh = speed;
-    }
-
-    const now = Date.now();
-    const items = [...statsByDriver.values()]
-      .map((item) => {
-        const active7d = item.lastSeenMs > 0 && (now - item.lastSeenMs) <= 7 * 24 * 60 * 60 * 1000;
-
-        return {
-          ...item,
-          stats: {
-            totalLaps: item.totalLaps,
-            validLaps: item.validLaps,
-            invalidLaps: item.invalidLaps,
-            firstSeenAt: item.firstSeenAt,
-            lastSeenAt: item.lastSeenAt,
-            bestLapMs: item.bestLapMs,
-            bestLapTime: item.bestLapTime,
-            maxSpeedKmh: item.maxSpeedKmh
-          },
-          cleanRate: item.totalLaps ? Math.round((item.validLaps / item.totalLaps) * 100) : 0,
-          active7d,
-          avatarUrl: item.playerId ? '/api/pilot-avatar/' + encodeURIComponent(String(item.playerId)) : null,
-          profileUrl: item.playerId ? '/pilotos/' + encodeURIComponent(String(item.playerId)) : null
-        };
-      })
-      .sort((a, b) => {
-        const sort = getQueryString(req, 'sort', 'recent').toLowerCase();
-        if (sort === 'laps') return b.totalLaps - a.totalLaps;
-        if (sort === 'name') return String(a.displayName).localeCompare(String(b.displayName), 'es', { sensitivity: 'base' });
-        return (b.lastSeenMs || 0) - (a.lastSeenMs || 0) || b.totalLaps - a.totalLaps;
-      })
-      .slice(0, limit);
-
-    const active7dCount = items.filter((item) => item.active7d).length;
-    const totalLaps = items.reduce((sum, item) => sum + item.totalLaps, 0);
-    const top = [...items].sort((a, b) => b.totalLaps - a.totalLaps)[0] || null;
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: dataCoreSource.source,
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/drivers',
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      canonicalEndpoint: '/api/gc/recent-laps + pilot stats projection',
-      count: items.length,
-      total: items.length,
-      totalDrivers: items.length,
-      active7dCount,
-      totalLaps,
-      topPilot: top ? {
-        playerId: top.playerId,
-        displayName: top.displayName,
-        totalLaps: top.totalLaps
-      } : null,
-      items,
-      pilots: items,
-      drivers: items
-    });
-  } catch (error) {
-    console.error('[GC Legacy Server Alias] /api/drivers error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/drivers',
-      items: [],
-      pilots: [],
-      drivers: [],
-      message: 'No se pudo resolver /api/drivers desde Data Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-
-app.get('/api/stats/overview', async (req, res) => {
-  try {
-    await readDisplayNameStoreAsync();
-
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar /api/stats/overview.'),
-        stats: null
-      });
-      return;
-    }
-
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-    const laps = dataCoreSource.laps;
-    const comboDefinitions = dataCoreSource.comboDefinitions || [];
-
-    const combos = buildComboStatsFromLaps(laps, comboDefinitions);
-    const validLaps = laps.filter(gcLegacyAliasIsValidV1).length;
-    const drivers = new Set(laps.map((row: any) => String(gcLegacyAliasPickV1(row, ['playerId', 'driverId', 'driver.id', 'PlayerId']) ?? gcLegacyAliasDriverNameV1(row))));
-    const cars = new Set(laps.map(gcLegacyAliasCarNameV1));
-    const tracks = new Set(laps.map(gcLegacyAliasTrackNameV1));
-    const dates = laps.map(gcLegacyAliasDateMsV1).filter((value) => value > 0);
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-legacy-server-alias',
-      dataSource: dataCoreSource.source,
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/stats/overview',
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      canonicalEndpoint: '/api/gc/diagnostics',
-      totalLaps: laps.length,
-      lapsCount: laps.length,
-      validLaps,
-      validLapsCount: validLaps,
-      invalidLaps: laps.length - validLaps,
-      invalidLapsCount: laps.length - validLaps,
-      driversCount: drivers.size,
-      carsCount: cars.size,
-      tracksCount: tracks.size,
-      combosCount: combos.length,
-      activeCombos: combos.filter((combo: any) => gcLegacyAliasNumberV1(combo.totalLaps ?? combo.stats?.totalLaps, 0) > 0).length,
-      latestLapAt: dates.length ? new Date(Math.max(...dates)).toISOString() : null,
-      oldestLapAt: dates.length ? new Date(Math.min(...dates)).toISOString() : null
-    });
-  } catch (error) {
-    console.error('[GC Legacy Server Alias] /api/stats/overview error:', error);
-    res.status(200).json({
-      ok: false,
-      source: 'gc-data-core-legacy-server-alias',
-      generatedAt: new Date().toISOString(),
-      legacyEndpoint: '/api/stats/overview',
-      message: 'No se pudo resolver /api/stats/overview desde Data Core.',
-      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
-    });
-  }
-});
-/* GC_LEGACY_SERVER_ALIASES_V1_END */
-
-
-app.get('/api/cars', async (req, res) => {
-  try {
-    const q = getQueryString(req, 'q') || getQueryString(req, 'car');
-    const brand = getQueryString(req, 'brand') || getQueryString(req, 'marca');
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar coches.'),
-        cars: []
-      });
-      return;
-    }
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-    const laps = dataCoreSource.laps;
-    let items = reduceCarStats(laps, []);
-
-    if (q) items = items.filter((car) => includesFilter(`${car.name} ${car.code}`, q));
-    if (brand) items = items.filter((car) => includesFilter(car.brand, brand));
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-v130',
-      dataSource: dataCoreSource.source,
-      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      count: items.length,
-      items,
-      cars: items,
-      message: dataCoreSource.source === 'mysql-mirror' ? 'Coches generados desde mirror MySQL.' : 'Coches reales generados desde stracker.db3.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo cars:', error);
-    res.status(200).json({
-      ok: false,
-      items: [],
-      message: 'No se pudieron leer coches reales.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-app.get('/api/tracks', async (req, res) => {
-  try {
-    const q = getQueryString(req, 'q') || getQueryString(req, 'track') || getQueryString(req, 'circuit');
-    const readSource = await readGcDataCoreSource(req);
-    if ((readSource as any).ok === false) {
-      res.status(200).json({
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar circuitos.'),
-        tracks: []
-      });
-      return;
-    }
-    const dataCoreSource = readSource as GcDataCoreReadResult;
-    const laps = dataCoreSource.laps;
-    let items = reduceTrackStats(laps, []);
-
-    if (q) items = items.filter((track) => includesFilter(`${track.name} ${track.code}`, q));
-
-    res.json({
-      ok: true,
-      source: 'gc-data-core-v130',
-      dataSource: dataCoreSource.source,
-      mode: dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
-      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
-      fallbackReason: dataCoreSource.fallbackReason ?? null,
-      count: items.length,
-      items,
-      tracks: items,
-      message: dataCoreSource.source === 'mysql-mirror' ? 'Circuitos generados desde mirror MySQL.' : 'Circuitos reales generados desde stracker.db3.'
-    });
-  } catch (error) {
-    console.error('[GC] Error leyendo tracks:', error);
-    res.status(200).json({
-      ok: false,
-      items: [],
-      message: 'No se pudieron leer circuitos reales.',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-
-/* GC_DATA_CORE_COMBOS_ROUTE_V1_START */
 
 /* GC_COMBO_DETAIL_DATA_CORE_PRIMARY_V1_START */
 function gcComboDetailTextV1(value: unknown, fallback = '') {

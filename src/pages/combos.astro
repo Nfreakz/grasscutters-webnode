@@ -1461,11 +1461,17 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
 
       const comboUrl = (combo) => {
+        if (combo?.url || combo?.comboUrl) return combo.url || combo.comboUrl;
+        const source = String(combo?.sourceKey || combo?.source || combo?.bestLap?.sourceKey || combo?.latestLap?.sourceKey || '').trim();
+        const track = String(combo?.track?.code || combo?.trackCode || combo?.bestLap?.trackCode || '').trim();
+        const car = String(combo?.cars?.[0]?.code || combo?.car?.code || combo?.carCode || combo?.bestLap?.carCode || '').trim();
+        if (source && source !== 'main' && track && car) return `/combos?source=${encodeURIComponent(source)}&track=${encodeURIComponent(track)}&car=${encodeURIComponent(car)}`;
         const id = combo.canonicalComboId ?? combo.comboId ?? combo.id;
         return id !== null && id !== undefined && id !== '' ? `/combos/${encodeURIComponent(id)}` : '/combos';
       };
 
       const searchText = (combo) => [
+        combo.sourceKey, combo.sourceLabel, combo.bestLap?.sourceKey, combo.latestLap?.sourceKey,
         displayTrack(combo),
         rawTrackName(combo),
         ...(combo.__rawTrackNames || []),
@@ -1738,7 +1744,7 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const load = async () => {
         try {
-          const response = await fetch('/api/gc/combos?limit=300&sort=recent', { cache: 'no-store' });
+          const response = await fetch('/api/gc/combos?source=all&limit=300&sort=recent', { cache: 'no-store' });
           const data = await response.json();
           const source = Array.isArray(data) ? data : (data.rows || data.combos || data.items || data.results || data.data || []);
           rawCombos = Array.isArray(source) ? source.filter(Boolean) : [];
@@ -2087,6 +2093,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       `;
 
       const searchText = (combo) => [
+        combo.sourceKey, combo.sourceLabel, combo.bestLap?.sourceKey, combo.latestLap?.sourceKey,
         displayTrack(combo),
         ...cars(combo),
         comboId(combo),
@@ -2207,7 +2214,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         ensureCoreBadge('warn', 'Actualizando datos');
 
         try {
-          const data = await fetchCoreJson('/api/gc/combos?limit=1000&sort=recent');
+          const data = await fetchCoreJson('/api/gc/combos?source=all&limit=1000&sort=recent');
           state.combos = items(data);
           state.summary = data;
 

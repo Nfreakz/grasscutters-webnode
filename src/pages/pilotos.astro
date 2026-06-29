@@ -40,6 +40,14 @@ import '../styles/public/gc-rating-badges.css';
         <input id="p2Search" type="search" placeholder="piloto, país, equipo, coche, circuito" autocomplete="off" />
       </label>
       <label>
+        <span>Servidor</span>
+        <select id="p2SourceFilter">
+          <option value="all">Todos</option>
+          <option value="main">Liga GrassCutters</option>
+          <option value="gt4">Supra GT4</option>
+        </select>
+      </label>
+      <label>
         <span>Equipo</span>
         <select id="p2Team"><option value="all">Todos</option></select>
       </label>
@@ -261,6 +269,8 @@ import '../styles/public/gc-rating-badges.css';
         if ([...el.options].some((opt)=>opt.value===current)) el.value = current;
       }
 
+      const p2SourceKey = (row) => cleanText(row.sourceKey || row.source || row.lastLap?.sourceKey || row.bestLap?.sourceKey || 'main').toLowerCase();
+      const p2SourceLabel = (row) => cleanText(row.sourceLabel || row.lastLap?.sourceLabel || row.bestLap?.sourceLabel || (p2SourceKey(row) === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters'));
       function updateFilters() {
         populateSelect('p2Team', uniq(state.rows.map((row)=>row.team || 'Sin equipo')));
         populateSelect('p2Sr', uniq(state.rows.map((row)=>row.srClass || '--')));
@@ -270,11 +280,12 @@ import '../styles/public/gc-rating-badges.css';
       }
 
       function rowSearchText(row) {
-        return [row.name,row.displayName,row.team,row.country,row.favoriteCar,row.favoriteTrack,row.bestLap?.carName,row.bestLap?.trackName,row.lastLap?.carName,row.lastLap?.trackName].map((v)=>cleanText(v,'')).join(' ').toLowerCase();
+        return [p2SourceLabel(row),p2SourceKey(row),row.name,row.displayName,row.team,row.country,row.favoriteCar,row.favoriteTrack,row.bestLap?.carName,row.bestLap?.trackName,row.lastLap?.carName,row.lastLap?.trackName].map((v)=>cleanText(v,'')).join(' ').toLowerCase();
       }
 
       function applyFilters() {
         const q = $('p2Search')?.value.trim().toLowerCase() || '';
+        const selectedSource = $('p2SourceFilter')?.value || 'all';
         const team = $('p2Team')?.value || 'all';
         const sr = $('p2Sr')?.value || 'all';
         const gsr = $('p2Gsr')?.value || 'all';
@@ -284,6 +295,7 @@ import '../styles/public/gc-rating-badges.css';
         state.sort = $('p2Sort')?.value || state.sort;
         let rows = state.rows.filter((row) => {
           if (q && !rowSearchText(row).includes(q)) return false;
+          if (selectedSource !== 'all' && p2SourceKey(row) !== selectedSource) return false;
           if (team !== 'all' && cleanText(row.team || 'Sin equipo') !== team) return false;
           if (sr !== 'all' && cleanText(row.srClass || '--') !== sr) return false;
           if (gsr !== 'all' && cleanText(row.gsrClass || '--') !== gsr) return false;
@@ -343,7 +355,7 @@ import '../styles/public/gc-rating-badges.css';
           return `<tr>
             <td>${rank}</td>
             <td><img class="gc-pilotos2-avatar" src="${escapeHtml(avatar)}" alt="Avatar ${escapeHtml(row.name)}" loading="lazy" onerror="this.src='/images/pilot-avatar-default.png'"></td>
-            <td><span class="gc-pilotos2-pilot"><strong>${escapeHtml(cleanText(row.name,'Piloto'))}</strong><span class="gc-pilotos2-muted">ID ${escapeHtml(row.playerId || row.id || '--')}</span></span></td>
+            <td><span class="gc-pilotos2-pilot"><strong>${escapeHtml(cleanText(row.name,'Piloto'))}</strong><span class="gc-pilotos2-muted">${escapeHtml(p2SourceLabel(row))} · ID ${escapeHtml(row.playerId || row.id || '--')}</span></span></td>
             <td>${countryMarkup(row)}</td>
             <td>${row.teamLogoUrl ? `<img class="gc-pilotos2-team-logo" src="${escapeHtml(row.teamLogoUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}${escapeHtml(cleanText(row.team,'Sin equipo'))}</td>
             <td>${ratingScoreBadge('sr', row.srClass || '--', row.srScore)}</td>
@@ -363,7 +375,7 @@ import '../styles/public/gc-rating-badges.css';
       async function loadPilots() {
         $('p2Hint').textContent = 'Cargando pilotos...';
         try {
-          const response = await fetch('/api/gc/pilots2?limit=all', { credentials:'same-origin' });
+          const response = await fetch('/api/gc/pilots2?source=all&limit=all', { credentials:'same-origin' });
           const payload = await response.json();
           const rows = payload.items || payload.pilots || payload.data?.items || [];
           state.rows = await enrichRowsWithRatings(Array.isArray(rows) ? rows : []);
@@ -380,11 +392,11 @@ import '../styles/public/gc-rating-badges.css';
         }
       }
 
-      ['p2Search','p2Team','p2Sr','p2Gsr','p2State','p2Car','p2Track','p2Sort','p2PageSize'].forEach((id)=>$(id)?.addEventListener('input',()=>{state.page=1;applyFilters();}));
+      ['p2Search','p2SourceFilter','p2Team','p2Sr','p2Gsr','p2State','p2Car','p2Track','p2Sort','p2PageSize'].forEach((id)=>$(id)?.addEventListener('input',()=>{state.page=1;applyFilters();}));
       $('p2Prev')?.addEventListener('click',()=>{state.page-=1;renderTable();});
       $('p2Next')?.addEventListener('click',()=>{state.page+=1;renderTable();});
       $('p2Reload')?.addEventListener('click',loadPilots);
-      $('p2Clear')?.addEventListener('click',()=>{['p2Search'].forEach((id)=>$(id).value='');['p2Team','p2Sr','p2Gsr','p2State','p2Car','p2Track'].forEach((id)=>$(id).value='all');$('p2Sort').value='laps';state.page=1;applyFilters();});
+      $('p2Clear')?.addEventListener('click',()=>{['p2Search'].forEach((id)=>$(id).value='');['p2SourceFilter','p2Team','p2Sr','p2Gsr','p2State','p2Car','p2Track'].forEach((id)=>$(id).value='all');$('p2Sort').value='laps';state.page=1;applyFilters();});
       document.querySelectorAll('.gc-pilotos2-table th[data-sort]').forEach((th)=>th.addEventListener('click',()=>{const sort=th.getAttribute('data-sort'); const map={rank:'laps',driver:'name',name:'name',team:'team',sr:'clean',gsr:'clean',best:'best',laps:'laps',valid:'valid',speed:'speed'}; const next=map[sort]||sort; if(state.sort===next) state.sortDir=state.sortDir==='asc'?'desc':'asc'; else {state.sort=next; state.sortDir=next==='best'?'asc':'desc';} const select=$('p2Sort'); if(select && [...select.options].some((o)=>o.value===next)) select.value=next; applyFilters();}));
       loadPilots();
     })();

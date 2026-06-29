@@ -39,6 +39,14 @@ import AppLayout from '../layouts/AppLayout.astro';
         <input id="hl2Search" type="search" placeholder="piloto, coche, circuito" autocomplete="off" />
       </label>
       <label>
+        <span>Servidor</span>
+        <select id="hl2SourceFilter">
+          <option value="all">Todos</option>
+          <option value="main">Liga GrassCutters</option>
+          <option value="gt4">Supra GT4</option>
+        </select>
+      </label>
+      <label>
         <span>Piloto</span>
         <select id="hl2Driver"><option value="all">Todos</option></select>
       </label>
@@ -111,6 +119,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         <thead>
           <tr>
             <th data-sort="rank">#</th>
+            <th data-sort="source">Servidor</th>
             <th data-sort="driver">Piloto</th>
             <th data-sort="car">Coche</th>
             <th data-sort="track">Circuito</th>
@@ -126,7 +135,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             <th data-sort="airTemp">Aire</th>
           </tr>
         </thead>
-        <tbody id="hl2Rows"><tr><td colspan="14">Cargando...</td></tr></tbody>
+        <tbody id="hl2Rows"><tr><td colspan="15">Cargando...</td></tr></tbody>
       </table>
     </section>
   </div>
@@ -317,6 +326,8 @@ import AppLayout from '../layouts/AppLayout.astro';
     .gc-hotlaps2-time{color:var(--hl2-green);font-weight:1000;font-size:13px;}
     .gc-hotlaps2-state{display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid rgba(150,255,47,.32);color:var(--hl2-green);font-size:10px;font-weight:950;text-transform:uppercase;}
     .gc-hotlaps2-state--bad{border-color:rgba(255,200,70,.34);color:#ffd75a;}
+    .gc-hotlaps2-source-tag{display:inline-flex;align-items:center;height:22px;padding:0 7px;border:1px solid rgba(150,255,47,.25);font-family:var(--gc-mono,"JetBrains Mono",monospace);font-size:9px;font-weight:950;text-transform:uppercase;white-space:nowrap;color:var(--hl2-green);background:rgba(150,255,47,.06);}
+    .gc-hotlaps2-source-tag--gt4{border-color:rgba(84,234,255,.35);color:#54eaff;background:rgba(84,234,255,.07);}
     .gc-hotlaps2-table a{color:inherit;text-decoration:none;}
     .gc-hotlaps2-table a:hover{color:var(--hl2-green);}
 
@@ -329,7 +340,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     (() => {
       const $ = (id) => document.getElementById(id);
       const els = {
-        search: $('hl2Search'), driver: $('hl2Driver'), car: $('hl2Car'), track: $('hl2Track'), valid: $('hl2Valid'), session: $('hl2Session'), view: $('hl2View'), sort: $('hl2Sort'), pageSize: $('hl2PageSize'),
+        search: $('hl2Search'), sourceFilter: $('hl2SourceFilter'), driver: $('hl2Driver'), car: $('hl2Car'), track: $('hl2Track'), valid: $('hl2Valid'), session: $('hl2Session'), view: $('hl2View'), sort: $('hl2Sort'), pageSize: $('hl2PageSize'),
         reload: $('hl2Reload'), clear: $('hl2Clear'), prev: $('hl2Prev'), next: $('hl2Next'), rows: $('hl2Rows'), hint: $('hl2Hint'), pageInfo: $('hl2PageInfo'),
         source: $('hl2Source'), loaded: $('hl2Loaded'), visible: $('hl2Visible'), updated: $('hl2Updated'), metricLaps: $('hl2MetricLaps'), metricValid: $('hl2MetricValid'), metricDrivers: $('hl2MetricDrivers'), metricCars: $('hl2MetricCars'), metricTracks: $('hl2MetricTracks'), metricBest: $('hl2MetricBest'), metricSpeed: $('hl2MetricSpeed')
       };
@@ -381,6 +392,9 @@ import AppLayout from '../layouts/AppLayout.astro';
       const driverName = (row) => text(pick(row, ['driverName','playerName','driver.displayName','driver.visibleName','driver.name','pilotName','name']), 'Piloto');
       const carName = (row) => text(pick(row, ['carName','carDisplayName','carVisibleName','car.name','car.uiName','car.code','uiCarName']), 'Coche');
       const trackName = (row) => text(pick(row, ['trackName','trackDisplayName','trackVisibleName','track.name','track.uiName','track.code','uiTrackName']), 'Circuito');
+      const sourceKey = (row) => text(pick(row, ['sourceKey','session.sourceKey','driver.sourceKey','car.sourceKey','track.sourceKey']), 'main').toLowerCase();
+      const sourceLabel = (row) => text(pick(row, ['sourceLabel','session.sourceLabel']), sourceKey(row) === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters');
+      const sourceBadge = (row) => `<span class="gc-hotlaps2-source-tag gc-hotlaps2-source-tag--${escapeHtml(sourceKey(row))}">${escapeHtml(sourceLabel(row))}</span>`;
       const playerId = (row) => pick(row, ['playerId','driverId','driver.id','pilot.id']);
       const comboUrl = (row) => text(pick(row, ['comboUrl']), '') || (pick(row, ['comboId']) ? `/combos/${encodeURIComponent(String(pick(row, ['comboId'])))}` : '');
       const lapMs = (row) => number(pick(row, ['lapTimeMs','LapTime','timeMs']), NaN);
@@ -436,14 +450,16 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       function applyFilters() {
         const query = norm(els.search.value || '');
+        const selectedSource = els.sourceFilter?.value || 'all';
         const driver = els.driver.value;
         const car = els.car.value;
         const track = els.track.value;
         const validity = els.valid.value;
         const session = els.session.value;
         let rows = state.rows.filter((row) => {
-          const haystack = norm(`${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
+          const haystack = norm(`${sourceLabel(row)} ${sourceKey(row)} ${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
           if (query && !haystack.includes(query)) return false;
+          if (selectedSource !== 'all' && sourceKey(row) !== selectedSource) return false;
           if (driver !== 'all' && norm(driverName(row)) !== driver) return false;
           if (car !== 'all' && norm(carName(row)) !== car) return false;
           if (track !== 'all' && norm(trackName(row)) !== track) return false;
@@ -477,6 +493,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       }
 
       function sortValue(row, key) {
+        if (key === 'source') return sourceLabel(row).toLowerCase();
         if (key === 'driver') return driverName(row).toLowerCase();
         if (key === 'car') return carName(row).toLowerCase();
         if (key === 'track') return trackName(row).toLowerCase();
@@ -548,6 +565,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           const track = combo ? `<a href="${escapeHtml(combo)}">${escapeHtml(trackName(row))}</a>` : escapeHtml(trackName(row));
           return `<tr>
             <td>${pos}</td>
+            <td>${sourceBadge(row)}</td>
             <td>${driver}</td>
             <td>${car}</td>
             <td>${track}</td>
@@ -562,14 +580,14 @@ import AppLayout from '../layouts/AppLayout.astro';
             <td>${escapeHtml(fmtTemp(trackTemp(row)))}</td>
             <td>${escapeHtml(fmtTemp(airTemp(row)))}</td>
           </tr>`;
-        }).join('') || '<tr><td colspan="14">Sin resultados para los filtros actuales.</td></tr>';
+        }).join('') || '<tr><td colspan="15">Sin resultados para los filtros actuales.</td></tr>';
       }
 
       async function load() {
         els.reload.disabled = true;
-        els.rows.innerHTML = '<tr><td colspan="14">Cargando vueltas...</td></tr>';
+        els.rows.innerHTML = '<tr><td colspan="15">Cargando vueltas...</td></tr>';
         try {
-          const response = await fetch('/api/gc/hotlaps2?limit=all', { credentials:'include', cache:'no-store' });
+          const response = await fetch('/api/gc/hotlaps2?source=all&limit=all', { credentials:'include', cache:'no-store' });
           if (!response.ok) throw new Error('HTTP ' + response.status);
           const json = await response.json();
           state.rows = Array.isArray(json.items) ? json.items : Array.isArray(json.laps) ? json.laps : [];
@@ -583,13 +601,13 @@ import AppLayout from '../layouts/AppLayout.astro';
           console.warn('[GC hotlaps2] load error', error);
           els.source.textContent = 'Error';
           els.hint.textContent = 'No se pudo cargar /api/gc/hotlaps2';
-          els.rows.innerHTML = '<tr><td colspan="14">Error cargando hotlaps2.</td></tr>';
+          els.rows.innerHTML = '<tr><td colspan="15">Error cargando hotlaps2.</td></tr>';
         } finally {
           els.reload.disabled = false;
         }
       }
 
-      [els.search, els.driver, els.car, els.track, els.valid, els.session, els.view, els.sort, els.pageSize].forEach((el) => {
+      [els.search, els.sourceFilter, els.driver, els.car, els.track, els.valid, els.session, els.view, els.sort, els.pageSize].forEach((el) => {
         el.addEventListener('input', () => { state.page = 1; applyFilters(); });
         el.addEventListener('change', () => { state.page = 1; applyFilters(); });
       });
@@ -606,14 +624,16 @@ import AppLayout from '../layouts/AppLayout.astro';
       });
       function baseFilteredOnly() {
         const query = norm(els.search.value || '');
+        const selectedSource = els.sourceFilter?.value || 'all';
         const driver = els.driver.value;
         const car = els.car.value;
         const track = els.track.value;
         const validity = els.valid.value;
         const session = els.session.value;
         return state.rows.filter((row) => {
-          const haystack = norm(`${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
+          const haystack = norm(`${sourceLabel(row)} ${sourceKey(row)} ${driverName(row)} ${carName(row)} ${trackName(row)} ${sessionType(row)} ${lapText(row)}`);
           if (query && !haystack.includes(query)) return false;
+          if (selectedSource !== 'all' && sourceKey(row) !== selectedSource) return false;
           if (driver !== 'all' && norm(driverName(row)) !== driver) return false;
           if (car !== 'all' && norm(carName(row)) !== car) return false;
           if (track !== 'all' && norm(trackName(row)) !== track) return false;
