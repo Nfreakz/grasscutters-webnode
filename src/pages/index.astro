@@ -5005,8 +5005,9 @@ const home2ArchiveSeed = [];
         }
       };
 
-      runHomeLiveRefresh();
-      window.setInterval(runHomeLiveRefresh, HOME_LIVE_REFRESH_MS);
+      // GC_HOME_PACK_5_8: scheduler legacy desactivado para evitar loaders duplicados.
+      // Se deja la función disponible solo para rollback/manual debug.
+      window.GCHomeLegacyRefreshV58 = runHomeLiveRefresh;
     })();
   </script>
 
@@ -5018,5 +5019,438 @@ const home2ArchiveSeed = [];
 
 
 
+
+<script>
+
+/* GC_HOME_PACK_5_8_FINAL_LOADER_START */
+(() => {
+  const PACK = '5.8';
+  if (window.__GC_HOME_FINAL_LOADER_V58__) {
+    console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
+    return;
+  }
+  window.__GC_HOME_FINAL_LOADER_V58__ = true;
+
+  const root = document.querySelector('[data-gc-home2]');
+  if (!root) return;
+
+  const REFRESH_MS = 60000;
+  const q = (sel, ctx = document) => ctx.querySelector(sel);
+  const qa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const htmlEscape = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+
+  const setText = (sel, value, ctx = document) => {
+    const text = value === undefined || value === null || value === '' ? '--' : String(value);
+    qa(sel, ctx).forEach((el) => { el.textContent = text; });
+  };
+
+  const first = (obj, keys) => {
+    if (!obj) return '';
+    for (const key of keys) {
+      const parts = String(key).split('.');
+      let cur = obj;
+      for (const part of parts) cur = cur == null ? undefined : cur[part];
+      if (cur !== undefined && cur !== null && cur !== '') return cur;
+    }
+    return '';
+  };
+
+  const getArray = (payload) => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    const candidates = [
+      payload.items, payload.laps, payload.hotlaps, payload.leaderboard, payload.results, payload.records, payload.rows,
+      payload.topComboTimes, payload.bestLaps, payload.recentLaps,
+      payload.data?.items, payload.data?.laps, payload.data?.hotlaps, payload.data?.leaderboard, payload.data?.results, payload.data?.records, payload.data?.rows,
+      payload.data?.topComboTimes, payload.data?.bestLaps, payload.data?.recentLaps,
+      payload.activeCombo?.leaderboard, payload.activeCombo?.bestLaps, payload.activeCombo?.laps, payload.activeCombo?.recentLaps,
+      payload.data?.activeCombo?.leaderboard, payload.data?.activeCombo?.bestLaps, payload.data?.activeCombo?.laps, payload.data?.activeCombo?.recentLaps,
+      payload.combo?.leaderboard, payload.combo?.bestLaps, payload.combo?.laps,
+      payload.data?.combo?.leaderboard, payload.data?.combo?.bestLaps, payload.data?.combo?.laps
+    ];
+    for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
+    return [];
+  };
+
+  const fetchJson = async (url, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store' });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return await res.json();
+    } catch (error) {
+      console.warn(`[GC Home ${PACK}] fetch falló`, url, error?.message || error);
+      return null;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  };
+
+  const fetchFirst = async (urls, timeoutMs = 10000) => {
+    for (const url of urls) {
+      const payload = await fetchJson(url, timeoutMs);
+      if (payload && payload.ok !== false) return payload;
+    }
+    return null;
+  };
+
+  const slug = (value) => String(value || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  const pretty = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '--';
+    const normalized = raw.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^acu[_ -]/i.test(raw)) return 'ACU ' + raw.replace(/^acu[_ -]*/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (m) => m.toUpperCase());
+    return normalized.replace(/^(ks |rt |00 )/i, '').trim().replace(/\b\w/g, (m) => m.toUpperCase());
+  };
+
+  const parseTimeMs = (value) => {
+    if (value === undefined || value === null || value === '') return Infinity;
+    if (typeof value === 'string') {
+      const clean = value.trim();
+      if (!clean) return Infinity;
+      if (clean.includes(':')) {
+        const [m, s] = clean.split(':');
+        const ms = ((Number(m) || 0) * 60 + (Number(String(s).replace(',', '.')) || 0)) * 1000;
+        return Number.isFinite(ms) && ms > 0 ? ms : Infinity;
+      }
+      const numeric = Number(clean.replace(',', '.'));
+      if (!Number.isFinite(numeric) || numeric <= 0) return Infinity;
+      return numeric > 1000 ? numeric : numeric * 1000;
+    }
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return Infinity;
+    return n > 1000 ? n : n * 1000;
+  };
+
+  const rowTimeMs = (row) => parseTimeMs(first(row, [
+    'lapTimeMs', 'lap_time_ms', 'lapMs', 'lap_ms', 'LapTime', 'lapTime', 'lap_time', 'timeMs', 'time_ms',
+    'time', 'bestLap', 'bestLapTime', 'best_lap_ms', 'bestLapMs', 'lapTimeFormatted', 'timeFormatted', 'formattedLapTime'
+  ]));
+
+  const formatLap = (value) => {
+    const direct = first({ value }, ['value']);
+    if (typeof direct === 'string' && direct.trim() && direct.includes(':')) return direct.trim();
+    const ms = parseTimeMs(value);
+    if (!Number.isFinite(ms)) return '--';
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const milli = Math.round(ms % 1000);
+    return `${minutes}:${String(seconds).padStart(2, '0')}.${String(milli).padStart(3, '0')}`;
+  };
+
+  const lapTimeText = (row) => {
+    const formatted = first(row, ['lapTimeFormatted', 'timeFormatted', 'formattedLapTime', 'bestLapTimeFormatted']);
+    return formatted && String(formatted).includes(':') ? String(formatted) : formatLap(rowTimeMs(row));
+  };
+
+  const rowDateMs = (row) => {
+    const raw = first(row, ['timestamp', 'timestampUnix', 'timestamp_unix', 'lapTimestamp', 'lastLapUnix', 'last_lap_unix']);
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n > 1e12 ? n : n * 1000;
+    const iso = first(row, ['createdAt', 'created_at', 'date', 'timestampIso', 'lapDate', 'lap_date', 'finishedAt', 'finished_at', 'updatedAt', 'updated_at']);
+    const d = iso ? Date.parse(iso) : NaN;
+    return Number.isFinite(d) ? d : 0;
+  };
+
+  const formatAgo = (ms) => {
+    if (!ms) return '--';
+    const diff = Date.now() - ms;
+    if (diff < 0) return '--';
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'ahora';
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h} h`;
+    return `${Math.floor(h / 24)} d`;
+  };
+
+  const sourceKey = (row, fallback = '') => {
+    const raw = String(first(row, ['sourceKey', 'source_key', 'championshipKey', 'championship_key', 'session.sourceKey', 'session.source_key']) || fallback || '').toLowerCase();
+    const label = String(first(row, ['sourceLabel', 'source_label', 'session.sourceLabel', 'session.source_label']) || '').toLowerCase();
+    if (raw === 'gt4' || label.includes('gt4') || label.includes('supra')) return 'gt4';
+    if (raw === 'main' || raw === 'weekly' || label.includes('grasscutters') || label.includes('liga')) return 'main';
+    return fallback || raw || 'main';
+  };
+
+  const sourceLabel = (row, fallback = '') => sourceKey(row, fallback) === 'gt4' ? 'GT4' : 'LIGA';
+
+  const driverName = (row) => first(row, ['driverName', 'driver_name', 'pilotName', 'playerName', 'player_name', 'name', 'steamName', 'driver.name', 'player.name']) || 'Piloto';
+  const carName = (row) => first(row, ['carName', 'car_name', 'carDisplay', 'car_display', 'carDisplayName', 'uiCarName', 'carCode', 'car_code', 'vehicle', 'car.name', 'car.code']) || 'Coche';
+  const trackName = (row) => first(row, ['trackName', 'track_name', 'trackDisplay', 'track_display', 'trackDisplayName', 'uiTrackName', 'trackCode', 'track_code', 'circuitName', 'track.name', 'track.code']) || '';
+  const avatar = (row) => first(row, ['avatarUrl', 'avatar', 'pilotAvatar', 'driver.avatarUrl', 'player.avatarUrl']) || '/images/pilot-avatar-default.png';
+
+  const comboObj = (payload) => payload?.activeCombo || payload?.data?.activeCombo || payload?.combo || payload?.data?.combo || {};
+  const comboRows = (payload) => {
+    const combo = comboObj(payload);
+    const rows = [
+      ...getArray(payload?.leaderboard), ...getArray(payload?.topComboTimes), ...getArray(payload?.bestLaps),
+      ...getArray(payload?.data?.leaderboard), ...getArray(payload?.data?.topComboTimes), ...getArray(payload?.data?.bestLaps),
+      ...getArray(combo?.leaderboard), ...getArray(combo?.topComboTimes), ...getArray(combo?.bestLaps)
+    ];
+    return rows.filter(Boolean);
+  };
+
+  const comboTrack = (combo, fallbackRows = []) => first(combo, [
+    'trackName', 'track_name', 'trackDisplayName', 'uiTrackName', 'canonicalTrackName', 'trackCode', 'track_code', 'circuitName', 'track.name', 'track.code', 'name'
+  ]) || trackName(fallbackRows[0] || {}) || '';
+
+  const comboCars = (combo, fallbackRows = []) => {
+    const raw = first(combo, ['publicComboCars', 'carNames', 'cars', 'mainVariantAllCars', 'carName', 'car_name', 'carCode', 'car_code', 'car.name', 'car.code']);
+    let cars = [];
+    if (Array.isArray(raw)) cars = raw.map((item) => typeof item === 'string' ? item : first(item, ['name', 'displayName', 'uiName', 'code', 'carName', 'carCode']));
+    else if (raw) cars = String(raw).split(',').map((x) => x.trim());
+    if (!cars.filter(Boolean).length && fallbackRows[0]) cars = [carName(fallbackRows[0])];
+    return cars.filter(Boolean);
+  };
+
+  const rowComboKey = (row) => first(row, ['comboKey', 'combo_key', 'comboUid', 'combo_uid', 'combo.key', 'combo.id']);
+  const comboKey = (combo) => first(combo, ['comboKey', 'combo_key', 'comboUid', 'combo_uid', 'key', 'id']);
+
+  const fuzzyMatch = (a, b) => {
+    const aa = slug(a).replace(/^(ks_|rt_|acu_|00_)/, '');
+    const bb = slug(b).replace(/^(ks_|rt_|acu_|00_)/, '');
+    if (!aa || !bb) return true;
+    return aa === bb || aa.includes(bb) || bb.includes(aa);
+  };
+
+  const filterRowsForCombo = (rows, combo, source) => {
+    const wantedKey = comboKey(combo);
+    const wantedTrack = comboTrack(combo, rows);
+    const wantedCars = comboCars(combo, rows);
+    let sourceRows = rows.filter((row) => sourceKey(row, source) === source);
+    if (wantedKey) {
+      const exact = sourceRows.filter((row) => rowComboKey(row) && rowComboKey(row) === wantedKey);
+      if (exact.length) return exact;
+    }
+    const filtered = sourceRows.filter((row) => {
+      const trackOk = !wantedTrack || fuzzyMatch(trackName(row), wantedTrack);
+      const carOk = !wantedCars.length || wantedCars.some((car) => fuzzyMatch(carName(row), car));
+      return trackOk && carOk;
+    });
+    return filtered.length ? filtered : sourceRows;
+  };
+
+  const bestByDriver = (rows) => {
+    const best = new Map();
+    rows.filter((row) => Number.isFinite(rowTimeMs(row))).forEach((row) => {
+      const id = String(first(row, ['driverGuid', 'driver_guid', 'playerId', 'player_id', 'steamGuid', 'guid']) || driverName(row)).toLowerCase();
+      if (!id) return;
+      const current = best.get(id);
+      if (!current || rowTimeMs(row) < rowTimeMs(current)) best.set(id, row);
+    });
+    return Array.from(best.values()).sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
+  };
+
+  const dedupeRows = (rows) => {
+    const seen = new Set();
+    return rows.filter((row) => {
+      const key = String(first(row, ['lapUid', 'lap_uid', 'id', 'lapId', 'lap_id']) || [sourceLabel(row), driverName(row), carName(row), lapTimeText(row), rowDateMs(row)].join('|'));
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const renderRanking = (selector, rows, source, preserve = true) => {
+    const host = q(selector);
+    if (!host) return [];
+    const clean = bestByDriver(rows.map((row) => ({ ...row, sourceKey: sourceKey(row, source) }))).slice(0, 8);
+    if (!clean.length) {
+      if (!preserve || host.dataset.gcHydrated !== '1') {
+        host.innerHTML = '<div class="gc-home2-combo-rank gc-home2-combo-rank--empty"><div><strong>Sin tiempos del combo</strong><small>Esperando vueltas válidas</small></div></div>';
+      }
+      return [];
+    }
+    host.dataset.gcHydrated = '1';
+    host.innerHTML = clean.map((row, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+      const compact = i >= 3 ? ' gc-home2-combo-rank--compact' : '';
+      return `<div class="gc-home2-combo-rank${compact}"><span class="gc-home2-rank-badge">${medal}</span><div><strong>${htmlEscape(driverName(row))}</strong><small>${htmlEscape(pretty(carName(row)))}</small></div><img class="gc-home2-combo-rank__avatar" src="${htmlEscape(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" /><em>${htmlEscape(lapTimeText(row))}</em></div>`;
+    }).join('');
+    return clean;
+  };
+
+  const renderRecent = (mainRows, gt4Rows) => {
+    const host = q('[data-home2-recent-laps]');
+    if (!host) return;
+    const main = mainRows.map((row) => ({ ...row, sourceKey: 'main' })).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 4);
+    const gt4 = gt4Rows.map((row) => ({ ...row, sourceKey: 'gt4' })).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 4);
+    const rows = dedupeRows([...main, ...gt4]).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 8);
+    if (!rows.length) return;
+    host.dataset.gcHydrated = '1';
+    host.innerHTML = rows.map((row) => {
+      const src = sourceLabel(row);
+      const pillClass = src === 'GT4' ? 'gc-home2-source-pill gc-home2-source-pill--gt4' : 'gc-home2-source-pill gc-home2-source-pill--main';
+      return `<div class="gc-home2-table__row" role="row"><span>${htmlEscape(driverName(row))}</span><span class="gc-home2-table-car"><em class="${pillClass}">${src}</em>${htmlEscape(pretty(carName(row)))}</span><strong>${htmlEscape(lapTimeText(row))}</strong><small>${htmlEscape(formatAgo(rowDateMs(row)))}</small></div>`;
+    }).join('');
+  };
+
+  const setHero = async (combo, rows) => {
+    const top = bestByDriver(rows)[0] || rows[0] || {};
+    const t = comboTrack(combo, rows);
+    const cars = comboCars(combo, rows);
+    setText('[data-home2-track]', pretty(t || trackName(top) || 'Combo activo'));
+    setText('[data-home2-cars]', cars.slice(0, 3).map(pretty).join(' / ') || pretty(carName(top)) || 'Esperando coches');
+    setText('[data-home2-best-driver]', top ? driverName(top) : '--');
+    setText('[data-home2-best-car]', top ? pretty(carName(top)) : '--');
+    setText('[data-home2-best-time]', top ? lapTimeText(top) : '--');
+    const img = q('[data-home2-best-avatar]');
+    if (img && top) img.src = avatar(top);
+    await setTrackImage(t || trackName(top));
+  };
+
+  const imageExists = (src) => new Promise((resolve) => {
+    if (!src) return resolve(false);
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+
+  const setTrackImage = async (track) => {
+    const img = q('[data-home2-track-image]');
+    if (!img || !track) return;
+    const s = slug(track);
+    const keys = Array.from(new Set([s, s.replace(/^acu_/, ''), s.replace(/^00_/, ''), s.split('_').pop()].filter(Boolean)));
+    const candidates = [];
+    keys.forEach((k) => {
+      candidates.push(`/images/tracks/${k}.webp`, `/images/tracks/${k}.jpg`, `/images/tracks/${k}.png`);
+    });
+    for (const src of candidates) {
+      if (await imageExists(src)) {
+        img.src = src;
+        return;
+      }
+    }
+  };
+
+  const renderPulse = (rows) => {
+    const source = dedupeRows(rows).filter((row) => Number.isFinite(rowTimeMs(row)) || rowDateMs(row));
+    if (!source.length) return;
+    const byDriver = new Map();
+    source.forEach((row) => {
+      const name = driverName(row);
+      const item = byDriver.get(name) || { name, laps: 0, valid: 0, times: [], maxSpeed: 0, maxSpeedCar: '' };
+      item.laps += 1;
+      const validRaw = first(row, ['valid', 'isValid', 'is_valid']);
+      const invalidRaw = first(row, ['invalid', 'isInvalid', 'is_invalid']);
+      const valid = invalidRaw === true || invalidRaw === 'true' ? false : validRaw === false || validRaw === 'false' ? false : true;
+      if (valid) item.valid += 1;
+      const ms = rowTimeMs(row);
+      if (Number.isFinite(ms)) item.times.push(ms);
+      const speed = Number(first(row, ['maxSpeedKmh', 'max_speed_kmh', 'topSpeedKmh', 'speedKmh', 'maxSpeed']));
+      if (Number.isFinite(speed) && speed > item.maxSpeed) { item.maxSpeed = speed; item.maxSpeedCar = pretty(carName(row)); }
+      byDriver.set(name, item);
+    });
+    const drivers = Array.from(byDriver.values());
+    const most = drivers.slice().sort((a, b) => b.laps - a.laps)[0];
+    const avg = drivers.map((d) => ({ ...d, avg: d.times.slice().sort((a,b)=>a-b).slice(0,5).reduce((a,b)=>a+b,0) / Math.max(1, d.times.slice(0,5).length), samples: Math.min(5, d.times.length) })).filter((d)=>Number.isFinite(d.avg)).sort((a,b)=>a.avg-b.avg)[0];
+    const clean = drivers.slice().sort((a, b) => (b.valid / Math.max(1,b.laps)) - (a.valid / Math.max(1,a.laps)) || b.valid - a.valid)[0];
+    const speed = drivers.slice().sort((a,b)=>b.maxSpeed-a.maxSpeed)[0];
+    const latest = source.slice().sort((a,b)=>rowDateMs(b)-rowDateMs(a))[0];
+    const best = bestByDriver(source).slice(0, 2);
+    setText('[data-home2-standout-most-laps]', most?.name || '--');
+    setText('[data-home2-standout-most-laps-meta]', most ? `${most.laps} vueltas · ${most.valid} válidas` : 'vueltas del combo');
+    setText('[data-home2-standout-best-average]', avg?.name || '--');
+    setText('[data-home2-standout-best-average-meta]', avg ? `${formatLap(avg.avg)} media top ${avg.samples}` : 'media del combo');
+    const cleanPct = clean ? Math.max(0, Math.min(100, Math.round((clean.valid / Math.max(1, clean.laps)) * 100))) : null;
+    setText('[data-home2-standout-cleanest]', cleanPct !== null ? `${cleanPct}%` : '--');
+    setText('[data-home2-standout-cleanest-meta]', clean ? `${clean.name} · limpieza del combo` : 'limpieza del combo');
+    setText('[data-home2-standout-vmax]', speed?.maxSpeed ? `${Math.round(speed.maxSpeed)} km/h` : '--');
+    setText('[data-home2-standout-vmax-meta]', speed?.maxSpeed ? `${speed.name} · ${speed.maxSpeedCar || 'velocidad en combo'}` : 'velocidad en combo');
+    setText('[data-home2-standout-last-driver]', latest ? driverName(latest) : '--');
+    setText('[data-home2-standout-last-driver-meta]', latest ? `${sourceLabel(latest)} · ${formatAgo(rowDateMs(latest))}` : 'última del combo');
+    setText('[data-home2-standout-duel]', best.length >= 2 ? `${driverName(best[0])} / ${driverName(best[1])}` : '--');
+    setText('[data-home2-standout-duel-meta]', best.length >= 2 ? `gap ${((rowTimeMs(best[1]) - rowTimeMs(best[0])) / 1000).toFixed(3)} s` : 'diferencias del combo');
+  };
+
+  const normalizeChampRows = (payload) => {
+    const p = payload?.data || payload || {};
+    const arrays = [p.standings, p.classification, p.results, p.drivers, p.registeredDrivers, p.entrants, payload?.standings, payload?.classification, payload?.drivers, payload?.registeredDrivers];
+    for (const arr of arrays) if (Array.isArray(arr) && arr.length) return arr;
+    return [];
+  };
+
+  const renderChampionshipBlock = async (source) => {
+    const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
+    if (!block) return;
+    const payload = await fetchJson(`/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${Date.now()}`, 9000);
+    if (!payload) return;
+    const data = payload.data || payload;
+    setText('[data-home2-champ-name]', first(data, ['name', 'title', 'championship.name', 'championshipName']) || (source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
+    const events = getArray(first(data, ['events']) || data.events || data.calendar || data.sessions || []);
+    const standings = normalizeChampRows(payload);
+    if (events.length) setText('[data-home2-champ-events]', events.length, block);
+    if (standings.length) setText('[data-home2-champ-entrants]', standings.length, block);
+    const host = q('[data-home2-champ-drivers]', block);
+    if (host && standings.length) {
+      host.innerHTML = standings.slice(0, 6).map((row, index) => {
+        const name = first(row, ['driverName', 'name', 'displayName', 'playerName', 'steamName']) || 'Piloto';
+        const pts = first(row, ['points', 'pts', 'score', 'totalPoints']) || '0';
+        return `<div><strong>${index + 1}. ${htmlEscape(name)}</strong><small>${htmlEscape(pts)} pts</small></div>`;
+      }).join('');
+    }
+  };
+
+  const refresh = async () => {
+    const stamp = Date.now();
+    setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+    const [mainActive, gt4Active, mainHotlaps, gt4Hotlaps] = await Promise.all([
+      fetchFirst([`/api/gc/active-combo?source=main&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=main&limit=25&home=1&t=${stamp}`], 10000),
+      fetchFirst([`/api/gc/active-combo?source=gt4&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=gt4&limit=25&home=1&t=${stamp}`], 10000),
+      fetchJson(`/api/gc/hotlaps2?source=main&limit=120&home=1&t=${stamp}`, 10000),
+      fetchJson(`/api/gc/hotlaps2?source=gt4&limit=120&home=1&t=${stamp}`, 10000)
+    ]);
+
+    const mainCombo = comboObj(mainActive);
+    const gt4Combo = comboObj(gt4Active);
+    const mainAll = getArray(mainHotlaps).map((r) => ({ ...r, sourceKey: 'main' }));
+    const gt4All = getArray(gt4Hotlaps).map((r) => ({ ...r, sourceKey: 'gt4' }));
+
+    let mainPanelRows = comboRows(mainActive).map((r) => ({ ...r, sourceKey: 'main' }));
+    if (!mainPanelRows.length) mainPanelRows = filterRowsForCombo(mainAll, mainCombo, 'main');
+    let gt4PanelRows = comboRows(gt4Active).map((r) => ({ ...r, sourceKey: 'gt4' }));
+    if (!gt4PanelRows.length) gt4PanelRows = filterRowsForCombo(gt4All, gt4Combo, 'gt4');
+
+    const renderedMain = renderRanking('[data-home2-combo-ranking]', mainPanelRows, 'main', true);
+    const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4PanelRows, 'gt4', true);
+    await setHero(mainCombo, renderedMain.length ? renderedMain : mainPanelRows);
+    renderPulse([...filterRowsForCombo(mainAll, mainCombo, 'main'), ...mainPanelRows]);
+    renderRecent(mainAll, gt4All);
+    renderChampionshipBlock('weekly');
+    renderChampionshipBlock('gt4');
+
+    console.info(`[GC Home ${PACK} Final]`, {
+      mainActiveTrack: comboTrack(mainCombo, mainPanelRows),
+      gt4ActiveTrack: comboTrack(gt4Combo, gt4PanelRows),
+      mainRows: renderedMain.length,
+      gt4Rows: renderedGt4.length,
+      timingMainRows: mainAll.length,
+      timingGt4Rows: gt4All.length
+    });
+  };
+
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try { await refresh(); }
+    catch (error) { console.error(`[GC Home ${PACK} Final] error`, error); }
+    finally { running = false; }
+  };
+
+  window.GCHomeFinalV58 = { refresh: run };
+  run();
+  window.setInterval(run, REFRESH_MS);
+})();
+/* GC_HOME_PACK_5_8_FINAL_LOADER_END */
+
+</script>
 </MarketingLayout>
 
