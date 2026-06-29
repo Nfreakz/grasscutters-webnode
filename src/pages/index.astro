@@ -2386,137 +2386,59 @@ const home2ArchiveSeed = [];
     })();
   </script>
   <script>
-    /* GC_HOME_PACK_5_13_STABLE_COMBO_FIX_START */
+    /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = '5.13';
+      const PACK = 'bootstrap-2';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
-      if (window.__GC_HOME_STABLE_SINGLE_SOURCE_LOADER__) {
+      if (window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
         console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
         return;
       }
-      window.__GC_HOME_STABLE_SINGLE_SOURCE_LOADER__ = true;
+      window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
       const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
       const FALLBACK_TRACK = '/ui/home2/gc-home2-track-fallback.svg';
-      let refreshTimer = 0;
       let running = false;
       let runSeq = 0;
-      const lastGood = { mainRows: [], gt4Rows: [], recentRows: [], mainPayload: null, gt4Payload: null };
+      let refreshTimer = 0;
+      const lastGood = { bootstrap: null, championships: {} };
 
       const q = (selector, scope = root) => scope?.querySelector?.(selector) || null;
       const qa = (selector, scope = root) => Array.from(scope?.querySelectorAll?.(selector) || []);
-      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
-      const normalize = (value) => String(value ?? '')
-        .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/&/g, ' and ')
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
-
-      const first = (obj, keys, fallback = '') => {
-        for (const key of keys) {
-          const parts = String(key).split('.');
-          let cur = obj;
+      const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+      const setText = (selector, value, scope = root) => { const el = q(selector, scope); if (el) el.textContent = value ?? '--'; };
+      const normalize = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const first = (obj, paths = [], fallback = '') => {
+        for (const path of paths) {
+          const parts = String(path).split('.').filter(Boolean);
+          let current = obj;
           for (const part of parts) {
-            if (cur == null) break;
-            cur = cur[part];
+            if (current === undefined || current === null) break;
+            current = current?.[part];
           }
-          if (cur !== undefined && cur !== null && String(cur).trim() !== '') return cur;
+          if (current !== undefined && current !== null && current !== '') return current;
         }
         return fallback;
       };
-
-      const setText = (selector, value, scope = root) => {
-        const text = value === undefined || value === null || value === '' ? '--' : String(value);
-        qa(selector, scope).forEach((el) => { el.textContent = text; });
-      };
-
       const getArray = (payload) => {
-        if (!payload) return [];
         if (Array.isArray(payload)) return payload;
-        const candidates = [
-          payload.items,
-          payload.laps,
-          payload.hotlaps,
-          payload.leaderboard,
-          payload.topComboTimes,
-          payload.recentLaps,
-          payload.data?.items,
-          payload.data?.laps,
-          payload.data?.hotlaps,
-          payload.data?.leaderboard,
-          payload.data?.recentLaps,
-          payload.data?.activeCombo?.leaderboard,
-          payload.activeCombo?.leaderboard,
-          payload.combo?.leaderboard,
-          payload.results,
-          payload.data?.results
-        ];
-        for (const item of candidates) if (Array.isArray(item)) return item;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.rows)) return payload.rows;
+        if (Array.isArray(payload?.laps)) return payload.laps;
+        if (Array.isArray(payload?.data)) return payload.data;
+        if (Array.isArray(payload?.leaderboard)) return payload.leaderboard;
+        if (Array.isArray(payload?.activeCombo?.leaderboard)) return payload.activeCombo.leaderboard;
         return [];
       };
-
-      const activeCombo = (payload) => payload?.data?.activeCombo || payload?.activeCombo || payload?.combo || payload?.data?.combo || null;
-      const comboLeaderboard = (payload) => {
-        const combo = activeCombo(payload);
-        const rows = [
-          payload?.data?.leaderboard,
-          payload?.leaderboard,
-          payload?.topComboTimes,
-          combo?.leaderboard,
-          combo?.bestLaps,
-          payload?.data?.activeCombo?.leaderboard,
-          payload?.data?.activeCombo?.bestLaps,
-          payload?.data?.items,
-          payload?.items
-        ];
-        for (const item of rows) if (Array.isArray(item) && item.length) return item;
-        return [];
-      };
-
-      const fetchJson = async (url, timeoutMs = 12000) => {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const response = await fetch(url, {
-            headers: { Accept: 'application/json' },
-            signal: controller.signal,
-            cache: 'no-store'
-          });
-          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-          return await response.json();
-        } finally {
-          window.clearTimeout(timer);
-        }
-      };
-
-      const fetchFirst = async (urls, timeoutMs = 12000) => {
-        let lastError = null;
-        for (const url of urls) {
-          try {
-            const data = await fetchJson(url, timeoutMs);
-            if (data && data.ok !== false) return data;
-            lastError = new Error(data?.message || 'Respuesta sin ok');
-          } catch (error) {
-            lastError = error;
-          }
-        }
-        if (lastError) throw lastError;
-        return null;
-      };
-
       const parseTimeMs = (value) => {
         if (value === undefined || value === null || value === '') return null;
-        if (typeof value === 'number' && Number.isFinite(value)) return value > 0 ? value : null;
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
         const raw = String(value).trim();
-        if (!raw || raw === '--') return null;
-        if (/^\d+(\.\d+)?$/.test(raw)) {
-          const n = Number(raw);
-          if (Number.isFinite(n)) return n > 1000 ? n : Math.round(n * 1000);
-        }
+        const direct = Number(raw);
+        if (Number.isFinite(direct)) return direct;
         const parts = raw.split(':').map((part) => part.trim());
         if (parts.length >= 2) {
           const minutes = Number(parts[0]);
@@ -2525,7 +2447,6 @@ const home2ArchiveSeed = [];
         }
         return null;
       };
-
       const rowTimeMs = (row) => parseTimeMs(first(row, ['lapTimeMs', 'lap_time_ms', 'LapTime', 'lapTime', 'timeMs', 'bestLapMs', 'best_lap_ms', 'time', 'lapTimeFormatted', 'lapTimeText']));
       const formatTime = (input) => {
         const ms = typeof input === 'object' && input ? rowTimeMs(input) : parseTimeMs(input);
@@ -2536,9 +2457,8 @@ const home2ArchiveSeed = [];
         const millis = total % 1000;
         return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
       };
-
       const timestampMs = (row) => {
-        const raw = first(row, ['timestamp', 'timestampMs', 'timestamp_ms', 'Timestamp', 'date', 'dateIso', 'timestampIso', 'Date', 'lastSeenTimestamp', 'last_lap_unix']);
+        const raw = first(row, ['timestampMs', 'timestamp_ms', 'timestamp', 'Timestamp', 'date', 'dateIso', 'timestampIso', 'Date', 'lastSeenTimestamp', 'last_lap_unix']);
         if (typeof raw === 'number' && Number.isFinite(raw)) return raw > 20000000000 ? raw : raw * 1000;
         if (raw) {
           const n = Number(raw);
@@ -2548,7 +2468,6 @@ const home2ArchiveSeed = [];
         }
         return 0;
       };
-
       const ago = (row) => {
         const ms = timestampMs(row);
         if (!ms) return '--';
@@ -2560,7 +2479,6 @@ const home2ArchiveSeed = [];
         if (hours < 48) return `${hours} h`;
         return `${Math.floor(hours / 24)} d`;
       };
-
       const driverName = (row) => first(row, ['driverName', 'driver_name', 'playerName', 'player_name', 'DriverName', 'Name', 'name', 'pilotName', 'driver.name', 'driver.displayName'], '--');
       const carName = (row) => first(row, ['carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'car.displayName', 'vehicleName'], '--');
       const trackName = (row) => first(row, ['trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name', 'track.displayName'], '--');
@@ -2570,7 +2488,6 @@ const home2ArchiveSeed = [];
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
         return !(value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false');
       };
-
       const bestPerDriver = (rows) => {
         const pool = Array.isArray(rows) ? rows.filter((row) => Number.isFinite(rowTimeMs(row))) : [];
         const valid = pool.filter(isValid);
@@ -2583,87 +2500,53 @@ const home2ArchiveSeed = [];
         }
         return [...map.values()].sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
       };
-
-      const comboTrack = (combo, rows = []) => first(combo, ['track.displayName', 'track.name', 'trackName', 'trackCode', 'track.code', 'circuitName', 'name'], trackName(rows[0] || {}));
-      const comboCars = (combo, rows = []) => {
-        const cars = first(combo, ['cars', 'publicComboCars', 'carNames', 'mainVariantAllCars'], null);
-        if (Array.isArray(cars)) {
-          const out = cars.map((car) => typeof car === 'string' ? car : first(car, ['displayName', 'name', 'carName', 'code'])).filter(Boolean);
-          if (out.length) return out;
-        }
-        const summary = first(combo, ['carSummary', 'carsSummary', 'carName'], '');
-        if (summary) return String(summary).split(/[,+/]/).map((item) => item.trim()).filter(Boolean);
-        return [...new Set(rows.map(carName).filter((v) => v && v !== '--'))];
-      };
-
-      const matchesCombo = (row, combo, source) => {
-        if (source && sourceKey(row, source) && sourceKey(row, source) !== source) return false;
-        const cTrack = normalize(comboTrack(combo, [row]));
-        const rTrack = normalize(trackName(row));
-        const cCars = comboCars(combo, [row]).map(normalize).filter(Boolean);
-        const rCar = normalize(carName(row));
-        const trackOk = !cTrack || !rTrack || cTrack === rTrack || cTrack.includes(rTrack) || rTrack.includes(cTrack);
-        const carOk = !cCars.length || !rCar || cCars.some((car) => car === rCar || car.includes(rCar) || rCar.includes(car));
-        return trackOk && carOk;
-      };
-
-      const comboSignatureFromRow = (row) => {
-        const track = trackName(row);
-        const car = carName(row);
-        const trackKey = normalize(track);
-        const carKey = normalize(car);
-        if (!trackKey || !carKey || track === '--' || car === '--') return null;
-        return { track, car, trackKey, carKey };
-      };
-
-      const latestComboSignature = (rows, source) => {
-        const list = (Array.isArray(rows) ? rows : [])
-          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
-          .filter((row) => !source || sourceKey(row, source) === source)
-          .filter((row) => timestampMs(row) > 0)
-          .sort((a, b) => timestampMs(b) - timestampMs(a));
-        for (const row of list) {
-          const signature = comboSignatureFromRow(row);
-          if (signature) return signature;
-        }
-        return null;
-      };
-
-      const matchesComboSignature = (row, signature, source) => {
-        if (!signature) return false;
-        if (source && sourceKey(row, source) !== source) return false;
-        const rowSig = comboSignatureFromRow(row);
-        if (!rowSig) return false;
-        const trackOk = rowSig.trackKey === signature.trackKey || rowSig.trackKey.includes(signature.trackKey) || signature.trackKey.includes(rowSig.trackKey);
-        const carOk = rowSig.carKey === signature.carKey || rowSig.carKey.includes(signature.carKey) || signature.carKey.includes(rowSig.carKey);
-        return trackOk && carOk;
-      };
-
-      const rowsForPanel = (activePayload, fallbackHotlaps, source) => {
-        // Fuente de verdad para los bloques de mejores tiempos:
-        // 1) hotlaps2 filtrado por source, porque representa el último combo realmente corrido en ese servidor.
-        // 2) active-combo solo como fallback si todavía no hay vueltas en hotlaps2.
-        const fallback = getArray(fallbackHotlaps)
-          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
-          .filter((row) => sourceKey(row, source) === source);
-        const latestSignature = latestComboSignature(fallback, source);
-        if (latestSignature) {
-          const scoped = fallback.filter((row) => matchesComboSignature(row, latestSignature, source));
-          const ranked = bestPerDriver(scoped);
-          if (ranked.length) return ranked;
-        }
-
-        const combo = activeCombo(activePayload);
-        const primary = comboLeaderboard(activePayload)
-          .map((row) => ({ ...row, sourceKey: sourceKey(row, source) || source }))
-          .filter((row) => sourceKey(row, source) === source);
-        if (primary.length) return bestPerDriver(primary);
-
-        const scoped = combo ? fallback.filter((row) => matchesCombo(row, combo, source)) : fallback;
-        return bestPerDriver(scoped);
-      };
-
+      const activeCombo = (sourcePayload) => sourcePayload?.activeCombo || null;
+      const sourceLeaderboard = (sourcePayload) => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
       const rankBadge = (index) => index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+
+      async function fetchJson(url, timeoutMs = 15000) {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data) throw new Error(data?.message || `HTTP ${response.status}`);
+          return data;
+        } finally {
+          window.clearTimeout(timer);
+        }
+      }
+
+      const setImageWithFallbacks = (img, candidates, fallback = FALLBACK_TRACK) => {
+        if (!img) return;
+        const list = [...new Set((candidates || []).filter(Boolean))];
+        let index = 0;
+        const apply = () => {
+          const next = list[index++] || fallback;
+          img.onerror = () => {
+            if (index <= list.length) apply();
+            else {
+              img.onerror = null;
+              img.src = fallback;
+            }
+          };
+          if (img.getAttribute('src') !== next) img.src = next;
+        };
+        apply();
+      };
+
+      const trackImageCandidatesFromCombo = (combo) => {
+        const image = combo?.trackImage || combo?.track?.image || {};
+        const candidates = [];
+        if (image.primary) candidates.push(image.primary);
+        if (Array.isArray(image.candidates)) candidates.push(...image.candidates);
+        const key = normalize(first(combo, ['track.familyKey', 'track.code', 'track.name', 'track.displayName'], ''));
+        if (/pascani|motorpark|a1/.test(key)) candidates.push('/images/tracks/pascani.jpg?v=bootstrap2', '/images/tracks/a1.webp?v=bootstrap2');
+        if (/vila|vilareal|vila_real/.test(key)) candidates.push('/images/tracks/vilareal.jpg?v=bootstrap2');
+        if (key) candidates.push(`/images/tracks/${key}.webp`, `/images/tracks/${key}.jpg`, `/images/tracks/${key}.png`);
+        return candidates;
+      };
+
       const renderRanking = (selector, rows, preserve = true) => {
         const host = q(selector);
         if (!host) return [];
@@ -2685,15 +2568,12 @@ const home2ArchiveSeed = [];
         return list;
       };
 
-      const renderRecent = (payload, fallbackMain, fallbackGt4) => {
+      const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
         if (!host) return [];
-        let rows = getArray(payload);
-        if (!rows.length) rows = [...getArray(fallbackMain), ...getArray(fallbackGt4)];
         const seen = new Set();
-        const list = rows
+        const list = (Array.isArray(rows) ? rows : [])
           .filter((row) => timestampMs(row) > 0)
-          .map((row) => ({ ...row, sourceKey: sourceKey(row, '') || (String(carName(row)).toLowerCase().includes('supra') ? 'gt4' : 'main') }))
           .filter((row) => {
             const key = first(row, ['lapUid', 'uid', 'id', 'lapId'], '') || `${sourceKey(row)}:${driverName(row)}:${carName(row)}:${formatTime(row)}:${timestampMs(row)}`;
             if (seen.has(key)) return false;
@@ -2704,45 +2584,25 @@ const home2ArchiveSeed = [];
           .slice(0, 8);
         if (!list.length) return [];
         host.dataset.gcHydrated = '1';
-        host.innerHTML = list.map((row) => {
-          const src = sourceKey(row, 'main') === 'gt4' ? 'GT4' : 'LIGA';
-          return `<div class="gc-home2-table__row" role="row" data-source="${esc(src)}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`;
-        }).join('');
+        host.innerHTML = list.map((row) => `<div class="gc-home2-table__row" role="row" data-source="${esc(sourceKey(row, 'main'))}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`).join('');
         return list;
       };
 
-      const setImageWithFallbacks = (img, candidates, fallback = FALLBACK_TRACK) => {
-        if (!img) return;
-        const list = [...new Set(candidates.filter(Boolean))];
-        let index = 0;
-        const apply = () => {
-          const next = list[index++] || fallback;
-          img.onerror = () => {
-            if (index <= list.length) apply();
-            else {
-              img.onerror = null;
-              img.src = fallback;
-            }
-          };
-          if (img.getAttribute('src') !== next) img.src = next;
-        };
-        apply();
+      const comboTrack = (combo, rows = []) => first(combo, ['track.displayName', 'track.uiName', 'track.name', 'track.code', 'trackName', 'trackCode'], trackName(rows[0] || {}));
+      const comboCars = (combo, rows = []) => {
+        const cars = first(combo, ['cars'], null);
+        if (Array.isArray(cars)) {
+          const out = cars.map((car) => typeof car === 'string' ? car : first(car, ['displayName', 'uiName', 'name', 'carName', 'code'])).filter(Boolean);
+          if (out.length) return out;
+        }
+        const summary = first(combo, ['carSummary', 'carsSummary', 'carName'], '');
+        if (summary) return String(summary).split(/[,+/]/).map((item) => item.trim()).filter(Boolean);
+        return [...new Set(rows.map(carName).filter((v) => v && v !== '--'))];
       };
-
-      const trackImageCandidates = (name) => {
-        const key = normalize(name);
-        const out = [];
-        if (/pascani|motorpark|00_pascani|a1/.test(key)) out.push('/images/tracks/pascani.jpg?v=512', '/images/tracks/a1.webp?v=512');
-        if (/vila|vilareal|vila_real/.test(key)) out.push('/images/tracks/vilareal.jpg?v=512');
-        const simple = key.replace(/^00_/, '').replace(/_motorpark.*$/, '').replace(/_hungary$/, '');
-        if (simple) out.push(`/images/tracks/${simple}.webp`, `/images/tracks/${simple}.jpg`, `/images/tracks/${simple}.png`);
-        return out;
-      };
-
       const setHero = (mainPayload, rankingRows) => {
         const combo = activeCombo(mainPayload) || {};
-        const rows = rankingRows.length ? rankingRows : comboLeaderboard(mainPayload);
-        const best = rows[0] || first(combo, ['bestLap', 'summary.bestLap'], null) || {};
+        const rows = rankingRows.length ? rankingRows : sourceLeaderboard(mainPayload);
+        const best = rows[0] || first(combo, ['bestLap'], null) || {};
         const track = comboTrack(combo, rows);
         const cars = comboCars(combo, rows);
         setText('[data-home2-track]', track || 'Combo activo');
@@ -2751,24 +2611,20 @@ const home2ArchiveSeed = [];
         setText('[data-home2-best-car]', carName(best));
         setText('[data-home2-best-time]', formatTime(best));
         qa('[data-home2-best-avatar]').forEach((img) => { img.src = avatar(best); });
-        setImageWithFallbacks(q('[data-home2-track-image]'), trackImageCandidates(track));
+        setImageWithFallbacks(q('[data-home2-track-image]'), trackImageCandidatesFromCombo(combo));
       };
-
-      const renderPulse = (mainPayload, mainHotlaps) => {
+      const renderPulse = (mainPayload) => {
         const combo = activeCombo(mainPayload) || {};
-        const rows = getArray(mainPayload?.data?.recentLaps || mainPayload?.recentLaps).length
-          ? getArray(mainPayload?.data?.recentLaps || mainPayload?.recentLaps)
-          : getArray(mainHotlaps).filter((row) => matchesCombo(row, combo, 'main'));
-        const leaderboard = comboLeaderboard(mainPayload);
-        const total = Number(first(combo, ['summary.totalLaps', 'totalLaps', 'stats.totalLaps'], rows.length)) || rows.length;
-        const valid = Math.min(total, Number(first(combo, ['summary.validLaps', 'validLaps', 'stats.validLaps'], rows.filter(isValid).length)) || rows.filter(isValid).length);
-        const best = (leaderboard.length ? bestPerDriver(leaderboard) : bestPerDriver(rows))[0] || {};
-        const latest = [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
+        const rows = sourceLeaderboard(mainPayload);
+        const total = Number(first(combo, ['totalLaps'], rows.length)) || rows.length;
+        const valid = Math.min(total, Number(first(combo, ['validLaps'], rows.filter(isValid).length)) || rows.filter(isValid).length);
+        const best = rows[0] || first(combo, ['bestLap'], null) || {};
+        const latest = first(combo, ['latestLap'], null) || [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
         const counts = new Map();
         rows.forEach((row) => counts.set(driverName(row), (counts.get(driverName(row)) || 0) + 1));
         const most = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-        const vmax = Math.max(0, ...rows.map((row) => Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0));
-        const leaders = bestPerDriver(leaderboard.length ? leaderboard : rows).slice(0, 2);
+        const vmax = Number(first(combo, ['maxSpeedKmh'], 0)) || Math.max(0, ...rows.map((row) => Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0));
+        const leaders = bestPerDriver(rows).slice(0, 2);
         const diff = leaders.length >= 2 && Number.isFinite(rowTimeMs(leaders[0])) && Number.isFinite(rowTimeMs(leaders[1]))
           ? `+${((rowTimeMs(leaders[1]) - rowTimeMs(leaders[0])) / 1000).toFixed(3)}s`
           : '--';
@@ -2779,7 +2635,7 @@ const home2ArchiveSeed = [];
         setText('[data-home2-standout-cleanest]', total ? `${Math.max(0, Math.min(100, Math.round((valid / total) * 100)))}%` : '--');
         setText('[data-home2-standout-cleanest-meta]', 'limpieza del combo');
         setText('[data-home2-standout-vmax]', vmax ? `${Math.round(vmax)} km/h` : '--');
-        setText('[data-home2-standout-vmax-meta]', `${driverName(rows.find((row) => Math.round(Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0) === Math.round(vmax)) || {})} · velocidad en combo`);
+        setText('[data-home2-standout-vmax-meta]', 'velocidad en combo');
         setText('[data-home2-standout-last-driver]', driverName(latest));
         setText('[data-home2-standout-last-driver-meta]', `${ago(latest)} · última del combo`);
         setText('[data-home2-standout-duel]', diff);
@@ -2804,106 +2660,94 @@ const home2ArchiveSeed = [];
         if (Number.isNaN(d.getTime())) return String(raw);
         return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' }) + ', ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       };
-      const renderChampionship = async (source) => {
+      const renderChampionshipFromPayload = (source, payload) => {
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
-        if (!block) return { source, ok: false, reason: 'missing-block' };
+        if (!block || !payload) return { source, ok: false, reason: 'missing-block-or-payload' };
+        const c = champRoot(payload);
+        const events = champEvents(payload);
+        const rows = champRows(payload);
+        const stats = c.stats || payload.stats || payload.data?.stats || {};
+        const next = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+        setText('[data-home2-champ-name]', first(c, ['name', 'title'], source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
+        setText('[data-home2-champ-events]', first(stats, ['events'], events.length || '--'), block);
+        setText('[data-home2-champ-completed]', first(stats, ['completedEvents', 'completed'], events.filter((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() === 'completed').length || '--'), block);
+        setText('[data-home2-champ-entrants]', first(stats, ['entrants'], rows.length || '--'), block);
+        setText('[data-home2-champ-classes]', first(stats, ['classes'], Array.isArray(c.classes) ? c.classes.length : '--'), block);
+        if (next) {
+          const title = first(next, ['trackName', 'track', 'name', 'Name', 'title'], source === 'gt4' ? 'Pascani Motorpark A' : 'Próximo evento');
+          const date = first(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime'], '');
+          const car = first(next, ['carSummary', 'cars', 'carName', 'car'], '');
+          setText('[data-home2-champ-next]', title, block);
+          setText('[data-home2-champ-date]', champDate(date), block);
+          setText('[data-home2-champ-next-meta]', [title, car].filter(Boolean).join(' · ') || 'Próxima sesión', block);
+          setImageWithFallbacks(q('[data-home2-champ-track-image]', block), trackImageCandidatesFromCombo({ track: { name: title, code: title }, trackImage: source === 'gt4' ? { primary: '/images/tracks/pascani.jpg', candidates: ['/images/tracks/pascani.jpg', '/images/tracks/a1.webp'] } : null }));
+        }
+        const host = q('[data-home2-champ-drivers]', block);
+        if (host && rows.length) {
+          host.dataset.gcHydrated = '1';
+          host.innerHTML = rows.slice(0, 8).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+        }
+        return { source, ok: true, events: events.length, rows: rows.length };
+      };
+      const loadChampionship = async (source) => {
         try {
-          const payload = await fetchFirst([
-            `/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${Date.now()}`,
-            `/api/community/acsr-championship?source=${encodeURIComponent(source)}&refresh=1&home=1&t=${Date.now()}`
-          ], 12000);
-          const c = champRoot(payload);
-          const events = champEvents(payload);
-          const rows = champRows(payload);
-          const stats = c.stats || payload.stats || payload.data?.stats || {};
-          const next = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
-          setText('[data-home2-champ-name]', first(c, ['name', 'title'], source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
-          setText('[data-home2-champ-events]', first(stats, ['events'], events.length || '--'), block);
-          setText('[data-home2-champ-completed]', first(stats, ['completedEvents', 'completed'], events.filter((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() === 'completed').length || '--'), block);
-          setText('[data-home2-champ-entrants]', first(stats, ['entrants'], rows.length || '--'), block);
-          setText('[data-home2-champ-classes]', first(stats, ['classes'], Array.isArray(c.classes) ? c.classes.length : '--'), block);
-          if (next) {
-            const title = first(next, ['trackName', 'track', 'name', 'Name', 'title'], source === 'gt4' ? 'Pascani Motorpark A' : 'Próximo evento');
-            const date = first(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime'], '');
-            const car = first(next, ['carSummary', 'cars', 'carName', 'car'], '');
-            setText('[data-home2-champ-next]', title, block);
-            setText('[data-home2-champ-date]', champDate(date), block);
-            setText('[data-home2-champ-next-meta]', [title, car].filter(Boolean).join(' · ') || 'Próxima sesión', block);
-            const imageLabel = source === 'gt4' ? `${title} pascani a1 00_pascani_motorpark-a1` : title;
-            setImageWithFallbacks(q('[data-home2-champ-track-image]', block), trackImageCandidates(imageLabel));
-          }
-          const host = q('[data-home2-champ-drivers]', block);
-          if (host && rows.length) {
-            host.dataset.gcHydrated = '1';
-            host.innerHTML = rows.slice(0, 8).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
-          }
-          return { source, ok: true, events: events.length, rows: rows.length };
+          const payload = await fetchJson(`/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${Date.now()}`, 12000);
+          lastGood.championships[source] = payload;
+          return renderChampionshipFromPayload(source, payload);
         } catch (error) {
+          if (lastGood.championships[source]) return renderChampionshipFromPayload(source, lastGood.championships[source]);
           console.warn(`[GC Home ${PACK}] campeonato no disponible`, source, error);
           return { source, ok: false, reason: String(error?.message || error) };
         }
       };
 
-      const refresh = async () => {
-        const seq = ++runSeq;
-        const stamp = Date.now();
-        setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
-        const [mainActive, gt4Active, mainHotlaps, gt4Hotlaps, allHotlaps] = await Promise.all([
-          fetchFirst([`/api/gc/active-combo?source=main&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=main&limit=25&home=1&t=${stamp}`]),
-          fetchFirst([`/api/gc/active-combo?source=gt4&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=gt4&limit=25&home=1&t=${stamp}`]),
-          fetchJson(`/api/gc/hotlaps2?source=main&limit=120&home=1&t=${stamp}`),
-          fetchJson(`/api/gc/hotlaps2?source=gt4&limit=120&home=1&t=${stamp}`),
-          fetchJson(`/api/gc/hotlaps2?source=all&limit=120&home=1&t=${stamp}`)
-        ]);
-        if (seq !== runSeq) return;
-
-        const mainRows = rowsForPanel(mainActive, mainHotlaps, 'main');
-        const gt4Rows = rowsForPanel(gt4Active, gt4Hotlaps, 'gt4');
+      const applyBootstrap = (payload) => {
+        const mainRows = sourceLeaderboard(payload?.main);
+        const gt4Rows = sourceLeaderboard(payload?.gt4);
         const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, true);
         const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4Rows, true);
-        const recentRows = renderRecent(allHotlaps, mainHotlaps, gt4Hotlaps);
-        setHero(mainActive, renderedMain.length ? renderedMain : mainRows);
-        renderPulse(mainActive, mainHotlaps);
-        const championshipResults = await Promise.all([renderChampionship('weekly'), renderChampionship('gt4')]);
-
-        lastGood.mainRows = renderedMain;
-        lastGood.gt4Rows = renderedGt4;
-        lastGood.recentRows = recentRows;
-        lastGood.mainPayload = mainActive;
-        lastGood.gt4Payload = gt4Active;
-
-        console.info(`[GC Home ${PACK} Stable]`, {
-          calls: 7,
-          mainActive: comboTrack(activeCombo(mainActive), renderedMain),
-          gt4Active: comboTrack(activeCombo(gt4Active), renderedGt4),
-          mainRows: renderedMain.length,
-          gt4Rows: renderedGt4.length,
-          timingRows: recentRows.length,
-          championships: championshipResults
-        });
+        const recentRows = renderRecent(payload?.timingSheet || []);
+        setHero(payload?.main, renderedMain.length ? renderedMain : mainRows);
+        renderPulse(payload?.main);
+        setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
+        return { mainRows: renderedMain.length, gt4Rows: renderedGt4.length, timingRows: recentRows.length };
       };
 
-      const run = async () => {
+      const refresh = async () => {
         if (running) return;
         running = true;
+        const seq = ++runSeq;
         try {
-          await refresh();
+          const stamp = Date.now();
+          const bootstrap = await fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=8&home=1&t=${stamp}`, 15000);
+          if (seq !== runSeq) return;
+          if (!bootstrap?.ok) throw new Error(bootstrap?.message || 'Home bootstrap no disponible');
+          lastGood.bootstrap = bootstrap;
+          const rendered = applyBootstrap(bootstrap);
+          const championships = await Promise.all([loadChampionship('weekly'), loadChampionship('gt4')]);
+          console.info(`[GC Home ${PACK}]`, {
+            bootstrap: bootstrap.source,
+            latencyMs: bootstrap.latencyMs,
+            mainActive: bootstrap.main?.diagnostics?.activeComboKey,
+            gt4Active: bootstrap.gt4?.diagnostics?.activeComboKey,
+            ...rendered,
+            championships
+          });
         } catch (error) {
-          console.error(`[GC Home ${PACK} Stable] error`, error);
-          if (lastGood.mainRows.length) renderRanking('[data-home2-combo-ranking]', lastGood.mainRows, true);
-          if (lastGood.gt4Rows.length) renderRanking('[data-home2-combo-ranking-gt4]', lastGood.gt4Rows, true);
-          if (lastGood.recentRows.length) renderRecent(lastGood.recentRows, [], []);
+          console.error(`[GC Home ${PACK}] error`, error);
+          if (lastGood.bootstrap) applyBootstrap(lastGood.bootstrap);
         } finally {
           running = false;
         }
       };
 
-      window.GCHomeStableV513 = { refresh: run };
-      run();
-      refreshTimer = window.setInterval(run, REFRESH_MS);
-      window.__GC_HOME_STABLE_INTERVAL__ = refreshTimer;
+      window.GCHomeBootstrapV2 = { refresh };
+      refresh();
+      refreshTimer = window.setInterval(refresh, REFRESH_MS);
+      window.__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
     })();
-    /* GC_HOME_PACK_5_13_STABLE_COMBO_FIX_END */
+    /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_END */
+
   </script>
 
 </MarketingLayout>
