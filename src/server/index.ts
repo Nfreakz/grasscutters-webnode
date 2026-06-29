@@ -2493,11 +2493,112 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
   }
 }
 
+
+function getAutoSyncSourceKeys() {
+  const raw = String(process.env.STRACKER_AUTO_SYNC_SOURCES || 'all').trim().toLowerCase();
+  const sources = gcMirrorV2ResolveSourceKeys(raw || 'all')
+    .filter((sourceKey) => {
+      const definition = getStrackerSourceDefinition(sourceKey);
+      const remote = getRemoteStrackerConfigForSource(definition.key);
+      return definition.enabled !== false && remote.sftpConfigured;
+    });
+  return sources.length ? sources : ['main'];
+}
+
+async function syncStrackerMirrorV2AfterSourceDbSync(sourceKey: unknown, reason: string) {
+  const startedAt = new Date().toISOString();
+  const enabled = readBooleanEnv('GC_STRACKER_MIRROR_V2_AUTO_SYNC', true);
+  const limit = readOptionalPositiveNumberEnv('GC_STRACKER_MIRROR_V2_AUTO_LIMIT', null, 1, 250000);
+
+  if (!enabled) {
+    return {
+      ok: true,
+      enabled: false,
+      sourceKey: String(sourceKey || 'main'),
+      reason,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      limit,
+      message: 'Mirror V2 automático desactivado por GC_STRACKER_MIRROR_V2_AUTO_SYNC=false.'
+    };
+  }
+
+  try {
+    const payload = await syncStrackerSourceToMirrorV2(sourceKey, {
+      limit: limit ?? null,
+      replaceSource: limit === null
+    });
+    return {
+      ...payload,
+      enabled: true,
+      reason,
+      autoLimit: limit,
+      mode: limit ? 'limited' : 'full-history'
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      enabled: true,
+      sourceKey: String(sourceKey || 'main'),
+      reason,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      limit,
+      message: 'La BD sTracker se sincronizó, pero falló el Mirror V2 automático.',
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+async function syncConfiguredStrackerSources(reason: 'startup' | 'scheduled' | 'manual' = 'scheduled') {
+  const sourceKeys = getAutoSyncSourceKeys();
+  const startedAt = new Date().toISOString();
+  const results: any[] = [];
+
+  for (const sourceKey of sourceKeys) {
+    const syncResult = await syncStrackerSourceFromRemote(sourceKey);
+    if (syncResult?.ok) invalidateStrackerRuntimeCache(`stracker-sync:${sourceKey}`);
+
+    let mirrorV2: any = null;
+    if (syncResult?.ok) {
+      const mirrorStarted = Date.now();
+      mirrorV2 = await syncStrackerMirrorV2AfterSourceDbSync(sourceKey, `auto-sync-${reason}-post-db-sync:${sourceKey}`);
+      if (syncResult.sync?.phases) {
+        (syncResult.sync.phases as any).mirrorV2 = Date.now() - mirrorStarted;
+      }
+      if (sourceKey === 'main' && lastSyncResult?.phases) {
+        (lastSyncResult.phases as any).mirrorV2 = Date.now() - mirrorStarted;
+      }
+    }
+
+    results.push({
+      sourceKey,
+      ok: Boolean(syncResult?.ok),
+      sync: syncResult,
+      mirrorV2
+    });
+  }
+
+  return {
+    ok: results.every((item) => item.ok),
+    sourceKeys,
+    results,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    message: results.every((item) => item.ok)
+      ? `Auto-sync multi-sTracker completado: ${sourceKeys.join(', ')}.`
+      : `Auto-sync multi-sTracker terminó con errores: ${sourceKeys.join(', ')}.`
+  };
+}
+
 function getAutoSyncConfig() {
   const enabled = readBooleanEnv('STRACKER_AUTO_SYNC_ENABLED', false);
   const intervalMinutes = readNumberEnv('STRACKER_AUTO_SYNC_INTERVAL_MINUTES', 5, 1, 24 * 60);
   const initialDelaySeconds = readNumberEnv('STRACKER_AUTO_SYNC_INITIAL_DELAY_SECONDS', 30, 0, 60 * 60);
   const remote = getRemoteStrackerConfig();
+  const sourceKeys = getAutoSyncSourceKeys();
+  const sourceStatuses = sourceKeys.map((sourceKey) => getRemoteStrackerConfigForSource(sourceKey));
+  const remoteConfigured = sourceStatuses.length > 0 && sourceStatuses.every((item) => item.sftpConfigured && item.secretConfigured);
 
   return {
     enabled,
@@ -2505,8 +2606,10 @@ function getAutoSyncConfig() {
     intervalMs: intervalMinutes * 60 * 1000,
     initialDelaySeconds,
     initialDelayMs: initialDelaySeconds * 1000,
-    canRun: enabled && remote.configured,
-    remoteConfigured: remote.configured,
+    sourceKeys,
+    sourcesMode: String(process.env.STRACKER_AUTO_SYNC_SOURCES || 'all'),
+    canRun: enabled && remoteConfigured,
+    remoteConfigured,
     nextAutoSyncAt,
     syncInProgress,
     currentSync: currentSyncTelemetry,
@@ -2515,9 +2618,9 @@ function getAutoSyncConfig() {
     lastAutoSync: lastAutoSyncResult,
     sqlMirror: getStrackerSqlMirrorAutoSyncConfig(),
     message: enabled
-      ? remote.configured
-        ? `Auto-sync activo cada ${intervalMinutes} minutos.`
-        : 'Auto-sync activado, pero faltan variables SFTP/secret.'
+      ? remoteConfigured
+        ? `Auto-sync multi-sTracker activo cada ${intervalMinutes} minutos para: ${sourceKeys.join(', ')}.`
+        : 'Auto-sync activado, pero falta SFTP/secret en una o más fuentes.'
       : 'Auto-sync desactivado. Activa STRACKER_AUTO_SYNC_ENABLED=true.'
   };
 }
@@ -2577,19 +2680,19 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
   console.log(`[GC] Auto-sync stracker iniciado (${reason}).`);
 
   try {
-    const result = await syncStrackerFromGTX();
-    if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
-    const ok = Boolean(result.ok);
+    const multiSync = await syncConfiguredStrackerSources(reason);
+    const result = multiSync.results.find((item: any) => item.sourceKey === 'main')?.sync ?? multiSync.results[0]?.sync ?? { ok: multiSync.ok, statusCode: multiSync.ok ? 200 : 500, message: multiSync.message };
+    const ok = Boolean(multiSync.ok);
     if (!ok) autoSyncFailureCount += 1;
 
     let sqlMirror: typeof lastStrackerSqlMirrorAutoSyncResult = null;
-    if (ok) {
+    if (ok && multiSync.sourceKeys.includes('main')) {
       const mirrorStarted = Date.now();
-      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync');
+      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync-main-legacy');
       if (lastSyncResult?.phases) {
         lastSyncResult.phases.mirror = Date.now() - mirrorStarted;
       }
-      console.log(`[GC] sTracker phase mirror ${Date.now() - mirrorStarted}ms (${sqlMirror?.enabled ? 'enabled' : 'disabled'}).`);
+      console.log(`[GC] sTracker legacy mirror phase ${Date.now() - mirrorStarted}ms (${sqlMirror?.enabled ? 'enabled' : 'disabled'}).`);
     }
 
     let ratingsAutoProcess: any = null;
@@ -2630,7 +2733,9 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
+      multiSync,
       sqlMirror,
+      mirrorV2: multiSync.results.map((item: any) => ({ sourceKey: item.sourceKey, ok: item.mirrorV2?.ok, mirrorV2: item.mirrorV2 })),
       ratings: ratingsAutoProcess,
       error: ok ? undefined : result.sync?.error
     };
@@ -3997,7 +4102,14 @@ async function getStrackerMirrorV2Status() {
     sourceRows,
     sources,
     lastSync: lastStrackerMirrorV2SyncResult,
-    message: 'Mirror V2 paralelo activo. Todavía no alimenta /hotlaps, /pilotos, /combos ni Home.'
+    autoSync: {
+      enabled: readBooleanEnv('GC_STRACKER_MIRROR_V2_AUTO_SYNC', true),
+      limit: readOptionalPositiveNumberEnv('GC_STRACKER_MIRROR_V2_AUTO_LIMIT', null, 1, 250000),
+      sources: getAutoSyncSourceKeys(),
+      usesSameScheduler: true,
+      message: 'Mirror V2 se actualiza automáticamente después de cada sync sTracker usando STRACKER_AUTO_SYNC_ENABLED.'
+    },
+    message: 'Mirror V2 paralelo activo. Se actualiza automático con main+gt4, pero todavía no alimenta /hotlaps, /pilotos, /combos ni Home.'
   };
 }
 
@@ -9585,22 +9697,27 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
     return;
   }
 
-  const result = await syncStrackerFromGTX();
-  if (result?.ok) invalidateStrackerRuntimeCache('stracker-sync');
+  const multiSync = await syncConfiguredStrackerSources('manual');
+  const result = multiSync.results.find((item: any) => item.sourceKey === 'main')?.sync ?? multiSync.results[0]?.sync ?? { ok: multiSync.ok, statusCode: multiSync.ok ? 200 : 500, message: multiSync.message };
   lastAutoSyncResult = {
-    ok: Boolean(result.ok),
+    ok: Boolean(multiSync.ok),
     reason: 'manual',
-    startedAt: result.sync?.startedAt ?? new Date().toISOString(),
-    finishedAt: result.sync?.finishedAt ?? new Date().toISOString(),
-    message: result.message,
-    statusCode: result.statusCode,
+    startedAt: multiSync.startedAt,
+    finishedAt: multiSync.finishedAt,
+    message: multiSync.message,
+    statusCode: multiSync.ok ? 200 : 207,
     sync: lastSyncResult,
+    multiSync,
     sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
-    error: result.ok ? undefined : result.sync?.error
+    mirrorV2: multiSync.results.map((item: any) => ({ sourceKey: item.sourceKey, ok: item.mirrorV2?.ok, mirrorV2: item.mirrorV2 })),
+    error: multiSync.ok ? undefined : multiSync.results.find((item: any) => !item.ok)?.sync?.sync?.error
   };
 
-  res.status(result.statusCode).json({
-    ...result,
+  res.status(multiSync.ok ? 200 : 207).json({
+    ok: multiSync.ok,
+    statusCode: multiSync.ok ? 200 : 207,
+    message: multiSync.message,
+    multiSync,
     autoSync: getAutoSyncConfig()
   });
 }
@@ -9623,8 +9740,16 @@ async function handleStrackerSync(req: express.Request, res: express.Response) {
       ? req.query.source.trim()
       : 'main';
   const result = await syncStrackerSourceFromRemote(sourceKey);
-  if (result?.ok) invalidateStrackerRuntimeCache(`stracker-sync:${sourceKey}`);
-  res.status(result.statusCode).json(result);
+  let mirrorV2: any = null;
+  if (result?.ok) {
+    invalidateStrackerRuntimeCache(`stracker-sync:${sourceKey}`);
+    mirrorV2 = await syncStrackerMirrorV2AfterSourceDbSync(sourceKey, `manual-stracker-sync:${sourceKey}`);
+    if (result.sync?.phases) (result.sync.phases as any).mirrorV2 = mirrorV2?.durationMs ?? null;
+  }
+  res.status(result.statusCode).json({
+    ...result,
+    mirrorV2
+  });
 }
 
 app.get('/api/stracker/sync', handleStrackerSync);
