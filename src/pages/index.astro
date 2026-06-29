@@ -5022,14 +5022,14 @@ const home2ArchiveSeed = [];
 
 <script>
 
-/* GC_HOME_PACK_5_8_FINAL_LOADER_START */
+/* GC_HOME_PACK_5_9_TIMING_MATCH_HOTLAPS_START */
 (() => {
-  const PACK = '5.8';
-  if (window.__GC_HOME_FINAL_LOADER_V58__) {
+  const PACK = '5.9';
+  if (window.__GC_HOME_FINAL_LOADER_V59__) {
     console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
     return;
   }
-  window.__GC_HOME_FINAL_LOADER_V58__ = true;
+  window.__GC_HOME_FINAL_LOADER_V59__ = true;
 
   const root = document.querySelector('[data-gc-home2]');
   if (!root) return;
@@ -5276,19 +5276,36 @@ const home2ArchiveSeed = [];
     return clean;
   };
 
-  const renderRecent = (mainRows, gt4Rows) => {
+  const renderRecent = (allRows, mainRows, gt4Rows) => {
     const host = q('[data-home2-recent-laps]');
-    if (!host) return;
-    const main = mainRows.map((row) => ({ ...row, sourceKey: 'main' })).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 4);
-    const gt4 = gt4Rows.map((row) => ({ ...row, sourceKey: 'gt4' })).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 4);
-    const rows = dedupeRows([...main, ...gt4]).sort((a, b) => rowDateMs(b) - rowDateMs(a)).slice(0, 8);
-    if (!rows.length) return;
+    if (!host) return [];
+
+    // PACK 5.9: el Timing Sheet de Home debe cuadrar con /hotlaps.
+    // No equilibramos 4 Liga + 4 GT4: eso metía vueltas antiguas y no coincidía con la tabla real.
+    // Prioridad: source=all en el mismo orden temporal. Fallback: main+gt4 mezclados por fecha.
+    const all = getArray(allRows).map((row) => ({ ...row, sourceKey: sourceKey(row) }));
+    const fallback = [
+      ...getArray(mainRows).map((row) => ({ ...row, sourceKey: 'main' })),
+      ...getArray(gt4Rows).map((row) => ({ ...row, sourceKey: 'gt4' }))
+    ];
+    const source = all.length ? all : fallback;
+    const rows = dedupeRows(source)
+      .filter((row) => rowDateMs(row) > 0 || Number.isFinite(rowTimeMs(row)))
+      .sort((a, b) => rowDateMs(b) - rowDateMs(a))
+      .slice(0, 8);
+
+    if (!rows.length) {
+      if (host.dataset.gcHydrated !== '1') return [];
+      return [];
+    }
+
     host.dataset.gcHydrated = '1';
     host.innerHTML = rows.map((row) => {
       const src = sourceLabel(row);
       const pillClass = src === 'GT4' ? 'gc-home2-source-pill gc-home2-source-pill--gt4' : 'gc-home2-source-pill gc-home2-source-pill--main';
       return `<div class="gc-home2-table__row" role="row"><span>${htmlEscape(driverName(row))}</span><span class="gc-home2-table-car"><em class="${pillClass}">${src}</em>${htmlEscape(pretty(carName(row)))}</span><strong>${htmlEscape(lapTimeText(row))}</strong><small>${htmlEscape(formatAgo(rowDateMs(row)))}</small></div>`;
     }).join('');
+    return rows;
   };
 
   const setHero = async (combo, rows) => {
@@ -5401,9 +5418,10 @@ const home2ArchiveSeed = [];
   const refresh = async () => {
     const stamp = Date.now();
     setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
-    const [mainActive, gt4Active, mainHotlaps, gt4Hotlaps] = await Promise.all([
+    const [mainActive, gt4Active, allHotlaps, mainHotlaps, gt4Hotlaps] = await Promise.all([
       fetchFirst([`/api/gc/active-combo?source=main&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=main&limit=25&home=1&t=${stamp}`], 10000),
       fetchFirst([`/api/gc/active-combo?source=gt4&recentLimit=50&leaderboardLimit=50&home=1&t=${stamp}`, `/api/gc/home-summary?source=gt4&limit=25&home=1&t=${stamp}`], 10000),
+      fetchJson(`/api/gc/hotlaps2?source=all&limit=120&home=1&t=${stamp}`, 10000),
       fetchJson(`/api/gc/hotlaps2?source=main&limit=120&home=1&t=${stamp}`, 10000),
       fetchJson(`/api/gc/hotlaps2?source=gt4&limit=120&home=1&t=${stamp}`, 10000)
     ]);
@@ -5422,7 +5440,7 @@ const home2ArchiveSeed = [];
     const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4PanelRows, 'gt4', true);
     await setHero(mainCombo, renderedMain.length ? renderedMain : mainPanelRows);
     renderPulse([...filterRowsForCombo(mainAll, mainCombo, 'main'), ...mainPanelRows]);
-    renderRecent(mainAll, gt4All);
+    const timingRows = renderRecent(allHotlaps, mainAll, gt4All);
     renderChampionshipBlock('weekly');
     renderChampionshipBlock('gt4');
 
@@ -5431,6 +5449,7 @@ const home2ArchiveSeed = [];
       gt4ActiveTrack: comboTrack(gt4Combo, gt4PanelRows),
       mainRows: renderedMain.length,
       gt4Rows: renderedGt4.length,
+      timingRows: timingRows.length,
       timingMainRows: mainAll.length,
       timingGt4Rows: gt4All.length
     });
@@ -5445,11 +5464,11 @@ const home2ArchiveSeed = [];
     finally { running = false; }
   };
 
-  window.GCHomeFinalV58 = { refresh: run };
+  window.GCHomeFinalV59 = { refresh: run };
   run();
   window.setInterval(run, REFRESH_MS);
 })();
-/* GC_HOME_PACK_5_8_FINAL_LOADER_END */
+/* GC_HOME_PACK_5_9_TIMING_MATCH_HOTLAPS_END */
 
 </script>
 </MarketingLayout>
