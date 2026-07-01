@@ -316,14 +316,14 @@ const home2ArchiveSeed = [];
               <h2 data-home2-champ-name>Campeonato GT4</h2>
               <p class="gc-home2-section__sub" data-home2-champ-sub>Clasificación, eventos y calendario del servidor GT4</p>
             </div>
-            <div class="gc-home2-championship-actions">
+            <div class="gc-home2-championship-actions gc-home2-championship-actions--gt4">
               <a href="https://drive.google.com/drive/folders/1Kuy-T1NYt3RlE43xm_jo7G8vDBdVHqP3" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn gc-home2-championship-btn--download" data-home2-champ-download>
-                <svg class="gc-home2-drive-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                  <path d="M8.1 3.2h7.8l6.2 10.7-3.9 6.9H10.4l3.9-6.9h7.8" fill="rgba(65,225,255,.95)"/>
-                  <path d="M8.1 3.2 2 13.9l3.9 6.9 6.2-10.8-4-6.8Z" fill="rgba(150,255,47,.95)"/>
-                  <path d="M5.9 20.8h12.3l3.9-6.9H9.8l-3.9 6.9Z" fill="rgba(255,220,70,.95)"/>
-                </svg>
-                Descarga
+                <span class="gc-home2-drive-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M9.4 2.5h5.2l2.7 4.7-2.6 4.5H9.3L6.6 7.2l2.8-4.7Zm-2 5.9 2.6 4.5-2.6 4.6H2.2L4.8 13l2.6-4.6Zm8.2 4.5 2.6-4.5h5.2L20.8 13l2.6 4.5h-5.2l-2.6-4.6Z" fill="currentColor"></path>
+                  </svg>
+                </span>
+                <span>Descargar</span>
               </a>
               <a href="http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50/sign-up/steam" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn" data-home2-champ-signup>Inscribirse al campeonato</a>
               <a href="https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=5.39.68.161" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn gc-home2-championship-btn--server" data-home2-champ-join>Unirse al servidor</a>
@@ -1250,20 +1250,21 @@ const home2ArchiveSeed = [];
 
     .gc-home2 .gc-home2-championship-btn{
       flex:0 0 auto !important;
-      max-width:260px !important;
+      max-width:none !important;
       white-space:nowrap !important;
     }
 
     .gc-home2 .gc-home2-championship-actions{
       display:flex !important;
-      flex-wrap:wrap !important;
+      flex-wrap:nowrap !important;
       justify-content:flex-end !important;
-      align-items:flex-start !important;
+      align-items:center !important;
       gap:10px !important;
       flex:0 0 auto !important;
-      max-width:560px !important;
+      max-width:none !important;
     }
 
+    .gc-home2 .gc-home2-championship-btn--download,
     .gc-home2 .gc-home2-championship-btn--server{
       background:rgba(150,255,47,.08) !important;
       color:#f4fff1 !important;
@@ -1271,18 +1272,26 @@ const home2ArchiveSeed = [];
     }
 
     .gc-home2 .gc-home2-championship-btn--download{
-      background:rgba(150,255,47,.08) !important;
-      color:#f4fff1 !important;
-      border-color:rgba(150,255,47,.35) !important;
+      display:inline-flex !important;
+      align-items:center !important;
+      gap:8px !important;
     }
 
     .gc-home2 .gc-home2-drive-icon{
-      display:inline-block !important;
-      width:18px !important;
-      height:18px !important;
-      margin-right:7px !important;
+      display:inline-flex !important;
+      width:14px !important;
+      height:14px !important;
+      align-items:center !important;
+      justify-content:center !important;
+      color:currentColor !important;
       flex:0 0 auto !important;
-      filter:drop-shadow(0 0 8px rgba(150,255,47,.3)) !important;
+    }
+
+    .gc-home2 .gc-home2-drive-icon svg{
+      display:block !important;
+      width:14px !important;
+      height:14px !important;
+      fill:currentColor !important;
     }
 
     .gc-home2 .gc-home2-championship-body{
@@ -1465,7 +1474,12 @@ const home2ArchiveSeed = [];
     }
 
     @media(max-width:1180px){
-      .gc-home2 .gc-home2-championship-body{
+      .gc-home2 .gc-home2-championship-actions{
+        flex-wrap:wrap !important;
+        justify-content:flex-start !important;
+      }
+
+    .gc-home2 .gc-home2-championship-body{
         grid-template-columns:1fr !important;
         overflow:visible !important;
       }
@@ -2665,33 +2679,6 @@ const home2ArchiveSeed = [];
         setText('[data-home2-standout-duel-meta]', 'diferencias del combo');
       };
 
-      const CHAMPIONSHIP_LINKS = {
-        gt4: {
-          signup: 'http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50/sign-up/steam',
-          full: 'http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50',
-          join: 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=5.39.68.161',
-          download: 'https://drive.google.com/drive/folders/1Kuy-T1NYt3RlE43xm_jo7G8vDBdVHqP3'
-        },
-        weekly: {
-          signup: 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam',
-          full: 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6',
-          join: 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153'
-        }
-      };
-
-      const lockChampionshipLinks = (source, block) => {
-        const links = CHAMPIONSHIP_LINKS[source];
-        if (!block || !links) return;
-        const signup = q('[data-home2-champ-signup]', block);
-        const full = q('[data-home2-champ-full]', block);
-        const join = q('[data-home2-champ-join]', block);
-        const download = q('[data-home2-champ-download]', block);
-        if (signup && links.signup) signup.href = links.signup;
-        if (full && links.full) full.href = links.full;
-        if (join && links.join) join.href = links.join;
-        if (download && links.download) download.href = links.download;
-      };
-
       const champRoot = (payload) => payload?.championship || payload?.data?.championship || payload?.data || payload || {};
       const arr = (...items) => items.find((item) => Array.isArray(item)) || [];
       const champEvents = (payload) => {
@@ -2714,7 +2701,6 @@ const home2ArchiveSeed = [];
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
         if (!block || !payload) return { source, ok: false, reason: 'missing-block-or-payload' };
         const c = champRoot(payload);
-        lockChampionshipLinks(source, block);
         const events = champEvents(payload);
         const rows = champRows(payload);
         const stats = c.stats || payload.stats || payload.data?.stats || {};
@@ -2793,8 +2779,6 @@ const home2ArchiveSeed = [];
       };
 
       window.GCHomeBootstrapV2 = { refresh };
-      lockChampionshipLinks('gt4', q('[data-home2-championship][data-home2-championship-source="gt4"]'));
-      lockChampionshipLinks('weekly', q('[data-home2-championship][data-home2-championship-source="weekly"]'));
       refresh();
       refreshTimer = window.setInterval(refresh, REFRESH_MS);
       window.__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
