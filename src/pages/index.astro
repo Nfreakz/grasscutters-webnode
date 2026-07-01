@@ -63,7 +63,7 @@ const home2ArchiveSeed = [];
         </div>
 
         <article class="gc-home2-combo-card" aria-labelledby="gc-home2-combo-title">
-          <p class="gc-home2-combo-card__label">Combo activo</p>
+          <p class="gc-home2-combo-card__label" data-home2-hero-source>Combo activo</p>
           <h2 id="gc-home2-combo-title" data-home2-track>Actualizando</h2>
           <p class="gc-home2-combo-card__cars" data-home2-cars>Esperando datos del combo</p>
 
@@ -2425,7 +2425,7 @@ const home2ArchiveSeed = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2';
+      const PACK = 'bootstrap-2.1-hero-rotate';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2436,11 +2436,14 @@ const home2ArchiveSeed = [];
       window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
+      const HERO_ROTATE_MS = 3000;
       const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
       const FALLBACK_TRACK = '/ui/home2/gc-home2-track-fallback.svg';
       let running = false;
       let runSeq = 0;
       let refreshTimer = 0;
+      let heroRotateTimer = 0;
+      const heroState = { payload: null, index: 0 };
       const lastGood = { bootstrap: null, championships: {} };
 
       const q = (selector, scope = root) => scope?.querySelector?.(selector) || null;
@@ -2636,19 +2639,50 @@ const home2ArchiveSeed = [];
         if (summary) return String(summary).split(/[,+/]/).map((item) => item.trim()).filter(Boolean);
         return [...new Set(rows.map(carName).filter((v) => v && v !== '--'))];
       };
-      const setHero = (mainPayload, rankingRows) => {
-        const combo = activeCombo(mainPayload) || {};
-        const rows = rankingRows.length ? rankingRows : sourceLeaderboard(mainPayload);
+      const setHero = (sourcePayload, rankingRows, source = 'main') => {
+        const combo = activeCombo(sourcePayload) || {};
+        const rows = rankingRows.length ? rankingRows : sourceLeaderboard(sourcePayload);
         const best = rows[0] || first(combo, ['bestLap'], null) || {};
         const track = comboTrack(combo, rows);
         const cars = comboCars(combo, rows);
+        const label = source === 'gt4' ? 'Combo activo · GT4' : 'Combo activo · Liga';
+        const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
+        setText('[data-home2-hero-source]', label);
         setText('[data-home2-track]', track || 'Combo activo');
         setText('[data-home2-cars]', cars.slice(0, 3).join(' / ') || carName(best));
         setText('[data-home2-best-driver]', driverName(best));
         setText('[data-home2-best-car]', carName(best));
         setText('[data-home2-best-time]', formatTime(best));
         qa('[data-home2-best-avatar]').forEach((img) => { img.src = avatar(best); });
-        setImageWithFallbacks(q('[data-home2-track-image]'), trackImageCandidatesFromCombo(combo));
+        qa('.gc-home2-combo-card__cta').forEach((link) => { link.href = joinUrl; });
+      };
+
+      const heroCandidates = (payload) => ([
+        { source: 'main', payload: payload?.main, rows: sourceLeaderboard(payload?.main) },
+        { source: 'gt4', payload: payload?.gt4, rows: sourceLeaderboard(payload?.gt4) }
+      ].filter((item) => item?.payload?.activeCombo || item.rows.length));
+
+      const renderHeroFromState = () => {
+        const payload = heroState.payload || lastGood.bootstrap;
+        const candidates = heroCandidates(payload);
+        if (!candidates.length) return;
+        heroState.index = ((heroState.index % candidates.length) + candidates.length) % candidates.length;
+        const item = candidates[heroState.index];
+        setHero(item.payload, item.rows, item.source);
+      };
+
+      const startHeroRotation = () => {
+        if (heroRotateTimer) window.clearInterval(heroRotateTimer);
+        const candidates = heroCandidates(heroState.payload || lastGood.bootstrap);
+        if (candidates.length < 2) {
+          heroRotateTimer = 0;
+          renderHeroFromState();
+          return;
+        }
+        heroRotateTimer = window.setInterval(() => {
+          heroState.index += 1;
+          renderHeroFromState();
+        }, HERO_ROTATE_MS);
       };
       const renderPulse = (mainPayload) => {
         const combo = activeCombo(mainPayload) || {};
@@ -2773,7 +2807,9 @@ const home2ArchiveSeed = [];
         const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, true);
         const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4Rows, true);
         const recentRows = renderRecent(payload?.timingSheet || []);
-        setHero(payload?.main, renderedMain.length ? renderedMain : mainRows);
+        heroState.payload = payload;
+        renderHeroFromState();
+        startHeroRotation();
         renderPulse(payload?.main);
         setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
         return { mainRows: renderedMain.length, gt4Rows: renderedGt4.length, timingRows: recentRows.length };
@@ -2807,7 +2843,7 @@ const home2ArchiveSeed = [];
         }
       };
 
-      window.GCHomeBootstrapV2 = { refresh, enforceChampionshipButtons };
+      window.GCHomeBootstrapV2 = { refresh, enforceChampionshipButtons, renderHeroFromState };
       enforceChampionshipButtons('gt4');
       enforceChampionshipButtons('weekly');
       refresh();
