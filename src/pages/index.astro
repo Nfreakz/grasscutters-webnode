@@ -28,6 +28,7 @@ const home2ArchiveSeed = [];
       <img
         class="gc-home2-hero__bg"
         data-home2-track-image
+        data-gc-home-static-managed="1"
         src="/ui/home2/gc-home2-track-fallback.svg"
         alt=""
         width="1600"
@@ -2425,7 +2426,7 @@ const home2ArchiveSeed = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2.1-hero-rotate';
+      const PACK = 'bootstrap-2.2-hero-rotate-stable-image';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2436,7 +2437,7 @@ const home2ArchiveSeed = [];
       window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
-      const HERO_ROTATE_MS = 3000;
+      const HERO_ROTATE_MS = 5000;
       const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
       const FALLBACK_TRACK = '/ui/home2/gc-home2-track-fallback.svg';
       let running = false;
@@ -2519,9 +2520,15 @@ const home2ArchiveSeed = [];
         if (hours < 48) return `${hours} h`;
         return `${Math.floor(hours / 24)} d`;
       };
-      const driverName = (row) => first(row, ['driverName', 'driver_name', 'playerName', 'player_name', 'DriverName', 'Name', 'name', 'pilotName', 'driver.name', 'driver.displayName'], '--');
-      const carName = (row) => first(row, ['carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'car.displayName', 'vehicleName'], '--');
-      const trackName = (row) => first(row, ['trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name', 'track.displayName'], '--');
+      const driverName = (row) => first(row, ['driver.displayName', 'driver.publicName', 'driver.visibleName', 'driverName', 'driver_name', 'playerName', 'player_name', 'DriverName', 'Name', 'name', 'pilotName', 'driver.name'], '--');
+      const cleanPublicName = (value, source = '') => {
+        let out = String(value ?? '').trim();
+        if (!out || out === '--') return out || '--';
+        if (String(source).toLowerCase() === 'gt4') out = out.replace(/^00[\s_-]+/i, '').trim();
+        return out.replace(/\s+/g, ' ');
+      };
+      const carName = (row) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
+      const trackName = (row) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
       const sourceKey = (row, fallback = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
       const avatar = (row) => first(row, ['avatarUrl', 'avatar_url', 'pilotAvatarUrl', 'driver.avatarUrl', 'avatar'], DEFAULT_AVATAR);
       const isValid = (row) => {
@@ -2587,6 +2594,15 @@ const home2ArchiveSeed = [];
         return candidates;
       };
 
+      const setHeroBackgroundFromMain = (payload) => {
+        const img = q('.gc-home2-hero__bg[data-home2-track-image]');
+        if (!img) return;
+        img.dataset.gcHomeStaticManaged = '1';
+        const combo = activeCombo(payload?.main) || activeCombo(payload?.gt4) || null;
+        if (!combo) return;
+        setImageWithFallbacks(img, trackImageCandidatesFromCombo(combo), FALLBACK_TRACK);
+      };
+
       const renderRanking = (selector, rows, preserve = true) => {
         const host = q(selector);
         if (!host) return [];
@@ -2628,23 +2644,23 @@ const home2ArchiveSeed = [];
         return list;
       };
 
-      const comboTrack = (combo, rows = []) => first(combo, ['track.displayName', 'track.uiName', 'track.name', 'track.code', 'trackName', 'trackCode'], trackName(rows[0] || {}));
-      const comboCars = (combo, rows = []) => {
+      const comboTrack = (combo, rows = [], source = '') => cleanPublicName(first(combo, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'track.name', 'track.code', 'trackName', 'trackCode'], trackName(rows[0] || {})), source);
+      const comboCars = (combo, rows = [], source = '') => {
         const cars = first(combo, ['cars'], null);
         if (Array.isArray(cars)) {
-          const out = cars.map((car) => typeof car === 'string' ? car : first(car, ['displayName', 'uiName', 'name', 'carName', 'code'])).filter(Boolean);
+          const out = cars.map((car) => typeof car === 'string' ? cleanPublicName(car, source) : cleanPublicName(first(car, ['publicName', 'visibleName', 'alias', 'displayName', 'uiName', 'name', 'carName', 'code']), source)).filter(Boolean);
           if (out.length) return out;
         }
         const summary = first(combo, ['carSummary', 'carsSummary', 'carName'], '');
-        if (summary) return String(summary).split(/[,+/]/).map((item) => item.trim()).filter(Boolean);
+        if (summary) return String(summary).split(/[,+/]/).map((item) => cleanPublicName(item.trim(), source)).filter(Boolean);
         return [...new Set(rows.map(carName).filter((v) => v && v !== '--'))];
       };
       const setHero = (sourcePayload, rankingRows, source = 'main') => {
         const combo = activeCombo(sourcePayload) || {};
         const rows = rankingRows.length ? rankingRows : sourceLeaderboard(sourcePayload);
         const best = rows[0] || first(combo, ['bestLap'], null) || {};
-        const track = comboTrack(combo, rows);
-        const cars = comboCars(combo, rows);
+        const track = comboTrack(combo, rows, source);
+        const cars = comboCars(combo, rows, source);
         const label = source === 'gt4' ? 'Combo activo · GT4' : 'Combo activo · Liga';
         const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
         setText('[data-home2-hero-source]', label);
@@ -2807,6 +2823,7 @@ const home2ArchiveSeed = [];
         const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, true);
         const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4Rows, true);
         const recentRows = renderRecent(payload?.timingSheet || []);
+        setHeroBackgroundFromMain(payload);
         heroState.payload = payload;
         renderHeroFromState();
         startHeroRotation();
