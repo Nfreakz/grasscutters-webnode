@@ -2697,7 +2697,35 @@ const home2ArchiveSeed = [];
         if (Number.isNaN(d.getTime())) return String(raw);
         return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' }) + ', ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       };
+      const GT4_DOWNLOAD_URL = 'https://drive.google.com/drive/folders/1Kuy-T1NYt3RlE43xm_jo7G8vDBdVHqP3';
+      const GT4_SIGNUP_URL = 'http://5.39.68.161:8840/championship/bef21906-b596-4514-aebb-7235ec02bd50/sign-up/steam';
+      const GT4_JOIN_URL = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=5.39.68.161';
+      const WEEKLY_SIGNUP_URL = 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam';
+      const WEEKLY_JOIN_URL = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153';
+      const driveIconSvg = '<span class="gc-home2-drive-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M9.4 2.5h5.2l2.7 4.7-2.6 4.5H9.3L6.6 7.2l2.8-4.7Zm-2 5.9 2.6 4.5-2.6 4.6H2.2L4.8 13l2.6-4.6Zm8.2 4.5 2.6-4.5h5.2L20.8 13l2.6 4.5h-5.2l-2.6-4.6Z" fill="currentColor"></path></svg></span>';
+      const championshipButton = (href, label, extraClass = '', attr = '') => `<a href="${esc(href)}" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn ${extraClass}" ${attr}>${label}</a>`;
+      const enforceChampionshipButtons = (source) => {
+        const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
+        const actions = q('.gc-home2-championship-actions', block);
+        if (!actions) return;
+        if (source === 'gt4') {
+          actions.classList.add('gc-home2-championship-actions--gt4');
+          actions.innerHTML = [
+            championshipButton(GT4_DOWNLOAD_URL, `${driveIconSvg}<span>Descargar</span>`, 'gc-home2-championship-btn--download', 'data-home2-champ-download'),
+            championshipButton(GT4_SIGNUP_URL, 'Inscribirse al campeonato', '', 'data-home2-champ-signup'),
+            championshipButton(GT4_JOIN_URL, 'Unirse al servidor', 'gc-home2-championship-btn--server', 'data-home2-champ-join')
+          ].join('');
+        } else if (source === 'weekly') {
+          actions.classList.remove('gc-home2-championship-actions--gt4');
+          actions.innerHTML = [
+            championshipButton(WEEKLY_SIGNUP_URL, 'Inscribirse al campeonato', '', 'data-home2-champ-signup'),
+            championshipButton(WEEKLY_JOIN_URL, 'Unirse al servidor', 'gc-home2-championship-btn--server', 'data-home2-champ-join')
+          ].join('');
+        }
+      };
+
       const renderChampionshipFromPayload = (source, payload) => {
+        enforceChampionshipButtons(source);
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
         if (!block || !payload) return { source, ok: false, reason: 'missing-block-or-payload' };
         const c = champRoot(payload);
@@ -2724,6 +2752,7 @@ const home2ArchiveSeed = [];
           host.dataset.gcHydrated = '1';
           host.innerHTML = rows.slice(0, 8).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
         }
+        enforceChampionshipButtons(source);
         return { source, ok: true, events: events.length, rows: rows.length };
       };
       const loadChampionship = async (source) => {
@@ -2778,7 +2807,9 @@ const home2ArchiveSeed = [];
         }
       };
 
-      window.GCHomeBootstrapV2 = { refresh };
+      window.GCHomeBootstrapV2 = { refresh, enforceChampionshipButtons };
+      enforceChampionshipButtons('gt4');
+      enforceChampionshipButtons('weekly');
       refresh();
       refreshTimer = window.setInterval(refresh, REFRESH_MS);
       window.__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
