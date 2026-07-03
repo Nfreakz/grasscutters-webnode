@@ -14609,9 +14609,33 @@ function gcHomeBootstrapTrackImageV1(track: any) {
   };
 }
 
-function gcHomeBootstrapBuildComboBucketsV1(laps: any[]) {
+function gcHomeBootstrapComboIdValueV12(lap: any) {
+  const raw = lap?.rawComboId ?? lap?.RawComboId ?? lap?.comboId ?? lap?.ComboId ?? lap?.session?.comboId;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : '';
+}
+
+function gcHomeBootstrapTechnicalKeyV12(lap: any, sourceKey: string, trackFamilyKey: string, variant: string) {
+  const comboId = gcHomeBootstrapComboIdValueV12(lap);
+  const trackCode = gcComboUnifySlugV1(
+    lap?.track?.rawCode ?? lap?.rawTrackCode ?? lap?.trackCode ?? lap?.track?.code ?? lap?.Track ?? lap?.track?.name ?? trackFamilyKey
+  );
+  const carKey = gcComboUnifyCarBucketKeyV2(lap) || gcComboUnifySlugV1(
+    lap?.car?.code ?? lap?.carCode ?? lap?.Car ?? lap?.car?.name ?? lap?.carName ?? 'car'
+  );
+
+  if (comboId) return `${sourceKey}:combo:${comboId}:${trackCode || trackFamilyKey}:${carKey || 'car'}`;
+
+  const comboKey = String(lap?.comboKey ?? lap?.comboUid ?? '').trim();
+  if (comboKey && comboKey.includes(':')) return comboKey;
+
+  return `${sourceKey}:${trackCode || trackFamilyKey}:${variant}:${carKey || 'car'}`;
+}
+
+function gcHomeBootstrapBuildComboBucketsV1(laps: any[], options: { exactTechnical?: boolean } = {}) {
   const vilaSplitMap = gcComboUnifyBuildVilaRealSplitMapV1(laps || []);
   const buckets = new Map<string, any>();
+  const exactTechnical = Boolean(options?.exactTechnical);
 
   for (const lap of laps || []) {
     const sourceKey = gcComboUnifySourceKeyV1(lap);
@@ -14619,13 +14643,16 @@ function gcHomeBootstrapBuildComboBucketsV1(laps: any[]) {
     const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track);
     const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
     const variantLabel = gcComboUnifyVariantLabelV1(trackFamily.key, variant);
-    const key = `${sourceKey}:${trackFamily.key}:${variant}`;
+    const logicalKey = `${sourceKey}:${trackFamily.key}:${variant}`;
+    const key = exactTechnical ? gcHomeBootstrapTechnicalKeyV12(lap, sourceKey, trackFamily.key, variant) : logicalKey;
 
     if (!buckets.has(key)) {
       const displayTrackName = variantLabel ? `${trackFamily.displayName} · ${variantLabel}` : trackFamily.displayName;
       buckets.set(key, {
         key,
         comboUid: key,
+        logicalComboUid: logicalKey,
+        exactTechnical,
         sourceKey,
         sourceLabel,
         track: {
@@ -14748,7 +14775,7 @@ async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'mai
 
   const dataCoreSource = readSource as GcDataCoreReadResult;
   const sourceLaps = (dataCoreSource.laps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
-  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps);
+  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps, { exactTechnical: sourceKey === 'gt4' });
   const activeBucket = buckets[0] || null;
   const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
   const latestLaps = sourceLaps
@@ -14785,7 +14812,7 @@ function gcHomeBootstrapBuildSourceFromLapsV11(
   fallbackReason: string | null
 ) {
   const sourceLaps = (allLaps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
-  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps);
+  const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps, { exactTechnical: sourceKey === 'gt4' });
   const activeBucket = buckets[0] || null;
   const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
   const latestLaps = sourceLaps
@@ -14885,7 +14912,7 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
 
     res.json({
       ok: true,
-      source: 'gc-home-bootstrap-v1.1',
+      source: 'gc-home-bootstrap-v1.2',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: {
@@ -14912,19 +14939,19 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
         loadersExpectedOnFrontend: 1,
         recommendedFrontendRefreshMs: 60000
       },
-      message: 'Home bootstrap v1.1 preparado en backend desde una lectura única source=all; main y gt4 se separan sin carreras de caché.'
+      message: 'Home bootstrap v1.2: GT4 queda aislado por combo técnico activo; Liga mantiene agrupación lógica.'
     });
   } catch (error) {
     console.error('[GC Home Bootstrap] /api/gc/home-bootstrap:', error);
     res.status(200).json({
       ok: false,
-      source: 'gc-home-bootstrap-v1.1',
+      source: 'gc-home-bootstrap-v1.2',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: null,
       gt4: null,
       timingSheet: [],
-      message: 'No se pudo generar Home Bootstrap.',
+      message: 'No se pudo generar Home Bootstrap v1.2.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
