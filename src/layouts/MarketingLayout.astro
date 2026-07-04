@@ -102,7 +102,7 @@ const absoluteOgImage = absoluteUrl(selectedOgImage);
 const cleanOgImageAlt = compactText(ogImageAlt, `Imagen social de ${cleanTitle}`);
 const ogImageType = imageMime(selectedOgImage);
 
-const discordUrl = 'https://discord.gg/jA4yuuH5T';
+const discordUrl = 'https://discord.gg/4WVKHJDQ4';
 const whatsappUrl = 'https://chat.whatsapp.com/JMXKRF4XnG73D4xLzzrlHa';
 const instagramUrl = 'https://www.instagram.com/grasscutters_ac/';
 
@@ -253,6 +253,19 @@ const shouldShowHudPopup = true;
         box-shadow:none!important;
         border-radius:0!important;
         filter:drop-shadow(0 0 10px rgba(155,245,66,.14))!important;
+      }
+
+      /* GC_MOBILE_HIDE_FLOATING_AUTH_LOGO_V1
+         En móvil el botón flotante de cuenta/avatar tapa el botón hamburguesa.
+         Se oculta solo en el header público móvil; escritorio queda intacto. */
+      @media(max-width:760px){
+        html[data-gc-scope="marketing"] .gc-public-header .gc-public-actions,
+        html[data-gc-scope="marketing"] .gc-public-header .gc-user-menu-v1533,
+        html[data-gc-scope="marketing"] .gc-public-header [data-gc-user-menu-v1533]{
+          display:none!important;
+          visibility:hidden!important;
+          pointer-events:none!important;
+        }
       }
     </style>
   </head>
