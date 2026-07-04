@@ -2704,26 +2704,33 @@ const home2ArchiveSeed = [];
         }, HERO_ROTATE_MS);
       };
       const renderPulse = (mainPayload) => {
+        // GC_HOME_BOOTSTRAP_IDENTITY_V13
+        // Combo Pulse debe leer métricas agregadas del activeCombo, no deducirlas de un leaderboard ya reducido.
         const combo = activeCombo(mainPayload) || {};
         const rows = sourceLeaderboard(mainPayload);
+        const stats = Array.isArray(combo.driverStats) ? combo.driverStats : [];
+        const standouts = combo.standouts || {};
         const total = Number(first(combo, ['totalLaps'], rows.length)) || rows.length;
         const valid = Math.min(total, Number(first(combo, ['validLaps'], rows.filter(isValid).length)) || rows.filter(isValid).length);
-        const best = rows[0] || first(combo, ['bestLap'], null) || {};
-        const latest = first(combo, ['latestLap'], null) || [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
-        const counts = new Map();
-        rows.forEach((row) => counts.set(driverName(row), (counts.get(driverName(row)) || 0) + 1));
-        const most = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+        const best = rows[0] || first(standouts, ['best'], null) || first(combo, ['bestLap'], null) || {};
+        const latest = first(standouts, ['latest'], null) || first(combo, ['latestLap'], null) || [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
+        const most = first(standouts, ['mostLaps'], null) || stats.slice().sort((a, b) => Number(b.totalLaps || 0) - Number(a.totalLaps || 0))[0] || null;
+        const cleanest = first(standouts, ['cleanest'], null) || stats.slice().filter((item) => Number(item.totalLaps || 0) >= 2).sort((a, b) => Number(b.cleanRate || 0) - Number(a.cleanRate || 0))[0] || null;
         const vmax = Number(first(combo, ['maxSpeedKmh'], 0)) || Math.max(0, ...rows.map((row) => Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0));
         const leaders = bestPerDriver(rows).slice(0, 2);
         const diff = leaders.length >= 2 && Number.isFinite(rowTimeMs(leaders[0])) && Number.isFinite(rowTimeMs(leaders[1]))
           ? `+${((rowTimeMs(leaders[1]) - rowTimeMs(leaders[0])) / 1000).toFixed(3)}s`
           : '--';
-        setText('[data-home2-standout-most-laps]', most?.[0] || driverName(best));
-        setText('[data-home2-standout-most-laps-meta]', `${total || '--'} vueltas · ${valid || 0} válidas`);
+        const mostName = most?.driverName || most?.name || driverName(best);
+        const mostTotal = Number(most?.totalLaps || 0);
+        const mostValid = Number(most?.validLaps || 0);
+        const cleanRate = Number(cleanest?.cleanRate ?? first(combo, ['cleanRate'], total ? Math.round((valid / total) * 100) : 0));
+        setText('[data-home2-standout-most-laps]', mostName || '--');
+        setText('[data-home2-standout-most-laps-meta]', mostTotal ? `${mostTotal} vueltas · ${mostValid} válidas` : `${total || '--'} vueltas · ${valid || 0} válidas`);
         setText('[data-home2-standout-best-average]', driverName(best));
         setText('[data-home2-standout-best-average-meta]', `${formatTime(best)} mejor vuelta`);
-        setText('[data-home2-standout-cleanest]', total ? `${Math.max(0, Math.min(100, Math.round((valid / total) * 100)))}%` : '--');
-        setText('[data-home2-standout-cleanest-meta]', 'limpieza del combo');
+        setText('[data-home2-standout-cleanest]', cleanRate ? `${Math.max(0, Math.min(100, Math.round(cleanRate)))}%` : '--');
+        setText('[data-home2-standout-cleanest-meta]', cleanest?.driverName ? `${cleanest.driverName} · limpieza` : 'limpieza del combo');
         setText('[data-home2-standout-vmax]', vmax ? `${Math.round(vmax)} km/h` : '--');
         setText('[data-home2-standout-vmax-meta]', 'velocidad en combo');
         setText('[data-home2-standout-last-driver]', driverName(latest));
