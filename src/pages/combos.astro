@@ -1475,13 +1475,11 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
 
       const comboUrl = (combo) => {
-        if (combo?.url || combo?.comboUrl) return combo.url || combo.comboUrl;
-        const source = String(combo?.sourceKey || combo?.source || combo?.bestLap?.sourceKey || combo?.latestLap?.sourceKey || '').trim();
-        const track = String(combo?.track?.code || combo?.trackCode || combo?.bestLap?.trackCode || '').trim();
-        const car = String(combo?.cars?.[0]?.code || combo?.car?.code || combo?.carCode || combo?.bestLap?.carCode || '').trim();
-        if (source && source !== 'main' && track && car) return `/combos?source=${encodeURIComponent(source)}&track=${encodeURIComponent(track)}&car=${encodeURIComponent(car)}`;
-        const id = combo.canonicalComboId ?? combo.comboId ?? combo.id;
-        return id !== null && id !== undefined && id !== '' ? `/combos/${encodeURIComponent(id)}` : '/combos';
+        const id = combo?.comboUid ?? combo?.comboKey ?? combo?.key ?? combo?.canonicalComboId ?? combo?.comboId ?? combo?.id;
+        if (id !== null && id !== undefined && id !== '') return `/combos/${encodeURIComponent(id)}`;
+        const detail = combo?.detailUrl || combo?.comboUrl || combo?.url;
+        if (detail && !String(detail).includes('?')) return detail;
+        return '/combos';
       };
 
       const searchText = (combo) => [
@@ -1947,8 +1945,14 @@ import AppLayout from '../layouts/AppLayout.astro';
           });
       };
 
-      const comboId = (combo) => pick(combo, ['comboUid','comboKey','canonicalComboId','comboId','id']);
-      const comboUrl = (combo) => combo?.url || combo?.comboUrl || (comboId(combo) != null ? `/combos?combo=${encodeURIComponent(comboId(combo))}` : '/combos');
+      const comboId = (combo) => pick(combo, ['comboUid','comboKey','key','canonicalComboId','comboId','id']);
+      const comboUrl = (combo) => {
+        const id = comboId(combo);
+        if (id !== null && id !== undefined && id !== '') return `/combos/${encodeURIComponent(id)}`;
+        const detail = combo?.detailUrl || combo?.comboUrl || combo?.url;
+        if (detail && !String(detail).includes('?')) return detail;
+        return '/combos';
+      };
       const totalLaps = (combo) => number(pick(combo, ['totalLaps','stats.totalLaps','laps']), 0);
       const validLaps = (combo) => number(pick(combo, ['validLaps','stats.validLaps']), 0);
       const driversCount = (combo) => number(pick(combo, ['driversCount','stats.driversCount','pilotsCount','totalDrivers']), 0);

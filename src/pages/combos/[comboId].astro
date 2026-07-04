@@ -891,7 +891,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
     function pathComboId() {
       const parts = window.location.pathname.split('/').filter(Boolean);
-      return parts[1];
+      const raw = parts[1] || '';
+      try { return decodeURIComponent(raw); } catch { return raw; }
     }
 
     function lapStatus(row) {
