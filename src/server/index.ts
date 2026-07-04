@@ -14891,10 +14891,21 @@ function gcHomeBootstrapDriverStatsV13(laps: any[]) {
 
 function gcHomeBootstrapSelectActiveBucketV13(buckets: any[], sourceKey: 'main' | 'gt4') {
   if (!Array.isArray(buckets) || !buckets.length) return null;
-  if (sourceKey !== 'gt4') return buckets[0] || null;
-  const minLaps = Math.max(1, Number(process.env.GC_HOME_GT4_MIN_PUBLIC_LAPS || process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 50) || 50);
-  const minDrivers = Math.max(1, Number(process.env.GC_HOME_GT4_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 2) || 2);
-  return buckets.find((bucket) => Number(bucket?.totalLaps || 0) >= minLaps && Number(bucket?.drivers?.size || 0) >= minDrivers) || buckets[0] || null;
+
+  // GC_HOME_ACTIVE_COMBO_PUBLIC_RULE_V17
+  // La Home debe seguir el mismo criterio público que /combos:
+  // servidor + circuito normalizado + variante, con actividad mínima real.
+  // No bloqueamos GT4 por 50 vueltas/2 pilotos: una tanda de 1 piloto con 10+ vueltas
+  // ya es un combo activo válido y debe sustituir automáticamente al anterior.
+  const minLaps = GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3;
+  const minDrivers = GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3;
+
+  const publicBuckets = buckets.filter((bucket) =>
+    Number(bucket?.totalLaps || 0) >= minLaps &&
+    Number(bucket?.drivers?.size || bucket?.driversCount || 0) >= minDrivers
+  );
+
+  return publicBuckets[0] || buckets[0] || null;
 }
 
 function gcHomeBootstrapNormalizeBucketV1(bucket: any, leaderboardLimit: number) {
