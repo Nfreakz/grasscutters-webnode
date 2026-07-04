@@ -6219,9 +6219,9 @@ function gcComboUnifyCarMapKeyV1(car: any) {
   return tokens.code || tokens.name || tokens.slug;
 }
 
-const GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 50) || 50);
-const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 2) || 2);
-const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 5) || 5);
+const GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3 = Math.max(10, Number(process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 10) || 10);
+const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 1) || 1);
+const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3 = Math.max(3, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 3) || 3);
 
 function gcComboUnifyDriverKeyV2(sourceKey: string, lap: any) {
   if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) return `${sourceKey}:id:${lap.driver.id}`;
@@ -6253,11 +6253,11 @@ function gcComboUnifyCarDisplayV2(lap: any) {
 
 function gcComboUnifyMakePublicPolicyV2() {
   return {
-    type: 'source-track-variant-public-v2',
-    description: 'Agrupa por servidor + circuito normalizado + variante. Los coches solo enriquecen el combo; no crean tarjetas separadas. Filtra pruebas cortas por laps/pilotos.',
-    minPublicLaps: GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2,
-    minPublicDrivers: GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2,
-    minPublicCarLaps: GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2,
+    type: 'source-track-variant-public-v3',
+    description: 'Agrupa por servidor + circuito normalizado + variante. Los coches enriquecen el combo; no crean tarjetas separadas. Publica solo actividad comunitaria: mínimo 1 piloto y 10 vueltas.',
+    minPublicLaps: GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3,
+    minPublicDrivers: GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3,
+    minPublicCarLaps: GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3,
     vilaRealRule: 'pre/post chicane por nombre/código o corte temporal'
   };
 }
@@ -6385,9 +6385,9 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     .map((entry) => {
       const carStats = Array.from(entry.carStatsMap.values())
         .sort((a: any, b: any) => Number(b.totalLaps || 0) - Number(a.totalLaps || 0) || String(a.car?.name || '').localeCompare(String(b.car?.name || ''), 'es', { sensitivity: 'base' }));
-      const publicCarStats = carStats.filter((item: any) => Number(item.totalLaps || 0) >= GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
+      const publicCarStats = carStats.filter((item: any) => Number(item.totalLaps || 0) >= GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3);
       const publicCars = (publicCarStats.length ? publicCarStats : carStats.slice(0, 1)).map((item: any) => item.car).filter(Boolean);
-      const hiddenLowLapCars = carStats.filter((item: any) => Number(item.totalLaps || 0) < GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
+      const hiddenLowLapCars = carStats.filter((item: any) => Number(item.totalLaps || 0) < GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3);
 
       entry.hiddenLowLapCars = hiddenLowLapCars.map((item: any) => ({
         key: item.key,
@@ -6411,7 +6411,7 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     .filter((entry) => {
       const totalLaps = Number(entry.totalLaps || 0);
       const drivers = Number(entry.drivers?.size || entry.driversCount || 0);
-      return totalLaps >= GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 && drivers >= GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2;
+      return totalLaps >= GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3 && drivers >= GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3;
     })
     .map((entry) => normalizeComboEntryForResponse(entry))
     .map((item: any) => {
@@ -12293,7 +12293,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       mode: dataCoreSource.source === 'mysql-mirror-v2' ? 'mysql-mirror-v2' : dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      comboCore: 'gc-combo-public-logical-v2',
+      comboCore: 'gc-combo-public-logical-v3',
       sort,
       filters: { q: q || null, source: getQueryString(req, 'source', '') || null },
       count: Math.min(items.length, limit),
@@ -12376,11 +12376,31 @@ function gcComboSourceAwareFindByRequestV14(items: any[], requestedId: string) {
   return (items || []).find((combo: any) => gcComboSourceAwareIdCandidatesV14(combo).includes(wanted)) || null;
 }
 
+
+function gcComboDetailSourceFromIdV15(requestedId: string) {
+  const text = String(requestedId || '').toLowerCase();
+  if (text.startsWith('gt4:')) return 'gt4';
+  if (text.startsWith('main:')) return 'main';
+  return 'all';
+}
+
+function gcComboDetailRequestWithSourceV15(req: express.Request, requestedId: string) {
+  const wantedSource = gcComboDetailSourceFromIdV15(requestedId);
+  return {
+    ...req,
+    query: {
+      ...(req.query || {}),
+      source: wantedSource
+    }
+  } as express.Request;
+}
+
 app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
   try {
     await readDisplayNameStoreAsync();
     const requestedId = gcComboDecodeRequestIdV14(req.params.comboId || '');
-    const readSource = await readGcDataCoreSource(req);
+    const sourceReq = gcComboDetailRequestWithSourceV15(req, requestedId);
+    const readSource = await readGcDataCoreSource(sourceReq);
     if ((readSource as any).ok === false) {
       res.status(200).json({
         ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core combinado no disponible para generar la ficha del combo.'),
@@ -12407,7 +12427,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         ok: false,
         source: 'gc-data-core',
         dataSource: dataCoreSource.source,
-        comboCore: 'gc-combo-public-logical-v2',
+        comboCore: 'gc-combo-public-logical-v3',
         generatedAt: new Date().toISOString(),
         stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
         mysqlMirror: dataCoreSource.mysqlMirror ?? null,
@@ -12454,6 +12474,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         lapsMatched: rows.length,
         totalCombos: sourceAwareCombos.length,
         endpoint: '/api/gc/combos/:comboId',
+        requestedSource: gcComboDetailSourceFromIdV15(requestedId),
         rules: gcComboUnifyMakePublicPolicyV2()
       },
       message: dataCoreSource.source === 'mysql-mirror-v2'
@@ -12461,11 +12482,11 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         : 'Ficha de combo generada desde GC Data Core con agrupación lógica pública.'
     });
   } catch (error) {
-    console.error('[GC Combo Source Aware V14] /api/gc/combos/:comboId error:', error);
+    console.error('[GC Combo Source Aware V15] /api/gc/combos/:comboId error:', error);
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-source-aware-v14',
+      comboCore: 'gc-combo-source-aware-v15',
       generatedAt: new Date().toISOString(),
       item: null,
       message: 'No se pudo generar la ficha del combo source-aware.',
