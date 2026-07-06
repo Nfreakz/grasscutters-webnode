@@ -1107,6 +1107,161 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
 
 
+
+
+      // GC_CAMPEONATO_CLIENT_SYNC_V19
+      // La página no puede depender de una sola fuente: ACSM trae puntos/eventos,
+      // ratings trae SR/GSR. Aquí se fusionan para que Actualizar datos se note y no
+      // deje una tabla a medias cuando una capa va por detrás.
+      const parseDateTimeMs = (value) => {
+        if (!value) return 0;
+        const date = new Date(value);
+        const time = date.getTime();
+        return Number.isFinite(time) ? time : 0;
+      };
+
+      const eventSortTime = (event) => Math.max(
+        parseDateTimeMs(event?.completedAt),
+        parseDateTimeMs(event?.scheduledAt),
+        parseDateTimeMs(event?.startedAt)
+      );
+
+      const driverIdentityKey = (row) => {
+        const guid = String(row?.guid || row?.steamGuid || row?.steamId || row?.steamID || '').trim();
+        if (guid) return `steam:${guid.toLowerCase()}`;
+        const playerId = String(row?.playerId || row?.strackerPlayerId || '').trim();
+        if (playerId) return `player:${playerId}`;
+        return `name:${slugify(row?.name || row?.displayName || row?.driverName || '')}`;
+      };
+
+      const resultIdentityKeys = (row) => {
+        const keys = [];
+        const guid = String(row?.guid || row?.steamGuid || row?.steamId || row?.steamID || '').trim();
+        const playerId = String(row?.playerId || row?.strackerPlayerId || '').trim();
+        const name = slugify(row?.name || row?.displayName || row?.driverName || '');
+        if (guid) keys.push(`steam:${guid.toLowerCase()}`);
+        if (playerId) keys.push(`player:${playerId}`);
+        if (name) keys.push(`name:${name}`);
+        return keys;
+      };
+
+      const latestCompletedEventFrom = (championship) => {
+        const events = Array.isArray(championship?.events) ? championship.events : [];
+        const candidates = events
+          .filter((event) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
+          .sort((a, b) => eventSortTime(b) - eventSortTime(a));
+        const explicit = championship?.lastCompletedEvent;
+        if (!explicit) return candidates[0] || null;
+        const candidate = candidates[0] || null;
+        if (!candidate) return explicit;
+        return eventSortTime(candidate) >= eventSortTime(explicit) ? candidate : explicit;
+      };
+
+      const acsmLastResultsByDriver = (championship) => {
+        const map = new Map();
+        const events = (Array.isArray(championship?.events) ? championship.events : [])
+          .filter((event) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
+          .sort((a, b) => eventSortTime(b) - eventSortTime(a));
+
+        events.forEach((event) => {
+          const rows = Array.isArray(event?.raceResults) ? event.raceResults : [];
+          rows.forEach((result) => {
+            const normalized = {
+              eventId: event.id,
+              eventName: event.name || `Ronda ${event.index || ''}`.trim() || 'Última carrera ACSM',
+              eventAt: event.completedAt || event.scheduledAt || event.startedAt || null,
+              position: result.position ?? result.pos ?? result.rank ?? '',
+              points: result.points ?? result.score ?? 0
+            };
+            resultIdentityKeys(result).forEach((key) => {
+              if (key && !map.has(key)) map.set(key, normalized);
+            });
+          });
+        });
+        return map;
+      };
+
+      const mergeChampionshipSources = (ratingsData, acsmData) => {
+        const ratingsChamp = ratingsData?.championship || null;
+        const acsmChamp = acsmData?.championship || null;
+        if (!ratingsChamp && acsmChamp) return acsmData;
+        if (!ratingsChamp) return ratingsData || acsmData;
+        if (!acsmChamp) return ratingsData;
+
+        const acsmEvents = Array.isArray(acsmChamp.events) ? acsmChamp.events : [];
+        const ratingEvents = Array.isArray(ratingsChamp.events) ? ratingsChamp.events : [];
+        const events = acsmEvents.length ? acsmEvents : ratingEvents;
+        const lastCompletedEvent = latestCompletedEventFrom({
+          ...ratingsChamp,
+          events,
+          lastCompletedEvent: latestCompletedEventFrom(acsmChamp) || ratingsChamp.lastCompletedEvent
+        });
+
+        const ratingRows = Array.isArray(ratingsChamp.standings) ? ratingsChamp.standings : [];
+        const acsmRows = Array.isArray(acsmChamp.standings) ? acsmChamp.standings : [];
+        const ratingByKey = new Map(ratingRows.map((row) => [driverIdentityKey(row), row]));
+        const acsmLastByDriver = acsmLastResultsByDriver({ ...acsmChamp, events });
+
+        const baseRows = acsmRows.length ? acsmRows : ratingRows;
+        const standings = baseRows.map((row, index) => {
+          const key = driverIdentityKey(row);
+          const rated = ratingByKey.get(key) || {};
+          const acsmLast = acsmLastByDriver.get(key) || row.lastResult || null;
+          return {
+            ...row,
+            classificationSource: 'acsm',
+            ratingDisplayScope: 'global-reference',
+            driverKey: rated.driverKey ?? row.driverKey ?? null,
+            position: row.position ?? rated.position ?? index + 1,
+            name: row.name || rated.name || 'Piloto',
+            model: row.model || rated.model || '',
+            points: row.points ?? rated.points ?? 0,
+            wins: row.wins ?? rated.wins ?? 0,
+            podiums: row.podiums ?? rated.podiums ?? 0,
+            incidentPointsTotal: rated.incidentPointsTotal ?? row.incidentPointsTotal ?? row.incidents ?? 0,
+            hasPersistentRating: Boolean(rated.hasPersistentRating),
+            srScore: rated.srScore ?? rated.safetyRating?.score ?? null,
+            srClass: rated.srClass ?? rated.safetyRating?.class ?? null,
+            gsrRating: rated.gsrRating ?? rated.gsr ?? null,
+            gsrClass: rated.gsrClass ?? null,
+            safetyRating: rated.safetyRating || (rated.srScore !== null && rated.srScore !== undefined ? { score: rated.srScore, class: rated.srClass } : null),
+            lastResult: acsmLast || rated.lastResult || null
+          };
+        });
+
+        const championship = {
+          ...ratingsChamp,
+          ...acsmChamp,
+          events,
+          standings,
+          registeredDrivers: Array.isArray(acsmChamp.registeredDrivers) && acsmChamp.registeredDrivers.length ? acsmChamp.registeredDrivers : ratingsChamp.registeredDrivers,
+          lastCompletedEvent,
+          nextEvent: acsmChamp.nextEvent || ratingsChamp.nextEvent,
+          stats: {
+            ...(ratingsChamp.stats || {}),
+            ...(acsmChamp.stats || {}),
+            standings: standings.length
+          },
+          updatedAt: acsmChamp.updatedAt || ratingsChamp.updatedAt
+        };
+
+        return {
+          ...ratingsData,
+          ok: true,
+          source: 'gc-campeonato-client-merge-v19',
+          championship,
+          acsm: ratingsData?.acsm || acsmData?.acsm || null,
+          syncDiagnostics: {
+            ratingsOk: Boolean(ratingsData?.ok),
+            acsmOk: Boolean(acsmData?.ok),
+            ratingsGeneratedAt: ratingsData?.generatedAt || null,
+            acsmGeneratedAt: acsmData?.generatedAt || null,
+            autoProcess: ratingsData?.autoProcess || null
+          }
+        };
+      };
+
+
       function render(data) {
         if (!data?.ok || !data?.championship) {
           renderError(data);
@@ -1191,25 +1346,51 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       }
 
       async function load(refresh = false) {
+        const startedAt = Date.now();
         els.lead.textContent = refresh ? 'Actualizando campeonato...' : 'Cargando campeonato...';
-
-        const suffix = refresh ? '?refresh=1' : '';
-        try {
-          const ratingsData = await fetchJson(`/api/gc/ratings/championship${suffix}`);
-          if (ratingsData?.ok && ratingsData?.championship) {
-            render(ratingsData);
-            return;
-          }
-          console.warn('[GC campeonato] Ratings no disponible, usando ACSM base.', ratingsData);
-        } catch (error) {
-          console.warn('[GC campeonato] Falló ratings, usando ACSM base.', error);
+        if (els.refresh) {
+          els.refresh.disabled = true;
+          els.refresh.textContent = refresh ? 'Actualizando...' : 'Actualizar datos';
         }
 
-        try {
-          const acsmData = await fetchJson(`/api/community/acsr-championship${suffix}`);
-          render(acsmData);
-        } catch (error) {
-          renderError({ message: error?.message || String(error) });
+        const params = new URLSearchParams({ source: 'weekly', series: 'weekly', _: String(Date.now()) });
+        if (refresh) {
+          params.set('refresh', '1');
+          params.set('process', '1');
+        }
+        const query = `?${params.toString()}`;
+
+        const [ratingsResult, acsmResult] = await Promise.allSettled([
+          fetchJson(`/api/gc/ratings/championship${query}`),
+          fetchJson(`/api/community/acsr-championship${query}`)
+        ]);
+
+        const ratingsData = ratingsResult.status === 'fulfilled' ? ratingsResult.value : null;
+        const acsmData = acsmResult.status === 'fulfilled' ? acsmResult.value : null;
+
+        if (ratingsResult.status === 'rejected') console.warn('[GC campeonato] Falló ratings.', ratingsResult.reason);
+        if (acsmResult.status === 'rejected') console.warn('[GC campeonato] Falló ACSM base.', acsmResult.reason);
+
+        const merged = mergeChampionshipSources(ratingsData, acsmData);
+        if (merged?.ok && merged?.championship) {
+          render(merged);
+          const autoProcess = merged?.syncDiagnostics?.autoProcess || ratingsData?.autoProcess || null;
+          const processed = Array.isArray(autoProcess?.processedEvents) ? autoProcess.processedEvents.length : Number(autoProcess?.processedEvents || 0);
+          const statusBits = [
+            refresh ? 'Actualización solicitada' : 'Datos cargados',
+            `ACSM ${acsmData?.ok ? 'OK' : 'sin respuesta'}`,
+            `SR/GSR ${ratingsData?.ok ? 'OK' : 'sin respuesta'}`,
+            autoProcess ? (autoProcess.ok === false ? `proceso ratings: ${autoProcess.message || 'sin cambios'}` : `ratings procesados: ${Number.isFinite(processed) ? processed : 0}`) : null,
+            `${Math.max(1, Math.round((Date.now() - startedAt) / 100) / 10)}s`
+          ].filter(Boolean);
+          els.lead.textContent = statusBits.join(' · ');
+        } else {
+          renderError({ message: ratingsData?.message || acsmData?.message || ratingsResult.reason?.message || acsmResult.reason?.message || 'No se pudo cargar el campeonato.' });
+        }
+
+        if (els.refresh) {
+          els.refresh.disabled = false;
+          els.refresh.textContent = 'Actualizar datos';
         }
       }
 

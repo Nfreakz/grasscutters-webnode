@@ -77,12 +77,23 @@ async function requireAdmin(req: Request) {
 
   app.get('/api/gc/ratings/championship', async (req, res) => {
     try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       const source = req.query.source || req.query.series || 'weekly';
       const refresh = String(req.query.refresh || '') === '1';
-      const adminRefresh = refresh && await requireAdmin(req);
+      const processRequested = refresh || parseBooleanish(req.query.process, false) === true;
+      const adminRefresh = processRequested && await requireAdmin(req);
       let autoProcess: any = null;
 
-      if (adminRefresh) {
+      if (processRequested && !adminRefresh) {
+        autoProcess = {
+          ok: false,
+          skipped: true,
+          message: 'Actualización de SR/GSR no ejecutada: necesitas sesión admin.'
+        };
+      } else if (adminRefresh) {
         try {
           autoProcess = await service.processNewEvents({ source });
         } catch (error) {
@@ -90,11 +101,13 @@ async function requireAdmin(req: Request) {
         }
       }
 
-      const payload = await service.getChampionshipPayload(refresh, source);
+      const payload = await service.getChampionshipPayload(refresh || processRequested, source);
       res.json({
         ...payload,
         refresh,
-        autoProcess: adminRefresh ? autoProcess : null
+        processRequested,
+        adminRefresh,
+        autoProcess
       });
     } catch (error) {
       res.status(200).json(formatStrackerMirrorError(error));

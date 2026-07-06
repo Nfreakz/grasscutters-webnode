@@ -867,6 +867,11 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
 
 export function registerAcsmChampionshipRoutes(app: express.Express, { requireAdmin }: { requireAdmin?: RequireAdmin } = {}) {
   app.get('/api/community/acsr-championship', async (req, res) => {
+    if (String(req.query.refresh || '') === '1' || req.query._) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
     const config = getAcsmChampionshipConfig(req.query.source || req.query.championship || req.query.server);
 
     if (!config.enabled) {
