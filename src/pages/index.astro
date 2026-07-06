@@ -1786,11 +1786,13 @@ const home2ArchiveSeed = [];
       --gc-home-row-padding:7px 9px;
     }
 
-    .gc-home2 [data-home2-combo-ranking]{
+    .gc-home2 [data-home2-combo-ranking],
+    .gc-home2 [data-home2-combo-ranking-gt4]{
       gap:var(--gc-home-row-gap) !important;
     }
 
-    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank{
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank,
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank{
       min-height:38px !important;
       padding:var(--gc-home-row-padding) !important;
       border:1px solid var(--gc-home-row-border) !important;
@@ -1799,29 +1801,68 @@ const home2ArchiveSeed = [];
       box-shadow:inset 0 1px 0 rgba(255,255,255,.025) !important;
     }
 
-    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(n+4):hover{
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(n+4):hover,
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank:nth-child(n+4):hover{
       border-color:var(--gc-home-row-border-strong) !important;
       background:var(--gc-home-row-bg-strong) !important;
     }
 
-    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(1){
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(1),
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank:nth-child(1){
       border-color:rgba(255,196,0,.36) !important;
       background:linear-gradient(90deg, rgba(255,196,0,.16), rgba(255,196,0,.045) 78%) !important;
       box-shadow:inset 0 1px 0 rgba(255,236,145,.09) !important;
     }
 
-    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(2){
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(2),
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank:nth-child(2){
       border-color:rgba(190,198,210,.32) !important;
       background:linear-gradient(90deg, rgba(190,198,210,.14), rgba(190,198,210,.04) 78%) !important;
       box-shadow:inset 0 1px 0 rgba(245,248,255,.07) !important;
     }
 
-    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(3){
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank:nth-child(3),
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank:nth-child(3){
       border-color:rgba(190,116,58,.34) !important;
       background:linear-gradient(90deg, rgba(190,116,58,.16), rgba(190,116,58,.045) 78%) !important;
       box-shadow:inset 0 1px 0 rgba(255,188,130,.075) !important;
     }
 
+
+
+    /* GC_HOME_TOP_TIMES_AVATAR_RANK_V30 */
+    .gc-home2 .gc-home2-combo-ranking-list .gc-home2-rank-badge{
+      width:24px !important;
+      min-width:24px !important;
+      height:24px !important;
+      min-height:24px !important;
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      border-radius:999px !important;
+      font-family:var(--mono,monospace) !important;
+      font-weight:1000 !important;
+      line-height:1 !important;
+      font-size:15px !important;
+      text-align:center !important;
+    }
+
+    .gc-home2 .gc-home2-combo-ranking-list .gc-home2-rank-badge--plain{
+      color:var(--green,#96ff2f) !important;
+      border:1px solid rgba(150,255,47,.28) !important;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(150,255,47,.18), transparent 72%),
+        rgba(150,255,47,.06) !important;
+      text-shadow:0 0 10px rgba(150,255,47,.38) !important;
+      box-shadow:0 0 0 1px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12) !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank__avatar,
+    .gc-home2 [data-home2-best-avatar]{
+      border-radius:999px !important;
+      object-fit:cover !important;
+      background:rgba(0,0,0,.42) !important;
+    }
     .gc-home2 [data-home2-recent-laps]{
       display:grid !important;
       gap:var(--gc-home-row-gap) !important;
@@ -2533,7 +2574,20 @@ const home2ArchiveSeed = [];
       const carName = (row) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
       const trackName = (row) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
       const sourceKey = (row, fallback = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
-      const avatar = (row) => first(row, ['avatarUrl', 'avatar_url', 'pilotAvatarUrl', 'driver.avatarUrl', 'avatar'], DEFAULT_AVATAR);
+      const avatar = (row) => {
+        const direct = first(row, [
+          'avatarUrl', 'avatar_url', 'pilotAvatarUrl', 'imageUrl', 'image',
+          'driver.avatarUrl', 'driver.avatar_url', 'driver.imageUrl',
+          'player.avatarUrl', 'player.avatar_url', 'pilot.avatarUrl', 'avatar'
+        ], '');
+        if (direct && String(direct) !== DEFAULT_AVATAR) return direct;
+        const id = first(row, [
+          'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId',
+          'driver.playerId', 'driver.id', 'player.id', 'pilotId', 'id'
+        ], '');
+        if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
+        return DEFAULT_AVATAR;
+      };
       const isValid = (row) => {
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
         return !(value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false');
@@ -2553,6 +2607,7 @@ const home2ArchiveSeed = [];
       const activeCombo = (sourcePayload) => sourcePayload?.activeCombo || null;
       const sourceLeaderboard = (sourcePayload) => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
       const rankBadge = (index) => index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+      const comboRankBadgeClass = (index) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
 
       async function fetchJson(url, timeoutMs = 15000) {
         const controller = new AbortController();
@@ -2655,13 +2710,14 @@ const home2ArchiveSeed = [];
         host.dataset.gcHydrated = '1';
         host.innerHTML = list.map((row, index) => `
           <div class="gc-home2-combo-rank">
-            <span class="gc-home2-rank-badge">${rankBadge(index)}</span>
+            <span class="${comboRankBadgeClass(index)}">${rankBadge(index)}</span>
             <div><strong>${esc(driverName(row))}</strong><small>${esc(carName(row))}</small></div>
-            <img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />
+            <img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" data-gc-avatar-driver="${esc(driverName(row))}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />
             <em>${esc(formatTime(row))}</em>
           </div>`).join('');
         return list;
       };
+      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v30-avatar-rank';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -2708,7 +2764,10 @@ const home2ArchiveSeed = [];
         setText('[data-home2-best-driver]', driverName(best));
         setText('[data-home2-best-car]', carName(best));
         setText('[data-home2-best-time]', formatTime(best));
-        qa('[data-home2-best-avatar]').forEach((img) => { img.src = avatar(best); });
+        qa('[data-home2-best-avatar]').forEach((img) => {
+          img.onerror = function(){ this.onerror=null; this.src=DEFAULT_AVATAR; };
+          img.src = avatar(best);
+        });
         qa('.gc-home2-combo-card__cta').forEach((link) => { link.href = joinUrl; });
       };
 

@@ -216,9 +216,13 @@ import AppLayout from '../../layouts/AppLayout.astro';
       };
       const carName = (row) => cleanEntity(row?.carName ?? row?.car?.displayName ?? row?.car?.name ?? row?.car ?? row?.model, '-');
       const driverName = (row) => cleanEntity(row?.driverName ?? row?.playerName ?? row?.driver?.displayName ?? row?.driver?.name ?? row?.name, '-');
-      const lapTime = (row) => cleanEntity(row?.lapTime ?? row?.lapTimeFormatted ?? row?.bestLapTime ?? row?.time, lapText(row?.lapTimeMs ?? row?.bestLapMs));
-      const rowTimeMs = (row) => toMs(row?.lapTimeMs ?? row?.bestLapMs ?? row?.timeMs ?? row?.lapTime);
-      const dateValue = (row) => row?.timestampIso ?? row?.lastSeenAt ?? row?.lastActivityAt ?? row?.updatedAt ?? row?.timestamp ?? row?.date;
+      const lapTime = (row) => cleanEntity(row?.lapTime ?? row?.lapTimeFormatted ?? row?.bestLapFormatted ?? row?.bestLapTime ?? row?.time, lapText(rowTimeMs(row)));
+      const rowTimeMs = (row) => {
+        const raw = row?.lapTimeMs ?? row?.bestLapMs ?? row?.timeMs ?? row?.lapTime ?? row?.bestLapFormatted ?? row?.bestLap;
+        if (typeof raw === 'number' && Number.isFinite(raw) && raw > 2000000000) return Math.round(raw / 1000000);
+        return toMs(raw);
+      };
+      const dateValue = (row) => row?.timestampIso ?? row?.lastSeenAt ?? row?.lastActivityAt ?? row?.updatedAt ?? row?.lastSeen ?? row?.timestamp ?? row?.date;
       const els = {
         title: document.getElementById('comboTitle'), subtitle: document.getElementById('comboSubtitle'), key: document.getElementById('comboKey'), status: document.getElementById('comboStatus'), laps: document.getElementById('comboLaps'), drivers: document.getElementById('comboDrivers'), cars: document.getElementById('comboCars'), quickBest: document.getElementById('comboQuickBest'), quickBestMeta: document.getElementById('comboQuickBestMeta'), carsTitle: document.getElementById('comboCarsTitle'), carsSub: document.getElementById('comboCarsSub'), carTags: document.getElementById('comboCarTags'), best: document.getElementById('metricBest'), bestDriver: document.getElementById('metricBestDriver'), speed: document.getElementById('metricSpeed'), top10: document.getElementById('metricTop10'), recent: document.getElementById('metricRecent'), leaderboard: document.getElementById('leaderboardRows'), recentRows: document.getElementById('recentRows'), leaderboardCount: document.getElementById('comboLeaderboardCount'), recentCount: document.getElementById('comboRecentCount'), trackFigure: document.getElementById('comboTrackFigure'), trackImage: document.getElementById('comboTrackImage'), join: document.getElementById('comboJoinServer'), byCarTop5: document.getElementById('comboByCarTop5'), byCarCount: document.getElementById('comboByCarCount')
       };
@@ -364,8 +368,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
           const driverKey = String(row?.playerId || row?.driverId || row?.steamGuid || norm(driver));
           if (!groups.has(key)) groups.set(key, { key, carName: car, bestByDriver: new Map(), totalLaps: 0, totalValidLaps: 0 });
           const group = groups.get(key);
-          group.totalLaps += 1;
-          if (!(row?.valid === false || row?.isValid === false)) group.totalValidLaps += 1;
+          const lapCount = Math.max(1, Number(row?.laps ?? row?.lapCount ?? row?.totalLaps ?? 1) || 1);
+          group.totalLaps += lapCount;
+          if (!(row?.valid === false || row?.isValid === false)) group.totalValidLaps += lapCount;
           const current = group.bestByDriver.get(driverKey);
           if (!current || time < rowTimeMs(current)) group.bestByDriver.set(driverKey, row);
         }
@@ -374,6 +379,56 @@ import AppLayout from '../../layouts/AppLayout.astro';
           return { key: group.key, carName: group.carName, totalDrivers: rows.length, totalLaps: group.totalLaps, totalValidLaps: group.totalValidLaps, rows: rows.slice(0, 5).map((row, index) => ({ ...row, position: index + 1 })) };
         }).filter((group) => group.rows.length).sort((a, b) => rowTimeMs(a.rows[0]) - rowTimeMs(b.rows[0]) || a.carName.localeCompare(b.carName));
       }
+
+      function trackLooksSameForLive(left, right) {
+        const a = compact(left);
+        const b = compact(right);
+        if (!a || !b) return false;
+        return a === b || a.includes(b) || b.includes(a);
+      }
+      function liveTimingRowToComboRow(row, updatedAt) {
+        const bestNs = Number(row?.bestLap ?? 0);
+        const lapMs = Number.isFinite(bestNs) && bestNs > 2000000000 ? Math.round(bestNs / 1000000) : toMs(row?.bestLapFormatted);
+        if (!Number.isFinite(lapMs) || lapMs <= 0) return null;
+        return {
+          source: 'acsm-live-timing-stored-times',
+          driverName: cleanEntity(row?.driverName, 'Piloto'),
+          playerName: cleanEntity(row?.driverName, 'Piloto'),
+          driverId: row?.guid || row?.driverId || null,
+          playerId: row?.guid || row?.playerId || null,
+          steamGuid: row?.guid || null,
+          carName: cleanEntity(row?.carName ?? row?.carModel, 'Coche'),
+          carCode: cleanEntity(row?.carModel, ''),
+          lapTimeMs: lapMs,
+          lapTime: cleanEntity(row?.bestLapFormatted, lapText(lapMs)),
+          lapTimeFormatted: cleanEntity(row?.bestLapFormatted, lapText(lapMs)),
+          maxSpeedKmh: Number(row?.topSpeedBestLap ?? row?.topSpeedThisLap ?? 0) || 0,
+          cuts: 0,
+          valid: true,
+          isValid: true,
+          laps: Math.max(1, Number(row?.laps ?? 1) || 1),
+          timestampIso: updatedAt || row?.lastSeen || new Date().toISOString()
+        };
+      }
+      async function fetchLiveTimingRowsForTrack(track, source) {
+        const key = String(source || '').toLowerCase();
+        if (key === 'gt4') return [];
+        try {
+          const live = await fetchJson('/api/live-timing?_=' + Date.now());
+          if (!live?.ok) return [];
+          const liveTrack = live?.server?.track || live?.server?.trackConfig || '';
+          if (!trackLooksSameForLive(track, liveTrack)) return [];
+          const rows = [...arr(live.connectedDrivers), ...arr(live.storedTimes)]
+            .map((row) => liveTimingRowToComboRow(row, live.updatedAt))
+            .filter(Boolean);
+          console.info('[GC combo detail runtime v31] ACSM stored times merged for by-car top', { track, liveTrack, rows: rows.length });
+          return rows;
+        } catch (error) {
+          console.warn('[GC combo detail runtime v31] No se pudieron leer Stored Times ACSM', error);
+          return [];
+        }
+      }
+
       function renderByCarTop5(groups) {
         if (!els.byCarTop5) return;
         const list = arr(groups).filter((group) => arr(group.rows).length);
@@ -398,6 +453,10 @@ import AppLayout from '../../layouts/AppLayout.astro';
           const n = normalizeItem(item);
           const effectiveSource = String(item.sourceKey || item.source || sourceParam(comboId) || '').toLowerCase();
           applyJoinUrl(effectiveSource);
+          const liveTimingRows = await fetchLiveTimingRowsForTrack(n.track, effectiveSource);
+          if (liveTimingRows.length) {
+            n.byCarTop5 = buildByCarTop5FromRows([...liveTimingRows, ...n.recentLaps, ...n.leaderboard]);
+          }
           const fastestDriver = driverName(n.best);
           const fastestCar = carName(n.best);
           const fastestTime = lapTime(n.best);
@@ -424,8 +483,8 @@ import AppLayout from '../../layouts/AppLayout.astro';
           els.recentCount.textContent = `${n.recentLaps.length} vueltas`;
           els.leaderboard.innerHTML = n.leaderboard.map((row, index) => `<tr><td>${escapeHtml(row.position ?? index + 1)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${escapeHtml(safeDelta(row, index))}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
           els.recentRows.innerHTML = n.recentLaps.map((row) => `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
-          document.documentElement.dataset.gcComboDetailRuntime = 'v29-bycar-pilot-car';
-          console.info('[GC combo detail runtime v29] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
+          document.documentElement.dataset.gcComboDetailRuntime = 'v31-bycar-acsm-stored-times';
+          console.info('[GC combo detail runtime v31] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
         } catch (error) {
           els.title.textContent = 'Combo no disponible';
           els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Vuelve a intentarlo en unos segundos.';
@@ -434,7 +493,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           els.recentCount.textContent = 'Error';
           els.leaderboard.innerHTML = '<tr><td colspan="8">No se pudo cargar el combo.</td></tr>';
           els.recentRows.innerHTML = '<tr><td colspan="7">No se pudo cargar actividad reciente.</td></tr>';
-          console.warn('[GC combo detail runtime v29] Error', error);
+          console.warn('[GC combo detail runtime v31] Error', error);
         }
       }
       load();
