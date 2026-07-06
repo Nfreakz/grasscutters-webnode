@@ -703,10 +703,31 @@ async function createProcessingContext(eventsCount: number, mode: 'incremental' 
 }
 
 function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot) {
-  const driverMap = new Map(snapshot.drivers.map((driver) => [driver.driverKey, driver]));
-  const byPlayerId = new Map(snapshot.drivers.filter((driver) => driver.strackerPlayerId).map((driver) => [`player:${driver.strackerPlayerId}`, driver]));
-  const bySteam = new Map(snapshot.drivers.filter((driver) => driver.steamGuid).map((driver) => [`steam:${driver.steamGuid}`, driver]));
-  const byName = new Map(snapshot.drivers.map((driver) => [`name:${driver.displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_')}`, driver]));
+  // GC_CHAMPIONSHIP_RATING_MERGE_V20
+  // /ratings muestra SR/GSR con identidades fusionadas por nombre público.
+  // /campeonato no debe leer un driver raw antiguo si existe una identidad fusionada
+  // más reciente: eso hacía que puntos ACSM se actualizaran pero SR/GSR quedaran viejos.
+  const publicRatingDrivers = mergeDriversForPublicLeaderboard(snapshot.drivers);
+  const driverMap = new Map<string, LeaderboardDriverState>();
+
+  function rememberDriverAlias(key: unknown, driver: LeaderboardDriverState) {
+    const alias = textValue(key);
+    if (!alias) return;
+    const previous = driverMap.get(alias);
+    if (!previous || driverUpdatedMs(driver) > driverUpdatedMs(previous) || safeFiniteNumber(driver.racesCount, 0) > safeFiniteNumber(previous.racesCount, 0)) {
+      driverMap.set(alias, driver);
+    }
+  }
+
+  for (const driver of publicRatingDrivers) {
+    rememberDriverAlias(driver.driverKey, driver);
+    for (const mergedKey of driver.mergedDriverKeys || []) rememberDriverAlias(mergedKey, driver);
+    if (driver.strackerPlayerId) rememberDriverAlias(`player:${driver.strackerPlayerId}`, driver);
+    if (driver.profilePlayerId) rememberDriverAlias(`player:${driver.profilePlayerId}`, driver);
+    if (driver.steamGuid) rememberDriverAlias(`steam:${driver.steamGuid}`, driver);
+    rememberDriverAlias(`name:${driverNameIdentityKey(driver.displayName)}`, driver);
+  }
+
   const resultsByEvent = new Map<string, RatingEventResult[]>();
   const championshipEvents = ensureArray(championship.events);
   const championshipEventIds = new Set(championshipEvents.map((event: PlainObject) => String(event.id)).filter(Boolean));
@@ -741,16 +762,31 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
       `name:${String(row.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_')}`
     ].filter(Boolean);
     for (const key of keys) {
-      const hit = driverMap.get(key) || byPlayerId.get(key) || bySteam.get(key) || byName.get(key);
+      const hit = driverMap.get(key);
       if (hit) return hit;
     }
     return null;
   }
 
+  function ratingIdentityKeys(driver: LeaderboardDriverState | null) {
+    if (!driver) return [];
+    return [...new Set([driver.driverKey, ...(driver.mergedDriverKeys || [])].filter(Boolean).map(String))];
+  }
+
+  function officialResultsForRating(driver: LeaderboardDriverState | null) {
+    const out: RatingEventResult[] = [];
+    for (const key of ratingIdentityKeys(driver)) out.push(...(officialResultsByDriver.get(key) || []));
+    return out.sort((left, right) => (parseDateMs(right.eventDate || right.processedAt) - parseDateMs(left.eventDate || left.processedAt)) || left.position - right.position);
+  }
+
+  function lastOfficialResultForRating(driver: LeaderboardDriverState | null) {
+    return officialResultsForRating(driver)[0] || null;
+  }
+
   const standings = ensureArray(championship.standings).map((row: PlainObject) => {
     const rating = findDriverForStanding(row);
-    const officialResults = rating ? officialResultsByDriver.get(rating.driverKey) || [] : [];
-    const ratingLastResult = rating ? lastOfficialResultByDriver.get(rating.driverKey) || null : null;
+    const officialResults = officialResultsForRating(rating);
+    const ratingLastResult = lastOfficialResultForRating(rating);
     const acsmLastResult = row.lastResult || null;
     const lastResult = ratingLastResult || acsmLastResult || null;
     const officialWins = officialResults.length ? officialResults.filter((result) => result.position === 1).length : null;
