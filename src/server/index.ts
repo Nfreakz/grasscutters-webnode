@@ -6039,106 +6039,89 @@ function gcComboUnifySourceLabelV1(sourceKey: string, lap: any) {
   return gcComboUnifyFirstTextV1(lap?.sourceLabel, lap?.source_label) || (sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters');
 }
 
-function gcComboUnifyPrettyFromSlugV13(value: any, fallback = '') {
-  const raw = compactNullableText(value) || compactNullableText(fallback) || '';
-  if (!raw) return '';
-  return raw
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 function gcComboUnifyTrackTokensV1(track: any) {
-  // GC_HOME_BOOTSTRAP_IDENTITY_V13
-  // La identidad técnica del circuito debe salir primero del código real de sTracker.
-  // Los alias/admin displayNames sirven para pintar, pero no pueden cambiar el circuito activo.
-  const code = gcComboUnifyFirstTextV1(track?.rawCode, track?.code, track?.trackCode, track?.Track, track?.id);
-  const uiName = gcComboUnifyFirstTextV1(track?.rawName, track?.uiName, track?.UiTrackName, track?.label);
-  const name = gcComboUnifyFirstTextV1(track?.name, track?.displayName, uiName, code);
-  const codeSlug = gcComboUnifySlugV1(code || '');
-  const uiSlug = gcComboUnifySlugV1(uiName || '');
-  const nameSlug = gcComboUnifySlugV1(name || '');
-  const slug = [codeSlug, uiSlug, nameSlug].filter(Boolean).join('_');
-  return { code, name, uiName, slug, codeSlug, uiSlug, nameSlug };
-}
-
-function gcComboUnifyTrackMatchV13(slug: string) {
-  if (!slug) return null;
-  if (/pascani/.test(slug)) return { key: 'pascani_motorpark_a1', displayName: '00 Pascani Motorpark A1' };
-  if (/hungaroring|hungaror?ing|hungraroring/.test(slug)) return { key: 'hungaroring', displayName: 'Hungaroring' };
-  if (/vila_?real|vilareal|vila/.test(slug)) return { key: 'vila_real', displayName: 'Vila Real' };
-  if (/fuji/.test(slug)) return { key: 'fuji_speedway', displayName: 'Fuji Speedway' };
-  if (/algarve|portimao|portimao_2023/.test(slug)) return { key: 'algarve_portimao', displayName: 'Algarve Portimao' };
-  if (/tsukuba/.test(slug)) return { key: 'tsukuba', displayName: 'Tsukuba' };
-  if (/adelaide/.test(slug)) return { key: 'adelaide', displayName: 'Adelaide' };
-  if (/sonoma/.test(slug)) return { key: 'sonoma', displayName: 'Sonoma' };
-  if (/zolder/.test(slug)) return { key: 'zolder', displayName: 'Zolder' };
-  if (/most/.test(slug)) return { key: 'autodrom_most', displayName: 'Autodrom Most' };
-  if (/ricardo|tormo|valencia/.test(slug)) return { key: 'ricardo_tormo', displayName: 'Ricardo Tormo' };
-  if (/lithuanian|lithuania/.test(slug)) return { key: 'lithuanian_motorsport_park', displayName: 'Lithuanian Motorsport Park' };
-  return null;
+  const code = gcComboUnifyFirstTextV1(track?.code, track?.trackCode, track?.id);
+  const name = gcComboUnifyFirstTextV1(track?.name, track?.displayName, track?.uiName, track?.label, code);
+  const slug = gcComboUnifySlugV1(`${code || ''} ${name || ''}`);
+  return { code, name, slug };
 }
 
 function gcComboUnifyTrackFamilyV1(track: any) {
-  const { code, name, uiName, slug, codeSlug, uiSlug, nameSlug } = gcComboUnifyTrackTokensV1(track);
-  const codeMatch = gcComboUnifyTrackMatchV13(codeSlug);
-  const fallbackMatch = !codeSlug
-    ? (gcComboUnifyTrackMatchV13(uiSlug) || gcComboUnifyTrackMatchV13(nameSlug) || gcComboUnifyTrackMatchV13(slug))
-    : null;
-  const match = codeMatch || fallbackMatch;
-  const key = match?.key || codeSlug || uiSlug || nameSlug || 'unknown_track';
-  const displayName = match?.displayName || gcComboUnifyPrettyFromSlugV13(codeSlug ? (uiName || code) : (name || uiName || code), 'Circuito sin identificar');
-  return {
-    key,
-    displayName,
-    code,
-    rawName: uiName || name,
-    slug: codeSlug || uiSlug || nameSlug || slug,
-    identitySource: codeMatch ? 'track-code' : fallbackMatch ? 'track-name-fallback' : codeSlug ? 'track-code-raw' : 'track-name-raw'
-  };
+  const { code, name, slug } = gcComboUnifyTrackTokensV1(track);
+  let key = slug || 'unknown_track';
+  let displayName = name || code || 'Circuito sin identificar';
+
+  if (/pascani/.test(slug)) {
+    key = 'pascani_motorpark_a1';
+    displayName = '00 Pascani Motorpark A1';
+  } else if (/hungaroring|hungaror?ing|hungraroring/.test(slug)) {
+    key = 'hungaroring';
+    displayName = 'Hungaroring';
+  } else if (/vila_?real|vilareal|vila/.test(slug)) {
+    key = 'vila_real';
+    displayName = 'Vila Real';
+  } else if (/fuji/.test(slug)) {
+    key = 'fuji_speedway';
+    displayName = 'Fuji Speedway';
+  } else if (/algarve|portimao|portimao_2023/.test(slug)) {
+    key = 'algarve_portimao';
+    displayName = 'Algarve Portimao';
+  } else if (/tsukuba/.test(slug)) {
+    key = 'tsukuba';
+    displayName = 'Tsukuba';
+  } else if (/adelaide/.test(slug)) {
+    key = 'adelaide';
+    displayName = 'Adelaide';
+  } else if (/sonoma/.test(slug)) {
+    key = 'sonoma';
+    displayName = 'Sonoma';
+  } else if (/zolder/.test(slug)) {
+    key = 'zolder';
+    displayName = 'Zolder';
+  } else if (/most/.test(slug)) {
+    key = 'autodrom_most';
+    displayName = 'Autodrom Most';
+  } else if (/ricardo|tormo|valencia/.test(slug)) {
+    key = 'ricardo_tormo';
+    displayName = 'Ricardo Tormo';
+  } else if (/lithuanian|lithuania/.test(slug)) {
+    key = 'lithuanian_motorsport_park';
+    displayName = 'Lithuanian Motorsport Park';
+  }
+
+  return { key, displayName, code, rawName: name, slug };
 }
 
 function gcComboUnifyCarTokensV1(car: any) {
-  // GC_HOME_BOOTSTRAP_IDENTITY_V13
-  // Igual que con circuitos: el car code real no puede quedar sobrescrito por un alias visual.
-  const code = gcComboUnifyFirstTextV1(car?.rawCode, car?.code, car?.carCode, car?.Car, car?.id);
-  const uiName = gcComboUnifyFirstTextV1(car?.rawName, car?.uiName, car?.UiCarName, car?.label);
-  const name = gcComboUnifyFirstTextV1(car?.name, car?.displayName, uiName, code);
-  const codeSlug = gcComboUnifySlugV1(code || '');
-  const uiSlug = gcComboUnifySlugV1(uiName || '');
-  const nameSlug = gcComboUnifySlugV1(name || '');
-  const slug = [codeSlug, uiSlug, nameSlug].filter(Boolean).join('_');
-  return { code, name, uiName, slug, codeSlug, uiSlug, nameSlug };
-}
-
-function gcComboUnifyCarMatchV13(slug: string) {
-  if (!slug) return null;
-  if (/supra.*gt4|gt4.*supra|toyota_supra_gt4/.test(slug)) return { key: 'toyota_supra_gt4', displayName: 'Toyota Supra GT4 Cup 2019' };
-  if (/rss.*formula.*3|formula.*rss.*3|rss_3|formula_3|f3/.test(slug)) return { key: 'formula_3', displayName: 'Formula 3' };
-  if (/tcr|alfa.*giulietta|giulietta|focus|astra|mazda.*tcr|cupra/.test(slug)) return { key: 'tcr', displayName: 'TCR' };
-  if (/gt3/.test(slug)) return { key: 'gt3', displayName: 'GT3' };
-  if (/porsche.*935|935.*moby|mobydick|gr5/.test(slug)) return { key: 'porsche_935_mobydick_gr5', displayName: 'Porsche 935 Mobydick GR5' };
-  return null;
+  const code = gcComboUnifyFirstTextV1(car?.code, car?.carCode, car?.id);
+  const name = gcComboUnifyFirstTextV1(car?.name, car?.displayName, car?.uiName, car?.label, code);
+  const slug = gcComboUnifySlugV1(`${code || ''} ${name || ''}`);
+  return { code, name, slug };
 }
 
 function gcComboUnifyCarFamilyV1(car: any) {
-  const { code, name, uiName, slug, codeSlug, uiSlug, nameSlug } = gcComboUnifyCarTokensV1(car);
-  const codeMatch = gcComboUnifyCarMatchV13(codeSlug);
-  const fallbackMatch = !codeSlug
-    ? (gcComboUnifyCarMatchV13(uiSlug) || gcComboUnifyCarMatchV13(nameSlug) || gcComboUnifyCarMatchV13(slug))
-    : null;
-  const match = codeMatch || fallbackMatch;
-  const key = match?.key || codeSlug || uiSlug || nameSlug || 'unknown_car';
-  const displayName = match?.displayName || gcComboUnifyPrettyFromSlugV13(codeSlug ? (uiName || code) : (name || uiName || code), 'Coche sin identificar');
-  return {
-    key,
-    displayName,
-    code,
-    rawName: uiName || name,
-    slug: codeSlug || uiSlug || nameSlug || slug,
-    identitySource: codeMatch ? 'car-code' : fallbackMatch ? 'car-name-fallback' : codeSlug ? 'car-code-raw' : 'car-name-raw'
-  };
+  const { code, name, slug } = gcComboUnifyCarTokensV1(car);
+  let key = slug || 'unknown_car';
+  let displayName = name || code || 'Coche sin identificar';
+
+  if (/supra.*gt4|gt4.*supra|toyota_supra_gt4/.test(slug)) {
+    key = 'toyota_supra_gt4';
+    displayName = 'Toyota Supra GT4 Cup 2019';
+  } else if (/rss.*formula.*3|formula.*rss.*3|rss_3|formula_3|f3/.test(slug)) {
+    key = 'formula_3';
+    displayName = 'Formula 3';
+  } else if (/tcr|alfa.*giulietta|giulietta|focus|astra|mazda.*tcr|cupra/.test(slug)) {
+    key = 'tcr';
+    displayName = 'TCR';
+  } else if (/gt3/.test(slug)) {
+    key = 'gt3';
+    displayName = 'GT3';
+  } else if (/porsche.*935|935.*moby|mobydick|gr5/.test(slug)) {
+    key = 'porsche_935_mobydick_gr5';
+    displayName = 'Porsche 935 Mobydick GR5';
+  }
+
+  return { key, displayName, code, rawName: name, slug };
 }
 
 function gcComboUnifyRawComboKeyV1(lap: any) {
@@ -6219,9 +6202,9 @@ function gcComboUnifyCarMapKeyV1(car: any) {
   return tokens.code || tokens.name || tokens.slug;
 }
 
-const GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3 = Math.max(10, Number(process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 10) || 10);
-const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 1) || 1);
-const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3 = Math.max(3, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 3) || 3);
+const GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_LAPS || process.env.GC_COMBO_PUBLIC_MIN_LAPS || 50) || 50);
+const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_DRIVERS || process.env.GC_COMBO_PUBLIC_MIN_DRIVERS || 2) || 2);
+const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 5) || 5);
 
 function gcComboUnifyDriverKeyV2(sourceKey: string, lap: any) {
   if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) return `${sourceKey}:id:${lap.driver.id}`;
@@ -6232,7 +6215,7 @@ function gcComboUnifyDriverKeyV2(sourceKey: string, lap: any) {
 function gcComboUnifyCarBucketKeyV2(lap: any) {
   const raw = gcComboUnifyCarTokensV1(lap?.car);
   const family = gcComboUnifyCarFamilyV1(lap?.car);
-  const rawKey = gcComboUnifySlugV1(raw.code || raw.uiName || family.key);
+  const rawKey = gcComboUnifySlugV1(raw.code || raw.name || raw.slug || family.key);
   return rawKey || family.key || 'unknown_car';
 }
 
@@ -6242,22 +6225,20 @@ function gcComboUnifyCarDisplayV2(lap: any) {
   return {
     ...(lap?.car || {}),
     code: raw.code || lap?.car?.code || lap?.car?.id || family.key,
-    name: family.displayName,
-    displayName: family.displayName,
-    rawName: raw.uiName || raw.name || null,
+    name: raw.name || family.displayName,
+    displayName: raw.name || family.displayName,
     familyKey: family.key,
-    familyName: family.displayName,
-    identitySource: family.identitySource || null
+    familyName: family.displayName
   };
 }
 
 function gcComboUnifyMakePublicPolicyV2() {
   return {
-    type: 'source-track-variant-public-v3',
-    description: 'Agrupa por servidor + circuito normalizado + variante. Los coches enriquecen el combo; no crean tarjetas separadas. Publica solo actividad comunitaria: mínimo 1 piloto y 10 vueltas.',
-    minPublicLaps: GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3,
-    minPublicDrivers: GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3,
-    minPublicCarLaps: GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3,
+    type: 'source-track-variant-public-v2',
+    description: 'Agrupa por servidor + circuito normalizado + variante. Los coches solo enriquecen el combo; no crean tarjetas separadas. Filtra pruebas cortas por laps/pilotos.',
+    minPublicLaps: GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2,
+    minPublicDrivers: GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2,
+    minPublicCarLaps: GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2,
     vilaRealRule: 'pre/post chicane por nombre/código o corte temporal'
   };
 }
@@ -6285,9 +6266,7 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
         memberComboIds: [],
         mergedCombosCount: 0,
         mergePolicy: gcComboUnifyMakePublicPolicyV2(),
-        url: `/combos/${encodeURIComponent(key)}`,
-        detailUrl: `/combos/${encodeURIComponent(key)}`,
-        filterUrl: `/combos?source=${encodeURIComponent(sourceKey)}&track=${encodeURIComponent(trackFamily.key)}&variant=${encodeURIComponent(variant)}`,
+        url: `/combos?source=${encodeURIComponent(sourceKey)}&track=${encodeURIComponent(trackFamily.key)}&variant=${encodeURIComponent(variant)}`,
         sourceKey,
         sourceLabel,
         trackId: lap.track?.id ?? null,
@@ -6385,9 +6364,9 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     .map((entry) => {
       const carStats = Array.from(entry.carStatsMap.values())
         .sort((a: any, b: any) => Number(b.totalLaps || 0) - Number(a.totalLaps || 0) || String(a.car?.name || '').localeCompare(String(b.car?.name || ''), 'es', { sensitivity: 'base' }));
-      const publicCarStats = carStats.filter((item: any) => Number(item.totalLaps || 0) >= GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3);
+      const publicCarStats = carStats.filter((item: any) => Number(item.totalLaps || 0) >= GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
       const publicCars = (publicCarStats.length ? publicCarStats : carStats.slice(0, 1)).map((item: any) => item.car).filter(Boolean);
-      const hiddenLowLapCars = carStats.filter((item: any) => Number(item.totalLaps || 0) < GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V3);
+      const hiddenLowLapCars = carStats.filter((item: any) => Number(item.totalLaps || 0) < GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2);
 
       entry.hiddenLowLapCars = hiddenLowLapCars.map((item: any) => ({
         key: item.key,
@@ -6411,27 +6390,22 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     .filter((entry) => {
       const totalLaps = Number(entry.totalLaps || 0);
       const drivers = Number(entry.drivers?.size || entry.driversCount || 0);
-      return totalLaps >= GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3 && drivers >= GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3;
+      return totalLaps >= GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V2 && drivers >= GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2;
     })
     .map((entry) => normalizeComboEntryForResponse(entry))
-    .map((item: any) => {
-      const stableComboId = item.comboUid || item.comboKey || item.key || item.canonicalComboId || item.comboId;
-      return {
+    .map((item: any) => ({
       ...item,
-      comboUid: item.comboUid || item.key,
-      comboKey: item.comboKey || item.key,
-      comboId: item.comboId ?? stableComboId,
-      canonicalComboId: item.canonicalComboId ?? item.comboId ?? stableComboId,
       sourceKey: item.sourceKey || (String(item.key || '').split(':')[0] || 'main'),
       sourceLabel: item.sourceLabel || (String(item.key || '').startsWith('gt4:') ? 'Supra GT4' : 'Liga GrassCutters'),
+      comboUid: item.comboUid || item.key,
+      comboKey: item.comboKey || item.key,
       carGroupKey: item.carGroupKey || null,
       carGroupName: item.carGroupName || item.carSummary,
       rawCombosCount: item.mergedCombosCount || 1,
       publicPolicy: item.publicPolicy || item.mergePolicy || gcComboUnifyMakePublicPolicyV2(),
       totalCarsCount: item.allCarsCount || item.carsCount || (item.cars || []).length,
       hiddenLowLapCarsCount: item.hiddenLowLapCarsCount || 0
-      };
-    })
+    }))
     .sort((a, b) => Number(b.lastSeenTimestamp ?? 0) - Number(a.lastSeenTimestamp ?? 0));
 }
 
@@ -12293,7 +12267,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
       dataSource: dataCoreSource.source,
       generatedAt: new Date().toISOString(),
       mode: dataCoreSource.source === 'mysql-mirror-v2' ? 'mysql-mirror-v2' : dataCoreSource.source === 'mysql-mirror' ? 'mysql-mirror' : 'real-stracker',
-      comboCore: 'gc-combo-public-logical-v3',
+      comboCore: 'gc-combo-public-logical-v2',
       sort,
       filters: { q: q || null, source: getQueryString(req, 'source', '') || null },
       count: Math.min(items.length, limit),
@@ -12333,74 +12307,11 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
   }
 });
 
-
-function gcComboDecodeRequestIdV14(value: any) {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
-  try { return decodeURIComponent(raw); } catch { return raw; }
-}
-
-function gcComboComparableIdV14(value: any) {
-  const decoded = gcComboDecodeRequestIdV14(value);
-  return decoded ? decoded.toLowerCase() : '';
-}
-
-function gcComboSourceAwareIdCandidatesV14(combo: any) {
-  const values = [
-    combo?.comboUid,
-    combo?.comboKey,
-    combo?.key,
-    combo?.canonicalComboId,
-    combo?.comboId,
-    combo?.id,
-    combo?.detailUrl,
-    combo?.url,
-    ...(Array.isArray(combo?.memberComboIds) ? combo.memberComboIds : []),
-    ...(Array.isArray(combo?.comboIds) ? combo.comboIds : [])
-  ];
-
-  return values
-    .filter((value) => value !== undefined && value !== null && String(value).trim() !== '')
-    .flatMap((value) => {
-      const text = String(value).trim();
-      const tail = text.includes('/') ? text.split('/').filter(Boolean).pop() || text : text;
-      return [text, tail];
-    })
-    .map(gcComboComparableIdV14)
-    .filter(Boolean);
-}
-
-function gcComboSourceAwareFindByRequestV14(items: any[], requestedId: string) {
-  const wanted = gcComboComparableIdV14(requestedId);
-  if (!wanted) return null;
-  return (items || []).find((combo: any) => gcComboSourceAwareIdCandidatesV14(combo).includes(wanted)) || null;
-}
-
-
-function gcComboDetailSourceFromIdV15(requestedId: string) {
-  const text = String(requestedId || '').toLowerCase();
-  if (text.startsWith('gt4:')) return 'gt4';
-  if (text.startsWith('main:')) return 'main';
-  return 'all';
-}
-
-function gcComboDetailRequestWithSourceV15(req: express.Request, requestedId: string) {
-  const wantedSource = gcComboDetailSourceFromIdV15(requestedId);
-  return {
-    ...req,
-    query: {
-      ...(req.query || {}),
-      source: wantedSource
-    }
-  } as express.Request;
-}
-
 app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
   try {
     await readDisplayNameStoreAsync();
-    const requestedId = gcComboDecodeRequestIdV14(req.params.comboId || '');
-    const sourceReq = gcComboDetailRequestWithSourceV15(req, requestedId);
-    const readSource = await readGcDataCoreSource(sourceReq);
+    const requestedId = String(req.params.comboId || '').trim();
+    const readSource = await readGcDataCoreSource(req);
     if ((readSource as any).ok === false) {
       res.status(200).json({
         ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core combinado no disponible para generar la ficha del combo.'),
@@ -12411,82 +12322,58 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
     }
 
     const dataCoreSource = readSource as GcDataCoreReadResult;
-    const sourceAwareCombos = gcComboUnifyBuildStatsV1(dataCoreSource.laps);
-    let combo = gcComboSourceAwareFindByRequestV14(sourceAwareCombos, requestedId);
-    let comboCore = 'gc-combo-public-logical-v2';
-
-    // Compatibilidad: permite abrir fichas antiguas por ID numérico/raw si algún enlace viejo quedó cacheado.
-    if (!combo) {
-      const legacyCombos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
-      combo = legacyCombos.find((entry: any) => gcComboDetailComboMatchesIdV1(entry, requestedId));
-      comboCore = 'gc-combo-legacy-compat-v1';
-    }
+    const combos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
+    const combo = combos.find((entry: any) =>
+      String(entry.comboId) === requestedId ||
+      String(entry.canonicalComboId) === requestedId ||
+      String(entry.key) === requestedId ||
+      String(entry.comboUid || '') === requestedId ||
+      String(entry.url || '').endsWith('/' + requestedId)
+    );
 
     if (!combo) {
       return res.status(404).json({
         ok: false,
         source: 'gc-data-core',
         dataSource: dataCoreSource.source,
-        comboCore: 'gc-combo-public-logical-v3',
+        comboCore: 'gc-combo-source-aware-v4',
         generatedAt: new Date().toISOString(),
         stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
         mysqlMirror: dataCoreSource.mysqlMirror ?? null,
         fallbackReason: dataCoreSource.fallbackReason ?? null,
         message: 'Combo no encontrado en Data Core combinado.',
-        comboId: requestedId,
-        availableHint: sourceAwareCombos.slice(0, 20).map((item: any) => item.comboUid || item.comboKey || item.key || item.comboId)
+        comboId: requestedId
       });
     }
 
-    const rows = Array.isArray(combo.laps) && combo.laps.length
-      ? combo.laps
-      : dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
-    const item = gcComboDetailBuildItemV1(combo, rows);
-    const stableComboId = combo.comboUid || combo.comboKey || combo.key || item.comboId || requestedId;
+    const rows = dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
+    const item = gcComboDetailBuildItemV1(combo, rows.length ? rows : combo.laps || []);
 
     res.json({
       ok: true,
       source: 'gc-data-core',
       dataSource: dataCoreSource.source,
-      comboCore,
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
       mysqlMirror: dataCoreSource.mysqlMirror ?? null,
       fallbackReason: dataCoreSource.fallbackReason ?? null,
-      item: {
-        ...item,
-        comboId: stableComboId,
-        canonicalComboId: combo.canonicalComboId || stableComboId,
-        comboUid: combo.comboUid || stableComboId,
-        comboKey: combo.comboKey || stableComboId,
-        sourceKey: combo.sourceKey || item.sourceKey || (String(stableComboId).startsWith('gt4:') ? 'gt4' : 'main'),
-        sourceLabel: combo.sourceLabel || item.sourceLabel || (String(stableComboId).startsWith('gt4:') ? 'Supra GT4' : 'Liga GrassCutters'),
-        detailUrl: combo.detailUrl || `/combos/${encodeURIComponent(stableComboId)}`,
-        filterUrl: combo.filterUrl || null,
-        memberComboIds: Array.isArray(combo.memberComboIds) ? combo.memberComboIds : item.memberComboIds,
-        mergePolicy: combo.mergePolicy || combo.publicPolicy || item.mergePolicy || null,
-        hiddenLowLapCars: combo.hiddenLowLapCars || [],
-        hiddenLowLapCarsCount: combo.hiddenLowLapCarsCount || 0
-      },
+      item,
       meta: {
         requestedComboId: requestedId,
-        matchedComboId: stableComboId,
+        matchedComboId: item.comboId,
         lapsMatched: rows.length,
-        totalCombos: sourceAwareCombos.length,
-        endpoint: '/api/gc/combos/:comboId',
-        requestedSource: gcComboDetailSourceFromIdV15(requestedId),
-        rules: gcComboUnifyMakePublicPolicyV2()
+        totalCombos: combos.length,
+        endpoint: '/api/gc/combos/:comboId'
       },
-      message: dataCoreSource.source === 'mysql-mirror-v2'
-        ? 'Ficha de combo generada desde Mirror V2 combinado con agrupación lógica pública.'
-        : 'Ficha de combo generada desde GC Data Core con agrupación lógica pública.'
+      message: dataCoreSource.source === 'mysql-mirror-v2' ? 'Ficha de combo generada desde Mirror V2 combinado.' : 'Ficha de combo generada desde GC Data Core.'
     });
   } catch (error) {
-    console.error('[GC Combo Source Aware V15] /api/gc/combos/:comboId error:', error);
+    console.error('[GC Combo Source Aware V4] /api/gc/combos/:comboId error:', error);
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-source-aware-v15',
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       item: null,
       message: 'No se pudo generar la ficha del combo source-aware.',
@@ -12494,7 +12381,6 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
     });
   }
 });
-
 
 /* GC_COMBO_DETAIL_DATA_CORE_PRIMARY_V1_START */
 function gcComboDetailTextV1(value: unknown, fallback = '') {
@@ -12793,7 +12679,7 @@ function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
   };
 }
 
-app.get('/api/gc/combos/:comboId', async (req, res) => {
+app.get('/api/gc/combos-legacy/:comboId', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
 
@@ -12862,7 +12748,7 @@ app.get('/api/gc/combos/:comboId', async (req, res) => {
 /* GC_COMBO_DETAIL_DATA_CORE_PRIMARY_V1_END */
 
 
-app.get('/api/gc/combos', async (req, res) => {
+app.get('/api/gc/combos-legacy', async (req, res) => {
   try {
     await readDisplayNameStoreAsync();
     const limit = getQueryNumber(req, 'limit', 300, 1, 1000);
@@ -14675,33 +14561,13 @@ function gcHomeBootstrapLapTimestampMsV1(lap: any) {
 
 function gcHomeBootstrapPublicLapV1(lap: any) {
   const compact: any = compactLapForCombo(lap as ComboLap) || {};
-  const sourceKey = compact.sourceKey || lap?.sourceKey || 'main';
-  const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track || {});
-  const carDisplay = gcComboUnifyCarDisplayV2(lap || {});
-  const timestampMs = gcHomeBootstrapLapTimestampMsV1(lap);
   return {
     ...compact,
-    // GC_HOME_BOOTSTRAP_IDENTITY_V13: para Home usamos identidad técnica estable.
-    trackName: trackFamily.displayName,
-    trackCode: trackFamily.key,
-    carName: carDisplay.displayName,
-    carCode: carDisplay.code || carDisplay.familyKey,
-    track: {
-      ...(compact.track || lap?.track || {}),
-      code: trackFamily.key,
-      name: trackFamily.displayName,
-      displayName: trackFamily.displayName,
-      rawCode: trackFamily.code,
-      rawName: trackFamily.rawName,
-      familyKey: trackFamily.key,
-      identitySource: trackFamily.identitySource || null
-    },
-    car: carDisplay,
-    timestampMs,
-    timestampIso: compact.timestampIso || (timestampMs ? new Date(timestampMs).toISOString() : null),
+    timestampMs: gcHomeBootstrapLapTimestampMsV1(lap),
+    timestampIso: compact.timestampIso || (gcHomeBootstrapLapTimestampMsV1(lap) ? new Date(gcHomeBootstrapLapTimestampMsV1(lap)).toISOString() : null),
     lapTimeFormatted: compact.lapTimeFormatted || compact.lapTime || lapTimeToText(compact.lapTimeMs),
-    sourceKey,
-    sourceLabel: compact.sourceLabel || lap?.sourceLabel || (sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters')
+    sourceKey: compact.sourceKey || lap?.sourceKey || 'main',
+    sourceLabel: compact.sourceLabel || lap?.sourceLabel || ((compact.sourceKey || lap?.sourceKey) === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters')
   };
 }
 
@@ -14844,70 +14710,6 @@ function gcHomeBootstrapBuildComboBucketsV1(laps: any[], options: { exactTechnic
   return Array.from(buckets.values()).sort((a, b) => Number(b.latestTimestampMs || 0) - Number(a.latestTimestampMs || 0));
 }
 
-function gcHomeBootstrapDriverStatsV13(laps: any[]) {
-  const map = new Map<string, any>();
-  for (const lap of laps || []) {
-    const publicLap = gcHomeBootstrapPublicLapV1(lap);
-    const key = String(publicLap.driverId ?? publicLap.playerId ?? publicLap.steamGuid ?? publicLap.driverName ?? 'unknown').toLowerCase();
-    if (!map.has(key)) {
-      map.set(key, {
-        key,
-        driverName: publicLap.driverName || publicLap.playerName || 'Piloto',
-        avatarUrl: publicLap.avatarUrl || publicLap.driver?.avatarUrl || null,
-        totalLaps: 0,
-        validLaps: 0,
-        invalidLaps: 0,
-        bestLapMs: null,
-        bestLap: null,
-        latestLap: null,
-        latestTimestampMs: 0,
-        maxSpeedKmh: 0
-      });
-    }
-    const item = map.get(key);
-    item.totalLaps += 1;
-    if (publicLap.valid !== false && publicLap.isValid !== false) item.validLaps += 1;
-    else item.invalidLaps += 1;
-    const lapMs = Number(publicLap.lapTimeMs || 0);
-    if (lapMs > 0 && (publicLap.valid !== false && publicLap.isValid !== false) && (!item.bestLapMs || lapMs < item.bestLapMs)) {
-      item.bestLapMs = lapMs;
-      item.bestLap = publicLap;
-    }
-    const ts = Number(publicLap.timestampMs || 0);
-    if (ts > item.latestTimestampMs) {
-      item.latestTimestampMs = ts;
-      item.latestLap = publicLap;
-    }
-    const speed = Number(publicLap.maxSpeedKmh || 0);
-    if (Number.isFinite(speed) && speed > item.maxSpeedKmh) item.maxSpeedKmh = speed;
-  }
-  return Array.from(map.values()).map((item) => ({
-    ...item,
-    cleanRate: percent(item.validLaps, item.totalLaps),
-    bestLapTime: item.bestLapMs ? lapTimeToText(item.bestLapMs) : '--',
-    lastSeenAt: item.latestTimestampMs ? new Date(item.latestTimestampMs).toISOString() : null
-  })).sort((a, b) => Number(b.totalLaps || 0) - Number(a.totalLaps || 0) || Number(a.bestLapMs || Infinity) - Number(b.bestLapMs || Infinity));
-}
-
-function gcHomeBootstrapSelectActiveBucketV13(buckets: any[], sourceKey: 'main' | 'gt4') {
-  if (!Array.isArray(buckets) || !buckets.length) return null;
-
-  // GC_HOME_ACTIVE_COMBO_PUBLIC_RULE_V17
-  // La Home debe seguir el mismo criterio público que /combos:
-  // servidor + circuito normalizado + variante, con actividad mínima real.
-  // No bloqueamos GT4 por 50 vueltas/2 pilotos: una tanda de 1 piloto con 10+ vueltas
-  // ya es un combo activo válido y debe sustituir automáticamente al anterior.
-  const minLaps = GC_COMBO_UNIFY_MIN_PUBLIC_LAPS_V3;
-  const minDrivers = GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V3;
-
-  const publicBuckets = buckets.filter((bucket) =>
-    Number(bucket?.totalLaps || 0) >= minLaps &&
-    Number(bucket?.drivers?.size || bucket?.driversCount || 0) >= minDrivers
-  );
-
-  return publicBuckets[0] || buckets[0] || null;
-}
-
 function gcHomeBootstrapNormalizeBucketV1(bucket: any, leaderboardLimit: number) {
   if (!bucket) return null;
   const leaderboard = buildComboLeaderboard(bucket.laps as ComboLap[]).slice(0, leaderboardLimit).map(gcHomeBootstrapPublicLapV1);
@@ -14915,7 +14717,6 @@ function gcHomeBootstrapNormalizeBucketV1(bucket: any, leaderboardLimit: number)
   const image = gcHomeBootstrapTrackImageV1(bucket.track);
   const bestLap = gcHomeBootstrapPublicLapV1(bucket.bestLap || leaderboard[0] || null);
   const latestLap = gcHomeBootstrapPublicLapV1(bucket.latestLap || null);
-  const driverStats = gcHomeBootstrapDriverStatsV13(bucket.laps || []);
 
   return {
     key: bucket.key,
@@ -14942,14 +14743,7 @@ function gcHomeBootstrapNormalizeBucketV1(bucket: any, leaderboardLimit: number)
     trackImage: image,
     leaderboard,
     leaderboardTop: leaderboard,
-    leaderboardCount: leaderboard.length,
-    driverStats,
-    standouts: {
-      mostLaps: driverStats[0] || null,
-      cleanest: driverStats.filter((item: any) => Number(item.totalLaps || 0) >= 2).sort((a: any, b: any) => Number(b.cleanRate || 0) - Number(a.cleanRate || 0) || Number(b.validLaps || 0) - Number(a.validLaps || 0))[0] || null,
-      best: leaderboard[0] || bestLap || null,
-      latest: latestLap || null
-    }
+    leaderboardCount: leaderboard.length
   };
 }
 
@@ -14982,7 +14776,7 @@ async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'mai
   const dataCoreSource = readSource as GcDataCoreReadResult;
   const sourceLaps = (dataCoreSource.laps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
   const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps, { exactTechnical: sourceKey === 'gt4' });
-  const activeBucket = gcHomeBootstrapSelectActiveBucketV13(buckets, sourceKey);
+  const activeBucket = buckets[0] || null;
   const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
   const latestLaps = sourceLaps
     .slice()
@@ -15019,7 +14813,7 @@ function gcHomeBootstrapBuildSourceFromLapsV11(
 ) {
   const sourceLaps = (allLaps || []).filter((lap: any) => gcComboUnifySourceKeyV1(lap) === sourceKey);
   const buckets = gcHomeBootstrapBuildComboBucketsV1(sourceLaps, { exactTechnical: sourceKey === 'gt4' });
-  const activeBucket = gcHomeBootstrapSelectActiveBucketV13(buckets, sourceKey);
+  const activeBucket = buckets[0] || null;
   const activeCombo = gcHomeBootstrapNormalizeBucketV1(activeBucket, leaderboardLimit);
   const latestLaps = sourceLaps
     .slice()

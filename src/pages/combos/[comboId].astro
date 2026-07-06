@@ -3,6 +3,7 @@ export const prerender = false;
 import AppLayout from '../../layouts/AppLayout.astro';
 
 const serverJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153';
+const gt4ServerJoinUrl = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=5.39.68.161';
 const carsDriveUrl = 'https://drive.google.com/drive/folders/1BXJJkPOo7ZuhIKf_VegI5g8serZsJw7W?usp=drive_link';
 const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wrytkR-IUjMQPWEVyfQw?usp=drive_link';
 ---
@@ -895,6 +896,26 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       try { return decodeURIComponent(raw); } catch { return raw; }
     }
 
+    function sourceParam() {
+      const raw = new URLSearchParams(window.location.search).get('source') || '';
+      const source = String(raw).trim().toLowerCase();
+      return ['main', 'gt4'].includes(source) ? source : '';
+    }
+
+    function comboDetailApiUrl(comboId) {
+      const url = new URL(`/api/gc/combos/${encodeURIComponent(comboId)}`, window.location.origin);
+      const source = sourceParam();
+      if (source) url.searchParams.set('source', source);
+      return url.pathname + url.search;
+    }
+
+    function applyJoinUrlForSource(source) {
+      const key = String(source || '').toLowerCase();
+      const join = key === 'gt4' ? `${gt4ServerJoinUrl}` : `${serverJoinUrl}`;
+      const link = document.querySelector('.gc-combo-actions-v7 a.gc-btn--primary');
+      if (link) link.href = join;
+    }
+
     function lapStatus(row) {
       return row.valid === false || row.isValid === false
         ? '<span class="gc-chip gc-chip--danger">No válida</span>'
@@ -1111,12 +1132,12 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
       const comboId = pathComboId();
 
       try {
-        let response = await fetch(`/api/gc/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
+        let response = await fetch(comboDetailApiUrl(comboId), { credentials:'same-origin', cache:'no-store' });
         let data = await response.json();
 
         if (!data.ok || !data.item) {
           console.warn('[GC combo detail Data Core primary] fallback legacy', data?.message || data);
-          response = await fetch(`/api/gc/combos/${encodeURIComponent(comboId)}`, { credentials:'same-origin', cache:'no-store' });
+          response = await fetch(comboDetailApiUrl(comboId), { credentials:'same-origin', cache:'no-store' });
           data = await response.json();
         }
 
@@ -1127,6 +1148,8 @@ const tracksDriveUrl = 'https://drive.google.com/drive/folders/1xSrI8aPBLH15wryt
 
         const item = data.item;
         const summary = item.summary || {};
+        const effectiveSource = String(item.sourceKey || item.source || summary.sourceKey || sourceParam() || '').toLowerCase();
+        applyJoinUrlForSource(effectiveSource);
         const track = item.track || summary.track || {};
         const rawCars = Array.isArray(item.cars || summary.cars) ? (item.cars || summary.cars) : [];
         let cars = rawCars;

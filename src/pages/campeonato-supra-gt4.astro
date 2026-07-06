@@ -1319,12 +1319,26 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       async function load(refresh = false) {
         els.lead.textContent = refresh ? 'Actualizando campeonato GT4...' : 'Cargando campeonato GT4...';
 
-        const query = refresh ? '?source=gt4&refresh=1' : '?source=gt4';
+        const stamp = refresh ? `&_=${Date.now()}` : '';
+        const ratingsQuery = `?source=gt4${refresh ? '&refresh=1' : ''}${stamp}`;
+        const acsmQuery = `?source=gt4${refresh ? '&refresh=1' : ''}${stamp}`;
+
         try {
-          // Los datos deportivos de esta página deben salir SIEMPRE del ACSM GT4.
-          // SR/GSR se cruza después desde el rating global, pero no sustituye calendario,
-          // inscritos, clasificación ni puntos propios del campeonato GT4.
-          const acsmData = await fetchJson(`/api/community/acsr-championship${query}`);
+          // GC_AUDIT_CONSISTENCY_V21
+          // Usa la misma fusión de identidades que /ratings para SR/GSR.
+          // ACSM sigue siendo la fuente deportiva de puntos/eventos del GT4.
+          const ratingsData = await fetchJson(`/api/gc/ratings/championship${ratingsQuery}`);
+          if (ratingsData?.ok && ratingsData?.championship) {
+            render(ratingsData);
+            return;
+          }
+          console.warn('[GC campeonato GT4] Ratings championship no disponible, fallback ACSM + leaderboard.', ratingsData);
+        } catch (error) {
+          console.warn('[GC campeonato GT4] Falló ratings championship, fallback ACSM + leaderboard.', error);
+        }
+
+        try {
+          const acsmData = await fetchJson(`/api/community/acsr-championship${acsmQuery}`);
           const globalRatingsRows = await loadGlobalRatingsRows();
           render(applyGlobalRatingsToChampionship(acsmData, globalRatingsRows));
         } catch (error) {
