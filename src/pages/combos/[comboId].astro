@@ -354,30 +354,104 @@ import AppLayout from '../../layouts/AppLayout.astro';
         return lapText(Math.round(times.reduce((s,v) => s + v, 0) / times.length));
       }
 
+      function canonicalCarGroupFromText(value) {
+        const raw = cleanEntity(value, 'Coche');
+        const n = norm(raw);
+        const c = compact(raw);
+        const hasAll = (...parts) => parts.every((part) => n.includes(part) || c.includes(String(part).replace(/_/g, '')));
+
+        // GC_COMBO_DETAIL_BY_CAR_V32_CANONICAL_ALIASES
+        // Agrupa nombres equivalentes del mismo coche. Evita duplicados como:
+        // "Audi A4 Quattro STW" vs "Audi A4 STW", "BMW 320i STW-BTCC" vs "BMW 320i STW",
+        // "Opel Vectra STW" vs "Opel Vectra B STW".
+        if ((hasAll('audi', 'a4') || c.includes('audia4')) && !c.includes('r8')) {
+          return { key: 'audi_a4_stw', displayName: 'Audi A4 STW' };
+        }
+        if ((hasAll('bmw', '320') || c.includes('bmw320')) && !c.includes('m3')) {
+          return { key: 'bmw_320i_stw', displayName: 'BMW 320i STW' };
+        }
+        if (c.includes('vectra')) {
+          return { key: 'opel_vectra_b_stw', displayName: 'Opel Vectra B STW' };
+        }
+        if (hasAll('peugeot', '406') || c.includes('peugeot406')) {
+          return { key: 'peugeot_406_stw_gen1', displayName: 'Peugeot 406 STW GEN1' };
+        }
+        if (c.includes('accord')) {
+          return { key: 'honda_accord_stw', displayName: 'Honda Accord STW' };
+        }
+        if (c.includes('civic')) {
+          return { key: 'honda_civic_tcr', displayName: 'Honda Civic TCR' };
+        }
+
+        return { key: norm(raw) || 'unknown_car', displayName: raw };
+      }
+
+      function carGroupForRow(row) {
+        const candidates = [
+          carName(row),
+          row?.carDisplay,
+          row?.carModel,
+          row?.carCode,
+          row?.car?.displayName,
+          row?.car?.name,
+          row?.car?.code,
+          row?.Car
+        ].map((value) => cleanEntity(value, '')).filter(Boolean);
+        // Usamos el nombre visible como base, pero la clave canónica absorbe variantes del mismo coche.
+        return canonicalCarGroupFromText(candidates.join(' '));
+      }
+
       function buildByCarTop5FromRows(rows) {
-        // GC_COMBO_DETAIL_BY_CAR_V29_CLIENT
-        // Usa piloto+coche. No parte del leaderboard global, porque ahí Neo solo saldría
-        // con su mejor coche y desaparecería de BMW/Vectra aunque tenga tiempos.
+        // GC_COMBO_DETAIL_BY_CAR_V32_CLIENT
+        // Fuente correcta: filtrar por coche, y dentro de cada coche calcular la mejor vuelta por piloto.
+        // No se parte del leaderboard global y no se separan alias del mismo coche.
         const groups = new Map();
+
         for (const row of arr(rows)) {
           const time = rowTimeMs(row);
           if (!Number.isFinite(time) || time <= 0) continue;
-          const car = carName(row) || 'Coche';
-          const key = norm(car) || 'unknown_car';
+          if (row?.valid === false || row?.isValid === false) continue;
+
+          const carGroup = carGroupForRow(row);
           const driver = driverName(row) || 'Piloto';
           const driverKey = String(row?.playerId || row?.driverId || row?.steamGuid || norm(driver));
-          if (!groups.has(key)) groups.set(key, { key, carName: car, bestByDriver: new Map(), totalLaps: 0, totalValidLaps: 0 });
-          const group = groups.get(key);
           const lapCount = Math.max(1, Number(row?.laps ?? row?.lapCount ?? row?.totalLaps ?? 1) || 1);
-          group.totalLaps += lapCount;
-          if (!(row?.valid === false || row?.isValid === false)) group.totalValidLaps += lapCount;
+
+          if (!groups.has(carGroup.key)) {
+            groups.set(carGroup.key, {
+              key: carGroup.key,
+              carName: carGroup.displayName,
+              bestByDriver: new Map(),
+              lapsByDriver: new Map()
+            });
+          }
+
+          const group = groups.get(carGroup.key);
+          // Si llegan varios nombres, mantenemos el display canónico para no duplicar cards.
+          group.carName = carGroup.displayName || group.carName;
+
           const current = group.bestByDriver.get(driverKey);
-          if (!current || time < rowTimeMs(current)) group.bestByDriver.set(driverKey, row);
+          if (!current || time < rowTimeMs(current)) {
+            group.bestByDriver.set(driverKey, { ...row, carName: group.carName, carDisplayName: group.carName });
+          }
+
+          // Evita duplicar vueltas por mezclar backend + ACSM. Para cada piloto+coche conserva el mayor conteo.
+          const previousLaps = Number(group.lapsByDriver.get(driverKey) || 0);
+          if (lapCount > previousLaps) group.lapsByDriver.set(driverKey, lapCount);
         }
+
         return [...groups.values()].map((group) => {
-          const rows = [...group.bestByDriver.values()].sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
-          return { key: group.key, carName: group.carName, totalDrivers: rows.length, totalLaps: group.totalLaps, totalValidLaps: group.totalValidLaps, rows: rows.slice(0, 5).map((row, index) => ({ ...row, position: index + 1 })) };
-        }).filter((group) => group.rows.length).sort((a, b) => rowTimeMs(a.rows[0]) - rowTimeMs(b.rows[0]) || a.carName.localeCompare(b.carName));
+          const rankedRows = [...group.bestByDriver.values()].sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
+          const totalLaps = [...group.lapsByDriver.values()].reduce((sum, value) => sum + Number(value || 0), 0);
+          return {
+            key: group.key,
+            carName: group.carName,
+            totalDrivers: rankedRows.length,
+            totalLaps,
+            totalValidLaps: totalLaps,
+            rows: rankedRows.slice(0, 5).map((row, index) => ({ ...row, position: index + 1, carName: group.carName }))
+          };
+        }).filter((group) => group.rows.length).sort((a, b) => rowTimeMs(a.rows[0]) - rowTimeMs(b.rows[0]) || a.carName.localeCompare(b.carName, 'es', { sensitivity: 'base' }));
       }
 
       function trackLooksSameForLive(left, right) {
@@ -421,10 +495,10 @@ import AppLayout from '../../layouts/AppLayout.astro';
           const rows = [...arr(live.connectedDrivers), ...arr(live.storedTimes)]
             .map((row) => liveTimingRowToComboRow(row, live.updatedAt))
             .filter(Boolean);
-          console.info('[GC combo detail runtime v31] ACSM stored times merged for by-car top', { track, liveTrack, rows: rows.length });
+          console.info('[GC combo detail runtime v32] ACSM stored times merged for by-car top', { track, liveTrack, rows: rows.length });
           return rows;
         } catch (error) {
-          console.warn('[GC combo detail runtime v31] No se pudieron leer Stored Times ACSM', error);
+          console.warn('[GC combo detail runtime v32] No se pudieron leer Stored Times ACSM', error);
           return [];
         }
       }
@@ -455,7 +529,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           applyJoinUrl(effectiveSource);
           const liveTimingRows = await fetchLiveTimingRowsForTrack(n.track, effectiveSource);
           if (liveTimingRows.length) {
-            n.byCarTop5 = buildByCarTop5FromRows([...liveTimingRows, ...n.recentLaps, ...n.leaderboard]);
+            n.byCarTop5 = buildByCarTop5FromRows(liveTimingRows);
           }
           const fastestDriver = driverName(n.best);
           const fastestCar = carName(n.best);
@@ -483,8 +557,8 @@ import AppLayout from '../../layouts/AppLayout.astro';
           els.recentCount.textContent = `${n.recentLaps.length} vueltas`;
           els.leaderboard.innerHTML = n.leaderboard.map((row, index) => `<tr><td>${escapeHtml(row.position ?? index + 1)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${escapeHtml(safeDelta(row, index))}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
           els.recentRows.innerHTML = n.recentLaps.map((row) => `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
-          document.documentElement.dataset.gcComboDetailRuntime = 'v31-bycar-acsm-stored-times';
-          console.info('[GC combo detail runtime v31] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
+          document.documentElement.dataset.gcComboDetailRuntime = 'v32-bycar-filter-exact-car';
+          console.info('[GC combo detail runtime v32] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
         } catch (error) {
           els.title.textContent = 'Combo no disponible';
           els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Vuelve a intentarlo en unos segundos.';
