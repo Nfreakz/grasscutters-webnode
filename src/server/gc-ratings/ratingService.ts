@@ -750,9 +750,11 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   const standings = ensureArray(championship.standings).map((row: PlainObject) => {
     const rating = findDriverForStanding(row);
     const officialResults = rating ? officialResultsByDriver.get(rating.driverKey) || [] : [];
-    const lastResult = rating ? lastOfficialResultByDriver.get(rating.driverKey) || null : null;
-    const officialWins = officialResults.filter((result) => result.position === 1).length;
-    const officialPodiums = officialResults.filter((result) => result.position >= 1 && result.position <= 3).length;
+    const ratingLastResult = rating ? lastOfficialResultByDriver.get(rating.driverKey) || null : null;
+    const acsmLastResult = row.lastResult || null;
+    const lastResult = ratingLastResult || acsmLastResult || null;
+    const officialWins = officialResults.length ? officialResults.filter((result) => result.position === 1).length : null;
+    const officialPodiums = officialResults.length ? officialResults.filter((result) => result.position >= 1 && result.position <= 3).length : null;
     const officialIncidentPoints = officialResults.length
       ? roundTo(officialResults.reduce((sum, result) => sum + Number(result.incidentPoints || 0), 0))
       : null;
@@ -768,11 +770,11 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
       gsrRating: rating?.racesCount ? rating.gsrRating : null,
       gsrClass: rating?.racesCount ? rating.gsrClass : null,
       incidentPointsTotal: officialIncidentPoints ?? row.incidentPointsTotal ?? row.incidents ?? 0,
-      wins: row.wins ?? officialWins ?? 0,
-      podiums: row.podiums ?? officialPodiums ?? 0,
+      wins: officialWins ?? row.wins ?? 0,
+      podiums: officialPodiums ?? row.podiums ?? 0,
       lastResult: lastResult ? {
         eventId: lastResult.eventId,
-        eventName: lastResult.eventName,
+        eventName: lastResult.eventName || acsmLastResult?.eventName || acsmLastResult?.eventId || 'Última carrera ACSM',
         position: lastResult.position,
         points: lastResult.points
       } : null,
@@ -2512,6 +2514,7 @@ export class GcRatingsService {
 
   async getChampionshipPayload(_force = false, sourceInput: unknown = 'weekly') {
     const source = normalizeChampionshipSource(sourceInput);
+    if (_force) this.cachedSnapshot = null;
     const snapshot = await this.getSnapshot();
     const acsm = await fetchChampionship(source);
     const championship = enrichChampionship(acsm.championship, snapshot);

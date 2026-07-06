@@ -1,4 +1,4 @@
-﻿import type { Express, Request } from 'express';
+import type { Express, Request } from 'express';
 import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
 
@@ -77,8 +77,25 @@ async function requireAdmin(req: Request) {
 
   app.get('/api/gc/ratings/championship', async (req, res) => {
     try {
-      const payload = await service.getChampionshipPayload(String(req.query.refresh || '') === '1', req.query.source || req.query.series || 'weekly');
-      res.json(payload);
+      const source = req.query.source || req.query.series || 'weekly';
+      const refresh = String(req.query.refresh || '') === '1';
+      const adminRefresh = refresh && await requireAdmin(req);
+      let autoProcess: any = null;
+
+      if (adminRefresh) {
+        try {
+          autoProcess = await service.processNewEvents({ source });
+        } catch (error) {
+          autoProcess = { ok: false, message: error instanceof Error ? error.message : String(error) };
+        }
+      }
+
+      const payload = await service.getChampionshipPayload(refresh, source);
+      res.json({
+        ...payload,
+        refresh,
+        autoProcess: adminRefresh ? autoProcess : null
+      });
     } catch (error) {
       res.status(200).json(formatStrackerMirrorError(error));
     }

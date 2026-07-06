@@ -648,12 +648,6 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
   const completed = isoOrNull(pick(event, ['CompletedTime', 'completedTime', 'Completed', 'completed', 'Finished', 'finished']));
   const cancelled = boolValue(pick(event, ['Cancelled', 'cancelled'], false));
 
-  let status = 'pending';
-  if (cancelled) status = 'cancelled';
-  else if (completed) status = 'completed';
-  else if (started) status = 'in_progress';
-  else if (scheduled && dateMs(scheduled) > Date.now()) status = 'scheduled';
-
   const sessions = Object.entries(sessionsRaw)
     .filter(([, session]) => session && typeof session === 'object')
     .map(([key, session]) => normalizeSession(session as PlainObject, key, event, championshipRaw));
@@ -668,6 +662,14 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
   const fastestLap = raceSession?.fastestLap || qualifySession?.fastestLap || practiceSession?.fastestLap || null;
   const winner = raceResults[0] || null;
   const podium = raceResults.slice(0, 3);
+  const hasRaceResults = raceResults.length > 0;
+  const effectiveCompletedAt = completed || (hasRaceResults ? (raceSession?.completedAt || started || scheduled) : null);
+
+  let status = 'pending';
+  if (cancelled) status = 'cancelled';
+  else if (completed || hasRaceResults) status = 'completed';
+  else if (started) status = 'in_progress';
+  else if (scheduled && dateMs(scheduled) > Date.now()) status = 'scheduled';
 
   const id = textValue(pick(event, ['ID', 'Id', 'id'], `event-${index + 1}`));
 
@@ -692,7 +694,7 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     carSummary: cars.length ? cars.slice(0, 4).join(' + ') + (cars.length > 4 ? ` +${cars.length - 4}` : '') : '',
     scheduledAt: scheduled,
     startedAt: started,
-    completedAt: completed,
+    completedAt: effectiveCompletedAt,
     status,
     laps: numberValue(pick(raceSetup, ['Laps', 'laps', 'RaceLaps', 'raceLaps'], 0)),
     durationMinutes: numberValue(pick(raceSetup, ['Time', 'time', 'RaceDuration', 'raceDuration'], 0), 0),
@@ -821,9 +823,10 @@ function normalizeChampionship(raw: PlainObject, results: unknown, config: Retur
       return left - right || a.index - b.index;
     });
 
+  const completedEventDateMs = (event: PlainObject) => dateMs(event.completedAt || event.scheduledAt || event.startedAt) || 0;
   const completedEvents = events
     .filter((event) => event.status === 'completed')
-    .sort((a, b) => (dateMs(b.completedAt) || 0) - (dateMs(a.completedAt) || 0));
+    .sort((a, b) => completedEventDateMs(b) - completedEventDateMs(a) || b.index - a.index);
 
   const nextEvent = upcomingEvents.find((event) => !event.scheduledAt || dateMs(event.scheduledAt) >= now) || upcomingEvents[0] || null;
   const lastCompletedEvent = completedEvents[0] || null;
