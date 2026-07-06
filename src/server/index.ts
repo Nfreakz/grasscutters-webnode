@@ -5906,8 +5906,13 @@ function createComboStatsEntryFromLap(lap: ComboLap) {
 }
 
 function normalizeComboEntryForResponse(entry: any) {
-  const leaderboard = buildComboLeaderboard(entry.laps);
-  const validTimes = entry.laps
+  const sourceLaps = Array.isArray(entry?.laps) ? entry.laps : [];
+  const leaderboard = buildComboLeaderboard(sourceLaps).slice(0, 100);
+  const recentLaps = [...sourceLaps]
+    .sort((a: ComboLap, b: ComboLap) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
+    .slice(0, 80)
+    .map(compactLapForCombo);
+  const validTimes = sourceLaps
     .filter((lap: ComboLap) => lap.valid)
     .map((lap: ComboLap) => Number(lap.lapTimeMs))
     .filter((value: number) => Number.isFinite(value) && value > 0);
@@ -5952,8 +5957,11 @@ function normalizeComboEntryForResponse(entry: any) {
     totalCuts: entry.totalCuts,
     best10AverageMs,
     best10Average: best10AverageMs ? lapTimeToText(best10AverageMs) : '--',
+    leaderboard,
+    recentLaps,
     leaderboardTop: leaderboard.slice(0, 5),
-    leaderboardCount: leaderboard.length
+    leaderboardCount: leaderboard.length,
+    recentLapsCount: recentLaps.length
   };
 }
 
@@ -12298,7 +12306,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-detail-logical-v27',
+      comboCore: 'gc-combo-detail-logical-v28',
       generatedAt: new Date().toISOString(),
       items: [],
       message: 'No se pudieron generar combos source-aware.',
@@ -12350,12 +12358,25 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
       const wantedSource = parts[0] || String(unifiedCombo.sourceKey || 'main');
       const wantedTrack = parts[1] || String(unifiedCombo.track?.familyKey || unifiedCombo.track?.code || '');
       const wantedVariant = parts.slice(2).join(':') || String(unifiedCombo.track?.variant || 'default');
+      const wantedTrackNorm = gcComboUnifySlugV1(wantedTrack);
+      const wantedVariantNorm = gcComboUnifySlugV1(wantedVariant || 'default');
+      const sourceMatches = (sourceKey: string) =>
+        sourceKey === wantedSource ||
+        (wantedSource === 'main' && sourceKey === 'weekly') ||
+        (wantedSource === 'weekly' && sourceKey === 'main');
+      const trackMatches = (trackFamily: any) => {
+        const values = [trackFamily?.key, trackFamily?.slug, trackFamily?.code, trackFamily?.rawName, trackFamily?.displayName].map(gcComboUnifySlugV1).filter(Boolean);
+        return values.some((value) => value === wantedTrackNorm || value.includes(wantedTrackNorm) || wantedTrackNorm.includes(value));
+      };
       const vilaSplitMap = gcComboUnifyBuildVilaRealSplitMapV1(dataCoreSource.laps as any[]);
       rows = (dataCoreSource.laps || []).filter((lap: any) => {
         const sourceKey = gcComboUnifySourceKeyV1(lap);
         const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track);
         const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
-        return sourceKey === wantedSource && trackFamily.key === wantedTrack && variant === wantedVariant;
+        const logicalKey = `${sourceKey}:${trackFamily.key}:${variant}`;
+        return logicalKey === comboKey ||
+          gcComboUnifySlugV1(logicalKey) === gcComboUnifySlugV1(comboKey) ||
+          (sourceMatches(sourceKey) && trackMatches(trackFamily) && gcComboUnifySlugV1(variant || 'default') === wantedVariantNorm);
       });
       combo = {
         ...unifiedCombo,
@@ -12381,7 +12402,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
         ok: false,
         source: 'gc-data-core',
         dataSource: dataCoreSource.source,
-        comboCore: 'gc-combo-detail-logical-v27',
+        comboCore: 'gc-combo-detail-logical-v28',
         generatedAt: new Date().toISOString(),
         stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
         mysqlMirror: dataCoreSource.mysqlMirror ?? null,
@@ -12400,7 +12421,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
       ok: true,
       source: 'gc-data-core',
       dataSource: dataCoreSource.source,
-      comboCore: 'gc-combo-detail-logical-v27',
+      comboCore: 'gc-combo-detail-logical-v28',
       generatedAt: new Date().toISOString(),
       stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
       mysqlMirror: dataCoreSource.mysqlMirror ?? null,
