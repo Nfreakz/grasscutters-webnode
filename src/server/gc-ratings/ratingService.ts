@@ -1073,6 +1073,81 @@ function buildOfficialAcsmRecalculationTargets(snapshot: RatingsSnapshot, champi
 }
 
 
+// GC_SR_VILAREAL_ATTENDANCE_BONUS_V1
+// Excepción auditada solicitada por dirección de carrera:
+// Vila Real tuvo baja asistencia. Para NO penalizar a quienes sí participaron,
+// el resultado SR de esa carrera se neutraliza y se aplica un bonus fijo +1 SR.
+// IMPORTANTE:
+// - Se aplica solo al eventId exacto; no por nombre de circuito.
+// - No toca GSR.
+// - No toca puntos ACSM.
+// - No convierte automáticamente la carrera en "clean race".
+// - Propaga el SR resultante a eventos posteriores usando sus deltas originales.
+const GC_SR_VILAREAL_ATTENDANCE_BONUS_EVENT_ID_V1 = 'b266fbac-4b3a-400a-a9c2-a06f9f6a957c';
+const GC_SR_VILAREAL_ATTENDANCE_BONUS_AMOUNT_V1 = 1;
+
+function gcSrVilaRealBonusClampV1(value: number) {
+  return Math.max(0, Math.min(100, roundTo(value, 2)));
+}
+
+function gcSrVilaRealBonusResultNoteV1(row: RatingEventResult) {
+  const notes = ensureArray((row as PlainObject).notes).map((item) => String(item));
+  const note = 'GC_SR_VILAREAL_ATTENDANCE_BONUS_V1: SR del evento neutralizado por baja asistencia; bonus asistencia +1 SR aplicado. GSR y puntos ACSM intactos.';
+  return notes.includes(note) ? notes : [...notes, note];
+}
+
+function applySpecialSrExceptionsToSnapshotV1(snapshot: RatingsSnapshot | null | undefined): RatingsSnapshot | null {
+  if (!snapshot) return snapshot || null;
+  const sourceResults = ensureArray(snapshot.eventResults) as RatingEventResult[];
+  if (!sourceResults.some((row) => String(row.eventId || '') === GC_SR_VILAREAL_ATTENDANCE_BONUS_EVENT_ID_V1)) return snapshot;
+
+  const ordered = [...sourceResults].sort((left, right) =>
+    parseDateMs(left.eventDate || left.processedAt) - parseDateMs(right.eventDate || right.processedAt) ||
+    String(left.eventId || '').localeCompare(String(right.eventId || '')) ||
+    safeFiniteNumber(left.position, 9999) - safeFiniteNumber(right.position, 9999) ||
+    textValue(left.displayName).localeCompare(textValue(right.displayName))
+  );
+
+  const srState = new Map<string, number>();
+  const adjustedById = new Map<string, RatingEventResult>();
+
+  for (const row of ordered) {
+    const key = textValue(row.driverKey) || `name:${normalizeDriverNameKey(row.displayName)}`;
+    const previousSr = srState.has(key)
+      ? srState.get(key)!
+      : safeFiniteNumber(row.oldSr, safeFiniteNumber(row.newSr, 80) - safeFiniteNumber(row.deltaSr, 0));
+    const isBonusEvent = String(row.eventId || '') === GC_SR_VILAREAL_ATTENDANCE_BONUS_EVENT_ID_V1;
+    const nextSr = isBonusEvent
+      ? gcSrVilaRealBonusClampV1(previousSr + GC_SR_VILAREAL_ATTENDANCE_BONUS_AMOUNT_V1)
+      : gcSrVilaRealBonusClampV1(previousSr + safeFiniteNumber(row.deltaSr, 0));
+
+    const adjusted: RatingEventResult = {
+      ...row,
+      oldSr: roundTo(previousSr, 2),
+      newSr: nextSr,
+      deltaSr: roundTo(nextSr - previousSr, 2),
+      incidentPoints: isBonusEvent ? 0 : row.incidentPoints,
+      incidents: isBonusEvent ? [] : row.incidents,
+      notes: isBonusEvent ? gcSrVilaRealBonusResultNoteV1(row) : row.notes
+    };
+
+    adjustedById.set(String(row.id || `${row.eventId}:${row.driverKey}:${row.position}`), adjusted);
+    srState.set(key, nextSr);
+  }
+
+  const adjustedEventResults = sourceResults.map((row) =>
+    adjustedById.get(String(row.id || `${row.eventId}:${row.driverKey}:${row.position}`)) || row
+  );
+
+  return {
+    ...snapshot,
+    eventResults: adjustedEventResults,
+    drivers: rebuildDriversFromEventResults(adjustedEventResults, snapshot.drivers),
+    recalculationLogs: ensureArray(snapshot.recalculationLogs) as RecalculationLog[]
+  };
+}
+
+
 export class GcRatingsService {
   private readonly store = createRatingStore();
   private cachedSnapshot: RatingsSnapshot | null = null;
@@ -1080,8 +1155,9 @@ export class GcRatingsService {
   private async loadSnapshot() {
     if (this.cachedSnapshot) return this.cachedSnapshot;
     const loaded = await this.store.load();
-    this.cachedSnapshot = loaded;
-    return loaded;
+    const adjusted = applySpecialSrExceptionsToSnapshotV1(loaded);
+    this.cachedSnapshot = adjusted;
+    return adjusted;
   }
 
   async getSnapshot() {
@@ -1178,6 +1254,14 @@ export class GcRatingsService {
             maxRaceLaps
           });
 
+          const isVilaRealAttendanceBonusEvent = String(event.id || '') === GC_SR_VILAREAL_ATTENDANCE_BONUS_EVENT_ID_V1;
+          const neutralizedNewSr = isVilaRealAttendanceBonusEvent
+            ? gcSrVilaRealBonusClampV1(current.srScore + GC_SR_VILAREAL_ATTENDANCE_BONUS_AMOUNT_V1)
+            : sr.newSr;
+          const neutralizedDeltaSr = isVilaRealAttendanceBonusEvent
+            ? roundTo(neutralizedNewSr - current.srScore, 2)
+            : sr.deltaSr;
+
           return {
             resultId,
             eventId: String(event.id),
@@ -1194,9 +1278,9 @@ export class GcRatingsService {
             laps: safeFiniteNumber(result.numLaps, 0),
             bestLapMs: safeFiniteNumber(result.bestLapMs || stracker?.BestLapMs, 0),
             oldSr: current.srScore,
-            newSr: sr.newSr,
-            deltaSr: sr.deltaSr,
-            incidentPoints: sr.incidentPoints,
+            newSr: neutralizedNewSr,
+            deltaSr: neutralizedDeltaSr,
+            incidentPoints: isVilaRealAttendanceBonusEvent ? 0 : sr.incidentPoints,
             rawCollisionCount: Number.isFinite(Number((sr as PlainObject).breakdown?.rawCollisionCount)) ? Number((sr as PlainObject).breakdown?.rawCollisionCount) : null,
             collisionClusterCount: Number.isFinite(Number((sr as PlainObject).breakdown?.collisionClusterCount)) ? Number((sr as PlainObject).breakdown?.collisionClusterCount) : null,
             suppressedCollisionCount: Number.isFinite(Number((sr as PlainObject).breakdown?.suppressedCollisionCount)) ? Number((sr as PlainObject).breakdown?.suppressedCollisionCount) : null,
@@ -1204,9 +1288,11 @@ export class GcRatingsService {
             cleanRace: sr.cleanRace,
             dnf: Boolean(result.status === 'DNF') || sr.incidents.some((item) => item.type === 'DNF'),
             dsq: Boolean(result.disqualified || result.dsq),
-            srIncidents: sr.incidents,
+            srIncidents: isVilaRealAttendanceBonusEvent ? [] : sr.incidents,
             srLaps: sr.lapDetails,
-            srExplanations: ensureArray((sr as PlainObject).explanations).map((item) => String(item)),
+            srExplanations: isVilaRealAttendanceBonusEvent
+              ? ['GC_SR_VILAREAL_ATTENDANCE_BONUS_V1: SR del evento neutralizado por baja asistencia; bonus asistencia +1 SR aplicado. GSR y puntos ACSM intactos.']
+              : ensureArray((sr as PlainObject).explanations).map((item) => String(item)),
             srModelVersion: String((sr as PlainObject).modelVersion || 'gc-sr-v2-clean-time'),
             match,
             processedAt
@@ -1353,7 +1439,7 @@ export class GcRatingsService {
       } else {
         await this.store.save(snapshot);
       }
-      this.cachedSnapshot = snapshot;
+      this.cachedSnapshot = applySpecialSrExceptionsToSnapshotV1(snapshot);
       return {
         snapshot,
         mode: 'incremental' as const,
