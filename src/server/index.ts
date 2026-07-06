@@ -14571,14 +14571,106 @@ function gcHomeBootstrapPublicLapV1(lap: any) {
   };
 }
 
+function gcHomeBootstrapTrackImageAliasVariantsV22(values: any[]) {
+  const aliases = new Set<string>();
+  const addRaw = (value: any) => {
+    const base = gcComboUnifySlugV1(String(value || '').trim());
+    if (!base) return;
+    aliases.add(base);
+    aliases.add(base.replace(/-/g, '_'));
+    aliases.add(base.replace(/_/g, '-'));
+
+    const compact = base.replace(/[^a-z0-9]/g, '');
+    if (compact) aliases.add(compact);
+
+    // Estoril 90s -> estoril90 / estoril_90. También sirve para otros nombres con década.
+    const decade = base.match(/^(.*?)(?:_|-)?(\d{2})s$/);
+    if (decade) {
+      const prefix = decade[1].replace(/[_-]+$/g, '');
+      const digits = decade[2];
+      aliases.add(`${prefix}_${digits}`);
+      aliases.add(`${prefix}-${digits}`);
+      aliases.add(`${prefix}${digits}`.replace(/[^a-z0-9]/g, ''));
+    }
+
+    // Si el nombre empieza por textos genéricos, prueba también sin ellos.
+    const stripped = base
+      .replace(/^(ks|rt|acu|fn|mx|nrms|track|circuit|circuito|autodromo|autodrome)_+/g, '')
+      .replace(/_+(circuit|circuito|track|layout|gp|spain|italy|italia)$/g, '');
+    if (stripped && stripped !== base) addRaw(stripped);
+  };
+
+  values.forEach(addRaw);
+  return [...aliases].filter(Boolean);
+}
+
+function gcHomeBootstrapTrackImageScoreV22(assetBase: string, aliases: string[]) {
+  const assetSlug = gcComboUnifySlugV1(assetBase);
+  const assetCompact = assetSlug.replace(/[^a-z0-9]/g, '');
+  let best = 0;
+  for (const alias of aliases) {
+    const aliasSlug = gcComboUnifySlugV1(alias);
+    const aliasCompact = aliasSlug.replace(/[^a-z0-9]/g, '');
+    if (!aliasSlug || !aliasCompact) continue;
+    if (assetSlug === aliasSlug) best = Math.max(best, 120);
+    if (assetCompact === aliasCompact) best = Math.max(best, 115);
+    if (assetSlug.startsWith(aliasSlug) || aliasSlug.startsWith(assetSlug)) best = Math.max(best, 85);
+    if (assetCompact.startsWith(aliasCompact) || aliasCompact.startsWith(assetCompact)) best = Math.max(best, 82);
+    if (aliasCompact.length >= 6 && assetCompact.includes(aliasCompact)) best = Math.max(best, 70);
+    if (assetCompact.length >= 6 && aliasCompact.includes(assetCompact)) best = Math.max(best, 68);
+  }
+  return best;
+}
+
+function gcHomeBootstrapExistingTrackImagesV22(aliases: string[]) {
+  try {
+    return gcListTrackImagesV1()
+      .map((item) => {
+        const ext = path.extname(item.file || '').toLowerCase();
+        const base = path.basename(item.file || '', ext);
+        return { ...item, score: gcHomeBootstrapTrackImageScoreV22(base, aliases) };
+      })
+      .filter((item) => item.score >= 68)
+      .sort((a, b) => Number(b.score || 0) - Number(a.score || 0) || String(a.file).localeCompare(String(b.file)))
+      .map((item) => item.url);
+  } catch {
+    return [];
+  }
+}
+
 function gcHomeBootstrapTrackImageV1(track: any) {
   const tokens = gcComboUnifyTrackFamilyV1(track || {});
   const key = tokens.key || gcComboUnifySlugV1(tokens.name || tokens.code || '');
+  const aliases = gcHomeBootstrapTrackImageAliasVariantsV22([
+    key,
+    tokens.code,
+    tokens.rawName,
+    tokens.name,
+    track?.familyKey,
+    track?.rawCode,
+    track?.rawName,
+    track?.code,
+    track?.name,
+    track?.displayName,
+    track?.publicName,
+    track?.visibleName
+  ]);
   const candidates: string[] = [];
   const add = (url: string | null | undefined) => {
     if (url && !candidates.includes(url)) candidates.push(url);
   };
 
+  // Primero archivos reales encontrados en /public/images/tracks. Evita que el SVG placeholder
+  // de /images/tracks/:file bloquee los fallbacks del navegador con HTTP 200.
+  gcHomeBootstrapExistingTrackImagesV22(aliases).forEach(add);
+
+  // Candidatos directos generados automáticamente. Sin hardcode semanal.
+  const exts = ['jpg', 'webp', 'png', 'jpeg', 'avif'];
+  aliases.forEach((alias) => {
+    exts.forEach((ext) => add(`/images/tracks/${encodeURIComponent(alias)}.${ext}`));
+  });
+
+  // Compatibilidad con nombres históricos ya usados por la web.
   if (key === 'pascani_motorpark_a1') {
     add('/images/tracks/pascani.jpg');
     add('/images/tracks/a1.webp');
@@ -14596,14 +14688,9 @@ function gcHomeBootstrapTrackImageV1(track: any) {
     add('/images/tracks/fuji-speedway.jpg');
   }
 
-  if (key) {
-    add(`/images/tracks/${encodeURIComponent(key)}.jpg`);
-    add(`/images/tracks/${encodeURIComponent(key)}.webp`);
-    add(`/images/tracks/${encodeURIComponent(key)}.png`);
-  }
-
   return {
     key,
+    aliases,
     primary: candidates[0] || '/images/tracks/placeholder-track.svg',
     candidates
   };
