@@ -12692,9 +12692,15 @@ function gcComboDetailBuildLeaderboardV1(rows: any[]) {
 
 
 function gcComboDetailBuildByCarTop5V1(rows: any[]) {
+  // GC_COMBO_DETAIL_BY_CAR_V29
+  // El ranking por coche debe usar la mejor vuelta de cada piloto EN CADA COCHE.
+  // No se puede partir del leaderboard global porque ahí un piloto solo aparece una vez
+  // y desaparece de los otros coches que también ha probado.
   const groups = new Map<string, any[]>();
 
-  for (const row of rows.filter(gcComboDetailIsValidV1)) {
+  for (const row of rows) {
+    const lapMs = gcComboDetailLapMsV1(row);
+    if (!Number.isFinite(lapMs) || lapMs <= 0) continue;
     const carName = gcComboDetailCarNameV1(row) || 'Coche';
     const key = gcComboDetailNormalizeKeyV1(carName) || 'unknown_car';
     const bucket = groups.get(key) || [];
@@ -12706,7 +12712,8 @@ function gcComboDetailBuildByCarTop5V1(rows: any[]) {
     const bestByDriver = new Map<string, any>();
     for (const row of carRows) {
       const playerId = gcComboDetailPickV1(row, ['playerId', 'driverId', 'driver.id', 'PlayerId']);
-      const driverKey = String(playerId ?? gcComboDetailDriverNameV1(row));
+      const steamGuid = gcComboDetailPickV1(row, ['steamGuid', 'driver.steamGuid', 'StrackerGuid']);
+      const driverKey = String(playerId ?? steamGuid ?? gcComboDetailDriverNameV1(row));
       const current = bestByDriver.get(driverKey);
       if (!current || gcComboDetailLapMsV1(row) < gcComboDetailLapMsV1(current)) bestByDriver.set(driverKey, row);
     }
@@ -12720,7 +12727,8 @@ function gcComboDetailBuildByCarTop5V1(rows: any[]) {
       carName,
       rows: sorted.slice(0, 5).map((row, index) => gcComboDetailCompactLapV1(row, index + 1, bestMs)),
       totalDrivers: sorted.length,
-      totalValidLaps: carRows.length
+      totalLaps: carRows.length,
+      totalValidLaps: carRows.filter(gcComboDetailIsValidV1).length
     };
   }).filter((group) => group.rows.length)
     .sort((a, b) => {

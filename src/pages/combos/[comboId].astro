@@ -282,7 +282,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         const items = arr(list?.items || list?.data?.items);
         const item = items.find((entry) => logicalMatch(entry, comboId));
         if (!item) throw new Error('Combo no encontrado en listado lógico.');
-        console.info('[GC combo detail runtime v28] matched logical combo', { requested: comboId, matched: item.comboId || item.id, source: item.sourceKey || item.source });
+        console.info('[GC combo detail runtime v29] matched logical combo', { requested: comboId, matched: item.comboId || item.id, source: item.sourceKey || item.source });
         return { item, source: 'list-fallback-v26' };
       }
       function applyJoinUrl(source) {
@@ -332,6 +332,14 @@ import AppLayout from '../../layouts/AppLayout.astro';
       function lapStatus(row) {
         return row?.valid === false || row?.isValid === false ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>';
       }
+
+      function safeDelta(row, index = 0) {
+        const raw = row?.delta;
+        if (raw === undefined || raw === null || raw === '' || String(raw).toLowerCase().includes('null') || String(raw).toLowerCase().includes('nan')) {
+          return index === 0 ? '+0.000' : '--';
+        }
+        return String(raw);
+      }
       function renderCarTags(cars) {
         if (!cars.length) return '<span class="gc-combo-car-tag">Sin coches</span>';
         return cars.map((car) => `<span class="gc-combo-car-tag">${escapeHtml(cleanEntity(car, '-'))}</span>`).join('');
@@ -343,24 +351,27 @@ import AppLayout from '../../layouts/AppLayout.astro';
       }
 
       function buildByCarTop5FromRows(rows) {
+        // GC_COMBO_DETAIL_BY_CAR_V29_CLIENT
+        // Usa piloto+coche. No parte del leaderboard global, porque ahí Neo solo saldría
+        // con su mejor coche y desaparecería de BMW/Vectra aunque tenga tiempos.
         const groups = new Map();
         for (const row of arr(rows)) {
           const time = rowTimeMs(row);
           if (!Number.isFinite(time) || time <= 0) continue;
-          if (row?.valid === false || row?.isValid === false) continue;
           const car = carName(row) || 'Coche';
           const key = norm(car) || 'unknown_car';
           const driver = driverName(row) || 'Piloto';
-          const driverKey = String(row?.playerId || row?.driverId || norm(driver));
-          if (!groups.has(key)) groups.set(key, { key, carName: car, bestByDriver: new Map(), totalValidLaps: 0 });
+          const driverKey = String(row?.playerId || row?.driverId || row?.steamGuid || norm(driver));
+          if (!groups.has(key)) groups.set(key, { key, carName: car, bestByDriver: new Map(), totalLaps: 0, totalValidLaps: 0 });
           const group = groups.get(key);
-          group.totalValidLaps += 1;
+          group.totalLaps += 1;
+          if (!(row?.valid === false || row?.isValid === false)) group.totalValidLaps += 1;
           const current = group.bestByDriver.get(driverKey);
           if (!current || time < rowTimeMs(current)) group.bestByDriver.set(driverKey, row);
         }
         return [...groups.values()].map((group) => {
           const rows = [...group.bestByDriver.values()].sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
-          return { key: group.key, carName: group.carName, totalDrivers: rows.length, totalValidLaps: group.totalValidLaps, rows: rows.slice(0, 5).map((row, index) => ({ ...row, position: index + 1 })) };
+          return { key: group.key, carName: group.carName, totalDrivers: rows.length, totalLaps: group.totalLaps, totalValidLaps: group.totalValidLaps, rows: rows.slice(0, 5).map((row, index) => ({ ...row, position: index + 1 })) };
         }).filter((group) => group.rows.length).sort((a, b) => rowTimeMs(a.rows[0]) - rowTimeMs(b.rows[0]) || a.carName.localeCompare(b.carName));
       }
       function renderByCarTop5(groups) {
@@ -374,7 +385,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
         els.byCarTop5.innerHTML = list.map((group) => `
           <article class="gc-combo-bycar-card-v28">
             <h3>${escapeHtml(group.carName || 'Coche')}</h3>
-            <p>${escapeHtml(group.totalDrivers || arr(group.rows).length)} pilotos · ${escapeHtml(group.totalValidLaps || arr(group.rows).length)} vueltas válidas</p>
+            <p>${escapeHtml(group.totalDrivers || arr(group.rows).length)} pilotos · ${escapeHtml(group.totalLaps || group.totalValidLaps || arr(group.rows).length)} vueltas con tiempo</p>
             <ol class="gc-combo-bycar-list-v27">
               ${arr(group.rows).slice(0, 5).map((row, index) => `<li><span>${index + 1}</span><strong>${renderDriver(row)}</strong><em>${escapeHtml(lapTime(row))}</em></li>`).join('')}
             </ol>
@@ -411,10 +422,10 @@ import AppLayout from '../../layouts/AppLayout.astro';
           await renderTrackImage(n.track);
           els.leaderboardCount.textContent = `${n.leaderboard.length} pilotos`;
           els.recentCount.textContent = `${n.recentLaps.length} vueltas`;
-          els.leaderboard.innerHTML = n.leaderboard.map((row, index) => `<tr><td>${escapeHtml(row.position ?? index + 1)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${escapeHtml(row.delta || (index === 0 ? '+0.000' : '--'))}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
+          els.leaderboard.innerHTML = n.leaderboard.map((row, index) => `<tr><td>${escapeHtml(row.position ?? index + 1)}</td><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${escapeHtml(safeDelta(row, index))}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="8">Sin leaderboard para este combo.</td></tr>';
           els.recentRows.innerHTML = n.recentLaps.map((row) => `<tr><td>${renderDriver(row)}</td><td>${escapeHtml(carName(row))}</td><td><strong>${escapeHtml(lapTime(row))}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(dateValue(row)))}</td></tr>`).join('') || '<tr><td colspan="7">Sin vueltas recientes.</td></tr>';
-          document.documentElement.dataset.gcComboDetailRuntime = 'v27-bycar-complete';
-          console.info('[GC combo detail runtime v28] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
+          document.documentElement.dataset.gcComboDetailRuntime = 'v29-bycar-pilot-car';
+          console.info('[GC combo detail runtime v29] loaded', { comboId, source, effectiveSource, item: item.comboId || item.id });
         } catch (error) {
           els.title.textContent = 'Combo no disponible';
           els.subtitle.textContent = 'No se pudo cargar la ficha del combo. Vuelve a intentarlo en unos segundos.';
@@ -423,7 +434,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
           els.recentCount.textContent = 'Error';
           els.leaderboard.innerHTML = '<tr><td colspan="8">No se pudo cargar el combo.</td></tr>';
           els.recentRows.innerHTML = '<tr><td colspan="7">No se pudo cargar actividad reciente.</td></tr>';
-          console.warn('[GC combo detail runtime v28] Error', error);
+          console.warn('[GC combo detail runtime v29] Error', error);
         }
       }
       load();
