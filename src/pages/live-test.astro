@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v5-dot-coordinate-fix">
+  <main class="gc-live-test" data-gc-live-test="v6-marker-visibility">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -131,12 +131,14 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__map-wrap { min-height: 0; display: grid; place-items: stretch; border-radius: 14px; background: radial-gradient(circle at center, rgba(157,255,0,.08), rgba(0,0,0,.2)); overflow: hidden; }
     .gc-live-test__map { position: relative; width: 100%; height: clamp(520px, 60vw, 760px); overflow: hidden; border-radius: 14px; }
     .gc-live-test__map img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 0 14px rgba(157,255,0,.08)); }
-    .gc-live-test__map [data-live-dots] { position: absolute; inset: 0; pointer-events: none; }
-    .gc-live-dot { position: absolute; width: 26px; height: 26px; border-radius: 50%; transform: translate(-50%, -50%); background: #9dff00; border: 4px solid #071007; box-shadow: 0 0 0 5px rgba(157,255,0,.30), 0 0 28px rgba(157,255,0,.85); transition: left .5s linear, top .5s linear; z-index: 8; }
-    .gc-live-dot::before { content: attr(data-car-label); position: absolute; inset: 5px; display: grid; place-items: center; color: #071007; font: 1000 10px/1 var(--font-mono, monospace); }
-    .gc-live-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 24px; transform: translate(-50%, -95%) rotate(var(--car-rotation, 0rad)); transform-origin: 50% 95%; background: #f4fff0; border-radius: 999px; opacity: .9; }
-    .gc-live-dot span { position: absolute; left: 30px; top: -11px; white-space: nowrap; background: rgba(0,0,0,.88); border: 1px solid rgba(157,255,0,.42); color: white; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 900; box-shadow: 0 8px 20px rgba(0,0,0,.45); }
-    .gc-live-dot small { display: block; color: #9dff00; font: 800 10px/1 var(--font-mono, monospace); margin-top: 2px; }
+    .gc-live-test__map [data-live-dots] { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+    .gc-live-dot { position: absolute; width: 34px; height: 34px; border-radius: 50%; transform: translate(-50%, -50%); transition: left .5s linear, top .5s linear; z-index: 30; filter: drop-shadow(0 0 14px rgba(255,0,255,.95)); }
+    .gc-live-dot__core { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; background: #ff00ff; border: 4px solid #f4fff0; color: #fff; font: 1000 12px/1 var(--font-mono, monospace); box-shadow: 0 0 0 4px rgba(0,0,0,.75), 0 0 0 8px rgba(157,255,0,.36), 0 0 30px rgba(255,0,255,.95); }
+    .gc-live-dot__arrow { position: absolute; left: 50%; top: 50%; width: 6px; height: 38px; transform: translate(-50%, -105%) rotate(var(--car-rotation, 0rad)); transform-origin: 50% 105%; background: #f4fff0; border: 1px solid #ff00ff; border-radius: 999px; box-shadow: 0 0 14px rgba(255,0,255,.95); }
+    .gc-live-dot__label { position: absolute; left: 40px; top: -8px; max-width: 190px; white-space: nowrap; background: rgba(0,0,0,.92); border: 1px solid rgba(157,255,0,.52); color: white; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 900; box-shadow: 0 8px 20px rgba(0,0,0,.55); opacity: 0; transform: translateX(-4px); transition: opacity .15s ease, transform .15s ease; }
+    .gc-live-dot:hover .gc-live-dot__label, .gc-live-dot.is-focused .gc-live-dot__label { opacity: 1; transform: translateX(0); }
+    .gc-live-dot__label small { display: block; color: #9dff00; font: 800 10px/1 var(--font-mono, monospace); margin-top: 2px; }
+    .gc-live-dot.is-pit .gc-live-dot__core { background: #ffc857; color: #071007; }
     .gc-live-test__table-wrap { overflow: auto; max-height: 560px; }
     .gc-live-test__panel:not(.gc-live-test__panel--map) .gc-live-test__table-wrap { max-height: 690px; }
     .gc-live-test table { width: 100%; border-collapse: collapse; font: 700 12px/1.3 var(--font-mono, monospace); }
@@ -159,7 +161,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
   </style>
 
   <script>
-    const runtime = 'v4-map-fit-time-format';
+    const runtime = 'v6-marker-visibility';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
     const state = {
@@ -403,7 +405,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       if (!dot) {
         dot = document.createElement('div');
         dot.className = 'gc-live-dot';
-        dot.innerHTML = `<span></span>`;
+        dot.innerHTML = `<div class="gc-live-dot__arrow"></div><div class="gc-live-dot__core"></div><div class="gc-live-dot__label"></div>`;
         dotsLayer.appendChild(dot);
         state.dots.set(String(position.carId), dot);
       }
@@ -411,7 +413,10 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       dot.style.top = `${z}px`;
       dot.dataset.carLabel = String(position.carId ?? '?');
       dot.dataset.coordMode = mode;
-      const label = dot.querySelector('span');
+      dot.classList.toggle('is-pit', Boolean(position.isInPits));
+      const core = dot.querySelector('.gc-live-dot__core');
+      const label = dot.querySelector('.gc-live-dot__label');
+      if (core) core.textContent = String(position.carId ?? '?');
       if (label) label.innerHTML = `${escapeHtml(position.driverName || 'Car ' + position.carId)}<small>${escapeHtml(position.speedKmh ?? '--')} km/h · G${escapeHtml(position.gear ?? '--')}</small>`;
       if (position.rotation?.y !== null && position.rotation?.y !== undefined) dot.style.setProperty('--car-rotation', `${Number(position.rotation.y) || 0}rad`);
       dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h · gear ${position.gear ?? '--'} · ${mode} · ${Math.round(projected.x)},${Math.round(projected.z)}`;
