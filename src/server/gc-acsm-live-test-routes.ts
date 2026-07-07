@@ -152,7 +152,11 @@ function vector(value: any) {
 function ticksToMs(value: unknown) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.round(n / 10000);
+  // ACSM expone tiempos de vuelta como nanosegundos en los eventos live.
+  // Ejemplo real: 103768000000 => 1:43.768.
+  // Algunas fuentes auxiliares pueden venir ya en ms; las respetamos.
+  if (n >= 10_000_000) return Math.round(n / 1_000_000);
+  return Math.round(n);
 }
 
 function formatLapMs(ms: number | null) {
