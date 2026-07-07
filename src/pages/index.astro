@@ -2729,7 +2729,7 @@ const home2ArchiveSeed = [];
           </div>`).join('');
         return list;
       };
-      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v34-combo-pulse-clear-totals';
+      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v35-combo-pulse-more-stats';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -2855,13 +2855,18 @@ const home2ArchiveSeed = [];
           .map((item) => ({ name: driverStatName(item), laps: driverStatLaps(item) }))
           .filter((item) => item.name && item.laps > 0)
           .sort((a, b) => b.laps - a.laps)[0] || null;
-        return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax, mostActive };
+        const drivers = Number(first(combo, ['driversCount', 'driverCount', 'summary.driversCount'], bestRows.length)) || bestRows.length || 0;
+        const cars = Number(first(combo, ['carsCount', 'usedCarsCount', 'summary.usedCarsCount'], 0)) || (comboCars(combo, rows, source) || []).length || 0;
+        const cleanPct = total ? Math.round((valid / total) * 100) : 0;
+        return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax, mostActive, drivers, cars, cleanPct };
       };
 
       const pulseServerMeta = (item) => {
         const best = item.bestDriver && item.bestTime !== '--' ? `P1 ${item.bestDriver} · ${item.bestTime}` : 'sin mejor vuelta';
-        const active = item.mostActive ? ` · más activo ${item.mostActive.name} (${item.mostActive.laps})` : '';
-        return `${item.total || 0} vueltas totales · ${item.valid || 0} válidas · ${best}${active}`;
+        const active = item.mostActive ? ` · activo ${item.mostActive.name} (${item.mostActive.laps})` : '';
+        const drivers = item.drivers ? ` · ${item.drivers} pilotos` : '';
+        const cars = item.cars ? ` · ${item.cars} coches` : '';
+        return `${item.total || 0} vueltas · ${item.valid || 0} válidas${drivers}${cars} · ${best}${active}`;
       };
 
       const renderPulse = (payload) => {
@@ -2884,10 +2889,10 @@ const home2ArchiveSeed = [];
 
         pulseCell('[data-home2-standout-most-laps]', 'Liga', main.track || '--', pulseServerMeta(main));
         pulseCell('[data-home2-standout-best-average]', 'GT4', gt4.track || '--', pulseServerMeta(gt4));
-        pulseCell('[data-home2-standout-cleanest]', 'Actividad', `${totalAll || 0} vueltas totales`, `Liga ${main.total || 0} · GT4 ${gt4.total || 0} · no son vueltas de un piloto`);
-        pulseCell('[data-home2-standout-vmax]', 'Limpias', totalAll ? `${cleanPct}%` : '--', `válidas ${validAll}/${totalAll || 0} · Liga ${main.valid || 0}/${main.total || 0} · GT4 ${gt4.valid || 0}/${gt4.total || 0}`);
+        pulseCell('[data-home2-standout-cleanest]', 'Actividad', `${totalAll || 0} vueltas`, `${validAll || 0} válidas · Liga ${main.total || 0} · GT4 ${gt4.total || 0}`);
+        pulseCell('[data-home2-standout-vmax]', 'Limpias', totalAll ? `${cleanPct}%` : '--', `Liga ${main.cleanPct || 0}% · GT4 ${gt4.cleanPct || 0}% · válidas ${validAll}/${totalAll || 0}`);
         pulseCell('[data-home2-standout-last-driver]', 'Última', driverName(latest), latestMeta);
-        pulseCell('[data-home2-standout-duel]', 'Duelo', duel, `${duelSource} · diferencia P1/P2 del combo`);
+        pulseCell('[data-home2-standout-duel]', 'Duelo', duel, `${duelSource} P1/P2 · Vmax ${maxV ? Math.round(maxV) + ' km/h' : '--'}`);
       };
 
       const champRoot = (payload) => payload?.championship || payload?.data?.championship || payload?.data || payload || {};
