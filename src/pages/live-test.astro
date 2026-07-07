@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v1-acsm-relay">
+  <main class="gc-live-test" data-gc-live-test="v2-diagnostics-normalizer">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -19,22 +19,19 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     </section>
 
     <section class="gc-live-test__status" aria-label="Estado live">
-      <article>
-        <span>Estado</span>
-        <strong data-live-status>Conectando</strong>
-      </article>
-      <article>
-        <span>Sesión</span>
-        <strong data-live-session>--</strong>
-      </article>
-      <article>
-        <span>Circuito</span>
-        <strong data-live-track>--</strong>
-      </article>
-      <article>
-        <span>Clima</span>
-        <strong data-live-weather>--</strong>
-      </article>
+      <article><span>Estado</span><strong data-live-status>Conectando</strong></article>
+      <article><span>Sesión</span><strong data-live-session>--</strong></article>
+      <article><span>Circuito</span><strong data-live-track>--</strong></article>
+      <article><span>Clima</span><strong data-live-weather>--</strong></article>
+    </section>
+
+    <section class="gc-live-test__debug" aria-label="Diagnóstico live">
+      <article><span>ACSM</span><strong data-debug-url>--</strong></article>
+      <article><span>Eventos</span><strong data-debug-events>--</strong></article>
+      <article><span>Raw</span><strong data-debug-raw>--</strong></article>
+      <article><span>Último error</span><strong data-debug-error>--</strong></article>
+      <article><span>Último evento</span><strong data-debug-last>--</strong></article>
+      <article><span>Posiciones</span><strong data-debug-positions>--</strong></article>
     </section>
 
     <section class="gc-live-test__grid">
@@ -48,7 +45,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
         </header>
         <div class="gc-live-test__map-wrap">
           <div class="gc-live-test__map" data-live-map>
-            <img data-live-map-img alt="Mapa del circuito" />
+            <img data-live-map-img alt="Mapa del circuito" loading="eager" decoding="async" />
             <div data-live-dots></div>
           </div>
         </div>
@@ -60,6 +57,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
             <p>Pilotos conectados</p>
             <h2 data-drivers-count>--</h2>
           </div>
+          <span data-slots-count>-- slots</span>
         </header>
         <div class="gc-live-test__table-wrap">
           <table>
@@ -117,18 +115,19 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__controls { display: flex; gap: 8px; flex-wrap: wrap; }
     .gc-live-test__controls button { border: 1px solid rgba(157,255,0,.28); background: rgba(157,255,0,.06); color: #f4fff0; border-radius: 999px; padding: 12px 14px; font-weight: 900; cursor: pointer; }
     .gc-live-test__controls button.is-active { background: #9dff00; color: #071007; }
-    .gc-live-test__status, .gc-live-test__grid, .gc-live-test__panel--stored { max-width: 1420px; margin-left: auto; margin-right: auto; }
+    .gc-live-test__status, .gc-live-test__debug, .gc-live-test__grid, .gc-live-test__panel--stored { max-width: 1420px; margin-left: auto; margin-right: auto; }
     .gc-live-test__status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
-    .gc-live-test__status article, .gc-live-test__panel { border: 1px solid rgba(157,255,0,.18); background: linear-gradient(180deg, rgba(8, 22, 8, .92), rgba(2, 8, 2, .96)); border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.34); }
-    .gc-live-test__status article { padding: 14px; }
-    .gc-live-test__status span { display: block; color: #7f927b; font-size: 12px; text-transform: uppercase; font-weight: 900; }
-    .gc-live-test__status strong { display: block; margin-top: 4px; font-size: 16px; }
+    .gc-live-test__debug { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .gc-live-test__status article, .gc-live-test__debug article, .gc-live-test__panel { border: 1px solid rgba(157,255,0,.18); background: linear-gradient(180deg, rgba(8, 22, 8, .92), rgba(2, 8, 2, .96)); border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.34); }
+    .gc-live-test__status article, .gc-live-test__debug article { padding: 14px; }
+    .gc-live-test__status span, .gc-live-test__debug span { display: block; color: #7f927b; font-size: 12px; text-transform: uppercase; font-weight: 900; }
+    .gc-live-test__status strong, .gc-live-test__debug strong { display: block; margin-top: 4px; font-size: 14px; word-break: break-word; }
     .gc-live-test__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); gap: 10px; }
     .gc-live-test__panel { padding: 16px; overflow: hidden; }
     .gc-live-test__panel header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
     .gc-live-test__panel h2 { margin: 0; font-size: 22px; text-transform: uppercase; }
     .gc-live-test__panel header span { color: #9dff00; font-weight: 900; }
-    .gc-live-test__map-wrap { min-height: 500px; display: grid; place-items: center; border-radius: 14px; background: radial-gradient(circle at center, rgba(157,255,0,.08), rgba(0,0,0,.2)); overflow: hidden; }
+    .gc-live-test__map-wrap { min-height: 500px; display: grid; place-items: center; border-radius: 14px; background: radial-gradient(circle at center, rgba(157,255,0,.08), rgba(0,0,0,.2)); overflow: auto; }
     .gc-live-test__map { position: relative; display: inline-block; max-width: 100%; }
     .gc-live-test__map img { display: block; max-width: 100%; height: auto; filter: drop-shadow(0 0 14px rgba(157,255,0,.08)); }
     .gc-live-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); background: #9dff00; border: 2px solid #071007; box-shadow: 0 0 0 3px rgba(157,255,0,.24), 0 0 18px rgba(157,255,0,.7); transition: left .5s linear, top .5s linear; }
@@ -145,14 +144,14 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       .gc-live-test { padding-left: 12px; padding-right: 12px; }
       .gc-live-test__hero { display: block; }
       .gc-live-test__controls { margin-top: 16px; }
-      .gc-live-test__status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gc-live-test__status, .gc-live-test__debug { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .gc-live-test__grid { grid-template-columns: 1fr; }
       .gc-live-test__map-wrap { min-height: 320px; }
     }
   </style>
 
   <script>
-    const runtime = 'v1-acsm-relay-live-test';
+    const runtime = 'v2-diagnostics-normalizer';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
     const state = {
@@ -164,7 +163,6 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     };
 
     const $ = (selector) => document.querySelector(selector);
-    const map = $('[data-live-map]');
     const mapImg = $('[data-live-map-img]');
     const dotsLayer = $('[data-live-dots]');
 
@@ -184,6 +182,9 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       state.dots.clear();
       dotsLayer.innerHTML = '';
       text('[data-live-status]', 'Conectando');
+      text('[data-debug-error]', '--');
+      text('[data-debug-events]', '--');
+      text('[data-debug-positions]', '--');
 
       if (state.eventSource) state.eventSource.close();
       state.eventSource = new EventSource(`/api/gc/live-test/stream?server=${encodeURIComponent(server)}`);
@@ -196,11 +197,13 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       state.eventSource.addEventListener('status', (event) => {
         const payload = JSON.parse(event.data);
         text('[data-live-status]', payload.connected ? 'WS conectado' : 'Reconectando');
+        renderDebug(payload);
       });
 
       state.eventSource.addEventListener('position', (event) => {
         const position = JSON.parse(event.data);
         state.positions[String(position.carId)] = position;
+        text('[data-debug-positions]', `${Object.keys(state.positions).length} live`);
         updateDot(position);
       });
 
@@ -213,6 +216,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       state.normalized = payload.normalized;
       state.positions = payload.positions || {};
       text('[data-live-status]', payload.connected ? 'WS conectado' : 'Esperando WS');
+      renderDebug(payload);
 
       const data = payload.normalized;
       if (!data) return;
@@ -222,19 +226,45 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       text('[data-live-weather]', `${data.session.roadTemp ?? '--'}°C pista · ${data.session.ambientTemp ?? '--'}°C aire`);
       text('[data-map-title]', data.track.name || data.session.track || 'Mapa');
       text('[data-map-meta]', `${data.track.city || ''}${data.track.country ? ', ' + data.track.country : ''}`.replace(/^, /, '') || data.session.track);
+      text('[data-slots-count]', `${data.carSlots?.length || 0} slots`);
 
       if (data.session.track) {
         mapImg.src = `/api/gc/live-test/map?server=${encodeURIComponent(state.server)}&track=${encodeURIComponent(data.session.track)}&layout=${encodeURIComponent(data.session.trackConfig || '')}`;
       }
 
-      renderDrivers(data.drivers || []);
+      renderDrivers(data.drivers || [], data.carSlots || []);
       renderStored(data.storedTimes || []);
       Object.values(state.positions || {}).forEach(updateDot);
     }
 
-    function renderDrivers(drivers) {
+    function renderDebug(payload) {
+      const debug = payload.debug || {};
+      const eventCounts = payload.eventCounts || debug.socket?.eventCounts || {};
+      const counts = payload.normalized?.debugCounts || debug.rawCounts || {};
+      text('[data-debug-url]', payload.acsmBaseUrl || '--');
+      text('[data-debug-events]', Object.entries(eventCounts).map(([k, v]) => `${k}:${v}`).join(' · ') || '--');
+      text('[data-debug-raw]', `drivers:${counts.driversObject ?? 0} · cars:${counts.carIdToGuid ?? 0} · stored:${counts.storedTimes ?? 0}`);
+      text('[data-debug-error]', payload.lastError || 'sin error');
+      text('[data-debug-last]', payload.lastEventAt ? new Date(payload.lastEventAt).toLocaleTimeString() : '--');
+      text('[data-debug-positions]', `${Object.keys(payload.positions || {}).length} live`);
+    }
+
+    function renderDrivers(drivers, carSlots) {
       text('[data-drivers-count]', `${drivers.length} pilotos`);
       const tbody = $('[data-live-drivers]');
+      if (!drivers.length && carSlots.length) {
+        tbody.innerHTML = carSlots.map((slot) => `
+          <tr>
+            <td>${escapeHtml(slot.carId ?? '--')}</td>
+            <td><strong>${escapeHtml(slot.driverName || 'GUID ' + String(slot.guid || '').slice(-6))}</strong><small>slot ACSM sin Driver completo</small></td>
+            <td>${escapeHtml(slot.carName || '--')}</td>
+            <td>--</td>
+            <td>--</td>
+            <td>--</td>
+          </tr>
+        `).join('');
+        return;
+      }
       if (!drivers.length) {
         tbody.innerHTML = '<tr><td colspan="6">No hay pilotos conectados.</td></tr>';
         return;
@@ -296,7 +326,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       }
       dot.style.left = `${x}px`;
       dot.style.top = `${z}px`;
-      dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h`;
+      dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h · gear ${position.gear ?? '--'}`;
     }
 
     mapImg.addEventListener('load', () => {

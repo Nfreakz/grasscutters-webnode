@@ -53,6 +53,8 @@ type LiveState = {
   snapshot: any | null;
   normalized: ReturnType<typeof normalizeStatus> | null;
   positions: Record<string, LivePosition>;
+  eventCounts: Record<string, number>;
+  startedAt: string;
 };
 
 const sources: Record<AcsmSourceKey, { label: string; baseUrl: string }> = {
@@ -97,7 +99,9 @@ function getInitialState(sourceKey: AcsmSourceKey): LiveState {
     lastError: null,
     snapshot: null,
     normalized: null,
-    positions: {}
+    positions: {},
+    eventCounts: {},
+    startedAt: new Date().toISOString()
   };
 }
 
@@ -114,7 +118,7 @@ function broadcast(sourceKey: AcsmSourceKey, event: string, payload: unknown) {
   const set = clients.get(sourceKey);
   if (!set?.size) return;
   const body = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
-  for (const res of set) {
+  for (const res of Array.from(set)) {
     try {
       res.write(body);
     } catch {
@@ -140,7 +144,6 @@ function vector(value: any) {
 function ticksToMs(value: unknown) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
-  // ACSM usa ticks .NET: 10.000 ticks = 1 ms.
   return Math.round(n / 10000);
 }
 
@@ -151,6 +154,16 @@ function formatLapMs(ms: number | null) {
   const seconds = Math.floor((total % 60000) / 1000);
   const millis = total % 1000;
   return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+function sessionTypeLabel(value: unknown) {
+  switch (Number(value)) {
+    case 0: return 'Booking';
+    case 1: return 'Practice';
+    case 2: return 'Qualifying';
+    case 3: return 'Race';
+    default: return 'Unknown';
+  }
 }
 
 function normalizeDriver(guid: string, driver: any): LiveDriver {
@@ -221,8 +234,20 @@ function normalizeStatus(message: any) {
   const connected = message.ConnectedDrivers || {};
   const driversObject = connected.Drivers || {};
   const carIdToGuid = connected.CarIDToGUID || message.CarIDToGUID || {};
+  const positionalOrder = connected.GUIDsInPositionalOrder || [];
   const drivers = Object.entries(driversObject).map(([guid, driver]) => normalizeDriver(guid, driver));
   drivers.sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999));
+
+  const carSlots = Object.entries(carIdToGuid).map(([carId, guid]) => {
+    const driver = drivers.find((item) => item.guid === String(guid));
+    return {
+      carId: numberOrNull(carId),
+      guid: String(guid),
+      driverName: driver?.name || null,
+      carName: driver?.carName || null,
+      knownDriver: Boolean(driver)
+    };
+  }).sort((a, b) => (a.carId ?? 9999) - (b.carId ?? 9999));
 
   return {
     receivedAt: new Date().toISOString(),
@@ -255,20 +280,18 @@ function normalizeStatus(message: any) {
     mapPath: `/content/tracks/${encodeURIComponent(String(session.Track || ''))}${session.TrackConfig ? `/${encodeURIComponent(String(session.TrackConfig))}` : ''}/map.png`,
     previewPath: `/content/tracks/${encodeURIComponent(String(session.Track || ''))}/ui${session.TrackConfig ? `/${encodeURIComponent(String(session.TrackConfig))}` : ''}/preview.png`,
     carIdToGuid,
-    positionalOrder: connected.GUIDsInPositionalOrder || [],
+    positionalOrder,
+    carSlots,
     drivers,
-    storedTimes: normalizeStoredTimes(driversObject).slice(0, 200)
+    storedTimes: normalizeStoredTimes(driversObject).slice(0, 200),
+    debugCounts: {
+      driversObject: Object.keys(driversObject).length,
+      carIdToGuid: Object.keys(carIdToGuid).length,
+      positionalOrder: Array.isArray(positionalOrder) ? positionalOrder.length : 0,
+      carSlots: carSlots.length,
+      storedTimes: normalizeStoredTimes(driversObject).length
+    }
   };
-}
-
-function sessionTypeLabel(value: unknown) {
-  switch (Number(value)) {
-    case 0: return 'Booking';
-    case 1: return 'Practice';
-    case 2: return 'Qualifying';
-    case 3: return 'Race';
-    default: return 'Unknown';
-  }
 }
 
 function normalizePosition(message: any, state: LiveState): LivePosition | null {
@@ -277,13 +300,14 @@ function normalizePosition(message: any, state: LiveState): LivePosition | null 
   const carIdToGuid = state.normalized?.carIdToGuid || state.snapshot?.ConnectedDrivers?.CarIDToGUID || {};
   const guid = carIdToGuid[String(carId)] || carIdToGuid[carId] || null;
   const driver = guid ? state.normalized?.drivers.find((item: LiveDriver) => item.guid === guid) : null;
+  const slot = guid ? state.normalized?.carSlots?.find((item: any) => item.guid === guid) : null;
   const velocity = vector(message?.Velocity);
   const speedKmh = velocity ? Math.sqrt(velocity.x ** 2 + velocity.z ** 2) * 3.6 : null;
 
   return {
     carId,
     guid,
-    driverName: driver?.name || null,
+    driverName: driver?.name || slot?.driverName || (guid ? `GUID ${String(guid).slice(-6)}` : null),
     pos: vector(message?.Pos),
     velocity,
     rotation: vector(message?.Rotation),
@@ -294,6 +318,54 @@ function normalizePosition(message: any, state: LiveState): LivePosition | null 
     blueFlag: Boolean(message?.BlueFlag),
     receivedAt: new Date().toISOString()
   };
+}
+
+function debugState(state: LiveState) {
+  const snapshot = state.snapshot || {};
+  const connected = snapshot.ConnectedDrivers || {};
+  const driversObject = connected.Drivers || {};
+  const carIdToGuid = connected.CarIDToGUID || snapshot.CarIDToGUID || {};
+  return {
+    socket: {
+      wsUrl: state.acsmWsUrl,
+      startedAt: state.startedAt,
+      connected: state.connected,
+      lastEventAt: state.lastEventAt,
+      lastError: state.lastError,
+      eventCounts: state.eventCounts
+    },
+    rawKeys: Object.keys(snapshot),
+    connectedDriversKeys: Object.keys(connected),
+    rawCounts: {
+      driversObject: Object.keys(driversObject).length,
+      carIdToGuid: Object.keys(carIdToGuid).length,
+      positionalOrder: Array.isArray(connected.GUIDsInPositionalOrder) ? connected.GUIDsInPositionalOrder.length : 0,
+      positions: Object.keys(state.positions || {}).length
+    },
+    examples: {
+      driverGuids: Object.keys(driversObject).slice(0, 5),
+      carIdToGuid: Object.entries(carIdToGuid).slice(0, 10)
+    }
+  };
+}
+
+function publicState(state: LiveState, options: { debug?: boolean; raw?: boolean } = {}) {
+  const payload: any = {
+    ok: state.ok,
+    sourceKey: state.sourceKey,
+    sourceLabel: state.sourceLabel,
+    acsmBaseUrl: state.acsmBaseUrl,
+    acsmWsUrl: state.acsmWsUrl,
+    connected: state.connected,
+    lastEventAt: state.lastEventAt,
+    lastError: state.lastError,
+    eventCounts: state.eventCounts,
+    normalized: state.normalized,
+    positions: state.positions,
+    debug: debugState(state)
+  };
+  if (options.raw) payload.raw = state.snapshot;
+  return payload;
 }
 
 async function ensureSocket(sourceKey: AcsmSourceKey) {
@@ -320,6 +392,8 @@ async function ensureSocket(sourceKey: AcsmSourceKey) {
       return;
     }
 
+    const eventType = String(event.EventType ?? 'unknown');
+    state.eventCounts[eventType] = (state.eventCounts[eventType] || 0) + 1;
     state.lastEventAt = new Date().toISOString();
 
     if (event.EventType === 200) {
@@ -367,18 +441,8 @@ function scheduleReconnect(sourceKey: AcsmSourceKey) {
   reconnectTimers.set(sourceKey, timer);
 }
 
-function publicState(state: LiveState) {
-  return {
-    ok: state.ok,
-    sourceKey: state.sourceKey,
-    sourceLabel: state.sourceLabel,
-    acsmBaseUrl: state.acsmBaseUrl,
-    connected: state.connected,
-    lastEventAt: state.lastEventAt,
-    lastError: state.lastError,
-    normalized: state.normalized,
-    positions: state.positions
-  };
+function queryBool(value: unknown) {
+  return ['1', 'true', 'yes', 'on', 'debug'].includes(String(value || '').toLowerCase());
 }
 
 export function registerGcAcsmLiveTestRoutes(app: express.Express) {
@@ -388,7 +452,7 @@ export function registerGcAcsmLiveTestRoutes(app: express.Express) {
     try {
       await ensureSocket(sourceKey);
       res.setHeader('Cache-Control', 'no-store');
-      res.json(publicState(state));
+      res.json(publicState(state, { raw: queryBool(req.query.raw) }));
     } catch (error) {
       res.status(500).json({
         ok: false,
