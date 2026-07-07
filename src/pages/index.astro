@@ -2574,19 +2574,29 @@ const home2ArchiveSeed = [];
       const carName = (row) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
       const trackName = (row) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
       const sourceKey = (row, fallback = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
+      const avatarNameCache = new Map();
+      const rememberAvatar = (row, src) => {
+        const key = normalize(driverName(row));
+        if (!key || !src || src === DEFAULT_AVATAR) return src || DEFAULT_AVATAR;
+        avatarNameCache.set(key, src);
+        return src;
+      };
       const avatar = (row) => {
         const direct = first(row, [
           'avatarUrl', 'avatar_url', 'pilotAvatarUrl', 'imageUrl', 'image',
           'driver.avatarUrl', 'driver.avatar_url', 'driver.imageUrl',
           'player.avatarUrl', 'player.avatar_url', 'pilot.avatarUrl', 'avatar'
         ], '');
-        if (direct && String(direct) !== DEFAULT_AVATAR) return direct;
+        if (direct && String(direct) !== DEFAULT_AVATAR) return rememberAvatar(row, direct);
         const id = first(row, [
           'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId',
-          'driver.playerId', 'driver.id', 'player.id', 'pilotId', 'id'
+          'steamGuid', 'steamGUID', 'steamId', 'steamID', 'steamId64', 'guid', 'GUID', 'DriverGuid',
+          'driver.playerId', 'driver.id', 'driver.guid', 'driver.steamGuid',
+          'player.id', 'player.guid', 'player.steamGuid', 'pilotId', 'id'
         ], '');
-        if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
-        return DEFAULT_AVATAR;
+        if (id !== undefined && id !== null && id !== '') return rememberAvatar(row, `/api/pilot-avatar/${encodeURIComponent(String(id))}`);
+        const cached = avatarNameCache.get(normalize(driverName(row)));
+        return cached || DEFAULT_AVATAR;
       };
       const isValid = (row) => {
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
@@ -2729,7 +2739,7 @@ const home2ArchiveSeed = [];
           </div>`).join('');
         return list;
       };
-      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v35-combo-pulse-more-stats';
+      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v36-home-gt4-track-avatar-pulse';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -2846,7 +2856,8 @@ const home2ArchiveSeed = [];
         const total = Number(first(combo, ['totalLaps', 'laps', 'lapCount', 'summary.totalLaps'], rows.length)) || rows.length || 0;
         const validFromRows = rows.filter(isValid).length;
         const valid = Math.min(total || validFromRows, Number(first(combo, ['validLaps', 'validLapCount', 'summary.validLaps'], validFromRows)) || validFromRows || 0);
-        const track = compactTrackLabel(comboTrack(combo, rows, source));
+        const champTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const track = compactTrackLabel(champTrack || comboTrack(combo, rows, source));
         const bestTime = formatTime(best);
         const bestDriver = driverName(best);
         const bestCar = carName(best);
@@ -2856,7 +2867,8 @@ const home2ArchiveSeed = [];
           .filter((item) => item.name && item.laps > 0)
           .sort((a, b) => b.laps - a.laps)[0] || null;
         const drivers = Number(first(combo, ['driversCount', 'driverCount', 'summary.driversCount'], bestRows.length)) || bestRows.length || 0;
-        const cars = Number(first(combo, ['carsCount', 'usedCarsCount', 'summary.usedCarsCount'], 0)) || (comboCars(combo, rows, source) || []).length || 0;
+        const champCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const cars = champCars.length || Number(first(combo, ['carsCount', 'usedCarsCount', 'summary.usedCarsCount'], 0)) || (comboCars(combo, rows, source) || []).length || 0;
         const cleanPct = total ? Math.round((valid / total) * 100) : 0;
         return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax, mostActive, drivers, cars, cleanPct };
       };
@@ -2982,7 +2994,7 @@ const home2ArchiveSeed = [];
         setText('[data-home2-champ-entrants]', first(stats, ['entrants'], rows.length || '--'), block);
         setText('[data-home2-champ-classes]', first(stats, ['classes'], Array.isArray(c.classes) ? c.classes.length : '--'), block);
         if (next) {
-          const title = first(next, ['trackName', 'track', 'name', 'Name', 'title'], source === 'gt4' ? 'Pascani Motorpark A' : 'Próximo evento');
+          const title = first(next, ['trackName', 'track', 'trackRaw', 'trackCode', 'name', 'Name', 'title'], 'Próximo evento');
           const date = first(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime'], '');
           const car = first(next, ['carSummary', 'cars', 'carName', 'car'], '');
           setText('[data-home2-champ-next]', title, block);
@@ -3038,6 +3050,9 @@ const home2ArchiveSeed = [];
           const rendered = applyBootstrap(bootstrap);
           const championships = await Promise.all([loadChampionship('weekly'), loadChampionship('gt4')]);
           renderHeroFromState();
+          renderPulse(bootstrap);
+          renderRanking('[data-home2-combo-ranking]', sourceLeaderboard(bootstrap?.main), true);
+          renderRanking('[data-home2-combo-ranking-gt4]', sourceLeaderboard(bootstrap?.gt4), true);
           console.info(`[GC Home ${PACK}]`, {
             bootstrap: bootstrap.source,
             latencyMs: bootstrap.latencyMs,
