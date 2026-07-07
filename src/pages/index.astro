@@ -2607,6 +2607,18 @@ const home2ArchiveSeed = [];
       const activeCombo = (sourcePayload) => sourcePayload?.activeCombo || null;
       const sourceLeaderboard = (sourcePayload) => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
       const rankBadge = (index) => index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+      const pulseCell = (selector, label, value, meta) => {
+        const dd = q(selector);
+        if (!dd) return;
+        const wrap = dd.closest('div');
+        const dt = wrap?.querySelector?.('dt');
+        const small = wrap?.querySelector?.('small');
+        if (dt && label) dt.textContent = label;
+        dd.textContent = value ?? '--';
+        if (small) small.textContent = meta ?? '';
+      };
+      const compactTrackLabel = (value) => String(value || '--').replace(/\s+/g, ' ').trim().toUpperCase();
+      const splitCarSummary = (value) => String(value || '').split(/[,+/]/).map((item) => cleanPublicName(item.trim())).filter(Boolean);
       const comboRankBadgeClass = (index) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
 
       async function fetchJson(url, timeoutMs = 15000) {
@@ -2717,7 +2729,7 @@ const home2ArchiveSeed = [];
           </div>`).join('');
         return list;
       };
-      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v30-avatar-rank';
+      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v33-home-combo-pulse-champ-image';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -2754,9 +2766,11 @@ const home2ArchiveSeed = [];
         const combo = activeCombo(sourcePayload) || {};
         const rows = rankingRows.length ? rankingRows : sourceLeaderboard(sourcePayload);
         const best = rows[0] || first(combo, ['bestLap'], null) || {};
-        const track = comboTrack(combo, rows, source);
-        const cars = comboCars(combo, rows, source);
-        const label = source === 'gt4' ? 'Combo activo · GT4' : 'Combo activo · Liga';
+        const champTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const champCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const track = cleanPublicName(champTrack || comboTrack(combo, rows, source), source);
+        const cars = champCars.length ? champCars : comboCars(combo, rows, source);
+        const label = source === 'gt4' ? 'Servidor 2 · GT4' : 'Servidor 1 · Liga';
         const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
         setText('[data-home2-hero-source]', label);
         setText('[data-home2-track]', track || 'Combo activo');
@@ -2798,33 +2812,65 @@ const home2ArchiveSeed = [];
           renderHeroFromState();
         }, HERO_ROTATE_MS);
       };
-      const renderPulse = (mainPayload) => {
-        const combo = activeCombo(mainPayload) || {};
-        const rows = sourceLeaderboard(mainPayload);
-        const total = Number(first(combo, ['totalLaps'], rows.length)) || rows.length;
-        const valid = Math.min(total, Number(first(combo, ['validLaps'], rows.filter(isValid).length)) || rows.filter(isValid).length);
-        const best = rows[0] || first(combo, ['bestLap'], null) || {};
+      const championshipEventForSource = (source) => {
+        const key = source === 'gt4' ? 'gt4' : 'weekly';
+        const payload = lastGood.championships[key];
+        if (!payload) return null;
+        const c = champRoot(payload);
+        const events = champEvents(payload);
+        return c.currentEvent || c.activeEvent || c.nextEvent || payload.currentEvent || payload.activeEvent || payload.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+      };
+
+      const championshipTrackForSource = (source) => {
+        const event = championshipEventForSource(source);
+        return event ? first(event, ['trackName', 'track', 'trackRaw', 'name', 'Name', 'title'], '') : '';
+      };
+
+      const championshipCarsForSource = (source) => {
+        const event = championshipEventForSource(source);
+        const raw = event ? first(event, ['carSummary', 'carsSummary', 'carName', 'car', 'cars'], '') : '';
+        if (Array.isArray(raw)) return raw.map((car) => typeof car === 'string' ? cleanPublicName(car, source) : cleanPublicName(first(car, ['displayName', 'name', 'carName', 'code'], ''), source)).filter(Boolean);
+        return splitCarSummary(raw);
+      };
+
+      const describeSourceCombo = (payload, source = 'main') => {
+        const combo = activeCombo(payload) || {};
+        const rows = sourceLeaderboard(payload);
+        const bestRows = bestPerDriver(rows);
+        const best = bestRows[0] || first(combo, ['bestLap'], null) || rows[0] || {};
         const latest = first(combo, ['latestLap'], null) || [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
-        const counts = new Map();
-        rows.forEach((row) => counts.set(driverName(row), (counts.get(driverName(row)) || 0) + 1));
-        const most = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-        const vmax = Number(first(combo, ['maxSpeedKmh'], 0)) || Math.max(0, ...rows.map((row) => Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0));
-        const leaders = bestPerDriver(rows).slice(0, 2);
-        const diff = leaders.length >= 2 && Number.isFinite(rowTimeMs(leaders[0])) && Number.isFinite(rowTimeMs(leaders[1]))
-          ? `+${((rowTimeMs(leaders[1]) - rowTimeMs(leaders[0])) / 1000).toFixed(3)}s`
+        const total = Number(first(combo, ['totalLaps', 'laps', 'lapCount', 'summary.totalLaps'], rows.length)) || rows.length || 0;
+        const validFromRows = rows.filter(isValid).length;
+        const valid = Math.min(total || validFromRows, Number(first(combo, ['validLaps', 'validLapCount', 'summary.validLaps'], validFromRows)) || validFromRows || 0);
+        const track = compactTrackLabel(comboTrack(combo, rows, source));
+        const bestTime = formatTime(best);
+        const bestDriver = driverName(best);
+        const bestCar = carName(best);
+        const vmax = Number(first(combo, ['maxSpeedKmh', 'summary.maxSpeedKmh'], 0)) || Math.max(0, ...rows.map((row) => Number(first(row, ['maxSpeedKmh', 'vmax', 'maxSpeed', 'speedKmh'], 0)) || 0));
+        return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax };
+      };
+
+      const renderPulse = (payload) => {
+        const main = describeSourceCombo(payload?.main, 'main');
+        const gt4 = describeSourceCombo(payload?.gt4, 'gt4');
+        const latestRows = Array.isArray(payload?.timingSheet) ? payload.timingSheet : [];
+        const latest = [...latestRows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || main.latest || gt4.latest || {};
+        const latestSource = sourceKey(latest, sourceKey(main.latest, 'main')) === 'gt4' ? 'GT4' : 'Liga';
+        const latestTime = formatTime(latest);
+        const latestMeta = `${latestSource} · ${carName(latest)} · ${latestTime} · ${ago(latest)}`;
+        const maxV = Math.max(main.vmax || 0, gt4.vmax || 0);
+        const duelRows = main.bestRows.length >= 2 ? main.bestRows : gt4.bestRows;
+        const duel = duelRows.length >= 2 && Number.isFinite(rowTimeMs(duelRows[0])) && Number.isFinite(rowTimeMs(duelRows[1]))
+          ? `+${((rowTimeMs(duelRows[1]) - rowTimeMs(duelRows[0])) / 1000).toFixed(3)}s`
           : '--';
-        setText('[data-home2-standout-most-laps]', most?.[0] || driverName(best));
-        setText('[data-home2-standout-most-laps-meta]', `${total || '--'} vueltas · ${valid || 0} válidas`);
-        setText('[data-home2-standout-best-average]', driverName(best));
-        setText('[data-home2-standout-best-average-meta]', `${formatTime(best)} mejor vuelta`);
-        setText('[data-home2-standout-cleanest]', total ? `${Math.max(0, Math.min(100, Math.round((valid / total) * 100)))}%` : '--');
-        setText('[data-home2-standout-cleanest-meta]', 'limpieza del combo');
-        setText('[data-home2-standout-vmax]', vmax ? `${Math.round(vmax)} km/h` : '--');
-        setText('[data-home2-standout-vmax-meta]', 'velocidad en combo');
-        setText('[data-home2-standout-last-driver]', driverName(latest));
-        setText('[data-home2-standout-last-driver-meta]', `${ago(latest)} · última del combo`);
-        setText('[data-home2-standout-duel]', diff);
-        setText('[data-home2-standout-duel-meta]', 'diferencias del combo');
+        const duelSource = main.bestRows.length >= 2 ? 'Liga' : 'GT4';
+
+        pulseCell('[data-home2-standout-most-laps]', 'Liga', main.track || '--', `${main.total || 0} vueltas · ${main.bestTime} ${main.bestDriver || ''}`);
+        pulseCell('[data-home2-standout-best-average]', 'GT4', gt4.track || '--', `${gt4.total || 0} vueltas · ${gt4.bestTime} ${gt4.bestDriver || ''}`);
+        pulseCell('[data-home2-standout-cleanest]', 'Actividad', `${(main.total || 0) + (gt4.total || 0)} vueltas`, `Liga ${main.valid || 0}/${main.total || 0} · GT4 ${gt4.valid || 0}/${gt4.total || 0}`);
+        pulseCell('[data-home2-standout-vmax]', 'Vmax', maxV ? `${Math.round(maxV)} km/h` : '--', `Liga ${main.vmax ? Math.round(main.vmax) : '--'} · GT4 ${gt4.vmax ? Math.round(gt4.vmax) : '--'}`);
+        pulseCell('[data-home2-standout-last-driver]', 'Última', driverName(latest), latestMeta);
+        pulseCell('[data-home2-standout-duel]', 'Duelo', duel, `${duelSource} · diferencia P1/P2 del combo`);
       };
 
       const champRoot = (payload) => payload?.championship || payload?.data?.championship || payload?.data || payload || {};
@@ -2872,6 +2918,33 @@ const home2ArchiveSeed = [];
         }
       };
 
+      const setChampionshipTrackImage = async (block, title, event, source) => {
+        const img = q('[data-home2-champ-track-image]', block);
+        if (!img) return;
+        const values = [
+          title,
+          first(event, ['trackName', 'trackRaw', 'trackCode', 'track', 'name', 'Name', 'title'], ''),
+          first(event, ['Track', 'TrackName', 'TrackCode'], '')
+        ].filter(Boolean);
+        for (const value of values) {
+          if (window.GCHomeTrackResolver?.setTrackImage) {
+            try {
+              const ok = await window.GCHomeTrackResolver.setTrackImage(img, value, 'photo');
+              if (ok) {
+                img.dataset.gcHomeChampImageRuntime = 'v33-resolver';
+                return;
+              }
+            } catch (_) {}
+          }
+        }
+        const candidates = [];
+        values.forEach((value) => {
+          candidates.push(...trackImageCandidatesFromCombo({ track: { name: value, code: value, displayName: value } }));
+        });
+        setImageWithFallbacks(img, candidates, FALLBACK_TRACK);
+        img.dataset.gcHomeChampImageRuntime = 'v33-candidates';
+      };
+
       const renderChampionshipFromPayload = (source, payload) => {
         enforceChampionshipButtons(source);
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
@@ -2893,7 +2966,7 @@ const home2ArchiveSeed = [];
           setText('[data-home2-champ-next]', title, block);
           setText('[data-home2-champ-date]', champDate(date), block);
           setText('[data-home2-champ-next-meta]', [title, car].filter(Boolean).join(' · ') || 'Próxima sesión', block);
-          setImageWithFallbacks(q('[data-home2-champ-track-image]', block), trackImageCandidatesFromCombo({ track: { name: title, code: title }, trackImage: source === 'gt4' ? { primary: '/images/tracks/pascani.jpg', candidates: ['/images/tracks/pascani.jpg', '/images/tracks/a1.webp'] } : null }));
+          setChampionshipTrackImage(block, title, next, source);
         }
         const host = q('[data-home2-champ-drivers]', block);
         if (host && rows.length) {
@@ -2925,7 +2998,7 @@ const home2ArchiveSeed = [];
         heroState.payload = payload;
         renderHeroFromState();
         startHeroRotation();
-        renderPulse(payload?.main);
+        renderPulse(payload);
         setText('[data-home2-updated]', `ACTUALIZADO ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
         return { mainRows: renderedMain.length, gt4Rows: renderedGt4.length, timingRows: recentRows.length };
       };
@@ -2942,6 +3015,7 @@ const home2ArchiveSeed = [];
           lastGood.bootstrap = bootstrap;
           const rendered = applyBootstrap(bootstrap);
           const championships = await Promise.all([loadChampionship('weekly'), loadChampionship('gt4')]);
+          renderHeroFromState();
           console.info(`[GC Home ${PACK}]`, {
             bootstrap: bootstrap.source,
             latencyMs: bootstrap.latencyMs,
