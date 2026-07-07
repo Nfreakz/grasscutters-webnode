@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v4-map-fit-time-format">
+  <main class="gc-live-test" data-gc-live-test="v5-dot-coordinate-fix">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -32,6 +32,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       <article><span>Último error</span><strong data-debug-error>--</strong></article>
       <article><span>Último evento</span><strong data-debug-last>--</strong></article>
       <article><span>Posiciones</span><strong data-debug-positions>--</strong></article>
+      <article><span>Coord</span><strong data-debug-coords>--</strong></article>
     </section>
 
     <section class="gc-live-test__grid">
@@ -117,7 +118,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__controls button.is-active { background: #9dff00; color: #071007; }
     .gc-live-test__status, .gc-live-test__debug, .gc-live-test__grid, .gc-live-test__panel--stored { max-width: 1420px; margin-left: auto; margin-right: auto; }
     .gc-live-test__status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
-    .gc-live-test__debug { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .gc-live-test__debug { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
     .gc-live-test__status article, .gc-live-test__debug article, .gc-live-test__panel { border: 1px solid rgba(157,255,0,.18); background: linear-gradient(180deg, rgba(8, 22, 8, .92), rgba(2, 8, 2, .96)); border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.34); }
     .gc-live-test__status article, .gc-live-test__debug article { padding: 14px; }
     .gc-live-test__status span, .gc-live-test__debug span { display: block; color: #7f927b; font-size: 12px; text-transform: uppercase; font-weight: 900; }
@@ -128,12 +129,13 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__panel h2 { margin: 0; font-size: 22px; text-transform: uppercase; }
     .gc-live-test__panel header span { color: #9dff00; font-weight: 900; }
     .gc-live-test__map-wrap { min-height: 0; display: grid; place-items: stretch; border-radius: 14px; background: radial-gradient(circle at center, rgba(157,255,0,.08), rgba(0,0,0,.2)); overflow: hidden; }
-    .gc-live-test__map { position: relative; width: 100%; height: clamp(420px, 54vw, 690px); overflow: hidden; border-radius: 14px; }
+    .gc-live-test__map { position: relative; width: 100%; height: clamp(520px, 60vw, 760px); overflow: hidden; border-radius: 14px; }
     .gc-live-test__map img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 0 14px rgba(157,255,0,.08)); }
     .gc-live-test__map [data-live-dots] { position: absolute; inset: 0; pointer-events: none; }
-    .gc-live-dot { position: absolute; width: 20px; height: 20px; border-radius: 50%; transform: translate(-50%, -50%); background: #9dff00; border: 3px solid #071007; box-shadow: 0 0 0 4px rgba(157,255,0,.26), 0 0 22px rgba(157,255,0,.75); transition: left .5s linear, top .5s linear; z-index: 4; }
+    .gc-live-dot { position: absolute; width: 26px; height: 26px; border-radius: 50%; transform: translate(-50%, -50%); background: #9dff00; border: 4px solid #071007; box-shadow: 0 0 0 5px rgba(157,255,0,.30), 0 0 28px rgba(157,255,0,.85); transition: left .5s linear, top .5s linear; z-index: 8; }
+    .gc-live-dot::before { content: attr(data-car-label); position: absolute; inset: 5px; display: grid; place-items: center; color: #071007; font: 1000 10px/1 var(--font-mono, monospace); }
     .gc-live-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 24px; transform: translate(-50%, -95%) rotate(var(--car-rotation, 0rad)); transform-origin: 50% 95%; background: #f4fff0; border-radius: 999px; opacity: .9; }
-    .gc-live-dot span { position: absolute; left: 22px; top: -10px; white-space: nowrap; background: rgba(0,0,0,.82); border: 1px solid rgba(157,255,0,.32); color: white; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 900; box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+    .gc-live-dot span { position: absolute; left: 30px; top: -11px; white-space: nowrap; background: rgba(0,0,0,.88); border: 1px solid rgba(157,255,0,.42); color: white; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 900; box-shadow: 0 8px 20px rgba(0,0,0,.45); }
     .gc-live-dot small { display: block; color: #9dff00; font: 800 10px/1 var(--font-mono, monospace); margin-top: 2px; }
     .gc-live-test__table-wrap { overflow: auto; max-height: 560px; }
     .gc-live-test__panel:not(.gc-live-test__panel--map) .gc-live-test__table-wrap { max-height: 690px; }
@@ -186,11 +188,13 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       state.normalized = null;
       state.positions = {};
       state.dots.clear();
+      state.coordMode = null;
       dotsLayer.innerHTML = '';
       text('[data-live-status]', 'Conectando');
       text('[data-debug-error]', '--');
       text('[data-debug-events]', '--');
       text('[data-debug-positions]', '--');
+      text('[data-debug-coords]', '--');
 
       if (state.eventSource) state.eventSource.close();
       state.eventSource = new EventSource(`/api/gc/live-test/stream?server=${encodeURIComponent(server)}`);
@@ -306,10 +310,9 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       `).join('');
     }
 
-    function updateDot(position) {
+    function getMapGeometry() {
       const data = state.normalized;
-      if (!data?.trackMapData || !position?.pos || !mapImg.naturalWidth) return;
-
+      if (!data?.trackMapData || !mapImg.naturalWidth) return null;
       const t = data.trackMapData;
       const naturalWidth = Number(t.width || mapImg.naturalWidth || 1);
       const naturalHeight = Number(t.height || mapImg.naturalHeight || 1);
@@ -324,24 +327,94 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       const padding = Number(t.padding || 0);
       const offsetX = Number(t.offset_x || 0);
       const offsetZ = Number(t.offset_y || 0);
+      if (![naturalWidth, naturalHeight, mapBox.width, mapBox.height, fitScale, scale].every(Number.isFinite) || scale === 0) return null;
+      return { naturalWidth, naturalHeight, mapBox, fitScale, renderedWidth, renderedHeight, imageOffsetX, imageOffsetY, margin, scale, padding, offsetX, offsetZ };
+    }
 
-      const x = imageOffsetX + (((position.pos.x + offsetX + margin) / scale + padding) * fitScale);
-      const z = imageOffsetY + (((position.pos.z + offsetZ + margin) / scale + padding) * fitScale);
+    function projectPosition(position, mode) {
+      const g = getMapGeometry();
+      if (!g || !position?.pos) return null;
+      const px = Number(position.pos.x);
+      const pz = Number(position.pos.z);
+      if (!Number.isFinite(px) || !Number.isFinite(pz)) return null;
+
+      const transforms = {
+        acsm: [px, pz],
+        acsmNoMargin: [px, pz, 'noMargin'],
+        flipZ: [px, -pz],
+        flipX: [-px, pz],
+        flipBoth: [-px, -pz],
+        swap: [pz, px],
+        swapFlipZ: [pz, -px],
+        swapFlipX: [-pz, px]
+      };
+      const item = transforms[mode] || transforms.acsm;
+      const useMargin = item[2] !== 'noMargin';
+      const worldX = item[0];
+      const worldZ = item[1];
+      const x = g.imageOffsetX + (((worldX + g.offsetX + (useMargin ? g.margin : 0)) / g.scale + g.padding) * g.fitScale);
+      const z = g.imageOffsetY + (((worldZ + g.offsetZ + (useMargin ? g.margin : 0)) / g.scale + g.padding) * g.fitScale);
+      if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+      const inImage = x >= g.imageOffsetX && x <= g.imageOffsetX + g.renderedWidth && z >= g.imageOffsetY && z <= g.imageOffsetY + g.renderedHeight;
+      const inBox = x >= 0 && x <= g.mapBox.width && z >= 0 && z <= g.mapBox.height;
+      return { x, z, inImage, inBox, mode };
+    }
+
+    function chooseCoordinateMode() {
+      const positions = Object.values(state.positions || {}).filter((item) => item?.pos);
+      if (!positions.length) return state.coordMode || 'acsm';
+      const modes = ['acsm', 'acsmNoMargin', 'flipZ', 'flipX', 'flipBoth', 'swap', 'swapFlipZ', 'swapFlipX'];
+      let best = { mode: state.coordMode || 'acsm', score: -1, inImage: 0, inBox: 0 };
+      for (const mode of modes) {
+        let inImage = 0;
+        let inBox = 0;
+        let finite = 0;
+        for (const position of positions) {
+          const projected = projectPosition(position, mode);
+          if (!projected) continue;
+          finite += 1;
+          if (projected.inBox) inBox += 1;
+          if (projected.inImage) inImage += 1;
+        }
+        const score = inImage * 100 + inBox * 10 + finite;
+        if (score > best.score) best = { mode, score, inImage, inBox };
+      }
+      state.coordMode = best.mode;
+      text('[data-debug-coords]', `${best.mode} · img:${best.inImage}/${positions.length} box:${best.inBox}/${positions.length}`);
+      return best.mode;
+    }
+
+    function updateDot(position) {
+      if (!position?.pos || !mapImg.naturalWidth) return;
+      const mode = chooseCoordinateMode();
+      let projected = projectPosition(position, mode);
+      if (!projected) {
+        text('[data-debug-coords]', `sin coordenada válida · car ${position.carId}`);
+        return;
+      }
+
+      // Si ACSM entrega un punto temporalmente fuera del PNG, lo limitamos al canvas para no dejar etiquetas apiladas arriba a la izquierda.
+      const g = getMapGeometry();
+      if (!g) return;
+      const x = Math.max(10, Math.min(g.mapBox.width - 10, projected.x));
+      const z = Math.max(10, Math.min(g.mapBox.height - 10, projected.z));
 
       let dot = state.dots.get(String(position.carId));
       if (!dot) {
         dot = document.createElement('div');
         dot.className = 'gc-live-dot';
-        dot.innerHTML = `<span>${escapeHtml(position.driverName || 'Car ' + position.carId)}<small>${escapeHtml(position.speedKmh ?? '--')} km/h · G${escapeHtml(position.gear ?? '--')}</small></span>`;
+        dot.innerHTML = `<span></span>`;
         dotsLayer.appendChild(dot);
         state.dots.set(String(position.carId), dot);
       }
       dot.style.left = `${x}px`;
       dot.style.top = `${z}px`;
+      dot.dataset.carLabel = String(position.carId ?? '?');
+      dot.dataset.coordMode = mode;
       const label = dot.querySelector('span');
       if (label) label.innerHTML = `${escapeHtml(position.driverName || 'Car ' + position.carId)}<small>${escapeHtml(position.speedKmh ?? '--')} km/h · G${escapeHtml(position.gear ?? '--')}</small>`;
       if (position.rotation?.y !== null && position.rotation?.y !== undefined) dot.style.setProperty('--car-rotation', `${Number(position.rotation.y) || 0}rad`);
-      dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h · gear ${position.gear ?? '--'}`;
+      dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h · gear ${position.gear ?? '--'} · ${mode} · ${Math.round(projected.x)},${Math.round(projected.z)}`;
     }
 
     mapImg.addEventListener('load', () => {
