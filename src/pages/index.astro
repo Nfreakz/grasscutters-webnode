@@ -2588,6 +2588,13 @@ const home2ArchiveSeed = [];
           'player.avatarUrl', 'player.avatar_url', 'pilot.avatarUrl', 'avatar'
         ], '');
         if (direct && String(direct) !== DEFAULT_AVATAR) return rememberAvatar(row, direct);
+
+        // Important: rows from server 2 / GT4 can carry a technical id that does not
+        // match the public profile avatar. Prefer a previously resolved avatar for
+        // the same public driver name before generating a new /api/pilot-avatar/:id URL.
+        const cached = avatarNameCache.get(normalize(driverName(row)));
+        if (cached && cached !== DEFAULT_AVATAR) return cached;
+
         const id = first(row, [
           'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId',
           'steamGuid', 'steamGUID', 'steamId', 'steamID', 'steamId64', 'guid', 'GUID', 'DriverGuid',
@@ -2595,8 +2602,7 @@ const home2ArchiveSeed = [];
           'player.id', 'player.guid', 'player.steamGuid', 'pilotId', 'id'
         ], '');
         if (id !== undefined && id !== null && id !== '') return rememberAvatar(row, `/api/pilot-avatar/${encodeURIComponent(String(id))}`);
-        const cached = avatarNameCache.get(normalize(driverName(row)));
-        return cached || DEFAULT_AVATAR;
+        return DEFAULT_AVATAR;
       };
       const isValid = (row) => {
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
@@ -2739,7 +2745,7 @@ const home2ArchiveSeed = [];
           </div>`).join('');
         return list;
       };
-      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v36-home-gt4-track-avatar-pulse';
+      document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
