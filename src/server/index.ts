@@ -14,6 +14,7 @@ import { ensureStrackerMirrorSchema, syncStrackerToSqlMirror } from './gc-rating
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
 import { registerLiveTimingRoutes } from './live-timing-routes';
+import { registerGcAcsmLiveTestRoutes } from './gc-acsm-live-test-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -5906,13 +5907,8 @@ function createComboStatsEntryFromLap(lap: ComboLap) {
 }
 
 function normalizeComboEntryForResponse(entry: any) {
-  const sourceLaps = Array.isArray(entry?.laps) ? entry.laps : [];
-  const leaderboard = buildComboLeaderboard(sourceLaps).slice(0, 100);
-  const recentLaps = [...sourceLaps]
-    .sort((a: ComboLap, b: ComboLap) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))
-    .slice(0, 80)
-    .map(compactLapForCombo);
-  const validTimes = sourceLaps
+  const leaderboard = buildComboLeaderboard(entry.laps);
+  const validTimes = entry.laps
     .filter((lap: ComboLap) => lap.valid)
     .map((lap: ComboLap) => Number(lap.lapTimeMs))
     .filter((value: number) => Number.isFinite(value) && value > 0);
@@ -5957,11 +5953,8 @@ function normalizeComboEntryForResponse(entry: any) {
     totalCuts: entry.totalCuts,
     best10AverageMs,
     best10Average: best10AverageMs ? lapTimeToText(best10AverageMs) : '--',
-    leaderboard,
-    recentLaps,
     leaderboardTop: leaderboard.slice(0, 5),
-    leaderboardCount: leaderboard.length,
-    recentLapsCount: recentLaps.length
+    leaderboardCount: leaderboard.length
   };
 }
 
@@ -6955,6 +6948,7 @@ app.use((req, res, next) => {
 registerGcTrackAssetsResolverRoutes(app, { rootDir });
 registerAcsmChampionshipRoutes(app, { requireAdmin });
 registerLiveTimingRoutes(app);
+registerGcAcsmLiveTestRoutes(app);
 registerGcRatingRoutes(app, {
   isAdmin: async (req) => {
     const context = await getAuthContextAsync(req);
@@ -12306,7 +12300,7 @@ app.get('/api/gc/combos', async (req: any, res: any) => {
     res.status(200).json({
       ok: false,
       source: 'gc-data-core',
-      comboCore: 'gc-combo-detail-logical-v28',
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       items: [],
       message: 'No se pudieron generar combos source-aware.',
@@ -12330,98 +12324,38 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
     }
 
     const dataCoreSource = readSource as GcDataCoreReadResult;
-    const requestedDecoded = (() => { try { return decodeURIComponent(requestedId); } catch { return requestedId; } })();
-    const requestedNorm = gcComboUnifySlugV1(requestedDecoded);
-    const unifiedItems = gcComboUnifyBuildStatsV1(dataCoreSource.laps);
-    const unifiedCombo = unifiedItems.find((entry: any) => {
-      const ids = [
-        entry.key,
-        entry.comboUid,
-        entry.comboKey,
-        entry.comboId,
-        entry.canonicalComboId,
-        entry.id,
-        entry.mainVariant?.comboId,
-        entry.mainVariant?.variantKey,
-        ...(Array.isArray(entry.memberComboIds) ? entry.memberComboIds : []),
-        ...(Array.isArray(entry.comboIds) ? entry.comboIds : [])
-      ].filter((value) => value !== undefined && value !== null).map(String);
-      return ids.some((id) => id === requestedDecoded || gcComboUnifySlugV1(id) === requestedNorm);
-    });
-
-    let combo: any = unifiedCombo || null;
-    let rows: any[] = [];
-
-    if (unifiedCombo) {
-      const comboKey = String(unifiedCombo.key || unifiedCombo.comboUid || unifiedCombo.comboKey || requestedDecoded);
-      const parts = comboKey.split(':');
-      const wantedSource = parts[0] || String(unifiedCombo.sourceKey || 'main');
-      const wantedTrack = parts[1] || String(unifiedCombo.track?.familyKey || unifiedCombo.track?.code || '');
-      const wantedVariant = parts.slice(2).join(':') || String(unifiedCombo.track?.variant || 'default');
-      const wantedTrackNorm = gcComboUnifySlugV1(wantedTrack);
-      const wantedVariantNorm = gcComboUnifySlugV1(wantedVariant || 'default');
-      const sourceMatches = (sourceKey: string) =>
-        sourceKey === wantedSource ||
-        (wantedSource === 'main' && sourceKey === 'weekly') ||
-        (wantedSource === 'weekly' && sourceKey === 'main');
-      const trackMatches = (trackFamily: any) => {
-        const values = [trackFamily?.key, trackFamily?.slug, trackFamily?.code, trackFamily?.rawName, trackFamily?.displayName].map(gcComboUnifySlugV1).filter(Boolean);
-        return values.some((value) => value === wantedTrackNorm || value.includes(wantedTrackNorm) || wantedTrackNorm.includes(value));
-      };
-      const vilaSplitMap = gcComboUnifyBuildVilaRealSplitMapV1(dataCoreSource.laps as any[]);
-      rows = (dataCoreSource.laps || []).filter((lap: any) => {
-        const sourceKey = gcComboUnifySourceKeyV1(lap);
-        const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track);
-        const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
-        const logicalKey = `${sourceKey}:${trackFamily.key}:${variant}`;
-        return logicalKey === comboKey ||
-          gcComboUnifySlugV1(logicalKey) === gcComboUnifySlugV1(comboKey) ||
-          (sourceMatches(sourceKey) && trackMatches(trackFamily) && gcComboUnifySlugV1(variant || 'default') === wantedVariantNorm);
-      });
-      combo = {
-        ...unifiedCombo,
-        comboId: unifiedCombo.comboId || unifiedCombo.key || requestedDecoded,
-        canonicalComboId: unifiedCombo.canonicalComboId || unifiedCombo.key || requestedDecoded,
-        sourceKey: unifiedCombo.sourceKey || wantedSource,
-        laps: rows
-      };
-    } else {
-      const legacyCombos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
-      combo = legacyCombos.find((entry: any) =>
-        String(entry.comboId) === requestedDecoded ||
-        String(entry.canonicalComboId) === requestedDecoded ||
-        String(entry.key) === requestedDecoded ||
-        String(entry.comboUid || '') === requestedDecoded ||
-        String(entry.url || '').endsWith('/' + requestedDecoded)
-      );
-      rows = combo ? dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo)) : [];
-    }
+    const combos = buildComboStatsFromLaps(dataCoreSource.laps, dataCoreSource.comboDefinitions || []);
+    const combo = combos.find((entry: any) =>
+      String(entry.comboId) === requestedId ||
+      String(entry.canonicalComboId) === requestedId ||
+      String(entry.key) === requestedId ||
+      String(entry.comboUid || '') === requestedId ||
+      String(entry.url || '').endsWith('/' + requestedId)
+    );
 
     if (!combo) {
       return res.status(404).json({
         ok: false,
         source: 'gc-data-core',
         dataSource: dataCoreSource.source,
-        comboCore: 'gc-combo-detail-logical-v28',
+        comboCore: 'gc-combo-source-aware-v4',
         generatedAt: new Date().toISOString(),
         stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
         mysqlMirror: dataCoreSource.mysqlMirror ?? null,
         fallbackReason: dataCoreSource.fallbackReason ?? null,
         message: 'Combo no encontrado en Data Core combinado.',
-        comboId: requestedDecoded
+        comboId: requestedId
       });
     }
 
-    const item = {
-      ...gcComboDetailBuildItemV1(combo, rows.length ? rows : combo.laps || []),
-      sourceKey: combo.sourceKey || String(combo.key || '').split(':')[0] || 'main'
-    };
+    const rows = dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
+    const item = gcComboDetailBuildItemV1(combo, rows.length ? rows : combo.laps || []);
 
     res.json({
       ok: true,
       source: 'gc-data-core',
       dataSource: dataCoreSource.source,
-      comboCore: 'gc-combo-detail-logical-v28',
+      comboCore: 'gc-combo-source-aware-v4',
       generatedAt: new Date().toISOString(),
       stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
       mysqlMirror: dataCoreSource.mysqlMirror ?? null,
@@ -12690,54 +12624,6 @@ function gcComboDetailBuildLeaderboardV1(rows: any[]) {
   return sorted.slice(0, 100).map((row, index) => gcComboDetailCompactLapV1(row, index + 1, bestMs));
 }
 
-
-function gcComboDetailBuildByCarTop5V1(rows: any[]) {
-  // GC_COMBO_DETAIL_BY_CAR_V29
-  // El ranking por coche debe usar la mejor vuelta de cada piloto EN CADA COCHE.
-  // No se puede partir del leaderboard global porque ahí un piloto solo aparece una vez
-  // y desaparece de los otros coches que también ha probado.
-  const groups = new Map<string, any[]>();
-
-  for (const row of rows) {
-    const lapMs = gcComboDetailLapMsV1(row);
-    if (!Number.isFinite(lapMs) || lapMs <= 0) continue;
-    const carName = gcComboDetailCarNameV1(row) || 'Coche';
-    const key = gcComboDetailNormalizeKeyV1(carName) || 'unknown_car';
-    const bucket = groups.get(key) || [];
-    bucket.push(row);
-    groups.set(key, bucket);
-  }
-
-  return [...groups.entries()].map(([key, carRows]) => {
-    const bestByDriver = new Map<string, any>();
-    for (const row of carRows) {
-      const playerId = gcComboDetailPickV1(row, ['playerId', 'driverId', 'driver.id', 'PlayerId']);
-      const steamGuid = gcComboDetailPickV1(row, ['steamGuid', 'driver.steamGuid', 'StrackerGuid']);
-      const driverKey = String(playerId ?? steamGuid ?? gcComboDetailDriverNameV1(row));
-      const current = bestByDriver.get(driverKey);
-      if (!current || gcComboDetailLapMsV1(row) < gcComboDetailLapMsV1(current)) bestByDriver.set(driverKey, row);
-    }
-    const sorted = [...bestByDriver.values()]
-      .filter((row) => gcComboDetailLapMsV1(row) > 0)
-      .sort((a, b) => gcComboDetailLapMsV1(a) - gcComboDetailLapMsV1(b));
-    const bestMs = sorted.length ? gcComboDetailLapMsV1(sorted[0]) : 0;
-    const carName = gcComboDetailCarNameV1(sorted[0] || carRows[0]) || key;
-    return {
-      key,
-      carName,
-      rows: sorted.slice(0, 5).map((row, index) => gcComboDetailCompactLapV1(row, index + 1, bestMs)),
-      totalDrivers: sorted.length,
-      totalLaps: carRows.length,
-      totalValidLaps: carRows.filter(gcComboDetailIsValidV1).length
-    };
-  }).filter((group) => group.rows.length)
-    .sort((a, b) => {
-      const aMs = gcComboDetailLapMsV1(a.rows[0]);
-      const bMs = gcComboDetailLapMsV1(b.rows[0]);
-      return aMs - bMs || String(a.carName).localeCompare(String(b.carName), 'es', { sensitivity: 'base' });
-    });
-}
-
 function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
   const trackName = gcComboDetailEntityNameV1(
     gcComboDetailPickV1(combo, ['track', 'track.displayName', 'track.name', 'trackName']),
@@ -12750,7 +12636,6 @@ function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
     .sort((a, b) => gcComboDetailDateMsV1(b) - gcComboDetailDateMsV1(a))
     .slice(0, 80)
     .map((row) => gcComboDetailCompactLapV1(row));
-  const byCarTop5 = gcComboDetailBuildByCarTop5V1(rows);
 
   const validRows = rows.filter(gcComboDetailIsValidV1);
   const bestLap = leaderboard[0] || null;
@@ -12792,7 +12677,6 @@ function gcComboDetailBuildItemV1(combo: any, rows: any[]) {
     },
     leaderboard,
     recentLaps,
-    byCarTop5,
     source: 'gc-data-core'
   };
 }

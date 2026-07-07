@@ -1,0 +1,316 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+const title = 'Live Test ACSM | GrassCutters Racing';
+const description = 'Página de prueba aislada para validar live timing ACSM con mapa y posiciones en directo.';
+---
+
+<MarketingLayout title={title} description={description} canonicalPath="/live-test">
+  <main class="gc-live-test" data-gc-live-test="v1-acsm-relay">
+    <section class="gc-live-test__hero">
+      <div>
+        <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
+        <h1>Live Test ACSM</h1>
+        <p>Prueba aislada. No toca Home, campeonatos, ratings ni combos.</p>
+      </div>
+      <div class="gc-live-test__controls">
+        <button type="button" data-server="main" class="is-active">Servidor 1 · Liga</button>
+        <button type="button" data-server="gt4">Servidor 2 · GT4</button>
+      </div>
+    </section>
+
+    <section class="gc-live-test__status" aria-label="Estado live">
+      <article>
+        <span>Estado</span>
+        <strong data-live-status>Conectando</strong>
+      </article>
+      <article>
+        <span>Sesión</span>
+        <strong data-live-session>--</strong>
+      </article>
+      <article>
+        <span>Circuito</span>
+        <strong data-live-track>--</strong>
+      </article>
+      <article>
+        <span>Clima</span>
+        <strong data-live-weather>--</strong>
+      </article>
+    </section>
+
+    <section class="gc-live-test__grid">
+      <article class="gc-live-test__panel gc-live-test__panel--map">
+        <header>
+          <div>
+            <p>Mapa live</p>
+            <h2 data-map-title>Esperando circuito</h2>
+          </div>
+          <span data-map-meta>--</span>
+        </header>
+        <div class="gc-live-test__map-wrap">
+          <div class="gc-live-test__map" data-live-map>
+            <img data-live-map-img alt="Mapa del circuito" />
+            <div data-live-dots></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="gc-live-test__panel">
+        <header>
+          <div>
+            <p>Pilotos conectados</p>
+            <h2 data-drivers-count>--</h2>
+          </div>
+        </header>
+        <div class="gc-live-test__table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Piloto</th>
+                <th>Coche</th>
+                <th>Vuelta</th>
+                <th>Best</th>
+                <th>Ping</th>
+              </tr>
+            </thead>
+            <tbody data-live-drivers>
+              <tr><td colspan="6">Esperando datos ACSM...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="gc-live-test__panel gc-live-test__panel--stored">
+      <header>
+        <div>
+          <p>Stored Times</p>
+          <h2>Mejores tiempos detectados por ACSM</h2>
+        </div>
+        <span data-stored-count>--</span>
+      </header>
+      <div class="gc-live-test__table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Piloto</th>
+              <th>Coche</th>
+              <th>Best Lap</th>
+              <th>Vueltas</th>
+              <th>Top Speed</th>
+            </tr>
+          </thead>
+          <tbody data-live-stored>
+            <tr><td colspan="5">Esperando snapshot...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .gc-live-test { min-height: 100vh; padding: 130px 24px 60px; background: #020502; color: #f4fff0; }
+    .gc-live-test__hero { max-width: 1420px; margin: 0 auto 18px; display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+    .gc-live-test__eyebrow, .gc-live-test__panel header p { margin: 0 0 6px; color: #9dff00; font: 800 12px/1.2 var(--font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; }
+    .gc-live-test h1 { margin: 0; font-size: clamp(42px, 6vw, 92px); line-height: .88; text-transform: uppercase; }
+    .gc-live-test__hero p:not(.gc-live-test__eyebrow) { color: #a8b7a5; margin: 12px 0 0; }
+    .gc-live-test__controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gc-live-test__controls button { border: 1px solid rgba(157,255,0,.28); background: rgba(157,255,0,.06); color: #f4fff0; border-radius: 999px; padding: 12px 14px; font-weight: 900; cursor: pointer; }
+    .gc-live-test__controls button.is-active { background: #9dff00; color: #071007; }
+    .gc-live-test__status, .gc-live-test__grid, .gc-live-test__panel--stored { max-width: 1420px; margin-left: auto; margin-right: auto; }
+    .gc-live-test__status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .gc-live-test__status article, .gc-live-test__panel { border: 1px solid rgba(157,255,0,.18); background: linear-gradient(180deg, rgba(8, 22, 8, .92), rgba(2, 8, 2, .96)); border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.34); }
+    .gc-live-test__status article { padding: 14px; }
+    .gc-live-test__status span { display: block; color: #7f927b; font-size: 12px; text-transform: uppercase; font-weight: 900; }
+    .gc-live-test__status strong { display: block; margin-top: 4px; font-size: 16px; }
+    .gc-live-test__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr); gap: 10px; }
+    .gc-live-test__panel { padding: 16px; overflow: hidden; }
+    .gc-live-test__panel header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .gc-live-test__panel h2 { margin: 0; font-size: 22px; text-transform: uppercase; }
+    .gc-live-test__panel header span { color: #9dff00; font-weight: 900; }
+    .gc-live-test__map-wrap { min-height: 500px; display: grid; place-items: center; border-radius: 14px; background: radial-gradient(circle at center, rgba(157,255,0,.08), rgba(0,0,0,.2)); overflow: hidden; }
+    .gc-live-test__map { position: relative; display: inline-block; max-width: 100%; }
+    .gc-live-test__map img { display: block; max-width: 100%; height: auto; filter: drop-shadow(0 0 14px rgba(157,255,0,.08)); }
+    .gc-live-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); background: #9dff00; border: 2px solid #071007; box-shadow: 0 0 0 3px rgba(157,255,0,.24), 0 0 18px rgba(157,255,0,.7); transition: left .5s linear, top .5s linear; }
+    .gc-live-dot span { position: absolute; left: 18px; top: -8px; white-space: nowrap; background: rgba(0,0,0,.78); border: 1px solid rgba(157,255,0,.25); color: white; border-radius: 999px; padding: 3px 7px; font-size: 11px; font-weight: 900; }
+    .gc-live-test__table-wrap { overflow: auto; max-height: 560px; }
+    .gc-live-test table { width: 100%; border-collapse: collapse; font: 700 12px/1.3 var(--font-mono, monospace); }
+    .gc-live-test th, .gc-live-test td { border-bottom: 1px solid rgba(255,255,255,.08); padding: 9px 8px; text-align: left; vertical-align: top; }
+    .gc-live-test th { color: #9dff00; text-transform: uppercase; font-size: 11px; position: sticky; top: 0; background: #071007; z-index: 1; }
+    .gc-live-test td small { display: block; color: #7f927b; margin-top: 2px; }
+    .gc-live-test__panel--stored { margin-top: 10px; }
+    .is-pit { color: #ffc857; }
+    .is-best { color: #9dff00; font-weight: 1000; }
+    @media (max-width: 980px) {
+      .gc-live-test { padding-left: 12px; padding-right: 12px; }
+      .gc-live-test__hero { display: block; }
+      .gc-live-test__controls { margin-top: 16px; }
+      .gc-live-test__status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gc-live-test__grid { grid-template-columns: 1fr; }
+      .gc-live-test__map-wrap { min-height: 320px; }
+    }
+  </style>
+
+  <script>
+    const runtime = 'v1-acsm-relay-live-test';
+    document.documentElement.dataset.gcLiveTestRuntime = runtime;
+
+    const state = {
+      server: 'main',
+      eventSource: null,
+      normalized: null,
+      positions: {},
+      dots: new Map(),
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const map = $('[data-live-map]');
+    const mapImg = $('[data-live-map-img]');
+    const dotsLayer = $('[data-live-dots]');
+
+    function text(selector, value) {
+      const el = $(selector);
+      if (el) el.textContent = value ?? '--';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
+
+    function connect(server) {
+      state.server = server;
+      state.normalized = null;
+      state.positions = {};
+      state.dots.clear();
+      dotsLayer.innerHTML = '';
+      text('[data-live-status]', 'Conectando');
+
+      if (state.eventSource) state.eventSource.close();
+      state.eventSource = new EventSource(`/api/gc/live-test/stream?server=${encodeURIComponent(server)}`);
+
+      state.eventSource.addEventListener('snapshot', (event) => {
+        const payload = JSON.parse(event.data);
+        applySnapshot(payload);
+      });
+
+      state.eventSource.addEventListener('status', (event) => {
+        const payload = JSON.parse(event.data);
+        text('[data-live-status]', payload.connected ? 'WS conectado' : 'Reconectando');
+      });
+
+      state.eventSource.addEventListener('position', (event) => {
+        const position = JSON.parse(event.data);
+        state.positions[String(position.carId)] = position;
+        updateDot(position);
+      });
+
+      state.eventSource.onerror = () => {
+        text('[data-live-status]', 'SSE reconectando');
+      };
+    }
+
+    function applySnapshot(payload) {
+      state.normalized = payload.normalized;
+      state.positions = payload.positions || {};
+      text('[data-live-status]', payload.connected ? 'WS conectado' : 'Esperando WS');
+
+      const data = payload.normalized;
+      if (!data) return;
+
+      text('[data-live-session]', `${data.session.typeLabel || '--'} · ${data.session.name || '--'}`);
+      text('[data-live-track]', `${data.track.name || data.session.track || '--'}`);
+      text('[data-live-weather]', `${data.session.roadTemp ?? '--'}°C pista · ${data.session.ambientTemp ?? '--'}°C aire`);
+      text('[data-map-title]', data.track.name || data.session.track || 'Mapa');
+      text('[data-map-meta]', `${data.track.city || ''}${data.track.country ? ', ' + data.track.country : ''}`.replace(/^, /, '') || data.session.track);
+
+      if (data.session.track) {
+        mapImg.src = `/api/gc/live-test/map?server=${encodeURIComponent(state.server)}&track=${encodeURIComponent(data.session.track)}&layout=${encodeURIComponent(data.session.trackConfig || '')}`;
+      }
+
+      renderDrivers(data.drivers || []);
+      renderStored(data.storedTimes || []);
+      Object.values(state.positions || {}).forEach(updateDot);
+    }
+
+    function renderDrivers(drivers) {
+      text('[data-drivers-count]', `${drivers.length} pilotos`);
+      const tbody = $('[data-live-drivers]');
+      if (!drivers.length) {
+        tbody.innerHTML = '<tr><td colspan="6">No hay pilotos conectados.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = drivers.map((driver) => `
+        <tr>
+          <td>${escapeHtml(driver.position ?? '--')}</td>
+          <td><strong>${escapeHtml(driver.name)}</strong>${driver.isInPits ? '<small class="is-pit">PIT</small>' : ''}</td>
+          <td>${escapeHtml(driver.carName)}<small>#${escapeHtml(driver.raceNumber ?? '--')} · ${escapeHtml(driver.tyres ?? '--')}</small></td>
+          <td>${escapeHtml(driver.totalLaps ?? '--')}</td>
+          <td class="is-best">${escapeHtml(driver.bestLapText ?? '--')}</td>
+          <td>${escapeHtml(driver.ping ?? '--')}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderStored(rows) {
+      text('[data-stored-count]', `${rows.length} registros`);
+      const tbody = $('[data-live-stored]');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5">Sin stored times detectados todavía.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.slice(0, 80).map((row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.driverName)}</strong></td>
+          <td>${escapeHtml(row.carName)}<small>#${escapeHtml(row.raceNumber ?? '--')} · ${escapeHtml(row.tyres ?? '--')}</small></td>
+          <td class="is-best">${escapeHtml(row.bestLapText ?? '--')}</td>
+          <td>${escapeHtml(row.laps ?? '--')}</td>
+          <td>${row.topSpeedKmh ? `${Number(row.topSpeedKmh).toFixed(2)} km/h` : '--'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateDot(position) {
+      const data = state.normalized;
+      if (!data?.trackMapData || !position?.pos || !mapImg.naturalWidth) return;
+
+      const t = data.trackMapData;
+      const naturalWidth = Number(t.width || mapImg.naturalWidth || 1);
+      const renderedWidth = mapImg.getBoundingClientRect().width || naturalWidth;
+      const mapScaleMultiplier = renderedWidth / naturalWidth;
+      const margin = Number(t.margin || 0);
+      const scale = Number(t.scale_factor || 1);
+      const padding = Number(t.padding || 0);
+      const offsetX = Number(t.offset_x || 0);
+      const offsetZ = Number(t.offset_y || 0);
+
+      const x = ((position.pos.x + offsetX + margin) / scale + padding) * mapScaleMultiplier;
+      const z = ((position.pos.z + offsetZ + margin) / scale + padding) * mapScaleMultiplier;
+
+      let dot = state.dots.get(String(position.carId));
+      if (!dot) {
+        dot = document.createElement('div');
+        dot.className = 'gc-live-dot';
+        dot.innerHTML = `<span>${escapeHtml(position.driverName || 'Car ' + position.carId)}</span>`;
+        dotsLayer.appendChild(dot);
+        state.dots.set(String(position.carId), dot);
+      }
+      dot.style.left = `${x}px`;
+      dot.style.top = `${z}px`;
+      dot.title = `${position.driverName || 'Piloto'} · ${position.speedKmh ?? '--'} km/h`;
+    }
+
+    mapImg.addEventListener('load', () => {
+      Object.values(state.positions || {}).forEach(updateDot);
+    });
+
+    document.querySelectorAll('[data-server]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-server]').forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+        connect(button.getAttribute('data-server') || 'main');
+      });
+    });
+
+    connect('main');
+  </script>
+</MarketingLayout>
