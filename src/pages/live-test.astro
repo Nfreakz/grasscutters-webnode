@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v2-diagnostics-normalizer">
+  <main class="gc-live-test" data-gc-live-test="v3-event51-position-fix">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -151,7 +151,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
   </style>
 
   <script>
-    const runtime = 'v2-diagnostics-normalizer';
+    const runtime = 'v3-event51-position-fix';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
     const state = {
@@ -243,10 +243,10 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       const counts = payload.normalized?.debugCounts || debug.rawCounts || {};
       text('[data-debug-url]', payload.acsmBaseUrl || '--');
       text('[data-debug-events]', Object.entries(eventCounts).map(([k, v]) => `${k}:${v}`).join(' · ') || '--');
-      text('[data-debug-raw]', `drivers:${counts.driversObject ?? 0} · cars:${counts.carIdToGuid ?? 0} · stored:${counts.storedTimes ?? 0}`);
+      text('[data-debug-raw]', `drivers:${counts.driversObject ?? 0} · infos:${counts.carInfos ?? 0} · cars:${counts.carIdToGuid ?? 0} · stored:${counts.storedTimes ?? 0}`);
       text('[data-debug-error]', payload.lastError || 'sin error');
       text('[data-debug-last]', payload.lastEventAt ? new Date(payload.lastEventAt).toLocaleTimeString() : '--');
-      text('[data-debug-positions]', `${Object.keys(payload.positions || {}).length} live`);
+      text('[data-debug-positions]', `${Object.keys(payload.positions || {}).length} live${payload.lastPositionDropReason ? ' · ' + payload.lastPositionDropReason : ''}`);
     }
 
     function renderDrivers(drivers, carSlots) {

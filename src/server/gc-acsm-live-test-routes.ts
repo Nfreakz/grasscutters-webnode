@@ -53,7 +53,11 @@ type LiveState = {
   snapshot: any | null;
   normalized: ReturnType<typeof normalizeStatus> | null;
   positions: Record<string, LivePosition>;
+  carInfos: Record<string, any>;
   eventCounts: Record<string, number>;
+  lastRawPosition: any | null;
+  lastNormalizedPosition: LivePosition | null;
+  lastPositionDropReason: string | null;
   startedAt: string;
 };
 
@@ -100,7 +104,11 @@ function getInitialState(sourceKey: AcsmSourceKey): LiveState {
     snapshot: null,
     normalized: null,
     positions: {},
+    carInfos: {},
     eventCounts: {},
+    lastRawPosition: null,
+    lastNormalizedPosition: null,
+    lastPositionDropReason: null,
     startedAt: new Date().toISOString()
   };
 }
@@ -227,7 +235,47 @@ function normalizeStoredTimes(driversObject: Record<string, any> | undefined) {
   return rows;
 }
 
-function normalizeStatus(message: any) {
+
+function normalizeCarInfo(guid: string, carInfo: any): LiveDriver {
+  return {
+    guid,
+    carId: numberOrNull(carInfo?.CarID),
+    name: String(carInfo?.DriverName || guid),
+    initials: String(carInfo?.DriverInitials || '').trim(),
+    carName: String(carInfo?.CarName || carInfo?.CarModel || ''),
+    carModel: String(carInfo?.CarModel || ''),
+    raceNumber: numberOrNull(carInfo?.RaceNumber),
+    tyres: carInfo?.Tyres ? String(carInfo.Tyres) : null,
+    position: null,
+    totalLaps: null,
+    lastLapText: null,
+    bestLapText: null,
+    bestLapMs: null,
+    qualifyingTimeText: null,
+    deltaToBestMs: null,
+    deltaToSelfMs: null,
+    split: null,
+    isInPits: false,
+    ping: null,
+    lastPos: null,
+    normalisedSplinePos: null
+  };
+}
+
+function mergeDriversWithCarInfos(drivers: LiveDriver[], carIdToGuid: Record<string, any>, carInfos: Record<string, any>) {
+  const byGuid = new Map(drivers.map((driver) => [driver.guid, driver]));
+  for (const [carId, guidValue] of Object.entries(carIdToGuid || {})) {
+    const guid = String(guidValue || '');
+    if (!guid || byGuid.has(guid)) continue;
+    const info = carInfos[String(carId)] || carInfos[guid];
+    if (!info) continue;
+    const driver = normalizeCarInfo(guid, { ...info, CarID: info.CarID ?? Number(carId) });
+    byGuid.set(guid, driver);
+  }
+  return Array.from(byGuid.values()).sort((a, b) => (a.position ?? a.carId ?? 9999) - (b.position ?? b.carId ?? 9999));
+}
+
+function normalizeStatus(message: any, state?: LiveState) {
   if (!message) return null as any;
   const session = message.SessionInfo || {};
   const track = message.TrackInfo || {};
@@ -235,17 +283,20 @@ function normalizeStatus(message: any) {
   const driversObject = connected.Drivers || {};
   const carIdToGuid = connected.CarIDToGUID || message.CarIDToGUID || {};
   const positionalOrder = connected.GUIDsInPositionalOrder || [];
-  const drivers = Object.entries(driversObject).map(([guid, driver]) => normalizeDriver(guid, driver));
-  drivers.sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999));
+  const baseDrivers = Object.entries(driversObject).map(([guid, driver]) => normalizeDriver(guid, driver));
+  const drivers = mergeDriversWithCarInfos(baseDrivers, carIdToGuid, state?.carInfos || {});
 
   const carSlots = Object.entries(carIdToGuid).map(([carId, guid]) => {
     const driver = drivers.find((item) => item.guid === String(guid));
+    const info = state?.carInfos?.[String(carId)] || state?.carInfos?.[String(guid)] || {};
     return {
       carId: numberOrNull(carId),
       guid: String(guid),
-      driverName: driver?.name || null,
-      carName: driver?.carName || null,
-      knownDriver: Boolean(driver)
+      driverName: driver?.name || info.DriverName || null,
+      carName: driver?.carName || info.CarName || info.CarModel || null,
+      raceNumber: driver?.raceNumber ?? numberOrNull(info.RaceNumber),
+      tyres: driver?.tyres || info.Tyres || null,
+      knownDriver: Boolean(driver || info.DriverName)
     };
   }).sort((a, b) => (a.carId ?? 9999) - (b.carId ?? 9999));
 
@@ -286,6 +337,7 @@ function normalizeStatus(message: any) {
     storedTimes: normalizeStoredTimes(driversObject).slice(0, 200),
     debugCounts: {
       driversObject: Object.keys(driversObject).length,
+      carInfos: Object.keys(state?.carInfos || {}).length,
       carIdToGuid: Object.keys(carIdToGuid).length,
       positionalOrder: Array.isArray(positionalOrder) ? positionalOrder.length : 0,
       carSlots: carSlots.length,
@@ -295,29 +347,40 @@ function normalizeStatus(message: any) {
 }
 
 function normalizePosition(message: any, state: LiveState): LivePosition | null {
-  const carId = numberOrNull(message?.CarID);
-  if (carId === null) return null;
-  const carIdToGuid = state.normalized?.carIdToGuid || state.snapshot?.ConnectedDrivers?.CarIDToGUID || {};
+  const payload = typeof message === 'string' ? (() => { try { return JSON.parse(message); } catch { return null; } })() : message;
+  if (!payload || typeof payload !== 'object') {
+    state.lastPositionDropReason = 'EventType 53 sin Message objeto.';
+    return null;
+  }
+  const carId = numberOrNull(payload.CarID ?? payload.carId);
+  if (carId === null) {
+    state.lastPositionDropReason = 'EventType 53 sin CarID numérico.';
+    return null;
+  }
+  const carIdToGuid = state.normalized?.carIdToGuid || state.snapshot?.ConnectedDrivers?.CarIDToGUID || state.snapshot?.CarIDToGUID || {};
   const guid = carIdToGuid[String(carId)] || carIdToGuid[carId] || null;
-  const driver = guid ? state.normalized?.drivers.find((item: LiveDriver) => item.guid === guid) : null;
-  const slot = guid ? state.normalized?.carSlots?.find((item: any) => item.guid === guid) : null;
-  const velocity = vector(message?.Velocity);
+  const driver = guid ? state.normalized?.drivers.find((item: LiveDriver) => item.guid === String(guid)) : null;
+  const slot = guid ? state.normalized?.carSlots?.find((item: any) => item.guid === String(guid)) : null;
+  const info = state.carInfos[String(carId)] || (guid ? state.carInfos[String(guid)] : null) || {};
+  const velocity = vector(payload.Velocity ?? payload.velocity);
   const speedKmh = velocity ? Math.sqrt(velocity.x ** 2 + velocity.z ** 2) * 3.6 : null;
 
-  return {
+  const position = {
     carId,
-    guid,
-    driverName: driver?.name || slot?.driverName || (guid ? `GUID ${String(guid).slice(-6)}` : null),
-    pos: vector(message?.Pos),
+    guid: guid ? String(guid) : null,
+    driverName: driver?.name || slot?.driverName || info.DriverName || (guid ? `GUID ${String(guid).slice(-6)}` : `Car ${carId}`),
+    pos: vector(payload.Pos ?? payload.pos),
     velocity,
-    rotation: vector(message?.Rotation),
-    gear: numberOrNull(message?.Gear),
-    engineRpm: numberOrNull(message?.EngineRPM),
-    steerAngle: numberOrNull(message?.SteerAngle),
+    rotation: vector(payload.Rotation ?? payload.rotation),
+    gear: numberOrNull(payload.Gear ?? payload.gear),
+    engineRpm: numberOrNull(payload.EngineRPM ?? payload.engineRpm),
+    steerAngle: numberOrNull(payload.SteerAngle ?? payload.steerAngle),
     speedKmh: speedKmh === null ? null : Math.round(speedKmh),
-    blueFlag: Boolean(message?.BlueFlag),
+    blueFlag: Boolean(payload.BlueFlag ?? payload.blueFlag),
     receivedAt: new Date().toISOString()
   };
+  state.lastPositionDropReason = null;
+  return position;
 }
 
 function debugState(state: LiveState) {
@@ -340,11 +403,16 @@ function debugState(state: LiveState) {
       driversObject: Object.keys(driversObject).length,
       carIdToGuid: Object.keys(carIdToGuid).length,
       positionalOrder: Array.isArray(connected.GUIDsInPositionalOrder) ? connected.GUIDsInPositionalOrder.length : 0,
-      positions: Object.keys(state.positions || {}).length
+      positions: Object.keys(state.positions || {}).length,
+      carInfos: Object.keys(state.carInfos || {}).length
     },
     examples: {
       driverGuids: Object.keys(driversObject).slice(0, 5),
-      carIdToGuid: Object.entries(carIdToGuid).slice(0, 10)
+      carIdToGuid: Object.entries(carIdToGuid).slice(0, 10),
+      carInfos: Object.entries(state.carInfos || {}).slice(0, 10),
+      lastRawPosition: state.lastRawPosition,
+      lastNormalizedPosition: state.lastNormalizedPosition,
+      lastPositionDropReason: state.lastPositionDropReason
     }
   };
 }
@@ -362,6 +430,9 @@ function publicState(state: LiveState, options: { debug?: boolean; raw?: boolean
     eventCounts: state.eventCounts,
     normalized: state.normalized,
     positions: state.positions,
+    lastRawPosition: state.lastRawPosition,
+    lastNormalizedPosition: state.lastNormalizedPosition,
+    lastPositionDropReason: state.lastPositionDropReason,
     debug: debugState(state)
   };
   if (options.raw) payload.raw = state.snapshot;
@@ -392,22 +463,45 @@ async function ensureSocket(sourceKey: AcsmSourceKey) {
       return;
     }
 
-    const eventType = String(event.EventType ?? 'unknown');
+    const numericEventType = Number(event.EventType);
+    const eventType = Number.isFinite(numericEventType) ? String(numericEventType) : String(event.EventType ?? 'unknown');
     state.eventCounts[eventType] = (state.eventCounts[eventType] || 0) + 1;
     state.lastEventAt = new Date().toISOString();
 
-    if (event.EventType === 200) {
-      state.snapshot = event.Message;
-      state.normalized = normalizeStatus(event.Message);
+    if (numericEventType === 51) {
+      const carInfo = typeof event.Message === 'string' ? JSON.parse(event.Message) : event.Message;
+      const carId = numberOrNull(carInfo?.CarID);
+      const guid = carInfo?.DriverGUID ? String(carInfo.DriverGUID) : null;
+      if (carId !== null) state.carInfos[String(carId)] = carInfo;
+      if (guid) state.carInfos[guid] = carInfo;
+      if (state.snapshot) state.normalized = normalizeStatus(state.snapshot, state);
       broadcast(sourceKey, 'snapshot', publicState(state));
       return;
     }
 
-    if (event.EventType === 53) {
+    if (numericEventType === 52) {
+      const carId = numberOrNull(event.Message?.CarID ?? event.Message);
+      if (carId !== null) delete state.positions[String(carId)];
+      broadcast(sourceKey, 'snapshot', publicState(state));
+      return;
+    }
+
+    if (numericEventType === 200) {
+      state.snapshot = event.Message;
+      state.normalized = normalizeStatus(event.Message, state);
+      broadcast(sourceKey, 'snapshot', publicState(state));
+      return;
+    }
+
+    if (numericEventType === 53) {
+      state.lastRawPosition = event.Message;
       const position = normalizePosition(event.Message, state);
       if (position) {
         state.positions[String(position.carId)] = position;
+        state.lastNormalizedPosition = position;
         broadcast(sourceKey, 'position', position);
+      } else {
+        broadcast(sourceKey, 'status', publicState(state));
       }
     }
   });
