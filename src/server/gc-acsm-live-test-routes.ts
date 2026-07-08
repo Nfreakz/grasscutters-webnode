@@ -272,6 +272,36 @@ function collectStoredTimeDrivers(message: any) {
   return Object.fromEntries(map.entries());
 }
 
+
+function splitRecordToArray(value: any) {
+  if (!value || typeof value !== 'object') return [];
+  const entries = Object.values(value as Record<string, any>);
+  return entries
+    .map((split: any, index) => ({
+      index: numberOrNull(split?.SplitIndex) ?? index,
+      ms: ticksToMs(split?.SplitTime ?? split?.Time ?? split?.splitTime),
+      isBest: Boolean(split?.IsBest),
+      isDriversBest: Boolean(split?.IsDriversBest),
+      cuts: numberOrNull(split?.Cuts) ?? 0
+    }))
+    .filter((split) => split.ms)
+    .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+}
+
+function normalizeSplitSource(car: any) {
+  // ACSM suele pintar los sectores desde BestLapSplits. Si no existe, usamos BestSplits.
+  // En el snapshot real ambos objetos pueden existir, pero BestLapSplits es el que más se acerca
+  // a las pastillas S1/S2/S3 que enseña ACSM junto al Best Lap.
+  const bestLapSplits = splitRecordToArray(car?.BestLapSplits);
+  const bestSplits = splitRecordToArray(car?.BestSplits);
+  const splits = bestLapSplits.length ? bestLapSplits : bestSplits;
+  return splits.map((split) => ({
+    ...split,
+    text: formatLapMs(split.ms),
+    shortText: split.ms ? `${(split.ms / 1000).toFixed(3)}s` : null
+  }));
+}
+
 function normalizeStoredTimes(driversObject: Record<string, any> | undefined) {
   const rows: any[] = [];
   const seenRows = new Set<string>();
@@ -296,7 +326,9 @@ function normalizeStoredTimes(driversObject: Record<string, any> | undefined) {
         lastLapText: formatLapMs(ticksToMs(car?.LastLap)),
         laps: numberOrNull(car?.NumLaps),
         topSpeedKmh: numberOrNull(car?.TopSpeedBestLap),
-        bestSplits: car?.BestSplits || car?.BestLapSplits || null
+        sectors: normalizeSplitSource(car),
+        bestSplits: car?.BestSplits || null,
+        bestLapSplits: car?.BestLapSplits || null
       });
     }
   }

@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v10-stored-times-parity">
+  <main class="gc-live-test" data-gc-live-test="v11-sectors-parity">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -95,6 +95,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
               <th>Piloto</th>
               <th>Coche</th>
               <th>Best Lap</th>
+              <th>Sectores</th>
               <th>Vueltas</th>
               <th>Top Speed</th>
             </tr>
@@ -153,6 +154,13 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__panel--stored { margin-top: 10px; }
     .is-pit { color: #ffc857; }
     .is-best { color: #9dff00; font-weight: 1000; }
+
+    .gc-sector-list { display: flex; flex-wrap: wrap; gap: 4px; min-width: 210px; }
+    .gc-sector { display: inline-flex; align-items: center; gap: 3px; border-radius: 6px; padding: 3px 5px; background: rgba(255, 139, 0, .94); color: #fff; font: 900 10px/1 var(--font-mono, monospace); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+    .gc-sector b { color: rgba(255,255,255,.9); }
+    .gc-sector.is-driver-best { background: rgba(0, 190, 95, .92); }
+    .gc-sector.is-overall-best { background: rgba(109, 70, 255, .95); }
+    .gc-sector-empty { color: #7f927b; }
     @media (max-width: 980px) {
       .gc-live-test { padding-left: 12px; padding-right: 12px; }
       .gc-live-test__hero { display: block; }
@@ -164,7 +172,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
   </style>
 
   <script>
-    const runtime = 'v9-compact-markers-acsm-parity';
+    const runtime = 'v11-sectors-parity';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
     const state = {
@@ -285,11 +293,21 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       `).join('');
     }
 
+
+    function renderSectors(sectors) {
+      if (!Array.isArray(sectors) || !sectors.length) return '<span class="gc-sector-empty">--</span>';
+      return `<div class="gc-sector-list">${sectors.slice(0, 3).map((sector, index) => `
+        <span class="gc-sector ${sector.isBest ? 'is-overall-best' : ''} ${sector.isDriversBest ? 'is-driver-best' : ''}">
+          <b>S${index + 1}</b> ${escapeHtml(sector.shortText || sector.text || '--')}
+        </span>
+      `).join('')}</div>`;
+    }
+
     function renderStored(rows) {
       text('[data-stored-count]', `${rows.length} registros`);
       const tbody = $('[data-live-stored]');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5">Sin stored times detectados todavía.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Sin stored times detectados todavía.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.slice(0, 80).map((row) => `
@@ -297,6 +315,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
           <td><strong>${escapeHtml(row.driverName)}</strong></td>
           <td>${escapeHtml(row.carName)}<small>#${escapeHtml(row.raceNumber ?? '--')} · ${escapeHtml(row.tyres ?? '--')}</small></td>
           <td class="is-best">${escapeHtml(row.bestLapText ?? '--')}</td>
+          <td>${renderSectors(row.sectors || [])}</td>
           <td>${escapeHtml(row.laps ?? '--')}</td>
           <td>${row.topSpeedKmh ? `${Number(row.topSpeedKmh).toFixed(2)} km/h` : '--'}</td>
         </tr>
