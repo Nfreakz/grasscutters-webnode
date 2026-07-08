@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v7-forced-visible-markers">
+  <main class="gc-live-test" data-gc-live-test="v9-compact-markers-acsm-parity">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -132,13 +132,14 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     .gc-live-test__map { position: relative; width: 100%; height: clamp(520px, 60vw, 760px); overflow: hidden; border-radius: 14px; }
     .gc-live-test__map img { position: absolute; max-width: none; object-fit: fill; display: block; filter: drop-shadow(0 0 14px rgba(157,255,0,.08)); transform-origin: center center; }
     .gc-live-test__map [data-live-dots] { position: absolute; inset: 0; pointer-events: none; z-index: 1000; overflow: visible; }
-    :global(.gc-live-dot) { position: absolute !important; width: 54px; height: 54px; border-radius: 50%; transform: translate(-50%, -50%); transition: left .5s linear, top .5s linear; z-index: 2000; pointer-events: auto; filter: drop-shadow(0 0 18px rgba(255,0,255,1)) drop-shadow(0 0 26px rgba(157,255,0,.65)); }
-    :global(.gc-live-dot__pulse) { position: absolute; inset: -10px; border: 3px solid rgba(157,255,0,.95); border-radius: 50%; background: rgba(255,0,255,.12); box-shadow: 0 0 0 4px rgba(0,0,0,.72), 0 0 34px rgba(157,255,0,.82); animation: gc-live-pulse 1s ease-in-out infinite alternate; }
-    :global(.gc-live-dot__core) { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #ffffff 0 15%, #ff00ff 16% 58%, #8f00ff 59% 100%); border: 4px solid #f4fff0; color: #fff; font: 1000 13px/1 var(--font-mono, monospace); box-shadow: 0 0 0 4px rgba(0,0,0,.95), 0 0 0 9px rgba(157,255,0,.62), 0 0 42px rgba(255,0,255,1); z-index: 4; }
-    :global(.gc-live-dot__pin) { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; transform: translate(-50%, -50%); z-index: 3; background: linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.98) calc(50% - 1px), rgba(255,255,255,.98) calc(50% + 1px), transparent calc(50% + 1px)), linear-gradient(0deg, transparent calc(50% - 1px), rgba(255,255,255,.98) calc(50% - 1px), rgba(255,255,255,.98) calc(50% + 1px), transparent calc(50% + 1px)); opacity: .88; }
-    :global(.gc-live-dot__arrow) { position: absolute; left: 50%; top: 50%; width: 9px; height: 52px; transform: translate(-50%, -112%) rotate(var(--car-rotation, 0rad)); transform-origin: 50% 112%; background: #9dff00; border: 2px solid #f4fff0; border-radius: 999px; box-shadow: 0 0 18px rgba(157,255,0,1), 0 0 28px rgba(255,0,255,.9); z-index: 2; }
-    :global(.gc-live-dot__label) { position: absolute; left: 46px; top: -6px; max-width: 220px; white-space: nowrap; background: rgba(0,0,0,.96); border: 2px solid rgba(157,255,0,.9); color: white; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 1000; box-shadow: 0 8px 24px rgba(0,0,0,.75), 0 0 20px rgba(157,255,0,.45); opacity: .96; z-index: 5; }
-    :global(.gc-live-dot__label small) { display: block; color: #9dff00; font: 900 9px/1 var(--font-mono, monospace); margin-top: 2px; }
+    :global(.gc-live-dot) { position: absolute !important; width: 28px; height: 28px; border-radius: 50%; transform: translate(-50%, -50%); transition: left .5s linear, top .5s linear; z-index: 2000; pointer-events: auto; filter: drop-shadow(0 0 9px rgba(255,0,255,.95)) drop-shadow(0 0 14px rgba(157,255,0,.55)); }
+    :global(.gc-live-dot__pulse) { position: absolute; inset: -5px; border: 2px solid rgba(157,255,0,.85); border-radius: 50%; background: rgba(255,0,255,.10); box-shadow: 0 0 0 2px rgba(0,0,0,.72), 0 0 18px rgba(157,255,0,.62); animation: gc-live-pulse 1s ease-in-out infinite alternate; }
+    :global(.gc-live-dot__core) { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #ffffff 0 13%, #ff00ff 14% 58%, #8f00ff 59% 100%); border: 2px solid #f4fff0; color: #fff; font: 1000 9px/1 var(--font-mono, monospace); box-shadow: 0 0 0 2px rgba(0,0,0,.95), 0 0 0 4px rgba(157,255,0,.45), 0 0 20px rgba(255,0,255,.9); z-index: 4; }
+    :global(.gc-live-dot__pin) { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; transform: translate(-50%, -50%); z-index: 3; background: linear-gradient(90deg, transparent calc(50% - .75px), rgba(255,255,255,.9) calc(50% - .75px), rgba(255,255,255,.9) calc(50% + .75px), transparent calc(50% + .75px)), linear-gradient(0deg, transparent calc(50% - .75px), rgba(255,255,255,.9) calc(50% - .75px), rgba(255,255,255,.9) calc(50% + .75px), transparent calc(50% + .75px)); opacity: .55; }
+    :global(.gc-live-dot__arrow) { position: absolute; left: 50%; top: 50%; width: 4px; height: 28px; transform: translate(-50%, -112%) rotate(var(--car-rotation, 0rad)); transform-origin: 50% 112%; background: #9dff00; border: 1px solid #f4fff0; border-radius: 999px; box-shadow: 0 0 10px rgba(157,255,0,.9), 0 0 16px rgba(255,0,255,.7); z-index: 2; }
+    :global(.gc-live-dot__label) { position: absolute; left: 24px; top: -4px; max-width: 190px; white-space: nowrap; background: rgba(0,0,0,.96); border: 1px solid rgba(157,255,0,.8); color: white; border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 1000; box-shadow: 0 8px 18px rgba(0,0,0,.65), 0 0 14px rgba(157,255,0,.35); opacity: 0; transform: translateX(-4px); transition: opacity .15s ease, transform .15s ease; z-index: 5; }
+    :global(.gc-live-dot:hover .gc-live-dot__label) { opacity: .98; transform: translateX(0); }
+    :global(.gc-live-dot__label small) { display: block; color: #9dff00; font: 900 8px/1 var(--font-mono, monospace); margin-top: 2px; }
     :global(.gc-live-dot.is-pit .gc-live-dot__core) { background: radial-gradient(circle at 35% 30%, #ffffff 0 15%, #ffc857 16% 60%, #ff8a00 61% 100%); color: #071007; }
     @keyframes gc-live-pulse { from { transform: scale(.86); opacity: .58; } to { transform: scale(1.08); opacity: 1; } }
     .gc-live-test__table-wrap { overflow: auto; max-height: 560px; }
@@ -163,7 +164,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
   </style>
 
   <script>
-    const runtime = 'v8-global-markers-horizontal-map';
+    const runtime = 'v9-compact-markers-acsm-parity';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
     const state = {
