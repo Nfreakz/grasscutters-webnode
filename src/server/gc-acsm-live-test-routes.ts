@@ -211,21 +211,86 @@ function normalizeDriver(guid: string, driver: any): LiveDriver {
   };
 }
 
+function getObjectRecord(value: any): Record<string, any> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function hasDriverCars(value: any) {
+  return value && typeof value === 'object' && value.Cars && typeof value.Cars === 'object' && !Array.isArray(value.Cars);
+}
+
+function addDriverCandidate(map: Map<string, any>, fallbackKey: string, driver: any) {
+  if (!hasDriverCars(driver)) return;
+  const guid = String(driver?.CarInfo?.DriverGUID || driver?.DriverGUID || fallbackKey || '').trim();
+  if (!guid) return;
+  const existing = map.get(guid);
+  if (!existing) {
+    map.set(guid, driver);
+    return;
+  }
+  const existingCars = Object.keys(existing?.Cars || {}).length;
+  const nextCars = Object.keys(driver?.Cars || {}).length;
+  if (nextCars > existingCars) map.set(guid, driver);
+}
+
+function collectStoredTimeDrivers(message: any) {
+  const map = new Map<string, any>();
+  const directContainers = [
+    message?.ConnectedDrivers?.Drivers,
+    message?.DisconnectedDrivers?.Drivers,
+    message?.DisconnectedDrivers,
+    message?.StoredTimes?.Drivers,
+    message?.StoredTimes,
+    message?.Leaderboard?.Drivers,
+    message?.Leaderboards?.Drivers,
+    message?.RaceResults?.Drivers,
+    message?.Results?.Drivers
+  ];
+
+  for (const container of directContainers) {
+    for (const [key, value] of Object.entries<any>(getObjectRecord(container))) {
+      addDriverCandidate(map, key, value);
+    }
+  }
+
+  const seen = new Set<any>();
+  function scan(value: any, depth: number, keyHint = '') {
+    if (!value || typeof value !== 'object' || depth > 5 || seen.has(value)) return;
+    seen.add(value);
+    if (hasDriverCars(value)) addDriverCandidate(map, keyHint, value);
+    if (Array.isArray(value)) {
+      value.slice(0, 500).forEach((item, index) => scan(item, depth + 1, String(index)));
+      return;
+    }
+    for (const [key, child] of Object.entries<any>(value)) {
+      if (['BestLapMiniSectors', 'MiniSectors', 'CurrentLapMiniSectors'].includes(key)) continue;
+      scan(child, depth + 1, key);
+    }
+  }
+  scan(message, 0);
+
+  return Object.fromEntries(map.entries());
+}
+
 function normalizeStoredTimes(driversObject: Record<string, any> | undefined) {
   const rows: any[] = [];
+  const seenRows = new Set<string>();
   for (const [guid, driver] of Object.entries(driversObject || {})) {
     const name = String(driver?.CarInfo?.DriverName || driver?.DriverName || guid);
     const cars = driver?.Cars || {};
     for (const [carModel, car] of Object.entries<any>(cars)) {
       const bestLapMs = ticksToMs(car?.BestLap);
       if (!bestLapMs) continue;
+      const key = `${guid}:${carModel}:${bestLapMs}`;
+      if (seenRows.has(key)) continue;
+      seenRows.add(key);
       rows.push({
         guid,
         driverName: name,
         carModel,
         carName: String(car?.CarName || carModel),
-        raceNumber: numberOrNull(car?.RaceNumber),
-        tyres: car?.TyreBestLap ? String(car.TyreBestLap) : null,
+        raceNumber: numberOrNull(car?.RaceNumber ?? driver?.CarInfo?.RaceNumber),
+        tyres: car?.TyreBestLap ? String(car.TyreBestLap) : (driver?.CarInfo?.Tyres ? String(driver.CarInfo.Tyres) : null),
         bestLapMs,
         bestLapText: formatLapMs(bestLapMs),
         lastLapText: formatLapMs(ticksToMs(car?.LastLap)),
@@ -287,8 +352,10 @@ function normalizeStatus(message: any, state?: LiveState) {
   const driversObject = connected.Drivers || {};
   const carIdToGuid = connected.CarIDToGUID || message.CarIDToGUID || {};
   const positionalOrder = connected.GUIDsInPositionalOrder || [];
+  const storedDriversObject = collectStoredTimeDrivers(message);
   const baseDrivers = Object.entries(driversObject).map(([guid, driver]) => normalizeDriver(guid, driver));
   const drivers = mergeDriversWithCarInfos(baseDrivers, carIdToGuid, state?.carInfos || {});
+  const storedTimes = normalizeStoredTimes(storedDriversObject);
 
   const carSlots = Object.entries(carIdToGuid).map(([carId, guid]) => {
     const driver = drivers.find((item) => item.guid === String(guid));
@@ -338,14 +405,15 @@ function normalizeStatus(message: any, state?: LiveState) {
     positionalOrder,
     carSlots,
     drivers,
-    storedTimes: normalizeStoredTimes(driversObject).slice(0, 200),
+    storedTimes: storedTimes.slice(0, 200),
     debugCounts: {
       driversObject: Object.keys(driversObject).length,
+      storedDrivers: Object.keys(storedDriversObject).length,
       carInfos: Object.keys(state?.carInfos || {}).length,
       carIdToGuid: Object.keys(carIdToGuid).length,
       positionalOrder: Array.isArray(positionalOrder) ? positionalOrder.length : 0,
       carSlots: carSlots.length,
-      storedTimes: normalizeStoredTimes(driversObject).length
+      storedTimes: storedTimes.length
     }
   };
 }
@@ -408,7 +476,8 @@ function debugState(state: LiveState) {
       carIdToGuid: Object.keys(carIdToGuid).length,
       positionalOrder: Array.isArray(connected.GUIDsInPositionalOrder) ? connected.GUIDsInPositionalOrder.length : 0,
       positions: Object.keys(state.positions || {}).length,
-      carInfos: Object.keys(state.carInfos || {}).length
+      carInfos: Object.keys(state.carInfos || {}).length,
+      storedDrivers: Object.keys(collectStoredTimeDrivers(snapshot)).length
     },
     examples: {
       driverGuids: Object.keys(driversObject).slice(0, 5),

@@ -5,7 +5,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
 ---
 
 <MarketingLayout title={title} description={description} canonicalPath="/live-test">
-  <main class="gc-live-test" data-gc-live-test="v9-compact-markers-acsm-parity">
+  <main class="gc-live-test" data-gc-live-test="v10-stored-times-parity">
     <section class="gc-live-test__hero">
       <div>
         <p class="gc-live-test__eyebrow">GrassCutters Lab</p>
@@ -260,7 +260,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       const counts = payload.normalized?.debugCounts || debug.rawCounts || {};
       text('[data-debug-url]', payload.acsmBaseUrl || '--');
       text('[data-debug-events]', Object.entries(eventCounts).map(([k, v]) => `${k}:${v}`).join(' · ') || '--');
-      text('[data-debug-raw]', `drivers:${counts.driversObject ?? 0} · infos:${counts.carInfos ?? 0} · cars:${counts.carIdToGuid ?? 0} · stored:${counts.storedTimes ?? 0}`);
+      text('[data-debug-raw]', `activos:${counts.driversObject ?? 0} · históricos:${counts.storedDrivers ?? 0} · infos:${counts.carInfos ?? 0} · slots:${counts.carIdToGuid ?? 0} · stored:${counts.storedTimes ?? 0}`);
       text('[data-debug-error]', payload.lastError || 'sin error');
       text('[data-debug-last]', payload.lastEventAt ? new Date(payload.lastEventAt).toLocaleTimeString() : '--');
       text('[data-debug-positions]', `${Object.keys(payload.positions || {}).length} live${payload.lastPositionDropReason ? ' · ' + payload.lastPositionDropReason : ''}`);
@@ -269,21 +269,8 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     function renderDrivers(drivers, carSlots) {
       text('[data-drivers-count]', `${drivers.length} piloto${drivers.length === 1 ? '' : 's'} activos`);
       const tbody = $('[data-live-drivers]');
-      if (!drivers.length && carSlots.length) {
-        tbody.innerHTML = carSlots.map((slot) => `
-          <tr>
-            <td>${escapeHtml(slot.carId ?? '--')}</td>
-            <td><strong>${escapeHtml(slot.driverName || 'GUID ' + String(slot.guid || '').slice(-6))}</strong><small>slot ACSM sin Driver completo</small></td>
-            <td>${escapeHtml(slot.carName || '--')}</td>
-            <td>--</td>
-            <td>--</td>
-            <td>--</td>
-          </tr>
-        `).join('');
-        return;
-      }
       if (!drivers.length) {
-        tbody.innerHTML = '<tr><td colspan="6">Sin coches rodando ahora.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6">Sin coches activos ahora. ACSM tiene ${escapeHtml(carSlots.length)} slots detectados para esta sesión.</td></tr>`;
         return;
       }
       tbody.innerHTML = drivers.map((driver) => `
