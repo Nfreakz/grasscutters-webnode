@@ -15659,6 +15659,251 @@ app.get('/api/gc/pilots2', async (req, res) => {
 /* GC_PILOTOS2_LAB_V2_END */
 
 
+
+/* GC_LEGACY_API_MULTISOURCE_COMPAT_V12_START
+ * Compatibilidad para endpoints legacy usados por algunas páginas antiguas.
+ * /api/gc/leaderboard y /api/gc/combos ya leen Race Data Core multi-source, pero
+ * /api/hotlaps y /api/drivers podían quedarse en la fuente legacy y perder pilotos GT4
+ * como Lxxwis. Estas rutas devuelven el mismo Data Core con soporte source/server=gt4/all.
+ */
+function gcCompatSectorTimesFromLapV12(lap: any) {
+  const values = Array.isArray(lap?.sectorTimesMs)
+    ? lap.sectorTimesMs.filter((value: unknown) => Number.isFinite(Number(value)) && Number(value) > 0).map((value: unknown) => Number(value))
+    : [];
+  return values.map((timeMs: number, index: number) => ({
+    sector: index + 1,
+    timeMs,
+    time: lapTimeToText(timeMs) ?? '--'
+  }));
+}
+
+function gcCompatLapV12(lap: any) {
+  const base: any = compactLapForCombo(lap as ComboLap) || {};
+  const sectors = gcCompatSectorTimesFromLapV12(lap);
+  return {
+    ...base,
+    mode: 'legacy-compat-multisource-v12',
+    sourceKey: (lap as any).sourceKey ?? base.sourceKey ?? null,
+    sourceLabel: (lap as any).sourceLabel ?? base.sourceLabel ?? null,
+    championshipKey: (lap as any).championshipKey ?? base.championshipKey ?? null,
+    sourceServerIp: (lap as any).sourceServerIp ?? base.sourceServerIp ?? null,
+    lapNumber: lap?.lapNumber ?? lap?.lapCount ?? base.lapNumber ?? null,
+    playerInSessionId: lap?.playerInSessionId ?? null,
+    sessionId: lap?.sessionId ?? base.session?.id ?? null,
+    sectorTimesMs: sectors.map((sector) => sector.timeMs),
+    sectorTimes: sectors.map((sector) => sector.time),
+    sectors,
+    sector1Ms: sectors[0]?.timeMs ?? null,
+    sector2Ms: sectors[1]?.timeMs ?? null,
+    sector3Ms: sectors[2]?.timeMs ?? null,
+    sector1: sectors[0]?.time ?? '--',
+    sector2: sectors[1]?.time ?? '--',
+    sector3: sectors[2]?.time ?? '--',
+    maxSpeed: base.maxSpeedKmh ?? lap?.maxSpeedKmh ?? null,
+    maxSpeedKmh: base.maxSpeedKmh ?? lap?.maxSpeedKmh ?? null,
+    sessionType: lap?.sessionType ?? lap?.session?.type ?? null,
+    trackLength: lap?.trackLength ?? lap?.track?.length ?? null,
+    fuelRatio: lap?.fuelRatio ?? null,
+    gripLevel: lap?.gripLevel ?? null,
+    temperatureTrack: lap?.temperatureTrack ?? null,
+    temperatureAmbient: lap?.temperatureAmbient ?? null,
+    aids: lap?.aids ?? null,
+    input: lap?.input ?? null
+  };
+}
+
+function gcCompatDriverIdV12(lap: any) {
+  return String(lap?.driver?.id ?? lap?.driver?.steamGuid ?? lap?.driver?.name ?? '').trim();
+}
+
+function gcCompatBuildDriversV12(laps: any[]) {
+  const byDriver = new Map<string, any>();
+
+  for (const lap of laps) {
+    const key = gcCompatDriverIdV12(lap);
+    if (!key) continue;
+    const valid = Boolean(lap?.valid);
+    const lapMs = Number(lap?.lapTimeMs ?? Infinity);
+    const current = byDriver.get(key);
+    const timestamp = Number(lap?.timestamp ?? 0);
+
+    if (!current) {
+      byDriver.set(key, {
+        id: lap?.driver?.id ?? null,
+        playerId: lap?.driver?.id ?? null,
+        driverId: lap?.driver?.id ?? null,
+        name: lap?.driver?.name ?? null,
+        driverName: lap?.driver?.name ?? null,
+        playerName: lap?.driver?.name ?? null,
+        steamGuid: lap?.driver?.steamGuid ?? null,
+        sourceKeys: new Set([(lap as any).sourceKey ?? null].filter(Boolean)),
+        totalLaps: 0,
+        validLaps: 0,
+        invalidLaps: 0,
+        cars: new Map(),
+        tracks: new Map(),
+        bestLapMs: null,
+        bestLap: null,
+        latestTimestamp: null,
+        latestTimestampIso: null,
+        latestLap: null
+      });
+    }
+
+    const item = byDriver.get(key);
+    item.totalLaps += 1;
+    if (valid) item.validLaps += 1;
+    else item.invalidLaps += 1;
+    if ((lap as any).sourceKey) item.sourceKeys.add((lap as any).sourceKey);
+    if (lap?.car?.id !== null || lap?.car?.name) item.cars.set(String(lap?.car?.id ?? lap?.car?.name), lap.car);
+    if (lap?.track?.id !== null || lap?.track?.name) item.tracks.set(String(lap?.track?.id ?? lap?.track?.name), lap.track);
+
+    if (valid && Number.isFinite(lapMs) && lapMs > 0 && (item.bestLapMs === null || lapMs < item.bestLapMs)) {
+      item.bestLapMs = lapMs;
+      item.bestLap = gcCompatLapV12(lap);
+    }
+
+    if (Number.isFinite(timestamp) && timestamp > 0 && (item.latestTimestamp === null || timestamp > item.latestTimestamp)) {
+      item.latestTimestamp = timestamp;
+      item.latestTimestampIso = lap?.timestampIso ?? unixToIso(timestamp) ?? null;
+      item.latestLap = gcCompatLapV12(lap);
+    }
+  }
+
+  return Array.from(byDriver.values()).map((item) => ({
+    ...item,
+    bestLap: item.bestLap?.lapTime ?? item.bestLap?.lapTimeFormatted ?? null,
+    bestLapMs: item.bestLapMs,
+    bestLapItem: item.bestLap,
+    latestLap: item.latestLap,
+    sourceKeys: Array.from(item.sourceKeys),
+    carsCount: item.cars.size,
+    tracksCount: item.tracks.size,
+    cars: Array.from(item.cars.values()).slice(0, 20),
+    tracks: Array.from(item.tracks.values()).slice(0, 20)
+  })).sort((a, b) => Number(b.validLaps ?? 0) - Number(a.validLaps ?? 0) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
+}
+
+app.get('/api/hotlaps', async (req, res) => {
+  try {
+    await readDisplayNameStoreAsync();
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        mode: 'legacy-compat-multisource-v12',
+        generatedAt: new Date().toISOString(),
+        source: 'unavailable',
+        items: [],
+        laps: [],
+        hotlaps: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const rawLimit = getQueryString(req, 'limit', 'all').toLowerCase();
+    const wantsAll = ['all', 'full', 'max', 'none', '0', '-1'].includes(rawLimit);
+    const limit = wantsAll ? Number.POSITIVE_INFINITY : gcDataCoreQueryNumber(req, 'limit', 5000, 1, 50000);
+    const filtered = filterLaps(dataCoreSource.laps, req, { validOnly: false })
+      .sort((a: any, b: any) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity));
+    const items = filtered.slice(0, limit).map(gcCompatLapV12);
+
+    res.json({
+      ok: true,
+      mode: 'legacy-compat-multisource-v12',
+      generatedAt: new Date().toISOString(),
+      source: dataCoreSource.source,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      count: items.length,
+      totalFilteredLaps: filtered.length,
+      totalLaps: dataCoreSource.laps.length,
+      limitMode: wantsAll ? 'all' : 'limited',
+      items,
+      hotlaps: items,
+      laps: items,
+      data: { items, hotlaps: items, laps: items },
+      filters: summarizeFilters(req),
+      message: 'Endpoint legacy /api/hotlaps servido desde Race Data Core multi-source.'
+    });
+  } catch (error) {
+    console.error('[GC LEGACY COMPAT] /api/hotlaps:', error);
+    res.status(200).json({
+      ok: false,
+      mode: 'legacy-compat-multisource-v12',
+      generatedAt: new Date().toISOString(),
+      items: [],
+      hotlaps: [],
+      laps: [],
+      message: 'No se pudo generar /api/hotlaps desde Race Data Core multi-source.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+
+app.get('/api/drivers', async (req, res) => {
+  try {
+    await readDisplayNameStoreAsync();
+    const readSource = await readGcDataCoreSource(req);
+    if ((readSource as any).ok === false) {
+      res.status(200).json({
+        ok: false,
+        mode: 'legacy-compat-multisource-v12',
+        generatedAt: new Date().toISOString(),
+        source: 'unavailable',
+        items: [],
+        drivers: [],
+        pilots: [],
+        stracker: gcDataCorePublicStracker(readSource.stracker),
+        fallbackReason: readSource.fallbackReason ?? null,
+        message: readSource.message
+      });
+      return;
+    }
+
+    const dataCoreSource = readSource as GcDataCoreReadResult;
+    const filtered = filterLaps(dataCoreSource.laps, req, { validOnly: false });
+    const items = gcCompatBuildDriversV12(filtered);
+
+    res.json({
+      ok: true,
+      mode: 'legacy-compat-multisource-v12',
+      generatedAt: new Date().toISOString(),
+      source: dataCoreSource.source,
+      stracker: gcDataCorePublicStracker(dataCoreSource.stracker),
+      mysqlMirror: dataCoreSource.mysqlMirror ?? null,
+      fallbackReason: dataCoreSource.fallbackReason ?? null,
+      count: items.length,
+      totalFilteredLaps: filtered.length,
+      totalLaps: dataCoreSource.laps.length,
+      items,
+      drivers: items,
+      pilots: items,
+      data: { items, drivers: items, pilots: items },
+      filters: summarizeFilters(req),
+      message: 'Endpoint legacy /api/drivers servido desde Race Data Core multi-source.'
+    });
+  } catch (error) {
+    console.error('[GC LEGACY COMPAT] /api/drivers:', error);
+    res.status(200).json({
+      ok: false,
+      mode: 'legacy-compat-multisource-v12',
+      generatedAt: new Date().toISOString(),
+      items: [],
+      drivers: [],
+      pilots: [],
+      message: 'No se pudo generar /api/drivers desde Race Data Core multi-source.',
+      error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
+    });
+  }
+});
+/* GC_LEGACY_API_MULTISOURCE_COMPAT_V12_END */
+
 /* GC_DATA_CORE_LAB_FIXES_V1_START */
 function gcLabFixTextV1(value: unknown, fallback = '') {
   const text = String(value ?? '').trim();
