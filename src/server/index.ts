@@ -16440,9 +16440,30 @@ app.get('/api/gc/recent-laps', async (req, res) => {
       }
     }
 
-    filtered = filtered
-      .filter((lap: any) => gcLabFixDateMsV1(lap) > 0)
-      .sort((a: any, b: any) => gcLabFixDateMsV1(b) - gcLabFixDateMsV1(a));
+    /* GC_RECENT_LAPS_UNDATED_V13_START
+     * Mirror V2/GT4 puede traer vueltas válidas sin timestamp usable en algunas rutas legacy.
+     * Antes las descartábamos con dateMs > 0; eso ocultaba pilotos que sí existían en
+     * /api/hotlaps y /api/gc/leaderboard. Ahora las mantenemos y las ordenamos al final.
+     */
+    const withRecentSortMeta = filtered.map((lap: any, index: number) => ({
+      lap,
+      index,
+      dateMs: gcLabFixDateMsV1(lap),
+      lapId: Number(gcLabFixPickV1(lap, ['lapId', 'LapId']) ?? 0)
+    }));
+    const undatedRows = withRecentSortMeta.filter((item) => !(item.dateMs > 0)).length;
+    if (undatedRows) warnings.push(`${undatedRows} vueltas sin timestamp usable mantenidas al final de recent-laps.`);
+
+    filtered = withRecentSortMeta
+      .sort((a, b) => {
+        const byDate = b.dateMs - a.dateMs;
+        if (byDate) return byDate;
+        const byLapId = b.lapId - a.lapId;
+        if (byLapId) return byLapId;
+        return a.index - b.index;
+      })
+      .map((item) => item.lap);
+    /* GC_RECENT_LAPS_UNDATED_V13_END */
 
     res.json({
       ok: true,
@@ -16464,7 +16485,7 @@ app.get('/api/gc/recent-laps', async (req, res) => {
       } : null,
       warnings,
       items: filtered.slice(0, limit).map(gcLabFixCompactLapV1),
-      message: 'Vueltas recientes canÃ³nicas desde Race Data Core.'
+      message: 'Vueltas recientes canÃ³nicas desde Race Data Core. v13 mantiene vueltas GT4 sin timestamp al final.'
     });
   } catch (error) {
     console.error('[GC Data Core Lab Fixes] recent laps error:', error);
