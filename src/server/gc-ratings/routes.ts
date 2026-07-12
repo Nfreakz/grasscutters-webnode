@@ -121,8 +121,13 @@ async function requireAdmin(req: Request) {
         eventId = decodeURIComponent(eventId);
       } catch {}
       const fallbackEnabled = String(req.query.fallback || '').trim() === '1';
-      const payload = await service.getEvent(eventId, { fallback: fallbackEnabled });
-      if (!payload) return res.status(404).json({ ok: false, source: 'gc-ratings-v1', eventSource: 'none', message: 'Evento no encontrado.' });
+      const source = req.query.source || req.query.server || req.query.championship || '';
+      const payload = await service.getEvent(eventId, {
+        fallback: fallbackEnabled,
+        source,
+        autoSourceFallback: true
+      });
+      if (!payload) return res.status(404).json({ ok: false, source: 'gc-ratings-v1:v14-round-source-fallback', eventSource: 'none', message: 'Evento no encontrado en weekly ni GT4.' });
       res.status(payload.ok === false ? 404 : 200).json(payload);
     } catch (error) {
       res.status(200).json(formatStrackerMirrorError(error));

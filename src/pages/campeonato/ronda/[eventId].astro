@@ -535,6 +535,7 @@ try {
 
   <script is:inline define:vars={{ eventId }}>
     // @ts-nocheck
+    // GC_ROUND_SOURCE_FALLBACK_V14
     // GC_SAFETY_RATING_TS_NOCHECK_V1
     (() => {
       const $ = (id) => document.getElementById(id);
@@ -973,9 +974,20 @@ try {
         `).join('') : '<article class="gc-public-card"><strong>Sin sesiones registradas</strong></article>';
       };
 
+      function getRoundSourceV14() {
+        const params = new URLSearchParams(window.location.search || '');
+        const raw = String(params.get('source') || params.get('server') || params.get('championship') || '').trim().toLowerCase();
+        return ['gt4', 'gt-4', 'gt', 'supra', 'supra-gt4'].includes(raw) ? 'gt4' : (raw ? 'weekly' : '');
+      }
+
       async function load() {
         try {
-          const response = await fetch(`/api/gc/ratings/event/${encodeURIComponent(eventId)}?refresh=1`, { cache: 'no-store' });
+          const params = new URLSearchParams();
+          params.set('refresh', '1');
+          params.set('fallback', '1');
+          const roundSource = getRoundSourceV14();
+          if (roundSource) params.set('source', roundSource);
+          const response = await fetch(`/api/gc/ratings/event/${encodeURIComponent(eventId)}?${params.toString()}`, { cache: 'no-store' });
           const data = await response.json();
           await render(data);
         } catch (error) {

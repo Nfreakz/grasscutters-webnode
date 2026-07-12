@@ -2716,27 +2716,40 @@ export class GcRatingsService {
     };
   }
 
-  async getEvent(eventId: string) {
+  async getEvent(eventId: string, options: PlainObject = {}) {
     let normalizedEventId = String(eventId || '');
     try {
       normalizedEventId = decodeURIComponent(normalizedEventId);
     } catch {}
 
-    const payload = await this.getChampionshipPayload(false);
-    const allEvents = [
-      ...ensureArray(payload.championship.events),
-      ...ensureArray(payload.championship.strackerSeries?.processedEvents),
-      ...ensureArray(payload.championship.strackerSeries?.reviewedEvents)
-    ];
-    const event = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
-    if (!event) return null;
-    return {
-      ok: true,
-      source: 'gc-ratings-v1',
-      generatedAt: payload.generatedAt,
-      event,
-      diagnostics: payload.diagnostics
-    };
+    const requestedSourceRaw = String(options.source || options.server || options.championship || '').trim();
+    const requestedSource = requestedSourceRaw ? normalizeChampionshipSource(requestedSourceRaw) : 'weekly';
+    const autoFallback = options.autoSourceFallback !== false;
+    const sourceCandidates = [...new Set([
+      requestedSource,
+      ...(autoFallback ? ['weekly', 'gt4'] : [])
+    ])];
+
+    for (const sourceCandidate of sourceCandidates) {
+      const payload = await this.getChampionshipPayload(false, sourceCandidate);
+      const allEvents = [
+        ...ensureArray(payload.championship.events),
+        ...ensureArray(payload.championship.strackerSeries?.processedEvents),
+        ...ensureArray(payload.championship.strackerSeries?.reviewedEvents)
+      ];
+      const event = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
+      if (!event) continue;
+      return {
+        ok: true,
+        source: `gc-ratings-v1:${sourceCandidate}`,
+        eventSource: sourceCandidate,
+        generatedAt: payload.generatedAt,
+        event,
+        diagnostics: payload.diagnostics
+      };
+    }
+
+    return null;
   }
 
   async getDriver(driverKey: string) {

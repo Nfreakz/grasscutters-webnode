@@ -1198,7 +1198,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
         els.lastTitle.textContent = event.name || `Ronda ${event.index}`;
         els.lastMeta.textContent = `${fmtDate(event.completedAt || event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}`;
-        els.lastLink.href = event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`;
+        els.lastLink.href = event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}?source=gt4`; // GC_GT4_ROUND_LINK_SOURCE_V14
         els.lastLink.hidden = false;
 
         const podium = Array.isArray(event.raceResults) && event.raceResults.length
@@ -1283,7 +1283,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         els.list.innerHTML = events.slice(0, 24).map((event) => {
           const winner = event.winner ? `${event.winner.name} · ${event.winner.points} pts` : 'Resultados pendientes';
           return `
-            <a class="gc-acsr-event" href="${escapeHtml(event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`)}" data-status="${escapeHtml(event.status || 'pending')}">
+            <a class="gc-acsr-event" href="${escapeHtml(event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}?source=gt4`)}" data-status="${escapeHtml(event.status || 'pending')}">
               ${eventImageHtml(event)}
               <div>
                 <span>${escapeHtml(statusLabel[event.status] || event.status || 'Pendiente')}</span>
