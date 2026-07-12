@@ -17,21 +17,44 @@ function rowsFromStatement(statement: any) {
   return rows;
 }
 
-export function resolveStrackerDbPath() {
-  const envPath =
+export function normalizeStrackerDbSource(value: unknown = 'main') {
+  const source = String(value ?? 'main').trim().toLowerCase();
+  return ['gt4', 'gt-4', 'gt', 'supra', 'supra-gt4', 'server2', 'server-2'].includes(source) ? 'gt4' : 'main';
+}
+
+export function resolveStrackerDbPath(sourceInput: unknown = 'main') {
+  const source = normalizeStrackerDbSource(sourceInput);
+  const gt4EnvPath =
+    process.env.GT4_STRACKER_DB_PATH ||
+    process.env.GT4_STRACKER_DB3_PATH ||
+    process.env.GT4_AC_STRACKER_DB_PATH ||
+    process.env.SUPRA_GT4_STRACKER_DB_PATH ||
+    '';
+  const mainEnvPath =
     process.env.STRACKER_DB_PATH ||
     process.env.STRACKER_DB3_PATH ||
     process.env.AC_STRACKER_DB_PATH ||
     process.env.LOCAL_STRACKER_DB_PATH ||
     '';
 
-  const candidates = [
-    envPath,
-    path.join(process.cwd(), 'data', 'stracker', 'stracker.db3'),
-    path.join(process.cwd(), 'stracker.db3')
-  ].filter(Boolean);
+  const envPath = source === 'gt4' ? (gt4EnvPath || mainEnvPath) : mainEnvPath;
+  const candidates = source === 'gt4'
+    ? [
+        gt4EnvPath,
+        path.join(process.cwd(), 'data', 'stracker', 'stracker-gt4.db3'),
+        path.join(process.cwd(), 'data', 'stracker', 'gt4.db3'),
+        path.join(process.cwd(), 'stracker-gt4.db3'),
+        mainEnvPath,
+        path.join(process.cwd(), 'data', 'stracker', 'stracker.db3'),
+        path.join(process.cwd(), 'stracker.db3')
+      ]
+    : [
+        mainEnvPath,
+        path.join(process.cwd(), 'data', 'stracker', 'stracker.db3'),
+        path.join(process.cwd(), 'stracker.db3')
+      ];
 
-  for (const candidate of candidates) {
+  for (const candidate of candidates.filter(Boolean)) {
     const absolute = path.resolve(candidate);
     if (fs.existsSync(absolute)) return absolute;
   }

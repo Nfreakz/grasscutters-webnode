@@ -231,6 +231,20 @@ async function requireAdmin(req: Request) {
         });
       }
 
+      if (['official', 'acsm', 'relink', 'recalculate-official'].includes(mode)) {
+        const allowed = await requireAdmin(req);
+        if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
+        const payload = await service.recalculateOfficialAcsmRaceRatings({
+          source: req.query.source || req.body?.source || 'weekly',
+          dryRun: parseBooleanish(req.query.dryRun || req.body?.dryRun, false)
+        });
+        return res.json({
+          ok: true,
+          source: 'gc-ratings-v1:v18-source-aware-official-recalc',
+          ...payload
+        });
+      }
+
       const allowed = await requireAdmin(req);
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
       const payload = await service.processNewEvents({ source: req.query.source || req.body?.source || 'weekly' });

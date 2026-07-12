@@ -647,16 +647,17 @@ type ProcessingContext = {
   db: any;
 };
 
-async function createProcessingContext(eventsCount: number, mode: 'incremental' | 'rebuild') {
+async function createProcessingContext(eventsCount: number, mode: 'incremental' | 'rebuild', sourceInput: unknown = 'weekly') {
   const warningLogs: RecalculationLog[] = [];
-  const strackerDbPath = resolveStrackerDbPath();
+  const source = normalizeChampionshipSource(sourceInput);
+  const strackerDbPath = resolveStrackerDbPath(source === 'gt4' ? 'gt4' : 'main');
   if (!strackerDbPath) {
     warningLogs.push({
       id: uniqueId('gc_recalc'),
       eventId: null,
       mode,
       status: 'error',
-      message: 'STRacker no configurado, usando fallback ACSM con datos parciales para SR.',
+      message: `STRacker ${source === 'gt4' ? 'GT4' : 'main'} no configurado, usando fallback ACSM con datos parciales para SR.`,
       createdAt: isoNow()
     });
     return {
@@ -688,7 +689,7 @@ async function createProcessingContext(eventsCount: number, mode: 'incremental' 
       eventId: null,
       mode,
       status: 'error',
-      message: `STRacker no disponible, usando fallback ACSM: ${error instanceof Error ? error.message : String(error)}`,
+      message: `STRacker ${source === 'gt4' ? 'GT4' : 'main'} no disponible, usando fallback ACSM: ${error instanceof Error ? error.message : String(error)}`,
       createdAt: isoNow()
     });
     return {
@@ -1206,11 +1207,11 @@ export class GcRatingsService {
     return createEmptySnapshot(null, this.store.kind);
   }
 
-  private async computeEventUpdates(baseSnapshot: RatingsSnapshot, events: PlainObject[], mode: 'incremental' | 'rebuild') {
+  private async computeEventUpdates(baseSnapshot: RatingsSnapshot, events: PlainObject[], mode: 'incremental' | 'rebuild', options: PlainObject = {}) {
     const states = new Map(baseSnapshot.drivers.map((driver) => [driver.driverKey, { ...driver }]));
     const newEventResults: RatingEventResult[] = [];
     const processedEventIds = new Set(baseSnapshot.processedEventIds);
-    const context = await createProcessingContext(events.length, mode);
+    const context = await createProcessingContext(events.length, mode, options.source || 'weekly');
 
     try {
       for (const event of events) {
@@ -1490,7 +1491,7 @@ export class GcRatingsService {
       };
     }
 
-    const computed = await this.computeEventUpdates(baseSnapshot, newEvents, 'incremental');
+    const computed = await this.computeEventUpdates(baseSnapshot, newEvents, 'incremental', { source });
     const statusMessage = computed.context.srMode === 'stracker'
       ? `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR/GSR.`
       : `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR parcial desde ACSM.`;
@@ -1550,7 +1551,7 @@ export class GcRatingsService {
       ignoredStrackerSessions: normalizeIgnoredStrackerSessions(previousSnapshot),
       reviewedStrackerSessions: normalizeReviewedStrackerSessions(previousSnapshot)
     };
-    const computed = await this.computeEventUpdates(baseSnapshot, allCompleted, 'rebuild');
+    const computed = await this.computeEventUpdates(baseSnapshot, allCompleted, 'rebuild', { source });
     const okLog: RecalculationLog = {
       id: uniqueId('gc_recalc'),
       eventId: null,
@@ -1588,12 +1589,13 @@ export class GcRatingsService {
 
   async recalculateOfficialAcsmRaceRatings(options: PlainObject = {}) {
     const dryRun = parseBooleanish(options.dryRun, false) === true;
-    const acsm = await fetchChampionship();
+    const recalcSource = normalizeChampionshipSource(options.source || 'weekly');
+    const acsm = await fetchChampionship(recalcSource);
     const championship = acsm.championship;
     const snapshot = await this.getSnapshot();
     const targets = buildOfficialAcsmRecalculationTargets(snapshot, championship);
     const generatedAt = isoNow();
-    const strackerDbPath = resolveStrackerDbPath() || null;
+    const strackerDbPath = resolveStrackerDbPath(recalcSource === 'gt4' ? 'gt4' : 'main') || null;
 
     if (dryRun) {
       return {
@@ -1659,7 +1661,7 @@ export class GcRatingsService {
 
     for (const target of targets) {
       try {
-        const computed = await this.computeEventUpdates(currentSnapshot, [target.event], 'rebuild');
+        const computed = await this.computeEventUpdates(currentSnapshot, [target.event], 'rebuild', { source: recalcSource });
         recalculatedRows.push(...computed.newEventResults);
         warningLogs.push(...computed.context.warningLogs);
         currentSnapshot = {

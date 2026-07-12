@@ -770,25 +770,29 @@ try {
                 .join('')
             : '<li>Sin sanciones ni incidentes registrados en STRacker.</li>');
 
-        const chipsMarkup = penaltyChips.length
-          ? penaltyChips.map(([label, value]) => `<span class="gc-acsr-safety-chip"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></span>`).join('')
-          : '<span class="gc-acsr-safety-chip is-clean"><small>Incidentes</small><strong>0</strong></span>';
+        const chipsMarkup = !isStrackerSource
+          ? '<span class="gc-acsr-safety-chip"><small>Incidentes</small><strong>No disponible</strong></span>'
+          : (penaltyChips.length
+            ? penaltyChips.map(([label, value]) => `<span class="gc-acsr-safety-chip"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></span>`).join('')
+            : '<span class="gc-acsr-safety-chip is-clean"><small>Incidentes</small><strong>0</strong></span>');
 
-        const lapRows = laps.length ? laps.map((lap) => {
-          const noteItems = Array.isArray(lap.notes) ? lap.notes.map(cleanLapNote).filter(Boolean) : [];
-          const alert = safetyNumber(lap.offTracks) || safetyNumber(lap.collisionsCar) || safetyNumber(lap.collisionsEnv) || noteItems.length > 0;
-          const notes = noteItems.length ? noteItems.join(', ') : '-';
-          return `
-            <tr class="${alert ? 'gc-acsr-lap-alert' : ''}">
-              <td>${escapeHtml(lap.lap && lap.lap > 0 ? lap.lap : '--')}</td>
-              <td>${escapeHtml(lap.lapTime || '--')}</td>
-              <td>${lap.valid ? 'Sí' : 'No'}</td>
-              <td>${escapeHtml(lap.offTracks ?? lap.cuts ?? 0)}</td>
-              <td>${escapeHtml(lap.collisionsCar ?? 0)}</td>
-              <td>${escapeHtml(lap.collisionsEnv ?? 0)}</td>
-              <td>${escapeHtml(notes)}</td>
-            </tr>`;
-        }).join('') : `<tr><td colspan="7">${isStrackerSource ? 'No hay vueltas detalladas desde STRacker para este piloto.' : 'El endpoint no está entregando safetyRating.laps. El SR mostrado no procede de STRacker.'}</td></tr>`;
+        const lapRows = !isStrackerSource
+          ? '<tr><td colspan="7">Sin telemetría sTracker fiable para esta carrera. Las vueltas ACSM se usan solo como referencia de ritmo; no se muestran incidentes porque ACSM no aporta golpes/cuts verificables.</td></tr>'
+          : (laps.length ? laps.map((lap) => {
+            const noteItems = Array.isArray(lap.notes) ? lap.notes.map(cleanLapNote).filter(Boolean) : [];
+            const alert = safetyNumber(lap.offTracks) || safetyNumber(lap.collisionsCar) || safetyNumber(lap.collisionsEnv) || noteItems.length > 0;
+            const notes = noteItems.length ? noteItems.join(', ') : '-';
+            return `
+              <tr class="${alert ? 'gc-acsr-lap-alert' : ''}">
+                <td>${escapeHtml(lap.lap && lap.lap > 0 ? lap.lap : '--')}</td>
+                <td>${escapeHtml(lap.lapTime || '--')}</td>
+                <td>${lap.valid ? 'Sí' : 'No'}</td>
+                <td>${escapeHtml(lap.offTracks ?? lap.cuts ?? 0)}</td>
+                <td>${escapeHtml(lap.collisionsCar ?? 0)}</td>
+                <td>${escapeHtml(lap.collisionsEnv ?? 0)}</td>
+                <td>${escapeHtml(notes)}</td>
+              </tr>`;
+          }).join('') : '<tr><td colspan="7">No hay vueltas detalladas desde STRacker para este piloto.</td></tr>');
 
         return `
           <tr class="gc-acsr-safety-detail-row" data-safety-detail="${escapeHtml(row.guid || row.name || '')}" style="display:none">
