@@ -180,6 +180,14 @@ async function ensureMysqlSchema() {
       team_logo_url VARCHAR(500) NULL,
       team_role VARCHAR(80) NULL,
       pilot_country_code CHAR(2) NULL,
+      disabled_at DATETIME(3) NULL,
+      deleted_at DATETIME(3) NULL,
+      deleted_by VARCHAR(64) NULL,
+      password_recovery_token_hash VARCHAR(128) NULL,
+      password_recovery_created_at DATETIME(3) NULL,
+      password_recovery_expires_at DATETIME(3) NULL,
+      password_recovery_created_by VARCHAR(64) NULL,
+      password_recovery_used_at DATETIME(3) NULL,
       created_at DATETIME(3) NOT NULL,
       updated_at DATETIME(3) NOT NULL,
       last_login_at DATETIME(3) NULL,
@@ -192,6 +200,14 @@ async function ensureMysqlSchema() {
   await ensureMysqlColumn('gc_users', 'team_logo_url', 'VARCHAR(500) NULL');
   await ensureMysqlColumn('gc_users', 'team_role', 'VARCHAR(80) NULL');
   await ensureMysqlColumn('gc_users', 'pilot_country_code', 'CHAR(2) NULL');
+  await ensureMysqlColumn('gc_users', 'disabled_at', 'DATETIME(3) NULL');
+  await ensureMysqlColumn('gc_users', 'deleted_at', 'DATETIME(3) NULL');
+  await ensureMysqlColumn('gc_users', 'deleted_by', 'VARCHAR(64) NULL');
+  await ensureMysqlColumn('gc_users', 'password_recovery_token_hash', 'VARCHAR(128) NULL');
+  await ensureMysqlColumn('gc_users', 'password_recovery_created_at', 'DATETIME(3) NULL');
+  await ensureMysqlColumn('gc_users', 'password_recovery_expires_at', 'DATETIME(3) NULL');
+  await ensureMysqlColumn('gc_users', 'password_recovery_created_by', 'VARCHAR(64) NULL');
+  await ensureMysqlColumn('gc_users', 'password_recovery_used_at', 'DATETIME(3) NULL');
 
   await mysqlExecute(`
     CREATE TABLE IF NOT EXISTS gc_teams (
@@ -415,6 +431,14 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
       team_logo_url TEXT NULL,
       team_role TEXT NULL,
       pilot_country_code TEXT NULL,
+      disabled_at TEXT NULL,
+      deleted_at TEXT NULL,
+      deleted_by TEXT NULL,
+      password_recovery_token_hash TEXT NULL,
+      password_recovery_created_at TEXT NULL,
+      password_recovery_expires_at TEXT NULL,
+      password_recovery_created_by TEXT NULL,
+      password_recovery_used_at TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       last_login_at TEXT NULL
@@ -426,6 +450,14 @@ async function ensureAppSqliteSchema(db: AppSqliteDb) {
   if (!gcUserColumns.has('team_logo_url')) db.run('ALTER TABLE gc_users ADD COLUMN team_logo_url TEXT NULL');
   if (!gcUserColumns.has('team_role')) db.run('ALTER TABLE gc_users ADD COLUMN team_role TEXT NULL');
   if (!gcUserColumns.has('pilot_country_code')) db.run('ALTER TABLE gc_users ADD COLUMN pilot_country_code TEXT NULL');
+  if (!gcUserColumns.has('disabled_at')) db.run('ALTER TABLE gc_users ADD COLUMN disabled_at TEXT NULL');
+  if (!gcUserColumns.has('deleted_at')) db.run('ALTER TABLE gc_users ADD COLUMN deleted_at TEXT NULL');
+  if (!gcUserColumns.has('deleted_by')) db.run('ALTER TABLE gc_users ADD COLUMN deleted_by TEXT NULL');
+  if (!gcUserColumns.has('password_recovery_token_hash')) db.run('ALTER TABLE gc_users ADD COLUMN password_recovery_token_hash TEXT NULL');
+  if (!gcUserColumns.has('password_recovery_created_at')) db.run('ALTER TABLE gc_users ADD COLUMN password_recovery_created_at TEXT NULL');
+  if (!gcUserColumns.has('password_recovery_expires_at')) db.run('ALTER TABLE gc_users ADD COLUMN password_recovery_expires_at TEXT NULL');
+  if (!gcUserColumns.has('password_recovery_created_by')) db.run('ALTER TABLE gc_users ADD COLUMN password_recovery_created_by TEXT NULL');
+  if (!gcUserColumns.has('password_recovery_used_at')) db.run('ALTER TABLE gc_users ADD COLUMN password_recovery_used_at TEXT NULL');
 
   db.run(`CREATE TABLE IF NOT EXISTS gc_teams (
     id TEXT NOT NULL PRIMARY KEY,
@@ -1198,6 +1230,21 @@ function teamFromUserRow(row: any): AppUser['team'] {
   return teamFromRawValues(row?.team_name, row?.team_logo_url, row?.team_role);
 }
 
+// GC AUTH RECOVERY PERSISTENCE V15 START
+function passwordRecoveryFromUserRow(row: any): AppUser['passwordRecovery'] {
+  const tokenHashValue = compactNullableText(row?.password_recovery_token_hash);
+  const expiresAt = mysqlDate(row?.password_recovery_expires_at);
+  if (!tokenHashValue || !expiresAt) return null;
+  return {
+    tokenHash: tokenHashValue,
+    createdAt: mysqlDate(row?.password_recovery_created_at) || new Date().toISOString(),
+    expiresAt,
+    createdBy: compactNullableText(row?.password_recovery_created_by),
+    usedAt: mysqlDate(row?.password_recovery_used_at)
+  };
+}
+// GC AUTH RECOVERY PERSISTENCE V15 END
+
 function publicTeam(user: AppUser | null | undefined) {
   const team = user?.team || null;
   if (!team) return null;
@@ -1381,6 +1428,10 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
         },
         team: teamFromUserRow(row),
         countryCode: compactNullableText(row.pilot_country_code),
+        disabledAt: mysqlDate(row.disabled_at),
+        deletedAt: mysqlDate(row.deleted_at),
+        deletedBy: compactNullableText(row.deleted_by),
+        passwordRecovery: passwordRecoveryFromUserRow(row),
         createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
         updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
         lastLoginAt: mysqlDate(row.last_login_at)
@@ -1422,6 +1473,10 @@ async function readUserStoreAsync(): Promise<AppUserStore> {
       },
       team: teamFromUserRow(row),
       countryCode: compactNullableText(row.pilot_country_code),
+      disabledAt: mysqlDate(row.disabled_at),
+      deletedAt: mysqlDate(row.deleted_at),
+      deletedBy: compactNullableText(row.deleted_by),
+      passwordRecovery: passwordRecoveryFromUserRow(row),
       createdAt: mysqlDate(row.created_at) || new Date().toISOString(),
       updatedAt: mysqlDate(row.updated_at) || new Date().toISOString(),
       lastLoginAt: mysqlDate(row.last_login_at)
@@ -1456,8 +1511,10 @@ async function writeUserStoreAsync(store: AppUserStore) {
           db.run(
             `INSERT INTO gc_users
               (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code,
+               disabled_at, deleted_at, deleted_by, password_recovery_token_hash, password_recovery_created_at, password_recovery_expires_at, password_recovery_created_by, password_recovery_used_at,
+               created_at, updated_at, last_login_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               user.id,
               user.email,
@@ -1475,6 +1532,14 @@ async function writeUserStoreAsync(store: AppUserStore) {
               user.team?.logoUrl ?? null,
               user.team?.role ?? null,
               user.countryCode ?? null,
+              user.disabledAt ?? null,
+              user.deletedAt ?? null,
+              user.deletedBy ?? null,
+              user.passwordRecovery?.tokenHash ?? null,
+              user.passwordRecovery?.createdAt ?? null,
+              user.passwordRecovery?.expiresAt ?? null,
+              user.passwordRecovery?.createdBy ?? null,
+              user.passwordRecovery?.usedAt ?? null,
               user.createdAt || new Date().toISOString(),
               user.updatedAt || new Date().toISOString(),
               user.lastLoginAt ?? null
@@ -1518,8 +1583,10 @@ async function writeUserStoreAsync(store: AppUserStore) {
       await connection.query(
         `INSERT INTO gc_users
           (id, email, display_name, role, password_algorithm, password_iterations, password_salt, password_hash,
-           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code, created_at, updated_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           pilot_player_id, pilot_steam_guid, pilot_stracker_name, pilot_linked_at, team_name, team_logo_url, team_role, pilot_country_code,
+           disabled_at, deleted_at, deleted_by, password_recovery_token_hash, password_recovery_created_at, password_recovery_expires_at, password_recovery_created_by, password_recovery_used_at,
+           created_at, updated_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.id,
           user.email,
@@ -1537,6 +1604,14 @@ async function writeUserStoreAsync(store: AppUserStore) {
           user.team?.logoUrl ?? null,
           user.team?.role ?? null,
           user.countryCode ?? null,
+          isoToMysql(user.disabledAt),
+          isoToMysql(user.deletedAt),
+          user.deletedBy ?? null,
+          user.passwordRecovery?.tokenHash ?? null,
+          isoToMysql(user.passwordRecovery?.createdAt),
+          isoToMysql(user.passwordRecovery?.expiresAt),
+          user.passwordRecovery?.createdBy ?? null,
+          isoToMysql(user.passwordRecovery?.usedAt),
           isoToMysql(user.createdAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.updatedAt) || isoToMysql(new Date().toISOString()),
           isoToMysql(user.lastLoginAt)
@@ -9370,6 +9445,62 @@ app.post('/api/admin/users/:userId/recovery-link', async (req, res) => {
 // GC ADMIN USERS STATUS ACTIONS V176B END
 
 // GC AUTH PASSWORD RECOVERY V176B START
+// GC AUTH PASSWORD RECOVERY REQUEST V15 START
+app.post('/api/auth/password-recovery/request', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const expiresMinutes = Math.max(5, Math.min(1440, Number(req.body?.expiresMinutes ?? 60) || 60));
+
+  if (!email || !email.includes('@')) {
+    res.status(400).json({ ok: false, message: 'Introduce un correo válido.' });
+    return;
+  }
+
+  const store = await readUserStoreAsync();
+  const user = findUserByEmail(store, email);
+
+  const publicPayload: any = {
+    ok: true,
+    email,
+    delivered: false,
+    adminRequired: true,
+    message: 'Si la cuenta existe, un administrador puede generar el enlace de recuperación desde Usuarios.'
+  };
+
+  if (!user || isUserBlocked(user)) {
+    res.json(publicPayload);
+    return;
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + expiresMinutes * 60 * 1000).toISOString();
+
+  user.passwordRecovery = {
+    tokenHash: tokenHash(token),
+    createdAt: now.toISOString(),
+    expiresAt,
+    createdBy: null,
+    usedAt: null
+  };
+  user.updatedAt = now.toISOString();
+  await writeUserStoreAsync(store);
+
+  const resetPath = `/recuperar-password?token=${encodeURIComponent(token)}`;
+  const resetUrl = buildAbsoluteUrl(req, resetPath);
+  const exposeLink = readBooleanEnv('AUTH_PASSWORD_RECOVERY_EXPOSE_LINK', false);
+
+  res.json({
+    ...publicPayload,
+    expiresAt,
+    resetPath: exposeLink ? resetPath : undefined,
+    resetUrl: exposeLink ? resetUrl : undefined,
+    message: exposeLink
+      ? 'Enlace de recuperación generado.'
+      : 'Se ha generado una recuperación. Pide a un administrador que te facilite el enlace si no tienes correo configurado.'
+  });
+});
+// GC AUTH PASSWORD RECOVERY REQUEST V15 END
+
 app.post('/api/auth/password-recovery/verify', async (req, res) => {
   const token = String(req.body?.token || '').trim();
   if (!token) {
@@ -10209,7 +10340,8 @@ app.post('/api/auth/password', async (req, res) => {
   }
 
   const currentPassword = String(req.body?.currentPassword ?? '');
-  const newPassword = String(req.body?.newPassword ?? '');
+  const newPassword = String(req.body?.newPassword ?? req.body?.password ?? '');
+  const confirmPassword = String(req.body?.confirmPassword ?? req.body?.confirm ?? '');
 
   if (!currentPassword) {
     res.status(400).json({ ok: false, message: 'Introduce tu contraseÃƒÂ±a actual.' });
@@ -10223,6 +10355,11 @@ app.post('/api/auth/password', async (req, res) => {
 
   if (newPassword.length < 8) {
     res.status(400).json({ ok: false, message: 'La nueva contraseÃƒÂ±a debe tener al menos 8 caracteres.' });
+    return;
+  }
+
+  if (confirmPassword && newPassword !== confirmPassword) {
+    res.status(400).json({ ok: false, message: 'Las contraseÃƒÂ±as no coinciden.' });
     return;
   }
 

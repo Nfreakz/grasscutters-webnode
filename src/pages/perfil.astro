@@ -424,7 +424,7 @@ const description = 'Perfil de piloto GrassCutters Racing con identidad, equipo,
               </div>
               <div class="gc-profile2-account-actions">
                 <button class="gc-profile2-btn gc-profile2-btn--primary gc-profile2-btn--small" id="profile2SavePassword" type="button">Cambiar contraseña</button>
-                <a class="gc-profile2-btn gc-profile2-btn--ghost gc-profile2-btn--small" href="/login">Cambiar cuenta</a>
+                <a class="gc-profile2-btn gc-profile2-btn--ghost gc-profile2-btn--small" href="/recuperar-password">Recuperar acceso</a>
               </div>
               <p class="gc-profile2-message" id="profile2SecurityMessage" aria-live="polite"></p>
             </div>
@@ -2285,10 +2285,28 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
         const currentPassword = $('profile2CurrentPasswordInput')?.value || '';
         const newPassword = $('profile2NewPasswordInput')?.value || '';
         const confirmPassword = $('profile2ConfirmPasswordInput')?.value || '';
-        if (newPassword !== confirmPassword) {
-          setProfile2Message('profile2SecurityMessage', 'Las contraseñas no coinciden.', 'error');
+
+        if (!currentPassword) {
+          setProfile2Message('profile2SecurityMessage', 'Introduce tu contraseña actual.', 'error');
+          $('profile2CurrentPasswordInput')?.focus();
           return;
         }
+        if (newPassword.length < 8) {
+          setProfile2Message('profile2SecurityMessage', 'La nueva contraseña debe tener al menos 8 caracteres.', 'error');
+          $('profile2NewPasswordInput')?.focus();
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setProfile2Message('profile2SecurityMessage', 'Las contraseñas no coinciden.', 'error');
+          $('profile2ConfirmPasswordInput')?.focus();
+          return;
+        }
+        if (newPassword === currentPassword) {
+          setProfile2Message('profile2SecurityMessage', 'La nueva contraseña debe ser distinta a la actual.', 'error');
+          $('profile2NewPasswordInput')?.focus();
+          return;
+        }
+
         setBusy(['profile2SavePassword','profile2CurrentPasswordInput','profile2NewPasswordInput','profile2ConfirmPasswordInput'], true);
         setProfile2Message('profile2SecurityMessage', 'Actualizando contraseña...');
         try {
@@ -2297,7 +2315,7 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
             credentials:'include',
             cache:'no-store',
             headers:{ 'Content-Type':'application/json' },
-            body: JSON.stringify({ currentPassword, newPassword })
+            body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok || data?.ok === false) throw new Error(data?.message || 'No se pudo cambiar la contraseña.');
@@ -2544,6 +2562,16 @@ html[data-gc-scope="marketing"] .gc-profile2-account-grid--full {
       $('profile2SaveCountry')?.addEventListener('click', saveCountry);
       $('profile2AddTeamMember')?.addEventListener('click', addTeamMember);
       $('profile2SavePassword')?.addEventListener('click', changePassword);
+      ['profile2CurrentPasswordInput','profile2NewPasswordInput','profile2ConfirmPasswordInput'].forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            changePassword();
+          }
+        });
+      });
       $('profile2UploadAvatar')?.addEventListener('click', uploadAvatar);
       $('profile2ResetAvatar')?.addEventListener('click', resetAvatar);
       $('profile2OpenPilotLink')?.addEventListener('click', togglePilotPanel);
