@@ -266,6 +266,16 @@ try {
       font-weight:800;
     }
 
+    .gc-rating-badge--pending{
+      opacity:.72;
+      filter:saturate(.65);
+    }
+
+    .gc-rating-badge--pending strong{
+      font-size:.72rem;
+      letter-spacing:.04em;
+    }
+
     /* GC_STRACKER_SAFETY_DETAILS_UI_V1 */
     .gc-acsr-driver-toggle{
       appearance:none;
@@ -569,12 +579,13 @@ try {
         const safeValue = String(value || '--');
         const classKey = ratingClassKey(safeValue);
         const compactClass = options.compact ? ' gc-rating-badge--compact' : '';
+        const pendingClass = options.pending ? ' gc-rating-badge--pending' : '';
         const scoreMarkup = score !== null && score !== undefined && score !== ''
           ? `<small>${escapeHtml(score)}</small>`
           : '';
 
         return `
-          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}">
+          <span class="gc-rating-badge gc-rating-badge--${safeType} gc-rating-badge--${safeType}-${classKey}${compactClass}${pendingClass}">
             <span class="gc-rating-badge__type">${safeType.toUpperCase()}</span>
             <strong>${escapeHtml(safeValue)}</strong>
             ${scoreMarkup}
@@ -582,35 +593,72 @@ try {
         `;
       };
 
-      const srInfo = (driver) => {
+      // GC_ROUND_RATING_PENDING_AND_TIME_GUARD_V16
+      // GC_GT4_ROUND_PERSISTENT_RATING_MERGE_V17
+      // No inventamos SR/GSR por defecto en rondas recién importadas: si el rating aún
+      // no está recalculado mostramos "Pendiente" en lugar de B 80 / Rookie 1500.
+      const hasRealSrRating = (driver) => {
         const sr = driver?.safetyRating || {};
-        const score = Number(sr.score ?? driver?.srScore ?? 80);
-        const label = sr.class || driver?.srClass || 'B';
+        return sr.score !== undefined || sr.class !== undefined || driver?.srScore !== undefined || driver?.srClass !== undefined;
+      };
+      const hasRealGsrRating = (driver) => driver?.gsrRating !== undefined || driver?.newGsr !== undefined || driver?.gsrClass !== undefined;
+      const hasAnyRating = (driver) => hasRealSrRating(driver) || hasRealGsrRating(driver);
+
+      const srInfo = (driver) => {
+        if (!hasRealSrRating(driver)) return null;
+        const sr = driver?.safetyRating || {};
+        const score = Number(sr.score ?? driver?.srScore);
+        const label = sr.class || driver?.srClass || '--';
         const delta = Number(sr.delta ?? driver?.srDelta ?? 0);
         return {
-          score: Number.isFinite(score) ? Math.round(score * 10) / 10 : 80,
+          score: Number.isFinite(score) ? Math.round(score * 10) / 10 : null,
           label,
           delta: Number.isFinite(delta) ? Math.round(delta * 10) / 10 : 0
         };
       };
       const srBadge = (driver) => {
         const sr = srInfo(driver);
+        if (!sr) return ratingBadge('sr', 'Pendiente', '', { pending: true });
         return ratingBadge('sr', sr.label || '--', sr.score);
       };
       const gsrInfo = (driver) => {
-        const score = Number(driver?.gsrRating ?? driver?.newGsr ?? 1500);
-        const label = driver?.gsrClass || 'Rookie';
+        if (!hasRealGsrRating(driver)) return null;
+        const score = Number(driver?.gsrRating ?? driver?.newGsr);
+        const label = driver?.gsrClass || '--';
         const delta = Number(driver?.gsrDelta ?? driver?.deltaGsr ?? 0);
         return {
-          score: Number.isFinite(score) ? Math.round(score) : 1500,
+          score: Number.isFinite(score) ? Math.round(score) : null,
           label,
           delta: Number.isFinite(delta) ? Math.round(delta) : 0
         };
       };
       const gsrBadge = (driver) => {
         const gsr = gsrInfo(driver);
+        if (!gsr) return ratingBadge('gsr', 'Pendiente', '', { pending: true });
         return ratingBadge('gsr', gsr.label || '--', gsr.score);
       };
+      const deltaText = (driver, kind) => {
+        if (kind === 'sr' && !hasRealSrRating(driver)) return 'Pend.';
+        if (kind === 'gsr' && !hasRealGsrRating(driver)) return 'Pend.';
+        const hasDelta = kind === 'sr'
+          ? (driver?.srDelta !== undefined || driver?.deltaSr !== undefined)
+          : (driver?.gsrDelta !== undefined || driver?.deltaGsr !== undefined);
+        if (!hasDelta) return '—';
+        const value = kind === 'sr' ? (driver?.srDelta ?? driver?.deltaSr) : (driver?.gsrDelta ?? driver?.deltaGsr);
+        const number = Number(value);
+        if (!Number.isFinite(number)) return '—';
+        return `${number > 0 ? '+' : ''}${number}`;
+      };
+      const isPlaceholderLapTime = (value, ms) => {
+        const text = String(value ?? '').trim();
+        const numericMs = Number(ms);
+        if (Number.isFinite(numericMs) && (numericMs <= 0 || numericMs >= 60 * 60 * 1000)) return true;
+        if (/^(16666:39\.999|999999|0:00\.000|--|NaN)$/i.test(text)) return true;
+        if (/^16666:/.test(text)) return true;
+        return false;
+      };
+      const displayLapTime = (row) => isPlaceholderLapTime(row?.bestLap, row?.bestLapMs ?? row?.lapTimeMs) ? '--' : (row?.bestLap || '--');
+      const displayFastestLap = (lap) => isPlaceholderLapTime(lap?.lapTime, lap?.lapTimeMs) ? null : lap;
       const safetyNumber = (value, fallback = 0) => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : fallback;
@@ -892,13 +940,13 @@ try {
                 <td>${driverCell(row)}</td>
                 <td>${escapeHtml(row.model || '')}</td>
                 <td>${escapeHtml(row.numLaps ?? 0)}</td>
-                <td>${escapeHtml(row.bestLap || '--')}</td>
+                <td>${escapeHtml(displayLapTime(row))}</td>
                 <td>${escapeHtml(row.totalTime || '--')}</td>
                 <td><span class="gc-acsr-points">${escapeHtml(row.points ?? 0)}</span></td>
                 <td>${srBadge(row)}</td>
-                <td>${escapeHtml((row.srDelta ?? row.deltaSr ?? 0) > 0 ? '+' : '')}${escapeHtml(row.srDelta ?? row.deltaSr ?? 0)}</td>
+                <td>${escapeHtml(deltaText(row, 'sr'))}</td>
                 <td>${gsrBadge(row)}</td>
-                <td>${escapeHtml((row.gsrDelta ?? row.deltaGsr ?? 0) > 0 ? '+' : '')}${escapeHtml(row.gsrDelta ?? row.deltaGsr ?? 0)}</td>
+                <td>${escapeHtml(deltaText(row, 'gsr'))}</td>
                 <td>${escapeHtml((row.incidents || []).length || row.incidentPoints || 0)}</td>
               </tr>${renderSafetyDetails(row)}
             `;
@@ -910,7 +958,7 @@ try {
               <td><strong>${escapeHtml(row.name)}</strong></td>
               <td>${escapeHtml(row.model || '')}</td>
               <td>${escapeHtml(row.numLaps ?? 0)}</td>
-              <td>${escapeHtml(row.bestLap || '--')}</td>
+              <td>${escapeHtml(displayLapTime(row))}</td>
               <td>${escapeHtml(row.gridPosition || row.position || '--')}</td>
             </tr>
           `;
@@ -935,11 +983,12 @@ try {
         const raceResults = Array.isArray(event.raceResults) ? event.raceResults : [];
         const qualyResults = Array.isArray(event.qualifyingResults) ? event.qualifyingResults : [];
         const winner = event.winner || raceResults[0] || null;
-        const fastest = event.fastestLap || null;
+        const fastest = displayFastestLap(event.fastestLap || null);
+        const hasRaceRatings = raceResults.some(hasAnyRating);
 
         els.status.textContent = statusLabel[event.status] || event.status || 'Ronda';
         els.title.textContent = event.name || `Ronda ${event.index}`;
-        els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}`;
+        els.meta.textContent = `${fmtDate(event.scheduledAt)} · ${event.track || 'Circuito por confirmar'}${event.carSummary ? ` · ${event.carSummary}` : ''}${raceResults.length && !hasRaceRatings ? ' · SR/GSR pendiente de recalcular' : ''}`;
 
         if (els.map) els.map.alt = event.track || event.name || '';
         const resolvedTrackAssets = await resolveRoundTrackAssetsV139(event);
@@ -952,7 +1001,8 @@ try {
         setImageWithFallback(els.map, els.mapFigure, heroCandidates);
 
         els.winner.textContent = winner ? winner.name : '--';
-        els.winnerMeta.textContent = winner ? `P${winner.position} · ${winner.points || 0} puntos · SR ${srInfo(winner).label} ${srInfo(winner).score} · ${winner.model || ''}` : 'Sin resultado de carrera';
+        const winnerSr = winner ? srInfo(winner) : null;
+        els.winnerMeta.textContent = winner ? `P${winner.position} · ${winner.points || 0} puntos · ${winnerSr ? `SR ${winnerSr.label} ${winnerSr.score}` : 'SR/GSR pendiente'} · ${winner.model || ''}` : 'Sin resultado de carrera';
 
         els.fastestLap.textContent = fastest ? fastest.lapTime : '--';
         els.fastestLapMeta.textContent = fastest ? `${fastest.driverName || 'Piloto'} · ${fastest.carModel || ''}` : 'Sin vuelta rápida';

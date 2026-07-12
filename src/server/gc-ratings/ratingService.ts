@@ -818,9 +818,49 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     };
   });
 
+  // GC_GT4_ROUND_PERSISTENT_RATING_MERGE_V17
+  // Algunas rondas GT4 llegan correctamente desde ACSM con raceResults, pero todavía no
+  // tienen filas eventResults propias en el snapshot de ratings. En ese caso no debemos
+  // enseñar B 80 / Rookie 1500 ni dejar SR/GSR vacíos si el piloto ya tiene rating
+  // persistente global. Fusionamos por Steam GUID / PlayerId / nombre usando el mismo
+  // driverMap que standings. El delta queda vacío porque no corresponde necesariamente
+  // a esta carrera concreta.
+  function enrichOfficialRaceResultsWithPersistentRatings(rows: PlainObject[]) {
+    return rows.map((row: PlainObject) => {
+      const rating = findDriverForStanding(row);
+      if (!rating || safeFiniteNumber(rating.racesCount, 0) <= 0) return row;
+
+      return {
+        ...row,
+        driverKey: rating.driverKey ?? row.driverKey ?? null,
+        guid: row.guid || row.steamGuid || rating.steamGuid || null,
+        steamGuid: row.steamGuid || row.guid || rating.steamGuid || null,
+        playerId: row.playerId ?? row.strackerPlayerId ?? rating.strackerPlayerId ?? rating.profilePlayerId ?? null,
+        strackerPlayerId: row.strackerPlayerId ?? row.playerId ?? rating.strackerPlayerId ?? rating.profilePlayerId ?? null,
+        srScore: rating.srScore,
+        srClass: rating.srClass,
+        gsrRating: rating.gsrRating,
+        gsrClass: rating.gsrClass,
+        srDelta: row.srDelta ?? row.deltaSr ?? null,
+        gsrDelta: row.gsrDelta ?? row.deltaGsr ?? null,
+        ratingDisplayScope: 'global-reference',
+        ratingMergeSource: 'persistent-driver-v17',
+        hasPersistentRating: true,
+        safetyRating: {
+          ...(row.safetyRating || {}),
+          score: rating.srScore,
+          class: rating.srClass,
+          delta: row.srDelta ?? row.deltaSr ?? null,
+          source: 'persistent-driver-v17'
+        }
+      };
+    });
+  }
+
   const enrichEvent = (event: PlainObject) => {
     const eventResults = (resultsByEvent.get(String(event.id)) || []).sort((left, right) => left.position - right.position);
     const officialRaceResults = ensureArray(event.raceResults);
+    const fallbackRaceResults = enrichOfficialRaceResultsWithPersistentRatings(officialRaceResults);
     return {
       ...event,
       source: event.source || (String(event.id || '').startsWith('stracker:') ? 'stracker-manual' : 'acsm'),
@@ -913,7 +953,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
             }))
           }
         };
-      }) : event.raceResults
+      }) : fallbackRaceResults
     };
   };
 

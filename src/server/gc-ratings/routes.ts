@@ -122,13 +122,43 @@ async function requireAdmin(req: Request) {
       } catch {}
       const fallbackEnabled = String(req.query.fallback || '').trim() === '1';
       const source = req.query.source || req.query.server || req.query.championship || '';
+      const processRequested = parseBooleanish(req.query.process || req.query.recalculate, false) === true;
+      let autoProcess: any = null;
+
+      if (processRequested) {
+        const adminAllowed = await requireAdmin(req);
+        if (!adminAllowed) {
+          autoProcess = {
+            ok: false,
+            skipped: true,
+            message: 'Recalculo SR/GSR no ejecutado: necesitas sesión admin.'
+          };
+        } else {
+          const rawSource = String(Array.isArray(source) ? source[0] : source || '').trim().toLowerCase();
+          const processSources = rawSource ? [rawSource] : ['weekly', 'gt4'];
+          const processed = [];
+          for (const sourceItem of processSources) {
+            try {
+              processed.push(await service.processNewEvents({ source: sourceItem }));
+            } catch (error) {
+              processed.push({ ok: false, source: sourceItem, message: error instanceof Error ? error.message : String(error) });
+            }
+          }
+          autoProcess = { ok: true, processed };
+        }
+      }
+
       const payload = await service.getEvent(eventId, {
         fallback: fallbackEnabled,
         source,
         autoSourceFallback: true
       });
-      if (!payload) return res.status(404).json({ ok: false, source: 'gc-ratings-v1:v14-round-source-fallback', eventSource: 'none', message: 'Evento no encontrado en weekly ni GT4.' });
-      res.status(payload.ok === false ? 404 : 200).json(payload);
+      if (!payload) return res.status(404).json({ ok: false, source: 'gc-ratings-v1:v16-round-rating-refresh', eventSource: 'none', message: 'Evento no encontrado en weekly ni GT4.' });
+      res.status(payload.ok === false ? 404 : 200).json({
+        ...payload,
+        processRequested,
+        autoProcess
+      });
     } catch (error) {
       res.status(200).json(formatStrackerMirrorError(error));
     }
