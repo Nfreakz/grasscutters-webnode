@@ -278,6 +278,27 @@ export function readAvatarImage(playerIdRaw: unknown) {
   };
 }
 
+
+function assertImageSignature(buffer: Buffer, contentType: string) {
+  const png = buffer.length >= 8 &&
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+    buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a;
+  const jpeg = buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  const webp = buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP';
+
+  const valid = contentType === 'image/png'
+    ? png
+    : contentType === 'image/jpeg'
+      ? jpeg
+      : contentType === 'image/webp'
+        ? webp
+        : false;
+
+  if (!valid) throw new Error('El contenido real de la imagen no coincide con su formato declarado.');
+}
+
 function parseImageDataUrl(imageData: unknown) {
   const text = String(imageData || '').trim();
   const match = text.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=\s]+)$/i);
@@ -287,6 +308,7 @@ function parseImageDataUrl(imageData: unknown) {
   const maxBytes = Number(process.env.PILOT_AVATAR_MAX_BYTES || 2_500_000);
   if (!buffer.length) throw new Error('La imagen está vacía.');
   if (buffer.length > maxBytes) throw new Error(`La imagen es demasiado grande. Máximo ${Math.round(maxBytes / 1024 / 1024)} MB.`);
+  assertImageSignature(buffer, rawType);
   const ext = rawType === 'image/jpeg' ? 'jpg' : rawType.split('/')[1];
   return { buffer, contentType: rawType, ext };
 }

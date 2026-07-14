@@ -1,5 +1,7 @@
 ﻿import { defineConfig } from 'astro/config';
 
+const gcDevApiTarget = process.env.GC_DEV_API_TARGET || 'http://127.0.0.1:3000';
+
 let nodeAdapter = null;
 try {
   const mod = await import('@astrojs/node');
@@ -16,8 +18,8 @@ export default defineConfig({
   vite: {
     server: {
       proxy: {
-        '/api': 'http://localhost:3000',
-        '/gc-data': 'http://localhost:3000'
+        '/api': gcDevApiTarget,
+        '/gc-data': gcDevApiTarget
       }
     }
   }

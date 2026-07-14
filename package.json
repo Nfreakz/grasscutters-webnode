@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:web:wait\"",
     "dev:web": "astro dev --host 0.0.0.0 --port 4321",
     "dev:server": "tsx watch src/server/index.ts",
     "prebuild": "node scripts/gc-build-guard.mjs",
@@ -15,7 +15,13 @@
     "format": "prettier . --write",
     "mysql:migrate-json": "node scripts/migrate-json-to-mysql.mjs",
     "sqlite:migrate-json": "node scripts/migrate-json-to-sqlite.mjs",
-    "start:tsx": "tsx src/server/index.ts"
+    "start:tsx": "tsx src/server/index.ts",
+    "audit:project": "node scripts/project-audit.mjs",
+    "quality": "node scripts/quality-gate.mjs",
+    "quality:full": "node scripts/quality-gate.mjs --full",
+    "test:e2e": "playwright test",
+    "test:smoke": "playwright test tests/smoke.spec.ts",
+    "dev:web:wait": "node scripts/wait-for-api-and-start-web.mjs"
   },
   "dependencies": {
     "@astrojs/check": "latest",
@@ -40,5 +46,9 @@
     "@types/express": "latest",
     "@types/node": "latest",
     "prettier": "latest"
+  },
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
   }
 }

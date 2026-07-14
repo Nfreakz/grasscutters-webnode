@@ -15,6 +15,7 @@ import { startStrackerBackupRetention } from './stracker-backup-retention';
 import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
 import { registerLiveTimingRoutes } from './live-timing-routes';
 import { registerGcAcsmLiveTestRoutes } from './gc-acsm-live-test-routes';
+import { registerGcPlatformHardening } from './gc-platform-hardening';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -1839,17 +1840,19 @@ function getAuthContext(req: express.Request) {
     store.sessions = store.sessions.filter((item) => item.id !== session.id);
     try {
       writeUserStore(store);
-    } catch (_) {
-      // no-op
+    } catch (error) {
+      console.warn('[GC auth] No se pudo eliminar la sesión JSON bloqueada:', error);
     }
     return null;
   }
 
-  session.lastSeenAt = new Date().toISOString();
-  try {
-    writeUserStore(store);
-  } catch (_) {
-    // no-op
+  if (gcSessionNeedsTouch(session.lastSeenAt)) {
+    session.lastSeenAt = new Date().toISOString();
+    try {
+      writeUserStore(store);
+    } catch (error) {
+      console.warn('[GC auth] No se pudo actualizar lastSeenAt JSON:', error);
+    }
   }
 
   return { store, user, session, token };
@@ -1895,6 +1898,58 @@ function buildAbsoluteUrl(req: express.Request, pathName: string) {
   return host ? `${proto}://${host}${pathName}` : pathName;
 }
 
+
+/* GC_TARGETED_SESSION_PERSISTENCE_V1 */
+function gcSessionTouchIntervalMs() {
+  const raw = Number(process.env.AUTH_SESSION_TOUCH_SECONDS || 300);
+  const seconds = Number.isFinite(raw) ? Math.max(30, Math.min(3600, raw)) : 300;
+  return seconds * 1000;
+}
+
+function gcSessionNeedsTouch(lastSeenAt: string) {
+  const last = Date.parse(lastSeenAt || '');
+  return !Number.isFinite(last) || Date.now() - last >= gcSessionTouchIntervalMs();
+}
+
+async function gcTouchSessionAsync(store: AppUserStore, session: AppSession) {
+  const lastSeenAt = new Date().toISOString();
+  session.lastSeenAt = lastSeenAt;
+
+  if (useMysqlStorage()) {
+    await ensureMysqlSchema();
+    await mysqlExecute('UPDATE gc_sessions SET last_seen_at = ? WHERE id = ?', [isoToMysql(lastSeenAt), session.id]);
+    return;
+  }
+
+  if (useSqliteStorage()) {
+    await withAppSqliteDb((db) => {
+      db.run('UPDATE gc_sessions SET last_seen_at = ? WHERE id = ?', [lastSeenAt, session.id]);
+    }, true);
+    return;
+  }
+
+  writeUserStore(store);
+}
+
+async function gcDeleteSessionByIdAsync(store: AppUserStore, sessionId: string) {
+  store.sessions = store.sessions.filter((item) => item.id !== sessionId);
+
+  if (useMysqlStorage()) {
+    await ensureMysqlSchema();
+    await mysqlExecute('DELETE FROM gc_sessions WHERE id = ?', [sessionId]);
+    return;
+  }
+
+  if (useSqliteStorage()) {
+    await withAppSqliteDb((db) => {
+      db.run('DELETE FROM gc_sessions WHERE id = ?', [sessionId]);
+    }, true);
+    return;
+  }
+
+  writeUserStore(store);
+}
+
 async function getAuthContextAsync(req: express.Request) {
   const token = readAuthToken(req);
   if (!token) return null;
@@ -1906,20 +1961,20 @@ async function getAuthContextAsync(req: express.Request) {
 
   const user = store.users.find((item) => item.id === session.userId);
   if (!user || isUserBlocked(user)) {
-    store.sessions = store.sessions.filter((item) => item.id !== session.id);
     try {
-      await writeUserStoreAsync(store);
-    } catch (_) {
-      // no-op
+      await gcDeleteSessionByIdAsync(store, session.id);
+    } catch (error) {
+      console.warn('[GC auth] No se pudo eliminar la sesión bloqueada:', error);
     }
     return null;
   }
 
-  session.lastSeenAt = new Date().toISOString();
-  try {
-    await writeUserStoreAsync(store);
-  } catch (_) {
-    // no-op
+  if (gcSessionNeedsTouch(session.lastSeenAt)) {
+    try {
+      await gcTouchSessionAsync(store, session);
+    } catch (error) {
+      console.warn('[GC auth] No se pudo actualizar lastSeenAt:', error);
+    }
   }
 
   return { store, user, session, token };
@@ -6680,6 +6735,7 @@ const mockPilots = [
 ];
 
 const app = express();
+registerGcPlatformHardening(app, { rootDir });
 startStrackerBackupRetention();
 
 /* GC_SECURITY_CORE_V15_32 START */
@@ -6705,8 +6761,7 @@ function gcSecurityNumberEnvV1532(name: string, fallback: number, min: number, m
 }
 
 function gcClientIpV1532(req: any) {
-  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return forwarded || req.ip || req.socket?.remoteAddress || 'unknown';
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
 function gcCleanRouteV1532(req: any) {
