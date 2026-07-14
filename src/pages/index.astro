@@ -2746,6 +2746,7 @@ const home2ArchiveSeed = [];
         return list;
       };
       document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
+      document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -2782,10 +2783,16 @@ const home2ArchiveSeed = [];
         const combo = activeCombo(sourcePayload) || {};
         const rows = rankingRows.length ? rankingRows : sourceLeaderboard(sourcePayload);
         const best = rows[0] || first(combo, ['bestLap'], null) || {};
-        const champTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
-        const champCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
-        const track = cleanPublicName(champTrack || comboTrack(combo, rows, source), source);
-        const cars = champCars.length ? champCars : comboCars(combo, rows, source);
+        // GC_HOME_ACTIVE_COMBO_PRIORITY_V1:
+        // El héroe representa el combo que está rodando ahora. El calendario del
+        // campeonato solo se usa como último fallback cuando la API del combo no
+        // aporta circuito o coches.
+        const comboTrackName = comboTrack(combo, rows, source);
+        const comboCarNames = comboCars(combo, rows, source);
+        const fallbackTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const fallbackCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const track = cleanPublicName(comboTrackName || fallbackTrack, source);
+        const cars = comboCarNames.length ? comboCarNames : fallbackCars;
         const label = source === 'gt4' ? 'Servidor 2 · GT4' : 'Servidor 1 · Liga';
         const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
         setText('[data-home2-hero-source]', label);
@@ -2862,8 +2869,9 @@ const home2ArchiveSeed = [];
         const total = Number(first(combo, ['totalLaps', 'laps', 'lapCount', 'summary.totalLaps'], rows.length)) || rows.length || 0;
         const validFromRows = rows.filter(isValid).length;
         const valid = Math.min(total || validFromRows, Number(first(combo, ['validLaps', 'validLapCount', 'summary.validLaps'], validFromRows)) || validFromRows || 0);
-        const champTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
-        const track = compactTrackLabel(champTrack || comboTrack(combo, rows, source));
+        const comboTrackName = comboTrack(combo, rows, source);
+        const fallbackTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const track = compactTrackLabel(comboTrackName || fallbackTrack);
         const bestTime = formatTime(best);
         const bestDriver = driverName(best);
         const bestCar = carName(best);
@@ -2873,8 +2881,9 @@ const home2ArchiveSeed = [];
           .filter((item) => item.name && item.laps > 0)
           .sort((a, b) => b.laps - a.laps)[0] || null;
         const drivers = Number(first(combo, ['driversCount', 'driverCount', 'summary.driversCount'], bestRows.length)) || bestRows.length || 0;
-        const champCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
-        const cars = champCars.length || Number(first(combo, ['carsCount', 'usedCarsCount', 'summary.usedCarsCount'], 0)) || (comboCars(combo, rows, source) || []).length || 0;
+        const comboCarNames = comboCars(combo, rows, source);
+        const fallbackCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
+        const cars = comboCarNames.length || Number(first(combo, ['carsCount', 'usedCarsCount', 'summary.usedCarsCount'], 0)) || fallbackCars.length || 0;
         const cleanPct = total ? Math.round((valid / total) * 100) : 0;
         return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax, mostActive, drivers, cars, cleanPct };
       };
