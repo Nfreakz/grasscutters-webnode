@@ -763,7 +763,10 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       const ACSM_OFFICIAL_URL = 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6';
       const ACSM_SIGNUP_URL = `${ACSM_OFFICIAL_URL}/sign-up/steam`;
 
-      const $ = (id) => document.getElementById(id);
+      /* GC_PHASE2C_CHAMPIONSHIP_TYPES_V1 */
+      function $<T extends HTMLElement = HTMLElement>(id: string): T {
+        return document.getElementById(id) as T;
+      }
       const els = {
         lead: $('acsrChampionshipLead'),
         name: $('acsrChampionshipName'),
@@ -772,27 +775,27 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         completed: $('acsrStatCompleted'),
         entrants: $('acsrStatEntrants'),
         standings: $('acsrStatStandings'),
-        official: $('acsrOfficialLink'),
-        officialHero: $('acsrOfficialHero'),
-        signup: $('acsrSignupLink'),
-        signupHero: $('acsrSignupHero'),
-        refresh: $('acsrRefresh'),
+        official: $<HTMLAnchorElement>('acsrOfficialLink'),
+        officialHero: $<HTMLAnchorElement>('acsrOfficialHero'),
+        signup: $<HTMLAnchorElement>('acsrSignupLink'),
+        signupHero: $<HTMLAnchorElement>('acsrSignupHero'),
+        refresh: $<HTMLButtonElement>('acsrRefresh'),
         nextTitle: $('acsrNextTitle'),
         nextMeta: $('acsrNextMeta'),
         nextTrack: $('acsrNextTrack'),
-        trackFigure: $('acsrTrackFigure'),
-        trackImage: $('acsrTrackImage'),
+        trackFigure: $<HTMLElement>('acsrTrackFigure'),
+        trackImage: $<HTMLImageElement>('acsrTrackImage'),
         lastTitle: $('acsrLastTitle'),
         lastMeta: $('acsrLastMeta'),
         lastPodium: $('acsrLastPodium'),
-        lastLink: $('acsrLastLink'),
+        lastLink: $<HTMLAnchorElement>('acsrLastLink'),
         list: $('acsrEventsList'),
         drivers: $('acsrDriversList'),
         standingsBody: $('acsrStandingsBody'),
         standingsLead: $('acsrStandingsLead')
       };
 
-      [els.official, els.officialHero, els.signup, els.signupHero].forEach((link) => {
+      [els.official, els.officialHero, els.signup, els.signupHero].forEach((link: HTMLAnchorElement) => {
         if (!link) return;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
@@ -802,15 +805,15 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       if (els.signup) els.signup.href = ACSM_SIGNUP_URL;
       if (els.signupHero) els.signupHero.href = ACSM_SIGNUP_URL;
 
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-      const ratingClassKey = (value) => String(value || 'unknown')
+      const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' } as Record<string, string>)[char] ?? char);
+      const ratingClassKey = (value: unknown) => String(value || 'unknown')
         .trim()
         .toLowerCase()
         .replace('+', 'plus')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '') || 'unknown';
 
-      const ratingBadge = (type, value, score = null, options = {}) => {
+      const ratingBadge = (type: unknown, value: unknown, score: unknown = null, options: { compact?: boolean } = {}) => {
         const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
         const safeValue = String(value || '--');
         const classKey = ratingClassKey(safeValue);
@@ -828,37 +831,37 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         `;
       };
 
-      const srInfo = (driver) => {
+      const srInfo = (driver: any) => {
         const sr = driver?.safetyRating || {};
         const score = Number(sr.score ?? driver?.srScore);
         const label = sr.class || driver?.srClass || '';
         if (!driver?.hasPersistentRating || !Number.isFinite(score)) return null;
         return { score: Math.round(score * 10) / 10, label };
       };
-      const srBadge = (driver) => {
+      const srBadge = (driver: any) => {
         const sr = srInfo(driver);
         if (!sr) return ratingBadge('sr', '--', null, { compact: true });
         return ratingBadge('sr', sr.label || '--', sr.score);
       };
-      const gsrInfo = (driver) => {
+      const gsrInfo = (driver: any) => {
         const score = Number(driver?.gsrRating ?? driver?.gsr);
         const label = driver?.gsrClass || '';
         if (!driver?.hasPersistentRating || !Number.isFinite(score)) return null;
         return { score: Math.round(score), label };
       };
-      const gsrBadge = (driver) => {
+      const gsrBadge = (driver: any) => {
         const gsr = gsrInfo(driver);
         if (!gsr) return ratingBadge('gsr', '--', null, { compact: true });
         return ratingBadge('gsr', gsr.label || '--', gsr.score);
       };
-      const fmtDate = (value) => {
+      const fmtDate = (value: unknown) => {
         if (!value) return 'Fecha por confirmar';
-        const date = new Date(value);
+        const date = value instanceof Date ? value : new Date(String(value));
         if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
         return date.toLocaleString('es-ES', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
       };
 
-      const statusLabel = {
+      const statusLabel: Record<string, string> = {
         pending: 'Pendiente',
         scheduled: 'Programada',
         in_progress: 'En curso',
@@ -873,13 +876,13 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         RACE: 'Carrera'
       };
 
-      const slugify = (value) => String(value || '')
+      const slugify = (value: unknown) => String(value || '')
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '');
 
-      const normalizeTrackSlug = (value) => {
+      const normalizeTrackSlug = (value: unknown) => {
         const raw = slugify(value);
         return raw
           .replace(/^(fn|ks|rt|mx|acu|nrms)_/, '')
@@ -889,7 +892,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
       // GC_TRACK_ASSETS_SINGLE_SOURCE_V19
       // Fuente estable para fotos/mapas de calendario. No depende de GCTrackImages ni de manifests.
-      const TRACK_ASSET_REGISTRY = {
+      const TRACK_ASSET_REGISTRY: Record<string, { keys: string[]; photo: string; map?: string }> = {
         jerez: { keys: ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'], photo: '/images/tracks/jerez.png', map: '/images/tracks/jerez_mapa.png' },
         mugello: { keys: ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'], photo: '/images/tracks/mugello.webp', map: '/images/tracks/mugello_mapa.png' },
         fuji: { keys: ['fuji', 'rt_fuji_speedway', 'rt_fuji_speedway_layout_gp', 'fuji_speedway', 'fuji_speedway_gp', 'fuji_speedway_layout_gp', 'fuji_international_speedway', 'fujispeedway'], photo: '/images/tracks/fuji.jpg', map: '/images/tracks/fuji_map.png' },
@@ -911,7 +914,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         zolder: { keys: ['zolder', 'rt_zolder', 'circuit_zolder'], photo: '/images/tracks/zolder.webp' }
       };
 
-      const trackAssetNames = (event) => {
+      const trackAssetNames = (event: any): string[] => {
         const raw = [event?.trackRaw, event?.track, event?.name].filter(Boolean);
         const names = [...new Set(raw.flatMap((value) => [slugify(value), normalizeTrackSlug(value)]).filter(Boolean))];
         Object.values(TRACK_ASSET_REGISTRY).forEach((track) => {
@@ -922,17 +925,18 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return [...new Set(names.filter(Boolean))];
       };
 
-      const registeredTrackAsset = (event) => {
+      const registeredTrackAsset = (event: any): { keys: string[]; photo?: string; map?: string } | null => {
         const names = trackAssetNames(event);
         return Object.values(TRACK_ASSET_REGISTRY).find((track) => (track.keys || []).some((key) => names.some((name) => name === key || name.includes(key) || key.includes(name)))) || null;
       };
 
-      const localTrackMapCandidates = (event) => {
+      const localTrackMapCandidates = (event: any): string[] => {
         const names = trackAssetNames(event);
-        const exact = registeredTrackAsset(event)?.map ? [registeredTrackAsset(event).map] : [];
+        const registered = registeredTrackAsset(event);
+        const exact: string[] = registered?.map ? [registered.map] : [];
         const roots = ['/images/tracks', '/imagenes/tracks'];
         const exts = ['png', 'webp', 'jpg', 'jpeg', 'svg'];
-        const out = [];
+        const out: string[] = [];
         names.forEach((name) => {
           ['_mapa', '_map'].forEach((suffix) => {
             roots.forEach((root) => {
@@ -943,12 +947,13 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return [...new Set([...exact, ...out])];
       };
 
-      const localTrackPhotoCandidates = (event) => {
+      const localTrackPhotoCandidates = (event: any): string[] => {
         const names = trackAssetNames(event);
-        const exact = registeredTrackAsset(event)?.photo ? [registeredTrackAsset(event).photo] : [];
+        const registered = registeredTrackAsset(event);
+        const exact: string[] = registered?.photo ? [registered.photo] : [];
         const roots = ['/images/tracks', '/imagenes/tracks'];
         const exts = ['webp', 'jpg', 'jpeg', 'png', 'avif'];
-        const out = [];
+        const out: string[] = [];
         names.forEach((name) => {
           ['', '_photo', '_foto', '_hero'].forEach((suffix) => {
             roots.forEach((root) => {
@@ -959,7 +964,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return [...new Set([...exact, ...out].filter((url) => !/_mapa\.|_map\.|_outline\./i.test(url)))];
       };
 
-      const setImageWithFallback = (img, figure, candidates) => {
+      const setImageWithFallback = (img: HTMLImageElement, figure: HTMLElement, candidates: string[]) => {
         const cleanCandidates = (Array.isArray(candidates) ? candidates : []).filter(Boolean);
         if (!img || !figure || !cleanCandidates.length) {
           if (figure) figure.hidden = true;
@@ -970,7 +975,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         img.style.display = '';
         img.dataset.fallbackIndex = '0';
         img.dataset.fallbacks = cleanCandidates.slice(1).join('|');
-        img.onerror = function () {
+        img.onerror = function (this: HTMLImageElement) {
           const list = (this.dataset.fallbacks || '').split('|').filter(Boolean);
           const index = Number(this.dataset.fallbackIndex || 0);
           if (list[index]) {
@@ -984,7 +989,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         img.src = cleanCandidates[0];
       };
 
-      const eventImageHtml = (event) => {
+      const eventImageHtml = (event: any): string => {
         const candidates = event?.trackPhotoCandidates?.length ? event.trackPhotoCandidates : localTrackPhotoCandidates(event);
         const primary = candidates[0] || '';
         const fallbacks = candidates.slice(1).join('|');
@@ -1004,13 +1009,13 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         `;
       };
 
-      const renderTrackImage = (event) => {
+      const renderTrackImage = (event: any) => {
         const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
         if (els.trackImage) els.trackImage.alt = event?.track || event?.name || '';
         setImageWithFallback(els.trackImage, els.trackFigure, candidates);
       };
 
-      function renderDrivers(rows) {
+      function renderDrivers(rows: any[]) {
         const drivers = Array.isArray(rows) ? rows : [];
 
         if (!drivers.length) {
@@ -1018,7 +1023,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
           return;
         }
 
-        els.drivers.innerHTML = drivers.slice(0, 48).map((driver) => `
+        els.drivers.innerHTML = drivers.slice(0, 48).map((driver: any) => `
           <article class="gc-acsr-driver">
             <span>${escapeHtml(driver.className || 'General')}</span>
             <strong>${escapeHtml(driver.name || 'Piloto')}</strong>
@@ -1027,14 +1032,14 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         `).join('');
       }
 
-      function renderStandings(rows) {
+      function renderStandings(rows: any[]) {
         const standings = Array.isArray(rows) ? rows : [];
         const ratedCount = standings.filter((driver) => driver?.hasPersistentRating).length;
         els.standingsLead.textContent = standings.length
           ? `${standings.length} pilotos en la clasificación Liga GrassCutters. Puntos, victorias, podios y último resultado salen solo de ACSM.${ratedCount ? ' SR/GSR se muestra como referencia global y no altera la tabla.' : ''}`
           : 'La clasificación Liga GrassCutters se actualizará cuando haya resultados oficiales de carrera.';
 
-        els.standingsBody.innerHTML = standings.length ? standings.slice(0, 80).map((driver) => `
+        els.standingsBody.innerHTML = standings.length ? standings.slice(0, 80).map((driver: any) => `
           <tr>
             <td><strong>${escapeHtml(driver.position)}</strong></td>
             <td>
@@ -1053,7 +1058,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       }
 
 
-      function lastRaceRankBadge(position) {
+      function lastRaceRankBadge(position: unknown) {
         const pos = Number(position || 0);
         if (pos === 1) return '<span class="gc-acsr-podium-row__rank gc-acsr-podium-row__rank--gold" title="Ganador">🏆</span>';
         if (pos === 2) return '<span class="gc-acsr-podium-row__rank gc-acsr-podium-row__rank--silver" title="Segundo">🥈</span>';
@@ -1061,7 +1066,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return `<span class="gc-acsr-podium-row__rank">P${escapeHtml(pos || '-')}</span>`;
       }
 
-      function renderLastCompleted(event) {
+      function renderLastCompleted(event: any) {
         if (!event) {
           els.lastTitle.textContent = 'Sin resultados todavía';
           els.lastMeta.textContent = 'Cuando termine una carrera, tendrás aquí el resumen.';
@@ -1078,7 +1083,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         const podium = Array.isArray(event.raceResults) && event.raceResults.length
           ? event.raceResults.slice(0, 5)
           : (Array.isArray(event.podium) ? event.podium : []);
-        els.lastPodium.innerHTML = podium.length ? podium.map((driver) => `
+        els.lastPodium.innerHTML = podium.length ? podium.map((driver: any) => `
           <div class="gc-acsr-podium-row">
             ${lastRaceRankBadge(driver.position)}
             <strong>${escapeHtml(driver.name)}</strong>
@@ -1087,7 +1092,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         `).join('') : '<p>No hay resultados disponibles.</p>';
       }
 
-      function renderError(data) {
+      function renderError(data: any) {
         els.lead.textContent = data?.message || 'No se pudo cargar el campeonato.';
         els.meta.textContent = 'No se pudo cargar el campeonato en este momento.';
         els.list.innerHTML = `<article class="gc-acsr-event"><strong>No se pudo cargar el campeonato</strong><p>${escapeHtml(data?.message || 'Error desconocido')}</p></article>`;
@@ -1113,20 +1118,20 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       // La página no puede depender de una sola fuente: ACSM trae puntos/eventos,
       // ratings trae SR/GSR. Aquí se fusionan para que Actualizar datos se note y no
       // deje una tabla a medias cuando una capa va por detrás.
-      const parseDateTimeMs = (value) => {
+      const parseDateTimeMs = (value: unknown) => {
         if (!value) return 0;
-        const date = new Date(value);
+        const date = value instanceof Date ? value : new Date(String(value));
         const time = date.getTime();
         return Number.isFinite(time) ? time : 0;
       };
 
-      const eventSortTime = (event) => Math.max(
+      const eventSortTime = (event: any) => Math.max(
         parseDateTimeMs(event?.completedAt),
         parseDateTimeMs(event?.scheduledAt),
         parseDateTimeMs(event?.startedAt)
       );
 
-      const driverIdentityKey = (row) => {
+      const driverIdentityKey = (row: any): string => {
         const guid = String(row?.guid || row?.steamGuid || row?.steamId || row?.steamID || '').trim();
         if (guid) return `steam:${guid.toLowerCase()}`;
         const playerId = String(row?.playerId || row?.strackerPlayerId || '').trim();
@@ -1134,8 +1139,8 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return `name:${slugify(row?.name || row?.displayName || row?.driverName || '')}`;
       };
 
-      const resultIdentityKeys = (row) => {
-        const keys = [];
+      const resultIdentityKeys = (row: any): string[] => {
+        const keys: string[] = [];
         const guid = String(row?.guid || row?.steamGuid || row?.steamId || row?.steamID || '').trim();
         const playerId = String(row?.playerId || row?.strackerPlayerId || '').trim();
         const name = slugify(row?.name || row?.displayName || row?.driverName || '');
@@ -1145,11 +1150,11 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return keys;
       };
 
-      const latestCompletedEventFrom = (championship) => {
+      const latestCompletedEventFrom = (championship: any) => {
         const events = Array.isArray(championship?.events) ? championship.events : [];
         const candidates = events
-          .filter((event) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
-          .sort((a, b) => eventSortTime(b) - eventSortTime(a));
+          .filter((event: any) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
+          .sort((a: any, b: any) => eventSortTime(b) - eventSortTime(a));
         const explicit = championship?.lastCompletedEvent;
         if (!explicit) return candidates[0] || null;
         const candidate = candidates[0] || null;
@@ -1157,15 +1162,15 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return eventSortTime(candidate) >= eventSortTime(explicit) ? candidate : explicit;
       };
 
-      const acsmLastResultsByDriver = (championship) => {
-        const map = new Map();
+      const acsmLastResultsByDriver = (championship: any) => {
+        const map = new Map<string, any>();
         const events = (Array.isArray(championship?.events) ? championship.events : [])
-          .filter((event) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
-          .sort((a, b) => eventSortTime(b) - eventSortTime(a));
+          .filter((event: any) => event?.status === 'completed' || (Array.isArray(event?.raceResults) && event.raceResults.length))
+          .sort((a: any, b: any) => eventSortTime(b) - eventSortTime(a));
 
-        events.forEach((event) => {
+        events.forEach((event: any) => {
           const rows = Array.isArray(event?.raceResults) ? event.raceResults : [];
-          rows.forEach((result) => {
+          rows.forEach((result: any) => {
             const normalized = {
               eventId: event.id,
               eventName: event.name || `Ronda ${event.index || ''}`.trim() || 'Última carrera ACSM',
@@ -1181,7 +1186,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         return map;
       };
 
-      const mergeChampionshipSources = (ratingsData, acsmData) => {
+      const mergeChampionshipSources = (ratingsData: any, acsmData: any) => {
         const ratingsChamp = ratingsData?.championship || null;
         const acsmChamp = acsmData?.championship || null;
         if (!ratingsChamp && acsmChamp) return acsmData;
@@ -1199,13 +1204,13 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
         const ratingRows = Array.isArray(ratingsChamp.standings) ? ratingsChamp.standings : [];
         const acsmRows = Array.isArray(acsmChamp.standings) ? acsmChamp.standings : [];
-        const ratingByKey = new Map(ratingRows.map((row) => [driverIdentityKey(row), row]));
+        const ratingByKey = new Map(ratingRows.map((row: any) => [driverIdentityKey(row), row]));
         const acsmLastByDriver = acsmLastResultsByDriver({ ...acsmChamp, events });
 
         const baseRows = acsmRows.length ? acsmRows : ratingRows;
-        const standings = baseRows.map((row, index) => {
+        const standings = baseRows.map((row: any, index: number) => {
           const key = driverIdentityKey(row);
-          const rated = ratingByKey.get(key) || {};
+          const rated: any = ratingByKey.get(key) || {};
           const acsmLast = acsmLastByDriver.get(key) || row.lastResult || null;
           return {
             ...row,
@@ -1262,7 +1267,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       };
 
 
-      function render(data) {
+      function render(data: any) {
         if (!data?.ok || !data?.championship) {
           renderError(data);
           return;
@@ -1271,9 +1276,9 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         const championship = data.championship;
         const next = championship.nextEvent;
         const last = championship.lastCompletedEvent;
-        const events = Array.isArray(championship.events) ? championship.events : [];
-        const standings = Array.isArray(championship.standings) ? championship.standings : [];
-        const drivers = Array.isArray(championship.registeredDrivers) ? championship.registeredDrivers : [];
+        const events: any[] = Array.isArray(championship.events) ? championship.events : [];
+        const standings: any[] = Array.isArray(championship.standings) ? championship.standings : [];
+        const drivers: any[] = Array.isArray(championship.registeredDrivers) ? championship.registeredDrivers : [];
         const stats = championship.stats || {};
 
         els.lead.textContent = `Calendario actualizado. Progreso del campeonato: ${championship.progressPercent || 0}%.`;
@@ -1295,7 +1300,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
 
         if (next) {
           els.nextTitle.textContent = next.name || `Ronda ${next.index}`;
-          els.nextMeta.textContent = `${fmtDate(next.scheduledAt)} · ${statusLabel[next.status] || next.status || 'Pendiente'}`;
+          els.nextMeta.textContent = `${fmtDate(next.scheduledAt)} · ${statusLabel[String(next.status)] || next.status || 'Pendiente'}`;
           els.nextTrack.textContent = [next.track, next.carSummary].filter(Boolean).join(' · ') || 'Circuito pendiente';
           renderTrackImage(next);
         } else {
@@ -1309,13 +1314,13 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         renderStandings(standings);
         renderDrivers(drivers);
 
-        els.list.innerHTML = events.slice(0, 24).map((event) => {
+        els.list.innerHTML = events.slice(0, 24).map((event: any) => {
           const winner = event.winner ? `${event.winner.name} · ${event.winner.points} pts` : 'Resultados pendientes';
           return `
             <a class="gc-acsr-event" href="${escapeHtml(event.href || `/campeonato/ronda/${encodeURIComponent(event.id)}`)}" data-status="${escapeHtml(event.status || 'pending')}">
               ${eventImageHtml(event)}
               <div>
-                <span>${escapeHtml(statusLabel[event.status] || event.status || 'Pendiente')}</span>
+                <span>${escapeHtml(statusLabel[String(event.status)] || event.status || 'Pendiente')}</span>
                 <strong>${escapeHtml(event.name || `Ronda ${event.index}`)}</strong>
               </div>
               <p>${escapeHtml(fmtDate(event.scheduledAt))}</p>
@@ -1338,12 +1343,17 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         });
       }
 
-      async function fetchJson(url) {
+      async function fetchJson(url: string): Promise<any> {
         const response = await fetch(url, { cache: 'no-store' });
         const data = await response.json().catch(() => null);
         if (!response.ok) throw new Error(data?.message || `HTTP ${response.status}`);
         return data;
       }
+
+      const settledReasonMessage = (result: PromiseSettledResult<any>): string =>
+        result.status === 'rejected'
+          ? String(result.reason?.message || result.reason || '')
+          : '';
 
       async function load(refresh = false) {
         const startedAt = Date.now();
@@ -1385,7 +1395,7 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
           ].filter(Boolean);
           els.lead.textContent = statusBits.join(' · ');
         } else {
-          renderError({ message: ratingsData?.message || acsmData?.message || ratingsResult.reason?.message || acsmResult.reason?.message || 'No se pudo cargar el campeonato.' });
+          renderError({ message: ratingsData?.message || acsmData?.message || settledReasonMessage(ratingsResult) || settledReasonMessage(acsmResult) || 'No se pudo cargar el campeonato.' });
         }
 
         if (els.refresh) {

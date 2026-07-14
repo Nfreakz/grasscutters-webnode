@@ -2328,27 +2328,27 @@ const home2ArchiveSeed = [];
       const gsrBody = document.querySelector('[data-home2-gsr-ratings]');
       if (!srBody && !gsrBody) return;
 
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
         "'": '&#39;',
         '"': '&quot;'
-      }[char]));
+      } as Record<string, string>)[char] ?? char);
 
-      const toNumber = (value) => {
+      const toNumber = (value: unknown): number | null => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : null;
       };
 
-      const classKey = (value) => String(value || 'unknown')
+      const classKey = (value: unknown) => String(value || 'unknown')
         .trim()
         .toLowerCase()
         .replace('+', 'plus')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '') || 'unknown';
 
-      const readRatingValue = (obj, keys = []) => {
+      const readRatingValue = (obj: any, keys: string[] = []): any => {
         for (const key of keys) {
           const parts = String(key).split('.').filter(Boolean);
           let current = obj;
@@ -2358,7 +2358,7 @@ const home2ArchiveSeed = [];
         return '';
       };
 
-      const ratingPilotAvatarUrl = (row) => {
+      const ratingPilotAvatarUrl = (row: any): string => {
         const direct = readRatingValue(row, ['avatarUrl', 'avatar_url', 'imageUrl', 'image', 'driver.avatarUrl', 'player.avatarUrl', 'pilot.avatarUrl']);
         if (direct) return String(direct);
         const id = readRatingValue(row, ['profilePlayerId', 'strackerPlayerId', 'pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
@@ -2366,22 +2366,22 @@ const home2ArchiveSeed = [];
         return '/images/pilot-avatar-default.png';
       };
 
-      const formatDriverName = (value) => String(value || 'Piloto').toUpperCase();
+      const formatDriverName = (value: unknown) => String(value || 'Piloto').toUpperCase();
 
-      const formatDelta = (value, digits = 1) => {
+      const formatDelta = (value: unknown, digits = 1): string => {
         const numeric = toNumber(value);
         if (numeric === null) return '--';
         const formatted = digits === 0 ? String(Math.round(numeric)) : numeric.toFixed(digits);
         return `${numeric > 0 ? '+' : ''}${formatted}`;
       };
 
-      const deltaClass = (value) => {
+      const deltaClass = (value: unknown): string => {
         const numeric = toNumber(value);
         if (numeric === null || numeric === 0) return 'gc-home2-rating-delta is-neutral';
         return numeric > 0 ? 'gc-home2-rating-delta is-positive' : 'gc-home2-rating-delta is-negative';
       };
 
-      const rankTone = (position) => {
+      const rankTone = (position: unknown): string => {
         const numeric = Number(position);
         if (numeric === 1) return 'gold';
         if (numeric === 2) return 'silver';
@@ -2389,7 +2389,7 @@ const home2ArchiveSeed = [];
         return '';
       };
 
-      const renderRankBadge = (position) => {
+      const renderRankBadge = (position: unknown): string => {
         const numeric = Number(position);
         const safePosition = Number.isFinite(numeric) ? numeric : 0;
         if (safePosition === 1) return '<span class="gc-home2-rank-badge gc-home2-rank-badge--gold gc-home2-ranking-medal" aria-label="1º">🥇</span>';
@@ -2398,7 +2398,7 @@ const home2ArchiveSeed = [];
         return `<span class="gc-home2-rank-badge gc-home2-rank-badge--plain gc-home2-ranking-medal">${escapeHtml(position)}</span>`;
       };
 
-      const ratingBadge = (type, label, score) => {
+      const ratingBadge = (type: unknown, label: unknown, score: unknown): string => {
         const safeType = String(type || '').toLowerCase() === 'gsr' ? 'gsr' : 'sr';
         const safeLabel = String(label || '--');
         const scoreText = score === undefined || score === null || score === '' ? '' : `<small>${escapeHtml(score)}</small>`;
@@ -2409,7 +2409,7 @@ const home2ArchiveSeed = [];
           </span>`;
       };
 
-      const driverLink = (row) => {
+      const driverLink = (row: any): string => {
         const name = formatDriverName(row?.driver || row?.name || 'Piloto');
         const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
         const driverKey = String(row?.driverKey || '');
@@ -2421,7 +2421,7 @@ const home2ArchiveSeed = [];
         return `<div class="gc-home2-rating-driver-cell"><div class="gc-home2-rating-driver">${main}<small>${playerId ? 'Perfil público' : 'Piloto GC'}</small></div><img class="gc-home2-rating-driver-avatar" src="${avatar}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/pilot-avatar-default.png';" /></div>`;
       };
 
-      const renderRows = (target, rows, type) => {
+      const renderRows = (target: HTMLElement | null, rows: any[], type: string) => {
         if (!target) return;
         const list = Array.isArray(rows) ? rows.slice(0, 5) : [];
         if (!list.length) {
@@ -2474,11 +2474,11 @@ const home2ArchiveSeed = [];
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
-      if (window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
+      if ((window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
         console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
         return;
       }
-      window.__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
+      (window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
       const HERO_ROTATE_MS = 5000;
@@ -2491,12 +2491,12 @@ const home2ArchiveSeed = [];
       const heroState: { payload: any; index: number } = { payload: null, index: 0 };
       const lastGood: { bootstrap: any; championships: Record<string, any> } = { bootstrap: null, championships: {} };
 
-      const q = (selector, scope = root) => scope?.querySelector?.(selector) || null;
-      const qa = (selector, scope = root) => Array.from(scope?.querySelectorAll?.(selector) || []);
-      const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-      const setText = (selector, value, scope = root) => { const el = q(selector, scope); if (el) el.textContent = value ?? '--'; };
-      const normalize = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-      const first = (obj, paths = [], fallback = '') => {
+      const q = (selector: string, scope: any = root): any => scope?.querySelector?.(selector) || null;
+      const qa = (selector: string, scope: any = root): any[] => Array.from(scope?.querySelectorAll?.(selector) || []);
+      const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[char] ?? char);
+      const setText = (selector: string, value: unknown, scope: any = root) => { const el = q(selector, scope); if (el) el.textContent = value ?? '--'; };
+      const normalize = (value: unknown) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const first = (obj: any, paths: string[] = [], fallback: any = ''): any => {
         for (const path of paths) {
           const parts = String(path).split('.').filter(Boolean);
           let current = obj;
@@ -2508,7 +2508,7 @@ const home2ArchiveSeed = [];
         }
         return fallback;
       };
-      const getArray = (payload) => {
+      const getArray = (payload: any): any[] => {
         if (Array.isArray(payload)) return payload;
         if (Array.isArray(payload?.items)) return payload.items;
         if (Array.isArray(payload?.rows)) return payload.rows;
@@ -2518,7 +2518,7 @@ const home2ArchiveSeed = [];
         if (Array.isArray(payload?.activeCombo?.leaderboard)) return payload.activeCombo.leaderboard;
         return [];
       };
-      const parseTimeMs = (value) => {
+      const parseTimeMs = (value: any): number | null => {
         if (value === undefined || value === null || value === '') return null;
         if (typeof value === 'number' && Number.isFinite(value)) return value;
         const raw = String(value).trim();
@@ -2532,17 +2532,17 @@ const home2ArchiveSeed = [];
         }
         return null;
       };
-      const rowTimeMs = (row) => parseTimeMs(first(row, ['lapTimeMs', 'lap_time_ms', 'LapTime', 'lapTime', 'timeMs', 'bestLapMs', 'best_lap_ms', 'time', 'lapTimeFormatted', 'lapTimeText']));
-      const formatTime = (input) => {
+      const rowTimeMs = (row: any): number | null => parseTimeMs(first(row, ['lapTimeMs', 'lap_time_ms', 'LapTime', 'lapTime', 'timeMs', 'bestLapMs', 'best_lap_ms', 'time', 'lapTimeFormatted', 'lapTimeText']));
+      const formatTime = (input: any): string => {
         const ms = typeof input === 'object' && input ? rowTimeMs(input) : parseTimeMs(input);
-        if (!Number.isFinite(ms)) return typeof input === 'string' && input.trim() ? input : '--';
+        if (ms === null || !Number.isFinite(ms)) return typeof input === 'string' && input.trim() ? input : '--';
         const total = Math.max(0, Math.round(ms));
         const minutes = Math.floor(total / 60000);
         const seconds = Math.floor((total % 60000) / 1000);
         const millis = total % 1000;
         return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
       };
-      const timestampMs = (row) => {
+      const timestampMs = (row: any): number => {
         const raw = first(row, ['timestampMs', 'timestamp_ms', 'timestamp', 'Timestamp', 'date', 'dateIso', 'timestampIso', 'Date', 'lastSeenTimestamp', 'last_lap_unix']);
         if (typeof raw === 'number' && Number.isFinite(raw)) return raw > 20000000000 ? raw : raw * 1000;
         if (raw) {
@@ -2769,8 +2769,8 @@ const home2ArchiveSeed = [];
         return list;
       };
 
-      const comboTrack = (combo, rows = [], source = '') => cleanPublicName(first(combo, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'track.name', 'track.code', 'trackName', 'trackCode'], trackName(rows[0] || {})), source);
-      const comboCars = (combo, rows = [], source = '') => {
+      const comboTrack = (combo: any, rows: any[] = [], source = '') => cleanPublicName(first(combo, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'track.name', 'track.code', 'trackName', 'trackCode'], trackName(rows[0] || {})), source);
+      const comboCars = (combo: any, rows: any[] = [], source = '') => {
         const cars = first(combo, ['cars'], null);
         if (Array.isArray(cars)) {
           const out = cars.map((car) => typeof car === 'string' ? cleanPublicName(car, source) : cleanPublicName(first(car, ['publicName', 'visibleName', 'alias', 'displayName', 'uiName', 'name', 'carName', 'code']), source)).filter(Boolean);
@@ -2780,7 +2780,7 @@ const home2ArchiveSeed = [];
         if (summary) return String(summary).split(/[,+/]/).map((item) => cleanPublicName(item.trim(), source)).filter(Boolean);
         return [...new Set(rows.map(carName).filter((v) => v && v !== '--'))];
       };
-      const setHero = (sourcePayload, rankingRows, source = 'main') => {
+      const setHero = (sourcePayload: any, rankingRows: any[], source = 'main') => {
         const combo = activeCombo(sourcePayload) || {};
         const rows = rankingRows.length ? rankingRows : sourceLeaderboard(sourcePayload);
         const best = rows[0] || first(combo, ['bestLap'], null) || {};
@@ -2809,7 +2809,7 @@ const home2ArchiveSeed = [];
         qa('.gc-home2-combo-card__cta').forEach((link) => { link.href = joinUrl; });
       };
 
-      const heroCandidates = (payload) => ([
+      const heroCandidates = (payload: any) => ([
         { source: 'main', payload: payload?.main, rows: sourceLeaderboard(payload?.main) },
         { source: 'gt4', payload: payload?.gt4, rows: sourceLeaderboard(payload?.gt4) }
       ].filter((item) => item?.payload?.activeCombo || item.rows.length));
@@ -2836,7 +2836,7 @@ const home2ArchiveSeed = [];
           renderHeroFromState();
         }, HERO_ROTATE_MS);
       };
-      const championshipEventForSource = (source) => {
+      const championshipEventForSource = (source: string) => {
         const key = source === 'gt4' ? 'gt4' : 'weekly';
         const payload = lastGood.championships[key];
         if (!payload) return null;

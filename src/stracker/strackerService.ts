@@ -5,16 +5,31 @@ import { logger } from '../shared/logger';
 
 const require = createRequire(import.meta.url);
 
-type BetterSqlite3Module = typeof import('better-sqlite3');
+type BetterSqlite3Statement = {
+  all(...params: unknown[]): unknown[];
+  get(...params: unknown[]): unknown;
+  run(...params: unknown[]): unknown;
+};
 
-let DatabaseCtor: BetterSqlite3Module | null = null;
+type BetterSqlite3Database = {
+  prepare(statement: string): BetterSqlite3Statement;
+  pragma?(statement: string): unknown;
+  close(): void;
+};
+
+type BetterSqlite3Constructor = new (
+  filename: string,
+  options?: { readonly?: boolean; fileMustExist?: boolean }
+) => BetterSqlite3Database;
+
+let DatabaseCtor: BetterSqlite3Constructor | null = null;
 let lastSqliteError: string | null = null;
 
 function loadBetterSqlite() {
   if (DatabaseCtor) return DatabaseCtor;
 
   try {
-    DatabaseCtor = require('better-sqlite3') as BetterSqlite3Module;
+    DatabaseCtor = require('better-sqlite3') as BetterSqlite3Constructor;
     lastSqliteError = null;
     return DatabaseCtor;
   } catch (error) {

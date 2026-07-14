@@ -432,7 +432,10 @@ export function resolveGcTrackAssets(input: unknown, options: { rootDir?: string
       .filter((asset) => asset.role === 'map' && asset.stem === photoStem)
       .sort((a, b) => Number(scoreAsset(b, queryTokens, 'map')) - Number(scoreAsset(a, queryTokens, 'map')))[0];
     if (siblingMap && (!bestMap || Number(scoreAsset(siblingMap, queryTokens, 'map')) >= Number(bestMap.score || 0) - 40)) {
-      bestMap = siblingMap;
+      bestMap = {
+        ...siblingMap,
+        score: Number(scoreAsset(siblingMap, queryTokens, 'map'))
+      };
     }
   }
 

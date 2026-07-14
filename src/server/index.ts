@@ -5044,11 +5044,21 @@ async function readSessionsFromMysqlMirrorV130(limit: number) {
       validLaps: numberOrNull(row.ValidLaps) ?? 0,
       driversCount: numberOrNull(row.DriversCount) ?? 0,
       bestLapMs: numberOrNull(row.BestLapMs),
-      bestLap: row.BestLapMs ? formatLapTime(Number(row.BestLapMs)) : null
+      bestLap: row.BestLapMs ? gcFormatSessionLapTimeV1(row.BestLapMs) : null
     }
   }));
 }
 
+
+function gcFormatSessionLapTimeV1(value: unknown) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const total = Math.max(0, Math.round(ms));
+  const minutes = Math.floor(total / 60000);
+  const seconds = Math.floor((total % 60000) / 1000);
+  const millis = total % 1000;
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
 
 type PilotProfileLap = ReturnType<typeof mapLapRow>;
 
@@ -8737,6 +8747,16 @@ app.post('/api/gc/teams/:teamId/leave', async (req, res) => {
 });
 
 
+function gcSlugifyTeamNameV1(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 56) || 'campeonato';
+}
+
 app.post('/api/gc/teams/:teamId/palmares', async (req, res) => {
   try {
     const context = await getAuthContextAsync(req);
@@ -8752,7 +8772,7 @@ app.post('/api/gc/teams/:teamId/palmares', async (req, res) => {
     const cleanPoints = (value: any) => Math.max(0, Number(value || 0) || 0);
     const season = normalizeTeamText(body.season, 32) || String(new Date().getFullYear());
     const championshipName = normalizeTeamText(body.championshipName ?? body.championship_name, 180) || 'Campeonato GrassCutters';
-    const championshipSlug = slugifyTeamName(`${season}-${championshipName}`);
+    const championshipSlug = gcSlugifyTeamNameV1(`${season}-${championshipName}`);
     const id = `tpal_${teamId}_${championshipSlug}`.slice(0, 64);
     const now = new Date().toISOString();
     const values = [
@@ -17353,26 +17373,36 @@ app.get('/api/logout', (req, res) => {
 
 
 
+function gcRuntimeEscapeHtmlV1(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  } as Record<string, string>)[char] ?? char);
+}
+
 /* GC_ASTRO_RUNTIME_PATCH_V3
  * Runtime Hostinger + Astro para Express.
  * V3: separa API, estÃ¡ticos prerenderizados y SSR.
  * Objetivo: / funciona, /admin, /hotlaps, /perfil, /combos y /pilotos tambiÃ©n.
  */
-function gcFindExistingDirectory(candidates) {
+function gcFindExistingDirectory(candidates: Array<string | null | undefined>): string | null {
   for (const candidate of candidates) {
     if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) return candidate;
   }
   return null;
 }
 
-function gcFindExistingFile(candidates) {
+function gcFindExistingFile(candidates: Array<string | null | undefined>): string | null {
   for (const candidate of candidates) {
     if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
   }
   return null;
 }
 
-function gcSafeDecodeUrlPath(value) {
+function gcSafeDecodeUrlPath(value: unknown): string {
   const raw = String(value || '/').split('?')[0].split('#')[0] || '/';
   try {
     return decodeURIComponent(raw);
@@ -17381,12 +17411,12 @@ function gcSafeDecodeUrlPath(value) {
   }
 }
 
-function gcIsApiRequest(requestUrl) {
+function gcIsApiRequest(requestUrl: unknown): boolean {
   const decoded = gcSafeDecodeUrlPath(requestUrl);
   return decoded === '/api' || decoded.startsWith('/api/') || decoded === '/gc-data' || decoded.startsWith('/gc-data/');
 }
 
-function gcFindStaticHtmlForRequest(clientDir, requestUrl) {
+function gcFindStaticHtmlForRequest(clientDir: string | null, requestUrl: unknown): string | null {
   if (!clientDir) return null;
   const decoded = gcSafeDecodeUrlPath(requestUrl);
   if (gcIsApiRequest(decoded)) return null;
@@ -17400,8 +17430,8 @@ function gcFindStaticHtmlForRequest(clientDir, requestUrl) {
   ]);
 }
 
-function gcRuntimeSnapshot(clientDir, astroEntry) {
-  function dirInfo(label, dirPath) {
+function gcRuntimeSnapshot(clientDir: string | null, astroEntry: string | null) {
+  function dirInfo(label: string, dirPath: string | null) {
     const exists = Boolean(dirPath && fs.existsSync(dirPath));
     return {
       label,
@@ -17411,7 +17441,7 @@ function gcRuntimeSnapshot(clientDir, astroEntry) {
     };
   }
 
-  function fileInfo(label, filePath) {
+  function fileInfo(label: string, filePath: string | null) {
     const exists = Boolean(filePath && fs.existsSync(filePath));
     return {
       label,
@@ -17522,7 +17552,7 @@ async function mountAstroRuntime() {
   app.use((req, res, next) => {
     if (gcIsApiRequest(req.originalUrl || req.url)) return next();
 
-    res.status(404).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GrassCutters Â· ruta no encontrada</title></head><body style="margin:0;background:#03140d;color:#f1fff6;font-family:Arial,sans-serif;padding:32px;line-height:1.55"><main style="max-width:760px"><h1>Ruta no encontrada</h1><p>No se encontrÃ³ una pÃ¡gina estÃ¡tica ni SSR para <strong>' + escapeHtml(req.originalUrl || req.url) + '</strong>.</p><p><a style="color:#85ff55" href="/api/runtime/status">Ver runtime</a> Â· <a style="color:#85ff55" href="/">Volver al inicio</a></p></main></body></html>');
+    res.status(404).type('html').send('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GrassCutters Â· ruta no encontrada</title></head><body style="margin:0;background:#03140d;color:#f1fff6;font-family:Arial,sans-serif;padding:32px;line-height:1.55"><main style="max-width:760px"><h1>Ruta no encontrada</h1><p>No se encontrÃ³ una pÃ¡gina estÃ¡tica ni SSR para <strong>' + gcRuntimeEscapeHtmlV1(req.originalUrl || req.url) + '</strong>.</p><p><a style="color:#85ff55" href="/api/runtime/status">Ver runtime</a> Â· <a style="color:#85ff55" href="/">Volver al inicio</a></p></main></body></html>');
   });
 }
 
