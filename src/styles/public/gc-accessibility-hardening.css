@@ -1,0 +1,119 @@
+/* GC accessibility hardening phase 1.
+   Capa conservadora: no sustituye el rediseño, corrige interacción y legibilidad básica. */
+
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid #b7ff64 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 2px #07110a !important;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where(button, [role="button"], summary, input, select, textarea) {
+  min-block-size: 40px;
+}
+
+.gc-home2 :where(.gc-home2-btn, .gc-home2-link),
+.gc-shell :where(a, button, input, select, summary) {
+  touch-action: manipulation;
+}
+
+.gc-home2 .gc-home2-panel__eyebrow,
+.gc-home2 .gc-home2-card-label,
+.gc-home2 .gc-home2-championship-stats dt,
+.gc-home2 .gc-home2-championship-drivers__head,
+.gc-home2 .gc-home2-table__row--head {
+  font-size: max(11px, .6875rem) !important;
+  line-height: 1.25 !important;
+}
+
+.gc-home2 .gc-home2-championship-drivers__list strong,
+.gc-home2 .gc-home2-combo-rank strong,
+.gc-home2 .gc-home2-championship-next small,
+.gc-home2 .gc-home2-table__row:not(.gc-home2-table__row--head) {
+  font-size: max(12px, .75rem) !important;
+  line-height: 1.25 !important;
+}
+
+.gc-home2 table,
+.gc-shell table {
+  font-variant-numeric: tabular-nums;
+}
+
+.gc-home2 th,
+.gc-shell th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.gc-home2 [aria-live],
+.gc-shell [aria-live] {
+  contain: content;
+}
+
+.gc-home2 img,
+.gc-shell img {
+  font-style: italic;
+}
+
+.gc-home2 a:not([class]),
+.gc-shell main a:not([class]) {
+  text-underline-offset: .18em;
+}
+
+@media (pointer: coarse) {
+  :where(a, button, input, select, textarea, summary, [role="button"]) {
+    min-block-size: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+
+  .gc-home2-hero__grid,
+  [data-animated],
+  [class*="marquee"] {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, summary) {
+    forced-color-adjust: auto;
+  }
+
+  .gc-home2-server-dot,
+  .gc-home2-driver__dot {
+    border: 1px solid ButtonText;
+  }
+}
+
+@media (max-width: 760px) {
+  .gc-home2-shell {
+    width: min(100% - 24px, 1240px);
+  }
+
+  .gc-home2 .gc-home2-btn,
+  .gc-shell button,
+  .gc-shell select,
+  .gc-shell input {
+    min-height: 44px;
+  }
+
+  .gc-home2-table,
+  .rc-table-scroll {
+    scrollbar-gutter: stable;
+    overscroll-behavior-inline: contain;
+  }
+}
