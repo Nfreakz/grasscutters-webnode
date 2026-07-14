@@ -6,23 +6,54 @@ import { logger } from '../shared/logger';
 
 const require = createRequire(import.meta.url);
 
-type BetterSqlite3Module = typeof import('better-sqlite3');
-type BetterSqlite3Database = import('better-sqlite3').Database;
+type BetterSqlite3Statement = {
+  all(...params: unknown[]): unknown[];
+  get(...params: unknown[]): unknown;
+  run(...params: unknown[]): unknown;
+};
 
-let DatabaseCtor: BetterSqlite3Module | null = null;
+type BetterSqlite3Database = {
+  pragma(statement: string): unknown;
+  exec(statement: string): unknown;
+  prepare(statement: string): BetterSqlite3Statement;
+  close?: () => void;
+};
+
+type BetterSqlite3Constructor = new (filename: string) => BetterSqlite3Database;
+
+let DatabaseCtor: BetterSqlite3Constructor | null = null;
 let db: BetterSqlite3Database | null = null;
 let lastError: string | null = null;
 
-function loadBetterSqlite() {
+function loadBetterSqlite(): BetterSqlite3Constructor | null {
   if (DatabaseCtor) return DatabaseCtor;
 
   try {
-    DatabaseCtor = require('better-sqlite3') as BetterSqlite3Module;
+    const loaded = require('better-sqlite3') as
+      | BetterSqlite3Constructor
+      | { default?: BetterSqlite3Constructor };
+
+    const constructor =
+      typeof loaded === 'function'
+        ? loaded
+        : typeof loaded?.default === 'function'
+          ? loaded.default
+          : null;
+
+    if (!constructor) {
+      throw new Error('better-sqlite3 no exporta un constructor compatible.');
+    }
+
+    DatabaseCtor = constructor;
     lastError = null;
     return DatabaseCtor;
   } catch (error) {
     lastError = error instanceof Error ? error.message : String(error);
-    logger.error('db', 'No se pudo cargar better-sqlite3. La web seguirá activa en modo sin DB.', error);
+    logger.error(
+      'db',
+      'better-sqlite3 no está instalado. El módulo auxiliar seguirá desactivado sin afectar al servidor principal.',
+      error
+    );
     return null;
   }
 }
@@ -30,6 +61,8 @@ function loadBetterSqlite() {
 export function getAppDbStatus() {
   return {
     available: Boolean(DatabaseCtor || loadBetterSqlite()),
+    optional: true,
+    module: 'better-sqlite3',
     path: env.APP_DB_PATH,
     error: lastError
   };
@@ -41,7 +74,7 @@ export function getAppDb() {
   const BetterSqlite = loadBetterSqlite();
 
   if (!BetterSqlite) {
-    throw new Error(`Base de datos interna no disponible: ${lastError ?? 'error desconocido'}`);
+    throw new Error(`Base de datos interna opcional no disponible: ${lastError ?? 'error desconocido'}`);
   }
 
   const dir = path.dirname(env.APP_DB_PATH);
