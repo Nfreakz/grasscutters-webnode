@@ -2470,7 +2470,7 @@ const home2ArchiveSeed = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2.2-hero-rotate-stable-image';
+      const PACK = 'bootstrap-2.3-live-championship-combo';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2747,6 +2747,7 @@ const home2ArchiveSeed = [];
       };
       document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
       document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
+      document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v1';
 
       const renderRecent = (rows) => {
         const host = q('[data-home2-recent-laps]');
@@ -3002,7 +3003,24 @@ const home2ArchiveSeed = [];
         const events = champEvents(payload);
         const rows = champRows(payload);
         const stats = c.stats || payload.stats || payload.data?.stats || {};
-        const next = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+        const scheduledNext = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+
+        // GC_HOME_CHAMPIONSHIP_LIVE_COMBO_V1
+        const liveSourcePayload = source === 'gt4'
+          ? (heroState.payload?.gt4 || lastGood.bootstrap?.gt4)
+          : (heroState.payload?.main || lastGood.bootstrap?.main);
+        const liveCombo = activeCombo(liveSourcePayload);
+        const liveRows = sourceLeaderboard(liveSourcePayload);
+        const liveSourceKey = source === 'gt4' ? 'gt4' : 'main';
+        const liveTrack = liveCombo ? comboTrack(liveCombo, liveRows, liveSourceKey) : '';
+        const liveCars = liveCombo ? comboCars(liveCombo, liveRows, liveSourceKey) : [];
+        const liveEvent = liveTrack ? {
+          __gcLiveCombo: true,
+          trackName: liveTrack,
+          track: liveTrack,
+          carSummary: liveCars.join(' / ')
+        } : null;
+        const next = liveEvent || scheduledNext;
         setText('[data-home2-champ-name]', first(c, ['name', 'title'], source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
         setText('[data-home2-champ-events]', first(stats, ['events'], events.length || '--'), block);
         setText('[data-home2-champ-completed]', first(stats, ['completedEvents', 'completed'], events.filter((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() === 'completed').length || '--'), block);
@@ -3012,9 +3030,11 @@ const home2ArchiveSeed = [];
           const title = first(next, ['trackName', 'track', 'trackRaw', 'trackCode', 'name', 'Name', 'title'], 'Próximo evento');
           const date = first(next, ['scheduledAt', 'date', 'Date', 'start', 'startTime'], '');
           const car = first(next, ['carSummary', 'cars', 'carName', 'car'], '');
+          const isLiveCombo = Boolean(next.__gcLiveCombo);
           setText('[data-home2-champ-next]', title, block);
-          setText('[data-home2-champ-date]', champDate(date), block);
-          setText('[data-home2-champ-next-meta]', [title, car].filter(Boolean).join(' · ') || 'Próxima sesión', block);
+          setText('[data-home2-champ-date]', isLiveCombo ? 'AHORA' : champDate(date), block);
+          setText('[data-home2-champ-next-meta]', [title, car].filter(Boolean).join(' · ') || (isLiveCombo ? 'Combo activo del servidor' : 'Próxima sesión'), block);
+          block.dataset.gcHomeChampionshipComboSource = isLiveCombo ? 'live' : 'schedule';
           setChampionshipTrackImage(block, title, next, source);
         }
         const host = q('[data-home2-champ-drivers]', block);
