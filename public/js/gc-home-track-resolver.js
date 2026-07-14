@@ -4,7 +4,7 @@
  * track name and searches real files through browser image probing.
  */
 (() => {
-  const VERSION = 'v24';
+  const VERSION = 'v25-online-delivery';
   const PHOTO_FALLBACK = '/ui/home2/gc-home2-track-fallback.svg';
   const MAP_FALLBACK = '/ui/home2/gc-home2-track-outline.svg';
 
@@ -195,7 +195,19 @@
     return '';
   };
 
+  const serverDeliveryUrl = (value, kind = 'photo') => {
+    const clean = cleanText(value);
+    if (!clean) return '';
+    const params = new URLSearchParams({ track: clean, kind, refresh: '1', v: VERSION });
+    return `/api/gc/track-assets/file?${params.toString()}`;
+  };
+
   const resolveUrl = async (value, kind = 'photo') => {
+    const delivered = serverDeliveryUrl(value, kind);
+    if (delivered) {
+      const deliveredOk = await probeImage(delivered);
+      if (deliveredOk) return deliveredOk;
+    }
     const candidates = candidateUrls(value, kind);
     if (kind === 'photo') {
       const shared = await sharedBestAssetUrl(value);

@@ -13,6 +13,7 @@ import { registerGcRatingRoutes } from './gc-ratings/routes';
 import { ensureStrackerMirrorSchema, syncStrackerToSqlMirror } from './gc-ratings/strackerSqlMirror';
 import { startStrackerBackupRetention } from './stracker-backup-retention';
 import { registerGcTrackAssetsResolverRoutes } from './gc-track-assets-resolver';
+import { registerGcTrackAssetDeliveryRoutes } from './gc-track-assets-delivery';
 import { registerLiveTimingRoutes } from './live-timing-routes';
 import { registerGcAcsmLiveTestRoutes } from './gc-acsm-live-test-routes';
 import { registerGcPlatformHardening } from './gc-platform-hardening';
@@ -6736,6 +6737,7 @@ const mockPilots = [
 
 const app = express();
 registerGcPlatformHardening(app, { rootDir });
+registerGcTrackAssetDeliveryRoutes(app, { rootDir });
 startStrackerBackupRetention();
 
 /* GC_SECURITY_CORE_V15_32 START */
