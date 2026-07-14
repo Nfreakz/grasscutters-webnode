@@ -6408,8 +6408,10 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
           code: trackFamily.key,
           name: displayTrackName,
           displayName: displayTrackName,
-          rawCode: trackFamily.code,
-          rawName: trackFamily.rawName,
+          rawCode: technicalTrackCode || trackFamily.code,
+          rawName: technicalTrackCode || trackFamily.rawName,
+          technicalCode: technicalTrackCode || null,
+          identitySource: technicalTrackCode ? 'stracker-technical-code' : 'normalized-track',
           familyKey: trackFamily.key,
           variant
         },
@@ -14898,10 +14900,54 @@ function gcHomeBootstrapComboIdValueV12(lap: any) {
   return Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : '';
 }
 
+/* GC_HOME_GT4_TECHNICAL_TRACK_IDENTITY_V1_START
+ * GT4 debe identificarse por el código técnico real de sTracker.
+ * UiTrackName/displayName pueden conservar el alias del combo anterior y no son
+ * una fuente válida para decidir qué circuito está cargado ahora.
+ */
+function gcHomeBootstrapRawTrackCodeV13(lap: any) {
+  const candidates = [
+    lap?.rawTrackCode,
+    lap?.RawTrackCode,
+    lap?.trackCode,
+    lap?.Track,
+    lap?.track?.rawCode,
+    lap?.track?.code,
+    lap?.track?.rawName,
+    lap?.rawTrackName,
+    lap?.track?.name
+  ];
+
+  for (const candidate of candidates) {
+    const value = String(candidate ?? '').trim();
+    if (!value || /^\d+$/.test(value)) continue;
+    return value;
+  }
+
+  return '';
+}
+
+function gcHomeBootstrapTechnicalTrackFamilyV13(lap: any) {
+  const rawCode = gcHomeBootstrapRawTrackCodeV13(lap);
+  if (!rawCode) return gcComboUnifyTrackFamilyV1(lap?.track);
+
+  const key = gcComboUnifySlugV1(rawCode);
+  const displayName = autoTitleFromCode(rawCode, rawCode);
+
+  return {
+    key: key || gcComboUnifySlugV1(displayName),
+    code: rawCode,
+    rawName: rawCode,
+    name: displayName,
+    displayName
+  };
+}
+/* GC_HOME_GT4_TECHNICAL_TRACK_IDENTITY_V1_END */
+
 function gcHomeBootstrapTechnicalKeyV12(lap: any, sourceKey: string, trackFamilyKey: string, variant: string) {
   const comboId = gcHomeBootstrapComboIdValueV12(lap);
   const trackCode = gcComboUnifySlugV1(
-    lap?.track?.rawCode ?? lap?.rawTrackCode ?? lap?.trackCode ?? lap?.track?.code ?? lap?.Track ?? lap?.track?.name ?? trackFamilyKey
+    gcHomeBootstrapRawTrackCodeV13(lap) || trackFamilyKey
   );
   const carKey = gcComboUnifyCarBucketKeyV2(lap) || gcComboUnifySlugV1(
     lap?.car?.code ?? lap?.carCode ?? lap?.Car ?? lap?.car?.name ?? lap?.carName ?? 'car'
@@ -14923,7 +14969,10 @@ function gcHomeBootstrapBuildComboBucketsV1(laps: any[], options: { exactTechnic
   for (const lap of laps || []) {
     const sourceKey = gcComboUnifySourceKeyV1(lap);
     const sourceLabel = gcComboUnifySourceLabelV1(sourceKey, lap);
-    const trackFamily = gcComboUnifyTrackFamilyV1(lap?.track);
+    const technicalTrackCode = exactTechnical ? gcHomeBootstrapRawTrackCodeV13(lap) : '';
+    const trackFamily = exactTechnical
+      ? gcHomeBootstrapTechnicalTrackFamilyV13(lap)
+      : gcComboUnifyTrackFamilyV1(lap?.track);
     const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
     const variantLabel = gcComboUnifyVariantLabelV1(trackFamily.key, variant);
     const logicalKey = `${sourceKey}:${trackFamily.key}:${variant}`;
@@ -15079,6 +15128,9 @@ async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'mai
       combos: buckets.length,
       activeComboKey: activeCombo?.comboUid || null,
       activeComboLaps: activeCombo?.totalLaps || 0,
+      activeTrackTechnicalCode: activeCombo?.track?.technicalCode || activeCombo?.track?.rawCode || null,
+      activeTrackDisplayName: activeCombo?.track?.displayName || activeCombo?.track?.name || null,
+      activeTrackIdentitySource: activeCombo?.track?.identitySource || null,
       leaderboardRows: activeCombo?.leaderboard?.length || 0,
       dataSource: dataCoreSource.source,
       fallbackReason: dataCoreSource.fallbackReason ?? null
@@ -15116,6 +15168,9 @@ function gcHomeBootstrapBuildSourceFromLapsV11(
       combos: buckets.length,
       activeComboKey: activeCombo?.comboUid || null,
       activeComboLaps: activeCombo?.totalLaps || 0,
+      activeTrackTechnicalCode: activeCombo?.track?.technicalCode || activeCombo?.track?.rawCode || null,
+      activeTrackDisplayName: activeCombo?.track?.displayName || activeCombo?.track?.name || null,
+      activeTrackIdentitySource: activeCombo?.track?.identitySource || null,
       leaderboardRows: activeCombo?.leaderboard?.length || 0,
       dataSource: dataSource || null,
       fallbackReason: fallbackReason ?? null
@@ -15195,7 +15250,7 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
 
     res.json({
       ok: true,
-      source: 'gc-home-bootstrap-v1.2',
+      source: 'gc-home-bootstrap-v1.3',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: {
@@ -15222,19 +15277,19 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
         loadersExpectedOnFrontend: 1,
         recommendedFrontendRefreshMs: 60000
       },
-      message: 'Home bootstrap v1.2: GT4 queda aislado por combo técnico activo; Liga mantiene agrupación lógica.'
+      message: 'Home bootstrap v1.3: GT4 usa el código técnico real de sTracker para evitar alias heredados del combo anterior.'
     });
   } catch (error) {
     console.error('[GC Home Bootstrap] /api/gc/home-bootstrap:', error);
     res.status(200).json({
       ok: false,
-      source: 'gc-home-bootstrap-v1.2',
+      source: 'gc-home-bootstrap-v1.3',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: null,
       gt4: null,
       timingSheet: [],
-      message: 'No se pudo generar Home Bootstrap v1.2.',
+      message: 'No se pudo generar Home Bootstrap v1.3.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
