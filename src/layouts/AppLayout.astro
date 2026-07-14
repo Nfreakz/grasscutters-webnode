@@ -16,14 +16,15 @@ const {
 } = Astro.props;
 
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || Astro.url.origin || 'https://grasscuttersracing.com').replace(/\/$/, '');
-const normalizePath = (path) => {
-  if (!path || path === '/') return '/';
-  return path.replace(/\/$/, '');
+const normalizePath = (path: unknown): string => {
+  const raw = String(path || '');
+  if (!raw || raw === '/') return '/';
+  return raw.replace(/\/$/, '');
 };
 const currentPathForSeo = normalizePath(Astro.url.pathname);
 const canonicalUrl = new URL(canonicalPath || Astro.url.pathname, siteUrl).toString();
 
-const pageOgImages = {
+const pageOgImages: Record<string, string> = {
   '/app': '/og/platform-og-v1531.png',
   '/hotlaps': '/og/hotlaps-og-v1531.png',
   '/combos': '/og/combos-og-v1531.png',
@@ -35,7 +36,14 @@ const pageOgImages = {
 };
 
 /* GC_GLOBAL_SOCIAL_META_V15_31 START */
-const routeSocialMeta = {
+type AppRouteSocialMeta = {
+  title: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+};
+
+const routeSocialMeta: Record<string, AppRouteSocialMeta> = {
   '/app': {
     title: 'Panel | GrassCutters Racing',
     description: 'Panel de pista de GrassCutters Racing con combo activo, actividad reciente, hotlaps y accesos principales.',
@@ -76,7 +84,7 @@ const routeSocialMeta = {
 
 const exactRouteSocialMeta = routeSocialMeta[currentPathForSeo];
 
-function resolveSeoText(value, fallback = '') {
+function resolveSeoText(value: unknown, fallback: unknown = '') {
   const text = compactSeoText(value, '');
   const generic = ['grasscutters racing platform', 'grasscutters platform', ''];
   if (generic.includes(text.toLowerCase())) return compactSeoText(fallback, text || fallback);
@@ -84,7 +92,7 @@ function resolveSeoText(value, fallback = '') {
 }
 /* GC_GLOBAL_SOCIAL_META_V15_31 END */
 
-function compactSeoText(value, fallback = '') {
+function compactSeoText(value: unknown, fallback: unknown = '') {
   return String(value || fallback || '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
@@ -92,14 +100,14 @@ function compactSeoText(value, fallback = '') {
     .slice(0, 220);
 }
 
-function absoluteSeoUrl(value) {
+function absoluteSeoUrl(value: unknown) {
   const raw = String(value || '').trim();
   if (!raw) return new URL('/og/platform-og-v1531.png', siteUrl).toString();
   if (/^https?:\/\//i.test(raw)) return raw;
   return new URL(raw.startsWith('/') ? raw : '/' + raw, siteUrl).toString();
 }
 
-function seoImageMime(value) {
+function seoImageMime(value: unknown) {
   const clean = String(value || '').split('?')[0].toLowerCase();
   if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
   if (clean.endsWith('.webp')) return 'image/webp';
@@ -135,12 +143,12 @@ const platformNavItems = [
   { href: '/equipos', label: 'Equipos', match: '/equipos' },
   { href: '/combos', label: 'Combos', match: '/combos' },
 ];
-function appLayoutIsActive(match) {
+function appLayoutIsActive(match: string) {
   if (match === '/') return current === '/';
   return current === match || current.startsWith(`${match}/`);
 }
-function appLayoutGroupActive(items) {
-  return items.some((item) => appLayoutIsActive(item.match));
+function appLayoutGroupActive(items: Array<{ match: string }>) {
+  return items.some((item: { match: string }) => appLayoutIsActive(item.match));
 }
 const nav = [
   { href: '/app', label: 'Panel', code: '01' },

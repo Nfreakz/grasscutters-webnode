@@ -54,11 +54,11 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <script>
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-    const loginMsg = document.getElementById('loginMsg');
-    const regMsg = document.getElementById('regMsg');
-    const post = async (url, data) => {
+    const loginForm = document.getElementById('loginForm') as HTMLFormElement;
+    const registerForm = document.getElementById('registerForm') as HTMLFormElement;
+    const loginMsg = document.getElementById('loginMsg') as HTMLElement;
+    const regMsg = document.getElementById('regMsg') as HTMLElement;
+    const post = async (url: string, data: Record<string, FormDataEntryValue>): Promise<any> => {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,7 +66,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       });
       return response.json();
     };
-    const setMessage = (target, text, ok = false) => {
+    const setMessage = (target: HTMLElement, text: string, ok = false) => {
       target.textContent = text;
       target.style.color = ok ? 'var(--accent)' : 'var(--soft)';
     };
@@ -74,7 +74,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       setMessage(loginMsg, 'Comprobando cuenta...');
-      const button = loginForm.querySelector('button');
+      const button = loginForm.querySelector<HTMLButtonElement>('button[type="submit"]') as HTMLButtonElement;
       button.disabled = true;
       try {
         const payload = Object.fromEntries(new FormData(loginForm));
@@ -91,10 +91,10 @@ import AppLayout from '../layouts/AppLayout.astro';
     registerForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       setMessage(regMsg, 'Creando cuenta...');
-      const button = registerForm.querySelector('button');
+      const button = registerForm.querySelector<HTMLButtonElement>('button[type="submit"]') as HTMLButtonElement;
       button.disabled = true;
       try {
-        const payload = Object.fromEntries(new FormData(registerForm));
+        const payload: Record<string, FormDataEntryValue> = Object.fromEntries(new FormData(registerForm));
         payload.name = payload.displayName;
         const json = await post('/api/auth/register', payload);
         setMessage(regMsg, json.ok ? 'Cuenta creada. Ya puedes entrar.' : (json.message || 'No se pudo registrar'), Boolean(json.ok));

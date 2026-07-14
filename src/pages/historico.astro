@@ -218,13 +218,13 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
   </style>
 
   <script>
-    const currentName = document.getElementById('gcArchiveCurrentName');
-    const currentMeta = document.getElementById('gcArchiveCurrentMeta');
-    const archiveList = document.getElementById('gcArchiveList');
+    const currentName = document.getElementById('gcArchiveCurrentName') as HTMLElement;
+    const currentMeta = document.getElementById('gcArchiveCurrentMeta') as HTMLElement;
+    const archiveList = document.getElementById('gcArchiveList') as HTMLElement;
 
-    function text(value, fallback = '') { return String(value ?? '').trim() || fallback; }
-    function fmt(value) {
-      const date = Date.parse(value || '');
+    function text(value: unknown, fallback = '') { return String(value ?? '').trim() || fallback; }
+    function fmt(value: unknown) {
+      const date = Date.parse(String(value || ''));
       if (!Number.isFinite(date)) return 'fecha pendiente';
       return new Intl.DateTimeFormat('es-ES', { dateStyle:'medium' }).format(new Date(date));
     }
@@ -236,7 +236,7 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
         if (!data?.ok || !data?.championship) throw new Error(data?.message || 'No se pudo cargar ACSM.');
         const championship = data.championship;
         const events = Array.isArray(championship.events) ? championship.events : [];
-        const completed = events.filter((event) => String(event?.status || '').toLowerCase() === 'completed').length;
+        const completed = events.filter((event: any) => String(event?.status || '').toLowerCase() === 'completed').length;
         const standings = Array.isArray(championship.standings) ? championship.standings : [];
         currentName.textContent = text(championship.name, 'Campeonato ACSM actual');
         currentMeta.textContent = `${events.length} carrera(s), ${completed} completada(s), ${standings.length || championship.stats?.entrants || 0} piloto(s) en clasificación. Actualizado ${fmt(championship.updatedAt || data.generatedAt)}.`;

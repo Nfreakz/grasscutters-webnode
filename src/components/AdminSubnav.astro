@@ -1,7 +1,18 @@
 ---
 const current = Astro.url.pathname.replace(/\/$/, '') || '/';
 
-const groups = [
+type AdminSubnavItem = {
+  href: string;
+  label: string;
+  desc: string;
+};
+
+type AdminSubnavGroup = {
+  label: string;
+  items: AdminSubnavItem[];
+};
+
+const groups: AdminSubnavGroup[] = [
   {
     label: 'Base',
     items: [
@@ -32,8 +43,8 @@ const groups = [
   },
 ];
 
-const isActive = (href) => current === href || (href !== '/admin' && current.startsWith(href));
-const groupHasActive = (group) => group.items.some((item) => isActive(item.href));
+const isActive = (href: string) => current === href || (href !== '/admin' && current.startsWith(href));
+const groupHasActive = (group: AdminSubnavGroup) => group.items.some((item: AdminSubnavItem) => isActive(item.href));
 ---
 
 <nav class="gc-admin-subnav-v2" aria-label="Navegación de administración">

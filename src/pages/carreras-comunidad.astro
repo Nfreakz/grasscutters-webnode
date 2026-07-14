@@ -189,18 +189,18 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
   </style>
 
   <script>
-    const body = document.getElementById('gcCommunityRacesBody');
-    function text(value, fallback = '') { return String(value ?? '').trim() || fallback; }
-    function fmt(value) {
-      const date = Date.parse(value || '');
+    const body = document.getElementById('gcCommunityRacesBody') as HTMLTableSectionElement;
+    function text(value: unknown, fallback = '') { return String(value ?? '').trim() || fallback; }
+    function fmt(value: unknown) {
+      const date = Date.parse(String(value || ''));
       if (!Number.isFinite(date)) return 'Fecha pendiente';
       return new Intl.DateTimeFormat('es-ES', { dateStyle:'medium', timeStyle:'short' }).format(new Date(date));
     }
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+    function escapeHtml(value: unknown) {
+      return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' } as Record<string, string>)[char] ?? char);
     }
 
-    function normalizeCommunityEventId(event) {
+    function normalizeCommunityEventId(event: any) {
       const direct = text(
         event?.id ||
         event?.eventId ||
@@ -222,7 +222,7 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
       return sessionId ? `stracker:${sessionId}` : '';
     }
 
-    function communityEventHref(event) {
+    function communityEventHref(event: any) {
       const eventId = normalizeCommunityEventId(event);
       return eventId ? `/campeonato/ronda/${encodeURIComponent(eventId)}` : '';
     }
@@ -234,16 +234,16 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
         if (!data?.ok || !data?.championship) throw new Error(data?.message || 'No se pudo cargar el rating global.');
 
         const processed = Array.isArray(data.championship?.strackerSeries?.processedEvents)
-          ? data.championship.strackerSeries.processedEvents.map((event) => ({ ...event, ratingEligible: false, sourceState: 'reviewed' }))
+          ? data.championship.strackerSeries.processedEvents.map((event: any) => ({ ...event, ratingEligible: false, sourceState: 'reviewed' }))
           : [];
         const reviewed = Array.isArray(data.championship?.strackerSeries?.reviewedEvents)
-          ? data.championship.strackerSeries.reviewedEvents.map((event) => ({ ...event, ratingEligible: false }))
+          ? data.championship.strackerSeries.reviewedEvents.map((event: any) => ({ ...event, ratingEligible: false }))
           : [];
         const events = [...processed, ...reviewed].sort((left, right) =>
           Date.parse(right.completedAt || right.scheduledAt || '') - Date.parse(left.completedAt || left.scheduledAt || '')
         );
 
-        body.innerHTML = events.length ? events.map((event) => {
+        body.innerHTML = events.length ? events.map((event: any) => {
           const results = Array.isArray(event.raceResults) ? event.raceResults.length : 0;
           const eventId = normalizeCommunityEventId(event);
           const href = communityEventHref(event);

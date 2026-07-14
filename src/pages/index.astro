@@ -16,7 +16,7 @@ const home2ToolLinks = {
   championship: '/campeonato',
 };
 
-const home2ArchiveSeed = [];
+const home2ArchiveSeed: unknown[] = [];
 
 
 ---
@@ -2324,8 +2324,8 @@ const home2ArchiveSeed = [];
   </script>
   <script>
     (() => {
-      const srBody = document.querySelector('[data-home2-sr-ratings]');
-      const gsrBody = document.querySelector('[data-home2-gsr-ratings]');
+      const srBody = document.querySelector<HTMLElement>('[data-home2-sr-ratings]');
+      const gsrBody = document.querySelector<HTMLElement>('[data-home2-gsr-ratings]');
       if (!srBody && !gsrBody) return;
 
       const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
@@ -2429,7 +2429,7 @@ const home2ArchiveSeed = [];
           return;
         }
 
-        target.innerHTML = list.map((row, index) => {
+        target.innerHTML = list.map((row: any, index: number) => {
           const isSr = type === 'sr';
           const score = isSr ? toNumber(row.sr) : toNumber(row.gsr);
           const scoreText = score === null ? '--' : (isSr ? score.toFixed(1) : String(Math.round(score)));
@@ -2553,7 +2553,7 @@ const home2ArchiveSeed = [];
         }
         return 0;
       };
-      const ago = (row) => {
+      const ago = (row: any): string => {
         const ms = timestampMs(row);
         if (!ms) return '--';
         const diff = Math.max(0, Date.now() - ms);
@@ -2564,24 +2564,24 @@ const home2ArchiveSeed = [];
         if (hours < 48) return `${hours} h`;
         return `${Math.floor(hours / 24)} d`;
       };
-      const driverName = (row) => first(row, ['driver.displayName', 'driver.publicName', 'driver.visibleName', 'driverName', 'driver_name', 'playerName', 'player_name', 'DriverName', 'Name', 'name', 'pilotName', 'driver.name'], '--');
-      const cleanPublicName = (value, source = '') => {
+      const driverName = (row: any) => first(row, ['driver.displayName', 'driver.publicName', 'driver.visibleName', 'driverName', 'driver_name', 'playerName', 'player_name', 'DriverName', 'Name', 'name', 'pilotName', 'driver.name'], '--');
+      const cleanPublicName = (value: unknown, source: unknown = ''): string => {
         let out = String(value ?? '').trim();
         if (!out || out === '--') return out || '--';
         if (String(source).toLowerCase() === 'gt4') out = out.replace(/^00[\s_-]+/i, '').trim();
         return out.replace(/\s+/g, ' ');
       };
-      const carName = (row) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
-      const trackName = (row) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
-      const sourceKey = (row, fallback = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
-      const avatarNameCache = new Map();
-      const rememberAvatar = (row, src) => {
+      const carName = (row: any) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
+      const trackName = (row: any) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
+      const sourceKey = (row: any, fallback: unknown = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
+      const avatarNameCache = new Map<string, string>();
+      const rememberAvatar = (row: any, src: any): string => {
         const key = normalize(driverName(row));
         if (!key || !src || src === DEFAULT_AVATAR) return src || DEFAULT_AVATAR;
         avatarNameCache.set(key, src);
         return src;
       };
-      const avatar = (row) => {
+      const avatar = (row: any): string => {
         const direct = first(row, [
           'avatarUrl', 'avatar_url', 'pilotAvatarUrl', 'imageUrl', 'image',
           'driver.avatarUrl', 'driver.avatar_url', 'driver.imageUrl',
@@ -2604,26 +2604,26 @@ const home2ArchiveSeed = [];
         if (id !== undefined && id !== null && id !== '') return rememberAvatar(row, `/api/pilot-avatar/${encodeURIComponent(String(id))}`);
         return DEFAULT_AVATAR;
       };
-      const isValid = (row) => {
+      const isValid = (row: any): boolean => {
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
         return !(value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false');
       };
-      const bestPerDriver = (rows) => {
-        const pool = Array.isArray(rows) ? rows.filter((row) => Number.isFinite(rowTimeMs(row))) : [];
+      const bestPerDriver = (rows: any[]): any[] => {
+        const pool = Array.isArray(rows) ? rows.filter((row: any) => Number.isFinite(rowTimeMs(row))) : [];
         const valid = pool.filter(isValid);
         const source = valid.length ? valid : pool;
-        const map = new Map();
+        const map = new Map<string, any>();
         for (const row of source) {
           const key = normalize(driverName(row)) || String(first(row, ['playerId', 'driverId', 'rawPlayerId'], Math.random()));
           const current = map.get(key);
-          if (!current || rowTimeMs(row) < rowTimeMs(current)) map.set(key, row);
+          if (!current || (rowTimeMs(row) ?? Number.POSITIVE_INFINITY) < (rowTimeMs(current) ?? Number.POSITIVE_INFINITY)) map.set(key, row);
         }
-        return [...map.values()].sort((a, b) => rowTimeMs(a) - rowTimeMs(b));
+        return [...map.values()].sort((a: any, b: any) => (rowTimeMs(a) ?? Number.POSITIVE_INFINITY) - (rowTimeMs(b) ?? Number.POSITIVE_INFINITY));
       };
-      const activeCombo = (sourcePayload) => sourcePayload?.activeCombo || null;
-      const sourceLeaderboard = (sourcePayload) => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
-      const rankBadge = (index) => index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
-      const pulseCell = (selector, label, value, meta) => {
+      const activeCombo = (sourcePayload: any) => sourcePayload?.activeCombo || null;
+      const sourceLeaderboard = (sourcePayload: any): any[] => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
+      const rankBadge = (index: number) => index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+      const pulseCell = (selector: string, label: unknown, value: unknown, meta: unknown) => {
         const dd = q(selector);
         if (!dd) return;
         const wrap = dd.closest('div');
@@ -2633,11 +2633,11 @@ const home2ArchiveSeed = [];
         dd.textContent = value ?? '--';
         if (small) small.textContent = meta ?? '';
       };
-      const compactTrackLabel = (value) => String(value || '--').replace(/\s+/g, ' ').trim().toUpperCase();
-      const splitCarSummary = (value) => String(value || '').split(/[,+/]/).map((item) => cleanPublicName(item.trim())).filter(Boolean);
-      const comboRankBadgeClass = (index) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
+      const compactTrackLabel = (value: unknown) => String(value || '--').replace(/\s+/g, ' ').trim().toUpperCase();
+      const splitCarSummary = (value: unknown): string[] => String(value || '').split(/[,+/]/).map((item) => cleanPublicName(item.trim())).filter(Boolean);
+      const comboRankBadgeClass = (index: number) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
 
-      async function fetchJson(url, timeoutMs = 15000) {
+      async function fetchJson(url: string, timeoutMs = 15000): Promise<any> {
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), timeoutMs);
         try {
@@ -2650,7 +2650,7 @@ const home2ArchiveSeed = [];
         }
       }
 
-      const setImageWithFallbacks = (img, candidates, fallback = FALLBACK_TRACK) => {
+      const setImageWithFallbacks = (img: HTMLImageElement | null, candidates: string[], fallback = FALLBACK_TRACK): void => {
         if (!img) return;
         const list = [...new Set((candidates || []).filter(Boolean))];
         let index = 0;
@@ -2668,9 +2668,9 @@ const home2ArchiveSeed = [];
         apply();
       };
 
-      const trackImageAliasVariants = (values) => {
-        const aliases = new Set();
-        const addRaw = (value) => {
+      const trackImageAliasVariants = (values: unknown[]): string[] => {
+        const aliases = new Set<string>();
+        const addRaw = (value: unknown): void => {
           const base = normalize(String(value || '').trim());
           if (!base) return;
           aliases.add(base);
@@ -2695,9 +2695,9 @@ const home2ArchiveSeed = [];
         return [...aliases].filter(Boolean);
       };
 
-      const trackImageCandidatesFromCombo = (combo) => {
-        const image = combo?.trackImage || combo?.track?.image || {};
-        const candidates = [];
+      const trackImageCandidatesFromCombo = (combo: any): string[] => {
+        const image: any = combo?.trackImage || combo?.track?.image || {};
+        const candidates: string[] = [];
         if (image.primary) candidates.push(image.primary);
         if (Array.isArray(image.candidates)) candidates.push(...image.candidates);
         const aliases = Array.isArray(image.aliases) && image.aliases.length
@@ -2709,15 +2709,15 @@ const home2ArchiveSeed = [];
               first(combo, ['track.publicName'], '')
             ]);
         const exts = ['webp', 'jpg', 'png', 'jpeg', 'avif'];
-        aliases.forEach((alias) => exts.forEach((ext) => candidates.push(`/images/tracks/${encodeURIComponent(alias)}.${ext}`)));
+        aliases.forEach((alias: string) => exts.forEach((ext: string) => candidates.push(`/images/tracks/${encodeURIComponent(alias)}.${ext}`)));
         const key = normalize(first(combo, ['track.familyKey', 'track.code', 'track.name', 'track.displayName'], ''));
         if (/pascani|motorpark|a1/.test(key)) candidates.push('/images/tracks/pascani.jpg?v=bootstrap2', '/images/tracks/a1.webp?v=bootstrap2');
         if (/vila|vilareal|vila_real/.test(key)) candidates.push('/images/tracks/vilareal.jpg?v=bootstrap2');
         return [...new Set(candidates.filter(Boolean))];
       };
 
-      const setHeroBackgroundFromMain = (payload) => {
-        const img = q('.gc-home2-hero__bg[data-home2-track-image]');
+      const setHeroBackgroundFromMain = (payload: any) => {
+        const img = q('.gc-home2-hero__bg[data-home2-track-image]') as HTMLImageElement | null;
         if (!img) return;
         img.dataset.gcHomeStaticManaged = '1';
         const combo = activeCombo(payload?.main) || activeCombo(payload?.gt4) || null;
@@ -2725,7 +2725,7 @@ const home2ArchiveSeed = [];
         setImageWithFallbacks(img, trackImageCandidatesFromCombo(combo), FALLBACK_TRACK);
       };
 
-      const renderRanking = (selector, rows, preserve = true) => {
+      const renderRanking = (selector: string, rows: any[] = [], preserve = true): any[] => {
         const host = q(selector);
         if (!host) return [];
         const list = bestPerDriver(rows).slice(0, 8);
@@ -2736,7 +2736,7 @@ const home2ArchiveSeed = [];
           return [];
         }
         host.dataset.gcHydrated = '1';
-        host.innerHTML = list.map((row, index) => `
+        host.innerHTML = list.map((row: any, index: number) => `
           <div class="gc-home2-combo-rank">
             <span class="${comboRankBadgeClass(index)}">${rankBadge(index)}</span>
             <div><strong>${esc(driverName(row))}</strong><small>${esc(carName(row))}</small></div>
@@ -2749,19 +2749,19 @@ const home2ArchiveSeed = [];
       document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
       document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v1';
 
-      const renderRecent = (rows) => {
+      const renderRecent = (rows: any[] = []): any[] => {
         const host = q('[data-home2-recent-laps]');
         if (!host) return [];
         const seen = new Set();
         const list = (Array.isArray(rows) ? rows : [])
-          .filter((row) => timestampMs(row) > 0)
-          .filter((row) => {
+          .filter((row: any) => timestampMs(row) > 0)
+          .filter((row: any) => {
             const key = first(row, ['lapUid', 'uid', 'id', 'lapId'], '') || `${sourceKey(row)}:${driverName(row)}:${carName(row)}:${formatTime(row)}:${timestampMs(row)}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
           })
-          .sort((a, b) => timestampMs(b) - timestampMs(a))
+          .sort((a: any, b: any) => timestampMs(b) - timestampMs(a))
           .slice(0, 8);
         if (!list.length) return [];
         host.dataset.gcHydrated = '1';
@@ -2842,31 +2842,31 @@ const home2ArchiveSeed = [];
         if (!payload) return null;
         const c = champRoot(payload);
         const events = champEvents(payload);
-        return c.currentEvent || c.activeEvent || c.nextEvent || payload.currentEvent || payload.activeEvent || payload.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+        return c.currentEvent || c.activeEvent || c.nextEvent || payload.currentEvent || payload.activeEvent || payload.nextEvent || events.find((event: any) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
       };
 
-      const championshipTrackForSource = (source) => {
+      const championshipTrackForSource = (source: string): string => {
         const event = championshipEventForSource(source);
         return event ? first(event, ['trackName', 'track', 'trackRaw', 'name', 'Name', 'title'], '') : '';
       };
 
-      const championshipCarsForSource = (source) => {
+      const championshipCarsForSource = (source: string): string[] => {
         const event = championshipEventForSource(source);
         const raw = event ? first(event, ['carSummary', 'carsSummary', 'carName', 'car', 'cars'], '') : '';
         if (Array.isArray(raw)) return raw.map((car) => typeof car === 'string' ? cleanPublicName(car, source) : cleanPublicName(first(car, ['displayName', 'name', 'carName', 'code'], ''), source)).filter(Boolean);
         return splitCarSummary(raw);
       };
 
-      const driverStatName = (item) => first(item, ['driverName', 'playerName', 'name', 'displayName', 'driver.displayName', 'driver.name'], '');
-      const driverStatLaps = (item) => Number(first(item, ['laps', 'totalLaps', 'lapCount', 'count'], 0)) || 0;
-      const sourceDriverStats = (combo) => getArray(first(combo, ['driverStats', 'standouts.driverStats', 'summary.driverStats', 'drivers'], []));
+      const driverStatName = (item: any) => first(item, ['driverName', 'playerName', 'name', 'displayName', 'driver.displayName', 'driver.name'], '');
+      const driverStatLaps = (item: any) => Number(first(item, ['laps', 'totalLaps', 'lapCount', 'count'], 0)) || 0;
+      const sourceDriverStats = (combo: any): any[] => getArray(first(combo, ['driverStats', 'standouts.driverStats', 'summary.driverStats', 'drivers'], []));
 
-      const describeSourceCombo = (payload, source = 'main') => {
+      const describeSourceCombo = (payload: any, source = 'main') => {
         const combo = activeCombo(payload) || {};
         const rows = sourceLeaderboard(payload);
         const bestRows = bestPerDriver(rows);
         const best = bestRows[0] || first(combo, ['bestLap'], null) || rows[0] || {};
-        const latest = first(combo, ['latestLap'], null) || [...rows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || {};
+        const latest = first(combo, ['latestLap'], null) || [...rows].sort((a: any, b: any) => timestampMs(b) - timestampMs(a))[0] || {};
         const total = Number(first(combo, ['totalLaps', 'laps', 'lapCount', 'summary.totalLaps'], rows.length)) || rows.length || 0;
         const validFromRows = rows.filter(isValid).length;
         const valid = Math.min(total || validFromRows, Number(first(combo, ['validLaps', 'validLapCount', 'summary.validLaps'], validFromRows)) || validFromRows || 0);
@@ -2880,7 +2880,7 @@ const home2ArchiveSeed = [];
         const mostActive = sourceDriverStats(combo)
           .map((item) => ({ name: driverStatName(item), laps: driverStatLaps(item) }))
           .filter((item) => item.name && item.laps > 0)
-          .sort((a, b) => b.laps - a.laps)[0] || null;
+          .sort((a: any, b: any) => b.laps - a.laps)[0] || null;
         const drivers = Number(first(combo, ['driversCount', 'driverCount', 'summary.driversCount'], bestRows.length)) || bestRows.length || 0;
         const comboCarNames = comboCars(combo, rows, source);
         const fallbackCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
@@ -2889,7 +2889,7 @@ const home2ArchiveSeed = [];
         return { combo, rows, bestRows, best, latest, total, valid, track, bestTime, bestDriver, bestCar, vmax, mostActive, drivers, cars, cleanPct };
       };
 
-      const pulseServerMeta = (item) => {
+      const pulseServerMeta = (item: any): string => {
         const best = item.bestDriver && item.bestTime !== '--' ? `P1 ${item.bestDriver} · ${item.bestTime}` : 'sin mejor vuelta';
         const active = item.mostActive ? ` · activo ${item.mostActive.name} (${item.mostActive.laps})` : '';
         const drivers = item.drivers ? ` · ${item.drivers} pilotos` : '';
@@ -2897,18 +2897,20 @@ const home2ArchiveSeed = [];
         return `${item.total || 0} vueltas · ${item.valid || 0} válidas${drivers}${cars} · ${best}${active}`;
       };
 
-      const renderPulse = (payload) => {
+      const renderPulse = (payload: any) => {
         const main = describeSourceCombo(payload?.main, 'main');
         const gt4 = describeSourceCombo(payload?.gt4, 'gt4');
         const latestRows = Array.isArray(payload?.timingSheet) ? payload.timingSheet : [];
-        const latest = [...latestRows].sort((a, b) => timestampMs(b) - timestampMs(a))[0] || main.latest || gt4.latest || {};
+        const latest = [...latestRows].sort((a: any, b: any) => timestampMs(b) - timestampMs(a))[0] || main.latest || gt4.latest || {};
         const latestSource = sourceKey(latest, sourceKey(main.latest, 'main')) === 'gt4' ? 'GT4' : 'Liga';
         const latestTime = formatTime(latest);
         const latestMeta = `${latestSource} · ${carName(latest)} · ${latestTime} · ${ago(latest)}`;
         const maxV = Math.max(main.vmax || 0, gt4.vmax || 0);
         const duelRows = main.bestRows.length >= 2 ? main.bestRows : gt4.bestRows;
-        const duel = duelRows.length >= 2 && Number.isFinite(rowTimeMs(duelRows[0])) && Number.isFinite(rowTimeMs(duelRows[1]))
-          ? `+${((rowTimeMs(duelRows[1]) - rowTimeMs(duelRows[0])) / 1000).toFixed(3)}s`
+        const duelP1 = duelRows.length >= 2 ? rowTimeMs(duelRows[0]) : null;
+        const duelP2 = duelRows.length >= 2 ? rowTimeMs(duelRows[1]) : null;
+        const duel = duelP1 !== null && duelP2 !== null
+          ? `+${((duelP2 - duelP1) / 1000).toFixed(3)}s`
           : '--';
         const duelSource = main.bestRows.length >= 2 ? 'Liga' : 'GT4';
         const totalAll = (main.total || 0) + (gt4.total || 0);
@@ -2923,21 +2925,21 @@ const home2ArchiveSeed = [];
         pulseCell('[data-home2-standout-duel]', 'Duelo', duel, `${duelSource} P1/P2 · Vmax ${maxV ? Math.round(maxV) + ' km/h' : '--'}`);
       };
 
-      const champRoot = (payload) => payload?.championship || payload?.data?.championship || payload?.data || payload || {};
-      const arr = (...items) => items.find((item) => Array.isArray(item)) || [];
-      const champEvents = (payload) => {
+      const champRoot = (payload: any): any => payload?.championship || payload?.data?.championship || payload?.data || payload || {};
+      const arr = (...items: any[]): any[] => items.find((item) => Array.isArray(item)) || [];
+      const champEvents = (payload: any): any[] => {
         const c = champRoot(payload);
         return arr(c.events, c.calendar, payload?.events, payload?.data?.events);
       };
-      const champRows = (payload) => {
+      const champRows = (payload: any): any[] => {
         const c = champRoot(payload);
         return arr(c.standings, payload?.standings, payload?.data?.standings, c.registeredDrivers, payload?.registeredDrivers, payload?.data?.registeredDrivers);
       };
-      const champName = (row, index) => first(row, ['driverName', 'name', 'displayName', 'pilotName', 'DriverName', 'user.name'], `Piloto ${index + 1}`);
-      const champPts = (row) => first(row, ['points', 'pts', 'totalPoints', 'score'], '0');
-      const champDate = (raw) => {
+      const champName = (row: any, index: number) => first(row, ['driverName', 'name', 'displayName', 'pilotName', 'DriverName', 'user.name'], `Piloto ${index + 1}`);
+      const champPts = (row: any) => first(row, ['points', 'pts', 'totalPoints', 'score'], '0');
+      const champDate = (raw: unknown): string => {
         if (!raw) return 'Fecha por confirmar';
-        const d = new Date(raw);
+        const d = new Date(String(raw));
         if (Number.isNaN(d.getTime())) return String(raw);
         return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' }) + ', ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       };
@@ -2947,8 +2949,8 @@ const home2ArchiveSeed = [];
       const WEEKLY_SIGNUP_URL = 'http://145.239.131.153:8840/championship/ad89ce26-0206-40f2-adec-451cf221d4e6/sign-up/steam';
       const WEEKLY_JOIN_URL = 'https://acstuff.ru/s/q:race/online/join?httpPort=8381&ip=145.239.131.153';
       const driveIconSvg = '<span class="gc-home2-drive-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M9.4 2.5h5.2l2.7 4.7-2.6 4.5H9.3L6.6 7.2l2.8-4.7Zm-2 5.9 2.6 4.5-2.6 4.6H2.2L4.8 13l2.6-4.6Zm8.2 4.5 2.6-4.5h5.2L20.8 13l2.6 4.5h-5.2l-2.6-4.6Z" fill="currentColor"></path></svg></span>';
-      const championshipButton = (href, label, extraClass = '', attr = '') => `<a href="${esc(href)}" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn ${extraClass}" ${attr}>${label}</a>`;
-      const enforceChampionshipButtons = (source) => {
+      const championshipButton = (href: string, label: string, extraClass = '', attr = '') => `<a href="${esc(href)}" target="_blank" rel="noopener" class="gc-home2-btn gc-home2-btn--small gc-home2-championship-btn ${extraClass}" ${attr}>${label}</a>`;
+      const enforceChampionshipButtons = (source: string) => {
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
         const actions = q('.gc-home2-championship-actions', block);
         if (!actions) return;
@@ -2968,8 +2970,8 @@ const home2ArchiveSeed = [];
         }
       };
 
-      const setChampionshipTrackImage = async (block, title, event, source) => {
-        const img = q('[data-home2-champ-track-image]', block);
+      const setChampionshipTrackImage = async (block: any, title: unknown, event: any, _source: string) => {
+        const img = q('[data-home2-champ-track-image]', block) as HTMLImageElement | null;
         if (!img) return;
         const values = [
           title,
@@ -2977,9 +2979,9 @@ const home2ArchiveSeed = [];
           first(event, ['Track', 'TrackName', 'TrackCode'], '')
         ].filter(Boolean);
         for (const value of values) {
-          if (window.GCHomeTrackResolver?.setTrackImage) {
+          if ((window as any).GCHomeTrackResolver?.setTrackImage) {
             try {
-              const ok = await window.GCHomeTrackResolver.setTrackImage(img, value, 'photo');
+              const ok = await (window as any).GCHomeTrackResolver.setTrackImage(img, value, 'photo');
               if (ok) {
                 img.dataset.gcHomeChampImageRuntime = 'v33-resolver';
                 return;
@@ -2987,7 +2989,7 @@ const home2ArchiveSeed = [];
             } catch (_) {}
           }
         }
-        const candidates = [];
+        const candidates: string[] = [];
         values.forEach((value) => {
           candidates.push(...trackImageCandidatesFromCombo({ track: { name: value, code: value, displayName: value } }));
         });
@@ -2995,7 +2997,7 @@ const home2ArchiveSeed = [];
         img.dataset.gcHomeChampImageRuntime = 'v33-candidates';
       };
 
-      const renderChampionshipFromPayload = (source, payload) => {
+      const renderChampionshipFromPayload = (source: string, payload: any) => {
         enforceChampionshipButtons(source);
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
         if (!block || !payload) return { source, ok: false, reason: 'missing-block-or-payload' };
@@ -3003,7 +3005,7 @@ const home2ArchiveSeed = [];
         const events = champEvents(payload);
         const rows = champRows(payload);
         const stats = c.stats || payload.stats || payload.data?.stats || {};
-        const scheduledNext = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
+        const scheduledNext = c.nextEvent || payload.nextEvent || payload.data?.nextEvent || events.find((event: any) => String(first(event, ['status', 'Status'], '')).toLowerCase() !== 'completed') || events[0] || null;
 
         // GC_HOME_CHAMPIONSHIP_LIVE_COMBO_V1
         const liveSourcePayload = source === 'gt4'
@@ -3023,7 +3025,7 @@ const home2ArchiveSeed = [];
         const next = liveEvent || scheduledNext;
         setText('[data-home2-champ-name]', first(c, ['name', 'title'], source === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'), block);
         setText('[data-home2-champ-events]', first(stats, ['events'], events.length || '--'), block);
-        setText('[data-home2-champ-completed]', first(stats, ['completedEvents', 'completed'], events.filter((event) => String(first(event, ['status', 'Status'], '')).toLowerCase() === 'completed').length || '--'), block);
+        setText('[data-home2-champ-completed]', first(stats, ['completedEvents', 'completed'], events.filter((event: any) => String(first(event, ['status', 'Status'], '')).toLowerCase() === 'completed').length || '--'), block);
         setText('[data-home2-champ-entrants]', first(stats, ['entrants'], rows.length || '--'), block);
         setText('[data-home2-champ-classes]', first(stats, ['classes'], Array.isArray(c.classes) ? c.classes.length : '--'), block);
         if (next) {
@@ -3040,12 +3042,12 @@ const home2ArchiveSeed = [];
         const host = q('[data-home2-champ-drivers]', block);
         if (host && rows.length) {
           host.dataset.gcHydrated = '1';
-          host.innerHTML = rows.slice(0, 8).map((row, index) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+          host.innerHTML = rows.slice(0, 8).map((row: any, index: number) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
         }
         enforceChampionshipButtons(source);
         return { source, ok: true, events: events.length, rows: rows.length };
       };
-      const loadChampionship = async (source) => {
+      const loadChampionship = async (source: string) => {
         try {
           const payload = await fetchJson(`/api/community/acsr-championship?source=${encodeURIComponent(source)}&home=1&t=${Date.now()}`, 12000);
           lastGood.championships[source] = payload;
@@ -3053,11 +3055,11 @@ const home2ArchiveSeed = [];
         } catch (error) {
           if (lastGood.championships[source]) return renderChampionshipFromPayload(source, lastGood.championships[source]);
           console.warn(`[GC Home ${PACK}] campeonato no disponible`, source, error);
-          return { source, ok: false, reason: String(error?.message || error) };
+          return { source, ok: false, reason: error instanceof Error ? error.message : String(error) };
         }
       };
 
-      const applyBootstrap = (payload) => {
+      const applyBootstrap = (payload: any) => {
         const mainRows = sourceLeaderboard(payload?.main);
         const gt4Rows = sourceLeaderboard(payload?.gt4);
         const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, true);
@@ -3104,12 +3106,12 @@ const home2ArchiveSeed = [];
         }
       };
 
-      window.GCHomeBootstrapV2 = { refresh, enforceChampionshipButtons, renderHeroFromState };
+      (window as any).GCHomeBootstrapV2 = { refresh, enforceChampionshipButtons, renderHeroFromState };
       enforceChampionshipButtons('gt4');
       enforceChampionshipButtons('weekly');
       refresh();
       refreshTimer = window.setInterval(refresh, REFRESH_MS);
-      window.__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
+      (window as any).__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
     })();
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_END */
 

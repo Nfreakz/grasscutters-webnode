@@ -43,7 +43,7 @@ const {
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || Astro.site?.toString() || Astro.url.origin || 'https://grasscuttersracing.com').replace(/\/$/, '');
 
-function normalizeCanonicalPath(value) {
+function normalizeCanonicalPath(value: unknown) {
   const raw = String(value || '').trim();
   if (!raw) return '/';
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -59,7 +59,7 @@ function normalizeCanonicalPath(value) {
 
 const canonicalUrl = new URL(normalizeCanonicalPath(canonicalPath || Astro.url.pathname), siteUrl).toString();
 
-const pageOgImages = {
+const pageOgImages: Record<string, string> = {
   '/': '/og/home-og-v1531.png',
   '/comunidad': '/og/comunidad-og-v1531.png',
   '/campeonato': '/og/campeonato-og-v1531.png',
@@ -73,7 +73,7 @@ const pageOgImages = {
   '/calendario': '/og/calendario-og-v1531.png',
 };
 
-function compactText(value, fallback = '') {
+function compactText(value: unknown, fallback: unknown = '') {
   return String(value || fallback || '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
@@ -81,7 +81,7 @@ function compactText(value, fallback = '') {
     .slice(0, 220);
 }
 
-function imageMime(value) {
+function imageMime(value: unknown) {
   const clean = String(value || '').split('?')[0].toLowerCase();
   if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
   if (clean.endsWith('.webp')) return 'image/webp';
@@ -89,7 +89,7 @@ function imageMime(value) {
   return 'image/png';
 }
 
-function absoluteUrl(value) {
+function absoluteUrl(value: unknown) {
   const raw = String(value || '').trim();
   if (!raw) return new URL('/og/grasscutters-social-card-v1531.png', siteUrl).toString();
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -148,7 +148,7 @@ const footerItems = [
   { href: '/privacidad', label: 'Privacidad' },
 ];
 
-function isActive(match) {
+function isActive(match: string) {
   if (match === '/') return path === '/';
   return path === match || path.startsWith(`${match}/`);
 }

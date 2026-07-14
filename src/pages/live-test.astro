@@ -175,28 +175,38 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     const runtime = 'v11-sectors-parity';
     document.documentElement.dataset.gcLiveTestRuntime = runtime;
 
-    const state = {
+    type LiveTestState = {
+      server: string;
+      eventSource: EventSource | null;
+      normalized: any;
+      positions: Record<string, any>;
+      dots: Map<string, HTMLElement>;
+      coordMode: string | null;
+    };
+
+    const state: LiveTestState = {
       server: 'main',
       eventSource: null,
       normalized: null,
       positions: {},
-      dots: new Map(),
+      dots: new Map<string, HTMLElement>(),
+      coordMode: null,
     };
 
-    const $ = (selector) => document.querySelector(selector);
-    const mapImg = $('[data-live-map-img]');
-    const dotsLayer = $('[data-live-dots]');
+    const $ = <T extends Element = HTMLElement>(selector: string): T => document.querySelector(selector) as T;
+    const mapImg = $<HTMLImageElement>('[data-live-map-img]');
+    const dotsLayer = $<HTMLElement>('[data-live-dots]');
 
-    function text(selector, value) {
+    function text(selector: string, value: unknown) {
       const el = $(selector);
-      if (el) el.textContent = value ?? '--';
+      if (el) el.textContent = String(value ?? '--');
     }
 
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    function escapeHtml(value: unknown) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[char] ?? char);
     }
 
-    function connect(server) {
+    function connect(server: string) {
       state.server = server;
       state.normalized = null;
       state.positions = {};
@@ -210,32 +220,33 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       text('[data-debug-coords]', '--');
 
       if (state.eventSource) state.eventSource.close();
-      state.eventSource = new EventSource(`/api/gc/live-test/stream?server=${encodeURIComponent(server)}`);
+      const eventSource = new EventSource(`/api/gc/live-test/stream?server=${encodeURIComponent(server)}`);
+      state.eventSource = eventSource;
 
-      state.eventSource.addEventListener('snapshot', (event) => {
+      eventSource.addEventListener('snapshot', (event: MessageEvent<string>) => {
         const payload = JSON.parse(event.data);
         applySnapshot(payload);
       });
 
-      state.eventSource.addEventListener('status', (event) => {
+      eventSource.addEventListener('status', (event: MessageEvent<string>) => {
         const payload = JSON.parse(event.data);
         text('[data-live-status]', payload.connected ? 'WS conectado' : 'Reconectando');
         renderDebug(payload);
       });
 
-      state.eventSource.addEventListener('position', (event) => {
+      eventSource.addEventListener('position', (event: MessageEvent<string>) => {
         const position = JSON.parse(event.data);
         state.positions[String(position.carId)] = position;
         text('[data-debug-positions]', `${Object.keys(state.positions).length} live`);
         updateDot(position);
       });
 
-      state.eventSource.onerror = () => {
+      eventSource.onerror = () => {
         text('[data-live-status]', 'SSE reconectando');
       };
     }
 
-    function applySnapshot(payload) {
+    function applySnapshot(payload: any) {
       state.normalized = payload.normalized;
       state.positions = payload.positions || {};
       text('[data-live-status]', payload.connected ? 'WS conectado' : 'Esperando WS');
@@ -262,7 +273,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       Object.values(state.positions || {}).forEach(updateDot);
     }
 
-    function renderDebug(payload) {
+    function renderDebug(payload: any) {
       const debug = payload.debug || {};
       const eventCounts = payload.eventCounts || debug.socket?.eventCounts || {};
       const counts = payload.normalized?.debugCounts || debug.rawCounts || {};
@@ -274,7 +285,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       text('[data-debug-positions]', `${Object.keys(payload.positions || {}).length} live${payload.lastPositionDropReason ? ' · ' + payload.lastPositionDropReason : ''}`);
     }
 
-    function renderDrivers(drivers, carSlots) {
+    function renderDrivers(drivers: any[], carSlots: any[]) {
       text('[data-drivers-count]', `${drivers.length} piloto${drivers.length === 1 ? '' : 's'} activos`);
       const tbody = $('[data-live-drivers]');
       if (!drivers.length) {
@@ -294,7 +305,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     }
 
 
-    function renderSectors(sectors) {
+    function renderSectors(sectors: any[]) {
       if (!Array.isArray(sectors) || !sectors.length) return '<span class="gc-sector-empty">--</span>';
       return `<div class="gc-sector-list">${sectors.slice(0, 3).map((sector, index) => `
         <span class="gc-sector ${sector.isBest ? 'is-overall-best' : ''} ${sector.isDriversBest ? 'is-driver-best' : ''}">
@@ -303,7 +314,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       `).join('')}</div>`;
     }
 
-    function renderStored(rows) {
+    function renderStored(rows: any[]) {
       text('[data-stored-count]', `${rows.length} registros`);
       const tbody = $('[data-live-stored]');
       if (!rows.length) {
@@ -366,14 +377,14 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       }
     }
 
-    function projectPosition(position, mode) {
+    function projectPosition(position: any, mode: string) {
       const g = getMapGeometry();
       if (!g || !position?.pos) return null;
       const px = Number(position.pos.x);
       const pz = Number(position.pos.z);
       if (!Number.isFinite(px) || !Number.isFinite(pz)) return null;
 
-      const transforms = {
+      const transforms: Record<string, [number, number, string?]> = {
         acsm: [px, pz],
         acsmNoMargin: [px, pz, 'noMargin'],
         flipZ: [px, -pz],
@@ -398,9 +409,9 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
     }
 
     function chooseCoordinateMode() {
-      const positions = Object.values(state.positions || {}).filter((item) => item?.pos);
+      const positions = (Object.values(state.positions || {}) as any[]).filter((item: any) => item?.pos);
       if (!positions.length) return state.coordMode || 'acsm';
-      const modes = ['acsm', 'acsmNoMargin', 'flipZ', 'flipX', 'flipBoth', 'swap', 'swapFlipZ', 'swapFlipX'];
+      const modes: string[] = ['acsm', 'acsmNoMargin', 'flipZ', 'flipX', 'flipBoth', 'swap', 'swapFlipZ', 'swapFlipX'];
       let best = { mode: state.coordMode || 'acsm', score: -1, inImage: 0, inBox: 0 };
       for (const mode of modes) {
         let inImage = 0;
@@ -421,7 +432,7 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       return best.mode;
     }
 
-    function updateDot(position) {
+    function updateDot(position: any) {
       if (!position?.pos || !mapImg.naturalWidth) return;
       const mode = chooseCoordinateMode();
       let projected = projectPosition(position, mode);
@@ -449,8 +460,8 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       dot.dataset.carLabel = String(position.carId ?? '?');
       dot.dataset.coordMode = mode;
       dot.classList.toggle('is-pit', Boolean(position.isInPits));
-      const core = dot.querySelector('.gc-live-dot__core');
-      const label = dot.querySelector('.gc-live-dot__label');
+      const core = dot.querySelector<HTMLElement>('.gc-live-dot__core');
+      const label = dot.querySelector<HTMLElement>('.gc-live-dot__label');
       if (core) core.textContent = String(position.carId ?? '?');
       if (label) label.innerHTML = `${escapeHtml(position.driverName || 'Car ' + position.carId)}<small>${escapeHtml(position.speedKmh ?? '--')} km/h · G${escapeHtml(position.gear ?? '--')}</small>`;
       if (position.rotation?.y !== null && position.rotation?.y !== undefined) dot.style.setProperty('--car-rotation', `${Number(position.rotation.y) || 0}rad`);
@@ -467,9 +478,9 @@ const description = 'Página de prueba aislada para validar live timing ACSM con
       Object.values(state.positions || {}).forEach(updateDot);
     });
 
-    document.querySelectorAll('[data-server]').forEach((button) => {
+    document.querySelectorAll<HTMLButtonElement>('[data-server]').forEach((button: HTMLButtonElement) => {
       button.addEventListener('click', () => {
-        document.querySelectorAll('[data-server]').forEach((item) => item.classList.remove('is-active'));
+        document.querySelectorAll<HTMLButtonElement>('[data-server]').forEach((item: HTMLButtonElement) => item.classList.remove('is-active'));
         button.classList.add('is-active');
         connect(button.getAttribute('data-server') || 'main');
       });
