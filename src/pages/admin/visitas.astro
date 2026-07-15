@@ -3,6 +3,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
 
+<!-- GC_ANALYTICS_RELIABILITY_V2 -->
 <AppLayout title="Estadísticas de visitas | GrassCutters">
   <div class="gc-page gc-admin-page-clean gc-admin-analytics-v1">
     <section class="gc-admin-analytics-hero-v1">
@@ -32,11 +33,12 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
     <section id="analyticsDisabled" class="gc-slab gc-admin-analytics-disabled-v1" hidden>
       <span class="gc-kicker">Configuración</span>
-      <h2>Analítica desactivada</h2>
-      <p>Añade estas variables al entorno de Hostinger y reinicia la aplicación:</p>
+      <h2 id="analyticsConfigTitle">Analítica desactivada</h2>
+      <p id="analyticsConfigText">Añade estas variables al entorno de Hostinger y reinicia la aplicación:</p>
       <pre>GC_ANALYTICS_ENABLED=true
 GC_ANALYTICS_RETENTION_DAYS=90
 GC_ANALYTICS_ACTIVE_MINUTES=5
+GC_ANALYTICS_DEDUP_SECONDS=15
 GC_ANALYTICS_TIME_ZONE=Europe/Madrid
 GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     </section>
@@ -57,9 +59,25 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
 
       <section class="gc-admin-analytics-metrics-v1">
         <article><span>Visitas hoy</span><strong id="metricTodayViews">0</strong><small id="metricTodayVisitors">0 visitantes</small></article>
-        <article><span>Últimos 7 días</span><strong id="metric7Views">0</strong><small id="metric7Visitors">0 visitantes</small></article>
-        <article><span>Últimos 30 días</span><strong id="metric30Views">0</strong><small id="metric30Visitors">0 visitantes</small></article>
+        <article><span>Últimos 7 días</span><strong id="metric7Views">0</strong><small id="metric7Visitors">0 visitantes-día</small></article>
+        <article><span>Últimos 30 días</span><strong id="metric30Views">0</strong><small id="metric30Visitors">0 visitantes-día</small></article>
         <article><span>Activos ahora</span><strong id="metricActive">0</strong><small id="metricActiveWindow">últimos 5 min</small></article>
+      </section>
+
+      <section class="gc-slab gc-admin-analytics-comparison-v2">
+        <header>
+          <div>
+            <span class="gc-kicker">Comparación</span>
+            <h2>Periodo seleccionado frente al anterior</h2>
+          </div>
+          <small id="comparisonRange">--</small>
+        </header>
+        <div class="gc-admin-analytics-comparison-grid-v2">
+          <article><span>Vistas actuales</span><strong id="comparisonCurrentViews">0</strong><small id="comparisonViewsChange">--</small></article>
+          <article><span>Vistas anteriores</span><strong id="comparisonPreviousViews">0</strong><small>periodo equivalente</small></article>
+          <article><span>Visitantes-día actuales</span><strong id="comparisonCurrentVisitors">0</strong><small id="comparisonVisitorsChange">--</small></article>
+          <article><span>Visitantes-día anteriores</span><strong id="comparisonPreviousVisitors">0</strong><small>periodo equivalente</small></article>
+        </div>
       </section>
 
       <section class="gc-admin-analytics-grid-v1">
@@ -124,6 +142,24 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
         </article>
       </section>
 
+      <section class="gc-slab gc-admin-analytics-health-v2">
+        <header>
+          <div>
+            <span class="gc-kicker">Salud del sistema</span>
+            <h2>Recopilación y almacenamiento</h2>
+          </div>
+          <strong id="healthReady">Comprobando</strong>
+        </header>
+        <div class="gc-admin-analytics-health-grid-v2">
+          <article><span>Storage</span><strong id="healthStorage">--</strong><small id="healthRows">0 filas</small></article>
+          <article><span>Último registro</span><strong id="healthLatest">--</strong><small id="healthRecorded">--</small></article>
+          <article><span>Secreto dedicado</span><strong id="healthSecret">--</strong><small id="healthSecretLength">--</small></article>
+          <article><span>Recargas filtradas</span><strong id="healthDeduped">0</strong><small id="healthDedupWindow">15 segundos</small></article>
+          <article><span>Limpieza</span><strong id="healthPrune">--</strong><small>retención automática</small></article>
+          <article><span>Último error</span><strong id="healthError">Ninguno</strong><small id="healthErrorAt">--</small></article>
+        </div>
+      </section>
+
       <section class="gc-slab gc-admin-analytics-privacy-v1">
         <div>
           <span class="gc-kicker">Privacidad</span>
@@ -132,7 +168,8 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
         <ul>
           <li>No usa cookies analíticas ni localStorage.</li>
           <li>No guarda IP, parámetros de URL ni identidad de usuarios.</li>
-          <li>El identificador anónimo cambia cada día.</li>
+          <li>El identificador anónimo cambia cada día; los periodos largos muestran visitantes-día acumulados.</li>
+          <li>Filtra recargas repetidas del mismo visitante y página durante unos segundos.</li>
           <li>Excluye administración, APIs, recursos estáticos y bots conocidos.</li>
         </ul>
       </section>
@@ -160,6 +197,18 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     .gc-admin-analytics-metrics-v1 span{color:var(--dim);font-size:.7rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
     .gc-admin-analytics-metrics-v1 strong{font-size:clamp(1.8rem,4vw,3rem);line-height:1;color:var(--text)}
     .gc-admin-analytics-metrics-v1 small{color:var(--soft)}
+    .gc-admin-analytics-comparison-v2,.gc-admin-analytics-health-v2{display:grid;gap:16px}
+    .gc-admin-analytics-comparison-v2>header,.gc-admin-analytics-health-v2>header{display:flex;align-items:end;justify-content:space-between;gap:16px}
+    .gc-admin-analytics-comparison-v2 h2,.gc-admin-analytics-health-v2 h2{margin:4px 0 0}
+    .gc-admin-analytics-comparison-v2>header small{color:var(--dim)}
+    .gc-admin-analytics-comparison-grid-v2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .gc-admin-analytics-comparison-grid-v2 article,.gc-admin-analytics-health-grid-v2 article{display:grid;gap:4px;padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.018)}
+    .gc-admin-analytics-comparison-grid-v2 span,.gc-admin-analytics-health-grid-v2 span{color:var(--dim);font-size:.66rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-analytics-comparison-grid-v2 strong{font-size:1.55rem}
+    .gc-admin-analytics-comparison-grid-v2 small,.gc-admin-analytics-health-grid-v2 small{color:var(--soft)}
+    .gc-admin-analytics-health-v2>header>strong{color:var(--accent)}
+    .gc-admin-analytics-health-grid-v2{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .gc-admin-analytics-health-grid-v2 strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .gc-admin-analytics-grid-v1{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
     .gc-admin-analytics-chart-card-v1,.gc-admin-analytics-table-card-v1{display:grid;gap:16px;min-width:0}
     .gc-admin-analytics-chart-card-v1 header,.gc-admin-analytics-table-card-v1 header{display:flex;align-items:end;justify-content:space-between;gap:12px}
@@ -178,8 +227,8 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     .gc-admin-analytics-table-card-v1 td:first-child{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .gc-admin-analytics-privacy-v1{display:grid;grid-template-columns:minmax(0,.45fr) minmax(0,1fr);gap:24px;align-items:start}
     .gc-admin-analytics-privacy-v1 ul{display:grid;gap:8px;margin:0;padding-left:20px;color:var(--soft)}
-    @media(max-width:960px){.gc-admin-analytics-hero-v1,.gc-admin-analytics-grid-v1,.gc-admin-analytics-privacy-v1{grid-template-columns:1fr}.gc-admin-analytics-metrics-v1{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:580px){.gc-admin-analytics-metrics-v1{grid-template-columns:1fr}.gc-admin-analytics-toolbar-v1>span{width:100%;margin-left:0}.gc-admin-analytics-hero-v1{padding:22px}.gc-admin-analytics-hero-v1 h1{font-size:3rem}}
+    @media(max-width:960px){.gc-admin-analytics-hero-v1,.gc-admin-analytics-grid-v1,.gc-admin-analytics-privacy-v1{grid-template-columns:1fr}.gc-admin-analytics-metrics-v1,.gc-admin-analytics-comparison-grid-v2,.gc-admin-analytics-health-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:580px){.gc-admin-analytics-metrics-v1,.gc-admin-analytics-comparison-grid-v2,.gc-admin-analytics-health-grid-v2{grid-template-columns:1fr}.gc-admin-analytics-toolbar-v1>span{width:100%;margin-left:0}.gc-admin-analytics-hero-v1{padding:22px}.gc-admin-analytics-hero-v1 h1{font-size:3rem}}
   </style>
 
   <script>
@@ -187,11 +236,20 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     type AnalyticsSummary = {
       ok: boolean;
       enabled: boolean;
+      ready: boolean;
       storage: string;
       generatedAt: string;
       timeZone: string;
       retentionDays: number;
       activeMinutes: number;
+      dedupSeconds: number;
+      period: {
+        days: number;
+        from: string;
+        to: string;
+        previousFrom: string;
+        previousTo: string;
+      };
       totals: {
         today: { views: number; visitors: number };
         last7Days: { views: number; visitors: number };
@@ -199,12 +257,33 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
         selectedPeriod: { views: number; visitors: number };
         activeNow: number;
       };
+      comparison: {
+        current: { views: number; visitors: number };
+        previous: { views: number; visitors: number };
+        changePercent: { views: number | null; visitors: number | null };
+      };
       daily: Array<{ day: string; views: number; visitors: number }>;
       hourly: Array<{ hour: number; views: number; visitors: number }>;
       topPages: SummaryRow[];
       referrers: SummaryRow[];
       devices: SummaryRow[];
       browsers: SummaryRow[];
+      health: {
+        startedAt: string;
+        storage: string;
+        secretConfigured: boolean;
+        secretValid: boolean;
+        secretLength: number;
+        storedRows: number;
+        latestRecordAt: string | null;
+        lastAttemptAt: string | null;
+        lastRecordedAt: string | null;
+        lastErrorAt: string | null;
+        lastError: string | null;
+        lastPruneAt: string | null;
+        recordedSinceStart: number;
+        dedupedSinceStart: number;
+      };
       message?: string;
     };
 
@@ -216,6 +295,8 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
       gateText: $('analyticsGateText'),
       retry: $<HTMLButtonElement>('analyticsRetry'),
       disabled: $('analyticsDisabled'),
+      configTitle: $('analyticsConfigTitle'),
+      configText: $('analyticsConfigText'),
       content: $('analyticsContent'),
       period: $<HTMLSelectElement>('analyticsPeriod'),
       refresh: $<HTMLButtonElement>('analyticsRefresh'),
@@ -230,6 +311,25 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
       activeWindow: $('metricActiveWindow'),
       periodTotal: $('periodTotal'),
       timeZone: $('analyticsTimezone'),
+      comparisonRange: $('comparisonRange'),
+      comparisonCurrentViews: $('comparisonCurrentViews'),
+      comparisonPreviousViews: $('comparisonPreviousViews'),
+      comparisonCurrentVisitors: $('comparisonCurrentVisitors'),
+      comparisonPreviousVisitors: $('comparisonPreviousVisitors'),
+      comparisonViewsChange: $('comparisonViewsChange'),
+      comparisonVisitorsChange: $('comparisonVisitorsChange'),
+      healthReady: $('healthReady'),
+      healthStorage: $('healthStorage'),
+      healthRows: $('healthRows'),
+      healthLatest: $('healthLatest'),
+      healthRecorded: $('healthRecorded'),
+      healthSecret: $('healthSecret'),
+      healthSecretLength: $('healthSecretLength'),
+      healthDeduped: $('healthDeduped'),
+      healthDedupWindow: $('healthDedupWindow'),
+      healthPrune: $('healthPrune'),
+      healthError: $('healthError'),
+      healthErrorAt: $('healthErrorAt'),
       dailyChart: $('dailyChart'),
       hourlyChart: $('hourlyChart'),
       topPages: $<HTMLTableSectionElement>('topPagesBody'),
@@ -245,6 +345,20 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     } as Record<string, string>)[char] ?? char);
 
     const num = (value: unknown): string => numberFormat.format(Number(value) || 0);
+    const dateTime = (value: unknown): string => value
+      ? new Date(String(value)).toLocaleString('es-ES')
+      : '--';
+    const percent = (value: number | null): string => value == null
+      ? '--'
+      : `${value > 0 ? '+' : ''}${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(value)} %`;
+
+    function setChangeTone(target: HTMLElement, value: number | null): void {
+      target.style.color = value == null || value === 0
+        ? 'var(--soft)'
+        : value > 0
+          ? 'var(--accent)'
+          : 'var(--warn)';
+    }
 
     async function fetchJson(url: string): Promise<AnalyticsSummary> {
       const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ accept:'application/json' } });
@@ -283,13 +397,17 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
     }
 
     function render(data: AnalyticsSummary): void {
-      els.state.textContent = data.enabled ? 'Activo' : 'Desactivado';
-      els.state.style.color = data.enabled ? 'var(--accent)' : 'var(--warn)';
+      els.state.textContent = data.ready ? 'Activo' : data.enabled ? 'Revisar' : 'Desactivado';
+      els.state.style.color = data.ready ? 'var(--accent)' : 'var(--warn)';
       els.storage.textContent = `${data.storage} · ${data.retentionDays} días`;
       els.timeZone.textContent = data.timeZone;
       els.updated.textContent = `Actualizado ${new Date(data.generatedAt).toLocaleString('es-ES')}`;
 
-      if (!data.enabled) {
+      if (!data.enabled || !data.ready) {
+        els.configTitle.textContent = data.enabled ? 'Configuración incompleta' : 'Analítica desactivada';
+        els.configText.textContent = data.enabled
+          ? 'GC_ANALYTICS_HASH_SECRET debe existir y tener al menos 32 caracteres. Corrige el entorno y reinicia la aplicación.'
+          : 'Activa GC_ANALYTICS_ENABLED y configura un secreto dedicado en Hostinger.';
         setMode('disabled');
         return;
       }
@@ -298,12 +416,38 @@ GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
       els.todayViews.textContent = num(data.totals.today.views);
       els.todayVisitors.textContent = `${num(data.totals.today.visitors)} visitantes`;
       els.views7.textContent = num(data.totals.last7Days.views);
-      els.visitors7.textContent = `${num(data.totals.last7Days.visitors)} visitantes`;
+      els.visitors7.textContent = `${num(data.totals.last7Days.visitors)} visitantes-día`;
       els.views30.textContent = num(data.totals.last30Days.views);
-      els.visitors30.textContent = `${num(data.totals.last30Days.visitors)} visitantes`;
+      els.visitors30.textContent = `${num(data.totals.last30Days.visitors)} visitantes-día`;
       els.active.textContent = num(data.totals.activeNow);
       els.activeWindow.textContent = `últimos ${data.activeMinutes} min`;
       els.periodTotal.textContent = num(data.totals.selectedPeriod.views);
+
+      els.comparisonRange.textContent = `${data.period.from} → ${data.period.to} frente a ${data.period.previousFrom} → ${data.period.previousTo}`;
+      els.comparisonCurrentViews.textContent = num(data.comparison.current.views);
+      els.comparisonPreviousViews.textContent = num(data.comparison.previous.views);
+      els.comparisonCurrentVisitors.textContent = num(data.comparison.current.visitors);
+      els.comparisonPreviousVisitors.textContent = num(data.comparison.previous.visitors);
+      els.comparisonViewsChange.textContent = `${percent(data.comparison.changePercent.views)} frente al periodo anterior`;
+      els.comparisonVisitorsChange.textContent = `${percent(data.comparison.changePercent.visitors)} frente al periodo anterior`;
+      setChangeTone(els.comparisonViewsChange, data.comparison.changePercent.views);
+      setChangeTone(els.comparisonVisitorsChange, data.comparison.changePercent.visitors);
+
+      els.healthReady.textContent = data.ready ? 'Operativo' : 'Revisar';
+      els.healthReady.style.color = data.ready ? 'var(--accent)' : 'var(--warn)';
+      els.healthStorage.textContent = data.health.storage;
+      els.healthRows.textContent = `${num(data.health.storedRows)} filas retenidas`;
+      els.healthLatest.textContent = dateTime(data.health.latestRecordAt);
+      els.healthRecorded.textContent = `${num(data.health.recordedSinceStart)} registradas desde el arranque`;
+      els.healthSecret.textContent = data.health.secretValid ? 'Correcto' : 'Revisar';
+      els.healthSecret.style.color = data.health.secretValid ? 'var(--accent)' : 'var(--warn)';
+      els.healthSecretLength.textContent = `${num(data.health.secretLength)} caracteres`;
+      els.healthDeduped.textContent = num(data.health.dedupedSinceStart);
+      els.healthDedupWindow.textContent = `${data.dedupSeconds} segundos`;
+      els.healthPrune.textContent = dateTime(data.health.lastPruneAt);
+      els.healthError.textContent = data.health.lastError || 'Ninguno';
+      els.healthError.style.color = data.health.lastError ? 'var(--warn)' : 'var(--accent)';
+      els.healthErrorAt.textContent = dateTime(data.health.lastErrorAt);
 
       renderBars(
         els.dailyChart,

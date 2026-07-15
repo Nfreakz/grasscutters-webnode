@@ -31,15 +31,19 @@ type AnalyticsSummaryRow = {
 type AnalyticsSummary = {
   ok: true;
   enabled: boolean;
+  ready: boolean;
   storage: 'mysql' | 'file' | 'disabled';
   generatedAt: string;
   timeZone: string;
   retentionDays: number;
   activeMinutes: number;
+  dedupSeconds: number;
   period: {
     days: number;
     from: string;
     to: string;
+    previousFrom: string;
+    previousTo: string;
   };
   totals: {
     today: { views: number; visitors: number };
@@ -48,21 +52,44 @@ type AnalyticsSummary = {
     selectedPeriod: { views: number; visitors: number };
     activeNow: number;
   };
+  comparison: {
+    current: { views: number; visitors: number };
+    previous: { views: number; visitors: number };
+    changePercent: { views: number | null; visitors: number | null };
+  };
   daily: Array<{ day: string; views: number; visitors: number }>;
   hourly: Array<{ hour: number; views: number; visitors: number }>;
   topPages: AnalyticsSummaryRow[];
   referrers: AnalyticsSummaryRow[];
   devices: AnalyticsSummaryRow[];
   browsers: AnalyticsSummaryRow[];
+  health: {
+    startedAt: string;
+    storage: 'mysql' | 'file' | 'disabled';
+    secretConfigured: boolean;
+    secretValid: boolean;
+    secretLength: number;
+    storedRows: number;
+    latestRecordAt: string | null;
+    lastAttemptAt: string | null;
+    lastRecordedAt: string | null;
+    lastErrorAt: string | null;
+    lastError: string | null;
+    lastPruneAt: string | null;
+    recordedSinceStart: number;
+    dedupedSinceStart: number;
+  };
   privacy: {
     cookies: false;
     localStorage: false;
     storesIp: false;
     storesQueryString: false;
     visitorHashRotatesDaily: true;
+    reloadDeduplication: true;
   };
 };
 
+/* GC_ANALYTICS_RELIABILITY_V2 */
 const BOT_PATTERN = /bot|crawler|spider|slurp|bingpreview|facebookexternalhit|whatsapp|telegrambot|discordbot|googlebot|lighthouse|pagespeed|uptimerobot|headlesschrome|playwright|puppeteer|curl|wget/i;
 const STATIC_EXTENSION_PATTERN = /\.(?:avif|bmp|css|csv|gif|ico|jpe?g|js|json|map|mjs|mp3|mp4|ogg|pdf|png|svg|txt|webm|webp|woff2?|xml|zip)$/i;
 const INTERNAL_SOURCE = 'Interno';
@@ -70,6 +97,17 @@ const INTERNAL_SOURCE = 'Interno';
 let mysqlPoolPromise: Promise<any> | null = null;
 let mysqlSchemaPromise: Promise<void> | null = null;
 let lastPruneAt = 0;
+const recentPageViews = new Map<string, number>();
+const analyticsRuntimeHealth = {
+  startedAt: new Date().toISOString(),
+  lastAttemptAt: null as string | null,
+  lastRecordedAt: null as string | null,
+  lastErrorAt: null as string | null,
+  lastError: null as string | null,
+  lastPruneAt: null as string | null,
+  recordedSinceStart: 0,
+  dedupedSinceStart: 0,
+};
 
 function analyticsEnabled(): boolean {
   return String(process.env.GC_ANALYTICS_ENABLED || '').trim().toLowerCase() === 'true';
@@ -89,8 +127,26 @@ function activeMinutes(): number {
   return clampInteger(process.env.GC_ANALYTICS_ACTIVE_MINUTES, 5, 1, 60);
 }
 
+function dedupSeconds(): number {
+  return clampInteger(process.env.GC_ANALYTICS_DEDUP_SECONDS, 15, 0, 300);
+}
+
 function analyticsTimeZone(): string {
   return String(process.env.GC_ANALYTICS_TIME_ZONE || 'Europe/Madrid').trim() || 'Europe/Madrid';
+}
+
+function analyticsHashSecretInfo(): { configured: boolean; valid: boolean; length: number; secret: string } {
+  const secret = String(process.env.GC_ANALYTICS_HASH_SECRET || '').trim();
+  return {
+    configured: Boolean(secret),
+    valid: secret.length >= 32,
+    length: secret.length,
+    secret,
+  };
+}
+
+function analyticsReady(): boolean {
+  return analyticsEnabled() && analyticsHashSecretInfo().valid;
 }
 
 function storageDriver(): 'mysql' | 'file' | 'disabled' {
@@ -116,12 +172,11 @@ function analyticsFilePath(rootDir: string): string {
 }
 
 function analyticsHashSecret(): string {
-  return String(
-    process.env.GC_ANALYTICS_HASH_SECRET
-    || process.env.ADMIN_SETUP_SECRET
-    || process.env.STRACKER_SYNC_SECRET
-    || 'grasscutters-local-analytics-v1'
-  );
+  const info = analyticsHashSecretInfo();
+  if (!info.valid) {
+    throw new Error('GC_ANALYTICS_HASH_SECRET debe tener al menos 32 caracteres.');
+  }
+  return info.secret;
 }
 
 function anonymizeIp(value: unknown): string {
@@ -158,6 +213,31 @@ function dateParts(now = new Date()): { dayKey: string; hourOfDay: number } {
   };
 }
 
+function shiftDayKey(dayKey: string, offsetDays: number): string {
+  const [year, month, day] = dayKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
+function periodBounds(days: number): {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+} {
+  const to = dateParts(new Date()).dayKey;
+  const from = shiftDayKey(to, -(days - 1));
+  const previousTo = shiftDayKey(from, -1);
+  const previousFrom = shiftDayKey(previousTo, -(days - 1));
+  return { from, to, previousFrom, previousTo };
+}
+
+function percentageChange(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Math.round((((current - previous) / previous) * 100) * 10) / 10;
+}
+
 function normalizePathname(requestUrl: unknown): string {
   const raw = String(requestUrl || '/');
   let pathname = '/';
@@ -180,7 +260,7 @@ function normalizePathname(requestUrl: unknown): string {
 }
 
 function shouldTrackPageView(req: Request): boolean {
-  if (!analyticsEnabled()) return false;
+  if (!analyticsReady()) return false;
   if (req.method !== 'GET') return false;
 
   const pathName = normalizePathname(req.originalUrl || req.url);
@@ -284,6 +364,25 @@ function buildRecord(req: Request): AnalyticsRecord {
   };
 }
 
+function isDuplicatePageView(record: AnalyticsRecord): boolean {
+  const windowMs = dedupSeconds() * 1000;
+  if (windowMs <= 0) return false;
+
+  const now = Date.now();
+  const key = `${record.visitorHash}|${record.path}`;
+  const previous = recentPageViews.get(key);
+  recentPageViews.set(key, now);
+
+  if (recentPageViews.size > 5000) {
+    const cutoff = now - Math.max(windowMs * 2, 60000);
+    for (const [entryKey, timestamp] of recentPageViews) {
+      if (timestamp < cutoff) recentPageViews.delete(entryKey);
+    }
+  }
+
+  return typeof previous === 'number' && now - previous < windowMs;
+}
+
 async function getMysqlPool(): Promise<any> {
   if (mysqlPoolPromise) return mysqlPoolPromise;
 
@@ -301,6 +400,7 @@ async function getMysqlPool(): Promise<any> {
       queueLimit: 0,
       charset: 'utf8mb4',
       timezone: 'Z',
+      dateStrings: true,
     });
   })();
 
@@ -347,6 +447,7 @@ async function pruneMysqlIfNeeded(): Promise<void> {
     'DELETE FROM gc_analytics_pageviews WHERE occurred_at < DATE_SUB(UTC_TIMESTAMP(3), INTERVAL ? DAY)',
     [retentionDays()],
   );
+  analyticsRuntimeHealth.lastPruneAt = new Date().toISOString();
 }
 
 async function recordMysql(record: AnalyticsRecord): Promise<void> {
@@ -375,10 +476,30 @@ function ensureFileParent(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
+async function pruneFileIfNeeded(rootDir: string): Promise<void> {
+  const now = Date.now();
+  if (now - lastPruneAt < 6 * 60 * 60 * 1000) return;
+  lastPruneAt = now;
+
+  const filePath = analyticsFilePath(rootDir);
+  if (!fs.existsSync(filePath)) return;
+
+  const retained = readFileRecords(rootDir);
+  const tempPath = `${filePath}.tmp`;
+  await fs.promises.writeFile(
+    tempPath,
+    retained.map((record) => JSON.stringify(record)).join('\n') + (retained.length ? '\n' : ''),
+    'utf8',
+  );
+  await fs.promises.rename(tempPath, filePath);
+  analyticsRuntimeHealth.lastPruneAt = new Date().toISOString();
+}
+
 async function recordFile(rootDir: string, record: AnalyticsRecord): Promise<void> {
   const filePath = analyticsFilePath(rootDir);
   ensureFileParent(filePath);
   await fs.promises.appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf8');
+  await pruneFileIfNeeded(rootDir);
 }
 
 async function recordPageView(rootDir: string, record: AnalyticsRecord): Promise<void> {
@@ -394,19 +515,21 @@ async function recordPageView(rootDir: string, record: AnalyticsRecord): Promise
 
 function emptySummary(days: number): AnalyticsSummary {
   const now = new Date();
-  const from = new Date(now.getTime() - Math.max(0, days - 1) * 86400000);
+  const bounds = periodBounds(days);
+  const secret = analyticsHashSecretInfo();
   return {
     ok: true,
     enabled: analyticsEnabled(),
+    ready: analyticsReady(),
     storage: storageDriver(),
     generatedAt: now.toISOString(),
     timeZone: analyticsTimeZone(),
     retentionDays: retentionDays(),
     activeMinutes: activeMinutes(),
+    dedupSeconds: dedupSeconds(),
     period: {
       days,
-      from: dateParts(from).dayKey,
-      to: dateParts(now).dayKey,
+      ...bounds,
     },
     totals: {
       today: { views: 0, visitors: 0 },
@@ -415,18 +538,40 @@ function emptySummary(days: number): AnalyticsSummary {
       selectedPeriod: { views: 0, visitors: 0 },
       activeNow: 0,
     },
+    comparison: {
+      current: { views: 0, visitors: 0 },
+      previous: { views: 0, visitors: 0 },
+      changePercent: { views: 0, visitors: 0 },
+    },
     daily: [],
     hourly: [],
     topPages: [],
     referrers: [],
     devices: [],
     browsers: [],
+    health: {
+      startedAt: analyticsRuntimeHealth.startedAt,
+      storage: storageDriver(),
+      secretConfigured: secret.configured,
+      secretValid: secret.valid,
+      secretLength: secret.length,
+      storedRows: 0,
+      latestRecordAt: null,
+      lastAttemptAt: analyticsRuntimeHealth.lastAttemptAt,
+      lastRecordedAt: analyticsRuntimeHealth.lastRecordedAt,
+      lastErrorAt: analyticsRuntimeHealth.lastErrorAt,
+      lastError: analyticsRuntimeHealth.lastError,
+      lastPruneAt: analyticsRuntimeHealth.lastPruneAt,
+      recordedSinceStart: analyticsRuntimeHealth.recordedSinceStart,
+      dedupedSinceStart: analyticsRuntimeHealth.dedupedSinceStart,
+    },
     privacy: {
       cookies: false,
       localStorage: false,
       storesIp: false,
       storesQueryString: false,
       visitorHashRotatesDaily: true,
+      reloadDeduplication: true,
     },
   };
 }
@@ -448,25 +593,43 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
   await ensureMysqlSchema();
   const pool = await getMysqlPool();
   const summary = emptySummary(days);
+  const bounds = periodBounds(days);
+  const todayKey = bounds.to;
+  const from7 = shiftDayKey(todayKey, -6);
+  const from30 = shiftDayKey(todayKey, -29);
 
   const [totalsRows]: any = await pool.query(`
     SELECT
-      SUM(day_key = CURRENT_DATE()) AS today_views,
-      COUNT(DISTINCT CASE WHEN day_key = CURRENT_DATE() THEN visitor_hash END) AS today_visitors,
-      SUM(day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)) AS views_7,
-      COUNT(DISTINCT CASE WHEN day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY) THEN CONCAT(day_key, ':', visitor_hash) END) AS visitors_7,
-      SUM(day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY)) AS views_30,
-      COUNT(DISTINCT CASE WHEN day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY) THEN CONCAT(day_key, ':', visitor_hash) END) AS visitors_30,
-      SUM(day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)) AS period_views,
-      COUNT(DISTINCT CASE WHEN day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY) THEN CONCAT(day_key, ':', visitor_hash) END) AS period_visitors
+      SUM(day_key = ?) AS today_views,
+      COUNT(DISTINCT CASE WHEN day_key = ? THEN visitor_hash END) AS today_visitors,
+      SUM(day_key BETWEEN ? AND ?) AS views_7,
+      COUNT(DISTINCT CASE WHEN day_key BETWEEN ? AND ? THEN CONCAT(day_key, ':', visitor_hash) END) AS visitors_7,
+      SUM(day_key BETWEEN ? AND ?) AS views_30,
+      COUNT(DISTINCT CASE WHEN day_key BETWEEN ? AND ? THEN CONCAT(day_key, ':', visitor_hash) END) AS visitors_30,
+      SUM(day_key BETWEEN ? AND ?) AS period_views,
+      COUNT(DISTINCT CASE WHEN day_key BETWEEN ? AND ? THEN CONCAT(day_key, ':', visitor_hash) END) AS period_visitors,
+      SUM(day_key BETWEEN ? AND ?) AS previous_views,
+      COUNT(DISTINCT CASE WHEN day_key BETWEEN ? AND ? THEN CONCAT(day_key, ':', visitor_hash) END) AS previous_visitors
     FROM gc_analytics_pageviews
-  `, [days - 1, days - 1]);
+  `, [
+    todayKey, todayKey,
+    from7, todayKey, from7, todayKey,
+    from30, todayKey, from30, todayKey,
+    bounds.from, bounds.to, bounds.from, bounds.to,
+    bounds.previousFrom, bounds.previousTo, bounds.previousFrom, bounds.previousTo,
+  ]);
 
   const totals = totalsRows?.[0] || {};
   summary.totals.today = { views: toCount(totals.today_views), visitors: toCount(totals.today_visitors) };
   summary.totals.last7Days = { views: toCount(totals.views_7), visitors: toCount(totals.visitors_7) };
   summary.totals.last30Days = { views: toCount(totals.views_30), visitors: toCount(totals.visitors_30) };
   summary.totals.selectedPeriod = { views: toCount(totals.period_views), visitors: toCount(totals.period_visitors) };
+  summary.comparison.current = { ...summary.totals.selectedPeriod };
+  summary.comparison.previous = { views: toCount(totals.previous_views), visitors: toCount(totals.previous_visitors) };
+  summary.comparison.changePercent = {
+    views: percentageChange(summary.comparison.current.views, summary.comparison.previous.views),
+    visitors: percentageChange(summary.comparison.current.visitors, summary.comparison.previous.visitors),
+  };
 
   const [activeRows]: any = await pool.query(
     `SELECT COUNT(DISTINCT visitor_hash) AS active_now
@@ -476,16 +639,25 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
   );
   summary.totals.activeNow = toCount(activeRows?.[0]?.active_now);
 
+  const [healthRows]: any = await pool.query(`
+    SELECT
+      COUNT(*) AS stored_rows,
+      DATE_FORMAT(MAX(occurred_at), '%Y-%m-%dT%H:%i:%s.000Z') AS latest_record_at
+    FROM gc_analytics_pageviews
+  `);
+  summary.health.storedRows = toCount(healthRows?.[0]?.stored_rows);
+  summary.health.latestRecordAt = healthRows?.[0]?.latest_record_at || null;
+
   const [dailyRows]: any = await pool.query(
-    `SELECT day_key AS day, COUNT(*) AS views, COUNT(DISTINCT visitor_hash) AS visitors
+    `SELECT DATE_FORMAT(day_key, '%Y-%m-%d') AS day, COUNT(*) AS views, COUNT(DISTINCT visitor_hash) AS visitors
      FROM gc_analytics_pageviews
-     WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+     WHERE day_key BETWEEN ? AND ?
      GROUP BY day_key
      ORDER BY day_key ASC`,
-    [days - 1],
+    [bounds.from, bounds.to],
   );
   summary.daily = (dailyRows || []).map((row: any) => ({
-    day: String(row.day).slice(0, 10),
+    day: String(row.day),
     views: toCount(row.views),
     visitors: toCount(row.visitors),
   }));
@@ -493,10 +665,10 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
   const [hourlyRows]: any = await pool.query(
     `SELECT hour_of_day AS hour, COUNT(*) AS views, COUNT(DISTINCT CONCAT(day_key, ':', visitor_hash)) AS visitors
      FROM gc_analytics_pageviews
-     WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+     WHERE day_key BETWEEN ? AND ?
      GROUP BY hour_of_day
      ORDER BY hour_of_day ASC`,
-    [days - 1],
+    [bounds.from, bounds.to],
   );
   summary.hourly = (hourlyRows || []).map((row: any) => ({
     hour: toCount(row.hour),
@@ -514,7 +686,7 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
       keyName: 'path',
       sql: `SELECT path, COUNT(*) AS views, COUNT(DISTINCT CONCAT(day_key, ':', visitor_hash)) AS visitors
             FROM gc_analytics_pageviews
-            WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+            WHERE day_key BETWEEN ? AND ?
             GROUP BY path ORDER BY views DESC LIMIT 20`,
     },
     {
@@ -522,7 +694,7 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
       keyName: 'source',
       sql: `SELECT source, COUNT(*) AS views, COUNT(DISTINCT CONCAT(day_key, ':', visitor_hash)) AS visitors
             FROM gc_analytics_pageviews
-            WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+            WHERE day_key BETWEEN ? AND ?
               AND source <> ?
             GROUP BY source ORDER BY views DESC LIMIT 20`,
     },
@@ -531,7 +703,7 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
       keyName: 'device',
       sql: `SELECT device, COUNT(*) AS views, COUNT(DISTINCT CONCAT(day_key, ':', visitor_hash)) AS visitors
             FROM gc_analytics_pageviews
-            WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+            WHERE day_key BETWEEN ? AND ?
             GROUP BY device ORDER BY views DESC`,
     },
     {
@@ -539,13 +711,15 @@ async function mysqlSummary(days: number): Promise<AnalyticsSummary> {
       keyName: 'browser',
       sql: `SELECT browser, COUNT(*) AS views, COUNT(DISTINCT CONCAT(day_key, ':', visitor_hash)) AS visitors
             FROM gc_analytics_pageviews
-            WHERE day_key >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+            WHERE day_key BETWEEN ? AND ?
             GROUP BY browser ORDER BY views DESC`,
     },
   ];
 
   for (const query of groupedQueries) {
-    const params = query.target === 'referrers' ? [days - 1, INTERNAL_SOURCE] : [days - 1];
+    const params = query.target === 'referrers'
+      ? [bounds.from, bounds.to, INTERNAL_SOURCE]
+      : [bounds.from, bounds.to];
     const [rows]: any = await pool.query(query.sql, params);
     summary[query.target] = mysqlGroupRows(rows || [], query.keyName);
   }
@@ -600,26 +774,41 @@ function totalsFor(records: AnalyticsRecord[]): { views: number; visitors: numbe
 function fileSummary(rootDir: string, days: number): AnalyticsSummary {
   const summary = emptySummary(days);
   const records = readFileRecords(rootDir);
-  const now = new Date();
-  const todayKey = dateParts(now).dayKey;
-  const cutoffFor = (amount: number) => Date.now() - Math.max(0, amount - 1) * 86400000;
-  const selectSince = (amount: number) => records.filter((record) => Date.parse(record.occurredAt) >= cutoffFor(amount));
+  const bounds = periodBounds(days);
+  const todayKey = bounds.to;
+  const from7 = shiftDayKey(todayKey, -6);
+  const from30 = shiftDayKey(todayKey, -29);
+  const inRange = (record: AnalyticsRecord, from: string, to: string) => record.dayKey >= from && record.dayKey <= to;
 
   const today = records.filter((record) => record.dayKey === todayKey);
-  const last7 = selectSince(7);
-  const last30 = selectSince(30);
-  const selected = selectSince(days);
+  const last7 = records.filter((record) => inRange(record, from7, todayKey));
+  const last30 = records.filter((record) => inRange(record, from30, todayKey));
+  const selected = records.filter((record) => inRange(record, bounds.from, bounds.to));
+  const previous = records.filter((record) => inRange(record, bounds.previousFrom, bounds.previousTo));
   const activeCutoff = Date.now() - activeMinutes() * 60000;
 
   summary.totals.today = totalsFor(today);
   summary.totals.last7Days = totalsFor(last7);
   summary.totals.last30Days = totalsFor(last30);
   summary.totals.selectedPeriod = totalsFor(selected);
+  summary.comparison.current = { ...summary.totals.selectedPeriod };
+  summary.comparison.previous = totalsFor(previous);
+  summary.comparison.changePercent = {
+    views: percentageChange(summary.comparison.current.views, summary.comparison.previous.views),
+    visitors: percentageChange(summary.comparison.current.visitors, summary.comparison.previous.visitors),
+  };
   summary.totals.activeNow = new Set(
     records
       .filter((record) => Date.parse(record.occurredAt) >= activeCutoff)
       .map((record) => record.visitorHash),
   ).size;
+
+  summary.health.storedRows = records.length;
+  summary.health.latestRecordAt = records
+    .map((record) => record.occurredAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
 
   const daily = new Map<string, AnalyticsRecord[]>();
   for (const record of selected) {
@@ -668,10 +857,27 @@ function analyticsTracker(rootDir: string) {
     const record = buildRecord(req);
     res.once('finish', () => {
       if (res.statusCode < 200 || res.statusCode >= 400) return;
+
+      if (isDuplicatePageView(record)) {
+        analyticsRuntimeHealth.dedupedSinceStart += 1;
+        return;
+      }
+
+      analyticsRuntimeHealth.lastAttemptAt = new Date().toISOString();
       setImmediate(() => {
-        recordPageView(rootDir, record).catch((error) => {
-          console.warn('[GC analytics] No se pudo registrar pageview:', error instanceof Error ? error.message : error);
-        });
+        recordPageView(rootDir, record)
+          .then(() => {
+            analyticsRuntimeHealth.lastRecordedAt = new Date().toISOString();
+            analyticsRuntimeHealth.recordedSinceStart += 1;
+            analyticsRuntimeHealth.lastError = null;
+            analyticsRuntimeHealth.lastErrorAt = null;
+          })
+          .catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            analyticsRuntimeHealth.lastError = message;
+            analyticsRuntimeHealth.lastErrorAt = new Date().toISOString();
+            console.warn('[GC analytics] No se pudo registrar pageview:', message);
+          });
       });
     });
 
@@ -705,5 +911,5 @@ export function registerGcAnalyticsRoutes(app: Express, { rootDir, requireAdmin 
 
   app.use(analyticsTracker(rootDir));
 
-  console.log(`[GC analytics] ${analyticsEnabled() ? 'activo' : 'desactivado'} · storage=${storageDriver()} · sin cookies`);
+  console.log(`[GC analytics] ${analyticsReady() ? 'activo' : analyticsEnabled() ? 'configuración incompleta' : 'desactivado'} · storage=${storageDriver()} · sin cookies · dedupe=${dedupSeconds()}s`);
 }
