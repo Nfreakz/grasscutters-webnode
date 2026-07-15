@@ -1,0 +1,368 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Estadísticas de visitas | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-admin-analytics-v1">
+    <section class="gc-admin-analytics-hero-v1">
+      <div>
+        <span class="gc-kicker">Analítica propia</span>
+        <h1>Visitas a la web</h1>
+        <p>Tráfico agregado, páginas más consultadas y procedencia. Sin cookies analíticas, sin localStorage y sin guardar direcciones IP.</p>
+      </div>
+      <aside>
+        <span>Estado</span>
+        <strong id="analyticsState">Comprobando</strong>
+        <small id="analyticsStorage">--</small>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section id="analyticsGate" class="gc-slab gc-admin-analytics-gate-v1" hidden>
+      <span class="gc-kicker">Acceso</span>
+      <h2>Acceso restringido</h2>
+      <p id="analyticsGateText">Necesitas una cuenta administradora.</p>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+        <button class="gc-btn" id="analyticsRetry" type="button">Reintentar</button>
+      </div>
+    </section>
+
+    <section id="analyticsDisabled" class="gc-slab gc-admin-analytics-disabled-v1" hidden>
+      <span class="gc-kicker">Configuración</span>
+      <h2>Analítica desactivada</h2>
+      <p>Añade estas variables al entorno de Hostinger y reinicia la aplicación:</p>
+      <pre>GC_ANALYTICS_ENABLED=true
+GC_ANALYTICS_RETENTION_DAYS=90
+GC_ANALYTICS_ACTIVE_MINUTES=5
+GC_ANALYTICS_TIME_ZONE=Europe/Madrid
+GC_ANALYTICS_HASH_SECRET=un-secreto-largo-y-privado</pre>
+    </section>
+
+    <section id="analyticsContent" class="gc-admin-analytics-content-v1" hidden>
+      <div class="gc-admin-analytics-toolbar-v1">
+        <div>
+          <label for="analyticsPeriod">Periodo</label>
+          <select id="analyticsPeriod">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+        </div>
+        <button class="gc-btn gc-btn--primary" id="analyticsRefresh" type="button">Actualizar</button>
+        <span id="analyticsUpdated">--</span>
+      </div>
+
+      <section class="gc-admin-analytics-metrics-v1">
+        <article><span>Visitas hoy</span><strong id="metricTodayViews">0</strong><small id="metricTodayVisitors">0 visitantes</small></article>
+        <article><span>Últimos 7 días</span><strong id="metric7Views">0</strong><small id="metric7Visitors">0 visitantes</small></article>
+        <article><span>Últimos 30 días</span><strong id="metric30Views">0</strong><small id="metric30Visitors">0 visitantes</small></article>
+        <article><span>Activos ahora</span><strong id="metricActive">0</strong><small id="metricActiveWindow">últimos 5 min</small></article>
+      </section>
+
+      <section class="gc-admin-analytics-grid-v1">
+        <article class="gc-slab gc-admin-analytics-chart-card-v1">
+          <header>
+            <div><span class="gc-kicker">Evolución</span><h2>Visitas por día</h2></div>
+            <strong id="periodTotal">0</strong>
+          </header>
+          <div id="dailyChart" class="gc-admin-analytics-bars-v1"></div>
+        </article>
+
+        <article class="gc-slab gc-admin-analytics-chart-card-v1">
+          <header>
+            <div><span class="gc-kicker">Actividad</span><h2>Horas con más tráfico</h2></div>
+            <small id="analyticsTimezone">Europe/Madrid</small>
+          </header>
+          <div id="hourlyChart" class="gc-admin-analytics-bars-v1 gc-admin-analytics-bars-v1--compact"></div>
+        </article>
+      </section>
+
+      <section class="gc-admin-analytics-grid-v1">
+        <article class="gc-slab gc-admin-analytics-table-card-v1">
+          <header><span class="gc-kicker">Contenido</span><h2>Páginas más visitadas</h2></header>
+          <div class="gc-admin-analytics-table-wrap-v1">
+            <table>
+              <thead><tr><th>Página</th><th>Vistas</th><th>Visitantes</th></tr></thead>
+              <tbody id="topPagesBody"><tr><td colspan="3">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="gc-slab gc-admin-analytics-table-card-v1">
+          <header><span class="gc-kicker">Adquisición</span><h2>Procedencia</h2></header>
+          <div class="gc-admin-analytics-table-wrap-v1">
+            <table>
+              <thead><tr><th>Origen</th><th>Vistas</th><th>Visitantes</th></tr></thead>
+              <tbody id="referrersBody"><tr><td colspan="3">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="gc-admin-analytics-grid-v1">
+        <article class="gc-slab gc-admin-analytics-table-card-v1">
+          <header><span class="gc-kicker">Tecnología</span><h2>Dispositivos</h2></header>
+          <div class="gc-admin-analytics-table-wrap-v1">
+            <table>
+              <thead><tr><th>Tipo</th><th>Vistas</th><th>Visitantes</th></tr></thead>
+              <tbody id="devicesBody"><tr><td colspan="3">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="gc-slab gc-admin-analytics-table-card-v1">
+          <header><span class="gc-kicker">Tecnología</span><h2>Navegadores</h2></header>
+          <div class="gc-admin-analytics-table-wrap-v1">
+            <table>
+              <thead><tr><th>Navegador</th><th>Vistas</th><th>Visitantes</th></tr></thead>
+              <tbody id="browsersBody"><tr><td colspan="3">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="gc-slab gc-admin-analytics-privacy-v1">
+        <div>
+          <span class="gc-kicker">Privacidad</span>
+          <h2>Medición mínima y propia</h2>
+        </div>
+        <ul>
+          <li>No usa cookies analíticas ni localStorage.</li>
+          <li>No guarda IP, parámetros de URL ni identidad de usuarios.</li>
+          <li>El identificador anónimo cambia cada día.</li>
+          <li>Excluye administración, APIs, recursos estáticos y bots conocidos.</li>
+        </ul>
+      </section>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-admin-analytics-v1{display:grid;gap:clamp(18px,2.4vw,28px);max-width:1480px;margin-inline:auto;padding-inline:clamp(8px,1.2vw,18px)}
+    .gc-admin-analytics-hero-v1{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.34fr);gap:24px;align-items:center;padding:clamp(26px,3.4vw,42px);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:28px;background:radial-gradient(circle at 82% 12%,color-mix(in srgb,var(--accent2) 12%,transparent),transparent 22rem),linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018));box-shadow:0 18px 70px rgba(0,0,0,.2)}
+    .gc-admin-analytics-hero-v1 h1{margin:8px 0 12px;font-size:clamp(3rem,7vw,6rem);line-height:.88;letter-spacing:-.07em;text-transform:uppercase}
+    .gc-admin-analytics-hero-v1 p{max-width:820px;margin:0;color:var(--soft);line-height:1.55}
+    .gc-admin-analytics-hero-v1 aside{display:grid;gap:6px;padding:18px;border:1px solid var(--line);border-radius:20px;background:rgba(0,0,0,.18)}
+    .gc-admin-analytics-hero-v1 aside span,.gc-admin-analytics-toolbar-v1 label{color:var(--dim);font-size:.68rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-analytics-hero-v1 aside strong{font-size:1.5rem;color:var(--accent)}
+    .gc-admin-analytics-hero-v1 aside small{color:var(--soft)}
+    .gc-admin-analytics-gate-v1,.gc-admin-analytics-disabled-v1{display:grid;gap:12px}
+    .gc-admin-analytics-disabled-v1 pre{overflow:auto;margin:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:#030804;color:var(--accent);font:700 .82rem/1.65 var(--font-mono,monospace)}
+    .gc-admin-analytics-content-v1{display:grid;gap:18px}
+    .gc-admin-analytics-toolbar-v1{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--line)}
+    .gc-admin-analytics-toolbar-v1>div{display:grid;gap:6px}
+    .gc-admin-analytics-toolbar-v1 select{min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3);color:var(--text);font:inherit}
+    .gc-admin-analytics-toolbar-v1>span{margin-left:auto;color:var(--dim);font-size:.78rem}
+    .gc-admin-analytics-metrics-v1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-admin-analytics-metrics-v1 article{display:grid;gap:4px;padding:18px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}
+    .gc-admin-analytics-metrics-v1 span{color:var(--dim);font-size:.7rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-analytics-metrics-v1 strong{font-size:clamp(1.8rem,4vw,3rem);line-height:1;color:var(--text)}
+    .gc-admin-analytics-metrics-v1 small{color:var(--soft)}
+    .gc-admin-analytics-grid-v1{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .gc-admin-analytics-chart-card-v1,.gc-admin-analytics-table-card-v1{display:grid;gap:16px;min-width:0}
+    .gc-admin-analytics-chart-card-v1 header,.gc-admin-analytics-table-card-v1 header{display:flex;align-items:end;justify-content:space-between;gap:12px}
+    .gc-admin-analytics-chart-card-v1 h2,.gc-admin-analytics-table-card-v1 h2,.gc-admin-analytics-privacy-v1 h2{margin:4px 0 0}
+    .gc-admin-analytics-chart-card-v1 header>strong{font-size:2rem;color:var(--accent)}
+    .gc-admin-analytics-bars-v1{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(22px,1fr);align-items:end;gap:7px;min-height:230px;overflow:auto;padding:16px 0 0}
+    .gc-admin-analytics-bars-v1--compact{grid-auto-columns:minmax(18px,1fr)}
+    .gc-admin-analytics-bar-v1{display:grid;grid-template-rows:1fr auto;gap:8px;min-width:22px;height:210px;align-items:end}
+    .gc-admin-analytics-bar-v1 i{display:block;width:100%;min-height:2px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 38%,transparent));box-shadow:0 0 18px color-mix(in srgb,var(--accent) 16%,transparent)}
+    .gc-admin-analytics-bar-v1 span{overflow:hidden;color:var(--dim);font-size:.62rem;text-align:center;text-overflow:ellipsis;white-space:nowrap}
+    .gc-admin-analytics-bar-v1[data-value]::before{content:attr(data-value);align-self:end;color:var(--soft);font-size:.66rem;text-align:center}
+    .gc-admin-analytics-table-wrap-v1{overflow:auto}
+    .gc-admin-analytics-table-card-v1 table{width:100%;border-collapse:collapse}
+    .gc-admin-analytics-table-card-v1 th,.gc-admin-analytics-table-card-v1 td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left}
+    .gc-admin-analytics-table-card-v1 th{color:var(--dim);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-analytics-table-card-v1 td:first-child{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .gc-admin-analytics-privacy-v1{display:grid;grid-template-columns:minmax(0,.45fr) minmax(0,1fr);gap:24px;align-items:start}
+    .gc-admin-analytics-privacy-v1 ul{display:grid;gap:8px;margin:0;padding-left:20px;color:var(--soft)}
+    @media(max-width:960px){.gc-admin-analytics-hero-v1,.gc-admin-analytics-grid-v1,.gc-admin-analytics-privacy-v1{grid-template-columns:1fr}.gc-admin-analytics-metrics-v1{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:580px){.gc-admin-analytics-metrics-v1{grid-template-columns:1fr}.gc-admin-analytics-toolbar-v1>span{width:100%;margin-left:0}.gc-admin-analytics-hero-v1{padding:22px}.gc-admin-analytics-hero-v1 h1{font-size:3rem}}
+  </style>
+
+  <script>
+    type SummaryRow = { key: string; views: number; visitors: number };
+    type AnalyticsSummary = {
+      ok: boolean;
+      enabled: boolean;
+      storage: string;
+      generatedAt: string;
+      timeZone: string;
+      retentionDays: number;
+      activeMinutes: number;
+      totals: {
+        today: { views: number; visitors: number };
+        last7Days: { views: number; visitors: number };
+        last30Days: { views: number; visitors: number };
+        selectedPeriod: { views: number; visitors: number };
+        activeNow: number;
+      };
+      daily: Array<{ day: string; views: number; visitors: number }>;
+      hourly: Array<{ hour: number; views: number; visitors: number }>;
+      topPages: SummaryRow[];
+      referrers: SummaryRow[];
+      devices: SummaryRow[];
+      browsers: SummaryRow[];
+      message?: string;
+    };
+
+    const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+    const els = {
+      state: $('analyticsState'),
+      storage: $('analyticsStorage'),
+      gate: $('analyticsGate'),
+      gateText: $('analyticsGateText'),
+      retry: $<HTMLButtonElement>('analyticsRetry'),
+      disabled: $('analyticsDisabled'),
+      content: $('analyticsContent'),
+      period: $<HTMLSelectElement>('analyticsPeriod'),
+      refresh: $<HTMLButtonElement>('analyticsRefresh'),
+      updated: $('analyticsUpdated'),
+      todayViews: $('metricTodayViews'),
+      todayVisitors: $('metricTodayVisitors'),
+      views7: $('metric7Views'),
+      visitors7: $('metric7Visitors'),
+      views30: $('metric30Views'),
+      visitors30: $('metric30Visitors'),
+      active: $('metricActive'),
+      activeWindow: $('metricActiveWindow'),
+      periodTotal: $('periodTotal'),
+      timeZone: $('analyticsTimezone'),
+      dailyChart: $('dailyChart'),
+      hourlyChart: $('hourlyChart'),
+      topPages: $<HTMLTableSectionElement>('topPagesBody'),
+      referrers: $<HTMLTableSectionElement>('referrersBody'),
+      devices: $<HTMLTableSectionElement>('devicesBody'),
+      browsers: $<HTMLTableSectionElement>('browsersBody'),
+    };
+
+    const numberFormat = new Intl.NumberFormat('es-ES');
+
+    const esc = (value: unknown): string => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+    } as Record<string, string>)[char] ?? char);
+
+    const num = (value: unknown): string => numberFormat.format(Number(value) || 0);
+
+    async function fetchJson(url: string): Promise<AnalyticsSummary> {
+      const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ accept:'application/json' } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        const error = new Error(data.message || `HTTP ${response.status}`) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+      return data as AnalyticsSummary;
+    }
+
+    function setMode(mode: 'gate' | 'disabled' | 'content'): void {
+      els.gate.hidden = mode !== 'gate';
+      els.disabled.hidden = mode !== 'disabled';
+      els.content.hidden = mode !== 'content';
+    }
+
+    function renderTable(target: HTMLTableSectionElement, rows: SummaryRow[], emptyText: string): void {
+      target.innerHTML = rows.length
+        ? rows.map((row) => `<tr><td title="${esc(row.key)}">${esc(row.key)}</td><td>${num(row.views)}</td><td>${num(row.visitors)}</td></tr>`).join('')
+        : `<tr><td colspan="3">${esc(emptyText)}</td></tr>`;
+    }
+
+    function renderBars(
+      target: HTMLElement,
+      rows: Array<{ label: string; value: number; title: string }>,
+    ): void {
+      const max = Math.max(1, ...rows.map((row) => Number(row.value) || 0));
+      target.innerHTML = rows.length
+        ? rows.map((row) => {
+            const height = Math.max(2, Math.round(((Number(row.value) || 0) / max) * 150));
+            return `<div class="gc-admin-analytics-bar-v1" data-value="${esc(num(row.value))}" title="${esc(row.title)}"><i style="height:${height}px"></i><span>${esc(row.label)}</span></div>`;
+          }).join('')
+        : '<p class="gc-note">Todavía no hay datos para este periodo.</p>';
+    }
+
+    function render(data: AnalyticsSummary): void {
+      els.state.textContent = data.enabled ? 'Activo' : 'Desactivado';
+      els.state.style.color = data.enabled ? 'var(--accent)' : 'var(--warn)';
+      els.storage.textContent = `${data.storage} · ${data.retentionDays} días`;
+      els.timeZone.textContent = data.timeZone;
+      els.updated.textContent = `Actualizado ${new Date(data.generatedAt).toLocaleString('es-ES')}`;
+
+      if (!data.enabled) {
+        setMode('disabled');
+        return;
+      }
+
+      setMode('content');
+      els.todayViews.textContent = num(data.totals.today.views);
+      els.todayVisitors.textContent = `${num(data.totals.today.visitors)} visitantes`;
+      els.views7.textContent = num(data.totals.last7Days.views);
+      els.visitors7.textContent = `${num(data.totals.last7Days.visitors)} visitantes`;
+      els.views30.textContent = num(data.totals.last30Days.views);
+      els.visitors30.textContent = `${num(data.totals.last30Days.visitors)} visitantes`;
+      els.active.textContent = num(data.totals.activeNow);
+      els.activeWindow.textContent = `últimos ${data.activeMinutes} min`;
+      els.periodTotal.textContent = num(data.totals.selectedPeriod.views);
+
+      renderBars(
+        els.dailyChart,
+        data.daily.map((row) => ({
+          label: new Date(`${row.day}T12:00:00`).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' }),
+          value: row.views,
+          title: `${row.day}: ${num(row.views)} vistas · ${num(row.visitors)} visitantes`,
+        })),
+      );
+
+      const hourMap = new Map(data.hourly.map((row) => [Number(row.hour), row]));
+      renderBars(
+        els.hourlyChart,
+        Array.from({ length: 24 }, (_, hour) => {
+          const row = hourMap.get(hour);
+          return {
+            label: `${String(hour).padStart(2, '0')}h`,
+            value: row?.views || 0,
+            title: `${String(hour).padStart(2, '0')}:00 · ${num(row?.views || 0)} vistas`,
+          };
+        }),
+      );
+
+      renderTable(els.topPages, data.topPages, 'Sin páginas registradas.');
+      renderTable(els.referrers, data.referrers, 'Sin referencias externas registradas.');
+      renderTable(els.devices, data.devices, 'Sin dispositivos registrados.');
+      renderTable(els.browsers, data.browsers, 'Sin navegadores registrados.');
+    }
+
+    async function load(): Promise<void> {
+      els.refresh.disabled = true;
+      els.refresh.textContent = 'Cargando...';
+      els.state.textContent = 'Cargando';
+      els.state.style.color = 'var(--soft)';
+
+      try {
+        const days = Number(els.period.value) || 30;
+        const data = await fetchJson(`/api/admin/analytics/summary?days=${days}`);
+        render(data);
+      } catch (error) {
+        const typed = error as Error & { status?: number };
+        els.state.textContent = 'Error';
+        els.state.style.color = 'var(--warn)';
+        if (typed.status === 401 || typed.status === 403) {
+          els.gateText.textContent = typed.message || 'Necesitas una cuenta administradora.';
+          setMode('gate');
+        } else {
+          els.gateText.textContent = typed.message || 'No se pudieron cargar las estadísticas.';
+          setMode('gate');
+        }
+      } finally {
+        els.refresh.disabled = false;
+        els.refresh.textContent = 'Actualizar';
+      }
+    }
+
+    els.period.addEventListener('change', load);
+    els.refresh.addEventListener('click', load);
+    els.retry.addEventListener('click', load);
+    load();
+  </script>
+</AppLayout>

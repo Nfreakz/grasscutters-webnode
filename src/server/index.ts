@@ -17,6 +17,7 @@ import { registerGcTrackAssetDeliveryRoutes } from './gc-track-assets-delivery';
 import { registerLiveTimingRoutes } from './live-timing-routes';
 import { registerGcAcsmLiveTestRoutes } from './gc-acsm-live-test-routes';
 import { registerGcPlatformHardening } from './gc-platform-hardening';
+import { registerGcAnalyticsRoutes } from './gc-analytics-routes';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -16830,6 +16831,8 @@ app.get('/api/debug/runtime', (_req, res) => {
     }
   });
 });
+
+registerGcAnalyticsRoutes(app, { rootDir, requireAdmin });
 
 if (!fs.existsSync(distDir)) {
   console.warn(`[GC] No existe ${distDir}. Ejecuta npm run build antes de npm start.`);
