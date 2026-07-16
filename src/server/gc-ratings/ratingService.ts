@@ -4,7 +4,12 @@ import { createRatingStore } from './ratingStore';
 import { buildSrComputation } from './srModel';
 import { findRaceSessions, findRatingCandidateRaceSessions, openStrackerDb, readRaceDrivers, readRaceLaps, readRaceSession, resolveStrackerDbPath, verifyStrackerTables } from './strackerReader';
 import type { DriverRatingState, PlainObject, RatingEventResult, RatingsSnapshot, RecalculationLog, RatingStrackerSessionReview } from './types';
-import { ensureArray, formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, safeFiniteNumber, textValue, uniqueId } from './utils';
+import { formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, safeFiniteNumber, textValue, uniqueId } from './utils';
+
+/* GC_PHASE2H_RATINGS_ARRAY_TYPES_V1 */
+function ratingArray<T = any>(value: unknown): T[] {
+  return Array.isArray(value) ? value as T[] : [];
+}
 
 function normalizeOrigin(value: string) {
   return String(value || '').trim().replace(/\/+$/, '');
@@ -378,7 +383,7 @@ function nextEventFallbackIso(event: PlainObject) {
 }
 
 function raceSessionFromEvent(event: PlainObject) {
-  return ensureArray(event.sessions).find((session: PlainObject) =>
+  return ratingArray(event.sessions).find((session: PlainObject) =>
     String(session?.type || session?.key || session?.name || '').toUpperCase().includes('RACE')
   ) || null;
 }
@@ -395,7 +400,7 @@ function sameDriverLap(lap: PlainObject, result: PlainObject) {
 
 function buildAcsmRaceLapsForDriver(event: PlainObject, result: PlainObject) {
   const race = raceSessionFromEvent(event);
-  const rawLaps = ensureArray(race?.laps).filter((lap: PlainObject) => sameDriverLap(lap, result));
+  const rawLaps = ratingArray(race?.laps).filter((lap: PlainObject) => sameDriverLap(lap, result));
 
   return rawLaps.map((lap: PlainObject, index: number) => ({
     lapNumber: index + 1,
@@ -432,7 +437,7 @@ function strackerManualEventId(sessionId: number) {
 }
 
 function normalizeIgnoredStrackerSessions(snapshot: RatingsSnapshot | null | undefined) {
-  return ensureArray(snapshot?.ignoredStrackerSessions)
+  return ratingArray(snapshot?.ignoredStrackerSessions)
     .map((item: PlainObject) => {
       const sessionId = safeFiniteNumber(item.sessionId, 0) || safeFiniteNumber(String(item.eventId || '').replace('stracker:', ''), 0);
       if (!sessionId) return null;
@@ -450,7 +455,7 @@ function normalizeIgnoredStrackerSessions(snapshot: RatingsSnapshot | null | und
 }
 
 function normalizeReviewedStrackerSessions(snapshot: RatingsSnapshot | null | undefined) {
-  return ensureArray(snapshot?.reviewedStrackerSessions)
+  return ratingArray(snapshot?.reviewedStrackerSessions)
     .map((item: PlainObject) => {
       const sessionId = safeFiniteNumber(item.sessionId, 0) || safeFiniteNumber(String(item.eventId || '').replace('stracker:', ''), 0);
       if (!sessionId) return null;
@@ -730,7 +735,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   }
 
   const resultsByEvent = new Map<string, RatingEventResult[]>();
-  const championshipEvents = ensureArray(championship.events);
+  const championshipEvents = ratingArray(championship.events);
   const championshipEventIds = new Set(championshipEvents.map((event: PlainObject) => String(event.id)).filter(Boolean));
   const lastOfficialResultByDriver = new Map<string, RatingEventResult>();
   const officialResultsByDriver = new Map<string, RatingEventResult[]>();
@@ -784,7 +789,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     return officialResultsForRating(driver)[0] || null;
   }
 
-  const standings = ensureArray(championship.standings).map((row: PlainObject) => {
+  const standings = ratingArray(championship.standings).map((row: PlainObject) => {
     const rating = findDriverForStanding(row);
     const officialResults = officialResultsForRating(rating);
     const ratingLastResult = lastOfficialResultForRating(rating);
@@ -860,7 +865,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
 
   const enrichEvent = (event: PlainObject) => {
     const eventResults = (resultsByEvent.get(String(event.id)) || []).sort((left, right) => left.position - right.position);
-    const officialRaceResults = ensureArray(event.raceResults);
+    const officialRaceResults = ratingArray(event.raceResults);
     const fallbackRaceResults = enrichOfficialRaceResultsWithPersistentRatings(officialRaceResults);
     return {
       ...event,
@@ -871,7 +876,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
           textValue(row.guid) === textValue(result.steamGuid) ||
           textValue(row.name).toLowerCase() === textValue(result.displayName).toLowerCase()
         ) || {};
-        const ratingNotes = ensureArray(result.notes).map((item) => String(item));
+        const ratingNotes = ratingArray(result.notes).map((item) => String(item));
         const srExplanationNotes = ratingNotes
           .filter((item) =>
             item.startsWith('Tiempo en pista') ||
@@ -969,7 +974,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   const reviewedStrackerEvents = reviewedEventsFromSnapshot(snapshot, [...championshipEvents, ...processedStrackerEvents])
     .sort((left: PlainObject, right: PlainObject) => parseDateMs(right.completedAt || right.scheduledAt) - parseDateMs(left.completedAt || left.scheduledAt));
 
-  const strackerSeries = {
+  const strackerSeries: PlainObject = {
     id: 'gc-stracker-community',
     name: 'Carreras sTracker',
     type: 'stracker_series',
@@ -981,7 +986,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     stats: {
       processed: processedStrackerEvents.length,
       reviewed: reviewedStrackerEvents.length,
-      drivers: [...new Set(processedStrackerEvents.flatMap((event: PlainObject) => ensureArray(event.raceResults).map((row: PlainObject) => textValue(row.name))))].filter(Boolean).length
+      drivers: [...new Set(processedStrackerEvents.flatMap((event: PlainObject) => ratingArray(event.raceResults).map((row: PlainObject) => textValue(row.name))))].filter(Boolean).length
     }
   };
 
@@ -1132,14 +1137,14 @@ function gcSrVilaRealBonusClampV1(value: number) {
 }
 
 function gcSrVilaRealBonusResultNoteV1(row: RatingEventResult) {
-  const notes = ensureArray((row as PlainObject).notes).map((item) => String(item));
+  const notes = ratingArray((row as PlainObject).notes).map((item) => String(item));
   const note = 'GC_SR_VILAREAL_ATTENDANCE_BONUS_V1: SR del evento neutralizado por baja asistencia; bonus asistencia +1 SR aplicado. GSR y puntos ACSM intactos.';
   return notes.includes(note) ? notes : [...notes, note];
 }
 
 function applySpecialSrExceptionsToSnapshotV1(snapshot: RatingsSnapshot | null | undefined): RatingsSnapshot | null {
   if (!snapshot) return snapshot || null;
-  const sourceResults = ensureArray(snapshot.eventResults) as RatingEventResult[];
+  const sourceResults = ratingArray(snapshot.eventResults) as RatingEventResult[];
   if (!sourceResults.some((row) => String(row.eventId || '') === GC_SR_VILAREAL_ATTENDANCE_BONUS_EVENT_ID_V1)) return snapshot;
 
   const ordered = [...sourceResults].sort((left, right) =>
@@ -1184,7 +1189,7 @@ function applySpecialSrExceptionsToSnapshotV1(snapshot: RatingsSnapshot | null |
     ...snapshot,
     eventResults: adjustedEventResults,
     drivers: rebuildDriversFromEventResults(adjustedEventResults, snapshot.drivers),
-    recalculationLogs: ensureArray(snapshot.recalculationLogs) as RecalculationLog[]
+    recalculationLogs: ratingArray(snapshot.recalculationLogs) as RecalculationLog[]
   };
 }
 
@@ -1216,13 +1221,13 @@ export class GcRatingsService {
     try {
       for (const event of events) {
         const forcedSessionId = safeFiniteNumber(event.manualStrackerSessionId || event.strackerSessionId, 0);
-        const session = context.strackerAvailable && context.db
+        const session = (context.strackerAvailable && context.db
           ? forcedSessionId
             ? context.sessions.find((candidate: PlainObject) => safeFiniteNumber(candidate.SessionId, 0) === forcedSessionId) || readRaceSession(context.db, forcedSessionId) || identifyRaceSession(event, context.sessions)
             : identifyRaceSession(event, context.sessions)
-          : null;
+          : null) as PlainObject | null;
         const strackerDrivers = session && context.db ? readRaceDrivers(context.db, Number(session.SessionId)) : [];
-        const officialResults = ensureArray(event.raceResults);
+        const officialResults = ratingArray(event.raceResults);
 
         const rawMatches = session && strackerDrivers.length
           ? matchOfficialToStracker(event, session, strackerDrivers)
@@ -1333,7 +1338,7 @@ export class GcRatingsService {
             srLaps: sr.lapDetails,
             srExplanations: isVilaRealAttendanceBonusEvent
               ? ['GC_SR_VILAREAL_ATTENDANCE_BONUS_V1: SR del evento neutralizado por baja asistencia; bonus asistencia +1 SR aplicado. GSR y puntos ACSM intactos.']
-              : ensureArray((sr as PlainObject).explanations).map((item) => String(item)),
+              : ratingArray((sr as PlainObject).explanations).map((item) => String(item)),
             srModelVersion: String((sr as PlainObject).modelVersion || 'gc-sr-v2-clean-time'),
             match,
             processedAt
@@ -1411,7 +1416,7 @@ export class GcRatingsService {
             match: row.match,
             notes: [
               gsr.explanation,
-              ...ensureArray(row.srExplanations).map((item) => String(item))
+              ...ratingArray(row.srExplanations).map((item) => String(item))
             ]
           });
         }
@@ -1885,7 +1890,7 @@ export class GcRatingsService {
       );
     }
 
-    const event = await this.buildManualStrackerEventFromSession(sessionId, options);
+    const event = await this.buildManualStrackerEventFromSession(sessionId, options) as PlainObject;
     const baseSnapshot = (await this.loadSnapshot()) || createEmptySnapshot(null, this.store.kind);
     const processedIds = new Set([...baseSnapshot.processedEventIds, ...baseSnapshot.eventResults.map((row) => row.eventId)]);
     const reviewedSessions = normalizeReviewedStrackerSessions(baseSnapshot);
@@ -1962,7 +1967,7 @@ export class GcRatingsService {
       throw new Error(`La sesión ${sessionId} está ignorada. Recupérala antes de revisarla como no puntuable.`);
     }
 
-    const event = await this.buildManualStrackerEventFromSession(sessionId, options);
+    const event = await this.buildManualStrackerEventFromSession(sessionId, options) as PlainObject;
     const now = isoNow();
     const currentReviewed = normalizeReviewedStrackerSessions(baseSnapshot);
     const previous = currentReviewed.find((item) => item.sessionId === sessionId) || null;
@@ -2339,11 +2344,11 @@ export class GcRatingsService {
       href: textValue(event.href) || (event.id ? `/campeonato/ronda/${encodeURIComponent(String(event.id))}` : null),
       scheduledAt: nextEventFallbackIso(event) || textValue(event.scheduledAt || event.date) || null,
       completedAt: textValue(event.completedAt) || null,
-      hasResults: Boolean(event.rawHasResults || ensureArray(event.raceResults).length),
-      raceResults: ensureArray(event.raceResults).length,
-      qualifyingResults: ensureArray(event.qualifyingResults).length,
-      practiceResults: ensureArray(event.practiceResults).length,
-      carSummary: textValue(event.carSummary || ensureArray(event.cars).join(', ')) || null
+      hasResults: Boolean(event.rawHasResults || ratingArray(event.raceResults).length),
+      raceResults: ratingArray(event.raceResults).length,
+      qualifyingResults: ratingArray(event.qualifyingResults).length,
+      practiceResults: ratingArray(event.practiceResults).length,
+      carSummary: textValue(event.carSummary || ratingArray(event.cars).join(', ')) || null
     };
   }
 
@@ -2503,7 +2508,7 @@ export class GcRatingsService {
       lapDiff: row.match.lapDiff
     }));
 
-    const events = ensureArray(championship?.events);
+    const events = ratingArray(championship?.events);
     const completed = completedEvents(championship || {});
     const processedIds = [...new Set([...snapshot.processedEventIds, ...snapshot.eventResults.map((row) => row.eventId)])];
     const pendingCompletedEvents = completed
@@ -2532,7 +2537,7 @@ export class GcRatingsService {
     const strackerLinkedResults = snapshot.eventResults.filter((row) => safeFiniteNumber(row.strackerSessionId, 0) > 0);
     const frozenSrResults = snapshot.eventResults.filter((row) => {
       const notes = Array.isArray(row.notes) ? row.notes.join(' ') : String(row.notes || '');
-      const lapNotes = ensureArray(row.lapsDetail).map((lap: PlainObject) => String(lap.notes || '')).join(' ');
+      const lapNotes = ratingArray(row.lapsDetail).map((lap: PlainObject) => String(lap.notes || '')).join(' ');
       return notes.includes('SR v2 congelado') ||
         notes.includes('Telemetría sTracker no usada') ||
         lapNotes.includes('SR v2 congelado') ||
@@ -2557,7 +2562,7 @@ export class GcRatingsService {
     let strackerCandidateCount = 0;
     try {
       const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 30, minDrivers: 2, minTotalLaps: 10 });
-      strackerCandidateCount = ensureArray(candidatesPayload.candidates).filter((candidate: PlainObject) => candidate.recommended && !candidate.alreadyProcessed).length;
+      strackerCandidateCount = ratingArray(candidatesPayload.candidates).filter((candidate: PlainObject) => candidate.recommended && !candidate.alreadyProcessed).length;
     } catch {
       strackerCandidateCount = 0;
     }
@@ -2565,7 +2570,7 @@ export class GcRatingsService {
     const srEconomyAudit = this.buildSrEconomyAudit(snapshot);
     const preDeployStatus = this.buildPreDeployStatus({
       megaAuditWarnings,
-      srEconomyWarnings: ensureArray(srEconomyAudit.warnings).map((item) => String(item)),
+      srEconomyWarnings: ratingArray(srEconomyAudit.warnings).map((item) => String(item)),
       manualStrackerEventIds,
       steamKeyDrivers: steamKeyDrivers.length,
       playerKeyDrivers: playerKeyDrivers.length,
@@ -2685,7 +2690,7 @@ export class GcRatingsService {
 
     try {
       const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 80, minDrivers: 2, minTotalLaps: 10 });
-      const detectedEvents = ensureArray(candidatesPayload.candidates)
+      const detectedEvents = ratingArray(candidatesPayload.candidates)
         .filter((candidate: PlainObject) => !candidate.alreadyProcessed && !candidate.linkedToAcsm && !candidate.ignored && !candidate.reviewed)
         .map((candidate: PlainObject) => ({
           id: candidate.eventId,
@@ -2775,9 +2780,9 @@ export class GcRatingsService {
     for (const sourceCandidate of sourceCandidates) {
       const payload = await this.getChampionshipPayload(false, sourceCandidate);
       const allEvents = [
-        ...ensureArray(payload.championship.events),
-        ...ensureArray(payload.championship.strackerSeries?.processedEvents),
-        ...ensureArray(payload.championship.strackerSeries?.reviewedEvents)
+        ...ratingArray(payload.championship.events),
+        ...ratingArray(payload.championship.strackerSeries?.processedEvents),
+        ...ratingArray(payload.championship.strackerSeries?.reviewedEvents)
       ];
       const event = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
       if (!event) continue;

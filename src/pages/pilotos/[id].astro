@@ -4,7 +4,9 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import '../../styles/public/gc-rating-badges.css';
 
 const rawId = Astro.params.id ?? '';
+type AnyRecord = Record<string, any>;
 
+/* GC_PHASE2G_PUBLIC_DETAIL_TYPES_V1 */
 /* GC_PILOT_SOCIAL_V15_30 START */
 const isNumericPilotId = /^\d+$/.test(String(rawId || ''));
 const defaultPilotSeo = {
@@ -14,27 +16,28 @@ const defaultPilotSeo = {
   imageAlt: `Piloto #${rawId} en GrassCutters Racing`,
 };
 
-function cleanSeoText(value, fallback = '') {
+function cleanSeoText(value: unknown, fallback = ''): string {
   return String(value || fallback || '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function valueAt(source, dottedPath) {
+function valueAt(source: AnyRecord | null | undefined, dottedPath: string): any {
   if (!source || typeof source !== 'object') return undefined;
-  if (Object.prototype.hasOwnProperty.call(source, dottedPath)) return source[dottedPath];
-  return String(dottedPath).split('.').reduce((acc, part) => acc == null ? undefined : acc[part], source);
+  const record = source as AnyRecord;
+  if (Object.prototype.hasOwnProperty.call(record, dottedPath)) return record[dottedPath];
+  return String(dottedPath).split('.').reduce<any>((acc, part) => acc == null ? undefined : acc[part], record);
 }
 
-function firstValue(...values) {
+function firstValue(...values: unknown[]): any {
   for (const value of values) {
     if (value !== undefined && value !== null && value !== '') return value;
   }
   return null;
 }
 
-function firstPath(source, paths) {
+function firstPath(source: AnyRecord | null | undefined, paths: string[]): any {
   for (const item of paths) {
     const value = valueAt(source, item);
     if (value !== undefined && value !== null && value !== '') return value;
@@ -42,23 +45,23 @@ function firstPath(source, paths) {
   return '';
 }
 
-function pilotDisplayName(pilot, data) {
+function pilotDisplayName(pilot: AnyRecord, data: AnyRecord): string {
   const raw = firstPath(pilot, ['displayName', 'visibleName', 'cleanName', 'name', 'driverName', 'playerName']) || data?.pilotLink?.strackerName || `Piloto #${rawId}`;
   return cleanSeoText(String(raw).replace(/_/g, ' '), `Piloto #${rawId}`);
 }
 
-function numberText(value) {
+function numberText(value: unknown): string | null {
   const n = Number(value);
   return Number.isFinite(n) ? n.toLocaleString('es-ES') : null;
 }
 
-function lapText(value) {
+function lapText(value: unknown): string | null {
   return cleanSeoText(value, '') || null;
 }
 
 /* GC_PILOT_SOCIAL_TEXT_V15_30_6 START */
-function uniqueSeoUrls(urls) {
-  const seen = new Set();
+function uniqueSeoUrls(urls: unknown[]): string[] {
+  const seen = new Set<string>();
   return urls
     .filter(Boolean)
     .map((url) => String(url).trim())
@@ -69,7 +72,7 @@ function uniqueSeoUrls(urls) {
     });
 }
 
-function safeOrigin(value) {
+function safeOrigin(value: unknown): string {
   try {
     const url = new URL(String(value || ''));
     return url.origin;
@@ -78,7 +81,7 @@ function safeOrigin(value) {
   }
 }
 
-function getSeoApiCandidates() {
+function getSeoApiCandidates(): string[] {
   const endpoint = `/api/pilots/${encodeURIComponent(rawId)}/profile`;
   const publicSite = import.meta.env.PUBLIC_SITE_URL || '';
   const localPort = import.meta.env.PORT || process.env.PORT || '3000';
@@ -91,7 +94,7 @@ function getSeoApiCandidates() {
   ]);
 }
 
-function nestedPilotSource(data) {
+function nestedPilotSource(data: AnyRecord): AnyRecord {
   return firstValue(
     data?.pilot,
     data?.driver,
@@ -106,7 +109,7 @@ function nestedPilotSource(data) {
   ) || {};
 }
 
-function nestedSummarySource(data) {
+function nestedSummarySource(data: AnyRecord): AnyRecord {
   return firstValue(
     data?.summary,
     data?.profile?.summary,
@@ -115,7 +118,7 @@ function nestedSummarySource(data) {
   ) || {};
 }
 
-function nestedBestLapSource(data, summary) {
+function nestedBestLapSource(data: AnyRecord, summary: AnyRecord): AnyRecord | null {
   return firstValue(
     summary?.bestLap,
     data?.bestLap,
@@ -125,7 +128,7 @@ function nestedBestLapSource(data, summary) {
   );
 }
 
-async function fetchPilotSeoData() {
+async function fetchPilotSeoData(): Promise<AnyRecord | null> {
   const candidates = getSeoApiCandidates();
   let lastError = '';
 
@@ -138,8 +141,8 @@ async function fetchPilotSeoData() {
 
       if (response.ok && data?.ok) return data;
       lastError = `${response.status} ${response.statusText}`;
-    } catch (error) {
-      lastError = error?.message || String(error);
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error.message : String(error);
     }
   }
 

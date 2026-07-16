@@ -57,6 +57,11 @@ test('buildSrComputation uses clustered collision counts while preserving raw di
     maxRaceLaps: 4
   });
 
+  /* GC_PHASE2H_SR_TEST_NARROWING_V1 */
+  if (!('rawCollisionCount' in result.breakdown)) {
+    assert.fail('Se esperaba un breakdown SR con telemetría fiable.');
+  }
+
   assert.equal(result.breakdown.rawCollisionCount, 4);
   assert.equal(result.breakdown.collisionClusterCount, 1);
   assert.equal(result.breakdown.suppressedCollisionCount, 3);

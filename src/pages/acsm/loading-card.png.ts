@@ -69,7 +69,8 @@ export async function GET({ request }: { request: Request }) {
       .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toBuffer();
 
-    return new Response(png, {
+    // GC_PHASE2G_PUBLIC_DETAIL_TYPES_V1
+    return new Response(new Uint8Array(png), {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=60',

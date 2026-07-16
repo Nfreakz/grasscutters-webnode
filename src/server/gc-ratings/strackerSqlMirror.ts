@@ -1734,10 +1734,11 @@ export async function getLeaderboardFromMirror(options: {
       name: displayTrackName(latestSession.track_display || latestSession.track_raw, 'Circuito'),
       code: cleanDisplayText(latestSession.track_raw || latestSession.track_display, 'Circuito')
     },
-    cars: Array.from(new Map(scopedLaps
+    // GC_PHASE2H_MIRROR_CARS_MAP_V1
+    cars: Array.from(new Map<string, any>(scopedLaps
       .filter((lap) => toInt(lap.comboId, 0) === activeComboId)
-      .map((lap) => [String(lap.car?.id ?? lap.car?.name ?? lap.carCode ?? ''), lap.car])
-      .filter(([key]) => Boolean(key))).values()).map((car: any) => car).filter(Boolean),
+      .map((lap): [string, any] => [String(lap.car?.id ?? lap.car?.name ?? lap.carCode ?? ''), lap.car])
+      .filter(([key]) => Boolean(key))).values()).filter(Boolean),
     driversCount: toInt(latestSession.player_count, 0),
     lapsCount: toInt(latestSession.lap_count, 0),
     bestLap: bestLap ? {

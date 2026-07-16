@@ -58,6 +58,13 @@ async function requireAdmin(req: Request) {
     return options.isAdmin(req);
   }
 
+  /* GC_PHASE2H_RATINGS_ROUTES_TYPES_V1 */
+  function queryLimit(value: unknown): number | undefined {
+    const first = Array.isArray(value) ? value[0] : value;
+    const parsed = Number(first);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+  }
+
   function parseBooleanish(value: unknown, fallback: boolean | undefined = undefined) {
     if (value === undefined || value === null || value === '') return fallback;
     if (typeof value === 'boolean') return value;
@@ -239,9 +246,9 @@ async function requireAdmin(req: Request) {
           dryRun: parseBooleanish(req.query.dryRun || req.body?.dryRun, false)
         });
         return res.json({
+          ...payload,
           ok: true,
-          source: 'gc-ratings-v1:v18-source-aware-official-recalc',
-          ...payload
+          source: 'gc-ratings-v1:v18-source-aware-official-recalc'
         });
       }
 
@@ -281,7 +288,7 @@ async function requireAdmin(req: Request) {
 
       if (mirrorDiagnostics.mirrorDriver) {
         const mirrorPayload = await getStrackerRaceCandidatesFromMirror({
-          limit: req.query.limit
+          limit: queryLimit(req.query.limit)
         });
         candidates = filterCandidateRows(mirrorPayload.candidates || [], snapshot);
         const hasMirrorData = Number(mirrorDiagnostics.sessionsImported || 0) > 0 || candidates.length > 0;
@@ -290,7 +297,7 @@ async function requireAdmin(req: Request) {
           syncRequired = false;
         } else if (fallbackEnabled) {
           const fallbackPayload = await service.getStrackerRaceCandidates({
-            limit: req.query.limit,
+            limit: queryLimit(req.query.limit),
             minDrivers,
             minTotalLaps
           });
@@ -308,7 +315,7 @@ async function requireAdmin(req: Request) {
         }
       } else if (fallbackEnabled) {
         const fallbackPayload = await service.getStrackerRaceCandidates({
-          limit: req.query.limit,
+          limit: queryLimit(req.query.limit),
           minDrivers,
           minTotalLaps
         });

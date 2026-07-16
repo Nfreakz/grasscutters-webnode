@@ -372,13 +372,14 @@ function sendAvatarMeta(res: Response, auth: AvatarAuthContext) {
   };
 
   return res.json({
+    ...avatar,
+    // GC_PHASE2G_PUBLIC_DETAIL_TYPES_V1
     ok: true,
     authenticated: true,
     linked: Boolean(playerId),
     user: auth.user,
     playerId,
     defaultAvatarUrl: DEFAULT_PILOT_AVATAR_URL,
-    ...avatar,
   });
 }
 

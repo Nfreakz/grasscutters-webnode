@@ -52,32 +52,43 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .gc-driver-link { font-weight: 900; }
   </style>
 
+  <!-- GC_PHASE2G_PUBLIC_DETAIL_TYPES_V1 -->
   <script>
-    const escapeHtml = (value) => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-    const fmtSpeed = (value) => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
-    const fmtDate = (value) => {
+    type AnyRecord = Record<string, any>;
+
+    const escapeHtml = (value: unknown): string => String(value ?? '-').replace(/[&<>'"]/g, (char) => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      "'":'&#39;',
+      '"':'&quot;'
+    } as Record<string, string>)[char] ?? char);
+    const fmtSpeed = (value: unknown): string => Number.isFinite(Number(value)) && Number(value) > 0 ? `${Math.round(Number(value))} km/h` : '--';
+    const fmtDate = (value: unknown): string => {
       if (!value) return '--';
-      const date = new Date(value);
+      const date = new Date(typeof value === 'number' ? value : String(value));
       if (Number.isNaN(date.getTime())) return '--';
       return date.toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
     };
+    const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
+      document.getElementById(id) as T;
     const els = {
-      title: document.getElementById('comboTitle'), subtitle: document.getElementById('comboSubtitle'), key: document.getElementById('comboKey'), status: document.getElementById('comboStatus'),
-      laps: document.getElementById('comboLaps'), drivers: document.getElementById('comboDrivers'), clean: document.getElementById('comboClean'),
-      best: document.getElementById('metricBest'), bestDriver: document.getElementById('metricBestDriver'), speed: document.getElementById('metricSpeed'), top10: document.getElementById('metricTop10'), recent: document.getElementById('metricRecent'),
-      leaderboard: document.getElementById('leaderboardRows'), recentRows: document.getElementById('recentRows')
+      title: $('comboTitle'), subtitle: $('comboSubtitle'), key: $('comboKey'), status: $('comboStatus'),
+      laps: $('comboLaps'), drivers: $('comboDrivers'), clean: $('comboClean'),
+      best: $('metricBest'), bestDriver: $('metricBestDriver'), speed: $('metricSpeed'), top10: $('metricTop10'), recent: $('metricRecent'),
+      leaderboard: $<HTMLTableSectionElement>('leaderboardRows'), recentRows: $<HTMLTableSectionElement>('recentRows')
     };
 
-    function pathIds() {
+    function pathIds(): { trackId: string; carId: string } {
       const parts = window.location.pathname.split('/').filter(Boolean);
-      return { trackId: parts[1], carId: parts[2] };
+      return { trackId: parts[1] || '', carId: parts[2] || '' };
     }
 
-    function lapStatus(row) {
+    function lapStatus(row: AnyRecord): string {
       return row.valid === false || row.isValid === false ? '<span class="gc-chip gc-chip--danger">No válida</span>' : '<span class="gc-chip gc-chip--accent">Válida</span>';
     }
 
-    async function load() {
+    async function load(): Promise<void> {
       const { trackId, carId } = pathIds();
       try {
         const response = await fetch(`/api/gc/combos/${encodeURIComponent(trackId)}/${encodeURIComponent(carId)}`);
@@ -100,13 +111,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         els.top10.textContent = summary.best10Average || '--';
         els.recent.textContent = fmtDate(summary.lastSeenAt);
 
-        els.leaderboard.innerHTML = (item.leaderboard || []).map((row) => {
+        els.leaderboard.innerHTML = (item.leaderboard || []).map((row: AnyRecord) => {
           const id = row.playerId || row.driverId;
           const driver = escapeHtml(row.driverName || row.playerName || '-');
           return `<tr><td>${escapeHtml(row.position)}</td><td>${id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${escapeHtml(row.delta || '--')}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;
         }).join('') || '<tr><td colspan="7">Sin leaderboard para este combo.</td></tr>';
 
-        els.recentRows.innerHTML = (item.recentLaps || []).map((row) => {
+        els.recentRows.innerHTML = (item.recentLaps || []).map((row: AnyRecord) => {
           const id = row.playerId || row.driverId;
           const driver = escapeHtml(row.driverName || row.playerName || '-');
           return `<tr><td>${id ? `<a class="gc-driver-link" href="/pilotos/${encodeURIComponent(id)}">${driver}</a>` : driver}</td><td><strong>${escapeHtml(row.lapTime || '--')}</strong></td><td>${lapStatus(row)}</td><td>${escapeHtml(fmtSpeed(row.maxSpeedKmh))}</td><td>${escapeHtml(row.cuts || 0)}</td><td>${escapeHtml(fmtDate(row.timestampIso))}</td></tr>`;

@@ -19,13 +19,14 @@ export const GET: APIRoute = async ({ request }) => {
   const avatar = playerId ? getAvatarMeta(playerId) : { playerId: null, avatarUrl: DEFAULT_PILOT_AVATAR_URL, isDefault: true, uploadedAt: null };
 
   return json({
+    ...avatar,
+    // GC_PHASE2G_PUBLIC_DETAIL_TYPES_V1
     ok: true,
     authenticated: true,
     linked: Boolean(playerId),
     user: auth.user,
     playerId,
-    defaultAvatarUrl: DEFAULT_PILOT_AVATAR_URL,
-    ...avatar
+    defaultAvatarUrl: DEFAULT_PILOT_AVATAR_URL
   });
 };
 

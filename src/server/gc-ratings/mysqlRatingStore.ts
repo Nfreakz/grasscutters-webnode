@@ -366,7 +366,8 @@ export class MysqlRatingStore implements RatingStore {
       return {
         eventId: row.event_id,
         sessionId: Number(row.session_id || 0),
-        status: row.status === 'reviewed-unrated' ? 'reviewed-unrated' : 'ignored',
+        // GC_PHASE2H_MYSQL_REVIEW_STATUS_V1
+        status: (row.status === 'reviewed-unrated' ? 'reviewed-unrated' : 'ignored') as RatingStrackerSessionReview['status'],
         ratingEligible: row.status === 'reviewed-unrated' ? false : undefined,
         reason: row.reason || null,
         name: payload?.name || null,
