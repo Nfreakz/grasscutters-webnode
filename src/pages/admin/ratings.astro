@@ -778,52 +778,93 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
     }
   </style>
 
+  <!-- GC_PHASE2F_ADMIN_RATINGS_TYPES_V1 -->
   <script>
     (() => {
-      const $ = (id) => document.getElementById(id);
-      const els = {
-        gate: $('adminGate'),
-        content: $('adminContent'),
-        syncMirror: $('syncStrackerSql'),
-        viewMirrorDiagnostics: $('viewStrackerSqlDiagnostics'),
-        retry: $('retryAdmin'),
-        refresh: $('refreshRatings'),
-        refreshSql: $('refreshRatingsSql'),
-        simulateOfficialRecalc: $('simulateOfficialRecalc'),
-        recalculateOfficialRecalc: $('recalculateOfficialRecalc'),
-        state: $('ratingsState'),
-        storage: $('ratingsStorage'),
-        processed: $('ratingsProcessed'),
-        pending: $('ratingsPending'),
-        reviewed: $('ratingsReviewed'),
-        ignored: $('ratingsIgnored'),
-        lastCheck: $('ratingsLastCheck'),
-        inventorySearch: $('inventorySearch'),
-        inventoryFilter: $('inventoryFilter'),
-        inventoryPageSize: $('inventoryPageSize'),
-        inventoryPrev: $('inventoryPrev'),
-        inventoryNext: $('inventoryNext'),
-        inventoryPageInfo: $('inventoryPageInfo'),
-        inventoryList: $('inventoryList'),
-        actionLog: $('actionLog'),
-        candidateSourceNotice: $('candidateSourceNotice'),
-        detectedList: $('detectedList'),
-        reviewedList: $('reviewedList'),
-        ignoredList: $('ignoredList'),
-        processedList: $('processedList'),
-        diagnosticRows: $('diagnosticRows'),
-        mirrorStatusRows: $('mirrorStatusRows'),
+      type AnyRecord = Record<string, any>;
+
+      type InventoryItem = AnyRecord & {
+        kind: string;
+        id: string;
+        title: any;
+        track: any;
+        date: any;
+        eventId: string;
+        href?: string | null;
+        sessionId?: any;
+        meta?: any[];
+        details?: any[];
+        reason?: any;
+        actionLabel?: string | null;
       };
 
-      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      type InventoryExtras = {
+        meta?: any[];
+        details?: any[];
+        actionLabel?: string | null;
+      };
+
+      type InventoryState = {
+        items: InventoryItem[];
+        filtered: InventoryItem[];
+        query: string;
+        filter: string;
+        page: number;
+        pageSize: number;
+        lastAction: AnyRecord | null;
+      };
+
+      const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
+        document.getElementById(id) as T;
+      const els = {
+        gate: $<HTMLElement>('adminGate'),
+        content: $<HTMLElement>('adminContent'),
+        syncMirror: $<HTMLButtonElement>('syncStrackerSql'),
+        viewMirrorDiagnostics: $<HTMLAnchorElement>('viewStrackerSqlDiagnostics'),
+        retry: $<HTMLButtonElement>('retryAdmin'),
+        refresh: $<HTMLButtonElement>('refreshRatings'),
+        refreshSql: $<HTMLButtonElement>('refreshRatingsSql'),
+        simulateOfficialRecalc: $<HTMLButtonElement>('simulateOfficialRecalc'),
+        recalculateOfficialRecalc: $<HTMLButtonElement>('recalculateOfficialRecalc'),
+        state: $<HTMLElement>('ratingsState'),
+        storage: $<HTMLElement>('ratingsStorage'),
+        processed: $<HTMLElement>('ratingsProcessed'),
+        pending: $<HTMLElement>('ratingsPending'),
+        reviewed: $<HTMLElement>('ratingsReviewed'),
+        ignored: $<HTMLElement>('ratingsIgnored'),
+        lastCheck: $<HTMLElement>('ratingsLastCheck'),
+        inventorySearch: $<HTMLInputElement>('inventorySearch'),
+        inventoryFilter: $<HTMLSelectElement>('inventoryFilter'),
+        inventoryPageSize: $<HTMLSelectElement>('inventoryPageSize'),
+        inventoryPrev: $<HTMLButtonElement>('inventoryPrev'),
+        inventoryNext: $<HTMLButtonElement>('inventoryNext'),
+        inventoryPageInfo: $<HTMLElement>('inventoryPageInfo'),
+        inventoryList: $<HTMLElement>('inventoryList'),
+        actionLog: $<HTMLElement>('actionLog'),
+        candidateSourceNotice: $<HTMLElement>('candidateSourceNotice'),
+        detectedList: $<HTMLElement>('detectedList'),
+        reviewedList: $<HTMLElement>('reviewedList'),
+        ignoredList: $<HTMLElement>('ignoredList'),
+        processedList: $<HTMLElement>('processedList'),
+        diagnosticRows: $<HTMLElement>('diagnosticRows'),
+        mirrorStatusRows: $<HTMLElement>('mirrorStatusRows'),
+      };
+
+      const esc = (value: unknown): string => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        "'":'&#39;',
+        '"':'&quot;'
+      } as Record<string, string>)[char] ?? char);
       const numberFmt = new Intl.NumberFormat('es-ES');
-      const intValue = (value, fallback = 0) => {
+      const intValue = (value: unknown, fallback = 0): number => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
       };
-      const hasValue = (value) => value !== null && value !== undefined && value !== '';
-      const formatInt = (value) => numberFmt.format(intValue(value));
-      const fmtLap = (value, fallback = '') => {
+      const hasValue = (value: unknown): boolean => value !== null && value !== undefined && value !== '';
+      const formatInt = (value: unknown): string => numberFmt.format(intValue(value));
+      const fmtLap = (value: unknown, fallback = ''): string => {
         if (fallback && fallback !== '0:00.000' && fallback !== '--') return fallback;
         const ms = Number(value);
         if (!Number.isFinite(ms) || ms <= 0) return '--';
@@ -832,9 +873,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const millis = Math.floor(ms % 1000);
         return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
       };
-      const fmtDate = (value, timeZone) => {
+      const fmtDate = (value: unknown, timeZone: string): string => {
         if (!value) return 'Sin fecha';
-        const date = new Date(value);
+        const date = new Date(value as any);
         if (Number.isNaN(date.getTime())) return 'Sin fecha';
         return date.toLocaleString('es-ES', {
           timeZone,
@@ -845,10 +886,10 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           minute:'2-digit'
         });
       };
-      const fmtServerDate = (value) => `${fmtDate(value, 'UTC')} UTC`;
-      const fmtSpainDate = (value) => fmtDate(value, 'Europe/Madrid');
+      const fmtServerDate = (value: unknown): string => `${fmtDate(value, 'UTC')} UTC`;
+      const fmtSpainDate = (value: unknown): string => fmtDate(value, 'Europe/Madrid');
       const nowText = () => new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-      const inventoryState = {
+      const inventoryState: InventoryState = {
         items: [],
         filtered: [],
         query: '',
@@ -858,12 +899,12 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         lastAction: null
       };
 
-      function show(mode) {
+      function show(mode: 'gate' | 'content'): void {
         els.gate.hidden = mode !== 'gate';
         els.content.hidden = mode !== 'content';
       }
 
-      async function fetchJson(url, options = {}) {
+      async function fetchJson(url: string, options: RequestInit = {}): Promise<AnyRecord> {
         const response = await fetch(url, {
           credentials:'include',
           cache:'no-store',
@@ -880,7 +921,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return data;
       }
 
-      async function isAdmin() {
+      async function isAdmin(): Promise<AnyRecord | null> {
         try {
           const status = await fetchJson('/api/admin/status');
           if (status.authorized === true) return status;
@@ -892,15 +933,15 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return null;
       }
 
-      function badge(label, tone = 'muted') {
+      function badge(label: unknown, tone = 'muted'): string {
         return `<span class="gc-admin-ratings-badge-v1 is-${esc(tone)}">${esc(label)}</span>`;
       }
 
-      function badges(items) {
+      function badges(items: any[]): string {
         return `<div class="gc-admin-ratings-badges-v1">${items.filter(Boolean).map((item) => badge(item.label, item.tone)).join('')}</div>`;
       }
 
-      function infoGrid(items) {
+      function infoGrid(items: Array<{ label: unknown; value: unknown }>): string {
         return `<dl class="gc-admin-ratings-info-grid-v1">${items.map((item) => `
           <div>
             <dt>${esc(item.label)}</dt>
@@ -909,7 +950,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         `).join('')}</dl>`;
       }
 
-      function sessionDetails(event) {
+      function sessionDetails(event: AnyRecord): Array<{ label: string; value: string }> {
         const start = event.startTime || event.startedAt || event.scheduledAt || event.completedAt || event.ignoredAt || event.updatedAt || event.createdAt || '';
         return [
           { label:'SessionId', value: hasValue(event.sessionId) ? String(event.sessionId) : (event.strackerSessionId ? String(event.strackerSessionId) : '--') },
@@ -926,7 +967,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         ];
       }
 
-      function processedTotals(event) {
+      function processedTotals(event: AnyRecord): AnyRecord {
         const results = Array.isArray(event.raceResults) ? event.raceResults : [];
         let bestLapMs = Number.POSITIVE_INFINITY;
         let bestLapLabel = '';
@@ -959,16 +1000,16 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         };
       }
 
-      function emptyCard(kicker, title, text) {
+      function emptyCard(kicker: unknown, title: unknown, text: unknown): string {
         return `<article class="gc-admin-ratings-item-v1"><div><span>${esc(kicker)}</span><strong>${esc(title)}</strong><p>${esc(text)}</p></div></article>`;
       }
 
-      function inventoryDateValue(item) {
+      function inventoryDateValue(item: AnyRecord): any {
         return item.date || item.startTime || item.completedAt || item.updatedAt || item.createdAt || '';
       }
 
-      function buildInventory(championship, candidates) {
-        const items = [];
+      function buildInventory(championship: AnyRecord, candidates: AnyRecord): InventoryItem[] {
+        const items: InventoryItem[] = [];
         const series = championship?.championship?.strackerSeries || {};
         const officialEvents = Array.isArray(championship?.championship?.events) ? championship.championship.events : [];
 
@@ -996,7 +1037,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           });
         }
 
-        const pushSessionItem = (kind, event, extras = {}) => {
+        const pushSessionItem = (kind: string, event: AnyRecord, extras: InventoryExtras = {}): void => {
           items.push({
             kind,
             id: String(event.eventId || event.id || `stracker:${event.sessionId || ''}`),
@@ -1074,7 +1115,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return items;
       }
 
-      function inventoryMatches(item, query) {
+      function inventoryMatches(item: InventoryItem, query: string): boolean {
         if (!query) return true;
         const haystack = [
           item.kind,
@@ -1091,7 +1132,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return haystack.includes(query);
       }
 
-      function inventoryFilterMatches(item, filter) {
+      function inventoryFilterMatches(item: InventoryItem, filter: string): boolean {
         if (filter === 'all') return true;
         if (filter === 'official') return item.kind === 'official';
         if (filter === 'pending') return item.kind === 'pending';
@@ -1101,7 +1142,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         return true;
       }
 
-      function setActionLog(payload) {
+      function setActionLog(payload: AnyRecord | null): void {
         inventoryState.lastAction = payload || null;
         if (!els.actionLog) return;
         if (!payload) {
@@ -1136,7 +1177,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         `;
       }
 
-      function renderInventory(items) {
+      function renderInventory(items: InventoryItem[]): void {
         const query = String(inventoryState.query || '').trim().toLowerCase();
         const filter = inventoryState.filter || 'all';
         const filtered = Array.isArray(items)
@@ -1218,7 +1259,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         }).join('') : emptyCard('Vacío', 'Sin resultados', 'Prueba otro filtro o reinicia la búsqueda.');
       }
 
-      function renderDetected(candidates) {
+      function renderDetected(candidates: AnyRecord[]): void {
         const rows = Array.isArray(candidates) ? candidates.filter((item) => !item.alreadyProcessed && !item.linkedToAcsm && !item.ignored && !item.reviewed) : [];
 
         els.detectedList.innerHTML = rows.length ? rows.map((event) => {
@@ -1261,7 +1302,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         els.pending.textContent = String(rows.length);
       }
 
-      function renderReviewed(events) {
+      function renderReviewed(events: AnyRecord[]): void {
         const rows = Array.isArray(events) ? events : [];
 
         els.reviewedList.innerHTML = rows.length ? rows.map((event) => {
@@ -1292,7 +1333,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         els.reviewed.textContent = String(rows.length);
       }
 
-      function renderIgnored(events) {
+      function renderIgnored(events: AnyRecord[]): void {
         const rows = Array.isArray(events) ? events : [];
 
         els.ignoredList.innerHTML = rows.length ? rows.map((event) => {
@@ -1323,7 +1364,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         els.ignored.textContent = String(rows.length);
       }
 
-      function renderProcessed(events) {
+      function renderProcessed(events: AnyRecord[]): void {
         const rows = Array.isArray(events) ? events : [];
 
         els.processedList.innerHTML = rows.length ? rows.map((event) => {
@@ -1369,7 +1410,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         els.processed.textContent = String(rows.length);
       }
 
-      function renderDiagnostics(data) {
+      function renderDiagnostics(data: AnyRecord): void {
         const diagnostics = data.diagnostics || {};
         const rows = [
           { label:'Storage', value: diagnostics.storage || data.storage || 'desconocido', detail:'Persistencia activa del snapshot SR/GSR.' },
@@ -1391,7 +1432,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         `).join('');
       }
 
-      function renderMirrorDiagnostics(data) {
+      function renderMirrorDiagnostics(data: AnyRecord): void {
         const latestSync = data?.latestSync || null;
         const latestSession = data?.latestSession || null;
         const mirrorDriver = data?.mirrorDriver === 'mysql' ? 'MySQL' : 'SQLite local';
@@ -1414,7 +1455,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         }
       }
 
-      function renderCandidateSource(data) {
+      function renderCandidateSource(data: AnyRecord): void {
         const candidateSource = data?.candidateSource || 'none';
         const mirrorDriver = data?.mirrorDriver || 'sqlite';
         const syncRequired = data?.syncRequired === true;
@@ -1437,7 +1478,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         }
       }
 
-      async function load() {
+      async function load(): Promise<void> {
         els.state.textContent = 'Cargando';
         els.state.style.color = 'var(--soft)';
         els.lastCheck.textContent = nowText();
@@ -1465,7 +1506,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         els.state.style.color = 'var(--accent)';
       }
 
-      async function boot() {
+      async function boot(): Promise<void> {
         try {
           const allowed = await isAdmin();
           if (!allowed) {
@@ -1482,7 +1523,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
 
       document.addEventListener('click', async (event) => {
         const clicked = event.target instanceof Element ? event.target : null;
-        const ignoreButton = clicked?.closest('[data-ignore-session]');
+        const ignoreButton = clicked?.closest('[data-ignore-session]') as HTMLButtonElement | null;
         if (ignoreButton) {
           const sessionId = ignoreButton.getAttribute('data-ignore-session');
           const eventId = ignoreButton.getAttribute('data-ignore-event');
@@ -1515,7 +1556,7 @@ No contará para SR/GSR y dejará de salir como pendiente. Puedes escribir un mo
           return;
         }
 
-        const unignoreButton = clicked?.closest('[data-unignore-session]');
+        const unignoreButton = clicked?.closest('[data-unignore-session]') as HTMLButtonElement | null;
         if (unignoreButton) {
           const sessionId = unignoreButton.getAttribute('data-unignore-session');
           const eventId = unignoreButton.getAttribute('data-unignore-event');
@@ -1547,7 +1588,7 @@ Si sigue en sTracker volverá a aparecer como pendiente. No modifica SR/GSR.`);
           return;
         }
 
-        const unreviewButton = clicked?.closest('[data-unreview-session]');
+        const unreviewButton = clicked?.closest('[data-unreview-session]') as HTMLButtonElement | null;
         if (unreviewButton) {
           const sessionId = unreviewButton.getAttribute('data-unreview-session');
           const eventId = unreviewButton.getAttribute('data-unreview-event');
@@ -1579,7 +1620,7 @@ Si sigue en sTracker volverá a aparecer como pendiente. No modifica SR/GSR.`);
           return;
         }
 
-        const removeButton = clicked?.closest('[data-remove-stracker]');
+        const removeButton = clicked?.closest('[data-remove-stracker]') as HTMLButtonElement | null;
         if (removeButton) {
           const eventId = removeButton.getAttribute('data-remove-stracker');
           const sessionId = removeButton.getAttribute('data-remove-session');
@@ -1611,7 +1652,7 @@ Se recalculará SR/GSR desde cero con las carreras restantes. La sesión volver�
           return;
         }
 
-        const button = clicked?.closest('[data-process-session]');
+        const button = clicked?.closest('[data-process-session]') as HTMLButtonElement | null;
         if (!button) return;
 
         const sessionId = button.getAttribute('data-process-session');

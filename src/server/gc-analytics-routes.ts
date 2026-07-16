@@ -1724,7 +1724,13 @@ async function mysqlAccountUsage(range: RequestedRange, getUserStore?: GetUserSt
      GROUP BY user_hash`,
     [bounds.from, bounds.to],
   );
-  const sessions = new Map((sessionRows || []).map((row: any) => [String(row.user_hash), toCount(row.sessions)]));
+  // GC_PHASE2F_ANALYTICS_SESSIONS_MAP_V1
+  const sessions = new Map<string, number>(
+    (sessionRows || []).map((row: any): [string, number] => [
+      String(row.user_hash),
+      toCount(row.sessions),
+    ]),
+  );
 
   const [areaRows]: any = await pool.query(
     `SELECT user_hash, area, SUM(views) AS views
