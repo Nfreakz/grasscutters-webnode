@@ -1,0 +1,452 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_ANALYTICS_ACCOUNT_USAGE_FOREVER_V4 -->
+
+<AppLayout title="Uso de cuentas | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-admin-account-usage-v1">
+    <section class="gc-admin-account-hero-v1">
+      <div>
+        <span class="gc-kicker">Analítica de cuentas</span>
+        <h1>Uso registrado</h1>
+        <p>Actividad agregada de las cuentas de GrassCutters: días activos, sesiones, páginas vistas y zonas de la web más utilizadas.</p>
+      </div>
+      <aside>
+        <span>Privacidad</span>
+        <strong>Agregado</strong>
+        <small>Sin historial de clics individual</small>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section id="accountGate" class="gc-slab gc-admin-account-gate-v1" hidden>
+      <span class="gc-kicker">Acceso</span>
+      <h2>Acceso restringido</h2>
+      <p id="accountGateText">Necesitas una cuenta administradora.</p>
+      <div class="gc-actions">
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+        <button class="gc-btn" id="accountRetry" type="button">Reintentar</button>
+      </div>
+    </section>
+
+    <section id="accountContent" class="gc-admin-account-content-v1" hidden>
+      <div class="gc-admin-account-toolbar-v1">
+        <div>
+          <label for="accountPeriod">Periodo</label>
+          <select id="accountPeriod">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="365">Último año</option>
+            <option value="all">Todo el histórico</option>
+          </select>
+        </div>
+        <div class="gc-admin-account-search-v1">
+          <label for="accountSearch">Buscar cuenta</label>
+          <input id="accountSearch" type="search" placeholder="Nombre, correo, piloto o equipo" />
+        </div>
+        <button class="gc-btn gc-btn--primary" id="accountRefresh" type="button">Actualizar</button>
+        <a class="gc-btn" href="/admin/visitas">Volver a visitas</a>
+        <span id="accountUpdated">--</span>
+      </div>
+
+      <section class="gc-admin-account-metrics-v1">
+        <article><span>Cuentas totales</span><strong id="accountsTotal">0</strong><small>no eliminadas</small></article>
+        <article><span>Activas hoy</span><strong id="accountsToday">0</strong><small>con uso público</small></article>
+        <article><span>Activas 7 días</span><strong id="accounts7">0</strong><small>cuentas distintas</small></article>
+        <article><span>Activas 30 días</span><strong id="accounts30">0</strong><small>cuentas distintas</small></article>
+        <article><span>Inactivas 30 días</span><strong id="accountsInactive">0</strong><small>sin uso medido</small></article>
+        <article><span>Cuentas medidas</span><strong id="accountsMeasured">0</strong><small>en el periodo</small></article>
+        <article><span>Vistas registradas</span><strong id="registeredViews">0</strong><small>en el periodo</small></article>
+        <article><span>Sesiones medidas</span><strong id="registeredSessions">0</strong><small>desde esta fase</small></article>
+      </section>
+
+      <section class="gc-slab gc-admin-account-table-card-v1">
+        <header>
+          <div>
+            <span class="gc-kicker">Cuentas</span>
+            <h2>Actividad por usuario</h2>
+            <p id="accountTrackingStart">La medición empieza desde esta actualización.</p>
+          </div>
+          <strong id="accountVisibleCount">0</strong>
+        </header>
+
+        <div class="gc-admin-account-table-wrap-v1">
+          <table>
+            <thead>
+              <tr>
+                <th>Cuenta</th>
+                <th>Rol / piloto</th>
+                <th>Última actividad</th>
+                <th>Días</th>
+                <th>Sesiones</th>
+                <th>Vistas</th>
+                <th>Uso principal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="accountRows">
+              <tr><td colspan="8">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="accountDetail" class="gc-admin-account-detail-v1" hidden>
+        <article class="gc-slab gc-admin-account-detail-head-v1">
+          <div>
+            <span class="gc-kicker">Detalle</span>
+            <h2 id="detailName">Cuenta</h2>
+            <p id="detailMeta">--</p>
+          </div>
+          <button class="gc-btn" id="detailClose" type="button">Cerrar</button>
+        </article>
+
+        <section class="gc-admin-account-detail-grid-v1">
+          <article class="gc-slab gc-admin-account-detail-metrics-v1">
+            <div><span>Vistas</span><strong id="detailViews">0</strong></div>
+            <div><span>Días activos</span><strong id="detailDays">0</strong></div>
+            <div><span>Sesiones</span><strong id="detailSessions">0</strong></div>
+            <div><span>Primera actividad</span><strong id="detailFirst">--</strong></div>
+            <div><span>Última actividad</span><strong id="detailLast">--</strong></div>
+          </article>
+
+          <article class="gc-slab gc-admin-account-areas-v1">
+            <header><span class="gc-kicker">Uso</span><h2>Zonas utilizadas</h2></header>
+            <div id="detailAreas"></div>
+          </article>
+        </section>
+
+        <article class="gc-slab gc-admin-account-chart-card-v1">
+          <header><span class="gc-kicker">Actividad</span><h2>Vistas por día</h2></header>
+          <div id="detailChart" class="gc-admin-account-bars-v1"></div>
+        </article>
+      </section>
+
+      <section class="gc-slab gc-admin-account-privacy-v1">
+        <div>
+          <span class="gc-kicker">Criterio</span>
+          <h2>Qué se conserva</h2>
+        </div>
+        <ul>
+          <li>Se guardan resúmenes diarios de visitas, sesiones y zonas generales de la web.</li>
+          <li>No se conserva una cronología de cada clic ni contenido introducido en formularios.</li>
+          <li>Las rutas de login, recuperación, administración y API quedan excluidas.</li>
+          <li>Los resúmenes agregados se conservan sin caducidad para mantener el histórico.</li>
+        </ul>
+      </section>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-admin-account-usage-v1{display:grid;gap:clamp(18px,2.4vw,28px);max-width:1480px;margin-inline:auto;padding-inline:clamp(8px,1.2vw,18px)}
+    .gc-admin-account-hero-v1{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.34fr);gap:24px;align-items:center;padding:clamp(26px,3.4vw,42px);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:28px;background:radial-gradient(circle at 82% 12%,color-mix(in srgb,var(--accent2) 12%,transparent),transparent 22rem),linear-gradient(120deg,rgba(255,255,255,.07),rgba(255,255,255,.018));box-shadow:0 18px 70px rgba(0,0,0,.2)}
+    .gc-admin-account-hero-v1 h1{margin:8px 0 12px;font-size:clamp(3rem,7vw,6rem);line-height:.88;letter-spacing:-.07em;text-transform:uppercase}
+    .gc-admin-account-hero-v1 p{max-width:880px;margin:0;color:var(--soft);line-height:1.55}
+    .gc-admin-account-hero-v1 aside{display:grid;gap:6px;padding:18px;border:1px solid var(--line);border-radius:20px;background:rgba(0,0,0,.18)}
+    .gc-admin-account-hero-v1 aside span,.gc-admin-account-toolbar-v1 label{color:var(--dim);font-size:.68rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-account-hero-v1 aside strong{font-size:1.5rem;color:var(--accent)}
+    .gc-admin-account-hero-v1 aside small{color:var(--soft)}
+    .gc-admin-account-content-v1{display:grid;gap:18px}
+    .gc-admin-account-toolbar-v1{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--line)}
+    .gc-admin-account-toolbar-v1>div{display:grid;gap:6px}
+    .gc-admin-account-toolbar-v1 select,.gc-admin-account-toolbar-v1 input{min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3);color:var(--text);font:inherit}
+    .gc-admin-account-search-v1{min-width:min(100%,320px)}
+    .gc-admin-account-toolbar-v1>span{margin-left:auto;color:var(--dim);font-size:.78rem}
+    .gc-admin-account-metrics-v1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-admin-account-metrics-v1 article{display:grid;gap:4px;padding:18px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}
+    .gc-admin-account-metrics-v1 span,.gc-admin-account-detail-metrics-v1 span{color:var(--dim);font-size:.7rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-account-metrics-v1 strong{font-size:clamp(1.8rem,4vw,3rem);line-height:1}
+    .gc-admin-account-metrics-v1 small{color:var(--soft)}
+    .gc-admin-account-table-card-v1{display:grid;gap:16px;min-width:0}
+    .gc-admin-account-table-card-v1>header,.gc-admin-account-detail-head-v1,.gc-admin-account-areas-v1 header,.gc-admin-account-chart-card-v1 header{display:flex;justify-content:space-between;align-items:end;gap:16px}
+    .gc-admin-account-table-card-v1 h2,.gc-admin-account-detail-head-v1 h2,.gc-admin-account-areas-v1 h2,.gc-admin-account-chart-card-v1 h2,.gc-admin-account-privacy-v1 h2{margin:4px 0 0}
+    .gc-admin-account-table-card-v1 header p{margin:6px 0 0;color:var(--soft)}
+    .gc-admin-account-table-card-v1 header>strong{font-size:2rem;color:var(--accent)}
+    .gc-admin-account-table-wrap-v1{overflow:auto}
+    .gc-admin-account-table-card-v1 table{width:100%;border-collapse:collapse;min-width:980px}
+    .gc-admin-account-table-card-v1 th,.gc-admin-account-table-card-v1 td{padding:12px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+    .gc-admin-account-table-card-v1 th{color:var(--dim);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase}
+    .gc-admin-account-table-card-v1 td strong,.gc-admin-account-table-card-v1 td small{display:block}
+    .gc-admin-account-table-card-v1 td small{margin-top:3px;color:var(--dim)}
+    .gc-admin-account-table-card-v1 tr.is-disabled{opacity:.58}
+    .gc-admin-account-detail-v1{display:grid;gap:16px;scroll-margin-top:20px}
+    .gc-admin-account-detail-grid-v1{display:grid;grid-template-columns:minmax(0,.65fr) minmax(0,1fr);gap:16px}
+    .gc-admin-account-detail-metrics-v1{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .gc-admin-account-detail-metrics-v1 div{display:grid;gap:4px;padding:12px;border:1px solid var(--line);border-radius:13px}
+    .gc-admin-account-detail-metrics-v1 strong{font-size:1.2rem}
+    .gc-admin-account-areas-v1{display:grid;gap:14px}
+    .gc-admin-account-areas-v1>div{display:grid;gap:8px}
+    .gc-admin-account-area-row-v1{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+    .gc-admin-account-bars-v1{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(24px,1fr);align-items:end;gap:7px;min-height:230px;overflow:auto;padding-top:16px}
+    .gc-admin-account-bar-v1{display:grid;grid-template-rows:1fr auto;gap:8px;min-width:24px;height:210px;align-items:end}
+    .gc-admin-account-bar-v1 i{display:block;width:100%;min-height:2px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 38%,transparent))}
+    .gc-admin-account-bar-v1 span{color:var(--dim);font-size:.62rem;text-align:center;white-space:nowrap}
+    .gc-admin-account-bar-v1[data-value]::before{content:attr(data-value);align-self:end;color:var(--soft);font-size:.66rem;text-align:center}
+    .gc-admin-account-privacy-v1{display:grid;grid-template-columns:minmax(0,.45fr) minmax(0,1fr);gap:24px}
+    .gc-admin-account-privacy-v1 ul{display:grid;gap:8px;margin:0;padding-left:20px;color:var(--soft)}
+    @media(max-width:960px){.gc-admin-account-hero-v1,.gc-admin-account-detail-grid-v1,.gc-admin-account-privacy-v1{grid-template-columns:1fr}.gc-admin-account-metrics-v1{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:580px){.gc-admin-account-metrics-v1,.gc-admin-account-detail-metrics-v1{grid-template-columns:1fr}.gc-admin-account-toolbar-v1>span{width:100%;margin-left:0}.gc-admin-account-hero-v1{padding:22px}.gc-admin-account-hero-v1 h1{font-size:3rem}}
+  </style>
+
+  <script>
+    type AccountRow = {
+      id: string;
+      email: string;
+      displayName: string;
+      role: string;
+      pilotName: string | null;
+      teamName: string | null;
+      createdAt: string | null;
+      lastLoginAt: string | null;
+      disabled: boolean;
+      deleted: boolean;
+      views: number;
+      sessions: number;
+      activeDays: number;
+      firstActivityAt: string | null;
+      lastActivityAt: string | null;
+      topArea: string | null;
+      topAreaViews: number;
+    };
+
+    type AccountResponse = {
+      ok: boolean;
+      generatedAt: string;
+      period: { all: boolean; days: number | null; from: string; to: string };
+      totals: {
+        accounts: number;
+        activeToday: number;
+        active7Days: number;
+        active30Days: number;
+        inactive30Days: number;
+        measuredAccounts: number;
+        registeredViews: number;
+        registeredSessions: number;
+      };
+      trackingStartedAt: string | null;
+      items: AccountRow[];
+      message?: string;
+    };
+
+    type DetailResponse = {
+      ok: boolean;
+      account: {
+        id: string;
+        email: string;
+        displayName: string;
+        role: string;
+        pilotName: string | null;
+        teamName: string | null;
+      };
+      totals: {
+        views: number;
+        activeDays: number;
+        sessions: number;
+        firstActivityAt: string | null;
+        lastActivityAt: string | null;
+      };
+      daily: Array<{ day: string; views: number }>;
+      areas: Array<{ key: string; views: number }>;
+      message?: string;
+    };
+
+    const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+    const els = {
+      gate: $('accountGate'),
+      gateText: $('accountGateText'),
+      retry: $<HTMLButtonElement>('accountRetry'),
+      content: $('accountContent'),
+      period: $<HTMLSelectElement>('accountPeriod'),
+      search: $<HTMLInputElement>('accountSearch'),
+      refresh: $<HTMLButtonElement>('accountRefresh'),
+      updated: $('accountUpdated'),
+      total: $('accountsTotal'),
+      today: $('accountsToday'),
+      days7: $('accounts7'),
+      days30: $('accounts30'),
+      inactive: $('accountsInactive'),
+      measured: $('accountsMeasured'),
+      views: $('registeredViews'),
+      sessions: $('registeredSessions'),
+      trackingStart: $('accountTrackingStart'),
+      visibleCount: $('accountVisibleCount'),
+      rows: $<HTMLTableSectionElement>('accountRows'),
+      detail: $('accountDetail'),
+      detailName: $('detailName'),
+      detailMeta: $('detailMeta'),
+      detailClose: $<HTMLButtonElement>('detailClose'),
+      detailViews: $('detailViews'),
+      detailDays: $('detailDays'),
+      detailSessions: $('detailSessions'),
+      detailFirst: $('detailFirst'),
+      detailLast: $('detailLast'),
+      detailAreas: $('detailAreas'),
+      detailChart: $('detailChart'),
+    };
+
+    const numberFormat = new Intl.NumberFormat('es-ES');
+    let currentItems: AccountRow[] = [];
+
+    const esc = (value: unknown): string => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+    } as Record<string, string>)[char] ?? char);
+    const num = (value: unknown): string => numberFormat.format(Number(value) || 0);
+    const dateText = (value: unknown): string => value
+      ? new Date(String(value)).toLocaleString('es-ES')
+      : 'Sin actividad';
+    const relativeText = (value: unknown): string => {
+      if (!value) return 'Sin actividad';
+      const ms = Date.now() - new Date(String(value)).getTime();
+      if (!Number.isFinite(ms)) return dateText(value);
+      const minutes = Math.floor(ms / 60000);
+      if (minutes < 1) return 'Ahora';
+      if (minutes < 60) return `Hace ${minutes} min`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `Hace ${hours} h`;
+      const days = Math.floor(hours / 24);
+      if (days < 60) return `Hace ${days} días`;
+      return dateText(value);
+    };
+
+    async function fetchJson<T>(url: string): Promise<T> {
+      const response = await fetch(url, { credentials:'include', cache:'no-store', headers:{ accept:'application/json' } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        const error = new Error(data.message || `HTTP ${response.status}`) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+      return data as T;
+    }
+
+    function renderRows(): void {
+      const search = els.search.value.trim().toLowerCase();
+      const filtered = currentItems.filter((item) => {
+        if (!search) return true;
+        return [
+          item.displayName,
+          item.email,
+          item.pilotName,
+          item.teamName,
+          item.role,
+          item.topArea,
+        ].some((value) => String(value || '').toLowerCase().includes(search));
+      });
+
+      els.visibleCount.textContent = num(filtered.length);
+      els.rows.innerHTML = filtered.length
+        ? filtered.map((item) => {
+            const status = item.deleted ? 'Eliminada' : item.disabled ? 'Desactivada' : item.views > 0 ? 'Activa' : 'Sin uso';
+            return `<tr class="${item.disabled || item.deleted ? 'is-disabled' : ''}">
+              <td><strong>${esc(item.displayName)}</strong><small>${esc(item.email)} · ${esc(status)}</small></td>
+              <td><strong>${esc(item.role)}</strong><small>${esc(item.pilotName || item.teamName || 'Sin piloto/equipo')}</small></td>
+              <td><strong title="${esc(dateText(item.lastActivityAt))}">${esc(relativeText(item.lastActivityAt))}</strong><small>Login: ${esc(relativeText(item.lastLoginAt))}</small></td>
+              <td>${num(item.activeDays)}</td>
+              <td>${num(item.sessions)}</td>
+              <td>${num(item.views)}</td>
+              <td><strong>${esc(item.topArea || 'Sin uso')}</strong><small>${num(item.topAreaViews)} vistas</small></td>
+              <td><button class="gc-btn gc-btn--small" type="button" data-account-id="${esc(item.id)}">Detalle</button></td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="8">No hay cuentas que coincidan con la búsqueda.</td></tr>';
+
+      els.rows.querySelectorAll<HTMLButtonElement>('[data-account-id]').forEach((button) => {
+        button.addEventListener('click', () => loadDetail(button.dataset.accountId || ''));
+      });
+    }
+
+    function renderSummary(data: AccountResponse): void {
+      els.total.textContent = num(data.totals.accounts);
+      els.today.textContent = num(data.totals.activeToday);
+      els.days7.textContent = num(data.totals.active7Days);
+      els.days30.textContent = num(data.totals.active30Days);
+      els.inactive.textContent = num(data.totals.inactive30Days);
+      els.measured.textContent = num(data.totals.measuredAccounts);
+      els.views.textContent = num(data.totals.registeredViews);
+      els.sessions.textContent = num(data.totals.registeredSessions);
+      els.updated.textContent = `Actualizado ${new Date(data.generatedAt).toLocaleString('es-ES')}`;
+      els.trackingStart.textContent = data.trackingStartedAt
+        ? `Actividad por cuenta recopilada desde ${dateText(data.trackingStartedAt)}.`
+        : 'La medición de cuentas empieza desde esta actualización.';
+      currentItems = data.items || [];
+      renderRows();
+    }
+
+    function renderDetail(data: DetailResponse): void {
+      els.detail.hidden = false;
+      els.detailName.textContent = data.account.displayName;
+      els.detailMeta.textContent = [
+        data.account.email,
+        data.account.role,
+        data.account.pilotName,
+        data.account.teamName,
+      ].filter(Boolean).join(' · ');
+      els.detailViews.textContent = num(data.totals.views);
+      els.detailDays.textContent = num(data.totals.activeDays);
+      els.detailSessions.textContent = num(data.totals.sessions);
+      els.detailFirst.textContent = dateText(data.totals.firstActivityAt);
+      els.detailLast.textContent = dateText(data.totals.lastActivityAt);
+
+      els.detailAreas.innerHTML = data.areas.length
+        ? data.areas.map((row) => `<div class="gc-admin-account-area-row-v1"><span>${esc(row.key)}</span><strong>${num(row.views)}</strong></div>`).join('')
+        : '<p class="gc-note">Sin actividad medida en este periodo.</p>';
+
+      const max = Math.max(1, ...data.daily.map((row) => Number(row.views) || 0));
+      els.detailChart.innerHTML = data.daily.length
+        ? data.daily.map((row) => {
+            const height = Math.max(2, Math.round(((Number(row.views) || 0) / max) * 150));
+            const label = new Date(`${row.day}T12:00:00`).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' });
+            return `<div class="gc-admin-account-bar-v1" data-value="${esc(num(row.views))}" title="${esc(`${row.day}: ${num(row.views)} vistas`)}"><i style="height:${height}px"></i><span>${esc(label)}</span></div>`;
+          }).join('')
+        : '<p class="gc-note">Sin actividad medida en este periodo.</p>';
+
+      els.detail.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+
+    async function loadDetail(userId: string): Promise<void> {
+      if (!userId) return;
+      try {
+        const data = await fetchJson<DetailResponse>(
+          `/api/admin/analytics/accounts/${encodeURIComponent(userId)}?days=${encodeURIComponent(els.period.value)}`,
+        );
+        renderDetail(data);
+      } catch (error) {
+        els.gateText.textContent = error instanceof Error ? error.message : 'No se pudo cargar el detalle.';
+        els.gate.hidden = false;
+      }
+    }
+
+    async function load(): Promise<void> {
+      els.refresh.disabled = true;
+      els.refresh.textContent = 'Cargando...';
+      try {
+        const data = await fetchJson<AccountResponse>(
+          `/api/admin/analytics/accounts?days=${encodeURIComponent(els.period.value)}`,
+        );
+        els.gate.hidden = true;
+        els.content.hidden = false;
+        renderSummary(data);
+        els.detail.hidden = true;
+      } catch (error) {
+        const typed = error as Error & { status?: number };
+        els.gateText.textContent = typed.message || 'No se pudo cargar el uso de cuentas.';
+        els.gate.hidden = false;
+        els.content.hidden = true;
+      } finally {
+        els.refresh.disabled = false;
+        els.refresh.textContent = 'Actualizar';
+      }
+    }
+
+    els.period.addEventListener('change', load);
+    els.search.addEventListener('input', renderRows);
+    els.refresh.addEventListener('click', load);
+    els.retry.addEventListener('click', load);
+    els.detailClose.addEventListener('click', () => { els.detail.hidden = true; });
+    load();
+  </script>
+</AppLayout>

@@ -16832,7 +16832,7 @@ app.get('/api/debug/runtime', (_req, res) => {
   });
 });
 
-registerGcAnalyticsRoutes(app, { rootDir, requireAdmin });
+registerGcAnalyticsRoutes(app, { rootDir, requireAdmin, getAuthContext: getAuthContextAsync, getUserStore: readUserStoreAsync });
 
 if (!fs.existsSync(distDir)) {
   console.warn(`[GC] No existe ${distDir}. Ejecuta npm run build antes de npm start.`);
