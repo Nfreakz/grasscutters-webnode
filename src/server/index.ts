@@ -668,9 +668,11 @@ type AppUserStore = {
 
 type DisplayNameKind = 'driver' | 'car' | 'track';
 
+/* GC_HOTLAPS_GT4_SOURCE_SCOPED_NAMES_FIX_V3 */
 type DisplayNameEntry = {
   id: string;
   kind: DisplayNameKind;
+  sourceKey: string;
   sourceId: number | null;
   sourceCode: string | null;
   sourceName: string;
@@ -832,6 +834,23 @@ function normalizeDisplayNameKey(value: unknown) {
   return String(value ?? '').trim().toLowerCase();
 }
 
+function normalizeDisplayNameSourceKey(value: unknown) {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32);
+  if (['gt4', 'supra', 'supra_gt4', 'supra-gt4'].includes(normalized)) return 'gt4';
+  if (['main', 'liga', 'grasscutters', 'weekly'].includes(normalized)) return 'main';
+  return normalized || 'main';
+}
+
+function displayNameSourceKeyFromId(value: unknown) {
+  const match = /^source:([^:]+):/i.exec(String(value ?? '').trim());
+  return normalizeDisplayNameSourceKey(match?.[1] || 'main');
+}
+
 function parseDisplayNameStoreFromJsonFile(filePath: string): DisplayNameStore | null {
   const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
   if (!stats) return null;
@@ -845,6 +864,7 @@ function parseDisplayNameStoreFromJsonFile(filePath: string): DisplayNameStore |
         ? parsed.entries.map((entry: any) => ({
             id: String(entry.id || crypto.randomUUID()),
             kind: sanitizeDisplayNameKind(entry.kind) || 'driver',
+            sourceKey: normalizeDisplayNameSourceKey(entry.sourceKey ?? displayNameSourceKeyFromId(entry.id)),
             sourceId: Number.isFinite(Number(entry.sourceId)) ? Number(entry.sourceId) : null,
             sourceCode: compactNullableText(entry.sourceCode),
             sourceName: compactNullableText(entry.sourceName) || '',
@@ -939,6 +959,7 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
       entries: rows.map((row: any) => ({
         id: String(row.id),
         kind: sanitizeDisplayNameKind(row.kind) || 'driver',
+        sourceKey: displayNameSourceKeyFromId(row.id),
         sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
         sourceCode: compactNullableText(row.source_code),
         sourceName: compactNullableText(row.source_name) || '',
@@ -963,6 +984,7 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
     entries: rows.map((row: any) => ({
       id: String(row.id),
       kind: sanitizeDisplayNameKind(row.kind) || 'driver',
+      sourceKey: displayNameSourceKeyFromId(row.id),
       sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
       sourceCode: compactNullableText(row.source_code),
       sourceName: compactNullableText(row.source_name) || '',
@@ -1057,7 +1079,15 @@ async function writeDisplayNameStoreAsync(store: DisplayNameStore) {
 }
 
 
-function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown) {
+function findDisplayNameEntry(
+  store: DisplayNameStore,
+  kind: DisplayNameKind,
+  sourceId: unknown,
+  sourceCode: unknown,
+  sourceName: unknown,
+  sourceKey: unknown = 'main',
+) {
+  const wantedSourceKey = normalizeDisplayNameSourceKey(sourceKey);
   const numericId = Number(sourceId);
   const hasId = Number.isFinite(numericId);
   const code = normalizeDisplayNameKey(sourceCode);
@@ -1065,6 +1095,8 @@ function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, so
 
   return store.entries.find((entry) => {
     if (!entry.enabled || entry.kind !== kind) return false;
+    const entrySourceKey = normalizeDisplayNameSourceKey(entry.sourceKey ?? displayNameSourceKeyFromId(entry.id));
+    if (entrySourceKey !== wantedSourceKey) return false;
 
     const entryHasId = entry.sourceId !== null && entry.sourceId !== undefined && Number.isFinite(Number(entry.sourceId));
     const entryCode = normalizeDisplayNameKey(entry.sourceCode);
@@ -1073,27 +1105,41 @@ function findDisplayNameEntry(store: DisplayNameStore, kind: DisplayNameKind, so
     if (hasId && entryHasId && Number(entry.sourceId) === numericId) return true;
     if (code && entryCode && entryCode === code) return true;
 
-    // Los pilotos pueden compartir nombre visible en stracker. Si la vuelta trae PlayerId
-    // o SteamGuid, NO hacemos fallback por nombre para evitar que dos "Neo" reciban el
-    // mismo override. Solo usamos sourceName cuando no hay identidad tÃƒÂ©cnica disponible.
-    if (kind === 'driver' && (hasId || code)) return false;
+    // Con identidad técnica disponible no hacemos fallback por nombre. Así un nombre
+    // repetido o contaminado no puede renombrar todos los coches/circuitos de una fuente.
+    if (hasId || code) return false;
 
     if (name && entryName && entryName === name) return true;
     return false;
   }) ?? null;
 }
 
-function applyDisplayName(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown, fallback: string) {
-  const entry = findDisplayNameEntry(readDisplayNameStore(), kind, sourceId, sourceCode, sourceName);
+function applyDisplayName(
+  kind: DisplayNameKind,
+  sourceId: unknown,
+  sourceCode: unknown,
+  sourceName: unknown,
+  fallback: string,
+  sourceKey: unknown = 'main',
+) {
+  const entry = findDisplayNameEntry(readDisplayNameStore(), kind, sourceId, sourceCode, sourceName, sourceKey);
   return compactNullableText(entry?.displayName) || fallback;
 }
 
-function makeEntryId(kind: DisplayNameKind, sourceId: unknown, sourceCode: unknown, sourceName: unknown) {
+function makeEntryId(
+  kind: DisplayNameKind,
+  sourceId: unknown,
+  sourceCode: unknown,
+  sourceName: unknown,
+  sourceKey: unknown = 'main',
+) {
+  const scopedSourceKey = normalizeDisplayNameSourceKey(sourceKey);
+  const prefix = `source:${scopedSourceKey}:${kind}`;
   const id = Number(sourceId);
-  if (Number.isFinite(id)) return `${kind}:${id}`;
+  if (Number.isFinite(id)) return `${prefix}:id:${id}`;
   const code = normalizeDisplayNameKey(sourceCode);
-  if (code) return `${kind}:code:${code}`;
-  return `${kind}:name:${normalizeDisplayNameKey(sourceName) || crypto.randomUUID()}`;
+  if (code) return `${prefix}:code:${code}`;
+  return `${prefix}:name:${normalizeDisplayNameKey(sourceName) || crypto.randomUUID()}`;
 }
 
 function cleanDisplayNameInput(value: unknown) {
@@ -1147,7 +1193,8 @@ function buildDisplayNameCatalogItem(
   store = readDisplayNameStore(),
   meta: PlainObject = {}
 ) {
-  const entry = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+  const sourceKey = normalizeDisplayNameSourceKey(meta.sourceKey);
+  const entry = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName, sourceKey);
   const displayName = compactNullableText(entry?.displayName) || autoName;
   return {
     kind,
@@ -1160,8 +1207,8 @@ function buildDisplayNameCatalogItem(
     entryId: entry?.id ?? null,
     notes: entry?.notes ?? null,
     enabled: entry?.enabled ?? true,
-    sourceKey: compactNullableText(meta.sourceKey) || 'main',
-    sourceLabel: compactNullableText(meta.sourceLabel) || (compactNullableText(meta.sourceKey) || 'Liga GrassCutters'),
+    sourceKey,
+    sourceLabel: compactNullableText(meta.sourceLabel) || (sourceKey === 'gt4' ? 'Supra GT4' : 'Liga GrassCutters'),
     usageCount: numberOrNull(meta.usageCount) ?? 0,
     lastSeenAt: numberOrNull(meta.lastSeenAt) ?? null
   };
@@ -4660,9 +4707,12 @@ async function readJoinedLapsFromMirrorV2(req?: express.Request) {
       // En fuentes externas como GT4 los IDs numéricos de sTracker pueden colisionar con main.
       // Para aplicar nombres visibles, priorizamos código/nombre técnico y anulamos el ID.
       if (sourceKey && sourceKey !== 'main') {
-        const driverDisplay = applyDisplayName('driver', null, row.SteamGuid, row.DriverName, lap.driverName);
-        const carDisplay = applyDisplayName('car', null, row.Car, row.UiCarName, lap.carName);
-        const trackDisplay = applyDisplayName('track', null, row.Track, row.UiTrackName, lap.trackName);
+        const driverAuto = compactNullableText(row.DriverName) || 'Piloto desconocido';
+        const carAuto = autoTitleFromCode(row.Car, 'Coche desconocido');
+        const trackAuto = autoTitleFromCode(row.Track, 'Circuito desconocido');
+        const driverDisplay = applyDisplayName('driver', null, row.SteamGuid, driverAuto, driverAuto, sourceKey);
+        const carDisplay = applyDisplayName('car', null, row.Car, carAuto, carAuto, sourceKey);
+        const trackDisplay = applyDisplayName('track', null, row.Track, trackAuto, trackAuto, sourceKey);
         lap.driverName = driverDisplay;
         lap.playerName = driverDisplay;
         lap.carName = carDisplay;
@@ -9907,13 +9957,18 @@ async function buildDisplayNameCatalog() {
         const sourceKey = compactNullableText(row.source_key) || 'main';
         const sourceLabel = sourceLabelFor(sourceKey, row.source_label);
         const sourceCode = compactNullableText(row.source_code);
-        const sourceName = compactNullableText(row.source_name) || sourceCode;
+        const sourceName = sourceKey === 'main'
+          ? compactNullableText(row.source_name) || sourceCode
+          : autoTitleFromCode(sourceCode, 'Coche desconocido');
+        const autoName = sourceKey === 'main'
+          ? compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Coche desconocido')
+          : autoTitleFromCode(sourceCode, 'Coche desconocido');
         pushCatalogItem('cars', buildDisplayNameCatalogItem(
           'car',
           row.source_id,
           sourceCode,
           sourceName,
-          compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Coche desconocido'),
+          autoName,
           store,
           { sourceKey, sourceLabel, usageCount: row.usage_count, lastSeenAt: row.last_seen_at }
         ));
@@ -9938,13 +9993,18 @@ async function buildDisplayNameCatalog() {
         const sourceKey = compactNullableText(row.source_key) || 'main';
         const sourceLabel = sourceLabelFor(sourceKey, row.source_label);
         const sourceCode = compactNullableText(row.source_code);
-        const sourceName = compactNullableText(row.source_name) || sourceCode;
+        const sourceName = sourceKey === 'main'
+          ? compactNullableText(row.source_name) || sourceCode
+          : autoTitleFromCode(sourceCode, 'Circuito desconocido');
+        const autoName = sourceKey === 'main'
+          ? compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Circuito desconocido')
+          : autoTitleFromCode(sourceCode, 'Circuito desconocido');
         pushCatalogItem('tracks', buildDisplayNameCatalogItem(
           'track',
           row.source_id,
           sourceCode,
           sourceName,
-          compactNullableText(row.auto_name) || autoTitleFromCode(sourceCode, 'Circuito desconocido'),
+          autoName,
           store,
           { sourceKey, sourceLabel, usageCount: row.usage_count, lastSeenAt: row.last_seen_at }
         ));
@@ -10133,16 +10193,18 @@ app.post('/api/admin/name-filters/bulk', async (req, res) => {
     const sourceCode = compactNullableText(item?.sourceCode);
     const sourceId = numberOrNull(item?.sourceId);
     const notes = compactNullableText(item?.notes);
+    const sourceKey = normalizeDisplayNameSourceKey(item?.sourceKey);
 
     if (!kind || !displayName) continue;
 
-    const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+    const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName, sourceKey);
     const before = existing ? { ...existing } : null;
 
     if (existing) {
       existing.sourceId = sourceId;
       existing.sourceCode = sourceCode;
       existing.sourceName = sourceName || existing.sourceName;
+      existing.sourceKey = sourceKey;
       existing.displayName = displayName;
       existing.notes = notes;
       existing.enabled = item?.enabled !== false;
@@ -10150,8 +10212,9 @@ app.post('/api/admin/name-filters/bulk', async (req, res) => {
       changes.push({ before, after: { ...existing } });
     } else {
       const created = {
-        id: makeEntryId(kind, sourceId, sourceCode, sourceName),
+        id: makeEntryId(kind, sourceId, sourceCode, sourceName, sourceKey),
         kind,
+        sourceKey,
         sourceId,
         sourceCode,
         sourceName: sourceName || sourceCode || displayName,
@@ -10191,6 +10254,7 @@ app.post('/api/admin/name-filters', async (req, res) => {
   const sourceCode = compactNullableText(req.body?.sourceCode);
   const sourceId = numberOrNull(req.body?.sourceId);
   const notes = compactNullableText(req.body?.notes);
+  const sourceKey = normalizeDisplayNameSourceKey(req.body?.sourceKey);
 
   if (!kind) {
     res.status(400).json({ ok: false, message: 'Tipo no vÃƒÂ¡lido. Usa driver, car o track.' });
@@ -10203,7 +10267,7 @@ app.post('/api/admin/name-filters', async (req, res) => {
   }
 
   const store = await readDisplayNameStoreAsync(true);
-  const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName);
+  const existing = findDisplayNameEntry(store, kind, sourceId, sourceCode, sourceName, sourceKey);
   const now = new Date().toISOString();
 
   const beforeEntry = existing ? { ...existing } : null;
@@ -10213,6 +10277,7 @@ app.post('/api/admin/name-filters', async (req, res) => {
     existing.sourceId = sourceId;
     existing.sourceCode = sourceCode;
     existing.sourceName = sourceName || existing.sourceName;
+    existing.sourceKey = sourceKey;
     existing.displayName = displayName;
     existing.notes = notes;
     existing.enabled = req.body?.enabled !== false;
@@ -10220,8 +10285,9 @@ app.post('/api/admin/name-filters', async (req, res) => {
     afterEntry = { ...existing };
   } else {
     afterEntry = {
-      id: makeEntryId(kind, sourceId, sourceCode, sourceName),
+      id: makeEntryId(kind, sourceId, sourceCode, sourceName, sourceKey),
       kind,
+      sourceKey,
       sourceId,
       sourceCode,
       sourceName: sourceName || sourceCode || displayName,
@@ -10239,7 +10305,7 @@ app.post('/api/admin/name-filters', async (req, res) => {
   await writeAdminAuditLog(req, adminAccess, beforeEntry ? 'display_name.update' : 'display_name.create', 'display_name', afterEntry.id, beforeEntry, afterEntry);
   res.json({
     ok: true,
-    entry: findDisplayNameEntry(await readDisplayNameStoreAsync(true), kind, sourceId, sourceCode, sourceName),
+    entry: findDisplayNameEntry(await readDisplayNameStoreAsync(true), kind, sourceId, sourceCode, sourceName, sourceKey),
     storage: getDisplayNamesDbInfo(),
     message: 'Nombre visible guardado correctamente.'
   });
@@ -10257,18 +10323,19 @@ app.post('/api/admin/name-filters/delete', async (req, res) => {
   const sourceId = numberOrNull(req.body?.sourceId);
   const sourceCode = compactNullableText(req.body?.sourceCode);
   const sourceName = compactNullableText(req.body?.sourceName);
+  const sourceKey = normalizeDisplayNameSourceKey(req.body?.sourceKey);
 
   const store = await readDisplayNameStoreAsync(true);
   const before = store.entries.length;
   store.entries = store.entries.filter((entry) => {
     if (entryId && entry.id === entryId) return false;
-    if (kind && findDisplayNameEntry({ ...store, entries: [entry] }, kind, sourceId, sourceCode, sourceName)) return false;
+    if (kind && findDisplayNameEntry({ ...store, entries: [entry] }, kind, sourceId, sourceCode, sourceName, sourceKey)) return false;
     return true;
   });
 
   await writeDisplayNameStoreAsync(store);
   invalidateStrackerRuntimeCache('display-name.delete');
-  await writeAdminAuditLog(req, adminAccess, 'display_name.delete', 'display_name', entryId || null, { kind, entryId, sourceId, sourceCode, sourceName }, { removed: before - store.entries.length });
+  await writeAdminAuditLog(req, adminAccess, 'display_name.delete', 'display_name', entryId || null, { kind, entryId, sourceKey, sourceId, sourceCode, sourceName }, { removed: before - store.entries.length });
   res.json({
     ok: true,
     removed: before - store.entries.length,
