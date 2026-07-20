@@ -1005,7 +1005,8 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
   app.get('/api/admin/acsm/championship/inspect', async (req, res) => {
     if (!(await requireAcsmAdmin(req, res, requireAdmin))) return;
 
-    const config = getAcsmChampionshipConfig();
+    // GC_HOME_GT4_ACSM_TRACK_IMAGE_FIX_V1
+    const config = getAcsmChampionshipConfig(req.query.source || req.query.championship || req.query.server);
 
     try {
       const raw = await fetchJsonText(config.exportUrl);

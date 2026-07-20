@@ -2970,9 +2970,79 @@ const home2ArchiveSeed: unknown[] = [];
         }
       };
 
-      const setChampionshipTrackImage = async (block: any, title: unknown, event: any, _source: string) => {
+      /* GC_HOME_GT4_ACSM_TRACK_IMAGE_FIX_V1 */
+      const exactTrackAssetSlug = (value: unknown): string => String(value ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\.(kn5|ini|json|txt|png|jpe?g|webp|avif|svg)$/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+      const championshipExactTrackCandidates = (title: unknown, event: any) => {
+        const technicalValues = [
+          first(event, ['trackRaw', 'trackCode', 'TrackCode', 'Track', 'trackData.rawCode', 'trackData.code', 'trackData.familyKey', 'trackData.rawName'], ''),
+          first(event, ['trackName', 'TrackName'], '')
+        ].filter(Boolean);
+
+        const seeds = technicalValues.length ? technicalValues : [title].filter(Boolean);
+        const aliases = [...new Set(seeds.map(exactTrackAssetSlug).filter(Boolean))];
+        const extensions = ['webp', 'jpg', 'png', 'jpeg', 'avif'];
+        const generated: string[] = [];
+
+        aliases.forEach((alias) => {
+          extensions.forEach((ext) => {
+            generated.push(`/images/tracks/${encodeURIComponent(alias)}.${ext}`);
+            generated.push(`/imagenes/tracks/${encodeURIComponent(alias)}.${ext}`);
+          });
+        });
+
+        const image = event?.trackImage || event?.trackData?.image || {};
+        const explicit = [
+          image?.primary,
+          ...(Array.isArray(image?.candidates) ? image.candidates : []),
+          event?.trackAssets?.photo,
+          ...(Array.isArray(event?.trackPhotoCandidates) ? event.trackPhotoCandidates : [])
+        ].filter(Boolean).map(String);
+
+        const exactExplicit = explicit.filter((url) => {
+          let decoded = String(url || '');
+          try { decoded = decodeURIComponent(decoded); } catch (_) {}
+          const cleanUrl = decoded.split('?')[0].split('#')[0];
+          const basename = cleanUrl.split('/').pop() || cleanUrl;
+          const candidateSlug = exactTrackAssetSlug(basename);
+          return aliases.some((alias) =>
+            candidateSlug === alias ||
+            candidateSlug.startsWith(`${alias}_`) ||
+            candidateSlug.endsWith(`_${alias}`)
+          );
+        });
+
+        return {
+          aliases,
+          technicalValues: technicalValues.map(String),
+          candidates: [...new Set([...generated, ...exactExplicit].filter(Boolean))]
+        };
+      };
+
+      const setChampionshipTrackImage = async (block: any, title: unknown, event: any, source: string) => {
         const img = q('[data-home2-champ-track-image]', block) as HTMLImageElement | null;
         if (!img) return;
+
+        // GT4 usa primero el código técnico procedente del combo/ACSM. No se permite
+        // buscar solo por "Valencia", "GP", etc., porque puede elegir otro trazado.
+        if (source === 'gt4') {
+          const exact = championshipExactTrackCandidates(title, event);
+          if (exact.aliases.length) {
+            setImageWithFallbacks(img, exact.candidates, FALLBACK_TRACK);
+            img.dataset.gcHomeChampImageRuntime = 'v34-gt4-acsm-exact';
+            img.dataset.gcHomeChampTrackRaw = exact.technicalValues[0] || String(title || '');
+            img.dataset.gcHomeChampTrackAliases = exact.aliases.join(',');
+            return;
+          }
+        }
+
+        // Liga semanal conserva el resolver ya existente.
         const values = [
           title,
           first(event, ['trackName', 'trackRaw', 'trackCode', 'track', 'name', 'Name', 'title'], ''),
@@ -2983,7 +3053,7 @@ const home2ArchiveSeed: unknown[] = [];
             try {
               const ok = await (window as any).GCHomeTrackResolver.setTrackImage(img, value, 'photo');
               if (ok) {
-                img.dataset.gcHomeChampImageRuntime = 'v33-resolver';
+                img.dataset.gcHomeChampImageRuntime = 'v34-resolver';
                 return;
               }
             } catch (_) {}
@@ -2994,7 +3064,7 @@ const home2ArchiveSeed: unknown[] = [];
           candidates.push(...trackImageCandidatesFromCombo({ track: { name: value, code: value, displayName: value } }));
         });
         setImageWithFallbacks(img, candidates, FALLBACK_TRACK);
-        img.dataset.gcHomeChampImageRuntime = 'v33-candidates';
+        img.dataset.gcHomeChampImageRuntime = 'v34-candidates';
       };
 
       const renderChampionshipFromPayload = (source: string, payload: any) => {
@@ -3016,10 +3086,28 @@ const home2ArchiveSeed: unknown[] = [];
         const liveSourceKey = source === 'gt4' ? 'gt4' : 'main';
         const liveTrack = liveCombo ? comboTrack(liveCombo, liveRows, liveSourceKey) : '';
         const liveCars = liveCombo ? comboCars(liveCombo, liveRows, liveSourceKey) : [];
+        const liveTrackRaw = liveCombo ? first(liveCombo, [
+          'track.rawCode',
+          'track.code',
+          'track.familyKey',
+          'track.rawName',
+          'track.trackCode',
+          'trackRaw',
+          'trackCode'
+        ], liveTrack) : liveTrack;
+        const liveTrackImage = liveCombo ? first(liveCombo, ['trackImage', 'track.image'], null) : null;
+        const liveTrackAssets = liveCombo ? first(liveCombo, ['trackAssets', 'track.assets'], null) : null;
+        const liveTrackPhotoCandidates = liveCombo ? first(liveCombo, ['trackPhotoCandidates', 'track.photoCandidates'], []) : [];
         const liveEvent = liveTrack ? {
           __gcLiveCombo: true,
           trackName: liveTrack,
           track: liveTrack,
+          trackRaw: liveTrackRaw,
+          trackCode: liveTrackRaw,
+          trackData: liveCombo ? first(liveCombo, ['track'], null) : null,
+          trackImage: liveTrackImage,
+          trackAssets: liveTrackAssets,
+          trackPhotoCandidates: Array.isArray(liveTrackPhotoCandidates) ? liveTrackPhotoCandidates : [],
           carSummary: liveCars.join(' / ')
         } : null;
         const next = liveEvent || scheduledNext;
