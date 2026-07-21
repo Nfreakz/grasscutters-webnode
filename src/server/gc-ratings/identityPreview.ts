@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 
-// GC_PHASE4H2_3_IDENTITY_PREVIEW_FALSE_POSITIVE_FIX_V1
+// GC_PHASE4H2_4_IDENTITY_PREVIEW_RESIDUAL_CONFLICT_FIX_V1
 type ReviewAction = 'defer' | 'keep_separate' | 'merge';
 
 type ReviewDecision = {
@@ -247,7 +247,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_IDENTITY_PREVIEW_V1',
+      version: 'GC_PHASE4H2_4_IDENTITY_PREVIEW_RESIDUAL_CONFLICT_FIX_V1',
       generatedAt: new Date().toISOString(),
       readOnly: true,
       writesAvailable: false,

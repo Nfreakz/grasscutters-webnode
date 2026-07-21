@@ -1,6 +1,6 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H2_3_IDENTITY_AUDIT_FALSE_POSITIVE_FIX_V1
+// GC_PHASE4H2_4_IDENTITY_AUDIT_RESIDUAL_CONFLICT_FIX_V1
 
 type IdentityRecord = {
   recordId: string;
@@ -268,10 +268,14 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([sourceKey, ids]) => ({ sourceKey, playerIds: [...ids].sort((a, b) => a - b) }));
     const sameSourcePlayerConflicts = playerIdsBySource.filter((entry) => entry.playerIds.length > 1);
+    const scopedPlayerIds = new Set(playerIdsBySource.flatMap((entry) => entry.playerIds));
     const unscopedPlayerIds = [...new Set(bucket
       .filter((record) => record.kind !== 'result' || !record.sourceKey || record.sourceKey === 'unknown')
       .map((record) => record.playerId)
       .filter((value): value is number => value !== null))].sort((a, b) => a - b);
+    // Un ID heredado de rating, perfil o usuario no es conflicto si ya aparece
+    // correctamente acotado por servidor en los resultados de la misma identidad.
+    const unresolvedUnscopedPlayerIds = unscopedPlayerIds.filter((playerId) => !scopedPlayerIds.has(playerId));
     const steamGuids = unique(bucket.map((record) => record.steamGuid ? normalizeSteam(record.steamGuid) : null));
     const names = unique(bucket.map((record) => record.name));
     const normalizedNames = unique(names.map(normalizeName));
@@ -290,7 +294,7 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       .sort((left, right) => right.score - left.score || left.driverKey.localeCompare(right.driverKey));
     const conflicts: string[] = [];
     if (sameSourcePlayerConflicts.length) conflicts.push('MULTIPLE_PLAYER_IDS_SAME_SOURCE');
-    if (unscopedPlayerIds.length > 1) conflicts.push('MULTIPLE_UNSCOPED_PLAYER_IDS');
+    if (unresolvedUnscopedPlayerIds.length > 1) conflicts.push('MULTIPLE_UNRESOLVED_UNSCOPED_PLAYER_IDS');
     if (steamGuids.length > 1) conflicts.push('MULTIPLE_STEAM_GUIDS');
     if (userIds.length > 1) conflicts.push('MULTIPLE_USER_LINKS');
     if (profileIds.length > 1) conflicts.push('MULTIPLE_PROFILES');
@@ -308,7 +312,8 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       playerScopes,
       playerIdsBySource,
       unscopedPlayerIds,
-      identityStatus: confirmedMultiserver ? 'CONFIRMED_MULTISERVER_IDENTITY' : conflicts.length ? 'REVIEW_REQUIRED' : 'CONFIRMED_IDENTITY',
+      unresolvedUnscopedPlayerIds,
+      identityStatus: conflicts.length ? 'REVIEW_REQUIRED' : confirmedMultiserver ? 'CONFIRMED_MULTISERVER_IDENTITY' : 'CONFIRMED_IDENTITY',
       confirmedMultiserver,
       steamGuids,
       names,
@@ -376,7 +381,7 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
   return {
     ok: true,
     source: `gc-ratings-v1:identity-audit:${source}`,
-    version: 'GC_PHASE4H2_3_IDENTITY_AUDIT_FALSE_POSITIVE_FIX_V1',
+    version: 'GC_PHASE4H2_4_IDENTITY_AUDIT_RESIDUAL_CONFLICT_FIX_V1',
     generatedAt: new Date().toISOString(),
     readOnly: true,
     destructiveChangesApplied: false,
@@ -397,6 +402,8 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       crossSourcePlayerIdsAreConflict: false,
       sameSourceMultiplePlayerIdsAreConflict: true,
       eventDuplicateScope: 'source_key + event_scope_key',
+      coveredUnscopedPlayerIdsAreConflict: false,
+      unresolvedUnscopedPlayerIdsRequireReview: true,
       unscopedPlayerIdCanMerge: false,
       differentSteamIdsCanMerge: false,
       canonicalPriority: ['steam', 'opaque-driver-key', 'player', 'name']
