@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 
-// GC_PHASE4H2_4_IDENTITY_PREVIEW_RESIDUAL_CONFLICT_FIX_V1
+// GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1
 type ReviewAction = 'defer' | 'keep_separate' | 'merge';
 
 type ReviewDecision = {
@@ -95,13 +95,46 @@ function decorateAudit(audit: any) {
   };
 }
 
-function isAttentionGroup(group: any, ambiguousRefs: Set<string>) {
+function isOrphanProfileGroup(group: any) {
   return Boolean(
-    group?.conflicts?.length ||
-    group?.profileIds?.length > 1 ||
-    group?.userIds?.length > 1 ||
-    ambiguousRefs.has(group?.groupRef)
+    group?.recordCounts?.profiles > 0 &&
+    group?.recordCounts?.ratings === 0 &&
+    group?.recordCounts?.results === 0 &&
+    group?.recordCounts?.users === 0
   );
+}
+
+function buildReviewAssignments(groups: any[], ambiguousGroups: any[]) {
+  const assignments = new Map<string, any>();
+  for (const group of groups) {
+    if (group?.conflicts?.length || group?.profileIds?.length > 1 || group?.userIds?.length > 1) {
+      assignments.set(group.groupRef, { reviewKind: 'identity_conflict', candidateGroupRefs: [] });
+    }
+  }
+  for (const ambiguity of ambiguousGroups) {
+    const related = groups.filter((group) => (ambiguity.groupRefs || []).includes(group.groupRef));
+    const orphans = related.filter(isOrphanProfileGroup);
+    const candidates = related.filter((group) => !isOrphanProfileGroup(group));
+    for (const orphan of orphans) {
+      if (!candidates.length) continue;
+      assignments.set(orphan.groupRef, {
+        reviewKind: 'profile_link',
+        normalizedName: ambiguity.normalizedName,
+        candidateGroupRefs: candidates.map((group) => group.groupRef)
+      });
+    }
+    if (!orphans.length && related.length > 1) {
+      const [primary, ...alternatives] = related;
+      if (!assignments.has(primary.groupRef)) {
+        assignments.set(primary.groupRef, {
+          reviewKind: 'identity_ambiguity',
+          normalizedName: ambiguity.normalizedName,
+          candidateGroupRefs: alternatives.map((group) => group.groupRef)
+        });
+      }
+    }
+  }
+  return assignments;
 }
 
 function normalizeDecision(input: ReviewDecision) {
@@ -233,9 +266,37 @@ function buildMergeChanges(selectedRows: ReturnType<typeof rowsForGroups>, decis
   return { changes, blockers };
 }
 
+function buildProfileLinkChanges(
+  selectedRows: ReturnType<typeof rowsForGroups>,
+  orphanProfileIds: Set<string>,
+  decision: ReturnType<typeof normalizeDecision>
+) {
+  const changes: any[] = [];
+  const blockers: string[] = [];
+  if (!decision.canonicalDriverKey) blockers.push('Falta elegir la identidad canónica.');
+  const orphanProfiles = selectedRows.profiles.filter((row) => orphanProfileIds.has(String(row.id)));
+  const candidateProfiles = selectedRows.profiles.filter((row) => !orphanProfileIds.has(String(row.id)));
+  if (!orphanProfiles.length) blockers.push('El perfil huérfano ya no existe en el snapshot.');
+  if (candidateProfiles.length > 1 && !decision.canonicalProfileId) blockers.push('La identidad candidata tiene varios perfiles; elige el canónico.');
+  const canonicalProfileId = decision.canonicalProfileId || (candidateProfiles.length === 1 ? String(candidateProfiles[0].id) : null);
+  for (const row of orphanProfiles) {
+    if (canonicalProfileId && String(row.id) !== canonicalProfileId) {
+      changes.push(change('gc_driver_profiles', row.id, 'LINK_ORPHAN_PROFILE_TO_IDENTITY',
+        { driverKey: row.driver_key, linkedUserId: row.linked_user_id },
+        { canonicalDriverKey: decision.canonicalDriverKey, canonicalProfileId },
+        '4H.3 deberá trasladar membresías y conservar el historial antes de retirar el perfil huérfano.'));
+    } else if (String(row.driver_key) !== decision.canonicalDriverKey) {
+      changes.push(change('gc_driver_profiles', row.id, 'ADOPT_ORPHAN_AS_CANONICAL_PROFILE',
+        { driverKey: row.driver_key, linkedUserId: row.linked_user_id },
+        { driverKey: decision.canonicalDriverKey, linkedUserId: decision.canonicalUserId || row.linked_user_id }));
+    }
+  }
+  return { changes, blockers };
+}
+
 export async function readMysqlIdentityPreviewBootstrapV1() {
   const audit = decorateAudit(await readMysqlIdentityAuditV1());
-  const ambiguousRefs = new Set<string>(audit.ambiguousGroups.flatMap((entry: any) => entry.groupRefs || []));
+  const reviewAssignments = buildReviewAssignments(audit.identityGroups, audit.ambiguousGroups);
   const config = mysqlConfig();
   if (!config.host || !config.database || !config.user) throw new Error('Identity preview requiere MySQL configurado.');
   const mod: any = await import('mysql2/promise');
@@ -247,7 +308,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_4_IDENTITY_PREVIEW_RESIDUAL_CONFLICT_FIX_V1',
+      version: 'GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1',
       generatedAt: new Date().toISOString(),
       readOnly: true,
       writesAvailable: false,
@@ -255,12 +316,13 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
       snapshotId: currentSnapshotId,
       groups: audit.identityGroups.map((group: any) => {
         const groupRows = rowsForGroups(rows, [group]);
+        const assignment = reviewAssignments.get(group.groupRef);
         return {
           ...group,
-          requiresDecision: isAttentionGroup(group, ambiguousRefs),
-          ambiguousWith: audit.ambiguousGroups
-            .filter((entry: any) => entry.groupRefs?.includes(group.groupRef))
-            .flatMap((entry: any) => entry.groupRefs.filter((ref: string) => ref !== group.groupRef)),
+          requiresDecision: Boolean(assignment),
+          reviewKind: assignment?.reviewKind || null,
+          reviewName: assignment?.normalizedName || null,
+          ambiguousWith: assignment?.candidateGroupRefs || [],
           rowOptions: {
             ratings: groupRows.ratings.map((row) => ({ id: String(row.id), driverKey: row.driver_key, displayName: row.display_name })),
             results: groupRows.results.map((row) => ({
@@ -276,6 +338,11 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
         };
       }),
       ambiguousGroups: audit.ambiguousGroups,
+      reviewSummary: {
+        cases: reviewAssignments.size,
+        profileLinks: [...reviewAssignments.values()].filter((item) => item.reviewKind === 'profile_link').length,
+        identityConflicts: [...reviewAssignments.values()].filter((item) => item.reviewKind === 'identity_conflict').length
+      },
       instructions: {
         decisionsAreTemporary: true,
         noSqlIsExecuted: true,
@@ -306,20 +373,6 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
   const pool: Pool = mysql.createPool({ ...config, waitForConnections: true, connectionLimit: 2 });
   try {
     const rows = await readRows(pool);
-    if (snapshotId(bootstrap.groups, rows) !== bootstrap.snapshotId) {
-      return {
-        ok: false,
-        source: 'gc-ratings-v1:identity-preview:mysql',
-        version: 'GC_PHASE4H2_IDENTITY_PREVIEW_V1',
-        generatedAt: new Date().toISOString(),
-        readOnly: true,
-        writesAvailable: false,
-        destructiveChangesApplied: false,
-        stale: true,
-        safeToExecute: false,
-        message: 'MySQL cambió durante la simulación. Recarga el snapshot.'
-      };
-    }
     const plans: any[] = [];
     const globalBlockers: string[] = [];
     for (const group of bootstrap.groups.filter((item: any) => item.requiresDecision)) {
@@ -349,12 +402,18 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
         plans.push({ groupRef: group.groupRef, action: 'merge', changes: [], blockers: ['Grupo destino no autorizado.'] });
         continue;
       }
+      if (group.reviewKind === 'profile_link' && !target) {
+        globalBlockers.push(`${group.groupRef}: falta elegir la identidad candidata.`);
+        plans.push({ groupRef: group.groupRef, action: 'merge', changes: [], blockers: ['Identidad candidata obligatoria.'] });
+        continue;
+      }
       const mergedGroups = target && target.groupRef !== group.groupRef ? [group, target] : [group];
       const allowedDriverKeys = new Set(mergedGroups.flatMap((item: any) => item.driverKeys || []));
       const allowedProfileIds = new Set(mergedGroups.flatMap((item: any) => item.profileIds || []));
       const allowedUserIds = new Set(mergedGroups.flatMap((item: any) => item.userIds || []));
       const validationBlockers: string[] = [];
       if (!decision.canonicalDriverKey || !allowedDriverKeys.has(decision.canonicalDriverKey)) validationBlockers.push('La clave canónica no pertenece a los grupos seleccionados.');
+      if (group.reviewKind === 'profile_link' && target && !(target.driverKeys || []).includes(decision.canonicalDriverKey)) validationBlockers.push('La identidad canónica debe pertenecer al candidato, no al perfil huérfano.');
       if (decision.canonicalProfileId && !allowedProfileIds.has(decision.canonicalProfileId)) validationBlockers.push('El perfil canónico no pertenece a los grupos seleccionados.');
       if (decision.canonicalUserId && !allowedUserIds.has(decision.canonicalUserId)) validationBlockers.push('La cuenta canónica no pertenece a los grupos seleccionados.');
       const selectedRows = rowsForGroups(rows, mergedGroups);
@@ -363,7 +422,9 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
         canonicalProfileId: decision.canonicalProfileId || (selectedRows.profiles.length === 1 ? String(selectedRows.profiles[0].id) : null),
         canonicalUserId: decision.canonicalUserId || (selectedRows.users.length === 1 ? String(selectedRows.users[0].id) : null)
       };
-      const built = buildMergeChanges(selectedRows, effectiveDecision);
+      const built = group.reviewKind === 'profile_link'
+        ? buildProfileLinkChanges(selectedRows, new Set((group.profileIds || []).map(String)), effectiveDecision)
+        : buildMergeChanges(selectedRows, effectiveDecision);
       const blockers = [...validationBlockers, ...built.blockers];
       blockers.forEach((message) => globalBlockers.push(`${group.groupRef}: ${message}`));
       plans.push({
@@ -398,7 +459,7 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_IDENTITY_PREVIEW_V1',
+      version: 'GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1',
       generatedAt: new Date().toISOString(),
       snapshotId: bootstrap.snapshotId,
       readOnly: true,
