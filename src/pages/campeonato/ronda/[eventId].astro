@@ -937,23 +937,28 @@ try {
       };
 
       // GC_ROUND_TRACK_ASSET_RESOLVER_V139
+      // GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1
       const uniqueTrackAssetValuesV139 = (values) => [...new Set(values.flat(Infinity).filter(Boolean).map((value) => String(value).trim()).filter(Boolean))];
 
       const resolveRoundTrackAssetsV139 = async (event) => {
-        const names = uniqueTrackAssetValuesV139([
-          event?.track,
-          event?.trackRaw,
-          event?.trackSlug,
-          event?.name
-        ]);
-        if (!names.length) return null;
+        const names = uniqueTrackAssetValuesV139([event?.track, event?.name]);
+        const trackCode = String(event?.trackCode || event?.trackRaw || event?.trackSlug || '').trim();
+        const trackConfig = String(event?.trackConfig || event?.layout || '').trim();
+        const source = String(event?.sourceKey || event?.championshipSource || '').trim();
+        if (!trackCode && !names.length) return null;
         try {
           const params = new URLSearchParams();
-          params.set('track', names[0]);
-          if (names.length > 1) params.set('hint', names.slice(1).join(' | '));
+          params.set('strict', '1');
+          params.set('mode', 'exact');
+          if (source) params.set('source', source);
+          if (trackCode) params.set('trackCode', trackCode);
+          if (trackConfig) params.set('trackConfig', trackConfig);
+          if (names[0]) params.set('name', names[0]);
+          if (names.length > 1) params.set('event', names.slice(1).join(' | '));
           const response = await fetch(`/api/gc/track-assets/resolve?${params.toString()}`, { cache: 'no-store' });
           if (!response.ok) return null;
-          return await response.json();
+          const payload = await response.json();
+          return payload?.matchMode === 'exact' ? payload : null;
         } catch (_) {
           return null;
         }

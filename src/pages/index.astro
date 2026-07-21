@@ -2867,25 +2867,22 @@ const home2ArchiveSeed: unknown[] = [];
         return [...aliases].filter(Boolean);
       };
 
+      // GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1
       const trackImageCandidatesFromCombo = (combo: any): string[] => {
-        const image: any = combo?.trackImage || combo?.track?.image || {};
-        const candidates: string[] = [];
-        if (image.primary) candidates.push(image.primary);
-        if (Array.isArray(image.candidates)) candidates.push(...image.candidates);
-        const aliases = Array.isArray(image.aliases) && image.aliases.length
-          ? image.aliases
-          : trackImageAliasVariants([
-              first(combo, ['track.familyKey', 'track.code', 'track.name', 'track.displayName', 'track.rawName'], ''),
-              first(combo, ['track.rawCode'], ''),
-              first(combo, ['track.rawName'], ''),
-              first(combo, ['track.publicName'], '')
-            ]);
-        const exts = ['webp', 'jpg', 'png', 'jpeg', 'avif'];
-        aliases.forEach((alias: string) => exts.forEach((ext: string) => candidates.push(`/images/tracks/${encodeURIComponent(alias)}.${ext}`)));
-        const key = normalize(first(combo, ['track.familyKey', 'track.code', 'track.name', 'track.displayName'], ''));
-        if (/pascani|motorpark|a1/.test(key)) candidates.push('/images/tracks/pascani.jpg?v=bootstrap2', '/images/tracks/a1.webp?v=bootstrap2');
-        if (/vila|vilareal|vila_real/.test(key)) candidates.push('/images/tracks/vilareal.jpg?v=bootstrap2');
-        return [...new Set(candidates.filter(Boolean))];
+        const sourceRaw = normalize(first(combo, ['sourceKey', 'source'], 'main'));
+        const source = sourceRaw === 'gt4' ? 'gt4' : 'weekly';
+        const trackCode = String(first(combo, ['track.trackCode', 'track.rawCode', 'track.code', 'trackCode', 'trackRaw'], '') || '').trim();
+        const trackConfig = String(first(combo, ['track.trackConfig', 'track.layout', 'trackConfig', 'layout'], '') || '').trim();
+        const trackNameValue = String(first(combo, ['track.publicName', 'track.displayName', 'track.name', 'trackName'], '') || '').trim();
+        if (!trackCode && !trackNameValue) return [];
+        const params = new URLSearchParams();
+        params.set('kind', 'photo');
+        params.set('strict', '1');
+        params.set('source', source);
+        if (trackCode) params.set('trackCode', trackCode);
+        if (trackConfig) params.set('trackConfig', trackConfig);
+        if (trackNameValue) params.set('name', trackNameValue);
+        return [`/api/gc/track-assets/file?${params.toString()}`];
       };
 
       const setHeroBackgroundFromMain = (payload: any) => {
@@ -2924,6 +2921,7 @@ const home2ArchiveSeed: unknown[] = [];
       document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
       document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v2-acsm-live';
       document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-v1';
+      document.documentElement.dataset.gcTrackAssetResolver = 'exact-v1';
 
       const renderRecent = (rows: any[] = []): any[] => {
         const host = q('[data-home2-recent-laps]');

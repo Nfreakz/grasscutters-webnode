@@ -1,6 +1,6 @@
 import type express from 'express';
 import { cleanDisplayText, displayCarName, displayDriverName, displayTrackName } from './gc-ratings/utils';
-import { gcTrackMapCandidates, gcTrackPhotoCandidates, resolveGcTrackAssets } from './gc-track-assets-resolver';
+import { gcTrackMapCandidatesExact, gcTrackPhotoCandidatesExact, resolveGcTrackAssetsExact } from './gc-track-assets-resolver';
 
 type PlainObject = Record<string, any>;
 type RequireAdmin = (req: express.Request, res: express.Response) => Promise<any | null> | any | null;
@@ -351,12 +351,12 @@ function trackBaseNames(trackName: unknown, trackRaw?: unknown, eventName?: unkn
   return [...new Set(names.filter(Boolean))];
 }
 
-function trackMapCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
-  return gcTrackMapCandidates(trackName, trackRaw, eventName);
+function trackMapCandidates(sourceKey: unknown, trackCode: unknown, trackConfig: unknown, trackName: unknown, eventName?: unknown) {
+  return gcTrackMapCandidatesExact({ sourceKey, trackCode, trackConfig, names: [trackName, eventName] });
 }
 
-function trackPhotoCandidates(trackName: unknown, trackRaw?: unknown, eventName?: unknown) {
-  return gcTrackPhotoCandidates(trackName, trackRaw, eventName);
+function trackPhotoCandidates(sourceKey: unknown, trackCode: unknown, trackConfig: unknown, trackName: unknown, eventName?: unknown) {
+  return gcTrackPhotoCandidatesExact({ sourceKey, trackCode, trackConfig, names: [trackName, eventName] });
 }
 
 function prettifyName(value: unknown, fallback = '-') {
@@ -641,6 +641,8 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
   const raceSetup = objectValue(pick(event, ['RaceSetup', 'raceSetup'], {}));
   const sessionsRaw = objectValue(pick(event, ['Sessions', 'sessions'], {}));
   const trackRaw = chooseAcsmTrackCandidate(event, raceSetup, source) || 'Circuito por confirmar';
+  const trackCode = textValue(trackRaw, '');
+  const trackConfig = textValue(pick(raceSetup, ['TrackConfig', 'trackConfig', 'TrackLayout', 'trackLayout', 'Layout', 'layout', 'Config', 'config'], ''));
   const track = displayTrackName(trackRaw, 'Circuito por confirmar');
   const cars = extractCarsFromRaceSetup(raceSetup);
   const scheduled = isoOrNull(pick(event, ['Scheduled', 'scheduled', 'ScheduledTime', 'scheduledTime', 'ScheduledAt', 'scheduledAt', 'Date', 'date']));
@@ -673,7 +675,8 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
 
   const id = textValue(pick(event, ['ID', 'Id', 'id'], `event-${index + 1}`));
 
-  const trackAssets = resolveGcTrackAssets([track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')]);
+  const eventName = pick(event, ['Name', 'name', 'Title', 'title'], '');
+  const trackAssets = resolveGcTrackAssetsExact({ sourceKey: source, trackCode, trackConfig, names: [track, eventName] });
 
   return {
     index: index + 1,
@@ -684,12 +687,15 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     championshipSource: source,
     href: `/campeonato/ronda/${encodeURIComponent(id)}?source=${encodeURIComponent(source)}`,
     name: cleanDisplayText(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
+    // GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1
     track,
+    trackCode,
     trackRaw: textValue(trackRaw, ''),
+    trackConfig,
     trackSlug: normalizeTrackSlug(trackRaw),
     trackAssets,
-    trackMapCandidates: trackMapCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
-    trackPhotoCandidates: trackPhotoCandidates(track, trackRaw, pick(event, ['Name', 'name', 'Title', 'title'], '')),
+    trackMapCandidates: trackMapCandidates(source, trackCode, trackConfig, track, eventName),
+    trackPhotoCandidates: trackPhotoCandidates(source, trackCode, trackConfig, track, eventName),
     trackDistanceKm: trackAssets.distanceKm ?? null,
     trackDistance: trackAssets.distance || '',
     trackCountryCode: trackAssets.countryCode || '',

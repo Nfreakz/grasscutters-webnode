@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Express, Request } from 'express';
-import { resolveGcTrackAssets } from './gc-track-assets-resolver';
+import { resolveGcTrackAssets, resolveGcTrackAssetsExact } from './gc-track-assets-resolver';
 
 type DeliveryOptions = { rootDir?: string };
 type AssetKind = 'photo' | 'map';
@@ -82,12 +82,23 @@ export function registerGcTrackAssetDeliveryRoutes(app: Express, options: Delive
     const kind = selectedKind(req);
     const values = queryValues(req);
     const force = String(req.query.refresh || '') === '1';
-    const resolved = resolveGcTrackAssets(values, { rootDir, force });
+    const strict = String(req.query.strict || '') === '1' || String(req.query.mode || '').toLowerCase() === 'exact';
+    const resolved = strict
+      ? resolveGcTrackAssetsExact({
+          sourceKey: req.query.source || req.query.sourceKey || '',
+          trackCode: req.query.trackCode || req.query.trackRaw || req.query.track || '',
+          trackConfig: req.query.trackConfig || req.query.layout || req.query.config || '',
+          names: values,
+          role: kind
+        }, { rootDir, force })
+      : resolveGcTrackAssets(values, { rootDir, force });
     const publicUrl = kind === 'map' ? resolved.map : resolved.photo;
     const physical = findPhysicalAsset(rootDir, publicUrl);
 
     res.setHeader('X-GC-Track-Asset-Kind', kind);
-    res.setHeader('X-GC-Track-Asset-Resolver', 'online-delivery-v1');
+    // GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1
+    res.setHeader('X-GC-Track-Asset-Resolver', strict ? 'exact-delivery-v1' : 'online-delivery-v1');
+    res.setHeader('X-GC-Track-Asset-Mode', strict ? 'exact-v1' : 'legacy');
     res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
 
     if (!publicUrl || !physical) {

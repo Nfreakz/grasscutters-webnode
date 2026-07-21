@@ -989,8 +989,11 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
         img.src = cleanCandidates[0];
       };
 
+      // GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1
       const eventImageHtml = (event: any): string => {
-        const candidates = event?.trackPhotoCandidates?.length ? event.trackPhotoCandidates : localTrackPhotoCandidates(event);
+        const exactCandidates = Array.isArray(event?.trackPhotoCandidates) ? event.trackPhotoCandidates.filter(Boolean) : [];
+        const officialSource = Boolean(event?.sourceKey || event?.championshipSource);
+        const candidates = exactCandidates.length ? exactCandidates : (officialSource ? [] : localTrackPhotoCandidates(event));
         const primary = candidates[0] || '';
         const fallbacks = candidates.slice(1).join('|');
         if (!primary) return '';
@@ -1010,7 +1013,9 @@ const acsmSignupUrl = `${acsmChampionshipUrl}/sign-up/steam`;
       };
 
       const renderTrackImage = (event: any) => {
-        const candidates = event?.trackMapCandidates?.length ? event.trackMapCandidates : localTrackMapCandidates(event);
+        const exactCandidates = Array.isArray(event?.trackMapCandidates) ? event.trackMapCandidates.filter(Boolean) : [];
+        const officialSource = Boolean(event?.sourceKey || event?.championshipSource);
+        const candidates = exactCandidates.length ? exactCandidates : (officialSource ? [] : localTrackMapCandidates(event));
         if (els.trackImage) els.trackImage.alt = event?.track || event?.name || '';
         setImageWithFallback(els.trackImage, els.trackFigure, candidates);
       };

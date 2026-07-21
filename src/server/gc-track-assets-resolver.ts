@@ -16,9 +16,17 @@ export type GcTrackAssetResolution = {
   source: string;
   matchedPhoto: string;
   matchedMap: string;
+  matchMode?: 'legacy' | 'exact';
+  strict?: boolean;
+  sourceKey?: string;
+  trackCode?: string;
+  trackConfig?: string;
+  requestedRole?: AssetRole;
+  matchedKey?: string;
+  roleResolved?: boolean;
 };
 
-type AssetRole = 'photo' | 'map' | 'unknown';
+export type AssetRole = 'photo' | 'map' | 'unknown';
 
 type ScannedAsset = {
   filePath: string;
@@ -406,6 +414,214 @@ function urlsFromMetadata(meta: TrackAssetMetadata | null | undefined) {
   };
 }
 
+export type GcTrackAssetExactInput = {
+  sourceKey?: unknown;
+  trackCode?: unknown;
+  trackConfig?: unknown;
+  names?: unknown[];
+  role?: AssetRole;
+};
+
+function exactKeyVariants(value: unknown) {
+  const raw = gcTrackAssetSlug(value);
+  if (!raw) return [];
+
+  const variants = [raw, stripKnownNoise(raw), stripRole(raw)];
+  const withoutPrefix = raw.replace(/^(ks|rt|mx|nrms|fn|acu|actk|aa|ai|gc|rss|jgtc|acfsk|pk|vhe|ve)_+/g, '');
+  if (withoutPrefix) variants.push(withoutPrefix, stripKnownNoise(withoutPrefix), stripRole(withoutPrefix));
+
+  return [...new Set(variants.filter(Boolean))];
+}
+
+
+const EXACT_TRACK_ALIAS_GROUPS_V1: string[][] = [
+  ['jerez', 'fn_jerez', 'circuito_de_jerez', 'circuito_de_jerez_spain', 'circuito_de_jerez_angel_nieto', 'jerez_angel_nieto', 'angel_nieto_jerez'],
+  ['mugello', 'ks_mugello', 'autodromo_internazionale_del_mugello'],
+  ['fuji', 'rt_fuji_speedway', 'rt_fuji_speedway_layout_gp', 'fuji_speedway', 'fuji_speedway_gp', 'fuji_speedway_layout_gp', 'fuji_international_speedway', 'fujispeedway'],
+  ['bathurst', 'mount_panorama'],
+  ['portimao', 'algarve_portimao', 'algarve_portimao_2023', 'algarve_international_circuit'],
+  ['sugo', 'sportsland_sugo', 'sportsland_sugo_japan'],
+  ['adelaide', 'adelaide_500', 'vailo_adelaide', 'vailo_adelaide_500', '2024_vailo_adelaide_500', 'akr_adelaide500', 'akr_adelaide500_p64v2'],
+  ['brands_hatch', 'ks_brands_hatch'],
+  ['estoril'],
+  ['hockenheim', 'ks_hockenheim', 've_hockenheim_gp', 'hockenheimring'],
+  ['imola', 'autodromo_internazionale_enzo_e_dino_ferrari'],
+  ['nordschleife', 'nurburgring_nordschleife'],
+  ['nurburgring', 'ks_nurburgring'],
+  ['okayama', 'okayama_international', 'okayama_circuit'],
+  ['phillip_island', 'phillipisland', 'phillip_island_2013'],
+  ['road_atlanta'],
+  ['salzburgring', 'salzburg_ring', 'salzburg'],
+  ['sebring', 'mx_sb_day_standing'],
+  ['spa', 'ks_spa', 'rt_spa', 'spa_francorchamps'],
+  ['suzuka', 'ks_suzuka'],
+  ['vallelunga', 'ks_vallelunga'],
+  ['zolder', 'rt_zolder', 'circuit_zolder'],
+  ['vilareal', 'vila_real', 'tcr_vila_real'],
+  ['pascani', 'pascani_motorpark', 'pascani_motorpark_a', 'a1_motor_park']
+].map((group) => [...new Set(group.flatMap((value) => exactKeyVariants(value)))]);
+
+function expandExactAliasKeysV1(keys: string[]) {
+  const expanded = [...keys];
+  for (const group of EXACT_TRACK_ALIAS_GROUPS_V1) {
+    if (!group.some((key) => expanded.includes(key))) continue;
+    for (const key of group) if (key && !expanded.includes(key)) expanded.push(key);
+  }
+  return expanded;
+}
+
+function exactLookupKeys(input: GcTrackAssetExactInput) {
+  const trackCode = String(input.trackCode ?? '').trim();
+  const trackConfig = String(input.trackConfig ?? '').trim();
+  const names = (Array.isArray(input.names) ? input.names : [])
+    .flat(Infinity)
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean);
+
+  const ordered = [
+    trackCode && trackConfig ? `${trackCode}_${trackConfig}` : '',
+    trackCode,
+    ...names
+  ].filter(Boolean);
+
+  const keys: string[] = [];
+  for (const value of ordered) {
+    for (const variant of exactKeyVariants(value)) {
+      if (variant && !keys.includes(variant)) keys.push(variant);
+    }
+  }
+
+  return {
+    sourceKey: String(input.sourceKey ?? '').trim().toLowerCase(),
+    trackCode,
+    trackConfig,
+    names,
+    keys: expandExactAliasKeysV1(keys)
+  };
+}
+
+function exactMetadataKeys(item: TrackAssetMetadata) {
+  const values = [item.key, item.slug, item.name, item.track, ...(Array.isArray(item.keys) ? item.keys : [])]
+    .filter(Boolean);
+  return [...new Set(values.flatMap((value) => exactKeyVariants(value)))];
+}
+
+function exactMetadataEntry(metadata: TrackAssetMetadata[], keys: string[]) {
+  if (!keys.length) return null;
+
+  return metadata
+    .map((item) => {
+      const matchingIndexes = exactMetadataKeys(item)
+        .map((key) => keys.indexOf(key))
+        .filter((index) => index >= 0);
+      return {
+        item,
+        keyIndex: matchingIndexes.length ? Math.min(...matchingIndexes) : Number.MAX_SAFE_INTEGER
+      };
+    })
+    .filter((entry) => entry.keyIndex < Number.MAX_SAFE_INTEGER)
+    .sort((left, right) => left.keyIndex - right.keyIndex)[0]?.item || null;
+}
+
+function exactAssetKeyIndex(asset: ScannedAsset, keys: string[]) {
+  const assetKeys = [...new Set([
+    ...exactKeyVariants(asset.base),
+    ...exactKeyVariants(asset.stem)
+  ])];
+  const indexes = assetKeys.map((key) => keys.indexOf(key)).filter((index) => index >= 0);
+  return indexes.length ? Math.min(...indexes) : Number.MAX_SAFE_INTEGER;
+}
+
+function exactAssetForRole(assets: ScannedAsset[], keys: string[], role: 'photo' | 'map') {
+  const extensionRank: Record<string, number> = {
+    '.webp': 0,
+    '.jpg': 1,
+    '.jpeg': 2,
+    '.png': 3,
+    '.avif': 4,
+    '.svg': 5
+  };
+
+  return assets
+    .filter((asset) => role === 'map' ? asset.role === 'map' : asset.role !== 'map')
+    .map((asset) => ({
+      asset,
+      keyIndex: exactAssetKeyIndex(asset, keys),
+      extensionIndex: extensionRank[path.extname(asset.filename).toLowerCase()] ?? 99
+    }))
+    .filter((entry) => entry.keyIndex < Number.MAX_SAFE_INTEGER)
+    .sort((left, right) =>
+      left.keyIndex - right.keyIndex ||
+      left.extensionIndex - right.extensionIndex ||
+      left.asset.url.localeCompare(right.asset.url)
+    )[0]?.asset || null;
+}
+
+/* GC_PHASE4G_EXACT_TRACK_ASSET_RESOLVER_V1 */
+export function resolveGcTrackAssetsExact(
+  input: GcTrackAssetExactInput,
+  options: { rootDir?: string; force?: boolean } = {}
+): GcTrackAssetResolution {
+  const lookup = exactLookupKeys(input);
+  const inventory = scan(options.rootDir, options.force);
+  const meta = exactMetadataEntry(inventory.metadata, lookup.keys);
+  const metaUrls = urlsFromMetadata(meta);
+  const exactPhoto = metaUrls.photo ? null : exactAssetForRole(inventory.assets, lookup.keys, 'photo');
+  const exactMap = metaUrls.map ? null : exactAssetForRole(inventory.assets, lookup.keys, 'map');
+  const photoUrl = metaUrls.photo || exactPhoto?.url || '';
+  const mapUrl = metaUrls.map || exactMap?.url || '';
+  const distanceKm = numberOrNull(meta?.distanceKm ?? meta?.distance ?? null);
+  const requestedRole = input.role === 'map' ? 'map' : input.role === 'photo' ? 'photo' : 'unknown';
+  const roleResolved = requestedRole === 'map'
+    ? Boolean(mapUrl)
+    : requestedRole === 'photo'
+      ? Boolean(photoUrl)
+      : Boolean(photoUrl || mapUrl);
+
+  const matchedKey = lookup.keys.find((key) => {
+    const photoKeys = exactPhoto ? exactKeyVariants(exactPhoto.stem || exactPhoto.base) : [];
+    const mapKeys = exactMap ? exactKeyVariants(exactMap.stem || exactMap.base) : [];
+    const metaKeys = meta ? exactMetadataKeys(meta) : [];
+    return photoKeys.includes(key) || mapKeys.includes(key) || metaKeys.includes(key);
+  }) || '';
+
+  const displayValues = [...lookup.names, lookup.trackCode, lookup.trackConfig].filter(Boolean);
+
+  return {
+    ok: true,
+    track: lookup.trackCode || lookup.names[0] || '',
+    displayName: cleanTrackDisplayName(displayValues, photoUrl, mapUrl),
+    queryTokens: lookup.keys,
+    photo: photoUrl,
+    map: mapUrl,
+    distanceKm,
+    distance: formatDistanceKm(distanceKm),
+    countryCode: inferCountry(tokensForQuery(displayValues), meta),
+    confidence: roleResolved ? 1000 : 0,
+    source: meta ? 'exact-metadata' : (photoUrl || mapUrl ? 'exact-filesystem' : 'exact-none'),
+    matchedPhoto: exactPhoto?.filename || (metaUrls.photo ? 'metadata' : ''),
+    matchedMap: exactMap?.filename || (metaUrls.map ? 'metadata' : ''),
+    matchMode: 'exact',
+    strict: true,
+    sourceKey: lookup.sourceKey,
+    trackCode: lookup.trackCode,
+    trackConfig: lookup.trackConfig,
+    requestedRole,
+    matchedKey,
+    roleResolved
+  };
+}
+
+export function gcTrackPhotoCandidatesExact(input: GcTrackAssetExactInput, options: { rootDir?: string; force?: boolean } = {}) {
+  const resolved = resolveGcTrackAssetsExact({ ...input, role: 'photo' }, options);
+  return resolved.photo ? [resolved.photo] : [];
+}
+
+export function gcTrackMapCandidatesExact(input: GcTrackAssetExactInput, options: { rootDir?: string; force?: boolean } = {}) {
+  const resolved = resolveGcTrackAssetsExact({ ...input, role: 'map' }, options);
+  return resolved.map ? [resolved.map] : [];
+}
+
 export function resolveGcTrackAssets(input: unknown, options: { rootDir?: string; force?: boolean } = {}): GcTrackAssetResolution {
   const names = (Array.isArray(input) ? input : [input])
     .flat(Infinity)
@@ -499,12 +715,21 @@ export function registerGcTrackAssetsResolverRoutes(app: express.Express, option
     ].flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
 
     const force = String(req.query.refresh || '') === '1';
-    const resolved = resolveGcTrackAssets(values, {
-      rootDir: options.rootDir,
-      force
-    });
+    const strict = String(req.query.strict || '') === '1' || String(req.query.mode || '').toLowerCase() === 'exact';
+    const roleRaw = String(req.query.role || req.query.kind || '').toLowerCase();
+    const requestedRole = roleRaw === 'map' ? 'map' : roleRaw === 'photo' ? 'photo' : 'unknown';
+    const resolved = strict
+      ? resolveGcTrackAssetsExact({
+          sourceKey: req.query.source || req.query.sourceKey || '',
+          trackCode: req.query.trackCode || req.query.trackRaw || req.query.track || '',
+          trackConfig: req.query.trackConfig || req.query.layout || req.query.config || '',
+          names: values,
+          role: requestedRole
+        }, { rootDir: options.rootDir, force })
+      : resolveGcTrackAssets(values, { rootDir: options.rootDir, force });
 
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-GC-Track-Asset-Mode', strict ? 'exact-v1' : 'legacy');
 
     if (String(req.query.debug || '') === '1') {
       const rootDir = options.rootDir ? path.resolve(options.rootDir) : process.cwd();
