@@ -538,6 +538,13 @@ function publicState(state: LiveState, options: { debug?: boolean; raw?: boolean
     lastRawPosition: state.lastRawPosition,
     lastNormalizedPosition: state.lastNormalizedPosition,
     lastPositionDropReason: state.lastPositionDropReason,
+    comboAuthority: {
+      source: 'acsm-live',
+      available: Boolean(state.connected && state.normalized?.session?.track),
+      trackCode: state.normalized?.session?.track || null,
+      trackConfig: state.normalized?.session?.trackConfig || null,
+      receivedAt: state.normalized?.receivedAt || state.lastEventAt || null
+    },
     debug: debugState(state)
   };
   if (options.raw) payload.raw = state.snapshot;
@@ -640,6 +647,33 @@ function scheduleReconnect(sourceKey: AcsmSourceKey) {
   reconnectTimers.set(sourceKey, timer);
 }
 
+/* GC_PHASE4C_ACSM_LIVE_ACTIVE_COMBO_V1 */
+function liveSnapshotWaitMs(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 2200;
+  return Math.max(0, Math.min(5000, Math.round(parsed)));
+}
+
+async function waitForLiveSnapshot(sourceKey: AcsmSourceKey, timeoutMs = 2200) {
+  const state = getState(sourceKey);
+  await ensureSocket(sourceKey);
+
+  if (state.normalized?.session?.track || timeoutMs <= 0) return state;
+
+  const startedAt = Date.now();
+  await new Promise<void>((resolve) => {
+    const timer = setInterval(() => {
+      const ready = Boolean(state.normalized?.session?.track);
+      const expired = Date.now() - startedAt >= timeoutMs;
+      if (!ready && !expired) return;
+      clearInterval(timer);
+      resolve();
+    }, 50);
+  });
+
+  return state;
+}
+
 function queryBool(value: unknown) {
   return ['1', 'true', 'yes', 'on', 'debug'].includes(String(value || '').toLowerCase());
 }
@@ -649,7 +683,7 @@ export function registerGcAcsmLiveTestRoutes(app: express.Express) {
     const sourceKey = getSourceKey(req.query.server || req.query.source);
     const state = getState(sourceKey);
     try {
-      await ensureSocket(sourceKey);
+      await waitForLiveSnapshot(sourceKey, liveSnapshotWaitMs(req.query.waitMs));
       res.setHeader('Cache-Control', 'no-store');
       res.json(publicState(state, { raw: queryBool(req.query.raw) }));
     } catch (error) {

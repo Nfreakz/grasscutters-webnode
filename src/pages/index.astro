@@ -2470,7 +2470,7 @@ const home2ArchiveSeed: unknown[] = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2.3-live-championship-combo';
+      const PACK = 'bootstrap-2.4-acsm-live-authoritative';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2489,7 +2489,7 @@ const home2ArchiveSeed: unknown[] = [];
       let refreshTimer = 0;
       let heroRotateTimer = 0;
       const heroState: { payload: any; index: number } = { payload: null, index: 0 };
-      const lastGood: { bootstrap: any; championships: Record<string, any> } = { bootstrap: null, championships: {} };
+      const lastGood: { bootstrap: any; championships: Record<string, any>; live: Record<string, any> } = { bootstrap: null, championships: {}, live: {} };
 
       const q = (selector: string, scope: any = root): any => scope?.querySelector?.(selector) || null;
       const qa = (selector: string, scope: any = root): any[] => Array.from(scope?.querySelectorAll?.(selector) || []);
@@ -2650,6 +2650,178 @@ const home2ArchiveSeed: unknown[] = [];
         }
       }
 
+      /* GC_PHASE4C_ACSM_LIVE_ACTIVE_COMBO_V1 */
+      const acsmLiveSourcePayload = (source: 'main' | 'gt4', snapshot: any): any | null => {
+        const normalized = snapshot?.normalized;
+        const session = normalized?.session || {};
+        const trackInfo = normalized?.track || {};
+        const trackCode = String(session.track || '').trim();
+        const trackConfig = String(session.trackConfig || '').trim();
+        const connected = snapshot?.connected === true;
+
+        if (!connected || !trackCode) return null;
+
+        const trackDisplay = cleanPublicName(trackInfo.name || trackCode, source);
+        const receivedAt = snapshot.lastEventAt || normalized.receivedAt || new Date().toISOString();
+        const rawTimes = Array.isArray(normalized.storedTimes) ? normalized.storedTimes : [];
+        const rawSlots = Array.isArray(normalized.carSlots) ? normalized.carSlots : [];
+
+        const rows = rawTimes
+          .map((row: any) => ({
+            ...row,
+            sourceKey: source,
+            source: source,
+            driverName: row.driverName || row.name || '--',
+            carName: row.carName || row.carModel || '--',
+            carCode: row.carModel || row.carName || '',
+            trackName: trackDisplay,
+            trackCode,
+            trackConfig,
+            lapTimeMs: row.bestLapMs,
+            bestLapMs: row.bestLapMs,
+            valid: true,
+            timestamp: receivedAt,
+            sessionType: session.typeLabel || 'ACSM live'
+          }))
+          .filter((row: any) => Number.isFinite(Number(row.bestLapMs)))
+          .sort((left: any, right: any) => Number(left.bestLapMs) - Number(right.bestLapMs));
+
+        const carsByKey = new Map<string, any>();
+        const rememberCar = (codeValue: unknown, nameValue: unknown) => {
+          const code = String(codeValue || nameValue || '').trim();
+          const name = cleanPublicName(nameValue || code, source);
+          const key = normalize(code || name);
+          if (!key || carsByKey.has(key)) return;
+          carsByKey.set(key, {
+            code,
+            rawCode: code,
+            name,
+            displayName: name,
+            publicName: name
+          });
+        };
+
+        rawTimes.forEach((row: any) => rememberCar(row.carModel, row.carName || row.carModel));
+        rawSlots.forEach((row: any) => rememberCar(row.carModel || row.carName, row.carName || row.carModel));
+        const cars = [...carsByKey.values()];
+        const driverCount = new Set(rows.map((row: any) => normalize(row.driverName)).filter(Boolean)).size;
+        const totalLaps = rows.reduce((total: number, row: any) => total + (Number(row.laps) || 0), 0);
+        const imageAliases = [
+          trackConfig ? `${trackCode}_${trackConfig}` : '',
+          trackCode,
+          trackDisplay
+        ].filter(Boolean);
+
+        const activeCombo = {
+          __gcAcsmLive: true,
+          __gcComboAuthority: 'acsm-live',
+          sourceKey: source,
+          source,
+          receivedAt,
+          track: {
+            code: trackCode,
+            rawCode: trackCode,
+            trackCode,
+            trackConfig,
+            layout: trackConfig,
+            familyKey: trackConfig ? `${trackCode}_${trackConfig}` : trackCode,
+            rawName: trackCode,
+            name: trackDisplay,
+            displayName: trackDisplay,
+            publicName: trackDisplay,
+            city: trackInfo.city || '',
+            country: trackInfo.country || ''
+          },
+          trackCode,
+          trackRaw: trackCode,
+          trackName: trackDisplay,
+          trackImage: { aliases: imageAliases },
+          cars,
+          carSummary: cars.map((car: any) => car.displayName).join(' / '),
+          carsCount: cars.length,
+          driversCount: driverCount,
+          totalLaps,
+          validLaps: rows.length,
+          bestLap: rows[0] || null,
+          latestLap: rows[0] || null,
+          leaderboard: rows
+        };
+
+        return {
+          ok: true,
+          source: `acsm-live:${source}`,
+          sourceKey: source,
+          activeCombo,
+          leaderboard: rows,
+          diagnostics: {
+            activeComboAuthority: 'acsm-live',
+            liveAvailable: true,
+            connected,
+            trackCode,
+            trackConfig,
+            receivedAt,
+            storedTimes: rows.length,
+            cars: cars.length
+          }
+        };
+      };
+
+      const mergeBootstrapWithAcsmLive = (bootstrap: any, live: Record<string, any>) => {
+        const mergeSource = (source: 'main' | 'gt4') => {
+          const historical = bootstrap?.[source] || {};
+          const livePayload = live[source] || null;
+          if (livePayload) {
+            return {
+              ...historical,
+              ...livePayload,
+              diagnostics: {
+                ...(historical.diagnostics || {}),
+                ...(livePayload.diagnostics || {})
+              }
+            };
+          }
+
+          // Sin ACSM live no reutilizamos el último bucket histórico como combo actual.
+          return {
+            ...historical,
+            activeCombo: null,
+            leaderboard: [],
+            diagnostics: {
+              ...(historical.diagnostics || {}),
+              activeComboAuthority: 'acsm-live',
+              liveAvailable: false,
+              staleHistoricalComboSuppressed: true
+            }
+          };
+        };
+
+        return {
+          ...bootstrap,
+          source: `${bootstrap?.source || 'home-bootstrap'}+acsm-live-authoritative`,
+          main: mergeSource('main'),
+          gt4: mergeSource('gt4'),
+          comboAuthority: 'acsm-live'
+        };
+      };
+
+      const fetchAcsmLiveSource = async (source: 'main' | 'gt4') => {
+        try {
+          const payload = await fetchJson(
+            `/api/gc/live-test/snapshot?source=${encodeURIComponent(source)}&waitMs=2200&t=${Date.now()}`,
+            6000
+          );
+          const normalized = acsmLiveSourcePayload(source, payload);
+          if (normalized) lastGood.live[source] = normalized;
+          return normalized;
+        } catch (error) {
+          console.warn(`[GC Home ${PACK}] ACSM live no disponible`, source, error);
+          return null;
+        }
+      };
+
+      const sourceUsesAcsmLive = (payload: any): boolean =>
+        String(payload?.diagnostics?.activeComboAuthority || '') === 'acsm-live';
+
       const setImageWithFallbacks = (img: HTMLImageElement | null, candidates: string[], fallback = FALLBACK_TRACK): void => {
         if (!img) return;
         const list = [...new Set((candidates || []).filter(Boolean))];
@@ -2721,7 +2893,10 @@ const home2ArchiveSeed: unknown[] = [];
         if (!img) return;
         img.dataset.gcHomeStaticManaged = '1';
         const combo = activeCombo(payload?.main) || activeCombo(payload?.gt4) || null;
-        if (!combo) return;
+        if (!combo) {
+          setImageWithFallbacks(img, [], FALLBACK_TRACK);
+          return;
+        }
         setImageWithFallbacks(img, trackImageCandidatesFromCombo(combo), FALLBACK_TRACK);
       };
 
@@ -2747,7 +2922,8 @@ const home2ArchiveSeed: unknown[] = [];
       };
       document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
       document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
-      document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v1';
+      document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v2-acsm-live';
+      document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-v1';
 
       const renderRecent = (rows: any[] = []): any[] => {
         const host = q('[data-home2-recent-laps]');
@@ -2810,14 +2986,33 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const heroCandidates = (payload: any) => ([
-        { source: 'main', payload: payload?.main, rows: sourceLeaderboard(payload?.main) },
-        { source: 'gt4', payload: payload?.gt4, rows: sourceLeaderboard(payload?.gt4) }
-      ].filter((item) => item?.payload?.activeCombo || item.rows.length));
+        {
+          source: 'main',
+          payload: payload?.main,
+          rows: sourceLeaderboard(payload?.main),
+          scheduled: Boolean(championshipEventForSource('weekly'))
+        },
+        {
+          source: 'gt4',
+          payload: payload?.gt4,
+          rows: sourceLeaderboard(payload?.gt4),
+          scheduled: Boolean(championshipEventForSource('gt4'))
+        }
+      ].filter((item) => item?.payload?.activeCombo || item.rows.length || item.scheduled));
 
       const renderHeroFromState = () => {
         const payload = heroState.payload || lastGood.bootstrap;
         const candidates = heroCandidates(payload);
-        if (!candidates.length) return;
+        if (!candidates.length) {
+          setText('[data-home2-hero-source]', 'ACSM LIVE');
+          setText('[data-home2-track]', 'Servidor sin información');
+          setText('[data-home2-cars]', 'Esperando el combo actual');
+          setText('[data-home2-best-driver]', '--');
+          setText('[data-home2-best-car]', '--');
+          setText('[data-home2-best-time]', '--');
+          qa('[data-home2-best-avatar]').forEach((img) => { img.src = DEFAULT_AVATAR; });
+          return;
+        }
         heroState.index = ((heroState.index % candidates.length) + candidates.length) % candidates.length;
         const item = candidates[heroState.index];
         setHero(item.payload, item.rows, item.source);
@@ -3150,8 +3345,8 @@ const home2ArchiveSeed: unknown[] = [];
       const applyBootstrap = (payload: any) => {
         const mainRows = sourceLeaderboard(payload?.main);
         const gt4Rows = sourceLeaderboard(payload?.gt4);
-        const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, true);
-        const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4Rows, true);
+        const renderedMain = renderRanking('[data-home2-combo-ranking]', mainRows, !sourceUsesAcsmLive(payload?.main));
+        const renderedGt4 = renderRanking('[data-home2-combo-ranking-gt4]', gt4Rows, !sourceUsesAcsmLive(payload?.gt4));
         const recentRows = renderRecent(payload?.timingSheet || []);
         setHeroBackgroundFromMain(payload);
         heroState.payload = payload;
@@ -3168,21 +3363,44 @@ const home2ArchiveSeed: unknown[] = [];
         const seq = ++runSeq;
         try {
           const stamp = Date.now();
-          const bootstrap = await fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=8&home=1&t=${stamp}`, 15000);
+          const [historicalBootstrap, liveMain, liveGt4] = await Promise.all([
+            fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=8&home=1&t=${stamp}`, 15000),
+            fetchAcsmLiveSource('main'),
+            fetchAcsmLiveSource('gt4')
+          ]);
           if (seq !== runSeq) return;
-          if (!bootstrap?.ok) throw new Error(bootstrap?.message || 'Home bootstrap no disponible');
+          if (!historicalBootstrap?.ok) throw new Error(historicalBootstrap?.message || 'Home bootstrap no disponible');
+
+          const bootstrap = mergeBootstrapWithAcsmLive(historicalBootstrap, {
+            main: liveMain,
+            gt4: liveGt4
+          });
+
           lastGood.bootstrap = bootstrap;
           const rendered = applyBootstrap(bootstrap);
           const championships = await Promise.all([loadChampionship('weekly'), loadChampionship('gt4')]);
           renderHeroFromState();
           renderPulse(bootstrap);
-          renderRanking('[data-home2-combo-ranking]', sourceLeaderboard(bootstrap?.main), true);
-          renderRanking('[data-home2-combo-ranking-gt4]', sourceLeaderboard(bootstrap?.gt4), true);
+          renderRanking(
+            '[data-home2-combo-ranking]',
+            sourceLeaderboard(bootstrap?.main),
+            !sourceUsesAcsmLive(bootstrap?.main)
+          );
+          renderRanking(
+            '[data-home2-combo-ranking-gt4]',
+            sourceLeaderboard(bootstrap?.gt4),
+            !sourceUsesAcsmLive(bootstrap?.gt4)
+          );
+
+          document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-v1';
           console.info(`[GC Home ${PACK}]`, {
             bootstrap: bootstrap.source,
-            latencyMs: bootstrap.latencyMs,
-            mainActive: bootstrap.main?.diagnostics?.activeComboKey,
-            gt4Active: bootstrap.gt4?.diagnostics?.activeComboKey,
+            latencyMs: historicalBootstrap.latencyMs,
+            comboAuthority: bootstrap.comboAuthority,
+            mainLiveTrack: liveMain?.diagnostics?.trackCode || null,
+            mainLiveLayout: liveMain?.diagnostics?.trackConfig || null,
+            gt4LiveTrack: liveGt4?.diagnostics?.trackCode || null,
+            gt4LiveLayout: liveGt4?.diagnostics?.trackConfig || null,
             ...rendered,
             championships
           });
