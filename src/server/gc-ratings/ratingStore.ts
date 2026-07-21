@@ -12,6 +12,8 @@ export interface RatingStore {
     eventResults: RatingEventResult[];
     recalculationLogs: RecalculationLog[];
   }): Promise<void>;
+  /* GC_PHASE4D_SOURCE_ISOLATION_V1 */
+  ensureSourceIsolationConstraints?(): Promise<void>;
   diagnostics?(): Promise<Record<string, unknown>>;
 }
 

@@ -210,6 +210,8 @@ function createEmptySnapshot(championship?: PlainObject | null, storage: 'json' 
     strackerDbPath: null,
     generatedAt: isoNow(),
     processedEventIds: [],
+    processedEventKeys: [],
+    sourceIsolationVersion: null,
     drivers: [],
     eventResults: [],
     recalculationLogs: [],
@@ -712,7 +714,10 @@ async function createProcessingContext(eventsCount: number, mode: 'incremental' 
 
 /* GC_PHASE4A_RATINGS_INTEGRITY_GUARD_V1 */
 function ratingResultFingerprintV1(row: RatingEventResult) {
-  const eventId = textValue(row.eventId, 'unknown-event');
+  const explicitIdentity = textValue(row.resultIdentityKey);
+  if (explicitIdentity) return `${ratingEventScopeKeyV1(row.sourceKey, row.eventId)}:${explicitIdentity}`;
+
+  const eventId = ratingEventScopeKeyV1(row.sourceKey, textValue(row.eventId, 'unknown-event'));
   const position = safeFiniteNumber(row.position, 0);
   const name = normalizeDriverNameKey(row.displayName || row.driverKey || 'unknown');
 
@@ -863,6 +868,285 @@ function phase4bBackupFileV1(snapshot: RatingsSnapshot, plan: PlainObject) {
   const filePath = path.join(directory, `phase4b-before-canonical-rebuild-${stamp}.json`);
   fs.writeFileSync(filePath, JSON.stringify({
     version: GC_PHASE4B_CLEANUP_LOG_MARKER_V1,
+    createdAt: isoNow(),
+    plan,
+    snapshot
+  }, null, 2) + '\n', 'utf8');
+  return path.relative(process.cwd(), filePath).replace(/\\/g, '/');
+}
+
+/* GC_PHASE4D_SOURCE_ISOLATION_V1 */
+const GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1 = 'GC_PHASE4D_SOURCE_ISOLATION_V1';
+
+type RatingSourceKeyV1 = 'weekly' | 'gt4' | 'stracker-manual' | 'unknown';
+
+function normalizeRatingSourceKeyV1(value: unknown): RatingSourceKeyV1 {
+  const source = String(value || '').trim().toLowerCase();
+  if (['gt4', 'supra', 'server2', '2'].includes(source)) return 'gt4';
+  if (['weekly', 'main', 'liga', 'server1', '1'].includes(source)) return 'weekly';
+  if (['stracker-manual', 'stracker', 'manual'].includes(source)) return 'stracker-manual';
+  return 'unknown';
+}
+
+function ratingResultIdentityKeyV1(row: Partial<RatingEventResult> & PlainObject) {
+  const explicit = textValue(row.resultIdentityKey);
+  if (explicit) return explicit;
+
+  const steamGuid = textValue(row.steamGuid);
+  if (steamGuid) return `steam:${steamGuid}`;
+
+  const playerId = safeFiniteNumber(row.strackerPlayerId, 0);
+  if (playerId > 0) return `player:${playerId}`;
+
+  const driverKey = textValue(row.driverKey);
+  if (driverKey) return driverKey;
+
+  return `name:${normalizeDriverNameKey(row.displayName || 'unknown') || 'unknown'}`;
+}
+
+function ratingEventScopeKeyV1(sourceKey: unknown, eventId: unknown) {
+  return `${normalizeRatingSourceKeyV1(sourceKey)}:${textValue(eventId, 'unknown-event')}`;
+}
+
+function ratingResultScopeIdentityV1(row: Partial<RatingEventResult> & PlainObject) {
+  return `${ratingEventScopeKeyV1(row.sourceKey, row.eventId)}:${ratingResultIdentityKeyV1(row)}`;
+}
+
+function applyRatingResultSourceV1(
+  row: RatingEventResult,
+  input: {
+    sourceKey: RatingSourceKeyV1;
+    championshipId?: string | null;
+    championshipName?: string | null;
+  }
+): RatingEventResult {
+  const sourceKey = normalizeRatingSourceKeyV1(input.sourceKey);
+  const eventId = textValue(row.eventId, 'unknown-event');
+  return {
+    ...row,
+    sourceKey,
+    championshipId: sourceKey === 'stracker-manual' ? null : textValue(input.championshipId) || null,
+    championshipName: sourceKey === 'stracker-manual' ? null : textValue(input.championshipName) || null,
+    resultIdentityKey: ratingResultIdentityKeyV1(row),
+    eventScopeKey: ratingEventScopeKeyV1(sourceKey, eventId)
+  };
+}
+
+function buildRatingSourceIsolationAuditV1(snapshot: RatingsSnapshot) {
+  const rows = ratingArray<RatingEventResult>(snapshot.eventResults);
+  const sourceCounts: Record<string, number> = {
+    weekly: 0,
+    gt4: 0,
+    'stracker-manual': 0,
+    unknown: 0
+  };
+  const unknownOfficialRows: PlainObject[] = [];
+  const missingIdentityRows: PlainObject[] = [];
+  const groups = new Map<string, RatingEventResult[]>();
+
+  for (const row of rows) {
+    const sourceKey = normalizeRatingSourceKeyV1(row.sourceKey);
+    sourceCounts[sourceKey] = (sourceCounts[sourceKey] || 0) + 1;
+    const manual = String(row.eventId || '').startsWith('stracker:');
+    const identityKey = textValue(row.resultIdentityKey) || ratingResultIdentityKeyV1(row);
+
+    if (!manual && (
+      sourceKey === 'unknown' ||
+      !textValue(row.championshipId) ||
+      !textValue(row.championshipName)
+    )) {
+      unknownOfficialRows.push({
+        id: row.id,
+        eventId: row.eventId,
+        eventName: row.eventName,
+        displayName: row.displayName,
+        sourceKey,
+        championshipId: row.championshipId || null
+      });
+    }
+
+    if (!identityKey) {
+      missingIdentityRows.push({
+        id: row.id,
+        eventId: row.eventId,
+        displayName: row.displayName
+      });
+      continue;
+    }
+
+    const key = `${ratingEventScopeKeyV1(sourceKey, row.eventId)}:${identityKey}`;
+    const bucket = groups.get(key) || [];
+    bucket.push(row);
+    groups.set(key, bucket);
+  }
+
+  const duplicateIdentityGroups = [...groups.entries()]
+    .filter(([, bucket]) => bucket.length > 1)
+    .map(([key, bucket]) => ({
+      key,
+      rows: bucket.length,
+      eventId: bucket[0]?.eventId || null,
+      eventName: bucket[0]?.eventName || null,
+      displayName: bucket[0]?.displayName || null,
+      ids: bucket.map((row) => row.id)
+    }));
+
+  const migrationLog = ratingArray<RecalculationLog>(snapshot.recalculationLogs)
+    .find((log) => textValue(log.message).includes(GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1)) || null;
+
+  const ready =
+    rows.length === 0 ||
+    (
+      unknownOfficialRows.length === 0 &&
+      missingIdentityRows.length === 0 &&
+      duplicateIdentityGroups.length === 0
+    );
+
+  return {
+    version: GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1,
+    ready,
+    applied: Boolean(migrationLog),
+    totalRows: rows.length,
+    sourceCounts,
+    unknownOfficialRows: unknownOfficialRows.length,
+    missingIdentityRows: missingIdentityRows.length,
+    duplicateIdentityGroups: duplicateIdentityGroups.length,
+    processedEventKeys: [...new Set(rows.map((row) =>
+      ratingEventScopeKeyV1(row.sourceKey, row.eventId)
+    ))].length,
+    constraintsExpected: ready && rows.length > 0,
+    examples: {
+      unknownOfficialRows: unknownOfficialRows.slice(0, 20),
+      missingIdentityRows: missingIdentityRows.slice(0, 20),
+      duplicateIdentityGroups: duplicateIdentityGroups.slice(0, 20)
+    },
+    migratedAt: migrationLog?.createdAt || null
+  };
+}
+
+async function buildRatingSourceCatalogV1() {
+  const sources = ['weekly', 'gt4'] as const;
+  const eventMap = new Map<string, {
+    sourceKey: 'weekly' | 'gt4';
+    championshipId: string;
+    championshipName: string;
+    eventId: string;
+    eventName: string;
+  }>();
+  const sourceSummaries: PlainObject[] = [];
+  const collisions: PlainObject[] = [];
+
+  for (const sourceKey of sources) {
+    const acsm = await fetchChampionship(sourceKey);
+    const championship = acsm.championship || {};
+    const championshipId = textValue(championship.id, 'unknown');
+    const championshipName = textValue(
+      championship.name,
+      sourceKey === 'gt4' ? 'GC Toyota Supra GT4' : 'Liga GrassCutters'
+    );
+    const events = ratingArray<PlainObject>(championship.events);
+
+    sourceSummaries.push({
+      sourceKey,
+      championshipId,
+      championshipName,
+      events: events.length,
+      completedEvents: completedEvents(championship).length
+    });
+
+    for (const event of events) {
+      const eventId = textValue(event.id);
+      if (!eventId) continue;
+      const previous = eventMap.get(eventId);
+      if (previous && previous.sourceKey !== sourceKey) {
+        collisions.push({
+          eventId,
+          sources: [previous.sourceKey, sourceKey],
+          championshipIds: [previous.championshipId, championshipId]
+        });
+        continue;
+      }
+      eventMap.set(eventId, {
+        sourceKey,
+        championshipId,
+        championshipName,
+        eventId,
+        eventName: textValue(event.name, `Evento ${eventId}`)
+      });
+    }
+  }
+
+  return { eventMap, sourceSummaries, collisions };
+}
+
+async function buildRatingSourceIsolationPlanV1(snapshot: RatingsSnapshot) {
+  const catalog = await buildRatingSourceCatalogV1();
+  const missingEventIds = new Set<string>();
+  const candidateResults = ratingArray<RatingEventResult>(snapshot.eventResults).map((row) => {
+    const eventId = textValue(row.eventId);
+    if (eventId.startsWith('stracker:')) {
+      return applyRatingResultSourceV1(row, {
+        sourceKey: 'stracker-manual',
+        championshipId: null,
+        championshipName: null
+      });
+    }
+
+    const sourceMeta = catalog.eventMap.get(eventId);
+    if (!sourceMeta) {
+      missingEventIds.add(eventId);
+      return applyRatingResultSourceV1(row, {
+        sourceKey: normalizeRatingSourceKeyV1(row.sourceKey),
+        championshipId: row.championshipId || null,
+        championshipName: row.championshipName || null
+      });
+    }
+
+    return applyRatingResultSourceV1(row, sourceMeta);
+  });
+
+  const candidate: RatingsSnapshot = {
+    ...snapshot,
+    championshipId: 'gc-multi-source',
+    championshipName: 'GrassCutters Ratings · Liga + GT4',
+    processedEventIds: [...new Set(candidateResults.map((row) => row.eventId).filter(Boolean))],
+    processedEventKeys: [...new Set(candidateResults.map((row) =>
+      ratingEventScopeKeyV1(row.sourceKey, row.eventId)
+    ))],
+    eventResults: candidateResults,
+    sourceIsolationVersion: GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1
+  };
+
+  const before = buildRatingSourceIsolationAuditV1(snapshot);
+  const after = buildRatingSourceIsolationAuditV1(candidate);
+  const safeToApply =
+    candidateResults.length > 0 &&
+    catalog.collisions.length === 0 &&
+    missingEventIds.size === 0 &&
+    after.unknownOfficialRows === 0 &&
+    after.missingIdentityRows === 0 &&
+    after.duplicateIdentityGroups === 0;
+
+  return {
+    snapshot,
+    candidate,
+    before,
+    after,
+    sourceSummaries: catalog.sourceSummaries,
+    sourceCollisions: catalog.collisions,
+    missingEventIds: [...missingEventIds],
+    safeToApply,
+    confirmationRequired: `AISLAR_${candidateResults.length}_RESULTADOS`
+  };
+}
+
+function phase4dBackupFileV1(snapshot: RatingsSnapshot, plan: PlainObject) {
+  const directory = path.join(process.cwd(), 'data', 'gc-ratings', 'backups');
+  fs.mkdirSync(directory, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = path.join(directory, `phase4d-before-source-isolation-${stamp}.json`);
+  fs.writeFileSync(filePath, JSON.stringify({
+    version: GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1,
     createdAt: isoNow(),
     plan,
     snapshot
@@ -1386,10 +1670,25 @@ export class GcRatingsService {
     const states = new Map(baseSnapshot.drivers.map((driver) => [driver.driverKey, { ...driver }]));
     const newEventResults: RatingEventResult[] = [];
     const processedEventIds = new Set(baseSnapshot.processedEventIds);
+    const processedEventKeys = new Set(
+      ratingArray<string>(baseSnapshot.processedEventKeys).length
+        ? ratingArray<string>(baseSnapshot.processedEventKeys)
+        : ratingArray<RatingEventResult>(baseSnapshot.eventResults).map((row) =>
+            ratingEventScopeKeyV1(row.sourceKey, row.eventId)
+          )
+    );
+    const defaultSourceKey = normalizeRatingSourceKeyV1(options.source || 'weekly');
+    const defaultChampionshipId = textValue(options.championshipId) || null;
+    const defaultChampionshipName = textValue(options.championshipName) || null;
     const context = await createProcessingContext(events.length, mode, options.source || 'weekly');
 
     try {
       for (const event of events) {
+        const eventSourceKey: RatingSourceKeyV1 = String(event?.id || '').startsWith('stracker:')
+          ? 'stracker-manual'
+          : defaultSourceKey;
+        const eventChampionshipId = eventSourceKey === 'stracker-manual' ? null : defaultChampionshipId;
+        const eventChampionshipName = eventSourceKey === 'stracker-manual' ? null : defaultChampionshipName;
         const forcedSessionId = safeFiniteNumber(event.manualStrackerSessionId || event.strackerSessionId, 0);
         const session = (context.strackerAvailable && context.db
           ? forcedSessionId
@@ -1483,6 +1782,16 @@ export class GcRatingsService {
             eventId: String(event.id),
             eventName: textValue(event.name, `Ronda ${event.index}`),
             eventDate: event.completedAt || event.scheduledAt || null,
+            sourceKey: eventSourceKey,
+            championshipId: eventChampionshipId,
+            championshipName: eventChampionshipName,
+            resultIdentityKey: ratingResultIdentityKeyV1({
+              driverKey,
+              steamGuid,
+              strackerPlayerId,
+              displayName
+            } as RatingEventResult),
+            eventScopeKey: ratingEventScopeKeyV1(eventSourceKey, event.id),
             strackerSessionId: session ? Number(session.SessionId) : null,
             driverKey,
             steamGuid,
@@ -1551,6 +1860,11 @@ export class GcRatingsService {
             eventId: row.eventId,
             eventName: row.eventName,
             eventDate: row.eventDate,
+            sourceKey: row.sourceKey,
+            championshipId: row.championshipId,
+            championshipName: row.championshipName,
+            resultIdentityKey: row.resultIdentityKey,
+            eventScopeKey: row.eventScopeKey,
             strackerSessionId: row.strackerSessionId,
             driverKey: row.driverKey,
             steamGuid: row.steamGuid,
@@ -1592,11 +1906,13 @@ export class GcRatingsService {
         }
 
         processedEventIds.add(String(event.id));
+        processedEventKeys.add(ratingEventScopeKeyV1(eventSourceKey, event.id));
       }
 
       return {
         context,
         processedEventIds: [...processedEventIds],
+        processedEventKeys: [...processedEventKeys],
         drivers: [...states.values()].sort((left, right) => right.gsrRating - left.gsrRating || right.srScore - left.srScore),
         newEventResults
       };
@@ -1692,7 +2008,11 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
 
     if (!missingStoredEventIds.length && !sourceCollisions.length) {
       for (const item of selectedEvents) {
-        const computed = await this.computeEventUpdates(candidate, [item.event], 'rebuild', { source: item.source });
+        const computed = await this.computeEventUpdates(candidate, [item.event], 'rebuild', {
+          source: item.source,
+          championshipId: item.championshipId,
+          championshipName: item.championshipName
+        });
         candidate = {
           ...candidate,
           source: computed.context.srMode === 'stracker' ? 'gc-ratings-v1' : 'gc-ratings-v1-acsm-fallback',
@@ -1702,6 +2022,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
             : candidate.strackerDbPath,
           generatedAt: isoNow(),
           processedEventIds: computed.processedEventIds,
+          processedEventKeys: computed.processedEventKeys,
           drivers: computed.drivers,
           eventResults: [...candidate.eventResults, ...computed.newEventResults],
           recalculationLogs: [
@@ -1846,6 +2167,81 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
     });
   }
 
+async migrateRatingSourceIsolationV1(options: PlainObject = {}) {
+    return this.queueRatingMutationV1(async () => {
+      const dryRun = parseBooleanish(options.dryRun, true) !== false;
+      const confirmation = textValue(options.confirmation);
+      const snapshot = await this.getSnapshot();
+      const plan = await buildRatingSourceIsolationPlanV1(snapshot);
+
+      const summary = {
+        version: GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1,
+        dryRun,
+        safeToApply: plan.safeToApply,
+        confirmationRequired: plan.confirmationRequired,
+        storage: this.store.kind,
+        before: plan.before,
+        predicted: plan.after,
+        sourceSummaries: plan.sourceSummaries,
+        sourceCollisions: plan.sourceCollisions,
+        missingEventIds: plan.missingEventIds
+      };
+
+      if (dryRun) {
+        return {
+          ok: true,
+          ...summary,
+          applied: false,
+          backupFile: null,
+          message: plan.safeToApply
+            ? `Simulación segura. Se aislarán ${plan.candidate.eventResults.length} resultados por Liga/GT4.`
+            : 'Simulación bloqueada. Revisa eventos ausentes, colisiones o identidades duplicadas.'
+        };
+      }
+
+      if (!plan.safeToApply) {
+        throw new Error('Aislamiento bloqueado: el plan no supera las comprobaciones de integridad.');
+      }
+
+      if (confirmation !== plan.confirmationRequired) {
+        throw new Error(`Confirmación incorrecta. Escribe exactamente ${plan.confirmationRequired}.`);
+      }
+
+      const backupFile = phase4dBackupFileV1(snapshot, summary);
+      const log: RecalculationLog = {
+        id: uniqueId('gc_recalc'),
+        eventId: null,
+        mode: 'rebuild',
+        status: 'ok',
+        message: `${GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1}: backup ${backupFile}; ${plan.candidate.eventResults.length} resultados aislados por fuente.`,
+        createdAt: isoNow()
+      };
+
+      const snapshotToSave: RatingsSnapshot = {
+        ...plan.candidate,
+        generatedAt: log.createdAt,
+        sourceIsolationVersion: GC_PHASE4D_SOURCE_ISOLATION_MARKER_V1,
+        recalculationLogs: [...plan.candidate.recalculationLogs, log]
+      };
+
+      await this.store.save(snapshotToSave);
+      if (this.store.ensureSourceIsolationConstraints) {
+        await this.store.ensureSourceIsolationConstraints();
+      }
+      this.cachedSnapshot = snapshotToSave;
+
+      return {
+        ok: true,
+        ...summary,
+        dryRun: false,
+        applied: true,
+        backupFile,
+        after: buildRatingSourceIsolationAuditV1(snapshotToSave),
+        message: `Aislamiento completado. ${snapshotToSave.eventResults.length} resultados etiquetados y protegidos por fuente.`
+      };
+    });
+  }
+
   async processNewEvents(options: PlainObject = {}) {
     return this.queueRatingMutationV1(() => this.processNewEventsUnlockedV1(options));
   }
@@ -1855,13 +2251,23 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
     const acsm = await fetchChampionship(source);
     const championship = acsm.championship;
     const baseSnapshot = (await this.loadSnapshot()) || createEmptySnapshot(championship, this.store.kind);
+    const sourceIsolationAudit = buildRatingSourceIsolationAuditV1(baseSnapshot);
+    if (baseSnapshot.eventResults.length > 0 && !sourceIsolationAudit.ready) {
+      throw new Error('Procesamiento bloqueado: ejecuta primero /admin/integridad-ratings/fuentes.');
+    }
     const integrityAudit = buildRatingDuplicateAuditV1(baseSnapshot.eventResults);
     if (integrityAudit.duplicateGroups > 0) {
       throw new Error(`Procesamiento bloqueado: hay ${integrityAudit.duplicateGroups} grupo(s) de resultados duplicados. Ejecuta primero /admin/integridad-ratings.`);
     }
     const allCompleted = completedEvents(championship);
-    const processedIds = new Set([...baseSnapshot.processedEventIds, ...baseSnapshot.eventResults.map((row) => row.eventId)]);
-    const newEvents = allCompleted.filter((event: PlainObject) => !processedIds.has(String(event.id)));
+    const processedKeys = new Set(
+      ratingArray<string>(baseSnapshot.processedEventKeys).length
+        ? ratingArray<string>(baseSnapshot.processedEventKeys)
+        : baseSnapshot.eventResults.map((row) => ratingEventScopeKeyV1(row.sourceKey, row.eventId))
+    );
+    const newEvents = allCompleted.filter((event: PlainObject) =>
+      !processedKeys.has(ratingEventScopeKeyV1(source, event.id))
+    );
     const saveNoopLog = options.saveNoopLog !== false;
 
     if (!newEvents.length) {
@@ -1915,7 +2321,11 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       };
     }
 
-    const computed = await this.computeEventUpdates(baseSnapshot, newEvents, 'incremental', { source });
+    const computed = await this.computeEventUpdates(baseSnapshot, newEvents, 'incremental', {
+      source,
+      championshipId: textValue(championship.id) || null,
+      championshipName: textValue(championship.name) || null
+    });
     const statusMessage = computed.context.srMode === 'stracker'
       ? `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR/GSR.`
       : `Procesados automáticamente ${newEvents.length} evento(s) ACSM completado(s) con SR parcial desde ACSM.`;
@@ -1937,6 +2347,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : null,
       generatedAt: okLog.createdAt,
       processedEventIds: computed.processedEventIds,
+      processedEventKeys: computed.processedEventKeys,
       drivers: computed.drivers,
       eventResults: [...baseSnapshot.eventResults, ...computed.newEventResults],
       recalculationLogs: [...baseSnapshot.recalculationLogs, ...computed.context.warningLogs, okLog]
@@ -1975,7 +2386,14 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       ignoredStrackerSessions: normalizeIgnoredStrackerSessions(previousSnapshot),
       reviewedStrackerSessions: normalizeReviewedStrackerSessions(previousSnapshot)
     };
-    const computed = await this.computeEventUpdates(baseSnapshot, allCompleted, 'rebuild', { source });
+    if (options.allSources !== true) {
+      throw new Error('Rebuild de una sola fuente bloqueado por Phase 4D. Usa el flujo global de integridad para no borrar la otra liga.');
+    }
+    const computed = await this.computeEventUpdates(baseSnapshot, allCompleted, 'rebuild', {
+      source,
+      championshipId: textValue(championship.id) || null,
+      championshipName: textValue(championship.name) || null
+    });
     const okLog: RecalculationLog = {
       id: uniqueId('gc_recalc'),
       eventId: null,
@@ -1993,6 +2411,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : null,
       generatedAt: okLog.createdAt,
       processedEventIds: computed.processedEventIds,
+      processedEventKeys: computed.processedEventKeys,
       drivers: computed.drivers,
       eventResults: computed.newEventResults,
       recalculationLogs: [...computed.context.warningLogs, okLog]
@@ -2085,7 +2504,11 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
 
     for (const target of targets) {
       try {
-        const computed = await this.computeEventUpdates(currentSnapshot, [target.event], 'rebuild', { source: recalcSource });
+        const computed = await this.computeEventUpdates(currentSnapshot, [target.event], 'rebuild', {
+        source: recalcSource,
+        championshipId: textValue(championship.id) || null,
+        championshipName: textValue(championship.name) || null
+      });
         recalculatedRows.push(...computed.newEventResults);
         warningLogs.push(...computed.context.warningLogs);
         currentSnapshot = {
@@ -2094,6 +2517,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
           strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : strackerDbPath,
           generatedAt,
           processedEventIds: computed.processedEventIds,
+          processedEventKeys: computed.processedEventKeys,
           drivers: computed.drivers,
           eventResults: [...currentSnapshot.eventResults, ...computed.newEventResults],
           recalculationLogs: [...currentSnapshot.recalculationLogs, ...computed.context.warningLogs]
@@ -2346,6 +2770,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : null,
       generatedAt: okLog.createdAt,
       processedEventIds: computed.processedEventIds,
+      processedEventKeys: computed.processedEventKeys,
       drivers: computed.drivers,
       eventResults: [...baseSnapshot.eventResults, ...computed.newEventResults],
       recalculationLogs: [...baseSnapshot.recalculationLogs, ...computed.context.warningLogs, okLog],
@@ -2541,6 +2966,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
       strackerDbPath: computed.context.strackerAvailable ? computed.context.strackerDbPath : null,
       generatedAt: now,
       processedEventIds: computed.processedEventIds,
+      processedEventKeys: computed.processedEventKeys,
       drivers: computed.drivers,
       eventResults: computed.newEventResults,
       recalculationLogs: [...baseSnapshot.recalculationLogs, ...computed.context.warningLogs, log]
@@ -2977,6 +3403,10 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
     if (nameKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados solo por nombre. Conviene revisar SteamID/GUID.');
     if (playerKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados por PlayerId porque no se encontró SteamID/GUID.');
     if (snapshot.eventResults.length && !strackerLinkedResults.length) megaAuditWarnings.push('No hay resultados enlazados a sTracker. El SR podría estar congelado o usando fallback.');
+    const sourceIsolation = buildRatingSourceIsolationAuditV1(snapshot);
+    if (!sourceIsolation.ready) {
+      megaAuditWarnings.push('Los resultados aún no están aislados por Liga/GT4. Ejecuta /admin/integridad-ratings/fuentes.');
+    }
     const duplicateAudit = {
       ...buildRatingDuplicateAuditV1(snapshot.eventResults),
       destructiveCleanupApplied: ratingArray<RecalculationLog>(snapshot.recalculationLogs)
@@ -3073,6 +3503,7 @@ private async buildCanonicalRebuildPlanV1(storedSnapshot: RatingsSnapshot) {
         warnings: megaAuditWarnings
       },
       dataIntegrity: duplicateAudit,
+      sourceIsolation,
       preDeployStatus,
       pendingCompletedEvents,
       nextEvent: this.compactDiagnosticsEvent(nextEvent),

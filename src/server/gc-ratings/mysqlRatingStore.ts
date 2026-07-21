@@ -71,6 +71,54 @@ async function addColumnIfMissing(pool: Pool, tableName: string, columnName: str
   await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
 }
 
+/* GC_PHASE4D_SOURCE_ISOLATION_V1 */
+function mysqlRatingSourceKey(value: unknown) {
+  const source = String(value || '').trim().toLowerCase();
+  if (source === 'gt4') return 'gt4';
+  if (source === 'weekly' || source === 'main') return 'weekly';
+  if (source === 'stracker-manual' || source === 'stracker') return 'stracker-manual';
+  return 'unknown';
+}
+
+function mysqlRatingIdentityKey(result: Partial<RatingEventResult> & Record<string, any>) {
+  const explicit = String(result.resultIdentityKey || '').trim();
+  if (explicit) return explicit;
+  const steamGuid = String(result.steamGuid || '').trim();
+  if (steamGuid) return `steam:${steamGuid}`;
+  const playerId = mysqlInt(result.strackerPlayerId, 0);
+  if (playerId > 0) return `player:${playerId}`;
+  const driverKey = String(result.driverKey || '').trim();
+  if (driverKey) return driverKey;
+  const name = String(result.displayName || 'unknown')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `name:${name || 'unknown'}`;
+}
+
+function mysqlRatingEventScopeKey(result: Partial<RatingEventResult> & Record<string, any>) {
+  return `${mysqlRatingSourceKey(result.sourceKey)}:${String(result.eventId || 'unknown-event')}`;
+}
+
+async function mysqlIndexExists(pool: Pool, tableName: string, indexName: string) {
+  const [rows] = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND INDEX_NAME = ?
+  `, [tableName, indexName]);
+  return Number((rows as any[])[0]?.total || 0) > 0;
+}
+
+async function addIndexIfMissing(pool: Pool, tableName: string, indexName: string, definition: string) {
+  if (await mysqlIndexExists(pool, tableName, indexName)) return;
+  await pool.query(`ALTER TABLE ${tableName} ADD ${definition}`);
+}
+
 export class MysqlRatingStore implements RatingStore {
   kind = 'mysql' as const;
   private poolPromise: Promise<Pool> | null = null;
@@ -136,6 +184,11 @@ export class MysqlRatingStore implements RatingStore {
         event_id VARCHAR(191) NOT NULL,
         event_name VARCHAR(255) NOT NULL,
         event_date DATETIME(3) NULL,
+        source_key VARCHAR(24) NOT NULL DEFAULT 'unknown',
+        championship_id VARCHAR(191) NULL,
+        championship_name VARCHAR(255) NULL,
+        result_identity_key VARCHAR(255) NOT NULL DEFAULT '',
+        event_scope_key VARCHAR(255) NOT NULL DEFAULT '',
         stracker_session_id INT NULL,
         driver_key VARCHAR(191) NOT NULL,
         steam_guid VARCHAR(191) NULL,
@@ -172,6 +225,8 @@ export class MysqlRatingStore implements RatingStore {
         suppressed_collision_count INT NULL,
         cluster_window_seconds INT NULL,
         KEY idx_gc_rating_event_result_event (event_id, position),
+        KEY idx_gc_rating_event_result_scope (source_key, event_id),
+        KEY idx_gc_rating_event_result_identity (source_key, event_id, result_identity_key),
         KEY idx_gc_rating_event_result_driver (driver_key),
         KEY idx_gc_rating_event_result_player (stracker_player_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -181,6 +236,13 @@ export class MysqlRatingStore implements RatingStore {
     await addColumnIfMissing(pool, 'gc_rating_event_result', 'collision_cluster_count', 'INT NULL');
     await addColumnIfMissing(pool, 'gc_rating_event_result', 'suppressed_collision_count', 'INT NULL');
     await addColumnIfMissing(pool, 'gc_rating_event_result', 'cluster_window_seconds', 'INT NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'source_key', "VARCHAR(24) NOT NULL DEFAULT 'unknown'");
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'championship_id', 'VARCHAR(191) NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'championship_name', 'VARCHAR(255) NULL');
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'result_identity_key', "VARCHAR(255) NOT NULL DEFAULT ''");
+    await addColumnIfMissing(pool, 'gc_rating_event_result', 'event_scope_key', "VARCHAR(255) NOT NULL DEFAULT ''");
+    await addIndexIfMissing(pool, 'gc_rating_event_result', 'idx_gc_rating_event_result_scope', 'INDEX idx_gc_rating_event_result_scope (source_key, event_id)');
+    await addIndexIfMissing(pool, 'gc_rating_event_result', 'idx_gc_rating_event_result_identity', 'INDEX idx_gc_rating_event_result_identity (source_key, event_id, result_identity_key)');
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gc_rating_incident (
@@ -304,6 +366,11 @@ export class MysqlRatingStore implements RatingStore {
       eventId: row.event_id,
       eventName: row.event_name,
       eventDate: mysqlToIso(row.event_date),
+      sourceKey: mysqlRatingSourceKey(row.source_key),
+      championshipId: row.championship_id ?? null,
+      championshipName: row.championship_name ?? null,
+      resultIdentityKey: String(row.result_identity_key || ''),
+      eventScopeKey: String(row.event_scope_key || ''),
       strackerSessionId: row.stracker_session_id ?? null,
       driverKey: row.driver_key,
       steamGuid: row.steam_guid,
@@ -395,6 +462,9 @@ export class MysqlRatingStore implements RatingStore {
     if (!drivers.length && !eventResults.length && !ignoredStrackerSessions.length && !reviewedStrackerSessions.length) return null;
 
     const processedEventIds = [...new Set(eventResults.map((row) => row.eventId))];
+    const processedEventKeys = [...new Set(eventResults.map((row) =>
+      row.eventScopeKey || mysqlRatingEventScopeKey(row)
+    ))];
     const lastLog = recalculationLogs[recalculationLogs.length - 1];
 
     return {
@@ -406,6 +476,10 @@ export class MysqlRatingStore implements RatingStore {
       strackerDbPath: null,
       generatedAt: lastLog?.createdAt || new Date().toISOString(),
       processedEventIds,
+      processedEventKeys,
+      sourceIsolationVersion: recalculationLogs.some((log) => String(log.message || '').includes('GC_PHASE4D_SOURCE_ISOLATION_V1'))
+        ? 'GC_PHASE4D_SOURCE_ISOLATION_V1'
+        : null,
       drivers,
       eventResults,
       recalculationLogs,
@@ -489,15 +563,23 @@ export class MysqlRatingStore implements RatingStore {
       }
 
       for (const result of snapshot.eventResults) {
+        const sourceKey = mysqlRatingSourceKey(result.sourceKey);
+        const resultIdentityKey = mysqlRatingIdentityKey(result);
+        const eventScopeKey = result.eventScopeKey || mysqlRatingEventScopeKey(result);
         await connection.query(`
           INSERT INTO gc_rating_event_result
-          (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, event_id, event_name, event_date, source_key, championship_id, championship_name, result_identity_key, event_scope_key, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           result.id,
           result.eventId,
           result.eventName,
           isoToMysql(result.eventDate),
+          sourceKey,
+          result.championshipId ?? null,
+          result.championshipName ?? null,
+          resultIdentityKey,
+          eventScopeKey,
           result.strackerSessionId,
           result.driverKey,
           result.steamGuid,
@@ -641,12 +723,14 @@ export class MysqlRatingStore implements RatingStore {
   }
 
   private async insertEventResult(connection: PoolConnection, result: RatingEventResult) {
-    // GC_PHASE4B_RATINGS_CANONICAL_REBUILD_V1
-    // Segunda barrera: una carrera solo puede tener una fila por posición oficial.
-    // La cola del servicio serializa escrituras; esta limpieza protege append/reintentos.
+    // GC_PHASE4D_SOURCE_ISOLATION_V1
+    // Una fuente + evento + identidad canónica solo puede producir una fila.
+    const sourceKey = mysqlRatingSourceKey(result.sourceKey);
+    const resultIdentityKey = mysqlRatingIdentityKey(result);
+    const eventScopeKey = result.eventScopeKey || mysqlRatingEventScopeKey(result);
     const [existingRows] = await connection.query(
-      'SELECT id FROM gc_rating_event_result WHERE event_id = ? AND position = ? FOR UPDATE',
-      [result.eventId, mysqlInt(result.position)]
+      'SELECT id FROM gc_rating_event_result WHERE source_key = ? AND event_id = ? AND result_identity_key = ? FOR UPDATE',
+      [sourceKey, result.eventId, resultIdentityKey]
     );
     for (const existing of existingRows as any[]) {
       const existingId = String(existing?.id || '');
@@ -658,13 +742,18 @@ export class MysqlRatingStore implements RatingStore {
 
       await connection.query(`
         INSERT INTO gc_rating_event_result
-        (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, event_id, event_name, event_date, source_key, championship_id, championship_name, result_identity_key, event_scope_key, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
       result.id,
       result.eventId,
       result.eventName,
       isoToMysql(result.eventDate),
+      sourceKey,
+      result.championshipId ?? null,
+      result.championshipName ?? null,
+      resultIdentityKey,
+      eventScopeKey,
       result.strackerSessionId,
       result.driverKey,
       result.steamGuid,
@@ -772,6 +861,43 @@ export class MysqlRatingStore implements RatingStore {
       connection.release();
     }
   }
+
+  async ensureSourceIsolationConstraints() {
+    await this.ensureSchema();
+    const pool = await this.getPool();
+
+    const [unknownRows] = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM gc_rating_event_result
+      WHERE source_key = 'unknown'
+         OR result_identity_key = ''
+         OR event_scope_key = ''
+    `);
+    const unknown = Number((unknownRows as any[])[0]?.total || 0);
+    if (unknown > 0) {
+      throw new Error(`No se puede activar la restricción source-aware: quedan ${unknown} fila(s) sin migrar.`);
+    }
+
+    const [duplicateRows] = await pool.query(`
+      SELECT source_key, event_id, result_identity_key, COUNT(*) AS total
+      FROM gc_rating_event_result
+      GROUP BY source_key, event_id, result_identity_key
+      HAVING COUNT(*) > 1
+      LIMIT 20
+    `);
+    if ((duplicateRows as any[]).length > 0) {
+      throw new Error('No se puede activar la restricción source-aware: existen identidades duplicadas.');
+    }
+
+    await addIndexIfMissing(
+      pool,
+      'gc_rating_event_result',
+      'uq_gc_rating_event_result_source_identity',
+      'UNIQUE INDEX uq_gc_rating_event_result_source_identity (source_key, event_id, result_identity_key)'
+    );
+  }
+
+
 
   async diagnostics() {
     const configured = Boolean(

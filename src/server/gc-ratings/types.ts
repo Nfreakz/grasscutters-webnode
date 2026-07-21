@@ -1,5 +1,8 @@
 export type PlainObject = Record<string, any>;
 
+/* GC_PHASE4D_SOURCE_ISOLATION_V1 */
+export type RatingSourceKey = 'weekly' | 'gt4' | 'stracker-manual' | 'unknown';
+
 export type MatchDebug = {
   confidence: number;
   method: string;
@@ -72,6 +75,11 @@ export type RatingEventResult = {
   eventId: string;
   eventName: string;
   eventDate: string | null;
+  sourceKey?: RatingSourceKey;
+  championshipId?: string | null;
+  championshipName?: string | null;
+  resultIdentityKey?: string;
+  eventScopeKey?: string;
   strackerSessionId: number | null;
   driverKey: string;
   steamGuid: string | null;
@@ -150,6 +158,8 @@ export type RatingsSnapshot = {
   strackerDbPath: string | null;
   generatedAt: string;
   processedEventIds: string[];
+  processedEventKeys?: string[];
+  sourceIsolationVersion?: string | null;
   drivers: DriverRatingState[];
   eventResults: RatingEventResult[];
   recalculationLogs: RecalculationLog[];

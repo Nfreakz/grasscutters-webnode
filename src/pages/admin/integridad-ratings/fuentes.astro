@@ -1,0 +1,226 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4D_SOURCE_ISOLATION_V1 -->
+<AppLayout title="Aislamiento Liga y GT4 | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-source-isolation-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings</span>
+        <h1 class="gc-title">Aislamiento Liga / GT4.</h1>
+        <p class="gc-subtitle">Etiqueta cada resultado con servidor, campeonato e identidad canónica antes de volver a procesar carreras.</p>
+      </div>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="sourceGate" hidden>
+      <div class="gc-slab">
+        <h2>Acceso restringido</h2>
+        <p>Inicia sesión con una cuenta administradora.</p>
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+      </div>
+    </section>
+
+    <section id="sourceContent" hidden>
+      <div class="gc-source-grid">
+        <article><span>Total</span><strong id="sourceTotal">—</strong></article>
+        <article><span>Liga</span><strong id="sourceWeekly">—</strong></article>
+        <article><span>GT4</span><strong id="sourceGt4">—</strong></article>
+        <article><span>Sin fuente</span><strong id="sourceUnknown">—</strong></article>
+      </div>
+
+      <section class="gc-section gc-source-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 1</span>
+            <h2>Simular aislamiento</h2>
+            <p>Contrasta los eventos almacenados con los dos campeonatos ACSM y no escribe en MySQL.</p>
+          </div>
+          <button class="gc-btn gc-btn--primary" id="previewSource" type="button">Analizar fuentes</button>
+        </div>
+        <pre id="sourcePreview">Pulsa “Analizar fuentes”.</pre>
+      </section>
+
+      <section class="gc-section gc-source-card gc-source-danger">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 2</span>
+            <h2>Aplicar aislamiento</h2>
+            <p>Crea un backup JSON, etiqueta los resultados y activa la restricción única por fuente + evento + piloto.</p>
+          </div>
+        </div>
+
+        <div class="gc-source-confirm">
+          <label>
+            <span>Confirmación exacta</span>
+            <input id="sourceConfirmation" type="text" autocomplete="off" placeholder="Ejecuta primero la simulación" disabled />
+          </label>
+          <button class="gc-btn gc-btn--danger" id="applySource" type="button" disabled>Aislar resultados</button>
+        </div>
+        <p id="sourceMessage">La aplicación permanecerá bloqueada hasta que la simulación sea segura.</p>
+      </section>
+
+      <p><a class="gc-btn" href="/admin/integridad-ratings">Volver a integridad de ratings</a></p>
+    </section>
+  </div>
+
+  <style>
+    .gc-source-isolation-v1{display:grid;gap:18px}
+    .gc-source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-source-grid article,.gc-source-card{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02);padding:18px}
+    .gc-source-grid span,.gc-source-confirm span{display:block;color:var(--dim);font-size:.76rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+    .gc-source-grid strong{display:block;margin-top:8px;font-size:clamp(1.4rem,3vw,2.2rem)}
+    .gc-source-card pre{margin:14px 0 0;max-height:520px;overflow:auto;padding:16px;border-radius:14px;background:#050805;color:#dfffd8;white-space:pre-wrap;overflow-wrap:anywhere}
+    .gc-source-danger{border-color:rgba(255,87,87,.28)}
+    .gc-source-confirm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+    .gc-source-confirm input{width:100%;margin-top:7px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.28);color:var(--text)}
+    .gc-btn--danger{border-color:rgba(255,87,87,.45);background:rgba(255,87,87,.13);color:#ffd1d1}
+    #sourceMessage{margin:12px 0 0;color:var(--soft)}
+    @media(max-width:860px){.gc-source-grid{grid-template-columns:1fr 1fr}.gc-source-confirm{grid-template-columns:1fr}}
+    @media(max-width:520px){.gc-source-grid{grid-template-columns:1fr}}
+  </style>
+
+  <script>
+    (() => {
+      type JsonRecord = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+      const els = {
+        gate: get('sourceGate'),
+        content: get('sourceContent'),
+        total: get('sourceTotal'),
+        weekly: get('sourceWeekly'),
+        gt4: get('sourceGt4'),
+        unknown: get('sourceUnknown'),
+        preview: get<HTMLButtonElement>('previewSource'),
+        apply: get<HTMLButtonElement>('applySource'),
+        confirmation: get<HTMLInputElement>('sourceConfirmation'),
+        output: get('sourcePreview'),
+        message: get('sourceMessage')
+      };
+      let previewPayload: JsonRecord | null = null;
+
+      async function fetchJson(url: string, options: RequestInit = {}) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.ok === false) throw new Error(payload.message || `HTTP ${response.status}`);
+        return payload as JsonRecord;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return true;
+        } catch {}
+        try {
+          const profile = await fetchJson('/api/profile');
+          return profile.user?.role === 'admin';
+        } catch {
+          return false;
+        }
+      }
+
+      const format = (value: unknown) => new Intl.NumberFormat('es-ES').format(Number(value || 0));
+
+      function renderAudit(audit: JsonRecord = {}) {
+        const counts = audit.sourceCounts || {};
+        els.total.textContent = format(audit.totalRows);
+        els.weekly.textContent = format(counts.weekly);
+        els.gt4.textContent = format(counts.gt4);
+        els.unknown.textContent = format(audit.unknownOfficialRows ?? counts.unknown);
+      }
+
+      async function loadDiagnostics() {
+        const payload = await fetchJson('/api/gc/ratings/diagnostics');
+        renderAudit(payload.diagnostics?.sourceIsolation || {});
+      }
+
+      function updateApplyState() {
+        const phrase = String(previewPayload?.confirmationRequired || '');
+        els.apply.disabled = !(
+          previewPayload?.safeToApply === true &&
+          phrase &&
+          els.confirmation.value.trim() === phrase
+        );
+      }
+
+      els.preview.addEventListener('click', async () => {
+        try {
+          els.preview.disabled = true;
+          els.output.textContent = 'Contrastando Liga y GT4 con ACSM...';
+          previewPayload = await fetchJson('/api/gc/ratings/source-isolation?dryRun=1', {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: true })
+          });
+          els.output.textContent = JSON.stringify(previewPayload, null, 2);
+          renderAudit(previewPayload.predicted || {});
+          const phrase = String(previewPayload.confirmationRequired || '');
+          els.confirmation.disabled = previewPayload.safeToApply !== true;
+          els.confirmation.placeholder = phrase || 'Simulación bloqueada';
+          els.message.textContent = previewPayload.safeToApply
+            ? `Simulación segura. Escribe exactamente: ${phrase}`
+            : 'La simulación está bloqueada. No se modificará MySQL.';
+          updateApplyState();
+        } catch (error) {
+          previewPayload = null;
+          els.output.textContent = error instanceof Error ? error.message : String(error);
+          els.message.textContent = 'No se pudo completar la simulación.';
+        } finally {
+          els.preview.disabled = false;
+        }
+      });
+
+      els.confirmation.addEventListener('input', updateApplyState);
+
+      els.apply.addEventListener('click', async () => {
+        if (previewPayload?.safeToApply !== true) return;
+        const phrase = String(previewPayload.confirmationRequired || '');
+        if (els.confirmation.value.trim() !== phrase) return;
+
+        try {
+          els.apply.disabled = true;
+          els.preview.disabled = true;
+          els.message.textContent = 'Aplicando aislamiento. No cierres esta página...';
+          const url = `/api/gc/ratings/source-isolation?dryRun=0&confirmation=${encodeURIComponent(phrase)}`;
+          const result = await fetchJson(url, {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: false, confirmation: phrase })
+          });
+
+          if (result.applied !== true || result.dryRun !== false) {
+            throw new Error('El servidor no aplicó el aislamiento. MySQL no se ha marcado como migrado.');
+          }
+
+          els.output.textContent = JSON.stringify(result, null, 2);
+          renderAudit(result.after || {});
+          els.message.textContent = `${result.message} Backup: ${result.backupFile || 'no indicado'}`;
+          previewPayload = null;
+          els.confirmation.value = '';
+          els.confirmation.disabled = true;
+          await loadDiagnostics();
+        } catch (error) {
+          els.message.textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          els.preview.disabled = false;
+          updateApplyState();
+        }
+      });
+
+      (async () => {
+        const admin = await isAdmin();
+        els.gate.hidden = admin;
+        els.content.hidden = !admin;
+        if (admin) await loadDiagnostics();
+      })().catch((error) => {
+        els.message.textContent = error instanceof Error ? error.message : String(error);
+      });
+    })();
+  </script>
+</AppLayout>

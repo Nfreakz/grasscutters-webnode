@@ -221,6 +221,28 @@ async function requireAdmin(req: Request) {
 
 
 
+  // GC_PHASE4D_SOURCE_ISOLATION_V1
+  app.post('/api/gc/ratings/source-isolation', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
+
+      const dryRunRaw = req.query.dryRun ?? req.body?.dryRun;
+      const confirmationRaw = req.query.confirmation ?? req.body?.confirmation;
+      const dryRun = parseBooleanish(dryRunRaw, true) !== false;
+      const confirmation = String(confirmationRaw || '').trim();
+      const payload = await service.migrateRatingSourceIsolationV1({ dryRun, confirmation });
+      res.json(payload);
+    } catch (error) {
+      res.status(400).json({
+        ok: false,
+        source: 'gc-ratings-v1:phase4d-source-isolation',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // GC_PHASE4B_RATINGS_CANONICAL_REBUILD_V1
   app.post('/api/gc/ratings/integrity-rebuild', async (req, res) => {
     try {
