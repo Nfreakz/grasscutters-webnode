@@ -3,16 +3,17 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import AdminSubnav from '../../components/AdminSubnav.astro';
 ---
 <AppLayout title="Admin calendario | GrassCutters">
+  <!-- GC_CALENDAR_BIWEEKLY_RECURRENCE_V1 -->
   <div class="gc-page gc-admin-calendar-page gc-admin-calendar-v30">
     <section class="gc-hero gc-hero--compact">
       <div>
         <span class="gc-kicker">Administración</span>
         <h1 class="gc-title">Calendario.</h1>
-        <p class="gc-subtitle">Gestiona combos de varios días, carreras puntuales y repeticiones semanales sin duplicar eventos a mano.</p>
+        <p class="gc-subtitle">Gestiona combos de varios días, carreras puntuales y repeticiones semanales o quincenales sin duplicar eventos a mano.</p>
         <div class="gc-hero__meta">
           <span class="gc-chip gc-chip--accent">Eventos</span>
           <span class="gc-chip">Rangos</span>
-          <span class="gc-chip">Repetición semanal</span>
+          <span class="gc-chip">Repeticiones</span>
         </div>
       </div>
       <aside class="gc-live-panel">
@@ -57,7 +58,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           <label class="gc-field"><span>Fecha fin</span><input class="gc-input" name="endDate" type="date" /></label>
           <label class="gc-field"><span>Hora inicio</span><input class="gc-input" name="startTime" type="time" /></label>
           <label class="gc-field"><span>Hora fin</span><input class="gc-input" name="endTime" type="time" /></label>
-          <label class="gc-field"><span>Repetición</span><select class="gc-select" name="repeatFrequency"><option value="none">No repetir</option><option value="weekly">Repetir semanalmente</option></select></label>
+          <label class="gc-field"><span>Repetición</span><select class="gc-select" name="repeatFrequency"><option value="none">No repetir</option><option value="weekly">Repetir semanalmente</option><option value="biweekly">Repetir quincenalmente</option></select></label>
           <label class="gc-field"><span>Repetir hasta</span><input class="gc-input" name="repeatUntil" type="date" /></label>
           <label class="gc-field"><span>Circuito</span><input class="gc-input" name="trackName" placeholder="Mugello" /></label>
           <label class="gc-field"><span>Coches</span><input class="gc-input" name="carNames" placeholder="GT3, Touring, etc." /></label>
@@ -468,9 +469,10 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
       const addDays = (date, days) => { const next = new Date(date); next.setDate(next.getDate() + days); return next; };
       const rangeText = (event) => event.endDate && event.endDate !== event.startDate ? `${event.startDate} → ${event.endDate}` : event.startDate;
       const repeatText = (event) => {
-        const isWeekly = Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
-        if (!isWeekly) return '';
-        return event.repeatUntil ? `Repetición semanal hasta ${event.repeatUntil}` : 'Repetición semanal';
+        const frequency = event.repeatFrequency === 'biweekly' ? 'biweekly' : (event.repeatFrequency === 'weekly' || event.repeatEnabled ? 'weekly' : 'none');
+        if (frequency === 'none') return '';
+        const label = frequency === 'biweekly' ? 'Repetición quincenal' : 'Repetición semanal';
+        return event.repeatUntil ? `${label} hasta ${event.repeatUntil}` : label;
       };
 
       function updateRepeatHint() {
@@ -478,7 +480,11 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const start = form.elements.startDate.value;
         const end = form.elements.endDate.value;
         const range = end && start && end !== start ? `Aparecerá todos los días del ${start} al ${end}.` : 'Aparecerá solo el día de inicio.';
-        const rep = repeat === 'weekly' ? ' Además, ese rango se repetirá cada semana hasta la fecha indicada.' : '';
+        const rep = repeat === 'weekly'
+          ? ' Además, ese rango se repetirá cada semana hasta la fecha indicada.'
+          : repeat === 'biweekly'
+            ? ' Además, ese rango se repetirá cada dos semanas hasta la fecha indicada.'
+            : '';
         repeatHint.textContent = `${range}${rep}`;
       }
 
@@ -536,9 +542,9 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           carNames: String(data.carNames || '').trim(),
           linkUrl: String(data.linkUrl || '').trim(),
           description: String(data.description || '').trim(),
-          repeatEnabled: repeatFrequency === 'weekly',
+          repeatEnabled: repeatFrequency !== 'none',
           repeatFrequency,
-          repeatUntil: repeatFrequency === 'weekly' ? (data.repeatUntil || '') : '',
+          repeatUntil: repeatFrequency !== 'none' ? (data.repeatUntil || '') : '',
           visible: form.elements.visible.checked,
           featured: form.elements.featured.checked
         };
@@ -567,7 +573,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         form.elements.carNames.value = event.carNames || '';
         form.elements.linkUrl.value = event.linkUrl || '';
         form.elements.description.value = event.description || '';
-        form.elements.repeatFrequency.value = (event.repeatEnabled || event.repeatFrequency === 'weekly') ? 'weekly' : 'none';
+        form.elements.repeatFrequency.value = event.repeatFrequency === 'biweekly' ? 'biweekly' : (event.repeatFrequency === 'weekly' || event.repeatEnabled ? 'weekly' : 'none');
         form.elements.repeatUntil.value = event.repeatUntil || '';
         form.elements.visible.checked = event.visible !== false;
         form.elements.featured.checked = Boolean(event.featured);
@@ -599,7 +605,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const type = typeFilter.value;
         return events.filter((event) => {
           if (type !== 'all' && event.type !== type) return false;
-          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate, event.endDate, event.repeatEnabled ? 'repetición semanal repetir' : ''].join(' ').toLowerCase();
+          const haystack = [event.title, event.type, event.trackName, event.carNames, event.description, event.startDate, event.endDate, repeatText(event)].join(' ').toLowerCase();
           return !query || haystack.includes(query);
         }).sort((a,b) => String(a.startDate || '').localeCompare(String(b.startDate || '')) || String(a.startTime || '').localeCompare(String(b.startTime || '')));
       }
@@ -677,7 +683,7 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         const payload = serializeForm();
         if (!payload.title || !payload.startDate) { setMessage('Título y fecha inicio son obligatorios.'); return; }
         if (payload.endDate && payload.endDate < payload.startDate) { setMessage('La fecha fin no puede ser anterior a la fecha inicio.'); return; }
-        if (payload.repeatEnabled && !payload.repeatUntil) { setMessage('Para repetir semanalmente, indica una fecha “Repetir hasta”.'); return; }
+        if (payload.repeatEnabled && !payload.repeatUntil) { setMessage('Para repetir el evento, indica una fecha “Repetir hasta”.'); return; }
         try {
           const id = form.elements.id.value;
           setMessage('Guardando evento...');

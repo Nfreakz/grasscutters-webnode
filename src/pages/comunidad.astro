@@ -39,6 +39,7 @@ const textChannels = [
 ---
 <MarketingLayout
   title="Comunidad | GrassCutters Racing"
+  data-biweekly-marker="GC_CALENDAR_BIWEEKLY_RECURRENCE_V1"
   description="Comunidad GrassCutters Racing: Discord, hotlaps semanales, setups, mods, votaciones, fair play y buen ambiente en Assetto Corsa."
   ogImage="/og/comunidad-og-v1531.png"
   bodyClass="gc-page-comunidad gc-community-mock43"
@@ -279,7 +280,9 @@ const textChannels = [
       const daysBetween = (a, b) => Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
       const eventStart = (event) => parseDate(event.startDate || event.date);
       const eventEnd = (event) => parseDate(event.endDate) || eventStart(event);
-      const isWeekly = (event) => Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+      const repeatFrequencyOf = (event) => event.repeatFrequency === 'biweekly' ? 'biweekly' : (event.repeatFrequency === 'weekly' || event.repeatEnabled ? 'weekly' : 'none');
+      const repeatIntervalDays = (event) => repeatFrequencyOf(event) === 'biweekly' ? 14 : repeatFrequencyOf(event) === 'weekly' ? 7 : 0;
+      const repeatLabelOf = (event) => repeatFrequencyOf(event) === 'biweekly' ? 'Quincenal' : repeatFrequencyOf(event) === 'weekly' ? 'Semanal' : '';
       const eventTime = (event) => [event.startTime, event.endTime].filter(Boolean).join(' - ') || 'Horario por confirmar';
 
       function expandUpcoming(events, limit = 3) {
@@ -296,17 +299,18 @@ const textChannels = [
             const repeatUntil = parseDate(event.repeatUntil);
             const hardEnd = repeatUntil && repeatUntil < rangeEnd ? repeatUntil : rangeEnd;
             let current = startOfDay(baseStart);
-            if (isWeekly(event)) {
-              while (addDays(current, durationDays) < today) current = addDays(current, 7);
+            const intervalDays = repeatIntervalDays(event);
+            if (intervalDays) {
+              while (addDays(current, durationDays) < today) current = addDays(current, intervalDays);
             }
             let guard = 0;
             do {
               const currentEnd = addDays(current, durationDays);
               if (currentEnd >= today && current <= rangeEnd) {
-                output.push({ ...event, occurrenceDate: keyOf(current), occurrenceEndDate: keyOf(currentEnd), isOccurrence: keyOf(current) !== keyOf(baseStart), repeatLabel: isWeekly(event) ? 'Semanal' : '' });
+                output.push({ ...event, occurrenceDate: keyOf(current), occurrenceEndDate: keyOf(currentEnd), isOccurrence: keyOf(current) !== keyOf(baseStart), repeatLabel: repeatLabelOf(event) });
               }
-              if (!isWeekly(event)) break;
-              current = addDays(current, 7);
+              if (!intervalDays) break;
+              current = addDays(current, intervalDays);
               guard += 1;
             } while (current <= hardEnd && guard < 80);
           });

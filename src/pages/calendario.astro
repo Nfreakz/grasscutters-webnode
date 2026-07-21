@@ -4,6 +4,7 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 ---
 <MarketingLayout
   title="Calendario | GrassCutters Racing"
+  data-biweekly-marker="GC_CALENDAR_BIWEEKLY_RECURRENCE_V1"
   description="Calendario mensual de GrassCutters Racing con combo semanal, carreras LFM y carreras GrassCutters."
   ogImage="/og/calendario-og-v1531.png"
   bodyClass="gc-page-calendar"
@@ -102,7 +103,9 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
       const daysBetween = (a, b) => Math.round((rangeStartOfDay(b) - rangeStartOfDay(a)) / 86400000);
       const eventDate = (event) => parseDate(event.startDate || event.date);
       const eventEndDate = (event) => parseDate(event.endDate) || eventDate(event);
-      const isWeeklyRepeat = (event) => Boolean(event.repeatEnabled || event.repeatFrequency === 'weekly');
+      const repeatFrequencyOf = (event) => event.repeatFrequency === 'biweekly' ? 'biweekly' : (event.repeatFrequency === 'weekly' || event.repeatEnabled ? 'weekly' : 'none');
+      const repeatIntervalDays = (event) => repeatFrequencyOf(event) === 'biweekly' ? 14 : repeatFrequencyOf(event) === 'weekly' ? 7 : 0;
+      const repeatLabelOf = (event) => repeatFrequencyOf(event) === 'biweekly' ? 'Quincenal' : repeatFrequencyOf(event) === 'weekly' ? 'Semanal' : '';
       const fmtEventTime = (event) => [event.startTime, event.endTime].filter(Boolean).join(' - ') || 'Horario por confirmar';
       const rangeStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const isRangeEvent = (event) => {
@@ -137,18 +140,19 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
         const durationDays = Math.max(0, daysBetween(start, end));
         const starts = [];
 
-        if (!isWeeklyRepeat(event)) return [{ start, end }];
+        const intervalDays = repeatIntervalDays(event);
+        if (!intervalDays) return [{ start, end }];
 
         const untilRaw = parseDate(event.repeatUntil);
         const until = untilRaw ? rangeStartOfDay(untilRaw) : rangeEnd;
         const hardEnd = until < rangeEnd ? until : rangeEnd;
         let current = new Date(start);
-        while (addDays(current, durationDays) < rangeStart) current = addDays(current, 7);
+        while (addDays(current, durationDays) < rangeStart) current = addDays(current, intervalDays);
 
         let guard = 0;
         while (current <= hardEnd && guard < 370) {
           starts.push({ start: new Date(current), end: addDays(current, durationDays) });
-          current = addDays(current, 7);
+          current = addDays(current, intervalDays);
           guard += 1;
         }
 
@@ -163,7 +167,7 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
         events.filter((event) => event.visible !== false && eventDate(event)).forEach((event) => {
           occurrenceStartsForEvent(event, from, to).forEach(({ start, end }) => {
             const isOccurrence = keyOf(start) !== keyOf(eventDate(event));
-            const repeatLabel = isWeeklyRepeat(event) ? 'Semanal' : '';
+            const repeatLabel = repeatLabelOf(event);
             if (mode === 'blocks') {
               if (end < from || start > to) return;
               output.push({
@@ -240,7 +244,7 @@ import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
           const rangeText = end && keyOf(end) !== keyOf(d) ? `Del ${keyOf(d)} al ${keyOf(end)}` : keyOf(d);
           const timeText = fmtEventTime(event);
           const trackText = [event.trackName || event.track, event.carNames].filter(Boolean).join(' · ');
-          const repeatTag = event.repeatLabel ? '<span class="gc-calendar-upcoming-repeat">Repetición semanal</span>' : '';
+          const repeatTag = event.repeatLabel ? `<span class="gc-calendar-upcoming-repeat">Repetición ${escapeHtml(String(event.repeatLabel).toLowerCase())}</span>` : '';
           const description = event.description ? `<p class="gc-calendar-upcoming-description">${escapeHtml(event.description)}</p>` : '';
           const action = event.linkUrl ? `<a class="gc-public-btn gc-public-btn-secondary" href="${escapeHtml(event.linkUrl)}" target="_blank" rel="noreferrer">Abrir</a>` : '';
           return `

@@ -7355,6 +7355,7 @@ app.get('/api/admin/calendar-events/storage', async (req, res, next) => {
 
 
 
+// GC_CALENDAR_BIWEEKLY_RECURRENCE_V1
 // GC CALENDAR DB STORAGE START
 
 type GcCalendarEventDbV8 = {
@@ -7370,7 +7371,7 @@ type GcCalendarEventDbV8 = {
   linkUrl: string;
   description: string;
   repeatEnabled: boolean;
-  repeatFrequency: 'none' | 'weekly';
+  repeatFrequency: 'none' | 'weekly' | 'biweekly';
   repeatUntil: string;
   visible: boolean;
   featured: boolean;
@@ -7416,7 +7417,23 @@ function gcCalendarSanitizeTypeDbV8(value: unknown) {
 
 function gcCalendarNormalizeEventDbV8(input: any, existing?: Partial<GcCalendarEventDbV8> | null): GcCalendarEventDbV8 {
   const now = gcCalendarNowDbV8();
-  const repeatEnabled = gcCalendarToBoolDbV8(input?.repeatEnabled ?? input?.repeat_enabled, false) || String(input?.repeatFrequency ?? input?.repeat_frequency ?? '').toLowerCase() === 'weekly';
+  const requestedRepeatFrequency = String(input?.repeatFrequency ?? input?.repeat_frequency ?? '').trim().toLowerCase();
+  const existingRepeatFrequency = String(existing?.repeatFrequency || '').trim().toLowerCase();
+  const legacyRepeatEnabled = gcCalendarToBoolDbV8(
+    input?.repeatEnabled ?? input?.repeat_enabled ?? existing?.repeatEnabled,
+    false
+  );
+  const repeatFrequency: GcCalendarEventDbV8['repeatFrequency'] =
+    requestedRepeatFrequency === 'weekly' || requestedRepeatFrequency === 'biweekly'
+      ? requestedRepeatFrequency
+      : requestedRepeatFrequency === 'none'
+        ? 'none'
+        : existingRepeatFrequency === 'weekly' || existingRepeatFrequency === 'biweekly'
+          ? existingRepeatFrequency
+          : legacyRepeatEnabled
+            ? 'weekly'
+            : 'none';
+  const repeatEnabled = repeatFrequency !== 'none';
   const id = gcCalendarTextDbV8(input?.id || existing?.id || crypto.randomUUID());
   return {
     id,
@@ -7431,7 +7448,7 @@ function gcCalendarNormalizeEventDbV8(input: any, existing?: Partial<GcCalendarE
     linkUrl: gcCalendarTextDbV8(input?.linkUrl ?? input?.link_url ?? existing?.linkUrl),
     description: gcCalendarTextDbV8(input?.description ?? existing?.description),
     repeatEnabled,
-    repeatFrequency: repeatEnabled ? 'weekly' : 'none',
+    repeatFrequency,
     repeatUntil: gcCalendarTextDbV8(input?.repeatUntil ?? input?.repeat_until ?? existing?.repeatUntil),
     visible: gcCalendarToBoolDbV8(input?.visible ?? existing?.visible, true),
     featured: gcCalendarToBoolDbV8(input?.featured ?? existing?.featured, false),
