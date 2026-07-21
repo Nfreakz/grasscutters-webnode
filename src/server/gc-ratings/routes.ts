@@ -219,6 +219,28 @@ async function requireAdmin(req: Request) {
     }
   });
 
+
+
+  // GC_PHASE4B_RATINGS_CANONICAL_REBUILD_V1
+  app.post('/api/gc/ratings/integrity-rebuild', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
+
+      const dryRun = parseBooleanish(req.body?.dryRun ?? req.query.dryRun, true) !== false;
+      const confirmation = String(req.body?.confirmation || req.query.confirmation || '').trim();
+      const payload = await service.rebuildCanonicalRatingsIntegrityV1({ dryRun, confirmation });
+      res.json(payload);
+    } catch (error) {
+      res.status(400).json({
+        ok: false,
+        source: 'gc-ratings-v1:phase4b-integrity',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post('/api/gc/ratings/recalculate', async (req, res) => {
     try {
       const mode = String(req.query.mode || req.body?.mode || '').trim().toLowerCase();

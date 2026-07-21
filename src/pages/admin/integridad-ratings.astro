@@ -1,0 +1,210 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4B_RATINGS_CANONICAL_REBUILD_V1 -->
+<AppLayout title="Integridad ratings | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-ratings-integrity-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings</span>
+        <h1 class="gc-title">Integridad y reconstrucción canónica.</h1>
+        <p class="gc-subtitle">Analiza los duplicados, comprueba Liga y GT4 y reconstruye SR/GSR en una única secuencia cronológica.</p>
+      </div>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="integrityGate" hidden>
+      <div class="gc-slab">
+        <h2>Acceso restringido</h2>
+        <p>Inicia sesión con una cuenta administradora.</p>
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+      </div>
+    </section>
+
+    <section id="integrityContent" hidden>
+      <div class="gc-integrity-grid">
+        <article><span>Filas almacenadas</span><strong id="storedRows">—</strong></article>
+        <article><span>Filas únicas</span><strong id="uniqueRows">—</strong></article>
+        <article><span>Duplicados</span><strong id="duplicateRows">—</strong></article>
+        <article><span>Grupos afectados</span><strong id="duplicateGroups">—</strong></article>
+      </div>
+
+      <section class="gc-section gc-integrity-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 1</span>
+            <h2>Simulación obligatoria</h2>
+            <p>Lee Liga y GT4, localiza todos los eventos ya procesados y calcula el resultado final sin escribir en MySQL.</p>
+          </div>
+          <button class="gc-btn gc-btn--primary" id="previewIntegrity" type="button">Analizar reconstrucción</button>
+        </div>
+        <pre id="integrityPreview">Pulsa “Analizar reconstrucción”.</pre>
+      </section>
+
+      <section class="gc-section gc-integrity-card gc-integrity-danger">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 2</span>
+            <h2>Aplicar reconstrucción</h2>
+            <p>Se crea primero un backup JSON privado. Después se reemplazan las tablas de ratings mediante una transacción.</p>
+          </div>
+        </div>
+
+        <div class="gc-integrity-confirm">
+          <label>
+            <span>Confirmación exacta</span>
+            <input id="integrityConfirmation" type="text" autocomplete="off" placeholder="Ejecuta primero la simulación" disabled />
+          </label>
+          <button class="gc-btn gc-btn--danger" id="applyIntegrity" type="button" disabled>Reconstruir ratings</button>
+        </div>
+        <p id="integrityMessage">La aplicación permanecerá bloqueada hasta que la simulación sea segura.</p>
+      </section>
+    </section>
+  </div>
+
+  <style>
+    .gc-ratings-integrity-v1{display:grid;gap:18px}
+    .gc-integrity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-integrity-grid article,.gc-integrity-card{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02);padding:18px}
+    .gc-integrity-grid span,.gc-integrity-confirm span{display:block;color:var(--dim);font-size:.76rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+    .gc-integrity-grid strong{display:block;margin-top:8px;font-size:clamp(1.4rem,3vw,2.2rem)}
+    .gc-integrity-card pre{margin:14px 0 0;max-height:520px;overflow:auto;padding:16px;border-radius:14px;background:#050805;color:#dfffd8;white-space:pre-wrap;overflow-wrap:anywhere}
+    .gc-integrity-danger{border-color:rgba(255,87,87,.28)}
+    .gc-integrity-confirm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+    .gc-integrity-confirm input{width:100%;margin-top:7px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.28);color:var(--text)}
+    .gc-btn--danger{border-color:rgba(255,87,87,.45);background:rgba(255,87,87,.13);color:#ffd1d1}
+    #integrityMessage{margin:12px 0 0;color:var(--soft)}
+    @media(max-width:860px){.gc-integrity-grid{grid-template-columns:1fr 1fr}.gc-integrity-confirm{grid-template-columns:1fr}}
+    @media(max-width:520px){.gc-integrity-grid{grid-template-columns:1fr}}
+  </style>
+
+  <script>
+    (() => {
+      type JsonRecord = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+      const els = {
+        gate: get('integrityGate'),
+        content: get('integrityContent'),
+        stored: get('storedRows'),
+        unique: get('uniqueRows'),
+        duplicates: get('duplicateRows'),
+        groups: get('duplicateGroups'),
+        preview: get<HTMLButtonElement>('previewIntegrity'),
+        apply: get<HTMLButtonElement>('applyIntegrity'),
+        confirmation: get<HTMLInputElement>('integrityConfirmation'),
+        output: get('integrityPreview'),
+        message: get('integrityMessage')
+      };
+      let previewPayload: JsonRecord | null = null;
+
+      async function fetchJson(url: string, options: RequestInit = {}) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.ok === false) throw new Error(payload.message || `HTTP ${response.status}`);
+        return payload as JsonRecord;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return true;
+        } catch {}
+        try {
+          const profile = await fetchJson('/api/profile');
+          return profile.user?.role === 'admin';
+        } catch {
+          return false;
+        }
+      }
+
+      function format(value: unknown) {
+        return new Intl.NumberFormat('es-ES').format(Number(value || 0));
+      }
+
+      async function loadDiagnostics() {
+        const payload = await fetchJson('/api/gc/ratings/diagnostics');
+        const integrity = payload.diagnostics?.dataIntegrity || {};
+        els.stored.textContent = format(integrity.totalStoredRows);
+        els.unique.textContent = format(integrity.uniqueRuntimeRows);
+        els.duplicates.textContent = format(integrity.suppressedRuntimeRows);
+        els.groups.textContent = format(integrity.duplicateGroups);
+      }
+
+      function updateApplyState() {
+        const phrase = String(previewPayload?.confirmationRequired || '');
+        const valid = Boolean(previewPayload?.safeToApply) && phrase && els.confirmation.value.trim() === phrase;
+        els.apply.disabled = !valid;
+      }
+
+      els.preview.addEventListener('click', async () => {
+        try {
+          els.preview.disabled = true;
+          els.output.textContent = 'Analizando Liga, GT4 y sTracker...';
+          previewPayload = await fetchJson('/api/gc/ratings/integrity-rebuild', {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: true })
+          });
+          els.output.textContent = JSON.stringify(previewPayload, null, 2);
+          const phrase = String(previewPayload.confirmationRequired || '');
+          els.confirmation.disabled = !previewPayload.safeToApply;
+          els.confirmation.placeholder = phrase || 'Simulación bloqueada';
+          els.message.textContent = previewPayload.safeToApply
+            ? `Simulación segura. Escribe exactamente: ${phrase}`
+            : 'La simulación está bloqueada. No se modificará MySQL.';
+          updateApplyState();
+        } catch (error) {
+          previewPayload = null;
+          els.output.textContent = error instanceof Error ? error.message : String(error);
+          els.message.textContent = 'No se pudo completar la simulación.';
+        } finally {
+          els.preview.disabled = false;
+        }
+      });
+
+      els.confirmation.addEventListener('input', updateApplyState);
+
+      els.apply.addEventListener('click', async () => {
+        if (!previewPayload?.safeToApply) return;
+        const phrase = String(previewPayload.confirmationRequired || '');
+        if (els.confirmation.value.trim() !== phrase) return;
+        try {
+          els.apply.disabled = true;
+          els.preview.disabled = true;
+          els.message.textContent = 'Reconstruyendo ratings. No cierres esta página...';
+          const result = await fetchJson('/api/gc/ratings/integrity-rebuild', {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: false, confirmation: phrase })
+          });
+          els.output.textContent = JSON.stringify(result, null, 2);
+          els.message.textContent = `${result.message} Backup: ${result.backupFile || 'no indicado'}`;
+          previewPayload = null;
+          els.confirmation.value = '';
+          els.confirmation.disabled = true;
+          await loadDiagnostics();
+        } catch (error) {
+          els.message.textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          els.preview.disabled = false;
+          updateApplyState();
+        }
+      });
+
+      (async () => {
+        const admin = await isAdmin();
+        els.gate.hidden = admin;
+        els.content.hidden = !admin;
+        if (admin) await loadDiagnostics();
+      })().catch((error) => {
+        els.message.textContent = error instanceof Error ? error.message : String(error);
+      });
+    })();
+  </script>
+</AppLayout>

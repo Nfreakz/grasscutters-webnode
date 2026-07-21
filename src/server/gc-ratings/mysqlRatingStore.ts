@@ -641,6 +641,21 @@ export class MysqlRatingStore implements RatingStore {
   }
 
   private async insertEventResult(connection: PoolConnection, result: RatingEventResult) {
+    // GC_PHASE4B_RATINGS_CANONICAL_REBUILD_V1
+    // Segunda barrera: una carrera solo puede tener una fila por posición oficial.
+    // La cola del servicio serializa escrituras; esta limpieza protege append/reintentos.
+    const [existingRows] = await connection.query(
+      'SELECT id FROM gc_rating_event_result WHERE event_id = ? AND position = ? FOR UPDATE',
+      [result.eventId, mysqlInt(result.position)]
+    );
+    for (const existing of existingRows as any[]) {
+      const existingId = String(existing?.id || '');
+      if (!existingId || existingId === result.id) continue;
+      await connection.query('DELETE FROM gc_rating_lap_detail WHERE event_result_id = ?', [existingId]);
+      await connection.query('DELETE FROM gc_rating_incident WHERE event_result_id = ?', [existingId]);
+      await connection.query('DELETE FROM gc_rating_event_result WHERE id = ?', [existingId]);
+    }
+
       await connection.query(`
         INSERT INTO gc_rating_event_result
         (id, event_id, event_name, event_date, stracker_session_id, driver_key, steam_guid, stracker_player_id, display_name, car, position, points, laps, best_lap_ms, old_sr, new_sr, delta_sr, old_gsr, new_gsr, delta_gsr, gsr_mu_before, gsr_mu_after, gsr_sigma_before, gsr_sigma_after, incident_points, clean_race, dnf, dsq, processed_at, match_confidence, match_method, match_best_lap_diff_ms, match_lap_diff, match_player_in_session_id, notes, raw_collision_count, collision_cluster_count, suppressed_collision_count, cluster_window_seconds)
