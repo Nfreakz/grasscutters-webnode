@@ -1,6 +1,7 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
 ---
+<!-- GC_PHASE4E_HOTLAPS_HISTORY_DEFAULT_HOTFIX_V1 -->
 <AppLayout
   title="Hotlaps | GrassCutters Racing"
   description="Laboratorio de hotlaps GrassCutters con tabla técnica, filtros, ordenación y datos completos de vuelta."
@@ -346,6 +347,19 @@ import AppLayout from '../layouts/AppLayout.astro';
       };
 
       const state = { rows: [], filtered: [], page: 1, sortKey: 'recent', sortDir: 'desc' };
+
+      // GC_PHASE4E_HOTLAPS_HISTORY_DEFAULT_HOTFIX_V1
+      // /hotlaps es el archivo completo. El parámetro source solo prefiltra
+      // Liga o GT4; nunca convierte el histórico en "combo activo".
+      const params = new URLSearchParams(window.location.search);
+      const requestedSourceRaw = String(params.get('source') || 'all').trim().toLowerCase();
+      const requestedSource = requestedSourceRaw === 'gt4'
+        ? 'gt4'
+        : ['main','weekly','liga'].includes(requestedSourceRaw)
+          ? 'main'
+          : 'all';
+      els.sourceFilter.value = requestedSource;
+      document.documentElement.dataset.gcHotlapsArchiveDefault = 'history-v1';
 
       const escapeHtml = (value) => String(value ?? '--').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
       const valueAt = (source, path) => {
