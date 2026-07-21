@@ -1,5 +1,7 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 
+// GC_PHASE4H1_1_IDENTITY_AUDIT_SOURCE_SAFE_V1
+
 type IdentityRecord = {
   recordId: string;
   kind: 'rating' | 'result' | 'profile' | 'user';
@@ -154,7 +156,20 @@ function recordFromUser(row: any, index: number): IdentityRecord {
 
 class DisjointSet {
   private readonly parent: number[];
-  constructor(size: number) { this.parent = Array.from({ length: size }, (_, index) => index); }
+  private readonly steamIds: Array<Set<string>>;
+  constructor(records: IdentityRecord[]) {
+    this.parent = Array.from({ length: records.length }, (_, index) => index);
+    this.steamIds = records.map((record) => {
+      const values = new Set<string>();
+      const steamGuid = normalizeSteam(record.steamGuid);
+      if (steamGuid) values.add(steamGuid);
+      if (record.driverKey?.toLowerCase().startsWith('steam:')) {
+        const driverSteam = normalizeSteam(record.driverKey);
+        if (driverSteam) values.add(driverSteam);
+      }
+      return values;
+    });
+  }
   find(value: number): number {
     if (this.parent[value] !== value) this.parent[value] = this.find(this.parent[value]);
     return this.parent[value];
@@ -162,15 +177,40 @@ class DisjointSet {
   union(left: number, right: number) {
     const leftRoot = this.find(left);
     const rightRoot = this.find(right);
-    if (leftRoot !== rightRoot) this.parent[rightRoot] = leftRoot;
+    if (leftRoot === rightRoot) return true;
+    const leftSteam = this.steamIds[leftRoot];
+    const rightSteam = this.steamIds[rightRoot];
+    if (leftSteam.size && rightSteam.size && [...leftSteam].some((value) => !rightSteam.has(value))) return false;
+    this.parent[rightRoot] = leftRoot;
+    rightSteam.forEach((value) => leftSteam.add(value));
+    return true;
   }
+}
+
+function strongAnchors(record: IdentityRecord) {
+  const anchors: string[] = [];
+  const steamGuid = normalizeSteam(record.steamGuid);
+  if (steamGuid) anchors.push(`steam:${steamGuid}`);
+
+  const driverKey = record.driverKey?.trim().toLowerCase() || '';
+  if (driverKey.startsWith('steam:')) anchors.push(`steam:${normalizeSteam(driverKey)}`);
+  else if (driverKey && !driverKey.startsWith('player:') && !driverKey.startsWith('name:')) anchors.push(`driver:${driverKey}`);
+  else if (driverKey.startsWith('player:') && record.kind === 'result' && record.sourceKey && record.sourceKey !== 'unknown') {
+    anchors.push(`driver-player:${record.sourceKey}:${driverKey.slice('player:'.length)}`);
+  }
+
+  // Los player_id de sTracker solo son unicos dentro de su fuente/base.
+  if (record.kind === 'result' && record.playerId && record.sourceKey && record.sourceKey !== 'unknown') {
+    anchors.push(`source-player:${record.sourceKey}:${record.playerId}`);
+  }
+  if (record.userId) anchors.push(`user:${record.userId}`);
+  return unique(anchors);
 }
 
 function canonicalScore(driverKey: string, records: IdentityRecord[]) {
   const lower = driverKey.toLowerCase();
-  let score = lower.startsWith('steam:') ? 500 : lower.startsWith('player:') ? 400 : lower.startsWith('name:') ? 100 : 250;
+  let score = lower.startsWith('steam:') ? 700 : lower.startsWith('player:') ? 300 : lower.startsWith('name:') ? 100 : 400;
   if (/^steam:\d{15,20}$/i.test(driverKey)) score += 100;
-  if (/sha256#/i.test(driverKey)) score -= 180;
   if (records.some((record) => record.kind === 'profile' && record.driverKey === driverKey)) score += 80;
   if (records.some((record) => record.kind === 'rating' && record.driverKey === driverKey)) score += 60;
   if (records.some((record) => record.userId)) score += 40;
@@ -184,21 +224,20 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     ...(input.profiles || []).map(recordFromProfile),
     ...(input.users || []).map(recordFromUser)
   ];
-  const sets = new DisjointSet(records.length);
+  const sets = new DisjointSet(records);
   const anchors = new Map<string, number>();
+  const rejectedStrongLinks: Array<{ anchor: string; leftRecordId: string; rightRecordId: string; reason: string }> = [];
 
   records.forEach((record, index) => {
-    const strongAnchors = [
-      record.driverKey ? `driver:${record.driverKey.toLowerCase()}` : '',
-      record.playerId ? `player:${record.playerId}` : '',
-      record.steamGuid ? `steam:${normalizeSteam(record.steamGuid)}` : '',
-      record.userId ? `user:${record.userId}` : '',
-      record.profileId ? `profile:${record.profileId}` : ''
-    ].filter(Boolean);
-    strongAnchors.forEach((anchor) => {
+    strongAnchors(record).forEach((anchor) => {
       const previous = anchors.get(anchor);
       if (previous === undefined) anchors.set(anchor, index);
-      else sets.union(previous, index);
+      else if (!sets.union(previous, index)) rejectedStrongLinks.push({
+        anchor,
+        leftRecordId: records[previous].recordId,
+        rightRecordId: record.recordId,
+        reason: 'DIFFERENT_STEAM_IDS'
+      });
     });
   });
 
@@ -213,6 +252,13 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
   const groups = [...componentRecords.values()].map((bucket, index) => {
     const driverKeys = unique(bucket.map((record) => record.driverKey));
     const playerIds = [...new Set(bucket.map((record) => record.playerId).filter((value): value is number => value !== null))].sort((a, b) => a - b);
+    const playerScopes = unique(bucket.map((record) => record.kind === 'result' && record.playerId && record.sourceKey && record.sourceKey !== 'unknown'
+      ? `${record.sourceKey}:${record.playerId}`
+      : null));
+    const unscopedPlayerIds = [...new Set(bucket
+      .filter((record) => record.kind !== 'result' || !record.sourceKey || record.sourceKey === 'unknown')
+      .map((record) => record.playerId)
+      .filter((value): value is number => value !== null))].sort((a, b) => a - b);
     const steamGuids = unique(bucket.map((record) => record.steamGuid ? normalizeSteam(record.steamGuid) : null));
     const names = unique(bucket.map((record) => record.name));
     const normalizedNames = unique(names.map(normalizeName));
@@ -242,6 +288,8 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       identityGroupId: `identity-${String(index + 1).padStart(3, '0')}`,
       driverKeys,
       playerIds,
+      playerScopes,
+      unscopedPlayerIds,
       steamGuids,
       names,
       normalizedNames,
@@ -299,17 +347,17 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     .filter((group) => group.driverKeys.length > 1 || group.profileIds.length > 1)
     .map((group) => ({ identityGroupId: group.identityGroupId, candidate: group.canonicalCandidate, alternatives: group.canonicalAlternatives }));
   const blockers = conflicts.filter((item) => item.conflicts.some((conflict) => [
-    'MULTIPLE_PLAYER_IDS', 'MULTIPLE_STEAM_GUIDS', 'MULTIPLE_USER_LINKS', 'MULTIPLE_PROFILES', 'DUPLICATE_EVENT_STATISTICS'
+    'MULTIPLE_STEAM_GUIDS', 'MULTIPLE_USER_LINKS', 'MULTIPLE_PROFILES', 'DUPLICATE_EVENT_STATISTICS'
   ].includes(conflict)));
 
   return {
     ok: true,
     source: `gc-ratings-v1:identity-audit:${source}`,
-    version: 'GC_PHASE4H1_IDENTITY_AUDIT_V1',
+    version: 'GC_PHASE4H1_1_IDENTITY_AUDIT_SOURCE_SAFE_V1',
     generatedAt: new Date().toISOString(),
     readOnly: true,
     destructiveChangesApplied: false,
-    safeToApply: blockers.length === 0 && ambiguousGroups.length === 0,
+    safeToApply: blockers.length === 0 && ambiguousGroups.length === 0 && rejectedStrongLinks.length === 0,
     summary: {
       records: records.length,
       identityGroups: groups.length,
@@ -320,6 +368,13 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       duplicateUserLinks: duplicateUserLinks.length,
       statisticsAtRisk: statisticsAtRisk.length
     },
+    identityRules: {
+      playerIdScope: 'source_key + stracker_player_id',
+      unscopedPlayerIdCanMerge: false,
+      differentSteamIdsCanMerge: false,
+      canonicalPriority: ['steam', 'opaque-driver-key', 'player', 'name']
+    },
+    rejectedStrongLinks,
     identityGroups: groups,
     canonicalCandidates,
     conflicts,
