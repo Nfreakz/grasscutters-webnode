@@ -142,13 +142,18 @@ async function requireAdmin(req: Request) {
           };
         } else {
           const rawSource = String(Array.isArray(source) ? source[0] : source || '').trim().toLowerCase();
-          const processSources = rawSource ? [rawSource] : ['weekly', 'gt4'];
           const processed = [];
-          for (const sourceItem of processSources) {
+          if (!rawSource || ['all', 'global', 'both', 'todas'].includes(rawSource)) {
             try {
-              processed.push(await service.processNewEvents({ source: sourceItem }));
+              processed.push(await service.processNewEventsAllSourcesV1({ trustedAutomation: true }));
             } catch (error) {
-              processed.push({ ok: false, source: sourceItem, message: error instanceof Error ? error.message : String(error) });
+              processed.push({ ok: false, source: 'all', message: error instanceof Error ? error.message : String(error) });
+            }
+          } else {
+            try {
+              processed.push(await service.processNewEvents({ source: rawSource }));
+            } catch (error) {
+              processed.push({ ok: false, source: rawSource, message: error instanceof Error ? error.message : String(error) });
             }
           }
           autoProcess = { ok: true, processed };
@@ -197,12 +202,39 @@ async function requireAdmin(req: Request) {
     }
   });
 
+
+  // GC_PHASE4D2_GLOBAL_SOURCE_PROCESSING_V1
+  app.post('/api/gc/ratings/process-all-sources', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
+
+      const dryRunRaw = req.query.dryRun ?? req.body?.dryRun;
+      const confirmationRaw = req.query.confirmation ?? req.body?.confirmation;
+      const dryRun = parseBooleanish(dryRunRaw, true) !== false;
+      const confirmation = String(confirmationRaw || '').trim();
+      const payload = await service.processNewEventsAllSourcesV1({ dryRun, confirmation });
+      res.json(payload);
+    } catch (error) {
+      res.status(400).json({
+        ok: false,
+        source: 'gc-ratings-v1:global-source-processing',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post('/api/gc/ratings/process-new-events', async (req, res) => {
     try {
       if (!cronSecret || readCronSecret(req) !== cronSecret) {
         return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Cron secret invalido.' });
       }
-      const payload = await service.processNewEvents({ source: req.query.source || req.body?.source || 'weekly' });
+      const requestedSource = String(req.query.source || req.body?.source || '').trim().toLowerCase();
+      const processGlobally = !requestedSource || ['all', 'global', 'both', 'todas'].includes(requestedSource);
+      const payload = processGlobally
+        ? await service.processNewEventsAllSourcesV1({ trustedAutomation: true })
+        : await service.processNewEvents({ source: requestedSource });
       res.json({
         ok: true,
         source: 'gc-ratings-v1',
@@ -302,10 +334,14 @@ async function requireAdmin(req: Request) {
 
       const allowed = await requireAdmin(req);
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
-      const payload = await service.processNewEvents({ source: req.query.source || req.body?.source || 'weekly' });
+      const requestedSource = String(req.query.source || req.body?.source || '').trim().toLowerCase();
+      const processGlobally = !requestedSource || ['all', 'global', 'both', 'todas'].includes(requestedSource);
+      const payload = processGlobally
+        ? await service.processNewEventsAllSourcesV1({ trustedAutomation: true })
+        : await service.processNewEvents({ source: requestedSource });
       res.json({
         ok: true,
-        source: 'gc-ratings-v1',
+        source: processGlobally ? 'gc-ratings-v1:global' : 'gc-ratings-v1',
         generatedAt: payload.snapshot.generatedAt,
         mode: payload.mode,
         processedEvents: payload.processedEvents,

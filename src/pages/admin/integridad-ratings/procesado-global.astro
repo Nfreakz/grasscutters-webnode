@@ -1,0 +1,225 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4D2_GLOBAL_SOURCE_PROCESSING_V1 -->
+<AppLayout title="Procesado global Liga y GT4 | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-global-ratings-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings</span>
+        <h1 class="gc-title">Procesado global Liga + GT4.</h1>
+        <p class="gc-subtitle">Reúne las carreras completadas pendientes de ambos campeonatos, las ordena por fecha y las aplica en una única escritura transaccional.</p>
+      </div>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="globalGate" hidden>
+      <div class="gc-slab">
+        <h2>Acceso restringido</h2>
+        <p>Inicia sesión con una cuenta administradora.</p>
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+      </div>
+    </section>
+
+    <section id="globalContent" hidden>
+      <div class="gc-global-grid">
+        <article><span>Pendientes</span><strong id="globalPending">—</strong></article>
+        <article><span>Liga</span><strong id="globalWeekly">—</strong></article>
+        <article><span>GT4</span><strong id="globalGt4">—</strong></article>
+        <article><span>Filas previstas</span><strong id="globalRows">—</strong></article>
+      </div>
+
+      <section class="gc-section gc-global-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 1</span>
+            <h2>Simular procesado global</h2>
+            <p>Comprueba las dos fuentes, selecciona únicamente eventos no procesados, usa el sTracker correspondiente y calcula el resultado sin escribir.</p>
+          </div>
+          <button class="gc-btn gc-btn--primary" id="previewGlobal" type="button">Analizar pendientes</button>
+        </div>
+        <pre id="globalPreview">Pulsa “Analizar pendientes”.</pre>
+      </section>
+
+      <section class="gc-section gc-global-card gc-global-danger">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Paso 2</span>
+            <h2>Aplicar eventos pendientes</h2>
+            <p>Se crea un backup JSON y después se actualizan pilotos, resultados, incidentes y vueltas en una sola transacción.</p>
+          </div>
+        </div>
+
+        <div class="gc-global-confirm">
+          <label>
+            <span>Confirmación exacta</span>
+            <input id="globalConfirmation" type="text" autocomplete="off" placeholder="Ejecuta primero la simulación" disabled />
+          </label>
+          <button class="gc-btn gc-btn--danger" id="applyGlobal" type="button" disabled>Procesar Liga + GT4</button>
+        </div>
+        <p id="globalMessage">La aplicación permanecerá bloqueada hasta que la simulación sea segura.</p>
+      </section>
+
+      <p><a class="gc-btn" href="/admin/integridad-ratings/fuentes">Volver al aislamiento por fuentes</a></p>
+    </section>
+  </div>
+
+  <style>
+    .gc-global-ratings-v1{display:grid;gap:18px}
+    .gc-global-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .gc-global-grid article,.gc-global-card{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.02);padding:18px}
+    .gc-global-grid span,.gc-global-confirm span{display:block;color:var(--dim);font-size:.76rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+    .gc-global-grid strong{display:block;margin-top:8px;font-size:clamp(1.4rem,3vw,2.2rem)}
+    .gc-global-card pre{margin:14px 0 0;max-height:540px;overflow:auto;padding:16px;border-radius:14px;background:#050805;color:#dfffd8;white-space:pre-wrap;overflow-wrap:anywhere}
+    .gc-global-danger{border-color:rgba(255,87,87,.28)}
+    .gc-global-confirm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+    .gc-global-confirm input{width:100%;margin-top:7px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.28);color:var(--text)}
+    .gc-btn--danger{border-color:rgba(255,87,87,.45);background:rgba(255,87,87,.13);color:#ffd1d1}
+    #globalMessage{margin:12px 0 0;color:var(--soft)}
+    @media(max-width:860px){.gc-global-grid{grid-template-columns:1fr 1fr}.gc-global-confirm{grid-template-columns:1fr}}
+    @media(max-width:520px){.gc-global-grid{grid-template-columns:1fr}}
+  </style>
+
+  <script>
+    (() => {
+      type JsonRecord = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
+      const els = {
+        gate: get('globalGate'),
+        content: get('globalContent'),
+        pending: get('globalPending'),
+        weekly: get('globalWeekly'),
+        gt4: get('globalGt4'),
+        rows: get('globalRows'),
+        preview: get<HTMLButtonElement>('previewGlobal'),
+        apply: get<HTMLButtonElement>('applyGlobal'),
+        confirmation: get<HTMLInputElement>('globalConfirmation'),
+        output: get('globalPreview'),
+        message: get('globalMessage')
+      };
+      let previewPayload: JsonRecord | null = null;
+
+      async function fetchJson(url: string, options: RequestInit = {}) {
+        const response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.ok === false) throw new Error(payload.message || `HTTP ${response.status}`);
+        return payload as JsonRecord;
+      }
+
+      async function isAdmin() {
+        try {
+          const status = await fetchJson('/api/admin/status');
+          if (status.authorized === true) return true;
+        } catch {}
+        try {
+          const profile = await fetchJson('/api/profile');
+          return profile.user?.role === 'admin';
+        } catch {
+          return false;
+        }
+      }
+
+      const format = (value: unknown) => new Intl.NumberFormat('es-ES').format(Number(value || 0));
+
+      function renderSummary(payload: JsonRecord = {}) {
+        const pending = payload.pending || {};
+        const predicted = payload.predicted || {};
+        els.pending.textContent = format(pending.total);
+        els.weekly.textContent = format(pending.weekly);
+        els.gt4.textContent = format(pending.gt4);
+        els.rows.textContent = format(predicted.newRows);
+      }
+
+      function updateApplyState() {
+        const phrase = String(previewPayload?.confirmationRequired || '');
+        els.apply.disabled = !(
+          previewPayload?.safeToApply === true &&
+          previewPayload?.hasPending === true &&
+          phrase &&
+          els.confirmation.value.trim() === phrase
+        );
+      }
+
+      els.preview.addEventListener('click', async () => {
+        try {
+          els.preview.disabled = true;
+          els.output.textContent = 'Leyendo Liga, GT4 y ambos sTracker...';
+          previewPayload = await fetchJson('/api/gc/ratings/process-all-sources?dryRun=1', {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: true })
+          });
+          els.output.textContent = JSON.stringify(previewPayload, null, 2);
+          renderSummary(previewPayload);
+
+          const phrase = String(previewPayload.confirmationRequired || '');
+          const canApply = previewPayload.safeToApply === true && previewPayload.hasPending === true;
+          els.confirmation.disabled = !canApply;
+          els.confirmation.placeholder = phrase || 'No hay eventos pendientes';
+          els.message.textContent = canApply
+            ? `Simulación segura. Escribe exactamente: ${phrase}`
+            : previewPayload.hasPending
+              ? 'La simulación está bloqueada. No se modificará MySQL.'
+              : 'No hay carreras completadas pendientes.';
+          updateApplyState();
+        } catch (error) {
+          previewPayload = null;
+          els.output.textContent = error instanceof Error ? error.message : String(error);
+          els.message.textContent = 'No se pudo completar la simulación.';
+        } finally {
+          els.preview.disabled = false;
+        }
+      });
+
+      els.confirmation.addEventListener('input', updateApplyState);
+
+      els.apply.addEventListener('click', async () => {
+        if (previewPayload?.safeToApply !== true || previewPayload?.hasPending !== true) return;
+        const phrase = String(previewPayload.confirmationRequired || '');
+        if (els.confirmation.value.trim() !== phrase) return;
+
+        try {
+          els.apply.disabled = true;
+          els.preview.disabled = true;
+          els.message.textContent = 'Procesando Liga y GT4. No cierres esta página...';
+          const url = `/api/gc/ratings/process-all-sources?dryRun=0&confirmation=${encodeURIComponent(phrase)}`;
+          const result = await fetchJson(url, {
+            method: 'POST',
+            body: JSON.stringify({ dryRun: false, confirmation: phrase })
+          });
+
+          if (result.applied !== true || result.dryRun !== false) {
+            throw new Error('El servidor no aplicó los eventos. MySQL no se ha modificado.');
+          }
+
+          els.output.textContent = JSON.stringify(result, null, 2);
+          renderSummary(result);
+          els.message.textContent = `${result.message} Backup: ${result.backupFile || 'no indicado'}`;
+          previewPayload = null;
+          els.confirmation.value = '';
+          els.confirmation.disabled = true;
+        } catch (error) {
+          els.message.textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          els.preview.disabled = false;
+          updateApplyState();
+        }
+      });
+
+      (async () => {
+        const admin = await isAdmin();
+        els.gate.hidden = admin;
+        els.content.hidden = !admin;
+      })().catch((error) => {
+        els.message.textContent = error instanceof Error ? error.message : String(error);
+      });
+    })();
+  </script>
+</AppLayout>
