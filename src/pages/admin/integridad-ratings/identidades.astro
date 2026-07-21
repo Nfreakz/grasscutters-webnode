@@ -1,0 +1,109 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4H1_IDENTITY_AUDIT_V1 -->
+<AppLayout title="Auditor de identidades | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-identity-audit-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings · Solo lectura</span>
+        <h1 class="gc-title">Identidades de pilotos.</h1>
+        <p class="gc-subtitle">Cruza ratings, resultados, perfiles y cuentas para detectar identidades partidas antes de cualquier fusión.</p>
+      </div>
+      <button class="gc-btn gc-btn--primary" id="identityReload" type="button">Ejecutar auditoría</button>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="identityGate" hidden>
+      <div class="gc-slab">
+        <h2>Acceso restringido</h2>
+        <p>Inicia sesión con una cuenta administradora.</p>
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+      </div>
+    </section>
+
+    <section id="identityContent" hidden>
+      <div class="gc-identity-notice">
+        <strong>No modifica MySQL.</strong>
+        <span>El nombre solo genera avisos; nunca une identidades.</span>
+      </div>
+
+      <div class="gc-identity-grid">
+        <article><span>Grupos</span><strong id="identityGroups">—</strong></article>
+        <article><span>Candidatos</span><strong id="identityCandidates">—</strong></article>
+        <article><span>Conflictos</span><strong id="identityConflicts">—</strong></article>
+        <article><span>Ambiguos</span><strong id="identityAmbiguous">—</strong></article>
+        <article><span>Perfiles huérfanos</span><strong id="identityOrphans">—</strong></article>
+        <article><span>Estadísticas en riesgo</span><strong id="identityStatsRisk">—</strong></article>
+      </div>
+
+      <section class="gc-section gc-identity-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Resultado</span>
+            <h2 id="identityVerdict">Pendiente</h2>
+            <p id="identityMessage">Ejecuta la auditoría para leer el estado actual.</p>
+          </div>
+          <label class="gc-identity-filter">
+            <span>Mostrar</span>
+            <select id="identityFilter">
+              <option value="attention">Solo atención</option>
+              <option value="all">Todos los grupos</option>
+              <option value="conflicts">Conflictos</option>
+              <option value="merge">Candidatos a fusión</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="gc-section gc-identity-card">
+        <div class="gc-table-wrap">
+          <table class="gc-table">
+            <thead><tr><th>Grupo</th><th>Identificadores</th><th>Perfiles / cuentas</th><th>Estadísticas</th><th>Diagnóstico</th></tr></thead>
+            <tbody id="identityTable"><tr><td colspan="5">Sin ejecutar.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <details class="gc-identity-card gc-identity-json">
+        <summary>JSON técnico completo</summary>
+        <pre id="identityJson">Sin ejecutar.</pre>
+      </details>
+    </section>
+  </div>
+
+  <style>
+    .gc-identity-audit-v1{display:grid;gap:18px}.gc-identity-notice{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;border:1px solid rgba(126,255,39,.3);border-radius:14px;background:rgba(126,255,39,.06)}
+    .gc-identity-notice span{color:var(--soft)}.gc-identity-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.gc-identity-grid article,.gc-identity-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02)}
+    .gc-identity-grid span,.gc-identity-filter span{display:block;color:var(--dim);font-size:.7rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.gc-identity-grid strong{display:block;margin-top:7px;font-size:1.65rem}.gc-identity-filter select{margin-top:6px;min-height:40px;border:1px solid var(--line);border-radius:10px;background:#07100a;color:var(--text);padding:0 10px}
+    .gc-table-wrap{overflow:auto}.gc-table{width:100%;border-collapse:collapse;min-width:980px}.gc-table th,.gc-table td{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.gc-table th{color:var(--dim);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}.gc-table small{display:block;color:var(--dim);margin-top:4px}.gc-identity-list{display:flex;gap:5px;flex-wrap:wrap}.gc-identity-chip{display:inline-flex;padding:4px 7px;border:1px solid var(--line);border-radius:999px;font:700 .68rem/1.2 var(--font-mono,monospace);overflow-wrap:anywhere}.gc-identity-chip--warn{border-color:rgba(255,174,66,.45);color:#ffd59a}.gc-identity-chip--bad{border-color:rgba(255,87,87,.5);color:#ffb3b3}.gc-identity-json summary{cursor:pointer;font-weight:900}.gc-identity-json pre{max-height:620px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#050805;color:#dfffd8;padding:15px;border-radius:12px}
+    @media(max-width:1100px){.gc-identity-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.gc-identity-grid{grid-template-columns:1fr 1fr}}
+  </style>
+
+  <script>
+    (() => {
+      type JsonRecord = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+      const els = {
+        gate:get('identityGate'),content:get('identityContent'),reload:get<HTMLButtonElement>('identityReload'),filter:get<HTMLSelectElement>('identityFilter'),
+        groups:get('identityGroups'),candidates:get('identityCandidates'),conflicts:get('identityConflicts'),ambiguous:get('identityAmbiguous'),orphans:get('identityOrphans'),statsRisk:get('identityStatsRisk'),
+        verdict:get('identityVerdict'),message:get('identityMessage'),table:get<HTMLTableSectionElement>('identityTable'),json:get('identityJson')
+      };
+      let payload: JsonRecord | null = null;
+      const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char] || char));
+      const num = (value: unknown) => new Intl.NumberFormat('es-ES').format(Number(value || 0));
+      async function fetchJson(url: string) { const response=await fetch(url,{credentials:'include',cache:'no-store'}); const data=await response.json().catch(()=>({})); if(!response.ok||data.ok===false) throw new Error(data.message||`HTTP ${response.status}`); return data; }
+      async function isAdmin(){try{const data=await fetchJson('/api/admin/status');if(data.authorized===true)return true}catch{}try{return (await fetchJson('/api/profile')).user?.role==='admin'}catch{return false}}
+      const chips=(values:unknown[],tone='')=>(values||[]).length?values.map((value)=>`<span class="gc-identity-chip ${tone}">${esc(value)}</span>`).join(''):'<span class="gc-identity-chip">—</span>';
+      function visible(group:JsonRecord){const mode=els.filter.value;const attention=group.conflicts?.length||group.driverKeys?.length>1||group.profileIds?.length>1;if(mode==='all')return true;if(mode==='conflicts')return group.conflicts?.length>0;if(mode==='merge')return group.driverKeys?.length>1||group.profileIds?.length>1;return attention}
+      function render(){if(!payload)return;const summary=payload.summary||{};els.groups.textContent=num(summary.identityGroups);els.candidates.textContent=num(summary.mergeCandidates);els.conflicts.textContent=num(summary.conflicts);els.ambiguous.textContent=num(summary.ambiguousGroups);els.orphans.textContent=num(summary.orphanProfiles);els.statsRisk.textContent=num(summary.statisticsAtRisk);els.verdict.textContent=payload.safeToApply?'Sin bloqueos automáticos':'Revisión manual requerida';els.message.textContent=payload.safeToApply?'El auditor no detecta conflictos que bloqueen una futura fusión controlada.':'No debe ejecutarse una fusión global mientras existan conflictos o grupos ambiguos.';
+        const groups=(payload.identityGroups||[]).filter(visible);els.table.innerHTML=groups.length?groups.map((group:JsonRecord)=>`<tr><td><strong>${esc(group.identityGroupId)}</strong><small>${esc(group.canonicalCandidate?.driverKey||'sin candidato')} · score ${esc(group.canonicalCandidate?.score??'-')}</small></td><td><div class="gc-identity-list">${chips(group.driverKeys,group.driverKeys?.length>1?'gc-identity-chip--warn':'')}</div><small>PlayerId: ${esc((group.playerIds||[]).join(', ')||'—')}</small><small>Steam: ${esc((group.steamGuids||[]).join(', ')||'—')}</small><small>Nombres: ${esc((group.names||[]).join(' / ')||'—')}</small></td><td><div class="gc-identity-list">${chips(group.profileIds)}</div><small>Usuarios: ${esc((group.userIds||[]).join(', ')||'—')}</small><small>Equipo: ${esc((group.teams?.names||[]).join(' / ')||'—')}</small><small>País: ${esc((group.countries||[]).join(', ')||'—')}</small></td><td><strong>${esc(group.statistics?.uniqueEvents||0)} carreras únicas</strong><small>${esc(group.statistics?.storedResultRows||0)} filas · ${esc(group.statistics?.duplicateEventScopes?.length||0)} eventos repetidos</small></td><td><div class="gc-identity-list">${chips(group.conflicts,group.conflicts?.length?'gc-identity-chip--bad':'')}</div></td></tr>`).join(''):'<tr><td colspan="5">No hay grupos para este filtro.</td></tr>';els.json.textContent=JSON.stringify(payload,null,2)}
+      async function load(){els.reload.disabled=true;els.verdict.textContent='Analizando…';els.message.textContent='Lectura cruzada de MySQL en curso.';try{payload=await fetchJson('/api/gc/ratings/identity-audit');render()}catch(error){payload=null;els.verdict.textContent='Error';els.message.textContent=error instanceof Error?error.message:String(error);els.table.innerHTML='<tr><td colspan="5">No se pudo ejecutar la auditoría.</td></tr>'}finally{els.reload.disabled=false}}
+      els.reload.addEventListener('click',load);els.filter.addEventListener('change',render);
+      (async()=>{if(!(await isAdmin())){els.gate.hidden=false;els.content.hidden=true;return}els.gate.hidden=true;els.content.hidden=false;await load()})();
+    })();
+  </script>
+</AppLayout>

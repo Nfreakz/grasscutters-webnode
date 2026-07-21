@@ -1,6 +1,7 @@
 import type { Express, Request } from 'express';
 import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
+import { readMysqlIdentityAuditV1 } from './identityAudit';
 
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
@@ -243,6 +244,24 @@ async function requireAdmin(req: Request) {
       res.json(await service.getDiagnostics());
     } catch (error) {
       res.status(200).json({ ok: false, source: 'gc-ratings-v1', message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // GC_PHASE4H1_IDENTITY_AUDIT_V1 — endpoint estrictamente de lectura.
+  app.get('/api/gc/ratings/identity-audit', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1:identity-audit', message: 'Admin requerido.' });
+      res.json(await readMysqlIdentityAuditV1());
+    } catch (error) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-ratings-v1:identity-audit',
+        readOnly: true,
+        destructiveChangesApplied: false,
+        message: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
