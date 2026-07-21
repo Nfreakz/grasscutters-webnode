@@ -121,14 +121,37 @@ async function requireAdmin(req: Request) {
     }
   });
 
+  // GC_PHASE4F_STRICT_EVENT_SOURCE_V1
   app.get('/api/gc/ratings/event/:eventId', async (req, res) => {
     try {
       let eventId = String(req.params.eventId || '');
       try {
         eventId = decodeURIComponent(eventId);
       } catch {}
-      const fallbackEnabled = String(req.query.fallback || '').trim() === '1';
-      const source = req.query.source || req.query.server || req.query.championship || '';
+
+      const sourceValue = req.query.source || req.query.server || req.query.championship || '';
+      const sourceRaw = String(Array.isArray(sourceValue) ? sourceValue[0] : sourceValue || '').trim().toLowerCase();
+      const weeklyAliases = ['weekly', 'main', 'liga', 'league', 'grasscutters'];
+      const gt4Aliases = ['gt4', 'gt-4', 'gt', 'supra', 'supra-gt4'];
+      const explicitSource = sourceRaw
+        ? weeklyAliases.includes(sourceRaw)
+          ? 'weekly'
+          : gt4Aliases.includes(sourceRaw)
+            ? 'gt4'
+            : null
+        : null;
+
+      if (sourceRaw && !explicitSource) {
+        return res.status(400).json({
+          ok: false,
+          code: 'INVALID_EVENT_SOURCE',
+          source: 'gc-ratings-v1:strict-source',
+          requestedSource: sourceRaw,
+          allowedSources: ['weekly', 'gt4'],
+          message: `Fuente no válida: ${sourceRaw}. Usa weekly o gt4.`
+        });
+      }
+
       const processRequested = parseBooleanish(req.query.process || req.query.recalculate, false) === true;
       let autoProcess: any = null;
 
@@ -141,9 +164,8 @@ async function requireAdmin(req: Request) {
             message: 'Recalculo SR/GSR no ejecutado: necesitas sesión admin.'
           };
         } else {
-          const rawSource = String(Array.isArray(source) ? source[0] : source || '').trim().toLowerCase();
           const processed = [];
-          if (!rawSource || ['all', 'global', 'both', 'todas'].includes(rawSource)) {
+          if (!explicitSource) {
             try {
               processed.push(await service.processNewEventsAllSourcesV1({ trustedAutomation: true }));
             } catch (error) {
@@ -151,9 +173,9 @@ async function requireAdmin(req: Request) {
             }
           } else {
             try {
-              processed.push(await service.processNewEvents({ source: rawSource }));
+              processed.push(await service.processNewEvents({ source: explicitSource }));
             } catch (error) {
-              processed.push({ ok: false, source: rawSource, message: error instanceof Error ? error.message : String(error) });
+              processed.push({ ok: false, source: explicitSource, message: error instanceof Error ? error.message : String(error) });
             }
           }
           autoProcess = { ok: true, processed };
@@ -161,12 +183,34 @@ async function requireAdmin(req: Request) {
       }
 
       const payload = await service.getEvent(eventId, {
-        fallback: fallbackEnabled,
-        source,
-        autoSourceFallback: true
+        source: explicitSource || '',
+        autoSourceFallback: !explicitSource
       });
-      if (!payload) return res.status(404).json({ ok: false, source: 'gc-ratings-v1:v16-round-rating-refresh', eventSource: 'none', message: 'Evento no encontrado en weekly ni GT4.' });
-      res.status(payload.ok === false ? 404 : 200).json({
+
+      if (!payload) {
+        const message = explicitSource
+          ? `Evento no encontrado en la fuente ${explicitSource}.`
+          : 'Evento no encontrado en weekly ni GT4.';
+        return res.status(404).json({
+          ok: false,
+          code: 'EVENT_NOT_FOUND',
+          source: 'gc-ratings-v1:strict-source',
+          eventId,
+          eventSource: explicitSource || 'none',
+          message
+        });
+      }
+
+      if (payload.ok === false) {
+        const status = payload.code === 'AMBIGUOUS_EVENT_SOURCE' ? 409 : 400;
+        return res.status(status).json({
+          ...payload,
+          processRequested,
+          autoProcess
+        });
+      }
+
+      res.status(200).json({
         ...payload,
         processRequested,
         autoProcess

@@ -115,6 +115,17 @@ function normalizeChampionshipSource(value: unknown) {
   return source === 'gt4' ? 'gt4' : 'weekly';
 }
 
+/* GC_PHASE4F_STRICT_EVENT_SOURCE_V1 */
+type StrictChampionshipSourceV1 = 'weekly' | 'gt4';
+
+function explicitChampionshipSourceV1(value: unknown): StrictChampionshipSourceV1 | null {
+  const source = String(value || '').trim().toLowerCase();
+  if (!source) return null;
+  if (['weekly', 'main', 'liga', 'league', 'grasscutters'].includes(source)) return 'weekly';
+  if (['gt4', 'gt-4', 'gt', 'supra', 'supra-gt4'].includes(source)) return 'gt4';
+  return null;
+}
+
 function withChampionshipSource(url: string, source: string) {
   const clean = String(url || '').trim();
   if (!clean) return clean;
@@ -4044,13 +4055,35 @@ private async buildAllSourcesIncrementalPlanV1(baseSnapshot: RatingsSnapshot) {
       normalizedEventId = decodeURIComponent(normalizedEventId);
     } catch {}
 
-    const requestedSourceRaw = String(options.source || options.server || options.championship || '').trim();
-    const requestedSource = requestedSourceRaw ? normalizeChampionshipSource(requestedSourceRaw) : 'weekly';
-    const autoFallback = options.autoSourceFallback !== false;
-    const sourceCandidates = [...new Set([
-      requestedSource,
-      ...(autoFallback ? ['weekly', 'gt4'] : [])
-    ])];
+    const requestedSourceRaw = String(
+      options.source || options.server || options.championship || ''
+    ).trim();
+    const explicitSource = requestedSourceRaw
+      ? explicitChampionshipSourceV1(requestedSourceRaw)
+      : null;
+
+    if (requestedSourceRaw && !explicitSource) {
+      return {
+        ok: false,
+        code: 'INVALID_EVENT_SOURCE',
+        source: 'gc-ratings-v1:strict-source',
+        requestedSource: requestedSourceRaw,
+        allowedSources: ['weekly', 'gt4'],
+        message: `Fuente no válida: ${requestedSourceRaw}. Usa weekly o gt4.`
+      };
+    }
+
+    // Fuente explícita: solo se consulta esa competición.
+    // URL antigua sin source: se consultan ambas y solo se acepta una coincidencia única.
+    const sourceCandidates: StrictChampionshipSourceV1[] = explicitSource
+      ? [explicitSource]
+      : ['weekly', 'gt4'];
+
+    const matches: Array<{
+      sourceCandidate: StrictChampionshipSourceV1;
+      payload: PlainObject;
+      event: PlainObject;
+    }> = [];
 
     for (const sourceCandidate of sourceCandidates) {
       const payload = await this.getChampionshipPayload(false, sourceCandidate);
@@ -4060,18 +4093,37 @@ private async buildAllSourcesIncrementalPlanV1(baseSnapshot: RatingsSnapshot) {
         ...ratingArray(payload.championship.strackerSeries?.reviewedEvents)
       ];
       const event = allEvents.find((item: PlainObject) => String(item.id) === normalizedEventId);
-      if (!event) continue;
+      if (event) matches.push({ sourceCandidate, payload, event });
+    }
+
+    if (!matches.length) return null;
+
+    if (!explicitSource && matches.length > 1) {
       return {
-        ok: true,
-        source: `gc-ratings-v1:${sourceCandidate}`,
-        eventSource: sourceCandidate,
-        generatedAt: payload.generatedAt,
-        event,
-        diagnostics: payload.diagnostics
+        ok: false,
+        code: 'AMBIGUOUS_EVENT_SOURCE',
+        source: 'gc-ratings-v1:strict-source',
+        eventId: normalizedEventId,
+        matchingSources: matches.map((match) => match.sourceCandidate),
+        message: 'El UUID existe en más de una competición. Añade ?source=weekly o ?source=gt4.'
       };
     }
 
-    return null;
+    const match = matches[0];
+    return {
+      ok: true,
+      source: `gc-ratings-v1:${match.sourceCandidate}`,
+      eventSource: match.sourceCandidate,
+      sourceResolution: explicitSource ? 'explicit' : 'auto-unique',
+      requestedSource: explicitSource || null,
+      generatedAt: match.payload.generatedAt,
+      event: {
+        ...match.event,
+        sourceKey: match.event.sourceKey || match.sourceCandidate,
+        championshipSource: match.event.championshipSource || match.sourceCandidate
+      },
+      diagnostics: match.payload.diagnostics
+    };
   }
 
   async getDriver(driverKey: string) {

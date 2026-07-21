@@ -679,9 +679,10 @@ function normalizeEvent(event: PlainObject, index: number, championshipRaw: Plai
     index: index + 1,
     id,
     slug: id,
-    href: source === 'gt4'
-      ? `/campeonato/ronda/${encodeURIComponent(id)}?source=gt4`
-      : `/campeonato/ronda/${encodeURIComponent(id)}`,
+    // GC_PHASE4F_STRICT_EVENT_SOURCE_V1
+    sourceKey: source,
+    championshipSource: source,
+    href: `/campeonato/ronda/${encodeURIComponent(id)}?source=${encodeURIComponent(source)}`,
     name: cleanDisplayText(pick(event, ['Name', 'name', 'Title', 'title'], `Ronda ${index + 1}`)),
     track,
     trackRaw: textValue(trackRaw, ''),
