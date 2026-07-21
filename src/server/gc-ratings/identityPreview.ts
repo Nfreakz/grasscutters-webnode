@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 
-// GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1
+// GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1
 type ReviewAction = 'defer' | 'keep_separate' | 'merge';
 
 type ReviewDecision = {
@@ -73,7 +73,7 @@ function snapshotId(groups: any[], rows?: Awaited<ReturnType<typeof readRows>>) 
     rows: rows ? {
       ratings: rows.ratings.map((row) => [String(row.id), row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name, row.races_count]),
       results: rows.results.map((row) => [String(row.id), row.event_scope_key, row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name, row.position]),
-      profiles: rows.profiles.map((row) => [String(row.id), row.driver_key, row.player_id, row.steam_guid, row.display_name, row.linked_user_id]),
+      profiles: rows.profiles.map((row) => [String(row.id), row.driver_key, row.player_id, row.steam_guid, row.display_name, row.linked_user_id, Number(row.active_memberships || 0)]),
       users: rows.users.map((row) => [String(row.id), row.pilot_player_id, row.pilot_steam_guid, row.pilot_stracker_name])
     } : null
   };
@@ -167,7 +167,11 @@ async function readRows(pool: Pool) {
     'SELECT id, event_id, source_key, event_scope_key, driver_key, steam_guid, stracker_player_id, display_name, position FROM gc_rating_event_result ORDER BY source_key, event_id, position, id'
   );
   const [profiles] = await pool.query<RowDataPacket[]>(
-    'SELECT id, driver_key, player_id, steam_guid, driver_name, display_name, linked_user_id FROM gc_driver_profiles ORDER BY id'
+    `SELECT d.id, d.driver_key, d.player_id, d.steam_guid, d.driver_name, d.display_name, d.linked_user_id,
+            d.created_at, d.updated_at,
+            (SELECT COUNT(*) FROM gc_team_memberships m WHERE m.driver_profile_id = d.id AND m.status = 'active') AS active_memberships
+       FROM gc_driver_profiles d
+      ORDER BY d.id`
   );
   const [users] = await pool.query<RowDataPacket[]>(
     `SELECT id, display_name, pilot_player_id, pilot_steam_guid, pilot_stracker_name
@@ -176,6 +180,96 @@ async function readRows(pool: Pool) {
       ORDER BY id`
   );
   return { ratings: ratings as any[], results: results as any[], profiles: profiles as any[], users: users as any[] };
+}
+
+function sameNormalizedName(left: any, right: any) {
+  const leftNames = new Set((left?.normalizedNames || []).map(String));
+  return (right?.normalizedNames || []).some((name: unknown) => leftNames.has(String(name)));
+}
+
+function steamCompatible(left: any, right: any) {
+  const leftSteam = unique(left?.steamGuids || []);
+  const rightSteam = unique(right?.steamGuids || []);
+  if (!leftSteam.length || !rightSteam.length) return true;
+  return leftSteam.length === 1 && rightSteam.length === 1 && leftSteam[0] === rightSteam[0];
+}
+
+function chooseCanonicalProfile(group: any, groupRows: ReturnType<typeof rowsForGroups>, canonicalDriverKey: string | null) {
+  if (!groupRows.profiles.length) return { id: null, reason: 'La identidad no tiene perfil.' };
+  if (groupRows.profiles.length === 1) return { id: String(groupRows.profiles[0].id), reason: 'Es el único perfil disponible.' };
+  const steam = unique(group?.steamGuids || [])[0] || null;
+  const user = unique(group?.userIds || [])[0] || null;
+  const scored = groupRows.profiles.map((row: any) => {
+    let score = 0;
+    const reasons: string[] = [];
+    if (canonicalDriverKey && String(row.driver_key) === canonicalDriverKey) { score += 16; reasons.push('usa la clave canónica'); }
+    if (steam && cleanText(row.steam_guid, 191)?.toLowerCase() === steam.toLowerCase()) { score += 8; reasons.push('coincide con Steam'); }
+    if (user && String(row.linked_user_id || '') === user) { score += 4; reasons.push('está enlazado a la cuenta'); }
+    const memberships = Number(row.active_memberships || 0);
+    if (memberships === 1) { score += 2; reasons.push('conserva la membresía activa'); }
+    return { id: String(row.id), score, reasons };
+  }).sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+  if (!scored[0] || scored[0].score === 0 || scored[0].score === scored[1]?.score) {
+    return { id: null, reason: 'Los perfiles son equivalentes; elegir uno sería arbitrario.' };
+  }
+  return { id: scored[0].id, reason: `Perfil objetivo único: ${scored[0].reasons.join(', ')}.` };
+}
+
+function buildAutomaticDecision(group: any, assignment: any, groupByRef: Map<string, any>, rows: Awaited<ReturnType<typeof readRows>>) {
+  if (!assignment) return null;
+  if (assignment.reviewKind === 'profile_link') {
+    if (assignment.candidateGroupRefs.length !== 1) return { classification: 'manual', reason: 'Hay más de una identidad candidata.' };
+    const target = groupByRef.get(assignment.candidateGroupRefs[0]);
+    if (!target || !sameNormalizedName(group, target)) return { classification: 'blocked', reason: 'La coincidencia exacta de nombre ya no es válida.' };
+    if (!steamCompatible(group, target)) return { classification: 'blocked', reason: 'El perfil y el candidato tienen Steam incompatibles.' };
+    if ((target.conflicts || []).length || (target.steamGuids || []).length > 1 || (target.userIds || []).length > 1) {
+      return { classification: 'manual', reason: 'La identidad candidata contiene un conflicto propio.' };
+    }
+    const targetRows = rowsForGroups(rows, [target]);
+    const canonicalDriverKey = target.canonicalCandidate?.driverKey || target.driverKeys?.[0] || null;
+    if (!canonicalDriverKey) return { classification: 'blocked', reason: 'El candidato no tiene una clave canónica.' };
+    const profileChoice = chooseCanonicalProfile(target, targetRows, canonicalDriverKey);
+    return {
+      classification: 'safe',
+      reason: 'Nombre exacto, candidato único y ninguna identidad fuerte contradictoria.',
+      decision: {
+        groupRef: group.groupRef,
+        action: 'merge',
+        targetGroupRef: target.groupRef,
+        canonicalDriverKey,
+        canonicalProfileId: profileChoice.id,
+        canonicalUserId: target.userIds?.length === 1 ? String(target.userIds[0]) : null,
+        displayName: target.names?.[0] || group.names?.[0] || null,
+        keepResultIdsByScope: {}
+      }
+    };
+  }
+  if (assignment.reviewKind === 'identity_conflict') {
+    const conflicts = unique(group.conflicts || []);
+    const automaticConflict = conflicts.length > 0 && conflicts.every((item) => item === 'MULTIPLE_PROFILES');
+    if (!automaticConflict || (group.steamGuids || []).length !== 1 || (group.userIds || []).length > 1 || (group.statistics?.duplicateEventScopes || []).length) {
+      return { classification: 'manual', reason: 'El conflicto contiene señales que no permiten una consolidación automática.' };
+    }
+    const canonicalDriverKey = group.canonicalCandidate?.driverKey || group.driverKeys?.[0] || null;
+    const groupRows = rowsForGroups(rows, [group]);
+    const profileChoice = chooseCanonicalProfile(group, groupRows, canonicalDriverKey);
+    if (!canonicalDriverKey || !profileChoice.id) return { classification: 'manual', reason: profileChoice.reason };
+    return {
+      classification: 'safe',
+      reason: `Un solo Steam y una elección objetiva del perfil. ${profileChoice.reason}`,
+      decision: {
+        groupRef: group.groupRef,
+        action: 'merge',
+        targetGroupRef: null,
+        canonicalDriverKey,
+        canonicalProfileId: profileChoice.id,
+        canonicalUserId: group.userIds?.length === 1 ? String(group.userIds[0]) : null,
+        displayName: group.names?.[0] || null,
+        keepResultIdsByScope: {}
+      }
+    };
+  }
+  return { classification: 'manual', reason: 'La coincidencia requiere revisión humana.' };
 }
 
 function rowsForGroups(rows: Awaited<ReturnType<typeof readRows>>, groups: any[]) {
@@ -305,10 +399,16 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
   try {
     const rows = await readRows(pool);
     const currentSnapshotId = snapshotId(audit.identityGroups, rows);
+    const groupByRef = new Map<string, any>(audit.identityGroups.map((group: any) => [group.groupRef, group]));
+    const automaticByRef = new Map<string, any>();
+    for (const group of audit.identityGroups) {
+      const assignment = reviewAssignments.get(group.groupRef);
+      if (assignment) automaticByRef.set(group.groupRef, buildAutomaticDecision(group, assignment, groupByRef, rows));
+    }
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1',
+      version: 'GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1',
       generatedAt: new Date().toISOString(),
       readOnly: true,
       writesAvailable: false,
@@ -323,6 +423,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
           reviewKind: assignment?.reviewKind || null,
           reviewName: assignment?.normalizedName || null,
           ambiguousWith: assignment?.candidateGroupRefs || [],
+          automatic: automaticByRef.get(group.groupRef) || null,
           rowOptions: {
             ratings: groupRows.ratings.map((row) => ({ id: String(row.id), driverKey: row.driver_key, displayName: row.display_name })),
             results: groupRows.results.map((row) => ({
@@ -332,7 +433,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
               displayName: row.display_name,
               position: Number(row.position || 0)
             })),
-            profiles: groupRows.profiles.map((row) => ({ id: String(row.id), driverKey: row.driver_key, displayName: row.display_name || row.driver_name, linkedUserId: row.linked_user_id })),
+            profiles: groupRows.profiles.map((row) => ({ id: String(row.id), driverKey: row.driver_key, displayName: row.display_name || row.driver_name, linkedUserId: row.linked_user_id, steamGuid: row.steam_guid, playerId: row.player_id, activeMemberships: Number(row.active_memberships || 0) })),
             users: groupRows.users.map((row) => ({ id: String(row.id), displayName: row.display_name, pilotName: row.pilot_stracker_name, steamGuid: row.pilot_steam_guid, playerId: row.pilot_player_id }))
           }
         };
@@ -342,12 +443,15 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
         cases: reviewAssignments.size,
         profileLinks: [...reviewAssignments.values()].filter((item) => item.reviewKind === 'profile_link').length,
         identityConflicts: [...reviewAssignments.values()].filter((item) => item.reviewKind === 'identity_conflict').length
+        ,automaticSafe: [...automaticByRef.values()].filter((item) => item?.classification === 'safe').length
+        ,manualRequired: [...automaticByRef.values()].filter((item) => item?.classification !== 'safe').length
       },
       instructions: {
         decisionsAreTemporary: true,
         noSqlIsExecuted: true,
         mergeRequiresCanonicalIdentity: true,
         duplicateEventsRequireManualKeepRow: true
+        ,automaticDecisionsRequirePreview: true
       }
     };
   } finally {
@@ -459,7 +563,7 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_5_IDENTITY_PROFILE_LINK_REVIEW_V1',
+      version: 'GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1',
       generatedAt: new Date().toISOString(),
       snapshotId: bootstrap.snapshotId,
       readOnly: true,
