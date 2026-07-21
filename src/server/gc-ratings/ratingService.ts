@@ -708,12 +708,137 @@ async function createProcessingContext(eventsCount: number, mode: 'incremental' 
   }
 }
 
+/* GC_PHASE4A_RATINGS_INTEGRITY_GUARD_V1 */
+function ratingResultFingerprintV1(row: RatingEventResult) {
+  const eventId = textValue(row.eventId, 'unknown-event');
+  const position = safeFiniteNumber(row.position, 0);
+  const name = normalizeDriverNameKey(row.displayName || row.driverKey || 'unknown');
+
+  // Dentro de una misma carrera no puede existir dos veces la misma combinación
+  // posición + nombre. Esta firma permite unir identidades antiguas name:/player:
+  // con la identidad Steam más reciente sin mezclar pilotos de posiciones distintas.
+  if (position > 0 && name) return `${eventId}|position:${position}|name:${name}`;
+
+  const steamGuid = textValue(row.steamGuid);
+  if (steamGuid) return `${eventId}|steam:${steamGuid}`;
+
+  const playerId = safeFiniteNumber(row.strackerPlayerId, 0);
+  if (playerId > 0) return `${eventId}|player:${playerId}`;
+
+  return `${eventId}|driver:${textValue(row.driverKey, `name:${name || 'unknown'}`)}`;
+}
+
+function ratingResultIdentityStrengthV1(row: RatingEventResult) {
+  if (textValue(row.steamGuid) || textValue(row.driverKey).startsWith('steam:')) return 3;
+  if (safeFiniteNumber(row.strackerPlayerId, 0) > 0 || textValue(row.driverKey).startsWith('player:')) return 2;
+  return 1;
+}
+
+function ratingResultQualityCompareV1(left: RatingEventResult, right: RatingEventResult) {
+  const dateDiff = parseDateMs(right.processedAt || right.eventDate) - parseDateMs(left.processedAt || left.eventDate);
+  if (dateDiff) return dateDiff;
+
+  const identityDiff = ratingResultIdentityStrengthV1(right) - ratingResultIdentityStrengthV1(left);
+  if (identityDiff) return identityDiff;
+
+  const confidenceDiff = safeFiniteNumber(right.match?.confidence, 0) - safeFiniteNumber(left.match?.confidence, 0);
+  if (confidenceDiff) return confidenceDiff;
+
+  const detailDiff = ratingArray(right.lapsDetail).length - ratingArray(left.lapsDetail).length;
+  if (detailDiff) return detailDiff;
+
+  return textValue(right.id).localeCompare(textValue(left.id));
+}
+
+function dedupeRatingEventResultsV1(rows: RatingEventResult[]) {
+  const buckets = new Map<string, RatingEventResult[]>();
+  for (const row of ratingArray<RatingEventResult>(rows)) {
+    const key = ratingResultFingerprintV1(row);
+    const bucket = buckets.get(key) || [];
+    bucket.push(row);
+    buckets.set(key, bucket);
+  }
+
+  return [...buckets.values()]
+    .map((bucket) => [...bucket].sort(ratingResultQualityCompareV1)[0])
+    .filter(Boolean)
+    .sort((left, right) =>
+      parseDateMs(left.eventDate || left.processedAt) - parseDateMs(right.eventDate || right.processedAt) ||
+      safeFiniteNumber(left.position, 9999) - safeFiniteNumber(right.position, 9999) ||
+      textValue(left.displayName).localeCompare(textValue(right.displayName))
+    );
+}
+
+function buildRatingDuplicateAuditV1(rows: RatingEventResult[]) {
+  const buckets = new Map<string, RatingEventResult[]>();
+  for (const row of ratingArray<RatingEventResult>(rows)) {
+    const key = ratingResultFingerprintV1(row);
+    const bucket = buckets.get(key) || [];
+    bucket.push(row);
+    buckets.set(key, bucket);
+  }
+
+  const duplicates = [...buckets.entries()]
+    .filter(([, bucket]) => bucket.length > 1)
+    .map(([fingerprint, bucket]) => ({
+      fingerprint,
+      eventId: textValue(bucket[0]?.eventId),
+      eventName: textValue(bucket[0]?.eventName, 'Carrera'),
+      displayName: textValue(bucket[0]?.displayName, 'Piloto'),
+      position: safeFiniteNumber(bucket[0]?.position, 0) || null,
+      rows: bucket.length,
+      keptId: [...bucket].sort(ratingResultQualityCompareV1)[0]?.id || null,
+      records: [...bucket]
+        .sort(ratingResultQualityCompareV1)
+        .slice(0, 8)
+        .map((row) => ({
+          id: row.id,
+          driverKey: row.driverKey,
+          steamGuid: row.steamGuid || null,
+          strackerPlayerId: row.strackerPlayerId || null,
+          processedAt: row.processedAt || null,
+          sr: row.newSr,
+          gsr: row.newGsr,
+          matchConfidence: safeFiniteNumber(row.match?.confidence, 0),
+          matchMethod: textValue(row.match?.method) || null
+        }))
+    }))
+    .sort((left, right) => right.rows - left.rows || left.eventName.localeCompare(right.eventName));
+
+  const uniqueRows = dedupeRatingEventResultsV1(rows);
+  return {
+    version: 'gc-phase4a-ratings-integrity-v1',
+    runtimeGuardActive: true,
+    destructiveCleanupApplied: false,
+    totalStoredRows: ratingArray(rows).length,
+    uniqueRuntimeRows: uniqueRows.length,
+    suppressedRuntimeRows: Math.max(0, ratingArray(rows).length - uniqueRows.length),
+    duplicateGroups: duplicates.length,
+    affectedEvents: [...new Set(duplicates.map((item) => item.eventId).filter(Boolean))],
+    affectedDrivers: [...new Set(duplicates.map((item) => item.displayName).filter(Boolean))],
+    examples: duplicates.slice(0, 20)
+  };
+}
+
+function buildRuntimeIntegritySnapshotV1(snapshot: RatingsSnapshot) {
+  const eventResults = dedupeRatingEventResultsV1(snapshot.eventResults);
+  if (eventResults.length === snapshot.eventResults.length) return snapshot;
+
+  return {
+    ...snapshot,
+    eventResults,
+    // Recalcula solo la vista en memoria. No borra ni reescribe filas de MySQL/JSON.
+    drivers: rebuildDriversFromEventResults(eventResults, snapshot.drivers)
+  };
+}
+
 function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot) {
   // GC_CHAMPIONSHIP_RATING_MERGE_V20
   // /ratings muestra SR/GSR con identidades fusionadas por nombre público.
   // /campeonato no debe leer un driver raw antiguo si existe una identidad fusionada
   // más reciente: eso hacía que puntos ACSM se actualizaran pero SR/GSR quedaran viejos.
-  const publicRatingDrivers = mergeDriversForPublicLeaderboard(snapshot.drivers);
+  const runtimeSnapshot = buildRuntimeIntegritySnapshotV1(snapshot);
+  const publicRatingDrivers = mergeDriversForPublicLeaderboard(runtimeSnapshot.drivers);
   const driverMap = new Map<string, LeaderboardDriverState>();
 
   function rememberDriverAlias(key: unknown, driver: LeaderboardDriverState) {
@@ -740,7 +865,7 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   const lastOfficialResultByDriver = new Map<string, RatingEventResult>();
   const officialResultsByDriver = new Map<string, RatingEventResult[]>();
 
-  snapshot.eventResults.forEach((result) => {
+  runtimeSnapshot.eventResults.forEach((result) => {
     const bucket = resultsByEvent.get(result.eventId) || [];
     bucket.push(result);
     resultsByEvent.set(result.eventId, bucket);
@@ -967,11 +1092,11 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     .map(enrichEvent)
     .sort((left: PlainObject, right: PlainObject) => parseDateMs(left.scheduledAt || left.completedAt) - parseDateMs(right.scheduledAt || right.completedAt));
 
-  const processedStrackerEvents = manualEventsFromSnapshot(snapshot, championshipEvents)
+  const processedStrackerEvents = manualEventsFromSnapshot(runtimeSnapshot, championshipEvents)
     .map(enrichEvent)
     .sort((left: PlainObject, right: PlainObject) => parseDateMs(right.completedAt || right.scheduledAt) - parseDateMs(left.completedAt || left.scheduledAt));
 
-  const reviewedStrackerEvents = reviewedEventsFromSnapshot(snapshot, [...championshipEvents, ...processedStrackerEvents])
+  const reviewedStrackerEvents = reviewedEventsFromSnapshot(runtimeSnapshot, [...championshipEvents, ...processedStrackerEvents])
     .sort((left: PlainObject, right: PlainObject) => parseDateMs(right.completedAt || right.scheduledAt) - parseDateMs(left.completedAt || left.scheduledAt));
 
   const strackerSeries: PlainObject = {
@@ -2558,6 +2683,8 @@ export class GcRatingsService {
     if (nameKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados solo por nombre. Conviene revisar SteamID/GUID.');
     if (playerKeyDrivers.length) megaAuditWarnings.push('Hay pilotos identificados por PlayerId porque no se encontró SteamID/GUID.');
     if (snapshot.eventResults.length && !strackerLinkedResults.length) megaAuditWarnings.push('No hay resultados enlazados a sTracker. El SR podría estar congelado o usando fallback.');
+    const duplicateAudit = buildRatingDuplicateAuditV1(snapshot.eventResults);
+    if (duplicateAudit.duplicateGroups > 0) megaAuditWarnings.push(`Hay ${duplicateAudit.duplicateGroups} grupo(s) de resultados duplicados. La vista pública los está suprimiendo sin borrar datos.`);
 
     let strackerCandidateCount = 0;
     try {
@@ -2647,6 +2774,7 @@ export class GcRatingsService {
         },
         warnings: megaAuditWarnings
       },
+      dataIntegrity: duplicateAudit,
       preDeployStatus,
       pendingCompletedEvents,
       nextEvent: this.compactDiagnosticsEvent(nextEvent),
@@ -2685,8 +2813,9 @@ export class GcRatingsService {
     const source = normalizeChampionshipSource(sourceInput);
     if (_force) this.cachedSnapshot = null;
     const snapshot = await this.getSnapshot();
+    const runtimeSnapshot = buildRuntimeIntegritySnapshotV1(snapshot);
     const acsm = await fetchChampionship(source);
-    const championship = enrichChampionship(acsm.championship, snapshot);
+    const championship = enrichChampionship(acsm.championship, runtimeSnapshot);
 
     try {
       const candidatesPayload = await this.getStrackerRaceCandidates({ limit: 80, minDrivers: 2, minTotalLaps: 10 });
@@ -2741,7 +2870,7 @@ export class GcRatingsService {
       source: 'gc-ratings-v1',
       generatedAt: snapshot.generatedAt,
       championship,
-      leaderboard: buildLeaderboard(snapshot.drivers),
+      leaderboard: buildLeaderboard(runtimeSnapshot.drivers),
       diagnostics: await this.buildDiagnostics(snapshot, acsm.championship)
     };
   }
@@ -2800,7 +2929,8 @@ export class GcRatingsService {
   }
 
   async getDriver(driverKey: string) {
-    const snapshot = await this.getSnapshot();
+    const storedSnapshot = await this.getSnapshot();
+    const snapshot = buildRuntimeIntegritySnapshotV1(storedSnapshot);
     const driver = snapshot.drivers.find((item) => item.driverKey === driverKey);
     if (!driver) return null;
     const history = snapshot.eventResults
@@ -2825,7 +2955,8 @@ export class GcRatingsService {
   }
 
   async getLeaderboard() {
-    const snapshot = await this.getSnapshot();
+    const storedSnapshot = await this.getSnapshot();
+    const snapshot = buildRuntimeIntegritySnapshotV1(storedSnapshot);
     return {
       ok: true,
       source: 'gc-ratings-v1',
@@ -2837,7 +2968,8 @@ export class GcRatingsService {
   async resolveDriverProfileByPlayerId(playerId: number) {
     const direct = await this.getDriver(`player:${playerId}`);
     if (direct) return direct;
-    const snapshot = await this.getSnapshot();
+    const storedSnapshot = await this.getSnapshot();
+    const snapshot = buildRuntimeIntegritySnapshotV1(storedSnapshot);
     const fallback = snapshot.drivers.find((driver) => driver.strackerPlayerId === playerId);
     return fallback ? this.getDriver(fallback.driverKey) : null;
   }

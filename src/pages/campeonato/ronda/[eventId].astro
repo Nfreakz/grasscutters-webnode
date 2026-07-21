@@ -659,6 +659,38 @@ try {
       };
       const displayLapTime = (row) => isPlaceholderLapTime(row?.bestLap, row?.bestLapMs ?? row?.lapTimeMs) ? '--' : (row?.bestLap || '--');
       const displayFastestLap = (lap) => isPlaceholderLapTime(lap?.lapTime, lap?.lapTimeMs) ? null : lap;
+      // GC_PHASE4A_RATINGS_INTEGRITY_GUARD_V1
+      const raceResultUiKeyV1 = (row) => {
+        const position = Number(row?.position || 0);
+        const name = String(row?.name || row?.displayName || row?.driverName || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+        if (position > 0 && name) return `position:${position}|name:${name}`;
+        return String(row?.guid || row?.steamGuid || row?.playerId || row?.strackerPlayerId || row?.driverKey || name || Math.random());
+      };
+
+      const raceResultUiQualityV1 = (row) => {
+        const identity = row?.guid || row?.steamGuid || String(row?.driverKey || '').startsWith('steam:')
+          ? 30
+          : (row?.playerId || row?.strackerPlayerId || String(row?.driverKey || '').startsWith('player:') ? 20 : 10);
+        const rating = row?.srScore !== undefined || row?.gsrRating !== undefined || row?.safetyRating?.score !== undefined ? 5 : 0;
+        const details = Array.isArray(row?.lapsDetail) ? Math.min(row.lapsDetail.length, 4) : 0;
+        return identity + rating + details;
+      };
+
+      const dedupeRaceResultsV1 = (rows) => {
+        const map = new Map();
+        for (const row of Array.isArray(rows) ? rows : []) {
+          const key = raceResultUiKeyV1(row);
+          const previous = map.get(key);
+          if (!previous || raceResultUiQualityV1(row) > raceResultUiQualityV1(previous)) map.set(key, row);
+        }
+        return [...map.values()].sort((left, right) => Number(left?.position || 9999) - Number(right?.position || 9999));
+      };
+
       const safetyNumber = (value, fallback = 0) => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : fallback;
@@ -928,7 +960,8 @@ try {
       };
 
       const renderResults = (tbody, rows, type) => {
-        const list = Array.isArray(rows) ? rows : [];
+        const sourceRows = Array.isArray(rows) ? rows : [];
+        const list = type === 'race' ? dedupeRaceResultsV1(sourceRows) : sourceRows;
         const colspan = type === 'race' ? 12 : 6;
 
         if (!list.length) {
@@ -984,7 +1017,7 @@ try {
         }
         const event = data.event;
 
-        const raceResults = Array.isArray(event.raceResults) ? event.raceResults : [];
+        const raceResults = dedupeRaceResultsV1(Array.isArray(event.raceResults) ? event.raceResults : []);
         const qualyResults = Array.isArray(event.qualifyingResults) ? event.qualifyingResults : [];
         const winner = event.winner || raceResults[0] || null;
         const fastest = displayFastestLap(event.fastestLap || null);
