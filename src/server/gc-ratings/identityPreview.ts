@@ -3,6 +3,7 @@ import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 
 // GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1
+// GC_PHASE4H2_7_IDENTITY_SNAPSHOT_REBASE_FIX_V1
 type ReviewAction = 'defer' | 'keep_separate' | 'merge';
 
 type ReviewDecision = {
@@ -71,13 +72,42 @@ function snapshotId(groups: any[], rows?: Awaited<ReturnType<typeof readRows>>) 
       duplicateEventScopes: group.statistics?.duplicateEventScopes || []
     })).sort((left, right) => left.ref.localeCompare(right.ref)),
     rows: rows ? {
-      ratings: rows.ratings.map((row) => [String(row.id), row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name, row.races_count]),
-      results: rows.results.map((row) => [String(row.id), row.event_scope_key, row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name, row.position]),
+      ratings: rows.ratings.map((row) => [String(row.id), row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name]),
+      results: rows.results.map((row) => [String(row.id), row.source_key, row.event_scope_key, row.driver_key, row.steam_guid, row.stracker_player_id, row.display_name]),
       profiles: rows.profiles.map((row) => [String(row.id), row.driver_key, row.player_id, row.steam_guid, row.display_name, row.linked_user_id, Number(row.active_memberships || 0)]),
       users: rows.users.map((row) => [String(row.id), row.pilot_player_id, row.pilot_steam_guid, row.pilot_stracker_name])
     } : null
   };
   return `ids_${createHash('sha256').update(JSON.stringify(state)).digest('hex').slice(0, 24)}`;
+}
+
+function decisionFingerprint(decision: ReturnType<typeof normalizeDecision>) {
+  return JSON.stringify({
+    groupRef: decision.groupRef,
+    action: decision.action,
+    targetGroupRef: decision.targetGroupRef,
+    canonicalDriverKey: decision.canonicalDriverKey,
+    canonicalProfileId: decision.canonicalProfileId,
+    canonicalUserId: decision.canonicalUserId,
+    displayName: decision.displayName,
+    keepResultIdsByScope: Object.fromEntries(Object.entries(decision.keepResultIdsByScope).sort(([left], [right]) => left.localeCompare(right)))
+  });
+}
+
+function canRebaseAutomaticDecisions(bootstrap: any, decisions: ReturnType<typeof normalizeDecision>[]) {
+  const required = (bootstrap.groups || []).filter((group: any) => group.requiresDecision);
+  if (required.length !== decisions.length) return false;
+  const submitted = new Map<string, ReturnType<typeof normalizeDecision>>();
+  for (const decision of decisions) {
+    if (!decision.groupRef || submitted.has(decision.groupRef)) return false;
+    submitted.set(decision.groupRef, decision);
+  }
+  return required.every((group: any) => {
+    const automatic = group.automatic;
+    const decision = submitted.get(group.groupRef);
+    if (!decision || automatic?.classification !== 'safe' || !automatic.decision) return false;
+    return decisionFingerprint(decision) === decisionFingerprint(normalizeDecision(automatic.decision));
+  });
 }
 
 function decorateAudit(audit: any) {
@@ -408,7 +438,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1',
+      version: 'GC_PHASE4H2_7_IDENTITY_SNAPSHOT_REBASE_FIX_V1',
       generatedAt: new Date().toISOString(),
       readOnly: true,
       writesAvailable: false,
@@ -461,13 +491,15 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
 
 export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
   const bootstrap = await readMysqlIdentityPreviewBootstrapV1();
-  if (cleanText(request.snapshotId, 80) !== bootstrap.snapshotId) {
-    return { ...bootstrap, ok: false, stale: true, safeToExecute: false, message: 'Los datos cambiaron desde que abriste la revisión. Recarga antes de continuar.' };
-  }
   if (!Array.isArray(request.decisions) || request.decisions.length > 200) {
     return { ...bootstrap, ok: false, safeToExecute: false, message: 'Decisiones inválidas.' };
   }
   const decisions = request.decisions.map((item) => normalizeDecision(item || {}));
+  const snapshotChanged = cleanText(request.snapshotId, 80) !== bootstrap.snapshotId;
+  const rebasedAutomaticDecisions = snapshotChanged && canRebaseAutomaticDecisions(bootstrap, decisions);
+  if (snapshotChanged && !rebasedAutomaticDecisions) {
+    return { ...bootstrap, ok: false, stale: true, safeToExecute: false, message: 'Los datos de identidad cambiaron y las decisiones ya no coinciden exactamente con el plan automático actual. Recarga antes de continuar.' };
+  }
   const decisionByRef = new Map(decisions.filter((item) => item.groupRef).map((item) => [item.groupRef as string, item]));
   const groupByRef = new Map<string, any>(bootstrap.groups.map((group: any) => [group.groupRef, group]));
   const config = mysqlConfig();
@@ -563,12 +595,13 @@ export async function buildMysqlIdentityPreviewV1(request: PreviewRequest) {
     return {
       ok: true,
       source: 'gc-ratings-v1:identity-preview:mysql',
-      version: 'GC_PHASE4H2_6_IDENTITY_SAFE_AUTOMATION_PREVIEW_V1',
+      version: 'GC_PHASE4H2_7_IDENTITY_SNAPSHOT_REBASE_FIX_V1',
       generatedAt: new Date().toISOString(),
       snapshotId: bootstrap.snapshotId,
       readOnly: true,
       writesAvailable: false,
       destructiveChangesApplied: false,
+      rebasedAutomaticDecisions,
       safeToExecute: false,
       readyForExecutorDesign: globalBlockers.length === 0,
       summary: {
