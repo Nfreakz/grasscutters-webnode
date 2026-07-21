@@ -1,6 +1,6 @@
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H1_1_IDENTITY_AUDIT_SOURCE_SAFE_V1
+// GC_PHASE4H2_3_IDENTITY_AUDIT_FALSE_POSITIVE_FIX_V1
 
 type IdentityRecord = {
   recordId: string;
@@ -88,6 +88,7 @@ function recordFromRating(row: any, index: number): IdentityRecord {
 function recordFromResult(row: any, index: number): IdentityRecord {
   const sourceKey = text(row.source_key ?? row.sourceKey) || 'unknown';
   const eventId = text(row.event_id ?? row.eventId) || `unknown-${index}`;
+  const rawEventScopeKey = text(row.event_scope_key ?? row.eventScopeKey) || eventId;
   return {
     recordId: `result:${text(row.id) || index}`,
     kind: 'result',
@@ -98,7 +99,8 @@ function recordFromResult(row: any, index: number): IdentityRecord {
     userId: null,
     profileId: null,
     sourceKey,
-    eventScopeKey: text(row.event_scope_key ?? row.eventScopeKey) || `${sourceKey}:${eventId}`,
+    // La clave de evento solo es comparable dentro de la misma fuente.
+    eventScopeKey: `${sourceKey}::${rawEventScopeKey}`,
     avatarUrl: null,
     countryCode: null,
     teamId: null,
@@ -255,6 +257,17 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     const playerScopes = unique(bucket.map((record) => record.kind === 'result' && record.playerId && record.sourceKey && record.sourceKey !== 'unknown'
       ? `${record.sourceKey}:${record.playerId}`
       : null));
+    const sourcePlayerMap = new Map<string, Set<number>>();
+    bucket.forEach((record) => {
+      if (record.kind !== 'result' || !record.playerId || !record.sourceKey || record.sourceKey === 'unknown') return;
+      const ids = sourcePlayerMap.get(record.sourceKey) || new Set<number>();
+      ids.add(record.playerId);
+      sourcePlayerMap.set(record.sourceKey, ids);
+    });
+    const playerIdsBySource = [...sourcePlayerMap.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([sourceKey, ids]) => ({ sourceKey, playerIds: [...ids].sort((a, b) => a - b) }));
+    const sameSourcePlayerConflicts = playerIdsBySource.filter((entry) => entry.playerIds.length > 1);
     const unscopedPlayerIds = [...new Set(bucket
       .filter((record) => record.kind !== 'result' || !record.sourceKey || record.sourceKey === 'unknown')
       .map((record) => record.playerId)
@@ -276,7 +289,8 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       .map((driverKey) => ({ driverKey, score: canonicalScore(driverKey, bucket) }))
       .sort((left, right) => right.score - left.score || left.driverKey.localeCompare(right.driverKey));
     const conflicts: string[] = [];
-    if (playerIds.length > 1) conflicts.push('MULTIPLE_PLAYER_IDS');
+    if (sameSourcePlayerConflicts.length) conflicts.push('MULTIPLE_PLAYER_IDS_SAME_SOURCE');
+    if (unscopedPlayerIds.length > 1) conflicts.push('MULTIPLE_UNSCOPED_PLAYER_IDS');
     if (steamGuids.length > 1) conflicts.push('MULTIPLE_STEAM_GUIDS');
     if (userIds.length > 1) conflicts.push('MULTIPLE_USER_LINKS');
     if (profileIds.length > 1) conflicts.push('MULTIPLE_PROFILES');
@@ -284,12 +298,18 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     if (teamIds.length > 1 || teamNames.length > 1) conflicts.push('TEAM_MISMATCH');
     if (avatarUrls.length > 1) conflicts.push('AVATAR_MISMATCH');
     if (duplicateEventScopes.length) conflicts.push('DUPLICATE_EVENT_STATISTICS');
+    const confirmedMultiserver = steamGuids.length === 1
+      && playerIdsBySource.length > 1
+      && sameSourcePlayerConflicts.length === 0;
     return {
       identityGroupId: `identity-${String(index + 1).padStart(3, '0')}`,
       driverKeys,
       playerIds,
       playerScopes,
+      playerIdsBySource,
       unscopedPlayerIds,
+      identityStatus: confirmedMultiserver ? 'CONFIRMED_MULTISERVER_IDENTITY' : conflicts.length ? 'REVIEW_REQUIRED' : 'CONFIRMED_IDENTITY',
+      confirmedMultiserver,
       steamGuids,
       names,
       normalizedNames,
@@ -340,6 +360,9 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
   const conflicts = groups
     .filter((group) => group.conflicts.length)
     .map((group) => ({ identityGroupId: group.identityGroupId, conflicts: group.conflicts }));
+  const confirmedMultiserverIdentities = groups
+    .filter((group) => group.confirmedMultiserver)
+    .map((group) => ({ identityGroupId: group.identityGroupId, steamGuid: group.steamGuids[0], playerIdsBySource: group.playerIdsBySource }));
   const statisticsAtRisk = groups
     .filter((group) => group.driverKeys.length > 1 || group.statistics.duplicateEventScopes.length > 0)
     .map((group) => ({ identityGroupId: group.identityGroupId, driverKeys: group.driverKeys, statistics: group.statistics }));
@@ -353,7 +376,7 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
   return {
     ok: true,
     source: `gc-ratings-v1:identity-audit:${source}`,
-    version: 'GC_PHASE4H1_1_IDENTITY_AUDIT_SOURCE_SAFE_V1',
+    version: 'GC_PHASE4H2_3_IDENTITY_AUDIT_FALSE_POSITIVE_FIX_V1',
     generatedAt: new Date().toISOString(),
     readOnly: true,
     destructiveChangesApplied: false,
@@ -363,6 +386,7 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
       identityGroups: groups.length,
       mergeCandidates: canonicalCandidates.length,
       conflicts: conflicts.length,
+      confirmedMultiserverIdentities: confirmedMultiserverIdentities.length,
       ambiguousGroups: ambiguousGroups.length,
       orphanProfiles: orphanProfiles.length,
       duplicateUserLinks: duplicateUserLinks.length,
@@ -370,6 +394,9 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     },
     identityRules: {
       playerIdScope: 'source_key + stracker_player_id',
+      crossSourcePlayerIdsAreConflict: false,
+      sameSourceMultiplePlayerIdsAreConflict: true,
+      eventDuplicateScope: 'source_key + event_scope_key',
       unscopedPlayerIdCanMerge: false,
       differentSteamIdsCanMerge: false,
       canonicalPriority: ['steam', 'opaque-driver-key', 'player', 'name']
@@ -378,6 +405,7 @@ export function buildIdentityAuditV1(input: IdentityAuditInput, source = 'memory
     identityGroups: groups,
     canonicalCandidates,
     conflicts,
+    confirmedMultiserverIdentities,
     ambiguousGroups,
     orphanProfiles,
     duplicateUserLinks,

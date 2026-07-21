@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 
-// GC_PHASE4H2_IDENTITY_PREVIEW_V1
+// GC_PHASE4H2_3_IDENTITY_PREVIEW_FALSE_POSITIVE_FIX_V1
 type ReviewAction = 'defer' | 'keep_separate' | 'merge';
 
 type ReviewDecision = {
@@ -28,6 +28,12 @@ function cleanText(value: unknown, max = 255) {
 
 function unique(values: unknown[]) {
   return [...new Set(values.map((value) => cleanText(value, 500)).filter((value): value is string => Boolean(value)))].sort();
+}
+
+function scopedEventKey(row: any) {
+  const sourceKey = cleanText(row?.source_key, 80) || 'unknown';
+  const eventKey = cleanText(row?.event_scope_key, 255) || cleanText(row?.event_id, 255) || 'unknown';
+  return `${sourceKey}::${eventKey}`;
 }
 
 function mysqlConfig() {
@@ -92,7 +98,6 @@ function decorateAudit(audit: any) {
 function isAttentionGroup(group: any, ambiguousRefs: Set<string>) {
   return Boolean(
     group?.conflicts?.length ||
-    group?.driverKeys?.length > 1 ||
     group?.profileIds?.length > 1 ||
     group?.userIds?.length > 1 ||
     ambiguousRefs.has(group?.groupRef)
@@ -172,7 +177,7 @@ function buildMergeChanges(selectedRows: ReturnType<typeof rowsForGroups>, decis
 
   const byScope = new Map<string, any[]>();
   for (const row of selectedRows.results) {
-    const scope = String(row.event_scope_key || `${row.source_key}:${row.event_id}`);
+    const scope = scopedEventKey(row);
     const bucket = byScope.get(scope) || [];
     bucket.push(row);
     byScope.set(scope, bucket);
@@ -260,7 +265,7 @@ export async function readMysqlIdentityPreviewBootstrapV1() {
             ratings: groupRows.ratings.map((row) => ({ id: String(row.id), driverKey: row.driver_key, displayName: row.display_name })),
             results: groupRows.results.map((row) => ({
               id: String(row.id),
-              eventScopeKey: String(row.event_scope_key || `${row.source_key}:${row.event_id}`),
+              eventScopeKey: scopedEventKey(row),
               driverKey: row.driver_key,
               displayName: row.display_name,
               position: Number(row.position || 0)
