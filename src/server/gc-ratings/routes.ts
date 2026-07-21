@@ -228,8 +228,12 @@ async function requireAdmin(req: Request) {
       const allowed = await requireAdmin(req);
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
 
-      const dryRun = parseBooleanish(req.body?.dryRun ?? req.query.dryRun, true) !== false;
-      const confirmation = String(req.body?.confirmation || req.query.confirmation || '').trim();
+      // GC_PHASE4B_INTEGRITY_APPLY_REQUEST_HOTFIX_V1
+      // Query tiene prioridad: algunos despliegues no entregan req.body JSON en esta ruta.
+      const dryRunRaw = req.query.dryRun ?? req.body?.dryRun;
+      const confirmationRaw = req.query.confirmation ?? req.body?.confirmation;
+      const dryRun = parseBooleanish(dryRunRaw, true) !== false;
+      const confirmation = String(confirmationRaw || '').trim();
       const payload = await service.rebuildCanonicalRatingsIntegrityV1({ dryRun, confirmation });
       res.json(payload);
     } catch (error) {

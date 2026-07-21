@@ -148,7 +148,8 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
         try {
           els.preview.disabled = true;
           els.output.textContent = 'Analizando Liga, GT4 y sTracker...';
-          previewPayload = await fetchJson('/api/gc/ratings/integrity-rebuild', {
+          // GC_PHASE4B_INTEGRITY_APPLY_REQUEST_HOTFIX_V1
+          previewPayload = await fetchJson('/api/gc/ratings/integrity-rebuild?dryRun=1', {
             method: 'POST',
             body: JSON.stringify({ dryRun: true })
           });
@@ -179,10 +180,18 @@ import AdminSubnav from '../../components/AdminSubnav.astro';
           els.apply.disabled = true;
           els.preview.disabled = true;
           els.message.textContent = 'Reconstruyendo ratings. No cierres esta página...';
-          const result = await fetchJson('/api/gc/ratings/integrity-rebuild', {
+          const applyUrl = `/api/gc/ratings/integrity-rebuild?dryRun=0&confirmation=${encodeURIComponent(phrase)}`;
+          const result = await fetchJson(applyUrl, {
             method: 'POST',
             body: JSON.stringify({ dryRun: false, confirmation: phrase })
           });
+
+          if (result.applied !== true || result.dryRun !== false) {
+            throw new Error(
+              'El servidor devolvió otra simulación y no aplicó cambios. No se ha modificado MySQL.'
+            );
+          }
+
           els.output.textContent = JSON.stringify(result, null, 2);
           els.message.textContent = `${result.message} Backup: ${result.backupFile || 'no indicado'}`;
           previewPayload = null;
