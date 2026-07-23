@@ -2470,7 +2470,7 @@ const home2ArchiveSeed: unknown[] = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2.4-acsm-live-authoritative';
+      const PACK = 'bootstrap-2.5-acsm-session-end-fallback';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2766,11 +2766,67 @@ const home2ArchiveSeed: unknown[] = [];
         };
       };
 
+      /* GC_HOME_ACSM_SESSION_END_LEADERBOARD_FALLBACK_V1
+       * ACSM puede limpiar Track/StoredTimes justo al cerrar una carrera. Ese
+       * cambio de estado no invalida las vueltas que sTracker acaba de guardar.
+       * Conservamos el último combo histórico cuando no existe un combo live y,
+       * si ACSM todavía anuncia el mismo circuito pero ya no trae tiempos,
+       * completamos el leaderboard con ese mismo combo. Un circuito live nuevo
+       * nunca hereda las vueltas del anterior.
+       */
+      const comboTrackIdentity = (combo: any): { code: string; config: string; key: string } => {
+        const trackCode = normalize(first(combo, [
+          'track.trackCode', 'track.technicalCode', 'track.rawCode', 'track.code',
+          'trackCode', 'trackRaw'
+        ], ''));
+        const trackConfig = normalize(first(combo, [
+          'track.trackConfig', 'track.layout', 'track.variant', 'trackConfig', 'layout'
+        ], ''));
+        return {
+          code: trackCode,
+          config: trackConfig,
+          key: trackCode ? `${trackCode}:${trackConfig}` : ''
+        };
+      };
+
       const mergeBootstrapWithAcsmLive = (bootstrap: any, live: Record<string, any>) => {
         const mergeSource = (source: 'main' | 'gt4') => {
           const historical = bootstrap?.[source] || {};
           const livePayload = live[source] || null;
           if (livePayload) {
+            const liveRows = sourceLeaderboard(livePayload);
+            const historicalRows = sourceLeaderboard(historical);
+            const liveTrack = comboTrackIdentity(livePayload.activeCombo);
+            const historicalTrack = comboTrackIdentity(historical.activeCombo);
+            const sameTrack = Boolean(
+              liveTrack.code &&
+              historicalTrack.code &&
+              liveTrack.code === historicalTrack.code &&
+              (!liveTrack.config || !historicalTrack.config || liveTrack.config === historicalTrack.config)
+            );
+
+            if (!liveRows.length && historicalRows.length && sameTrack) {
+              return {
+                ...historical,
+                ...livePayload,
+                activeCombo: {
+                  ...(historical.activeCombo || {}),
+                  ...(livePayload.activeCombo || {}),
+                  bestLap: historical.activeCombo?.bestLap || historicalRows[0] || null,
+                  latestLap: historical.activeCombo?.latestLap || historicalRows[0] || null,
+                  leaderboard: historicalRows
+                },
+                leaderboard: historicalRows,
+                diagnostics: {
+                  ...(historical.diagnostics || {}),
+                  ...(livePayload.diagnostics || {}),
+                  activeComboAuthority: 'acsm-live+completed-session',
+                  sessionEndLeaderboardFallback: true,
+                  fallbackTrackIdentity: liveTrack.key || liveTrack.code
+                }
+              };
+            }
+
             return {
               ...historical,
               ...livePayload,
@@ -2781,7 +2837,20 @@ const home2ArchiveSeed: unknown[] = [];
             };
           }
 
-          // Sin ACSM live no reutilizamos el último bucket histórico como combo actual.
+          const historicalRows = sourceLeaderboard(historical);
+          if (historical?.activeCombo && historicalRows.length) {
+            return {
+              ...historical,
+              diagnostics: {
+                ...(historical.diagnostics || {}),
+                activeComboAuthority: 'completed-session',
+                liveAvailable: false,
+                sessionEndLeaderboardFallback: true
+              }
+            };
+          }
+
+          // No hay todavía ni estado live ni una sesión terminada con vueltas.
           return {
             ...historical,
             activeCombo: null,
@@ -2790,7 +2859,8 @@ const home2ArchiveSeed: unknown[] = [];
               ...(historical.diagnostics || {}),
               activeComboAuthority: 'acsm-live',
               liveAvailable: false,
-              staleHistoricalComboSuppressed: true
+              staleHistoricalComboSuppressed: true,
+              sessionEndLeaderboardFallback: false
             }
           };
         };
@@ -2920,7 +2990,7 @@ const home2ArchiveSeed: unknown[] = [];
       document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
       document.documentElement.dataset.gcHomeActiveComboPriority = 'v1';
       document.documentElement.dataset.gcHomeChampionshipLiveCombo = 'v2-acsm-live';
-      document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-v1';
+      document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-session-end-fallback-v1';
       document.documentElement.dataset.gcTrackAssetResolver = 'exact-v1';
 
       const renderRecent = (rows: any[] = []): any[] => {
@@ -3390,7 +3460,7 @@ const home2ArchiveSeed: unknown[] = [];
             !sourceUsesAcsmLive(bootstrap?.gt4)
           );
 
-          document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-v1';
+          document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-session-end-fallback-v1';
           console.info(`[GC Home ${PACK}]`, {
             bootstrap: bootstrap.source,
             latencyMs: historicalBootstrap.latencyMs,
