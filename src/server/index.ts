@@ -960,7 +960,7 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
         id: String(row.id),
         kind: sanitizeDisplayNameKind(row.kind) || 'driver',
         sourceKey: displayNameSourceKeyFromId(row.id),
-        sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
+        sourceId: numberOrNull(row.source_id),
         sourceCode: compactNullableText(row.source_code),
         sourceName: compactNullableText(row.source_name) || '',
         displayName: compactNullableText(row.display_name) || '',
@@ -985,7 +985,7 @@ async function readDisplayNameStoreAsync(force = false): Promise<DisplayNameStor
       id: String(row.id),
       kind: sanitizeDisplayNameKind(row.kind) || 'driver',
       sourceKey: displayNameSourceKeyFromId(row.id),
-      sourceId: Number.isFinite(Number(row.source_id)) ? Number(row.source_id) : null,
+      sourceId: numberOrNull(row.source_id),
       sourceCode: compactNullableText(row.source_code),
       sourceName: compactNullableText(row.source_name) || '',
       displayName: compactNullableText(row.display_name) || '',
@@ -1088,8 +1088,8 @@ function findDisplayNameEntry(
   sourceKey: unknown = 'main',
 ) {
   const wantedSourceKey = normalizeDisplayNameSourceKey(sourceKey);
-  const numericId = Number(sourceId);
-  const hasId = Number.isFinite(numericId);
+  const numericId = numberOrNull(sourceId);
+  const hasId = numericId !== null;
   const code = normalizeDisplayNameKey(sourceCode);
   const name = normalizeDisplayNameKey(sourceName);
 
@@ -1098,11 +1098,12 @@ function findDisplayNameEntry(
     const entrySourceKey = normalizeDisplayNameSourceKey(entry.sourceKey ?? displayNameSourceKeyFromId(entry.id));
     if (entrySourceKey !== wantedSourceKey) return false;
 
-    const entryHasId = entry.sourceId !== null && entry.sourceId !== undefined && Number.isFinite(Number(entry.sourceId));
+    const entryNumericId = numberOrNull(entry.sourceId);
+    const entryHasId = entryNumericId !== null;
     const entryCode = normalizeDisplayNameKey(entry.sourceCode);
     const entryName = normalizeDisplayNameKey(entry.sourceName);
 
-    if (hasId && entryHasId && Number(entry.sourceId) === numericId) return true;
+    if (hasId && entryHasId && entryNumericId === numericId) return true;
     if (code && entryCode && entryCode === code) return true;
 
     // Con identidad técnica disponible no hacemos fallback por nombre. Así un nombre
@@ -1135,8 +1136,8 @@ function makeEntryId(
 ) {
   const scopedSourceKey = normalizeDisplayNameSourceKey(sourceKey);
   const prefix = `source:${scopedSourceKey}:${kind}`;
-  const id = Number(sourceId);
-  if (Number.isFinite(id)) return `${prefix}:id:${id}`;
+  const id = numberOrNull(sourceId);
+  if (id !== null) return `${prefix}:id:${id}`;
   const code = normalizeDisplayNameKey(sourceCode);
   if (code) return `${prefix}:code:${code}`;
   return `${prefix}:name:${normalizeDisplayNameKey(sourceName) || crypto.randomUUID()}`;
@@ -3049,7 +3050,13 @@ function includesFilter(value: unknown, filter: string) {
   return normalizeText(value).includes(normalizedFilter);
 }
 
+/* GC_GT4_DISPLAY_NAMES_SOURCE_ID_NULL_FIX_V4
+ * Number(null) y Number('') devuelven 0 en JavaScript. En las identidades de
+ * coches y circuitos GT4 ese cero hacía que todas las filas compartieran ID.
+ */
 function numberOrNull(value: unknown) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
