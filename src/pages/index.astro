@@ -3600,4 +3600,206 @@ const home2ArchiveSeed: unknown[] = [];
 
   </script>
 
+  <script>
+    /* GC_HOME_CUSTOM_AVATAR_DIRECTORY_V2 */
+    (() => {
+      const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
+      const root = document.querySelector('[data-gc-home2]');
+      if (!root) return;
+
+      const normalizeName = (value: unknown): string => String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '');
+
+      const cleanAvatar = (value: unknown): string => {
+        const src = String(value || '').trim();
+        if (!src || src === DEFAULT_AVATAR) return '';
+        return src;
+      };
+
+      const byName = new Map<string, string>();
+      const byId = new Map<string, string>();
+      let loaded = false;
+      let loading: Promise<void> | null = null;
+      let scheduled = 0;
+
+      const rowName = (row: any): string =>
+        row?.displayName ||
+        row?.publicName ||
+        row?.name ||
+        row?.driverName ||
+        row?.driver?.displayName ||
+        row?.driver?.name ||
+        '';
+
+      const rowId = (row: any): unknown =>
+        row?.profilePlayerId ??
+        row?.playerId ??
+        row?.strackerPlayerId ??
+        row?.pilotId ??
+        row?.id ??
+        row?.driver?.id ??
+        '';
+
+      const rowAvatar = (row: any): string => cleanAvatar(
+        row?.customAvatarUrl ||
+        row?.profileAvatarUrl ||
+        row?.avatarUrl ||
+        row?.avatar_url ||
+        row?.profile?.avatarUrl ||
+        row?.player?.avatarUrl ||
+        row?.driver?.avatarUrl ||
+        row?.pilot?.avatarUrl ||
+        ''
+      );
+
+      const register = (row: any): void => {
+        const avatar = rowAvatar(row);
+        if (!avatar) return;
+
+        const name = normalizeName(rowName(row));
+        const id = String(rowId(row) ?? '').trim();
+
+        if (name) byName.set(name, avatar);
+        if (id) byId.set(id, avatar);
+      };
+
+      const extractRows = (payload: any): any[] => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.pilots)) return payload.pilots;
+        if (Array.isArray(payload?.data?.items)) return payload.data.items;
+        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
+        return [];
+      };
+
+      const loadDirectory = async () => {
+        if (loaded) return;
+        if (loading) return loading;
+
+        loading = (async (): Promise<void> => {
+          const response = await fetch('/api/gc/pilots2?source=all&limit=all', {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' }
+          });
+          if (!response.ok) throw new Error(`Pilots2 HTTP ${response.status}`);
+
+          const payload = await response.json();
+          extractRows(payload).forEach(register);
+          loaded = true;
+        })().catch((error) => {
+          console.warn('[GC Home avatars V2] No se pudo cargar el directorio de pilotos', error);
+        }).finally(() => {
+          loading = null;
+        });
+
+        return loading;
+      };
+
+      const textFrom = (selector: string, scope: ParentNode | null = document): string =>
+        scope?.querySelector?.(selector)?.textContent?.trim() || '';
+
+      const profileIdFromLink = (scope: ParentNode | null): string => {
+        const link = scope?.querySelector?.('a[href*="/pilotos/"]');
+        const match = String(link?.getAttribute?.('href') || '').match(/\/pilotos\/([^/?#]+)/i);
+        return match?.[1] ? decodeURIComponent(match[1]) : '';
+      };
+
+      const avatarContext = (img: HTMLImageElement): { name: string; id: string } => {
+        if (img.matches('[data-home2-best-avatar]')) {
+          return {
+            name: textFrom('[data-home2-best-driver]'),
+            id: ''
+          };
+        }
+
+        const ratingRow = img.closest('.gc-home2-rating-driver-cell');
+        if (ratingRow) {
+          return {
+            name: textFrom('.gc-home2-rating-driver a, .gc-home2-rating-driver strong', ratingRow),
+            id: profileIdFromLink(ratingRow)
+          };
+        }
+
+        const comboRow = img.closest('.gc-home2-combo-rank');
+        if (comboRow) {
+          return {
+            name: textFrom('strong', comboRow),
+            id: profileIdFromLink(comboRow)
+          };
+        }
+
+        const championshipRow = img.closest('.gc-home2-champ-standing-row');
+        if (championshipRow) {
+          return {
+            name: textFrom('.gc-home2-champ-standing-meta strong, strong', championshipRow),
+            id: profileIdFromLink(championshipRow)
+          };
+        }
+
+        return { name: '', id: '' };
+      };
+
+      const resolveAvatar = ({ name, id }: { name: string; id: string }): string => {
+        const safeId = String(id || '').trim();
+        if (safeId && byId.has(safeId)) return byId.get(safeId) || '';
+
+        const safeName = normalizeName(name);
+        if (safeName && byName.has(safeName)) return byName.get(safeName) || '';
+
+        return '';
+      };
+
+      const applyAvatar = (img: HTMLImageElement): void => {
+        const avatar = resolveAvatar(avatarContext(img));
+        if (!avatar) return;
+
+        if (img.getAttribute('src') !== avatar) {
+          img.onerror = function () {
+            this.onerror = null;
+            this.src = DEFAULT_AVATAR;
+          };
+          img.setAttribute('src', avatar);
+          img.dataset.gcCustomAvatar = '1';
+        }
+      };
+
+      const hydrate = async () => {
+        await loadDirectory();
+        if (!loaded) return;
+
+        document.querySelectorAll<HTMLImageElement>([
+          '[data-home2-best-avatar]',
+          '.gc-home2-combo-rank__avatar',
+          '.gc-home2-rating-driver-avatar',
+          '.gc-home2-champ-standing-avatar',
+          '.gc-home2-champ-standing-row img'
+        ].join(',')).forEach(applyAvatar);
+      };
+
+      const scheduleHydrate = () => {
+        if (scheduled) window.clearTimeout(scheduled);
+        scheduled = window.setTimeout(() => {
+          scheduled = 0;
+          hydrate();
+        }, 80);
+      };
+
+      hydrate();
+
+      new MutationObserver(scheduleHydrate).observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+
+      window.addEventListener('pageshow', scheduleHydrate);
+      window.setTimeout(scheduleHydrate, 1200);
+      window.setTimeout(scheduleHydrate, 3000);
+    })();
+  </script>
+
 </MarketingLayout>

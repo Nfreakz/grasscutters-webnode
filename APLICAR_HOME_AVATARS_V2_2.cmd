@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-hero-font-avatars-v1.mjs
+node scripts\apply-home-custom-avatars-v2-2-map-get-fix.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudieron aplicar los cambios.
+  echo No se pudo aplicar la correccion Map.get.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Cambios aplicados y build validado.
+echo Avatares V2.2 corregidos y build validado.
 pause
