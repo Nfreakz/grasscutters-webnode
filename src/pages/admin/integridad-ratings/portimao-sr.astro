@@ -1,0 +1,102 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+<!-- GC_PHASE4J_1_PORTIMAO_SR_FREEZE_AUDIT_V1 -->
+<AppLayout title="Portimão SR freeze | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-j4">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings · Solo lectura</span>
+        <h1 class="gc-title">Los siete SR de Portimão.</h1>
+        <p class="gc-subtitle">Explica cada delta congelado sin recalcular, corregir ni escribir en MySQL.</p>
+      </div>
+      <button class="gc-btn gc-btn--primary" id="run" type="button">Ejecutar 4J</button>
+    </section>
+    <AdminSubnav />
+    <section id="gate" hidden>
+      <div class="gc-slab"><h2>Acceso restringido</h2><a class="gc-btn gc-btn--primary" href="/login">Login</a></div>
+    </section>
+    <section id="content" hidden>
+      <div class="notice"><strong>Lectura exclusiva.</strong><span>La simulación usa el modelo actual, pero no guarda ni reprocesa ningún resultado.</span></div>
+      <div class="metrics" id="metrics"></div>
+      <section class="card"><h2 id="verdict">Pendiente</h2><p id="message">Ejecuta la auditoría.</p></section>
+      <section class="card">
+        <div class="table">
+          <table>
+            <thead><tr><th>Piloto</th><th>SR guardado</th><th>Match</th><th>Telemetría</th><th>Diagnóstico</th><th>Simulación actual</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="6">Sin ejecutar.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <details class="card"><summary>JSON técnico completo</summary><pre id="json">Sin ejecutar.</pre></details>
+    </section>
+  </div>
+  <style>
+    .gc-j4{display:grid;gap:18px}.notice{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border:1px solid rgba(126,255,39,.3);border-radius:14px;background:rgba(126,255,39,.06)}.notice span{color:var(--soft)}
+    .metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.metric,.card{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02)}.metric span{display:block;color:var(--dim);font-size:.7rem;font-weight:900;text-transform:uppercase}.metric strong{display:block;margin-top:7px;font-size:1.6rem}.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1120px}th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--dim);font-size:.7rem;text-transform:uppercase}small{color:var(--dim)}.pill{display:inline-flex;padding:3px 7px;border:1px solid var(--line);border-radius:99px;font-size:.68rem;font-weight:900}.pill.ok{border-color:rgba(126,255,39,.4);color:var(--accent)}.pill.warn{border-color:rgba(255,190,80,.45);color:#ffc66b}summary{cursor:pointer;font-weight:900}pre{max-height:650px;overflow:auto;white-space:pre-wrap;background:#050805;color:#dfffd8;padding:15px;border-radius:12px}@media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:540px){.metrics{grid-template-columns:1fr 1fr}}
+  </style>
+  <script>
+    (() => {
+      const e = (id:string) => document.getElementById(id) as HTMLElement;
+      const esc = (v:unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
+      const fetchJson = async (url:string) => {
+        const response = await fetch(url, { credentials:'include', cache:'no-store' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      };
+      const admin = async () => {
+        try { if ((await fetchJson('/api/admin/status')).authorized === true) return true; } catch {}
+        try { return (await fetchJson('/api/profile')).user?.role === 'admin'; } catch { return false; }
+      };
+      const metric = (label:string,value:unknown) => `<article class="metric"><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`;
+      const signed = (value:unknown) => {
+        const n = Number(value || 0);
+        return `${n > 0 ? '+' : ''}${n.toFixed(2)}`;
+      };
+      const run = async () => {
+        (e('run') as HTMLButtonElement).setAttribute('disabled','');
+        e('verdict').textContent = 'Analizando…';
+        try {
+          const data = await fetchJson('/api/gc/ratings/portimao-sr-freeze-audit');
+          const summary = data.summary || {};
+          e('metrics').innerHTML =
+            metric('Localizados', summary.frozenOrZeroResults) +
+            metric('Esperados', summary.expectedResults) +
+            metric('Freeze telemetría', summary.telemetryFreezes) +
+            metric('Delta economía', summary.zeroEconomyDeltas) +
+            metric('Recuperables hoy', summary.currentlyRecoverableWithTelemetry) +
+            metric('Baja confianza', summary.belowConfidenceThreshold);
+          e('verdict').textContent = summary.expectedSeven ? 'Siete resultados localizados' : 'Revisión bloqueada';
+          e('message').textContent = data.message || '';
+          const rows = data.results || [];
+          e('rows').innerHTML = rows.length ? rows.map((row:any) => {
+            const reasons = row.diagnosis?.reasons?.length ? row.diagnosis.reasons.join(', ') : 'economía SR';
+            const reliable = Boolean(row.diagnosis?.telemetryReliableNow);
+            return `<tr>
+              <td><strong>${esc(row.displayName)}</strong><br><small>${esc(row.eventName)} · P${esc(row.position)}</small></td>
+              <td>${esc(row.stored.oldSr)} → ${esc(row.stored.newSr)}<br><strong>${esc(signed(row.stored.deltaSr))}</strong></td>
+              <td>${esc(Math.round(Number(row.match.confidence || 0) * 100))}%<br><small>${esc(row.match.method || 'sin método')}</small></td>
+              <td><span class="pill ${reliable ? 'ok' : 'warn'}">${reliable ? 'fiable ahora' : 'no fiable'}</span><br><small>${esc(row.stracker.validLaps)} válidas / ${esc(row.stracker.lapRows)} filas</small></td>
+              <td><strong>${esc(row.diagnosis.classification)}</strong><br><small>${esc(reasons)}</small></td>
+              <td>${esc(row.diagnosis.currentModelSimulation.oldSr)} → ${esc(row.diagnosis.currentModelSimulation.newSr)}<br><strong>${esc(signed(row.diagnosis.currentModelSimulation.deltaSr))}</strong></td>
+            </tr>`;
+          }).join('') : '<tr><td colspan="6">No se localizaron resultados congelados de Portimão.</td></tr>';
+          e('json').textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          e('verdict').textContent = 'Error';
+          e('message').textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          (e('run') as HTMLButtonElement).removeAttribute('disabled');
+        }
+      };
+      (e('run') as HTMLButtonElement).addEventListener('click', run);
+      (async () => {
+        if (!await admin()) { e('gate').hidden = false; return; }
+        e('content').hidden = false;
+        await run();
+      })();
+    })();
+  </script>
+</AppLayout>

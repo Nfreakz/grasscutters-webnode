@@ -9,6 +9,7 @@ import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, prefl
 
 import { applyAdriPoliceReconciliationV1, preflightAdriPoliceReconciliationV1, rollbackAdriPoliceReconciliationV1 } from './adriPoliceReconciliation';
 import { readMysqlStatisticsInvariantAuditV1 } from './statisticsInvariantAudit';
+import { readMysqlPortimaoSrFreezeAuditV1 } from './portimaoSrFreezeAudit';
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
 };
@@ -279,6 +280,35 @@ async function requireAdmin(req: Request) {
         ok: false,
         source: 'gc-ratings-v1:statistics-invariants',
         version: 'GC_PHASE4I_1_1_STATISTICS_INVARIANTS_ROUTE_FIX_V1',
+        readOnly: true,
+        writesAvailable: false,
+        destructiveChangesApplied: false,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // GC_PHASE4J_1_PORTIMAO_SR_FREEZE_AUDIT_V1 — diagnóstico sin escrituras ni reprocesado.
+  app.get('/api/gc/ratings/portimao-sr-freeze-audit', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) {
+        return res.status(403).json({
+          ok: false,
+          source: 'gc-ratings-v1:portimao-sr-freeze',
+          readOnly: true,
+          writesAvailable: false,
+          destructiveChangesApplied: false,
+          message: 'Admin requerido.'
+        });
+      }
+      res.json(await readMysqlPortimaoSrFreezeAuditV1());
+    } catch (error) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-ratings-v1:portimao-sr-freeze',
+        version: 'GC_PHASE4J_1_PORTIMAO_SR_FREEZE_AUDIT_V1',
         readOnly: true,
         writesAvailable: false,
         destructiveChangesApplied: false,
