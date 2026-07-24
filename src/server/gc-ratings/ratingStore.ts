@@ -17,7 +17,7 @@ export interface RatingStore {
   diagnostics?(): Promise<Record<string, unknown>>;
 }
 
-export function createRatingStore() {
+export function createRatingStore(): RatingStore {
   const driver = String(process.env.APP_STORAGE_DRIVER ?? '').trim().toLowerCase();
 
   if (driver === 'mysql' || driver === 'mariadb') return new MysqlRatingStore();

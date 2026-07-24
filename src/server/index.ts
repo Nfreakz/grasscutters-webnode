@@ -2640,7 +2640,7 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       mode: config.mode,
       message: 'Mirror SQL automático desactivado por configuración.'
     };
-    lastStrackerSqlMirrorAutoSyncResult = disabledPayload;
+    lastStrackerSqlMirrorAutoSyncResult = disabledPayload as StrackerSqlMirrorAutoSyncResult;
     return disabledPayload;
   }
 
@@ -2667,7 +2667,7 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       durationMs: payload.durationMs,
       message: `Mirror SQL actualizado: ${payload.sessionsImported} sesiones, ${payload.driversImported} pilotos, ${payload.lapsImported} vueltas. ${payload.fullSync ? 'Histórico completo.' : 'Sync limitado.'}`
     };
-    lastStrackerSqlMirrorAutoSyncResult = okPayload;
+    lastStrackerSqlMirrorAutoSyncResult = okPayload as StrackerSqlMirrorAutoSyncResult;
     console.log(`[GC] Sync mirror SQL sTracker OK: ${okPayload.message}`);
     return okPayload;
   } catch (error) {
@@ -2681,7 +2681,7 @@ async function syncStrackerSqlMirrorAfterDbSync(reason: string) {
       message: 'stracker.db3 se sincronizó, pero falló la copia al mirror SQL.',
       error: error instanceof Error ? error.message : String(error)
     };
-    lastStrackerSqlMirrorAutoSyncResult = failedPayload;
+    lastStrackerSqlMirrorAutoSyncResult = failedPayload as StrackerSqlMirrorAutoSyncResult;
     console.warn('[GC] Sync mirror SQL sTracker falló:', error);
     return failedPayload;
   }
@@ -2882,7 +2882,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     let sqlMirror: typeof lastStrackerSqlMirrorAutoSyncResult = null;
     if (ok && multiSync.sourceKeys.includes('main')) {
       const mirrorStarted = Date.now();
-      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync-main-legacy');
+      sqlMirror = await syncStrackerSqlMirrorAfterDbSync('auto-sync-post-db-sync-main-legacy') as StrackerSqlMirrorAutoSyncResult;
       if (lastSyncResult?.phases) {
         lastSyncResult.phases.mirror = Date.now() - mirrorStarted;
       }
@@ -2927,7 +2927,7 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
       message: result.message,
       statusCode: result.statusCode,
       sync: lastSyncResult,
-      multiSync,
+      ...({ multiSync } as any),
       sqlMirror,
       mirrorV2: multiSync.results.map((item: any) => ({ sourceKey: item.sourceKey, ok: item.mirrorV2?.ok, mirrorV2: item.mirrorV2 })),
       ratings: ratingsAutoProcess,
@@ -6551,12 +6551,12 @@ function gcComboUnifyBuildStatsV1(allLaps: ComboLap[]) {
     if (lap.valid && (entry.bestLapMs === null || Number(lap.lapTimeMs ?? Infinity) < Number(entry.bestLapMs))) {
       entry.bestLapMs = lap.lapTimeMs;
       entry.bestLapTime = lap.lapTime;
-      entry.bestLap = compactLapForCombo({ ...lap, comboId: rawComboId ?? lap.comboId, comboKey: key, comboUid: key });
+      entry.bestLap = compactLapForCombo({ ...lap, comboId: rawComboId ?? lap.comboId, comboKey: key, comboUid: key } as any);
     }
     if (lap.timestamp && (!entry.lastSeenTimestamp || Number(lap.timestamp) > Number(entry.lastSeenTimestamp))) {
       entry.lastSeenTimestamp = lap.timestamp;
       entry.lastSeenAt = lap.timestampIso;
-      entry.latestLap = compactLapForCombo({ ...lap, comboId: rawComboId ?? lap.comboId, comboKey: key, comboUid: key });
+      entry.latestLap = compactLapForCombo({ ...lap, comboId: rawComboId ?? lap.comboId, comboKey: key, comboUid: key } as any);
     }
     entry.laps.push({ ...lap, comboKey: key, comboUid: key, rawComboId: rawComboId ?? null });
   }
@@ -8378,13 +8378,13 @@ app.get('/api/profile', async (req, res) => {
     const readSource = await readGcDataCoreSource(req);
     if ((readSource as any).ok === false) {
       res.status(200).json({
+        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar el perfil.'),
         ok: false,
         authenticated: true,
         user: publicUser(context.user),
         linked: true,
         pilotLink: context.user.pilotLink,
-        profile: null,
-        ...gcPublicDataCoreUnavailableV130(readSource, 'Data Core no disponible para generar el perfil.')
+        profile: null
       });
       return;
     }
@@ -8924,7 +8924,7 @@ app.post('/api/profile/team', async (req, res) => {
     context.user.team = nextTeam;
     context.user.updatedAt = new Date().toISOString();
     if (nextTeam) {
-      context.user.team.role = normalizeGcTeamRole(teamRole) === 'owner' ? 'owner' : (normalizeTeamText(teamRole, 48) || 'driver');
+      context.user.team!.role = normalizeGcTeamRole(teamRole) === 'owner' ? 'owner' : (normalizeTeamText(teamRole, 48) || 'driver');
     }
     await writeUserStoreAsync(context.store);
     if (nextTeam && (useMysqlStorage() || useSqliteStorage())) {
@@ -10908,7 +10908,7 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
     message: multiSync.message,
     statusCode: multiSync.ok ? 200 : 207,
     sync: lastSyncResult,
-    multiSync,
+    ...({ multiSync } as any),
     sqlMirror: lastStrackerSqlMirrorAutoSyncResult,
     mirrorV2: multiSync.results.map((item: any) => ({ sourceKey: item.sourceKey, ok: item.mirrorV2?.ok, mirrorV2: item.mirrorV2 })),
     error: multiSync.ok ? undefined : multiSync.results.find((item: any) => !item.ok)?.sync?.sync?.error
@@ -10918,7 +10918,7 @@ async function handleManualAutoSyncRun(req: express.Request, res: express.Respon
     ok: multiSync.ok,
     statusCode: multiSync.ok ? 200 : 207,
     message: multiSync.message,
-    multiSync,
+    ...({ multiSync } as any),
     autoSync: getAutoSyncConfig()
   });
 }
@@ -12659,7 +12659,7 @@ app.get('/api/gc/combos/:comboId', async (req: any, res: any) => {
     }
 
     const rows = dataCoreSource.laps.filter((lap: any) => gcComboDetailLapMatchesComboV1(lap, combo));
-    const item = gcComboDetailBuildItemV1(combo, rows.length ? rows : combo.laps || []);
+    const item = gcComboDetailBuildItemV1(combo, rows.length ? rows : (combo as any).laps || []);
 
     res.json({
       ok: true,
@@ -13313,13 +13313,13 @@ app.get('/api/activity/recent', async (req, res) => {
         items: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
     const dataCoreSource = readSource as GcDataCoreReadResult;
     const laps = dataCoreSource.laps;
-    const filtered = filterLaps(laps, { ...req, query: { ...req.query, sinceHours: String(hours), valid: 'all' } } as express.Request, { validOnly: false });
+    const filtered = filterLaps(laps, { ...req, query: { ...req.query, sinceHours: String(hours), valid: 'all' } } as unknown as express.Request, { validOnly: false });
     const latestByDriverCombo = new Map<string, ReturnType<typeof mapLapRow>>();
 
     for (const lap of filtered) {
@@ -13490,14 +13490,14 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
       data: null,
       stracker: gcDataCorePublicStracker(readSource.stracker),
       fallbackReason: readSource.fallbackReason ?? null,
-      message: readSource.message
+      message: (readSource as any).message
     };
   }
 
   const scope = options.scope || 'global';
   const recentLimit = gcDataCorePositiveNumber(options.recentLimit, 20);
   const leaderboardLimit = gcDataCorePositiveNumber(options.leaderboardLimit, 20);
-  const { laps, comboDefinitions, stracker, source, mysqlMirror, fallbackReason } = readSource;
+  const { laps, comboDefinitions, stracker, source, mysqlMirror, fallbackReason } = readSource as any;
 
   const comboStats = buildComboStatsFromLaps(laps, comboDefinitions);
   const activeCombo = gcDataCoreActiveCombo(comboStats);
@@ -14686,19 +14686,19 @@ app.get('/api/gc/diagnostics', async (_req, res) => {
     let oldestLapAt = 0;
 
     for (const lap of laps) {
-      const playerId = lap.PlayerId ?? lap.playerId ?? lap.driverId ?? lap.DriverName ?? lap.Name;
-      const carId = lap.CarId ?? lap.Car ?? lap.carId ?? lap.carName;
-      const trackId = lap.TrackId ?? lap.Track ?? lap.trackId ?? lap.trackName;
+      const playerId = (lap as any).PlayerId ?? lap.playerId ?? lap.driverId ?? (lap as any).DriverName ?? (lap as any).Name;
+      const carId = (lap as any).CarId ?? (lap as any).Car ?? lap.carId ?? lap.carName;
+      const trackId = (lap as any).TrackId ?? (lap as any).Track ?? lap.trackId ?? lap.trackName;
 
       if (playerId !== null && playerId !== undefined && String(playerId).trim()) uniqueDrivers.add(String(playerId));
       if (carId !== null && carId !== undefined && String(carId).trim()) uniqueCars.add(String(carId));
       if (trackId !== null && trackId !== undefined && String(trackId).trim()) uniqueTracks.add(String(trackId));
 
-      const valid = lap.Valid ?? lap.valid ?? lap.isValid;
+      const valid = (lap as any).Valid ?? lap.valid ?? lap.isValid;
       if (valid === 0 || valid === false || valid === '0' || valid === 'false') invalidLaps += 1;
       else validLaps += 1;
 
-      const rawDate = lap.Timestamp ?? lap.timestamp ?? lap.Date ?? lap.date ?? lap.timestampIso ?? lap.dateIso;
+      const rawDate = (lap as any).Timestamp ?? lap.timestamp ?? (lap as any).Date ?? (lap as any).date ?? lap.timestampIso ?? (lap as any).dateIso;
       let ms = 0;
       if (typeof rawDate === 'number') ms = rawDate > 20000000000 ? rawDate : rawDate * 1000;
       else if (rawDate) {
@@ -14729,8 +14729,8 @@ app.get('/api/gc/diagnostics', async (_req, res) => {
       latestLapAt: latestLapAt ? new Date(latestLapAt).toISOString() : null,
       oldestLapAt: oldestLapAt ? new Date(oldestLapAt).toISOString() : null,
       latestCombo: latestCombo ? {
-        comboId: latestCombo.comboId ?? latestCombo.canonicalComboId ?? latestCombo.id ?? null,
-        trackName: latestCombo.track?.displayName ?? latestCombo.track?.name ?? latestCombo.trackName ?? null,
+        comboId: latestCombo.comboId ?? latestCombo.canonicalComboId ?? (latestCombo as any).id ?? null,
+        trackName: latestCombo.track?.displayName ?? latestCombo.track?.name ?? (latestCombo as any).trackName ?? null,
         carsCount: Array.isArray(latestCombo.cars) ? latestCombo.cars.length : Number(latestCombo.carsCount ?? 0),
         totalLaps: Number(latestCombo.totalLaps ?? 0),
         driversCount: Number(latestCombo.driversCount ?? 0),
@@ -14952,12 +14952,12 @@ function gcHomeBootstrapExistingTrackImagesV22(aliases: string[]) {
 
 function gcHomeBootstrapTrackImageV1(track: any) {
   const tokens = gcComboUnifyTrackFamilyV1(track || {});
-  const key = tokens.key || gcComboUnifySlugV1(tokens.name || tokens.code || '');
+  const key = tokens.key || gcComboUnifySlugV1((tokens as any).name || tokens.code || '');
   const aliases = gcHomeBootstrapTrackImageAliasVariantsV22([
     key,
     tokens.code,
     tokens.rawName,
-    tokens.name,
+    (tokens as any).name,
     track?.familyKey,
     track?.rawCode,
     track?.rawName,
@@ -15202,7 +15202,7 @@ async function gcHomeBootstrapReadSourceV1(req: express.Request, sourceKey: 'mai
       ...(req.query || {}),
       source: sourceKey
     }
-  } as express.Request;
+  } as unknown as express.Request;
 
   const readSource = await readGcDataCoreSource(sourceReq);
   if ((readSource as any).ok === false) {
@@ -15301,7 +15301,7 @@ async function gcHomeBootstrapReadAllSourcesV11(req: express.Request, mainLimit:
       ...(req.query || {}),
       source: 'all'
     }
-  } as express.Request;
+  } as unknown as express.Request;
 
   const readSource = await readGcDataCoreSource(allReq);
   if ((readSource as any).ok === false) {
@@ -15576,12 +15576,12 @@ app.get('/api/gc/leaderboard', async (req, res) => {
           leaderboard: [],
           data: null,
           filters: summarizeFilters(req),
-          message: readSource.message
+          message: (readSource as any).message
         });
         return;
       }
 
-      const { laps, stracker, source, mysqlMirror, fallbackReason } = readSource;
+      const { laps, stracker, source, mysqlMirror, fallbackReason } = readSource as any;
       const filtered = filterLaps(laps, req, { validOnly: false });
       const groupMode = getQueryString(req, 'group', 'all').toLowerCase();
       const rows = makeBestHotlaps(filtered, groupMode === 'driver' ? 'driver' : 'all').slice(0, limit);
@@ -15692,7 +15692,7 @@ app.get('/api/gc/hotlaps2', async (req, res) => {
         laps: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
@@ -15811,7 +15811,7 @@ app.get('/api/gc/pilots2', async (req, res) => {
         pilots: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
@@ -16055,8 +16055,8 @@ function gcCompatLapV12(lap: any) {
     lapNumber: lap?.lapNumber ?? lap?.lapCount ?? base.lapNumber ?? null,
     playerInSessionId: lap?.playerInSessionId ?? null,
     sessionId: lap?.sessionId ?? base.session?.id ?? null,
-    sectorTimesMs: sectors.map((sector) => sector.timeMs),
-    sectorTimes: sectors.map((sector) => sector.time),
+    sectorTimesMs: sectors.map((sector: any) => sector.timeMs),
+    sectorTimes: sectors.map((sector: any) => sector.time),
     sectors,
     sector1Ms: sectors[0]?.timeMs ?? null,
     sector2Ms: sectors[1]?.timeMs ?? null,
@@ -16164,7 +16164,7 @@ app.get('/api/hotlaps', async (req, res) => {
         hotlaps: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
@@ -16226,7 +16226,7 @@ app.get('/api/drivers', async (req, res) => {
         pilots: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
@@ -16779,7 +16779,7 @@ app.get('/api/gc/recent-laps', async (req, res) => {
         laps: [],
         stracker: gcDataCorePublicStracker(readSource.stracker),
         fallbackReason: readSource.fallbackReason ?? null,
-        message: readSource.message
+        message: (readSource as any).message
       });
       return;
     }
@@ -16872,27 +16872,27 @@ app.get('/api/gc/recent-laps', async (req, res) => {
 
 app.get('/gc-data/hotlaps', (req, res) => {
   req.url = `/api/hotlaps${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-  app.handle(req, res);
+  (app as any).handle(req, res);
 });
 
 app.get('/gc-data/hotlaps.php', (req, res) => {
   req.url = `/api/hotlaps${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-  app.handle(req, res);
+  (app as any).handle(req, res);
 });
 
 app.get('/gc-data/drivers', (req, res) => {
   req.url = `/api/drivers${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-  app.handle(req, res);
+  (app as any).handle(req, res);
 });
 
 app.get('/gc-data/cars', (req, res) => {
   req.url = `/api/cars${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-  app.handle(req, res);
+  (app as any).handle(req, res);
 });
 
 app.get('/gc-data/tracks', (req, res) => {
   req.url = `/api/tracks${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-  app.handle(req, res);
+  (app as any).handle(req, res);
 });
 
 app.get('/api/events/upcoming', (_req, res) => {
@@ -16951,7 +16951,7 @@ app.use(
  * Endpoint de cierre de sesiÃƒÂ³n para headers pÃƒÂºblico e interno.
  * Limpia cookie gc_session y elimina la sesiÃƒÂ³n en MySQL, SQLite o JSON.
  */
-function gcParseRequestCookies(rawCookieHeader) {
+function gcParseRequestCookies(rawCookieHeader: unknown): Record<string, string> {
   return String(rawCookieHeader || '')
     .split(';')
     .map((part) => part.trim())
@@ -16967,10 +16967,10 @@ function gcParseRequestCookies(rawCookieHeader) {
         cookies[key] = value;
       }
       return cookies;
-    }, {});
+    }, {} as Record<string, string>);
 }
 
-function gcLogoutCookieOptions() {
+function gcLogoutCookieOptions(): express.CookieOptions {
   const secure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
   return {
     path: '/',
@@ -16980,7 +16980,7 @@ function gcLogoutCookieOptions() {
   };
 }
 
-function gcClearSessionCookie(response) {
+function gcClearSessionCookie(response: express.Response) {
   const options = gcLogoutCookieOptions();
   response.clearCookie(sessionCookieName, options);
   response.cookie(sessionCookieName, '', {
@@ -16990,7 +16990,7 @@ function gcClearSessionCookie(response) {
   });
 }
 
-function gcSessionTokenHashes(token) {
+function gcSessionTokenHashes(token: unknown): string[] {
   const raw = String(token || '').trim();
   if (!raw) return ['', ''];
   return [
@@ -16999,7 +16999,7 @@ function gcSessionTokenHashes(token) {
   ];
 }
 
-async function gcDeleteSessionByToken(token) {
+async function gcDeleteSessionByToken(token: unknown): Promise<number> {
   const raw = String(token || '').trim();
   if (!raw) return 0;
   const hashes = gcSessionTokenHashes(raw);
@@ -17019,7 +17019,7 @@ async function gcDeleteSessionByToken(token) {
   const filePath = getUsersPath();
   if (!fs.existsSync(filePath)) return 0;
 
-  let parsed;
+  let parsed: { sessions?: any[] };
   try {
     parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
@@ -17028,7 +17028,7 @@ async function gcDeleteSessionByToken(token) {
 
   if (!Array.isArray(parsed.sessions)) return 0;
   const before = parsed.sessions.length;
-  parsed.sessions = parsed.sessions.filter((session) => {
+  parsed.sessions = parsed.sessions.filter((session: any) => {
     const sessionHash = String(session?.tokenHash || session?.token_hash || session?.hash || '');
     const sessionToken = String(session?.token || '');
     return !hashes.includes(sessionHash) && sessionToken !== raw;
@@ -17045,7 +17045,7 @@ async function gcDeleteSessionByToken(token) {
   return removed;
 }
 
-async function gcLogoutRequest(req, res, redirectToHome = false) {
+async function gcLogoutRequest(req: express.Request, res: express.Response, redirectToHome = false) {
   const cookies = gcParseRequestCookies(req.headers.cookie);
   const token = cookies[sessionCookieName];
   let removedSessions = 0;
@@ -17535,7 +17535,7 @@ function gcRuntimeSnapshot(clientDir: string | null, astroEntry: string | null) 
       label,
       path: dirPath,
       exists,
-      isDirectory: exists ? fs.statSync(dirPath).isDirectory() : false
+      isDirectory: exists && dirPath ? fs.statSync(dirPath).isDirectory() : false
     };
   }
 
@@ -17545,7 +17545,7 @@ function gcRuntimeSnapshot(clientDir: string | null, astroEntry: string | null) 
       label,
       path: filePath,
       exists,
-      isFile: exists ? fs.statSync(filePath).isFile() : false
+      isFile: exists && filePath ? fs.statSync(filePath).isFile() : false
     };
   }
 

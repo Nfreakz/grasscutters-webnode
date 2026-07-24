@@ -455,7 +455,7 @@ async function requireAdmin(req: Request) {
       }
       const requestedSource = String(req.query.source || req.body?.source || '').trim().toLowerCase();
       const processGlobally = !requestedSource || ['all', 'global', 'both', 'todas'].includes(requestedSource);
-      const payload = processGlobally
+      const payload: any = processGlobally
         ? await service.processNewEventsAllSourcesV1({ trustedAutomation: true })
         : await service.processNewEvents({ source: requestedSource });
       res.json({
@@ -559,7 +559,7 @@ async function requireAdmin(req: Request) {
       if (!allowed) return res.status(403).json({ ok: false, source: 'gc-ratings-v1', message: 'Admin requerido.' });
       const requestedSource = String(req.query.source || req.body?.source || '').trim().toLowerCase();
       const processGlobally = !requestedSource || ['all', 'global', 'both', 'todas'].includes(requestedSource);
-      const payload = processGlobally
+      const payload: any = processGlobally
         ? await service.processNewEventsAllSourcesV1({ trustedAutomation: true })
         : await service.processNewEvents({ source: requestedSource });
       res.json({
