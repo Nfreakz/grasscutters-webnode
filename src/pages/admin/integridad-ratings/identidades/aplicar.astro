@@ -1,0 +1,111 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_V1 -->
+<AppLayout title="Aplicar consolidación 4H.3 | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-id-apply">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings · 4H.3.2</span>
+        <h1 class="gc-title">Aplicar consolidación.</h1>
+        <p class="gc-subtitle">La operación usa transacción, backup en MySQL, verificación posterior y rollback condicionado.</p>
+      </div>
+      <a class="gc-btn" href="/admin/integridad-ratings/identidades/preflight">Volver al preflight</a>
+    </section>
+    <AdminSubnav />
+
+    <section class="gc-section gc-id-card">
+      <span class="gc-kicker">Paso 1</span>
+      <h2>Revalidar estado</h2>
+      <p>Obtén un token nuevo justo antes de aplicar. Si cambia una fila, el servidor rechazará el token.</p>
+      <button class="gc-btn gc-btn--primary" id="runPreflight" type="button">Ejecutar preflight</button>
+      <pre id="preflightResult">Pendiente.</pre>
+    </section>
+
+    <section class="gc-section gc-id-card" id="applyCard" hidden>
+      <span class="gc-kicker">Paso 2</span>
+      <h2>Confirmar aplicación</h2>
+      <p>Escribe exactamente la frase mostrada. Se trasladarán las membresías y se retirarán ocho perfiles duplicados; ratings, resultados y palmarés no se modifican.</p>
+      <code id="applyPhrase"></code>
+      <input id="applyConfirmation" type="text" autocomplete="off" spellcheck="false" />
+      <button class="gc-btn gc-btn--primary" id="applyAction" type="button">Aplicar consolidación</button>
+    </section>
+
+    <section class="gc-section gc-id-card">
+      <span class="gc-kicker">Batches</span>
+      <h2>Aplicación y rollback</h2>
+      <button class="gc-btn" id="reloadBatches" type="button">Actualizar</button>
+      <div id="batchList"></div>
+    </section>
+
+    <pre id="operationResult" hidden></pre>
+  </div>
+
+  <style is:global>
+    .gc-id-apply{display:grid;gap:18px}.gc-id-card{display:grid;gap:12px;padding:18px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}
+    .gc-id-card pre,.gc-id-apply>pre{white-space:pre-wrap;overflow:auto;padding:14px;border-radius:10px;background:#050805;color:#dfffd8}
+    .gc-id-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(0,0,0,.25);color:var(--text)}
+    .gc-id-card code{overflow-wrap:anywhere;color:#9af0a7}.gc-id-batch{display:grid;gap:8px;margin-top:12px;padding:13px;border:1px solid var(--line);border-radius:10px}
+    .gc-id-batch small{color:var(--soft)}.gc-id-batch-actions{display:flex;gap:8px;flex-wrap:wrap}.gc-id-danger{border-color:rgba(255,90,90,.6);color:#ffaaaa}
+  </style>
+
+  <script>
+    (() => {
+      type AnyRow = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+      let token = '';
+      const json = async (url: string, options: RequestInit = {}) => {
+        const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options, headers: {'Content-Type':'application/json', ...(options.headers || {})} });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      };
+      const show = (value: unknown) => {
+        const output = get('operationResult');
+        output.hidden = false;
+        output.textContent = JSON.stringify(value, null, 2);
+      };
+      async function preflight() {
+        const data = await json('/api/gc/ratings/identity-consolidation/preflight');
+        get('preflightResult').textContent = JSON.stringify(data, null, 2);
+        if (!data.readyForApplyDesign || !data.confirmationToken) throw new Error('El preflight no permite aplicar.');
+        token = String(data.confirmationToken);
+        const phrase = `APLICAR 4H.3 ${token}`;
+        get('applyPhrase').textContent = phrase;
+        get<HTMLInputElement>('applyConfirmation').value = '';
+        get('applyCard').hidden = false;
+      }
+      async function batches() {
+        const data = await json('/api/gc/ratings/identity-consolidation/batches');
+        get('batchList').innerHTML = (data.batches || []).map((row: AnyRow) => {
+          const id = String(row.batch_id || '');
+          const active = row.status === 'applied';
+          return `<article class="gc-id-batch"><strong>${id}</strong><small>Estado: ${row.status} · Aplicado: ${row.applied_at || '—'}</small>${active ? `<div class="gc-id-batch-actions"><code>REVERTIR 4H.3 ${id}</code><input data-confirm="${id}" type="text" autocomplete="off"><button class="gc-btn gc-id-danger" data-rollback="${id}" type="button">Ejecutar rollback</button></div>` : ''}</article>`;
+        }).join('') || '<p>No hay batches para este plan.</p>';
+      }
+      get('runPreflight').addEventListener('click', () => preflight().catch((error) => show({ok:false,message:error.message})));
+      get('applyAction').addEventListener('click', async () => {
+        if (!confirm('Se modificará MySQL de producción. ¿Continuar?')) return;
+        try {
+          const data = await json('/api/gc/ratings/identity-consolidation/apply', {method:'POST',body:JSON.stringify({token,confirmation:get<HTMLInputElement>('applyConfirmation').value})});
+          show(data); get('applyCard').hidden = true; await batches();
+        } catch (error) { show({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+      });
+      get('reloadBatches').addEventListener('click', () => batches().catch((error) => show({ok:false,message:error.message})));
+      get('batchList').addEventListener('click', async (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-rollback]');
+        if (!button) return;
+        const batchId = button.dataset.rollback || '';
+        const input = get('batchList').querySelector<HTMLInputElement>(`[data-confirm="${batchId}"]`);
+        if (!confirm(`Se restaurará el batch ${batchId}. ¿Continuar?`)) return;
+        try {
+          show(await json('/api/gc/ratings/identity-consolidation/rollback', {method:'POST',body:JSON.stringify({batchId,confirmation:input?.value || ''})}));
+          await batches();
+        } catch (error) { show({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+      });
+      batches().catch((error) => show({ok:false,message:error.message}));
+    })();
+  </script>
+</AppLayout>

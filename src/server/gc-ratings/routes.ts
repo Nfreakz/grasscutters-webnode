@@ -4,6 +4,7 @@ import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerR
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 import { buildMysqlIdentityPreviewV1, readMysqlIdentityPreviewBootstrapV1 } from './identityPreview';
 import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidationPreflight';
+import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';
 
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
@@ -317,6 +318,24 @@ async function requireAdmin(req: Request) {
         message: error instanceof Error ? error.message : String(error)
       });
     }
+  });
+
+
+  // GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_V1
+  app.get('/api/gc/ratings/identity-consolidation/batches', async (req, res) => {
+    if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
+    try { res.setHeader('Cache-Control','no-store'); res.json(await listIdentityConsolidationBatchesV1()); }
+    catch (error) { res.status(500).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+  });
+  app.post('/api/gc/ratings/identity-consolidation/apply', async (req, res) => {
+    if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
+    try { res.setHeader('Cache-Control','no-store'); res.json(await applyIdentityConsolidationV1(req.body || {})); }
+    catch (error) { res.status(409).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+  });
+  app.post('/api/gc/ratings/identity-consolidation/rollback', async (req, res) => {
+    if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
+    try { res.setHeader('Cache-Control','no-store'); res.json(await rollbackIdentityConsolidationV1(req.body || {})); }
+    catch (error) { res.status(409).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
   });
 
 
