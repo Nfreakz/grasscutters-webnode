@@ -1,4 +1,4 @@
-import type { Express, Request } from 'express';
+import express, { type Express, type Request } from 'express';
 import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
@@ -11,6 +11,10 @@ type RouteOptions = {
 export function registerGcRatingRoutes(app: Express, options: RouteOptions = {}) {
   const service = getGcRatingsService();
   const cronSecret = String(process.env.GC_RATINGS_CRON_SECRET || '').trim();
+
+  // GC_PHASE4H2_8_IDENTITY_PREVIEW_JSON_BODY_FIX_V1
+  // Esta ruta se registra antes que los parsers JSON globales de src/server/index.ts.
+  const gcIdentityPreviewJsonBodyV1 = express.json({ limit: '256kb', strict: true });
 
   function readCronSecret(req: Request) {
     return String(req.header('x-gc-cron-secret') || req.query.secret || '').trim();
@@ -279,7 +283,7 @@ async function requireAdmin(req: Request) {
     }
   });
 
-  app.post('/api/gc/ratings/identity-preview', async (req, res) => {
+  app.post('/api/gc/ratings/identity-preview', gcIdentityPreviewJsonBodyV1, async (req, res) => {
     try {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const allowed = await requireAdmin(req);
