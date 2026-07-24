@@ -8,6 +8,7 @@ import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidatio
 import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, preflightIdentityConsolidationApplyV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';
 
 import { applyAdriPoliceReconciliationV1, preflightAdriPoliceReconciliationV1, rollbackAdriPoliceReconciliationV1 } from './adriPoliceReconciliation';
+import { readMysqlStatisticsInvariantAuditV1 } from './statisticsInvariantAudit';
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
 };
@@ -254,6 +255,35 @@ async function requireAdmin(req: Request) {
       res.json(await service.getDiagnostics());
     } catch (error) {
       res.status(200).json({ ok: false, source: 'gc-ratings-v1', message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // GC_PHASE4I_1_1_STATISTICS_INVARIANTS_ROUTE_FIX_V1 — auditoría estrictamente de solo lectura.
+  app.get('/api/gc/ratings/statistics-invariants', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) {
+        return res.status(403).json({
+          ok: false,
+          source: 'gc-ratings-v1:statistics-invariants',
+          readOnly: true,
+          writesAvailable: false,
+          destructiveChangesApplied: false,
+          message: 'Admin requerido.'
+        });
+      }
+      res.json(await readMysqlStatisticsInvariantAuditV1());
+    } catch (error) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-ratings-v1:statistics-invariants',
+        version: 'GC_PHASE4I_1_1_STATISTICS_INVARIANTS_ROUTE_FIX_V1',
+        readOnly: true,
+        writesAvailable: false,
+        destructiveChangesApplied: false,
+        message: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
