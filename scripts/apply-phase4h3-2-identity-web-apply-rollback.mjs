@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_INSTALLER_V1
+// GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_INSTALLER_V1
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,8 +9,9 @@ const payloadRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const routesPath = path.join(root, 'src', 'server', 'gc-ratings', 'routes.ts');
 const preflightPage = path.join(root, 'src', 'pages', 'admin', 'integridad-ratings', 'identidades', 'preflight.astro');
 const serviceTarget = path.join(root, 'src', 'server', 'gc-ratings', 'identityConsolidationApply.ts');
+const preflightService = path.join(root, 'src', 'server', 'gc-ratings', 'identityConsolidationPreflight.ts');
 const pageTarget = path.join(root, 'src', 'pages', 'admin', 'integridad-ratings', 'identidades', 'aplicar.astro');
-const marker = 'GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_V1';
+const marker = 'GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1';
 
 if (!fs.existsSync(path.join(root, 'package.json'))) throw new Error('Ejecuta el instalador desde la raíz de grasscutters-webnode.');
 for (const relative of [
@@ -23,8 +24,18 @@ for (const relative of [
   fs.mkdirSync(path.dirname(target), {recursive:true});
   if (path.resolve(source) !== path.resolve(target)) fs.copyFileSync(source, target);
 }
-for (const file of [routesPath, preflightPage, serviceTarget, pageTarget]) if (!fs.existsSync(file)) throw new Error(`Falta ${path.relative(root,file)}.`);
-for (const file of [serviceTarget,pageTarget]) if (!fs.readFileSync(file,'utf8').includes(marker)) throw new Error(`Payload inválido: ${path.relative(root,file)}.`);
+for (const file of [routesPath, preflightPage, preflightService, serviceTarget, pageTarget]) if (!fs.existsSync(file)) throw new Error(`Falta ${path.relative(root,file)}.`);
+if (!fs.readFileSync(serviceTarget,'utf8').includes(marker)) throw new Error(`Payload inválido: ${path.relative(root,serviceTarget)}.`);
+
+let preflightServiceSource = fs.readFileSync(preflightService, 'utf8');
+const volatileUserTimestamp = `      name: text(row.pilot_stracker_name) || null,
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null`;
+const stableUserIdentity = `      name: text(row.pilot_stracker_name) || null`;
+if (preflightServiceSource.includes(volatileUserTimestamp)) {
+  preflightServiceSource = preflightServiceSource.replace(volatileUserTimestamp, stableUserIdentity);
+  fs.writeFileSync(preflightService, preflightServiceSource, 'utf8');
+}
+if (fs.readFileSync(preflightService, 'utf8').includes(volatileUserTimestamp)) throw new Error('No se pudo estabilizar el token del preflight.');
 
 let routes = fs.readFileSync(routesPath,'utf8');
 const importAnchor = "import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidationPreflight';";
@@ -68,6 +79,6 @@ if (!preflight.includes(linkMarker)) {
   preflight = preflight.replace(anchor, `<div class="gc-actions" ${linkMarker}><a class="gc-btn gc-btn--primary" href="/admin/integridad-ratings/identidades/aplicar">Aplicar 4H.3</a>${anchor}</div>`);
   fs.writeFileSync(preflightPage,preflight,'utf8');
 }
-console.log('[GC_PHASE4H3_2] Instalado y validado.');
+console.log('[GC_PHASE4H3_2_1] Token de preflight y aplicación estabilizado.');
 console.log('El instalador no ha conectado con MySQL ni ha modificado datos.');
 console.log('Siguiente paso: npm run quality && npm run build');

@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_V1
-const VERSION = 'GC_PHASE4H3_2_IDENTITY_WEB_APPLY_ROLLBACK_V1';
+// GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1
+const VERSION = 'GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1';
 const PLAN_HASH = '2745c700cd7ab624c7f4cc6e5cc208e3b2264805f37f7f552d6d08fade9f003b';
 
 const mappings = [
@@ -91,7 +91,10 @@ function tokenState(state: Awaited<ReturnType<typeof readState>>) {
   return {
     profiles: state.profiles.map((r) => ({ id: text(r.id), driverKey: text(r.driver_key), linkedUserId: text(r.linked_user_id) || null, updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null })),
     memberships: state.memberships.map((r) => ({ id: text(r.id), profileId: text(r.driver_profile_id), teamId: text(r.team_id), status: text(r.status), updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null })),
-    users: state.users.map((r) => ({ id: text(r.id), playerId: r.pilot_player_id == null ? null : Number(r.pilot_player_id), steamGuid: text(r.pilot_steam_guid) || null, name: text(r.pilot_stracker_name) || null, updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null }))
+    // gc_users.updated_at can be touched by authentication/session activity between
+    // preflight and apply. The identity-bearing fields remain part of the token and
+    // are also validated again while the transaction holds row locks.
+    users: state.users.map((r) => ({ id: text(r.id), playerId: r.pilot_player_id == null ? null : Number(r.pilot_player_id), steamGuid: text(r.pilot_steam_guid) || null, name: text(r.pilot_stracker_name) || null }))
   };
 }
 

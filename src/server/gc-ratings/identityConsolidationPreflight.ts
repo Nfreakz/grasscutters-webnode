@@ -253,8 +253,7 @@ function snapshotForToken(state: Awaited<ReturnType<typeof readState>>) {
       id: text(row.id),
       playerId: row.pilot_player_id == null ? null : Number(row.pilot_player_id),
       steamGuid: text(row.pilot_steam_guid) || null,
-      name: text(row.pilot_stracker_name) || null,
-      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+      name: text(row.pilot_stracker_name) || null
     }))
   };
 }
