@@ -11,7 +11,7 @@ const preflightPage = path.join(root, 'src', 'pages', 'admin', 'integridad-ratin
 const serviceTarget = path.join(root, 'src', 'server', 'gc-ratings', 'identityConsolidationApply.ts');
 const preflightService = path.join(root, 'src', 'server', 'gc-ratings', 'identityConsolidationPreflight.ts');
 const pageTarget = path.join(root, 'src', 'pages', 'admin', 'integridad-ratings', 'identidades', 'aplicar.astro');
-const marker = 'GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1';
+const marker = 'GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1';
 
 if (!fs.existsSync(path.join(root, 'package.json'))) throw new Error('Ejecuta el instalador desde la raíz de grasscutters-webnode.');
 for (const relative of [
@@ -39,8 +39,11 @@ if (fs.readFileSync(preflightService, 'utf8').includes(volatileUserTimestamp)) t
 
 let routes = fs.readFileSync(routesPath,'utf8');
 const importAnchor = "import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidationPreflight';";
-const importLine = "import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';";
-if (!routes.includes(importLine)) {
+const oldImportLine = "import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';";
+const importLine = "import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, preflightIdentityConsolidationApplyV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';";
+if (routes.includes(oldImportLine)) {
+  routes = routes.replace(oldImportLine, importLine);
+} else if (!routes.includes(importLine)) {
   if (!routes.includes(importAnchor)) throw new Error('No está instalado el preflight 4H.3.1.');
   routes = routes.replace(importAnchor, `${importAnchor}\n${importLine}`);
 }
@@ -69,6 +72,20 @@ if (!routes.includes(routeMarker)) {
 `;
   routes = routes.replace(anchor, `${block}${anchor}`);
 }
+const applyPreflightMarker = '// GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1';
+if (!routes.includes(applyPreflightMarker)) {
+  const anchor = `  app.post('/api/gc/ratings/identity-consolidation/apply', async (req, res) => {`;
+  if (!routes.includes(anchor)) throw new Error('No se encontró la ruta de aplicación 4H.3.2.');
+  const block = `  ${applyPreflightMarker}
+  app.post('/api/gc/ratings/identity-consolidation/apply-preflight', async (req, res) => {
+    if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
+    try { res.setHeader('Cache-Control','no-store'); res.json(await preflightIdentityConsolidationApplyV1()); }
+    catch (error) { res.status(500).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+  });
+
+`;
+  routes = routes.replace(anchor, `${block}${anchor}`);
+}
 fs.writeFileSync(routesPath,routes,'utf8');
 
 let preflight = fs.readFileSync(preflightPage,'utf8');
@@ -79,6 +96,6 @@ if (!preflight.includes(linkMarker)) {
   preflight = preflight.replace(anchor, `<div class="gc-actions" ${linkMarker}><a class="gc-btn gc-btn--primary" href="/admin/integridad-ratings/identidades/aplicar">Aplicar 4H.3</a>${anchor}</div>`);
   fs.writeFileSync(preflightPage,preflight,'utf8');
 }
-console.log('[GC_PHASE4H3_2_1] Token de preflight y aplicación estabilizado.');
+console.log('[GC_PHASE4H3_2_2] Preflight y aplicación comparten el mismo cálculo de token.');
 console.log('El instalador no ha conectado con MySQL ni ha modificado datos.');
 console.log('Siguiente paso: npm run quality && npm run build');

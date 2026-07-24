@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1
-const VERSION = 'GC_PHASE4H3_2_1_IDENTITY_TOKEN_STABILITY_FIX_V1';
+// GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1
+const VERSION = 'GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1';
 const PLAN_HASH = '2745c700cd7ab624c7f4cc6e5cc208e3b2264805f37f7f552d6d08fade9f003b';
 
 const mappings = [
@@ -127,6 +127,38 @@ function validateBefore(state: Awaited<ReturnType<typeof readState>>) {
 }
 
 const profileColumns = ['id','driver_key','player_id','steam_guid','driver_name','display_name','avatar_url','country_code','linked_user_id','created_at','updated_at'];
+
+export async function preflightIdentityConsolidationApplyV1() {
+  return withPool(async (pool) => {
+    const state = await readState(pool);
+    const blockers = validateBefore(state);
+    const token = blockers.length ? null : stateToken(state);
+    return {
+      ok: blockers.length === 0,
+      source: 'gc-ratings-v1:identity-consolidation-apply-preflight:mysql',
+      version: VERSION,
+      generatedAt: new Date().toISOString(),
+      readOnly: true,
+      writesAvailable: blockers.length === 0,
+      destructiveChangesApplied: false,
+      readyForApply: blockers.length === 0,
+      planHash: PLAN_HASH,
+      confirmationToken: token,
+      confirmation: token ? `APLICAR 4H.3 ${token}` : null,
+      summary: {
+        sourceProfiles: sourceIds.length,
+        canonicalProfiles: canonicalIds.length,
+        membershipsToMove: state.memberships.filter((row) => sourceIds.includes(text(row.driver_profile_id))).length,
+        usersVerified: state.users.length,
+        blockers: blockers.length
+      },
+      blockers,
+      message: blockers.length
+        ? 'Preflight de aplicación bloqueado. No se ha modificado MySQL.'
+        : 'Preflight de aplicación superado. No se ha modificado MySQL.'
+    };
+  });
+}
 
 export async function applyIdentityConsolidationV1(input: { token?: string; confirmation?: string }) {
   return withPool(async (pool) => {

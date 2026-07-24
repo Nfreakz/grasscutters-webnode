@@ -4,7 +4,7 @@ import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerR
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 import { buildMysqlIdentityPreviewV1, readMysqlIdentityPreviewBootstrapV1 } from './identityPreview';
 import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidationPreflight';
-import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';
+import { applyIdentityConsolidationV1, listIdentityConsolidationBatchesV1, preflightIdentityConsolidationApplyV1, rollbackIdentityConsolidationV1 } from './identityConsolidationApply';
 
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
@@ -327,6 +327,13 @@ async function requireAdmin(req: Request) {
     try { res.setHeader('Cache-Control','no-store'); res.json(await listIdentityConsolidationBatchesV1()); }
     catch (error) { res.status(500).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
   });
+  // GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1
+  app.post('/api/gc/ratings/identity-consolidation/apply-preflight', async (req, res) => {
+    if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
+    try { res.setHeader('Cache-Control','no-store'); res.json(await preflightIdentityConsolidationApplyV1()); }
+    catch (error) { res.status(500).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
+  });
+
   app.post('/api/gc/ratings/identity-consolidation/apply', async (req, res) => {
     if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
     try { res.setHeader('Cache-Control','no-store'); res.json(await applyIdentityConsolidationV1(req.body || {})); }

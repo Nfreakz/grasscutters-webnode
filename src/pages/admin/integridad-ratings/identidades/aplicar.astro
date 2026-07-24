@@ -68,9 +68,9 @@ import AdminSubnav from '../../../../components/AdminSubnav.astro';
         output.textContent = JSON.stringify(value, null, 2);
       };
       async function preflight() {
-        const data = await json('/api/gc/ratings/identity-consolidation/preflight');
+        const data = await json('/api/gc/ratings/identity-consolidation/apply-preflight', {method:'POST'});
         get('preflightResult').textContent = JSON.stringify(data, null, 2);
-        if (!data.readyForApplyDesign || !data.confirmationToken) throw new Error('El preflight no permite aplicar.');
+        if (!data.readyForApply || !data.confirmationToken) throw new Error('El preflight de aplicación no permite continuar.');
         token = String(data.confirmationToken);
         const phrase = `APLICAR 4H.3 ${token}`;
         get('applyPhrase').textContent = phrase;
