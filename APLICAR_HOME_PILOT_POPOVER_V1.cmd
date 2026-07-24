@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-custom-avatars-v3-canonical.mjs
+node scripts\apply-home-pilot-links-popover-v1.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Avatares V3.
+  echo No se pudo aplicar el popover de pilotos.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Avatares V3 aplicados y build validado.
+echo Enlaces y popover aplicados. Build validado.
 pause
