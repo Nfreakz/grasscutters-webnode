@@ -1,7 +1,7 @@
 import mysql, { type Pool, type RowDataPacket } from 'mysql2/promise';
 import { buildSrComputation } from './srModel';
 
-const VERSION = 'GC_PHASE4J_2_PORTIMAO_SR_FREEZE_AUDIT_EVENT_KEY_FIX_V1';
+const VERSION = 'GC_PHASE4J_3_PORTIMAO_SR_EVENT_DISCOVERY_AUDIT_V1';
 const DEFAULT_MIN_CONFIDENCE = 0.55;
 const TARGET_SOURCE_KEY = 'weekly';
 const TARGET_EVENT_ID = '3cf3c3d8-de34-491d-8ef7-0f9944312c4c';
@@ -159,8 +159,6 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       LEFT JOIN gc_stracker_session s ON s.session_id=e.stracker_session_id
       WHERE e.source_key = ?
         AND e.event_id = ?
-        AND ABS(COALESCE(e.delta_sr, e.new_sr-e.old_sr, 0)) < 0.005
-        AND ABS(COALESCE(e.new_sr, 0)-COALESCE(e.old_sr, 0)) < 0.011
       ORDER BY COALESCE(e.event_date,e.processed_at),e.position,e.display_name,e.id
     `, [TARGET_SOURCE_KEY, TARGET_EVENT_ID]);
 
@@ -206,6 +204,10 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
           oldSr: number(row.old_sr),
           newSr: number(row.new_sr),
           deltaSr: number(row.delta_sr),
+          isFrozenOrZero: (
+            Math.abs(number(row.delta_sr, number(row.new_sr) - number(row.old_sr))) < 0.005 &&
+            Math.abs(number(row.new_sr) - number(row.old_sr)) < 0.011
+          ),
           incidentPoints: number(row.incident_points),
           cleanRace: Boolean(row.clean_race),
           laps: integer(row.laps),
@@ -272,9 +274,10 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       });
     }
 
-    const telemetryFreezes = results.filter((row) => row.diagnosis.classification === 'telemetry-freeze');
-    const zeroEconomy = results.filter((row) => row.diagnosis.classification === 'zero-economy-delta');
-    const nowRecoverable = results.filter((row) =>
+    const frozenOrZero = results.filter((row) => row.stored.isFrozenOrZero);
+    const telemetryFreezes = frozenOrZero.filter((row) => row.diagnosis.classification === 'telemetry-freeze');
+    const zeroEconomy = frozenOrZero.filter((row) => row.diagnosis.classification === 'zero-economy-delta');
+    const nowRecoverable = frozenOrZero.filter((row) =>
       row.diagnosis.telemetryReliableNow &&
       Math.abs(number(row.diagnosis.currentModelSimulation.deltaSr)) >= 0.005
     );
@@ -290,7 +293,8 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       destructiveChangesApplied: false,
       safeToContinue: expectedSeven,
       summary: {
-        frozenOrZeroResults: results.length,
+        targetEventResults: results.length,
+        frozenOrZeroResults: frozenOrZero.length,
         expectedResults: 7,
         expectedSeven,
         telemetryFreezes: telemetryFreezes.length,
@@ -312,14 +316,18 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       },
       results,
       conclusions: {
-        requiresCorrectionPlan: nowRecoverable.length > 0,
+        requiresCorrectionPlan: frozenOrZero.length > 0 && nowRecoverable.length > 0,
         correctionNotIncluded: true,
         reason: expectedSeven
-          ? 'Se han localizado los siete resultados. Este auditor no modifica ni reprocesa datos.'
+          ? frozenOrZero.length > 0
+            ? `Se han localizado los siete resultados; ${frozenOrZero.length} siguen congelados o con delta cero. Este auditor no modifica ni reprocesa datos.`
+            : 'Se han localizado los siete resultados y ninguno sigue congelado o con delta cero. No corresponde preparar una corrección.'
           : `Se esperaban siete resultados y se han localizado ${results.length}; no debe prepararse una corrección hasta resolver la diferencia.`
       },
       message: expectedSeven
-        ? 'Auditoría de los siete resultados SR de Portimão completada.'
+        ? frozenOrZero.length > 0
+          ? `Auditoría completada: ${frozenOrZero.length} de los siete resultados siguen congelados o con delta cero.`
+          : 'Auditoría completada: los siete resultados existen y ninguno continúa congelado.'
         : `Revisión bloqueada: se esperaban siete resultados SR de Portimão y se han localizado ${results.length}.`
     };
   } finally {
