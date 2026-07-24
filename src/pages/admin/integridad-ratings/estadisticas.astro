@@ -1,0 +1,29 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../components/AdminSubnav.astro';
+---
+<!-- GC_PHASE4I_1_STATISTICS_INVARIANTS_AUDIT_V1 -->
+<AppLayout title="Invariantes de estadísticas | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-i4">
+    <section class="gc-hero gc-hero--compact">
+      <div><span class="gc-kicker">Administración · Ratings · Solo lectura</span><h1 class="gc-title">Invariantes de estadísticas.</h1><p class="gc-subtitle">Contrasta resultados, ratings, perfiles y membresías sin modificar MySQL.</p></div>
+      <button class="gc-btn gc-btn--primary" id="run" type="button">Ejecutar 4I</button>
+    </section>
+    <AdminSubnav />
+    <section id="gate" hidden><div class="gc-slab"><h2>Acceso restringido</h2><a class="gc-btn gc-btn--primary" href="/login">Login</a></div></section>
+    <section id="content" hidden>
+      <div class="notice"><strong>Lectura exclusiva.</strong><span>Esta fase no corrige, reconstruye ni elimina datos.</span></div>
+      <div class="metrics" id="metrics"></div>
+      <section class="card"><h2 id="verdict">Pendiente</h2><p id="message">Ejecuta la auditoría.</p></section>
+      <section class="card"><div class="table"><table><thead><tr><th>Piloto</th><th>Almacenado</th><th>Recalculado</th><th>Filas</th></tr></thead><tbody id="rows"><tr><td colspan="4">Sin ejecutar.</td></tr></tbody></table></div></section>
+      <details class="card"><summary>JSON técnico completo</summary><pre id="json">Sin ejecutar.</pre></details>
+    </section>
+  </div>
+  <style>
+    .gc-i4{display:grid;gap:18px}.notice{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border:1px solid rgba(126,255,39,.3);border-radius:14px;background:rgba(126,255,39,.06)}.notice span{color:var(--soft)}
+    .metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.metric,.card{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02)}.metric span{display:block;color:var(--dim);font-size:.7rem;font-weight:900;text-transform:uppercase}.metric strong{display:block;margin-top:7px;font-size:1.6rem}.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--dim);font-size:.7rem;text-transform:uppercase}summary{cursor:pointer;font-weight:900}pre{max-height:650px;overflow:auto;white-space:pre-wrap;background:#050805;color:#dfffd8;padding:15px;border-radius:12px}@media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr)}}@media(max-width:540px){.metrics{grid-template-columns:1fr 1fr}}
+  </style>
+  <script>
+    (()=>{const e=(id:string)=>document.getElementById(id) as HTMLElement;const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));const fetchJson=async(url:string)=>{const r=await fetch(url,{credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw new Error(d.message||`HTTP ${r.status}`);return d};const admin=async()=>{try{if((await fetchJson('/api/admin/status')).authorized===true)return true}catch{}try{return (await fetchJson('/api/profile')).user?.role==='admin'}catch{return false}};const metric=(label:string,value:unknown)=>`<article class="metric"><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`;const run=async()=>{(e('run') as HTMLButtonElement).setAttribute('disabled','');e('verdict').textContent='Analizando…';try{const d=await fetchJson('/api/gc/ratings/statistics-invariants');const s=d.summary||{};e('metrics').innerHTML=metric('Bloqueos',s.blockers)+metric('Avisos',s.warnings)+metric('Ratings',s.ratings)+metric('Resultados',s.results)+metric('Perfiles',s.profiles)+metric('Membresías',s.activeMemberships);e('verdict').textContent=d.safeToContinue?'Estructura íntegra':'Revisión obligatoria';e('message').textContent=d.message||'';const rows=d.checks?.statisticsMismatches||[];e('rows').innerHTML=rows.length?rows.map((r:any)=>`<tr><td><strong>${esc(r.displayName)}</strong><br><small>${esc(r.driverKey)}</small></td><td>${esc(JSON.stringify(r.stored))}</td><td>${esc(JSON.stringify(r.calculated))}</td><td>${esc(r.resultRows)}</td></tr>`).join(''):'<tr><td colspan="4">Sin diferencias estadísticas.</td></tr>';e('json').textContent=JSON.stringify(d,null,2)}catch(x){e('verdict').textContent='Error';e('message').textContent=x instanceof Error?x.message:String(x)}finally{(e('run') as HTMLButtonElement).removeAttribute('disabled')}};(e('run') as HTMLButtonElement).addEventListener('click',run);(async()=>{if(!await admin()){e('gate').hidden=false;return}e('content').hidden=false;await run()})()})();
+  </script>
+</AppLayout>
