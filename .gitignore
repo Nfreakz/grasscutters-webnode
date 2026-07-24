@@ -7,9 +7,8 @@ dist/
 
 # Environment
 .env
-.env.local
-.env.production
-.env.*.local
+.env.*
+!.env.example
 
 # Logs / OS
 *.log
@@ -21,6 +20,13 @@ prepush-report.json
 tracked-cleanup-candidates.txt
 tree-full.txt
 archivo.txt
+
+# GrassCutters local work folders
+_gc_reports/
+_gc_backups/
+_gc_archive/
+test-results/
+playwright-report/
 
 # Local persistent/generated data
 gc-local-persistent/
@@ -44,11 +50,16 @@ gc-local-persistent/
 /data/app/display-names.json
 /data/app/motorsport-archive.json
 
+# Runtime uploaded/generated app media
+data/app/pilot-avatar-files/
+data/app/uploads/
+data/app/tmp/
+
 # Archivo Motorsport local/import/generated data
 /data/archive-import/
 /public/archive-media/
 
-# Stracker local DB/backups
+# STRacker local DB/backups
 /data/stracker/
 /data/stracker/*.db3
 /data/stracker/*.sqlite
@@ -57,15 +68,20 @@ gc-local-persistent/
 /data/stracker/*.backup
 stracker.db3
 *.db3
+*.sqlite
+*.sqlite3
 
 # GC local/generated rating data
 data/gc-ratings/rating-store.json
 data/gc-ratings/*.tmp.json
+data/gc-ratings/*.bak.json
+data/gc-stracker-mirror/stracker-mirror.sqlite
 
 # Backups / patch leftovers
 *.backup
 *.backup*
 *.bak
+*.bak*
 *.tmp
 *.old
 *.orig
@@ -80,49 +96,17 @@ src/**/*.backup*
 scripts/**/*.backup-*
 scripts/**/*.backup*
 
-# Temporary patch scripts from development
+# Temporary patch and audit scripts
 scripts/apply_*.cjs
 scripts/check_*.cjs
-# Temporary patch files
-run_patch.ps1
-scripts/patch-*.mjs
-docs/UI_*.md
-# Local backups
-*.bak*
-*.zip
-*localpack*
-
-# GrassCutters temporary work folders
-_gc_reports/
-_gc_backups/
-test-results/
-playwright-report/
-
-# Temporary audit / screenshot / computed scripts
 scripts/gc-*.mjs
-_gc_reports/
-_gc_backups/
-test-results/
-playwright-report/
-node_modules/
-dist/
-.env
-.env.*
-!.env.example
-*.log
-.DS_Store
-Thumbs.db
+scripts/patch-*.mjs
+run_patch.ps1
 
-
-# ==============================
-# GC SR/GSR cleanup additions
-# ==============================
-# GC SR/GSR local generated data
-data/gc-ratings/*.bak.json
-
-# Local SQLite / STRacker databases
-*.sqlite
-*.sqlite3
+# Preserve required source scripts
+!scripts/patch-auth-logout.mjs
+!scripts/patch-server-runtime-root.mjs
+!scripts/gc-build-guard.mjs
 
 # Temporary delivery folders / generated packs
 files/
@@ -132,8 +116,10 @@ snippets/
 GC_SafetyRating_*/
 gc_safety_rating_*/
 gc_stracker_safety_rating_*/
+*.zip
+*localpack*
 
-# Local helper scripts from previous SR/GSR patch packs
+# Old SR/GSR helper scripts
 scripts/check-stracker-safety-endpoint.mjs
 scripts/fix-stracker-safety-order.mjs
 scripts/inspect-stracker-safety.mjs
@@ -145,6 +131,7 @@ scripts/patch-stracker-safety-details-ui.mjs
 scripts/patch-championship-safety-rating.mjs
 
 # Old SR/GSR temporary docs
+docs/UI_*.md
 docs/2026-06-03_GC_WebNode_SafetyRating_CleanPack_Contexto.md
 docs/GC_CHAMPIONSHIP_SAFETY_RATING.md
 docs/GC_STRACKER_SAFETY_RATING.md
@@ -153,37 +140,12 @@ docs/GC_STRACKER_SAFETY_RATING_V1_*.md
 # Old SR bridge
 src/server/stracker-championship-safety-routes.ts
 
-data/gc-stracker-mirror/stracker-mirror.sqlite
-
-# ACSM local debug/export dumps. Keep local, never track.
+# ACSM local debug/export dumps
 acsm-full-raw.json
 acsm-inspect.json
 acsm-*.json
 
-# Runtime uploaded/generated app media. Keep local/server-side, never track.
-data/app/pilot-avatar-files/
-data/app/uploads/
-data/app/tmp/
-
-# Preserve required build patch scripts even if generic patch scripts are ignored above.
-!scripts/patch-auth-logout.mjs
-!scripts/patch-server-runtime-root.mjs
-
-# Build guard is source code and must be tracked.
-!scripts/gc-build-guard.mjs
-
-# Videos locales pesados
-*.webm
-*.mp4
-*.mov
-*.mkv
-
-*.webm
-*.mp4
-*.mov
-*.mkv
-
-# Videos locales pesados
+# Heavy local videos
 *.webm
 *.mp4
 *.mov
