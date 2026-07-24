@@ -1,0 +1,157 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../../components/AdminSubnav.astro';
+---
+
+<!-- GC_PHASE4H3_1_IDENTITY_WEB_PREFLIGHT_V1 -->
+<AppLayout title="Preflight 4H.3 | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-id-preflight">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración · Ratings · 4H.3</span>
+        <h1 class="gc-title">Preflight de consolidación.</h1>
+        <p class="gc-subtitle">Comprueba el plan aprobado contra MySQL de producción sin modificar ninguna fila.</p>
+      </div>
+      <a class="gc-btn" href="/admin/integridad-ratings/identidades/preview">Volver al preview</a>
+    </section>
+
+    <AdminSubnav />
+
+    <div class="gc-id-preflight-warning">
+      <strong>Esta pantalla solo lee.</strong>
+      <span>No existe endpoint de aplicación, rollback ni escritura en esta fase.</span>
+    </div>
+
+    <section class="gc-section gc-id-preflight-card">
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Estado actual</span>
+          <h2 id="preflightStatus">Pendiente</h2>
+          <p id="preflightMessage">Ejecuta la comprobación cuando estés listo.</p>
+        </div>
+        <button class="gc-btn gc-btn--primary" id="preflightRun" type="button">Ejecutar preflight</button>
+      </div>
+    </section>
+
+    <section id="preflightResult" class="gc-id-preflight-result" hidden>
+      <div class="gc-id-preflight-metrics">
+        <article><span>Perfiles origen</span><strong id="metricSources">—</strong></article>
+        <article><span>Canónicos</span><strong id="metricCanonicals">—</strong></article>
+        <article><span>Membresías</span><strong id="metricMemberships">—</strong></article>
+        <article><span>Bloqueos</span><strong id="metricBlockers">—</strong></article>
+      </div>
+
+      <section class="gc-section gc-id-preflight-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Veredicto</span>
+            <h2 id="preflightVerdict">Pendiente</h2>
+            <p id="preflightVerdictMessage"></p>
+          </div>
+        </div>
+        <div id="preflightBlockers" class="gc-id-preflight-blockers"></div>
+        <div class="gc-id-preflight-token" id="preflightTokenWrap" hidden>
+          <span>Token ligado al estado actual</span>
+          <code id="preflightToken"></code>
+          <small>Guárdalo solo como referencia. Este pack no puede aplicar cambios.</small>
+        </div>
+      </section>
+
+      <section class="gc-section gc-id-preflight-card">
+        <div class="gc-section-head">
+          <div>
+            <span class="gc-kicker">Plan verificado</span>
+            <h2>Ocho perfiles hacia siete canónicos</h2>
+          </div>
+        </div>
+        <div class="gc-table-wrap">
+          <table class="gc-table">
+            <thead><tr><th>Piloto</th><th>Perfil origen</th><th>Perfil canónico</th><th>Membresías</th></tr></thead>
+            <tbody id="preflightPlan"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <details class="gc-id-preflight-json">
+        <summary>JSON técnico</summary>
+        <pre id="preflightJson"></pre>
+      </details>
+    </section>
+  </div>
+
+  <style is:global>
+    .gc-id-preflight{display:grid;gap:18px}
+    .gc-id-preflight-warning{display:grid;gap:5px;padding:14px 16px;border:1px solid rgba(117,216,134,.42);border-radius:14px;background:rgba(117,216,134,.07)}
+    .gc-id-preflight-warning span{color:var(--soft)}
+    .gc-id-preflight-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}
+    .gc-id-preflight-result{display:grid;gap:16px}
+    .gc-id-preflight-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .gc-id-preflight-metrics article{display:grid;gap:5px;padding:15px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025)}
+    .gc-id-preflight-metrics span,.gc-id-preflight-token span{color:var(--dim);font-size:.68rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    .gc-id-preflight-metrics strong{font-size:2rem}
+    .gc-id-preflight-blockers{display:grid;gap:7px;margin-top:12px}
+    .gc-id-preflight-blocker{padding:10px 12px;border-left:3px solid #ff6b6b;background:rgba(255,87,87,.08);border-radius:7px}
+    .gc-id-preflight-token{display:grid;gap:7px;margin-top:14px;padding:14px;border:1px solid rgba(117,216,134,.42);border-radius:12px;background:rgba(117,216,134,.06)}
+    .gc-id-preflight-token code{font-size:1.15rem;color:#9af0a7;overflow-wrap:anywhere}
+    .gc-id-preflight-token small{color:var(--soft)}
+    .gc-table-wrap{overflow:auto}.gc-table{width:100%;border-collapse:collapse;min-width:760px}.gc-table th,.gc-table td{padding:11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.gc-table th{color:var(--dim);font-size:.68rem;text-transform:uppercase}.gc-table code{font-size:.72rem;overflow-wrap:anywhere}
+    .gc-id-preflight-json summary{cursor:pointer;font-weight:900}.gc-id-preflight-json pre{max-height:520px;overflow:auto;white-space:pre-wrap;background:#050805;color:#dfffd8;padding:14px;border-radius:12px}
+    @media(max-width:760px){.gc-id-preflight-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:480px){.gc-id-preflight-metrics{grid-template-columns:1fr}}
+  </style>
+
+  <script>
+    (() => {
+      type AnyRow = Record<string, any>;
+      const get = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+      const button = get<HTMLButtonElement>('preflightRun');
+      const result = get('preflightResult');
+      const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char] || char));
+
+      async function request() {
+        const response = await fetch('/api/gc/ratings/identity-consolidation/preflight', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.message || `HTTP ${response.status}`);
+        return data;
+      }
+
+      function render(data: AnyRow) {
+        result.hidden = false;
+        get('metricSources').textContent = String(data.summary?.sourceProfiles ?? '—');
+        get('metricCanonicals').textContent = String(data.summary?.canonicalProfiles ?? '—');
+        get('metricMemberships').textContent = String(data.summary?.membershipsToMove ?? '—');
+        get('metricBlockers').textContent = String(data.summary?.blockers ?? '—');
+        get('preflightVerdict').textContent = data.readyForApplyDesign ? 'Preflight superado' : 'Preflight bloqueado';
+        get('preflightVerdictMessage').textContent = data.message || '';
+        get('preflightBlockers').innerHTML = (data.blockers || []).map((item: string) => `<div class="gc-id-preflight-blocker">${esc(item)}</div>`).join('');
+        const tokenWrap = get('preflightTokenWrap');
+        tokenWrap.hidden = !data.confirmationToken;
+        get('preflightToken').textContent = data.confirmationToken || '';
+        get<HTMLTableSectionElement>('preflightPlan').innerHTML = (data.plan || []).map((item: AnyRow) => `<tr><td><strong>${esc(item.displayName)}</strong><br><small>${esc(item.sourceDriverKey)}</small></td><td><code>${esc(item.sourceProfileId)}</code></td><td><code>${esc(item.canonicalProfileId)}</code></td><td>${esc(item.membershipsToMove)}</td></tr>`).join('');
+        get('preflightJson').textContent = JSON.stringify(data, null, 2);
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        get('preflightStatus').textContent = 'Comprobando…';
+        get('preflightMessage').textContent = 'Leyendo perfiles, cuenta y membresías en MySQL.';
+        try {
+          const data = await request();
+          render(data);
+          get('preflightStatus').textContent = data.readyForApplyDesign ? 'Sin bloqueos' : 'Bloqueado';
+          get('preflightMessage').textContent = data.message || '';
+        } catch (error) {
+          get('preflightStatus').textContent = 'Error';
+          get('preflightMessage').textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
+</AppLayout>
+

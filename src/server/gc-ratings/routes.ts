@@ -3,6 +3,7 @@ import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
 import { buildMysqlIdentityPreviewV1, readMysqlIdentityPreviewBootstrapV1 } from './identityPreview';
+import { runMysqlIdentityConsolidationPreflightV1 } from './identityConsolidationPreflight';
 
 type RouteOptions = {
   isAdmin?: (req: Request) => Promise<boolean>;
@@ -291,6 +292,30 @@ async function requireAdmin(req: Request) {
       res.json(await buildMysqlIdentityPreviewV1(req.body || {}));
     } catch (error) {
       res.status(200).json({ ok: false, source: 'gc-ratings-v1:identity-preview', readOnly: true, writesAvailable: false, destructiveChangesApplied: false, message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+
+  // GC_PHASE4H3_1_IDENTITY_WEB_PREFLIGHT_V1 — lectura exclusiva desde administración web.
+  app.get('/api/gc/ratings/identity-consolidation/preflight', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const allowed = await requireAdmin(req);
+      if (!allowed) return res.status(403).json({
+        ok: false,
+        source: 'gc-ratings-v1:identity-consolidation-preflight',
+        message: 'Admin requerido.'
+      });
+      res.json(await runMysqlIdentityConsolidationPreflightV1());
+    } catch (error) {
+      res.status(200).json({
+        ok: false,
+        source: 'gc-ratings-v1:identity-consolidation-preflight',
+        readOnly: true,
+        writesAvailable: false,
+        destructiveChangesApplied: false,
+        message: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
