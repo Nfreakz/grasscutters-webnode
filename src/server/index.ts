@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
+import { registerAdminTeamManagementRoutes } from './admin-team-management-routes.js'; // GC_ADMIN_TEAM_MANAGEMENT_V1
 import { registerAcsmChampionshipRoutes } from './acsm-championship-routes';
 import crypto from 'node:crypto';
 import { DEFAULT_PILOT_AVATAR_URL, readAvatarImage } from '../lib/pilot-avatars';
@@ -8412,6 +8413,9 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
+
+// GC_ADMIN_TEAM_MANAGEMENT_V1
+registerAdminTeamManagementRoutes(app, { requireAdmin, useMysqlStorage, useSqliteStorage, ensureMysqlSchema, mysqlQuery, mysqlExecute, withAppSqliteDb, sqliteQuery });
 
 app.get('/api/gc/teams', async (req, res) => {
   try {

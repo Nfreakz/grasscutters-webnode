@@ -1,0 +1,148 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import AdminSubnav from '../../components/AdminSubnav.astro';
+---
+
+<AppLayout title="Admin equipos | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-admin-teams-v1">
+    <section class="gc-hero gc-hero--compact">
+      <div>
+        <span class="gc-kicker">Administración</span>
+        <h1 class="gc-title">Equipos.</h1>
+        <p class="gc-subtitle">Control global de escuderías y pilotos. Las acciones de esta página requieren una sesión administradora.</p>
+      </div>
+      <aside class="gc-live-panel">
+        <div class="gc-live-panel__title"><span>Equipos activos</span><strong id="teamCount">—</strong></div>
+        <div class="gc-status-list">
+          <div class="gc-status-row"><span>Pilotos</span><strong id="driverCount">—</strong></div>
+          <div class="gc-status-row"><span>Estado</span><strong id="loadState">Cargando</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <AdminSubnav />
+
+    <section class="gc-section" id="adminGate" hidden>
+      <div class="gc-slab">
+        <h2>Acceso restringido</h2>
+        <p id="gateMessage">Inicia sesión con una cuenta administradora.</p>
+        <a class="gc-btn gc-btn--primary" href="/login">Login</a>
+      </div>
+    </section>
+
+    <section id="adminContent" hidden>
+      <div class="gc-section-head">
+        <div>
+          <span class="gc-kicker">Gestión global</span>
+          <h2>Todos los equipos</h2>
+          <p>Eliminar un piloto solo cierra su membresía. Eliminar un equipo lo retira de la web y conserva su historial.</p>
+        </div>
+        <button class="gc-btn" id="reloadBtn" type="button">Recargar</button>
+      </div>
+      <p class="gc-message" id="actionMessage" aria-live="polite"></p>
+      <div class="gc-admin-team-list" id="teamList"></div>
+    </section>
+  </div>
+
+  <dialog class="gc-admin-team-dialog" id="deleteDialog">
+    <form method="dialog">
+      <span class="gc-kicker">Acción sensible</span>
+      <h2>Eliminar equipo</h2>
+      <p>El equipo dejará de estar activo y se cerrarán todas sus membresías. Los perfiles, ratings, resultados y palmarés se conservarán.</p>
+      <label>Escribe <strong id="confirmTeamName"></strong> para confirmar
+        <input id="confirmInput" autocomplete="off" />
+      </label>
+      <div class="gc-actions">
+        <button class="gc-btn" value="cancel">Cancelar</button>
+        <button class="gc-btn gc-btn--danger" id="confirmDeleteBtn" type="button">Eliminar equipo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <style is:global>
+    .gc-admin-team-list{display:grid;gap:16px}
+    .gc-admin-team-card{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:18px}
+    .gc-admin-team-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}
+    .gc-admin-team-head h3{margin:0 0 4px}.gc-admin-team-head p{margin:0;color:var(--muted)}
+    .gc-admin-member-list{display:grid;gap:8px}
+    .gc-admin-member{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid var(--line);border-radius:12px}
+    .gc-admin-member strong,.gc-admin-member span{display:block}.gc-admin-member small{color:var(--muted)}
+    .gc-role-pill{border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:.78rem;text-transform:uppercase}
+    .gc-btn--danger{background:#b42318!important;color:#fff!important;border-color:#b42318!important}
+    .gc-admin-team-empty{padding:14px;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+    .gc-admin-team-dialog{max-width:560px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);padding:24px}
+    .gc-admin-team-dialog::backdrop{background:rgba(0,0,0,.72)}
+    .gc-admin-team-dialog label,.gc-admin-team-dialog input{display:block;width:100%}
+    .gc-admin-team-dialog input{margin-top:8px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+    @media(max-width:700px){.gc-admin-team-head{display:grid}.gc-admin-member{grid-template-columns:1fr auto}.gc-admin-member .gc-btn{grid-column:1/-1}}
+  </style>
+
+  <script>
+    type Member = { membershipId:string; displayName:string; driverName?:string; steamGuid?:string; playerId?:number|string; role:string };
+    type Team = { id:string; slug:string; name:string; shortName?:string; members:Member[] };
+    const byId=(id:string)=>document.getElementById(id) as HTMLElement;
+    const esc=(value:unknown)=>String(value??'').replace(/[&<>"']/g,(char)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char]||char));
+    let teams:Team[]=[];
+    let pendingTeam:Team|null=null;
+
+    async function request(url:string, options:RequestInit={}) {
+      const response=await fetch(url,{ credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})},...options });
+      const payload=await response.json().catch(()=>({ok:false,message:'Respuesta no válida.'}));
+      if(!response.ok||payload.ok===false) throw Object.assign(new Error(payload.message||`Error ${response.status}`),{status:response.status});
+      return payload;
+    }
+    function render(){
+      byId('teamCount').textContent=String(teams.length);
+      byId('driverCount').textContent=String(teams.reduce((sum,team)=>sum+team.members.length,0));
+      byId('teamList').innerHTML=teams.length?teams.map(team=>`<article class="gc-admin-team-card">
+        <div class="gc-admin-team-head"><div><h3>${esc(team.name)}</h3><p>${esc(team.shortName||team.slug||team.id)} · ${team.members.length} piloto${team.members.length===1?'':'s'}</p></div>
+        <button class="gc-btn gc-btn--danger" data-delete-team="${esc(team.id)}" type="button">Eliminar equipo</button></div>
+        <div class="gc-admin-member-list">${team.members.length?team.members.map(member=>`<div class="gc-admin-member">
+          <div><strong>${esc(member.displayName)}</strong><small>${esc(member.steamGuid||(`Player ID ${member.playerId??'—'}`))}</small></div>
+          <span class="gc-role-pill">${esc(member.role)}</span>
+          <button class="gc-btn" data-remove-member="${esc(member.membershipId)}" data-team-id="${esc(team.id)}" data-member-name="${esc(member.displayName)}" type="button">Eliminar piloto</button>
+        </div>`).join(''):'<div class="gc-admin-team-empty">Equipo sin pilotos activos.</div>'}</div>
+      </article>`).join(''):'<div class="gc-slab"><h3>No hay equipos activos</h3><p>Cuando se cree un equipo aparecerá aquí.</p></div>';
+    }
+    async function load(){
+      byId('loadState').textContent='Cargando';
+      try{
+        const payload=await request('/api/admin/teams');
+        teams=payload.teams||[];
+        byId('adminGate').hidden=true;byId('adminContent').hidden=false;byId('loadState').textContent='Listo';render();
+      }catch(error:any){
+        byId('loadState').textContent='Sin acceso';
+        if(error?.status===401||error?.status===403){byId('adminContent').hidden=true;byId('adminGate').hidden=false;byId('gateMessage').textContent=error.message;}
+        else{byId('actionMessage').textContent=error?.message||'No se pudieron cargar los equipos.';}
+      }
+    }
+    byId('reloadBtn').addEventListener('click',load);
+    byId('teamList').addEventListener('click',async(event)=>{
+      const target=(event.target as HTMLElement).closest('button') as HTMLButtonElement|null;if(!target)return;
+      const teamId=target.dataset.teamId;const membershipId=target.dataset.removeMember;
+      if(membershipId&&teamId){
+        const name=target.dataset.memberName||'este piloto';
+        if(!confirm(`¿Eliminar a ${name} de este equipo?`))return;
+        target.disabled=true;
+        try{const payload=await request(`/api/admin/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(membershipId)}`,{method:'DELETE'});byId('actionMessage').textContent=payload.message;await load();}
+        catch(error:any){byId('actionMessage').textContent=error.message;target.disabled=false;}
+      }
+      const deleteTeamId=target.dataset.deleteTeam;
+      if(deleteTeamId){
+        pendingTeam=teams.find(team=>team.id===deleteTeamId)||null;if(!pendingTeam)return;
+        byId('confirmTeamName').textContent=pendingTeam.name;(byId('confirmInput') as HTMLInputElement).value='';
+        (byId('deleteDialog') as HTMLDialogElement).showModal();
+      }
+    });
+    byId('confirmDeleteBtn').addEventListener('click',async()=>{
+      if(!pendingTeam)return;
+      const input=byId('confirmInput') as HTMLInputElement;
+      const button=byId('confirmDeleteBtn') as HTMLButtonElement;button.disabled=true;
+      try{
+        const payload=await request(`/api/admin/teams/${encodeURIComponent(pendingTeam.id)}`,{method:'DELETE',body:JSON.stringify({confirmation:input.value})});
+        (byId('deleteDialog') as HTMLDialogElement).close();byId('actionMessage').textContent=payload.message;pendingTeam=null;await load();
+      }catch(error:any){byId('actionMessage').textContent=error.message;}finally{button.disabled=false;}
+    });
+    load();
+  </script>
+</AppLayout>
