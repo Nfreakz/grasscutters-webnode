@@ -3,7 +3,7 @@ import AppLayout from '../../../../layouts/AppLayout.astro';
 import AdminSubnav from '../../../../components/AdminSubnav.astro';
 ---
 
-<!-- GC_PHASE4H3_1_IDENTITY_WEB_PREFLIGHT_V1 -->
+<!-- GC_PHASE4H3_1_1_IDENTITY_MEMBERSHIP_COLLISION_DIAGNOSTICS_V1 -->
 <AppLayout title="Preflight 4H.3 | GrassCutters">
   <div class="gc-page gc-admin-page-clean gc-id-preflight">
     <section class="gc-hero gc-hero--compact">
@@ -50,6 +50,7 @@ import AdminSubnav from '../../../../components/AdminSubnav.astro';
           </div>
         </div>
         <div id="preflightBlockers" class="gc-id-preflight-blockers"></div>
+        <div id="preflightCollisions" class="gc-id-preflight-collisions"></div>
         <div class="gc-id-preflight-token" id="preflightTokenWrap" hidden>
           <span>Token ligado al estado actual</span>
           <code id="preflightToken"></code>
@@ -91,12 +92,18 @@ import AdminSubnav from '../../../../components/AdminSubnav.astro';
     .gc-id-preflight-metrics strong{font-size:2rem}
     .gc-id-preflight-blockers{display:grid;gap:7px;margin-top:12px}
     .gc-id-preflight-blocker{padding:10px 12px;border-left:3px solid #ff6b6b;background:rgba(255,87,87,.08);border-radius:7px}
+    .gc-id-preflight-collisions{display:grid;gap:12px;margin-top:14px}
+    .gc-id-preflight-collision{padding:14px;border:1px solid rgba(255,184,77,.35);border-radius:12px;background:rgba(255,184,77,.06)}
+    .gc-id-preflight-collision h3{margin:0 0 10px}
+    .gc-id-preflight-collision-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .gc-id-preflight-membership{display:grid;gap:4px;padding:11px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.14)}
+    .gc-id-preflight-membership code{font-size:.72rem;overflow-wrap:anywhere}
     .gc-id-preflight-token{display:grid;gap:7px;margin-top:14px;padding:14px;border:1px solid rgba(117,216,134,.42);border-radius:12px;background:rgba(117,216,134,.06)}
     .gc-id-preflight-token code{font-size:1.15rem;color:#9af0a7;overflow-wrap:anywhere}
     .gc-id-preflight-token small{color:var(--soft)}
     .gc-table-wrap{overflow:auto}.gc-table{width:100%;border-collapse:collapse;min-width:760px}.gc-table th,.gc-table td{padding:11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.gc-table th{color:var(--dim);font-size:.68rem;text-transform:uppercase}.gc-table code{font-size:.72rem;overflow-wrap:anywhere}
     .gc-id-preflight-json summary{cursor:pointer;font-weight:900}.gc-id-preflight-json pre{max-height:520px;overflow:auto;white-space:pre-wrap;background:#050805;color:#dfffd8;padding:14px;border-radius:12px}
-    @media(max-width:760px){.gc-id-preflight-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){.gc-id-preflight-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.gc-id-preflight-collision-grid{grid-template-columns:1fr}}
     @media(max-width:480px){.gc-id-preflight-metrics{grid-template-columns:1fr}}
   </style>
 
@@ -127,6 +134,10 @@ import AdminSubnav from '../../../../components/AdminSubnav.astro';
         get('preflightVerdict').textContent = data.readyForApplyDesign ? 'Preflight superado' : 'Preflight bloqueado';
         get('preflightVerdictMessage').textContent = data.message || '';
         get('preflightBlockers').innerHTML = (data.blockers || []).map((item: string) => `<div class="gc-id-preflight-blocker">${esc(item)}</div>`).join('');
+        get('preflightCollisions').innerHTML = (data.collisionDetails || []).map((item: AnyRow) => {
+          const card = (label: string, row: AnyRow) => `<div class="gc-id-preflight-membership"><strong>${esc(label)}</strong><span>Equipo: ${esc(row.teamName || row.teamId || 'Sin nombre')}</span><span>Rol: ${esc(row.role || '—')} · Estado: ${esc(row.status || '—')}</span><span>Usuario: ${esc(row.userId || 'sin vincular')}</span><span>Alta: ${esc(row.joinedAt || row.createdAt || '—')}</span><code>${esc(row.membershipId)}</code></div>`;
+          return `<article class="gc-id-preflight-collision"><h3>${esc(item.displayName)} · ${item.sameTeam ? 'mismo equipo' : 'equipos distintos'}</h3><div class="gc-id-preflight-collision-grid">${card('Membresía del perfil origen', item.source)}${card('Membresía del perfil canónico', item.canonical)}</div></article>`;
+        }).join('');
         const tokenWrap = get('preflightTokenWrap');
         tokenWrap.hidden = !data.confirmationToken;
         get('preflightToken').textContent = data.confirmationToken || '';
@@ -154,4 +165,3 @@ import AdminSubnav from '../../../../components/AdminSubnav.astro';
     })();
   </script>
 </AppLayout>
-

@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H3_1_IDENTITY_WEB_PREFLIGHT_V1
-const VERSION = 'GC_PHASE4H3_1_IDENTITY_WEB_PREFLIGHT_V1';
+// GC_PHASE4H3_1_1_IDENTITY_MEMBERSHIP_COLLISION_DIAGNOSTICS_V1
+const VERSION = 'GC_PHASE4H3_1_1_IDENTITY_MEMBERSHIP_COLLISION_DIAGNOSTICS_V1';
 
 type IdentityMapping = {
   sourceProfileId: string;
@@ -119,10 +119,13 @@ async function readState(pool: Pool) {
     profileIds
   );
   const [memberships] = await pool.query<RowDataPacket[]>(
-    `SELECT id, driver_profile_id, team_id, status, updated_at
-       FROM gc_team_memberships
-      WHERE driver_profile_id IN (${placeholders(profileIds)})
-      ORDER BY id`,
+    `SELECT m.id, m.driver_profile_id, m.team_id, m.user_id, m.role, m.status,
+            m.joined_at, m.left_at, m.created_at, m.updated_at,
+            t.name AS team_name, t.short_name AS team_short_name, t.status AS team_status
+       FROM gc_team_memberships m
+       LEFT JOIN gc_teams t ON t.id = m.team_id
+      WHERE m.driver_profile_id IN (${placeholders(profileIds)})
+      ORDER BY m.id`,
     profileIds
   );
   const [users] = await pool.query<RowDataPacket[]>(
@@ -188,6 +191,49 @@ function validateState(state: Awaited<ReturnType<typeof readState>>) {
   return blockers;
 }
 
+function membershipView(row: any) {
+  return {
+    membershipId: text(row.id),
+    profileId: text(row.driver_profile_id),
+    teamId: text(row.team_id),
+    teamName: text(row.team_name) || null,
+    teamShortName: text(row.team_short_name) || null,
+    teamStatus: text(row.team_status) || null,
+    userId: text(row.user_id) || null,
+    role: text(row.role) || null,
+    status: text(row.status),
+    joinedAt: row.joined_at ? new Date(row.joined_at).toISOString() : null,
+    leftAt: row.left_at ? new Date(row.left_at).toISOString() : null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+  };
+}
+
+function collisionDetails(state: Awaited<ReturnType<typeof readState>>) {
+  const canonicalStatus = new Map<string, any>();
+  for (const row of state.memberships) {
+    if (!canonicalIds.includes(text(row.driver_profile_id))) continue;
+    canonicalStatus.set(`${text(row.driver_profile_id)}::${text(row.status)}`, row);
+  }
+  const collisions: any[] = [];
+  for (const source of state.memberships) {
+    const item = mappings.find((entry) => entry.sourceProfileId === text(source.driver_profile_id));
+    if (!item) continue;
+    const canonical = canonicalStatus.get(`${item.canonicalProfileId}::${text(source.status)}`);
+    if (!canonical) continue;
+    collisions.push({
+      displayName: item.displayName,
+      canonicalProfileId: item.canonicalProfileId,
+      sameTeam: text(source.team_id) === text(canonical.team_id),
+      sameUser: text(source.user_id) === text(canonical.user_id),
+      sameRole: text(source.role) === text(canonical.role),
+      source: membershipView(source),
+      canonical: membershipView(canonical)
+    });
+  }
+  return collisions;
+}
+
 function snapshotForToken(state: Awaited<ReturnType<typeof readState>>) {
   return {
     profiles: state.profiles.map((row) => ({
@@ -245,6 +291,7 @@ export async function runMysqlIdentityConsolidationPreflightV1() {
         blockers: blockers.length
       },
       blockers,
+      collisionDetails: collisionDetails(state),
       plan: mappings.map((item) => ({
         displayName: item.displayName,
         sourceProfileId: item.sourceProfileId,
