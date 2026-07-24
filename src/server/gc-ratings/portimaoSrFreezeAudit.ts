@@ -1,8 +1,10 @@
 import mysql, { type Pool, type RowDataPacket } from 'mysql2/promise';
 import { buildSrComputation } from './srModel';
 
-const VERSION = 'GC_PHASE4J_1_PORTIMAO_SR_FREEZE_AUDIT_V1';
+const VERSION = 'GC_PHASE4J_2_PORTIMAO_SR_FREEZE_AUDIT_EVENT_KEY_FIX_V1';
 const DEFAULT_MIN_CONFIDENCE = 0.55;
+const TARGET_SOURCE_KEY = 'weekly';
+const TARGET_EVENT_ID = '3cf3c3d8-de34-491d-8ef7-0f9944312c4c';
 
 const text = (value: unknown) => String(value ?? '').trim();
 const number = (value: unknown, fallback = 0) => {
@@ -40,26 +42,6 @@ function parseNotes(value: unknown) {
   } catch {
     return [raw];
   }
-}
-
-function portimaoWhereSql() {
-  return `(
-    LOWER(COALESCE(s.track_raw, '')) LIKE '%portimao%'
-    OR LOWER(COALESCE(s.track_raw, '')) LIKE '%portimão%'
-    OR LOWER(COALESCE(s.track_raw, '')) LIKE '%algarve%'
-    OR LOWER(COALESCE(s.track_display, '')) LIKE '%portimao%'
-    OR LOWER(COALESCE(s.track_display, '')) LIKE '%portimão%'
-    OR LOWER(COALESCE(s.track_display, '')) LIKE '%algarve%'
-    OR LOWER(COALESCE(e.event_name, '')) LIKE '%portimao%'
-    OR LOWER(COALESCE(e.event_name, '')) LIKE '%portimão%'
-    OR LOWER(COALESCE(e.event_name, '')) LIKE '%algarve%'
-    OR LOWER(COALESCE(e.championship_name, '')) LIKE '%portimao%'
-    OR LOWER(COALESCE(e.championship_name, '')) LIKE '%portimão%'
-    OR LOWER(COALESCE(e.championship_name, '')) LIKE '%algarve%'
-    OR LOWER(COALESCE(e.notes, '')) LIKE '%portimao%'
-    OR LOWER(COALESCE(e.notes, '')) LIKE '%portimão%'
-    OR LOWER(COALESCE(e.notes, '')) LIKE '%algarve%'
-  )`;
 }
 
 async function readMirrorDriver(db: Pool, row: any) {
@@ -175,11 +157,12 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
         (SELECT COUNT(*) FROM gc_rating_incident i WHERE i.event_result_id=e.id) stored_incident_rows
       FROM gc_rating_event_result e
       LEFT JOIN gc_stracker_session s ON s.session_id=e.stracker_session_id
-      WHERE ${portimaoWhereSql()}
+      WHERE e.source_key = ?
+        AND e.event_id = ?
         AND ABS(COALESCE(e.delta_sr, e.new_sr-e.old_sr, 0)) < 0.005
         AND ABS(COALESCE(e.new_sr, 0)-COALESCE(e.old_sr, 0)) < 0.011
       ORDER BY COALESCE(e.event_date,e.processed_at),e.position,e.display_name,e.id
-    `);
+    `, [TARGET_SOURCE_KEY, TARGET_EVENT_ID]);
 
     const results = [];
     for (const row of candidateRows as any[]) {
@@ -322,6 +305,10 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
         minimumStrackerMatchConfidence: minConfidence,
         frozenDeltaTolerance: 0.005,
         storedSrEqualityTolerance: 0.011
+      },
+      target: {
+        sourceKey: TARGET_SOURCE_KEY,
+        eventId: TARGET_EVENT_ID
       },
       results,
       conclusions: {
