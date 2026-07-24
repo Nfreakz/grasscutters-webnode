@@ -1,6 +1,6 @@
 import mysql, { type Pool, type RowDataPacket } from 'mysql2/promise';
 
-const VERSION = 'GC_PHASE4I_1_STATISTICS_INVARIANTS_AUDIT_V1';
+const VERSION = 'GC_PHASE4I_2_STATISTICS_INVARIANTS_AUDIT_FIX_V1';
 const text = (value: unknown) => String(value ?? '').trim();
 const count = (value: unknown) => Number(value || 0);
 
@@ -28,7 +28,8 @@ export async function readMysqlStatisticsInvariantAuditV1() {
   try {
     const [
       [totals], [storedVsResults], [duplicateResults], [duplicateSteamRatings],
-      [orphanResults], [brokenMemberships], [ratingContinuity], [resultKeyProblems]
+      [orphanResults], [resultsWithoutOptionalProfile], [brokenMemberships],
+      [ratingContinuity], [resultKeyProblems]
     ] = await Promise.all([
       db.query<RowDataPacket[]>(`
         SELECT
@@ -70,10 +71,21 @@ export async function readMysqlStatisticsInvariantAuditV1() {
       db.query<RowDataPacket[]>(`
         SELECT e.id,e.source_key,e.event_id,e.driver_key,e.steam_guid,e.stracker_player_id,e.display_name
         FROM gc_rating_event_result e
-        LEFT JOIN gc_driver_profiles p_key ON p_key.driver_key=e.driver_key
-        LEFT JOIN gc_driver_profiles p_steam ON e.steam_guid IS NOT NULL AND e.steam_guid<>'' AND p_steam.steam_guid=e.steam_guid
-        WHERE p_key.id IS NULL AND p_steam.id IS NULL
+        LEFT JOIN gc_driver_rating r_key ON r_key.driver_key=e.driver_key
+        LEFT JOIN gc_driver_rating r_steam ON e.steam_guid IS NOT NULL AND e.steam_guid<>''
+          AND r_steam.steam_guid=e.steam_guid
+        WHERE r_key.id IS NULL AND r_steam.id IS NULL
         ORDER BY e.processed_at DESC LIMIT 250
+      `),
+      db.query<RowDataPacket[]>(`
+        SELECT e.driver_key,e.steam_guid,MAX(e.display_name) display_name,COUNT(*) result_rows
+        FROM gc_rating_event_result e
+        LEFT JOIN gc_driver_profiles p_key ON p_key.driver_key=e.driver_key
+        LEFT JOIN gc_driver_profiles p_steam ON e.steam_guid IS NOT NULL AND e.steam_guid<>''
+          AND p_steam.steam_guid=e.steam_guid
+        WHERE p_key.id IS NULL AND p_steam.id IS NULL
+        GROUP BY e.driver_key,e.steam_guid
+        ORDER BY display_name
       `),
       db.query<RowDataPacket[]>(`
         SELECT m.id,m.status,m.driver_profile_id,m.team_id,m.user_id,
@@ -88,14 +100,18 @@ export async function readMysqlStatisticsInvariantAuditV1() {
       `),
       db.query<RowDataPacket[]>(`
         SELECT r.driver_key,r.display_name,r.last_event_id,r.last_race_at,r.sr_score,r.gsr_rating,
-          e.id result_id,e.event_id,e.new_sr,e.new_gsr,e.processed_at
+          e.id result_id,e.event_id,e.event_date,e.new_sr,e.new_gsr,e.processed_at
         FROM gc_driver_rating r
         LEFT JOIN gc_rating_event_result e ON e.id=(
           SELECT x.id FROM gc_rating_event_result x
-          WHERE x.driver_key=r.driver_key
-          ORDER BY COALESCE(x.event_date,x.processed_at) DESC,x.processed_at DESC,x.id DESC LIMIT 1
+          WHERE x.event_id=r.last_event_id AND (
+            x.driver_key=r.driver_key OR (
+              r.steam_guid IS NOT NULL AND r.steam_guid<>'' AND x.steam_guid=r.steam_guid
+            )
+          )
+          ORDER BY (x.driver_key=r.driver_key) DESC,x.processed_at DESC,x.id DESC LIMIT 1
         )
-        WHERE e.id IS NULL OR r.last_event_id<>e.event_id
+        WHERE (r.races_count>0 AND (r.last_event_id IS NULL OR e.id IS NULL))
           OR ABS(r.sr_score-e.new_sr)>0.011 OR r.gsr_rating<>e.new_gsr
         ORDER BY r.display_name
       `),
@@ -128,6 +144,7 @@ export async function readMysqlStatisticsInvariantAuditV1() {
         duplicateRaceDriverRows: (duplicateResults as any[]).length,
         duplicateSteamRatings: (duplicateSteamRatings as any[]).length,
         orphanResults: (orphanResults as any[]).length,
+        driversWithoutOptionalProfile: (resultsWithoutOptionalProfile as any[]).length,
         brokenMemberships: (brokenMemberships as any[]).length,
         ratingContinuityMismatches: (ratingContinuity as any[]).length,
         invalidResultKeys: (resultKeyProblems as any[]).length
@@ -137,6 +154,7 @@ export async function readMysqlStatisticsInvariantAuditV1() {
         duplicateRaceDriverRows: duplicateResults,
         duplicateSteamRatings,
         orphanResults,
+        resultsWithoutOptionalProfile,
         brokenMemberships,
         ratingContinuityMismatches: ratingContinuity,
         invalidResultKeys: resultKeyProblems
@@ -145,7 +163,10 @@ export async function readMysqlStatisticsInvariantAuditV1() {
         race: 'Una combinación única source_key + event_id por driver_key.',
         win: 'position = 1 y dsq = 0.',
         podium: 'position entre 1 y 3 y dsq = 0.',
-        cleanRace: 'clean_race = 1.'
+        cleanRace: 'clean_race = 1.',
+        canonicalIdentity: 'Un resultado es canónico cuando coincide con gc_driver_rating por driver_key o SteamID.',
+        driverProfile: 'gc_driver_profiles aporta usuario, equipo y metadatos; es opcional para pilotos con rating sin cuenta o equipo.',
+        ratingContinuity: 'El rating actual debe coincidir con el resultado indicado explícitamente por last_event_id.'
       },
       message: blockers ? 'Hay incoherencias estructurales que deben resolverse antes de continuar.' :
         warnings ? 'Estructura íntegra; hay diferencias estadísticas que requieren revisión.' :
