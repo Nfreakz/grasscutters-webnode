@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-pilot-popover-v2-global.mjs
+node scripts\apply-home-championship-blocks-compact-v1.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Pilot Popover V2.
+  echo No se pudo aplicar el ajuste compacto.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Pilot Popover V2 aplicado y build validado.
+echo Bloques compactados y build validado.
 pause
