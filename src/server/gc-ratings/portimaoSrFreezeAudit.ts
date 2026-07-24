@@ -1,10 +1,12 @@
 import mysql, { type Pool, type RowDataPacket } from 'mysql2/promise';
 import { buildSrComputation } from './srModel';
 
-const VERSION = 'GC_PHASE4J_3_PORTIMAO_SR_EVENT_DISCOVERY_AUDIT_V1';
+const VERSION = 'GC_PHASE4J_4_PORTIMAO_SR_AUDIT_CONSISTENCY_HARDENING_V1';
 const DEFAULT_MIN_CONFIDENCE = 0.55;
 const TARGET_SOURCE_KEY = 'weekly';
 const TARGET_EVENT_ID = '3cf3c3d8-de34-491d-8ef7-0f9944312c4c';
+const FROZEN_DELTA_TOLERANCE = 0.005;
+const STORED_SR_EQUALITY_TOLERANCE = 0.011;
 
 const text = (value: unknown) => String(value ?? '').trim();
 const number = (value: unknown, fallback = 0) => {
@@ -12,6 +14,7 @@ const number = (value: unknown, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 const integer = (value: unknown, fallback = 0) => Math.trunc(number(value, fallback));
+const normalizedText = (value: unknown) => text(value).toLocaleLowerCase();
 
 function mysqlConfig() {
   const url = text(process.env.MYSQL_URL || process.env.DATABASE_URL);
@@ -42,6 +45,13 @@ function parseNotes(value: unknown) {
   } catch {
     return [raw];
   }
+}
+
+function isFrozenOrZeroResult(row: any) {
+  return (
+    Math.abs(number(row.delta_sr, number(row.new_sr) - number(row.old_sr))) < FROZEN_DELTA_TOLERANCE &&
+    Math.abs(number(row.new_sr) - number(row.old_sr)) < STORED_SR_EQUALITY_TOLERANCE
+  );
 }
 
 async function readMirrorDriver(db: Pool, row: any) {
@@ -122,9 +132,14 @@ function classify(row: any, notes: string[], mirrorDriver: any, mirrorLaps: any[
     usableLaps > 0 &&
     confidence >= minConfidence
   );
+  const frozenOrZero = isFrozenOrZeroResult(row);
 
   return {
-    classification: uniqueReasons.length ? 'telemetry-freeze' : 'zero-economy-delta',
+    classification: uniqueReasons.length
+      ? 'telemetry-freeze'
+      : frozenOrZero
+        ? 'zero-economy-delta'
+        : 'healthy-existing-result',
     reasons: uniqueReasons,
     telemetryReliableNow,
     usableLaps
@@ -185,6 +200,21 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
         maxRaceLaps: integer(row.stracker_max_lap_count, integer(row.laps))
       });
       const simulationBreakdown = simulation.breakdown as any;
+      const storedFrozenOrZero = isFrozenOrZeroResult(row);
+      const resultName = text(row.display_name);
+      const mirrorName = mirrorDriver ? text(mirrorDriver.driver_name) : '';
+      const resultSteamGuid = text(row.steam_guid);
+      const mirrorSteamGuid = mirrorDriver ? text(mirrorDriver.steam_guid) : '';
+      const nameMatched = Boolean(resultName && mirrorName && normalizedText(resultName) === normalizedText(mirrorName));
+      const steamGuidMatched = Boolean(
+        resultSteamGuid && mirrorSteamGuid && normalizedText(resultSteamGuid) === normalizedText(mirrorSteamGuid)
+      );
+      const identityMismatchExplained = !nameMatched && steamGuidMatched;
+      const storedSimulationMatches = (
+        Math.abs(number(row.old_sr) - number(simulation.oldSr)) < STORED_SR_EQUALITY_TOLERANCE &&
+        Math.abs(number(row.new_sr) - number(simulation.newSr)) < STORED_SR_EQUALITY_TOLERANCE &&
+        Math.abs(number(row.delta_sr) - number(simulation.deltaSr)) < STORED_SR_EQUALITY_TOLERANCE
+      );
 
       results.push({
         resultId: text(row.id),
@@ -195,24 +225,22 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
         championshipId: text(row.championship_id) || null,
         championshipName: text(row.championship_name) || null,
         driverKey: text(row.driver_key),
-        steamGuid: text(row.steam_guid) || null,
+        steamGuid: resultSteamGuid || null,
         strackerPlayerId: row.stracker_player_id == null ? null : integer(row.stracker_player_id),
-        displayName: text(row.display_name),
+        displayName: resultName,
         car: text(row.car),
         position: integer(row.position),
         stored: {
           oldSr: number(row.old_sr),
           newSr: number(row.new_sr),
           deltaSr: number(row.delta_sr),
-          isFrozenOrZero: (
-            Math.abs(number(row.delta_sr, number(row.new_sr) - number(row.old_sr))) < 0.005 &&
-            Math.abs(number(row.new_sr) - number(row.old_sr)) < 0.011
-          ),
+          isFrozenOrZero: storedFrozenOrZero,
           incidentPoints: number(row.incident_points),
           cleanRace: Boolean(row.clean_race),
           laps: integer(row.laps),
           lapRows: integer(row.stored_lap_rows),
           validLaps: integer(row.stored_valid_laps),
+          validTimingLaps: integer(row.stored_valid_laps),
           cuts: integer(row.stored_cuts),
           collisionsCar: integer(row.stored_collisions_car),
           collisionsEnv: integer(row.stored_collisions_env),
@@ -226,7 +254,14 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
           strackerSessionId: row.stracker_session_id == null ? null : integer(row.stracker_session_id),
           playerInSessionId: row.match_player_in_session_id == null ? null : integer(row.match_player_in_session_id),
           bestLapDiffMs: row.match_best_lap_diff_ms == null ? null : integer(row.match_best_lap_diff_ms),
-          lapDiff: row.match_lap_diff == null ? null : integer(row.match_lap_diff)
+          lapDiff: row.match_lap_diff == null ? null : integer(row.match_lap_diff),
+          identity: {
+            nameMatched,
+            steamGuidMatched,
+            mismatchExplained: identityMismatchExplained,
+            resultName: resultName || null,
+            strackerName: mirrorName || null
+          }
         },
         stracker: {
           sessionFound: Boolean(row.stracker_session_id && (row.track_raw != null || row.track_display != null)),
@@ -242,24 +277,30 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
           driver: mirrorDriver ? {
             playerId: mirrorDriver.player_id == null ? null : integer(mirrorDriver.player_id),
             playerInSessionId: integer(mirrorDriver.player_in_session_id),
-            name: text(mirrorDriver.driver_name),
-            steamGuid: text(mirrorDriver.steam_guid) || null,
+            name: mirrorName,
+            steamGuid: mirrorSteamGuid || null,
             laps: integer(mirrorDriver.laps),
             bestLapMs: integer(mirrorDriver.best_lap_ms),
             cuts: integer(mirrorDriver.cuts),
             collisionsCar: integer(mirrorDriver.collisions_car),
             collisionsEnv: integer(mirrorDriver.collisions_env),
-            raceFinished: Boolean(mirrorDriver.race_finished)
+            raceFinished: Boolean(mirrorDriver.race_finished),
+            raceFinishedReliable: false
           } : null,
           lapRows: mirrorLaps.length,
           usableLaps: diagnosis.usableLaps,
           validLaps: mirrorLaps.filter((lap) => lap.valid).length,
+          validTimingLaps: mirrorLaps.filter((lap) => lap.valid).length,
+          cleanIncidentLaps: mirrorLaps.filter((lap) => (
+            integer(lap.collisionsCar) === 0 && integer(lap.collisionsEnv) === 0
+          )).length,
           cuts: mirrorLaps.reduce((sum, lap) => sum + integer(lap.cuts), 0),
           collisionsCar: mirrorLaps.reduce((sum, lap) => sum + integer(lap.collisionsCar), 0),
           collisionsEnv: mirrorLaps.reduce((sum, lap) => sum + integer(lap.collisionsEnv), 0)
         },
         diagnosis: {
           ...diagnosis,
+          storedSimulationMatches,
           currentModelSimulation: {
             oldSr: simulation.oldSr,
             newSr: simulation.newSr,
@@ -279,9 +320,24 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
     const zeroEconomy = frozenOrZero.filter((row) => row.diagnosis.classification === 'zero-economy-delta');
     const nowRecoverable = frozenOrZero.filter((row) =>
       row.diagnosis.telemetryReliableNow &&
-      Math.abs(number(row.diagnosis.currentModelSimulation.deltaSr)) >= 0.005
+      Math.abs(number(row.diagnosis.currentModelSimulation.deltaSr)) >= FROZEN_DELTA_TOLERANCE
     );
     const expectedSeven = results.length === 7;
+    const storedSimulationMismatches = results.filter((row) => !row.diagnosis.storedSimulationMatches);
+    const unexplainedIdentityMismatches = results.filter((row) => (
+      !row.match.identity.nameMatched && !row.match.identity.mismatchExplained
+    ));
+    const invalidDiagnosticClassifications = results.filter((row) => (
+      (!row.stored.isFrozenOrZero && row.diagnosis.classification !== 'healthy-existing-result') ||
+      (row.stored.isFrozenOrZero && row.diagnosis.reasons.length === 0 && row.diagnosis.classification !== 'zero-economy-delta')
+    ));
+    const safeToClosePhase4J = Boolean(
+      expectedSeven &&
+      frozenOrZero.length === 0 &&
+      storedSimulationMismatches.length === 0 &&
+      unexplainedIdentityMismatches.length === 0 &&
+      invalidDiagnosticClassifications.length === 0
+    );
 
     return {
       ok: true,
@@ -292,6 +348,7 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       writesAvailable: false,
       destructiveChangesApplied: false,
       safeToContinue: expectedSeven,
+      safeToClosePhase4J,
       summary: {
         targetEventResults: results.length,
         frozenOrZeroResults: frozenOrZero.length,
@@ -303,12 +360,16 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
         belowConfidenceThreshold: results.filter((row) => row.match.confidence < minConfidence).length,
         missingSessionLinks: results.filter((row) => !row.match.strackerSessionId).length,
         missingMirrorDrivers: results.filter((row) => !row.stracker.driverFound).length,
-        missingUsableLaps: results.filter((row) => row.stracker.usableLaps === 0).length
+        missingUsableLaps: results.filter((row) => row.stracker.usableLaps === 0).length,
+        storedSimulationMismatches: storedSimulationMismatches.length,
+        explainedIdentityMismatches: results.filter((row) => row.match.identity.mismatchExplained).length,
+        unexplainedIdentityMismatches: unexplainedIdentityMismatches.length,
+        invalidDiagnosticClassifications: invalidDiagnosticClassifications.length
       },
       thresholds: {
         minimumStrackerMatchConfidence: minConfidence,
-        frozenDeltaTolerance: 0.005,
-        storedSrEqualityTolerance: 0.011
+        frozenDeltaTolerance: FROZEN_DELTA_TOLERANCE,
+        storedSrEqualityTolerance: STORED_SR_EQUALITY_TOLERANCE
       },
       target: {
         sourceKey: TARGET_SOURCE_KEY,
@@ -318,17 +379,20 @@ export async function readMysqlPortimaoSrFreezeAuditV1() {
       conclusions: {
         requiresCorrectionPlan: frozenOrZero.length > 0 && nowRecoverable.length > 0,
         correctionNotIncluded: true,
-        reason: expectedSeven
-          ? frozenOrZero.length > 0
-            ? `Se han localizado los siete resultados; ${frozenOrZero.length} siguen congelados o con delta cero. Este auditor no modifica ni reprocesa datos.`
-            : 'Se han localizado los siete resultados y ninguno sigue congelado o con delta cero. No corresponde preparar una corrección.'
-          : `Se esperaban siete resultados y se han localizado ${results.length}; no debe prepararse una corrección hasta resolver la diferencia.`
+        safeToClosePhase4J,
+        reason: !expectedSeven
+          ? `Se esperaban siete resultados y se han localizado ${results.length}; no debe cerrarse la fase.`
+          : frozenOrZero.length > 0
+            ? `Se han localizado los siete resultados; ${frozenOrZero.length} siguen congelados o con delta cero.`
+            : !safeToClosePhase4J
+              ? 'Los siete resultados están calculados, pero la auditoría conserva inconsistencias de identidad, simulación o clasificación.'
+              : 'Los siete resultados están calculados, coinciden con la simulación y no quedan inconsistencias bloqueantes. Puede cerrarse la Phase 4J.'
       },
-      message: expectedSeven
-        ? frozenOrZero.length > 0
-          ? `Auditoría completada: ${frozenOrZero.length} de los siete resultados siguen congelados o con delta cero.`
-          : 'Auditoría completada: los siete resultados existen y ninguno continúa congelado.'
-        : `Revisión bloqueada: se esperaban siete resultados SR de Portimão y se han localizado ${results.length}.`
+      message: safeToClosePhase4J
+        ? 'Auditoría completada: Portimão está sano y la Phase 4J puede cerrarse.'
+        : expectedSeven
+          ? 'Auditoría completada con inconsistencias pendientes; no debe cerrarse todavía la Phase 4J.'
+          : `Revisión bloqueada: se esperaban siete resultados SR de Portimão y se han localizado ${results.length}.`
     };
   } finally {
     await db.end();
