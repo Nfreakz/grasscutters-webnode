@@ -1,4 +1,5 @@
 import express, { type Express, type Request } from 'express';
+import { json as expressJson } from 'express';
 import { getGcRatingsService } from './ratingService';
 import { getStrackerMirrorDiagnostics, getStrackerMirrorSqlitePath, getStrackerRaceCandidatesFromMirror, syncStrackerToSqlMirror } from './strackerSqlMirror';
 import { readMysqlIdentityAuditV1 } from './identityAudit';
@@ -11,6 +12,7 @@ type RouteOptions = {
 };
 
 export function registerGcRatingRoutes(app: Express, options: RouteOptions = {}) {
+  const identityConsolidationJsonBodyV1 = expressJson({ limit: '32kb' });
   const service = getGcRatingsService();
   const cronSecret = String(process.env.GC_RATINGS_CRON_SECRET || '').trim();
 
@@ -334,12 +336,12 @@ async function requireAdmin(req: Request) {
     catch (error) { res.status(500).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
   });
 
-  app.post('/api/gc/ratings/identity-consolidation/apply', async (req, res) => {
+  app.post('/api/gc/ratings/identity-consolidation/apply', identityConsolidationJsonBodyV1, async (req, res) => {
     if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
     try { res.setHeader('Cache-Control','no-store'); res.json(await applyIdentityConsolidationV1(req.body || {})); }
     catch (error) { res.status(409).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }
   });
-  app.post('/api/gc/ratings/identity-consolidation/rollback', async (req, res) => {
+  app.post('/api/gc/ratings/identity-consolidation/rollback', identityConsolidationJsonBodyV1, async (req, res) => {
     if (!await requireAdmin(req)) return res.status(403).json({ok:false,message:'Admin requerido.'});
     try { res.setHeader('Cache-Control','no-store'); res.json(await rollbackIdentityConsolidationV1(req.body || {})); }
     catch (error) { res.status(409).json({ok:false,message:error instanceof Error ? error.message : String(error)}); }

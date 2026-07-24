@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 
-// GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1
-const VERSION = 'GC_PHASE4H3_2_2_SHARED_APPLY_PREFLIGHT_V1';
+// GC_PHASE4H3_2_3_ROUTE_JSON_BODY_FIX_V1
+const VERSION = 'GC_PHASE4H3_2_3_ROUTE_JSON_BODY_FIX_V1';
 const PLAN_HASH = '2745c700cd7ab624c7f4cc6e5cc208e3b2264805f37f7f552d6d08fade9f003b';
 
 const mappings = [
@@ -162,6 +162,7 @@ export async function preflightIdentityConsolidationApplyV1() {
 
 export async function applyIdentityConsolidationV1(input: { token?: string; confirmation?: string }) {
   return withPool(async (pool) => {
+    if (!text(input.token)) throw new Error('Token no recibido. La petición JSON no llegó al servidor.');
     await ensureAuditTable(pool);
     const connection = await pool.getConnection();
     try {
