@@ -1,0 +1,20 @@
+---
+import AppLayout from '../../../../layouts/AppLayout.astro';
+import AdminSubnav from '../../../../components/AdminSubnav.astro';
+---
+<!-- GC_PHASE4H3_3_ADRI_POLICE1370_RECONCILIATION_V1 -->
+<AppLayout title="Adri → Police1370 | GrassCutters">
+  <div class="gc-page gc-admin-page-clean gc-adri">
+    <section class="gc-hero gc-hero--compact"><div><span class="gc-kicker">Administración · Ratings · 4H.3.3</span><h1 class="gc-title">Adri → Police1370</h1><p class="gc-subtitle">Reconciliación dirigida. El perfil 36 queda protegido y fuera del plan.</p></div></section>
+    <AdminSubnav />
+    <section class="gc-section gc-card"><h2>1. Preflight</h2><button class="gc-btn gc-btn--primary" id="preflight">Ejecutar preflight</button><pre id="preflightOut">Pendiente.</pre></section>
+    <section class="gc-section gc-card" id="applyCard" hidden><h2>2. Confirmación</h2><code id="phrase"></code><input id="confirmation" autocomplete="off" spellcheck="false"/><button class="gc-btn gc-btn--primary" id="apply">Aplicar una vez</button></section>
+    <pre id="result" hidden></pre>
+  </div>
+  <style is:global>
+    .gc-adri{display:grid;gap:18px}.gc-adri .gc-card{display:grid;gap:12px;padding:18px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}.gc-adri pre{white-space:pre-wrap;overflow:auto;padding:14px;border-radius:10px;background:#050805;color:#dfffd8}.gc-adri input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:rgba(0,0,0,.25);color:var(--text)}.gc-adri code{overflow-wrap:anywhere;color:#9af0a7}
+  </style>
+  <script>
+    (()=>{let token='';const el=(id:string)=>document.getElementById(id) as HTMLElement;const request=async(url:string,options:RequestInit={})=>{const response=await fetch(url,{credentials:'include',cache:'no-store',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok||data.ok===false)throw new Error(data.message||`HTTP ${response.status}`);return data};const show=(value:unknown)=>{el('result').hidden=false;el('result').textContent=JSON.stringify(value,null,2)};el('preflight').addEventListener('click',async()=>{try{const data=await request('/api/gc/ratings/identity-consolidation/adri-police1370/preflight',{method:'POST'});el('preflightOut').textContent=JSON.stringify(data,null,2);if(!data.readyForApply||!data.confirmationToken)return;token=String(data.confirmationToken);el('phrase').textContent=String(data.confirmation);(el('confirmation') as HTMLInputElement).value='';el('applyCard').hidden=false}catch(error){show({ok:false,message:error instanceof Error?error.message:String(error)})}});el('apply').addEventListener('click',async()=>{if(!confirm('Se modificará MySQL de producción. ¿Continuar?'))return;try{const data=await request('/api/gc/ratings/identity-consolidation/adri-police1370/apply',{method:'POST',body:JSON.stringify({token,confirmation:(el('confirmation') as HTMLInputElement).value})});show(data);el('applyCard').hidden=true}catch(error){show({ok:false,message:error instanceof Error?error.message:String(error)})}})})();
+  </script>
+</AppLayout>
