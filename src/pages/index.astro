@@ -2,6 +2,30 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 import '../styles/public/gc-rating-badges.css';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/* GC_HOME_STATIC_TRACK_IMAGES_V1 */
+const homeTracksDir = path.join(process.cwd(), 'public', 'images', 'tracks');
+const homeTrackExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif']);
+const homeHeroTrackImages: string[] = [];
+
+function collectHomeTrackImages(directory: string) {
+  if (!fs.existsSync(directory)) return;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      collectHomeTrackImages(absolute);
+      continue;
+    }
+    if (!homeTrackExtensions.has(path.extname(entry.name).toLowerCase())) continue;
+    const relative = path.relative(path.join(process.cwd(), 'public'), absolute).split(path.sep).map(encodeURIComponent).join('/');
+    homeHeroTrackImages.push(`/${relative}`);
+  }
+}
+
+collectHomeTrackImages(homeTracksDir);
+homeHeroTrackImages.sort((a, b) => a.localeCompare(b));
 const title = 'GrassCutters Racing | Sim racing, hotlaps y comunidad';
 const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, campeonatos y herramientas para pilotos.';
 
@@ -23,7 +47,11 @@ const home2ArchiveSeed: unknown[] = [];
 
 <!-- GC_PROMOTE_HOME2_TO_MAIN_HOME_V1 -->
 <MarketingLayout title={title} description={description} canonicalPath="/" ogImage="/og/home-og-v1531.png" ogImageAlt="GrassCutters Racing">
-  <main class="gc-home2 gc-home2--main-home" data-gc-home2="hybrid-v4">
+  <main
+    class="gc-home2 gc-home2--main-home"
+    data-gc-home2="hybrid-v4"
+    data-home2-static-track-images={JSON.stringify(homeHeroTrackImages)}
+  >
     <section class="gc-home2-hero" aria-labelledby="gc-home2-title">
       <img
         class="gc-home2-hero__bg"
@@ -2315,7 +2343,66 @@ const home2ArchiveSeed: unknown[] = [];
       min-width:24px !important;
     }
 
+
+    /* GC_HOME_RATINGS_INTER_FONT_V1
+       Fuerza la misma tipografía legible usada en el resto de la home.
+       Inter evita que el cero se confunda con un ocho. */
+    .gc-home2 .gc-home2-panel--ratings,
+    .gc-home2 .gc-home2-panel--ratings *,
+    .gc-home2 .gc-home2-rating-table,
+    .gc-home2 .gc-home2-rating-table th,
+    .gc-home2 .gc-home2-rating-table td,
+    .gc-home2 .gc-home2-rating-driver,
+    .gc-home2 .gc-home2-rating-driver a,
+    .gc-home2 .gc-home2-rating-driver strong,
+    .gc-home2 .gc-home2-rating-driver small,
+    .gc-home2 .gc-home2-rating-delta,
+    .gc-home2 .gc-rating-badge,
+    .gc-home2 .gc-rating-badge strong,
+    .gc-home2 .gc-rating-badge small{
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important;
+      font-variant-numeric:tabular-nums lining-nums;
+      font-feature-settings:"tnum" 1,"lnum" 1,"zero" 0;
+    }
+
+    .gc-home2 .gc-home2-rating-table .gc-home2-ranking-medal{
+      font-family:Inter,system-ui,sans-serif !important;
+    }
+
+    /* GC_HOME_STATIC_HERO_TRACK_V1 */
+    .gc-home2 .gc-home2-hero__bg{
+      transition:none !important;
+      animation:none !important;
+    }
+
   </style>
+
+  <script is:inline>
+    /* GC_HOME_STATIC_HERO_TRACK_V1 */
+    (() => {
+      const root = document.querySelector('[data-gc-home2]');
+      const image = document.querySelector('[data-home2-track-image]');
+      if (!root || !image) return;
+
+      let images = [];
+      try {
+        images = JSON.parse(root.getAttribute('data-home2-static-track-images') || '[]');
+      } catch {
+        images = [];
+      }
+
+      if (!Array.isArray(images) || images.length === 0) return;
+      const selected = images[Math.floor(Math.random() * images.length)];
+      window.__GC_HOME_STATIC_HERO_IMAGE__ = selected;
+
+      const applySelected = () => {
+        if (image.getAttribute('src') !== selected) image.setAttribute('src', selected);
+      };
+
+      applySelected();
+      new MutationObserver(applySelected).observe(image, { attributes: true, attributeFilter: ['src'] });
+    })();
+  </script>
 
   <script is:inline src="/js/gc-track-images.js"></script>
   <script is:inline src="/js/gc-home-track-resolver.js?v=25-online-delivery"></script>
@@ -2358,11 +2445,35 @@ const home2ArchiveSeed: unknown[] = [];
         return '';
       };
 
+      /* GC_HOME_RATINGS_CUSTOM_AVATARS_V1 */
+      const ratingPilotId = (row: any): string => {
+        const direct = readRatingValue(row, [
+          'profilePlayerId', 'profile.playerId', 'strackerPlayerId', 'pilotId',
+          'playerId', 'driverId', 'rawPlayerId', 'steamGuid', 'steamGUID',
+          'steamId', 'steamID', 'steamId64', 'guid', 'GUID',
+          'player.id', 'player.guid', 'driver.id', 'driver.guid', 'pilot.id'
+        ]);
+        if (direct !== undefined && direct !== null && direct !== '') return String(direct);
+
+        const driverKey = String(readRatingValue(row, ['driverKey', 'driver_key', 'identityKey']) || '');
+        const keyed = driverKey.match(/^(?:player|pilot|driver|steam|guid):(.+)$/i);
+        return keyed?.[1] ? keyed[1] : '';
+      };
+
       const ratingPilotAvatarUrl = (row: any): string => {
-        const direct = readRatingValue(row, ['avatarUrl', 'avatar_url', 'imageUrl', 'image', 'driver.avatarUrl', 'player.avatarUrl', 'pilot.avatarUrl']);
-        if (direct) return String(direct);
-        const id = readRatingValue(row, ['profilePlayerId', 'strackerPlayerId', 'pilotId', 'playerId', 'driverId', 'id', 'player.id', 'driver.id']);
-        if (id !== undefined && id !== null && id !== '') return `/api/pilot-avatar/${encodeURIComponent(String(id))}`;
+        const direct = readRatingValue(row, [
+          'customAvatarUrl', 'custom_avatar_url', 'profileAvatarUrl', 'profile_avatar_url',
+          'avatarUrl', 'avatar_url', 'avatarPath', 'avatar_path', 'pilotAvatarUrl',
+          'pilot_avatar_url', 'imageUrl', 'image',
+          'profile.avatarUrl', 'profile.avatar_url', 'profile.avatar',
+          'driver.avatarUrl', 'driver.avatar_url', 'driver.imageUrl', 'driver.avatar',
+          'player.avatarUrl', 'player.avatar_url', 'player.imageUrl', 'player.avatar',
+          'pilot.avatarUrl', 'pilot.avatar_url', 'pilot.imageUrl', 'pilot.avatar'
+        ]);
+        if (direct && String(direct) !== '/images/pilot-avatar-default.png') return String(direct);
+
+        const id = ratingPilotId(row);
+        if (id) return `/api/pilot-avatar/${encodeURIComponent(id)}`;
         return '/images/pilot-avatar-default.png';
       };
 
@@ -2411,9 +2522,7 @@ const home2ArchiveSeed: unknown[] = [];
 
       const driverLink = (row: any): string => {
         const name = formatDriverName(row?.driver || row?.name || 'Piloto');
-        const directPlayerId = row?.profilePlayerId || row?.strackerPlayerId || '';
-        const driverKey = String(row?.driverKey || '');
-        const playerId = directPlayerId || (driverKey.startsWith('player:') ? driverKey.replace('player:', '') : '');
+        const playerId = ratingPilotId(row);
         const avatar = escapeHtml(ratingPilotAvatarUrl(row));
         const main = playerId
           ? `<a href="/pilotos/${encodeURIComponent(String(playerId))}">${escapeHtml(name)}</a>`
