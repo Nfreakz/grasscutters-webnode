@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-champ-sr-badges-v6-2.mjs
+node scripts\apply-home-champ-numbers-white-v6-3.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Badges V6.2.
+  echo No se pudo aplicar Championship V6.3.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Badges V6.2 aplicado y build validado.
+echo Championship V6.3 aplicado y build validado.
 pause
