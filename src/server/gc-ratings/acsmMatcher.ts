@@ -2,14 +2,34 @@ import { clamp, normalizeIdentity, normalizeTrack, numberValue, sessionTimeMs, t
 import type { MatchDebug, PlainObject } from './types';
 
 function eventTrackKeys(event: PlainObject) {
-  return [event.trackRaw, event.track, event.trackSlug, event.name].map(normalizeTrack).filter(Boolean);
+  return [...new Set(
+    [event.trackRaw, event.track, event.trackSlug, event.name]
+      .map(normalizeTrack)
+      .filter(Boolean)
+  )];
 }
 
-function trackMatches(event: PlainObject, session: PlainObject) {
-  const keys = eventTrackKeys(event);
-  if (!keys.length) return true;
-  const values = [session.Track, session.UiTrackName].map(normalizeTrack);
-  return keys.some((key) => values.some((value) => value && (value.includes(key) || key.includes(value))));
+function sessionTrackKeys(session: PlainObject) {
+  return [...new Set(
+    [session.Track, session.UiTrackName]
+      .map(normalizeTrack)
+      .filter(Boolean)
+  )];
+}
+
+function trackMatchQuality(event: PlainObject, session: PlainObject) {
+  const eventKeys = eventTrackKeys(event);
+  const sessionKeys = sessionTrackKeys(session);
+  if (!eventKeys.length || !sessionKeys.length) return 0;
+
+  for (const eventKey of eventKeys) {
+    for (const sessionKey of sessionKeys) {
+      if (eventKey === sessionKey) return 3;
+      if (eventKey.includes(sessionKey) || sessionKey.includes(eventKey)) return 2;
+    }
+  }
+
+  return -1;
 }
 
 export function identifyRaceSession(event: PlainObject, sessions: PlainObject[]) {
@@ -18,17 +38,46 @@ export function identifyRaceSession(event: PlainObject, sessions: PlainObject[])
   const officialDriverCount = officialRows.length;
   const officialLapTotal = officialRows.reduce((sum, row) => sum + numberValue(row.numLaps, 0), 0);
 
-  return sessions
-    .filter((session) => trackMatches(event, session))
+  const ranked = sessions
     .map((session) => {
       const startMs = numberValue(session.StartTimeDate, 0) * 1000;
-      const timeDiffSeconds = targetMs ? Math.round(Math.abs(startMs - targetMs) / 1000) : 0;
-      const driverDiff = Math.abs(numberValue(session.PlayerCount, 0) - officialDriverCount);
-      const lapDiff = Math.abs(numberValue(session.LapCount, 0) - officialLapTotal);
-      const score = timeDiffSeconds + driverDiff * 180 + lapDiff * 2 - 100;
-      return { ...session, _timeDiffSeconds: timeDiffSeconds, _matchScore: score };
+      const timeDiffSeconds = targetMs && startMs
+        ? Math.round(Math.abs(startMs - targetMs) / 1000)
+        : 0;
+      const driverDiff = officialDriverCount
+        ? Math.abs(numberValue(session.PlayerCount, 0) - officialDriverCount)
+        : 0;
+      const lapDiff = officialLapTotal
+        ? Math.abs(numberValue(session.LapCount, 0) - officialLapTotal)
+        : 0;
+      const trackQuality = trackMatchQuality(event, session);
+
+      // El nombre del circuito ayuda, pero no bloquea. Esto permite enlazar
+      // Ricardo Tormo con Valencia/Cheste cuando fecha, pilotos y vueltas coinciden.
+      const trackAdjustment = trackQuality === 3
+        ? -7200
+        : trackQuality === 2
+          ? -3600
+          : trackQuality === 0
+            ? 0
+            : 21600;
+
+      const score = timeDiffSeconds + driverDiff * 180 + lapDiff * 2 + trackAdjustment;
+
+      return {
+        ...session,
+        _timeDiffSeconds: timeDiffSeconds,
+        _driverDiff: driverDiff,
+        _lapDiff: lapDiff,
+        _trackMatchQuality: trackQuality,
+        _matchScore: score
+      };
     })
-    .sort((left, right) => numberValue(left._matchScore, 0) - numberValue(right._matchScore, 0))[0] || null;
+    // Con fecha oficial conocida no aceptamos sesiones de otros fines de semana.
+    .filter((session) => !targetMs || !session._timeDiffSeconds || session._timeDiffSeconds <= 72 * 60 * 60)
+    .sort((left, right) => numberValue(left._matchScore, 0) - numberValue(right._matchScore, 0));
+
+  return ranked[0] || null;
 }
 
 function carMatches(result: PlainObject, candidate: PlainObject) {
@@ -68,7 +117,6 @@ function candidateScore(result: PlainObject, candidate: PlainObject) {
 
   let score = 0;
 
-  // Mega Update v109:
   // SteamID/GUID manda. Si ACSM y sTracker tienen GUID y coinciden, el match es casi seguro.
   if (guidMatch) score -= 120000;
   if (hasOfficialGuid && hasCandidateGuid && !guidMatch) score += 120000;
