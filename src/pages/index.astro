@@ -5302,9 +5302,8 @@ const home2ArchiveSeed: unknown[] = [];
       });
     })();
   </script>
-
   <style is:global>
-    /* GC_HOME_PILOT_POPOVER_RATINGS_STATS_V3 */
+    /* GC_HOME_PILOT_POPOVER_UNIFIED_V4 */
     .gc-home-pilot-popover__rating{
       padding:7px !important;
       background:rgba(255,255,255,.018) !important;
@@ -5320,7 +5319,7 @@ const home2ArchiveSeed: unknown[] = [];
     }
 
     .gc-home-pilot-popover__rating .gc-rating-badge__type{
-      min-width:25px;
+      min-width:27px;
     }
 
     .gc-home-pilot-popover__rating .gc-rating-badge strong{
@@ -5330,27 +5329,32 @@ const home2ArchiveSeed: unknown[] = [];
 
     .gc-home-pilot-popover__rating .gc-rating-badge small{
       font-size:11px;
-      opacity:.95;
+      opacity:.96;
     }
 
-    .gc-home-pilot-popover__stat strong[data-stat="official-races"],
-    .gc-home-pilot-popover__stat strong[data-stat="podiums"]{
-      color:#f4fff1;
+    .gc-home-pilot-popover__stat strong{
+      color:#96ff2f !important;
     }
   </style>
 
   <script>
-    /* GC_HOME_PILOT_POPOVER_RATINGS_STATS_V3 */
+    /* GC_HOME_PILOT_POPOVER_UNIFIED_V4 */
     (() => {
-      type RatingSummary = {
+      type PilotSummary = {
+        id: string;
         name: string;
+        steamGuid: string;
+        avatarUrl: string;
         srClass: string;
         srScore: number | null;
         gsrClass: string;
         gsrScore: number | null;
-        races: number;
-        wins: number;
-        podiums: number;
+        validLaps: number | null;
+        totalLaps: number | null;
+        totalHours: number | null;
+        active30dLaps: number | null;
+        cleanRate: number | null;
+        tracksCount: number | null;
       };
 
       const popover = document.querySelector<HTMLElement>(
@@ -5359,7 +5363,10 @@ const home2ArchiveSeed: unknown[] = [];
 
       if (!popover) return;
 
-      const byName = new Map<string, RatingSummary>();
+      const byName = new Map<string, PilotSummary>();
+      const byId = new Map<string, PilotSummary>();
+      const byGuid = new Map<string, PilotSummary>();
+
       let loaded = false;
       let loading: Promise<void> | null = null;
       let timer = 0;
@@ -5371,17 +5378,130 @@ const home2ArchiveSeed: unknown[] = [];
         .replace(/[\u0300-\u036f]/g,'')
         .replace(/[^a-z0-9]+/g,'');
 
+      const clean = (value: unknown): string =>
+        String(value ?? '').trim();
+
+      const guid = (value: unknown): string =>
+        clean(value).toLowerCase().replace(/^steam:/,'');
+
       const num = (value: unknown): number | null => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : null;
       };
 
-      const classKey = (value: unknown): string => String(value || 'unknown')
-        .trim()
-        .toLowerCase()
-        .replace('+','plus')
-        .replace(/[^a-z0-9]+/g,'-')
-        .replace(/^-|-$/g,'') || 'unknown';
+      const numericId = (value: string): number => {
+        const parsed = Number(value);
+        return Number.isSafeInteger(parsed) && parsed > 0
+          ? parsed
+          : Number.MAX_SAFE_INTEGER;
+      };
+
+      const extractRows = (payload: any): any[] => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.pilots)) return payload.pilots;
+        if (Array.isArray(payload?.data?.items)) return payload.data.items;
+        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
+        return [];
+      };
+
+      const toSummary = (row: any): PilotSummary => {
+        const id = clean(row?.playerId ?? row?.id);
+        return {
+          id,
+          name:clean(row?.displayName || row?.publicName || row?.name),
+          steamGuid:guid(row?.steamGuid),
+          avatarUrl:clean(
+            row?.avatarUrl ||
+            (id ? `/api/pilot-avatar/${encodeURIComponent(id)}` : '')
+          ),
+          srClass:clean(row?.srClass),
+          srScore:num(row?.srScore),
+          gsrClass:clean(row?.gsrClass),
+          gsrScore:num(row?.gsrScore),
+          validLaps:num(row?.validLaps),
+          totalLaps:num(row?.totalLaps),
+          totalHours:num(row?.totalHours),
+          active30dLaps:num(row?.active30dLaps),
+          cleanRate:num(row?.cleanRate),
+          tracksCount:num(row?.tracksCount)
+        };
+      };
+
+      const preferCanonical = (
+        current: PilotSummary | undefined,
+        candidate: PilotSummary
+      ): PilotSummary => {
+        if (!current) return candidate;
+        return numericId(candidate.id) < numericId(current.id)
+          ? candidate
+          : current;
+      };
+
+      const load = async (): Promise<void> => {
+        if (loaded) return;
+        if (loading) return loading;
+
+        loading = (async (): Promise<void> => {
+          const response = await fetch(
+            '/api/gc/pilots2?source=all&limit=all',
+            {
+              credentials:'same-origin',
+              headers:{Accept:'application/json'}
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Pilots2 HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          const rows = extractRows(payload);
+
+          for (const row of rows) {
+            const candidate = toSummary(row);
+            if (!candidate.id || !candidate.name) continue;
+
+            const nameKey = normalize(candidate.name);
+            const guidKey = candidate.steamGuid;
+
+            byName.set(
+              nameKey,
+              preferCanonical(byName.get(nameKey),candidate)
+            );
+
+            byId.set(candidate.id,candidate);
+
+            if (guidKey) {
+              byGuid.set(
+                guidKey,
+                preferCanonical(byGuid.get(guidKey),candidate)
+              );
+            }
+          }
+
+          /* Reemplaza por el registro canónico de cada GUID. */
+          for (const [nameKey,pilot] of byName.entries()) {
+            if (pilot.steamGuid && byGuid.has(pilot.steamGuid)) {
+              byName.set(
+                nameKey,
+                byGuid.get(pilot.steamGuid) || pilot
+              );
+            }
+          }
+
+          loaded = true;
+        })().catch((error: unknown) => {
+          console.warn(
+            '[GC Home pilot popover V4] No se pudo cargar pilots2',
+            error
+          );
+        }).finally(() => {
+          loading = null;
+        });
+
+        return loading;
+      };
 
       const fmt = (
         value: number | null,
@@ -5402,90 +5522,12 @@ const home2ArchiveSeed: unknown[] = [];
           "'":'&#39;'
         } as Record<string,string>)[char] || char);
 
-      const load = async (): Promise<void> => {
-        if (loaded) return;
-        if (loading) return loading;
-
-        loading = (async (): Promise<void> => {
-          const response = await fetch('/api/gc/ratings/championship',{
-            credentials:'same-origin',
-            headers:{Accept:'application/json'}
-          });
-
-          if (!response.ok) {
-            throw new Error(`Ratings HTTP ${response.status}`);
-          }
-
-          const payload = await response.json();
-          const srRows = Array.isArray(payload?.leaderboard?.sr)
-            ? payload.leaderboard.sr
-            : [];
-          const gsrRows = Array.isArray(payload?.leaderboard?.gsr)
-            ? payload.leaderboard.gsr
-            : [];
-
-          for (const row of [...srRows,...gsrRows]) {
-            const name = String(
-              row?.driver ||
-              row?.displayName ||
-              row?.name ||
-              ''
-            ).trim();
-
-            const key = normalize(name);
-            if (!key) continue;
-
-            const current = byName.get(key) || {
-              name,
-              srClass:'',
-              srScore:null,
-              gsrClass:'',
-              gsrScore:null,
-              races:0,
-              wins:0,
-              podiums:0
-            };
-
-            current.name = name || current.name;
-
-            if (row?.sr !== undefined && row?.sr !== null) {
-              current.srScore = num(row.sr);
-              current.srClass = String(row?.srClass || '');
-            }
-
-            if (row?.gsr !== undefined && row?.gsr !== null) {
-              current.gsrScore = num(row.gsr);
-              current.gsrClass = String(row?.gsrClass || '');
-            }
-
-            current.races = Math.max(
-              current.races,
-              Number(row?.races || 0)
-            );
-            current.wins = Math.max(
-              current.wins,
-              Number(row?.wins || 0)
-            );
-            current.podiums = Math.max(
-              current.podiums,
-              Number(row?.podiums || 0)
-            );
-
-            byName.set(key,current);
-          }
-
-          loaded = true;
-        })().catch((error: unknown) => {
-          console.warn(
-            '[GC Home pilot popover V3] No se pudieron cargar ratings',
-            error
-          );
-        }).finally(() => {
-          loading = null;
-        });
-
-        return loading;
-      };
+      const classKey = (value: unknown): string => String(value || 'unknown')
+        .trim()
+        .toLowerCase()
+        .replace('+','plus')
+        .replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-|-$/g,'') || 'unknown';
 
       const badge = (
         type: 'sr' | 'gsr',
@@ -5504,12 +5546,42 @@ const home2ArchiveSeed: unknown[] = [];
         `;
       };
 
-      const statBlocks = (): HTMLElement[] =>
-        Array.from(
-          popover.querySelectorAll<HTMLElement>(
-            '.gc-home-pilot-popover__stat'
-          )
+      const resolvePilot = (): PilotSummary | null => {
+        const visibleName = popover
+          .querySelector<HTMLElement>('.gc-home-pilot-popover__name')
+          ?.textContent
+          ?.trim() || '';
+
+        const fullLink = popover.querySelector<HTMLAnchorElement>(
+          '.gc-home-pilot-popover__footer a[href*="/pilotos/"]'
         );
+
+        const id = decodeURIComponent(
+          String(fullLink?.getAttribute('href') || '')
+            .match(/\/pilotos\/([^/?#]+)/i)?.[1] || ''
+        );
+
+        const byIdPilot = id ? byId.get(id) : undefined;
+        if (byIdPilot?.steamGuid && byGuid.has(byIdPilot.steamGuid)) {
+          return byGuid.get(byIdPilot.steamGuid) || byIdPilot;
+        }
+
+        return byIdPilot || byName.get(normalize(visibleName)) || null;
+      };
+
+      const updateStat = (
+        block: HTMLElement | undefined,
+        labelText: string,
+        valueText: string
+      ): void => {
+        if (!block) return;
+
+        const label = block.querySelector<HTMLElement>('span');
+        const value = block.querySelector<HTMLElement>('strong');
+
+        if (label) label.textContent = labelText;
+        if (value) value.textContent = valueText;
+      };
 
       const update = async (): Promise<void> => {
         if (!popover.classList.contains('is-open')) return;
@@ -5517,57 +5589,65 @@ const home2ArchiveSeed: unknown[] = [];
         await load();
         if (!loaded) return;
 
-        const visibleName = popover
-          .querySelector<HTMLElement>('.gc-home-pilot-popover__name')
-          ?.textContent
-          ?.trim() || '';
+        const pilot = resolvePilot();
+        if (!pilot) return;
 
-        const rating = byName.get(normalize(visibleName));
-        if (!rating) return;
-
-        const ratingCells = popover.querySelectorAll<HTMLElement>(
+        const ratings = popover.querySelectorAll<HTMLElement>(
           '.gc-home-pilot-popover__rating'
         );
 
-        if (ratingCells[0]) {
-          ratingCells[0].innerHTML = badge(
+        if (ratings[0]) {
+          ratings[0].innerHTML = badge(
             'sr',
-            rating.srClass,
-            rating.srScore
+            pilot.srClass,
+            pilot.srScore
           );
         }
 
-        if (ratingCells[1]) {
-          ratingCells[1].innerHTML = badge(
+        if (ratings[1]) {
+          ratings[1].innerHTML = badge(
             'gsr',
-            rating.gsrClass,
-            rating.gsrScore
+            pilot.gsrClass,
+            pilot.gsrScore
           );
         }
 
-        const stats = statBlocks();
+        const stats = Array.from(
+          popover.querySelectorAll<HTMLElement>(
+            '.gc-home-pilot-popover__stat'
+          )
+        );
 
-        if (stats[0]) {
-          const label = stats[0].querySelector<HTMLElement>('span');
-          const value = stats[0].querySelector<HTMLElement>('strong');
+        updateStat(stats[0],'Vueltas vál.',fmt(pilot.validLaps,0));
+        updateStat(stats[1],'Vueltas',fmt(pilot.totalLaps,0));
+        updateStat(stats[2],'Horas',fmt(pilot.totalHours,1));
+        updateStat(stats[3],'Activas 30d',fmt(pilot.active30dLaps,0));
+        updateStat(
+          stats[4],
+          'Limpieza',
+          pilot.cleanRate === null
+            ? '--'
+            : `${fmt(pilot.cleanRate,1)}%`
+        );
+        updateStat(stats[5],'Circuitos',fmt(pilot.tracksCount,0));
 
-          if (label) label.textContent = 'Carreras ofic.';
-          if (value) {
-            value.textContent = fmt(rating.races,0);
-            value.dataset.stat = 'official-races';
-          }
+        const avatar = popover.querySelector<HTMLImageElement>(
+          '.gc-home-pilot-popover__avatar'
+        );
+
+        if (avatar && pilot.avatarUrl) {
+          avatar.src = pilot.avatarUrl;
         }
 
-        if (stats[5]) {
-          const label = stats[5].querySelector<HTMLElement>('span');
-          const value = stats[5].querySelector<HTMLElement>('strong');
+        const fullLink = popover.querySelector<HTMLAnchorElement>(
+          '.gc-home-pilot-popover__footer a'
+        );
 
-          if (label) label.textContent = 'Podios';
-          if (value) {
-            value.textContent = fmt(rating.podiums,0);
-            value.dataset.stat = 'podiums';
-          }
+        if (fullLink) {
+          fullLink.href = `/pilotos/${encodeURIComponent(pilot.id)}`;
         }
+
+        popover.dataset.gcUnifiedPilot = pilot.id;
       };
 
       const schedule = (): void => {
@@ -5575,7 +5655,7 @@ const home2ArchiveSeed: unknown[] = [];
         timer = window.setTimeout(() => {
           timer = 0;
           update();
-        },40);
+        },60);
       };
 
       new MutationObserver(schedule).observe(popover,{

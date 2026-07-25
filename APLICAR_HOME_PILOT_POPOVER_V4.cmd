@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-pilot-popover-v3-ratings-stats.mjs
+node scripts\apply-home-pilot-popover-v4-unified.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Pilot Popover V3.
+  echo No se pudo aplicar Pilot Popover V4.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Pilot Popover V3 aplicado y build validado.
+echo Pilot Popover V4 unificado y build validado.
 pause
