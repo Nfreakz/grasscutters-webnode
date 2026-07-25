@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-championship-blocks-compact-v1.mjs
+node scripts\apply-identity-canonical-guid-v1-1.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar el ajuste compacto.
+  echo No se pudo aplicar la correccion de identidad.
   pause
   exit /b 1
 )
@@ -29,5 +29,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Bloques compactados y build validado.
+echo Identidad canonica aplicada y build validado.
+echo Don Bixi debe enlazar ahora a /pilotos/32
 pause

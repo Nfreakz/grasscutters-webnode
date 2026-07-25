@@ -1025,6 +1025,51 @@ const pageTitle = pilotSeo.title;
         });
       }
 
+      /* GC_IDENTITY_CANONICAL_GUID_PROFILE_V1 */
+      async function resolveCanonicalPlayerId(inputPlayerId) {
+        try {
+          const response = await fetch('/api/gc/pilots2?source=all&limit=all', {
+            credentials:'include',
+            cache:'no-store',
+            headers:{Accept:'application/json'}
+          });
+
+          if (!response.ok) return inputPlayerId;
+
+          const payload = await response.json();
+          const rows = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.items)
+              ? payload.items
+              : Array.isArray(payload?.pilots)
+                ? payload.pilots
+                : Array.isArray(payload?.data?.items)
+                  ? payload.data.items
+                  : Array.isArray(payload?.data?.pilots)
+                    ? payload.data.pilots
+                    : [];
+
+          const current = rows.find((row) =>
+            String(row?.playerId ?? row?.id ?? '') === String(inputPlayerId)
+          );
+
+          const guid = String(current?.steamGuid || '').trim().toLowerCase();
+          if (!guid) return inputPlayerId;
+
+          const canonical = rows
+            .filter((row) =>
+              String(row?.steamGuid || '').trim().toLowerCase() === guid
+            )
+            .map((row) => String(row?.playerId ?? row?.id ?? ''))
+            .filter((id) => /^\d+$/.test(id))
+            .sort((a,b) => Number(a) - Number(b))[0];
+
+          return canonical || inputPlayerId;
+        } catch {
+          return inputPlayerId;
+        }
+      }
+
       async function load() {
         if (!playerId || !/^\d+$/.test(playerId)) {
           showStatus(`<strong>Player ID no válido</strong><p>${escapeHtml(playerId)}</p>`, true);
@@ -1032,7 +1077,14 @@ const pageTitle = pilotSeo.title;
         }
 
         try {
-          const response = await fetch(`/api/pilots/${encodeURIComponent(playerId)}/profile`, {
+          const canonicalPlayerId = await resolveCanonicalPlayerId(playerId);
+
+          if (canonicalPlayerId !== playerId) {
+            window.location.replace(`/pilotos/${encodeURIComponent(canonicalPlayerId)}`);
+            return;
+          }
+
+          const response = await fetch(`/api/pilots/${encodeURIComponent(canonicalPlayerId)}/profile`, {
             credentials:'include',
             cache:'no-store'
           });

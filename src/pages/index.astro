@@ -5119,4 +5119,188 @@ const home2ArchiveSeed: unknown[] = [];
     })();
   </script>
 
+  <script>
+    /* GC_IDENTITY_CANONICAL_GUID_HOME_V1 */
+    (() => {
+      type DirectoryPilot = {
+        id?: unknown;
+        playerId?: unknown;
+        name?: unknown;
+        displayName?: unknown;
+        publicName?: unknown;
+        steamGuid?: unknown;
+        avatarUrl?: unknown;
+      };
+
+      const normalize = (value: unknown): string => String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9]+/g,'');
+
+      const cleanGuid = (value: unknown): string => String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/^steam:/,'');
+
+      const numericId = (value: unknown): number => {
+        const parsed = Number(value);
+        return Number.isSafeInteger(parsed) && parsed > 0
+          ? parsed
+          : Number.MAX_SAFE_INTEGER;
+      };
+
+      const pilotId = (row: DirectoryPilot): string =>
+        String(row?.playerId ?? row?.id ?? '').trim();
+
+      const pilotName = (row: DirectoryPilot): string =>
+        String(row?.displayName || row?.publicName || row?.name || '').trim();
+
+      const extractRows = (payload: any): DirectoryPilot[] => {
+        if (Array.isArray(payload)) return payload;
+        if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.pilots)) return payload.pilots;
+        if (Array.isArray(payload?.data?.items)) return payload.data.items;
+        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
+        return [];
+      };
+
+      const extractRatings = (payload: any): any[] => [
+        ...(Array.isArray(payload?.leaderboard?.sr) ? payload.leaderboard.sr : []),
+        ...(Array.isArray(payload?.leaderboard?.gsr) ? payload.leaderboard.gsr : [])
+      ];
+
+      const run = async (): Promise<void> => {
+        const [pilotsResponse, ratingsResponse] = await Promise.all([
+          fetch('/api/gc/pilots2?source=all&limit=all', {
+            credentials:'same-origin',
+            headers:{Accept:'application/json'}
+          }),
+          fetch('/api/gc/ratings/championship', {
+            credentials:'same-origin',
+            headers:{Accept:'application/json'}
+          })
+        ]);
+
+        if (!pilotsResponse.ok || !ratingsResponse.ok) return;
+
+        const [pilotsPayload, ratingsPayload] = await Promise.all([
+          pilotsResponse.json(),
+          ratingsResponse.json()
+        ]);
+
+        const pilots = extractRows(pilotsPayload);
+        const ratings = extractRatings(ratingsPayload);
+
+        const canonicalByGuid = new Map<string, DirectoryPilot>();
+        const canonicalByName = new Map<string, DirectoryPilot>();
+        const ratingGuidByName = new Map<string, string>();
+
+        for (const row of pilots) {
+          const id = pilotId(row);
+          const name = normalize(pilotName(row));
+          const guid = cleanGuid(row?.steamGuid);
+          if (!id || !name) continue;
+
+          const currentName = canonicalByName.get(name);
+          if (!currentName || numericId(id) < numericId(pilotId(currentName))) {
+            canonicalByName.set(name, row);
+          }
+
+          if (guid) {
+            const currentGuid = canonicalByGuid.get(guid);
+            if (!currentGuid || numericId(id) < numericId(pilotId(currentGuid))) {
+              canonicalByGuid.set(guid, row);
+            }
+          }
+        }
+
+        for (const row of ratings) {
+          const name = normalize(row?.driver || row?.displayName || row?.name);
+          const guid = cleanGuid(
+            row?.steamGuid ||
+            row?.driverKey ||
+            (Array.isArray(row?.mergedDriverKeys) ? row.mergedDriverKeys[0] : '')
+          );
+          if (name && guid) ratingGuidByName.set(name, guid);
+        }
+
+        const canonicalForName = (nameValue: unknown): DirectoryPilot | null => {
+          const name = normalize(nameValue);
+          const guid = ratingGuidByName.get(name);
+
+          if (guid && canonicalByGuid.has(guid)) {
+            return canonicalByGuid.get(guid) || null;
+          }
+
+          return canonicalByName.get(name) || null;
+        };
+
+        const repairLink = (link: HTMLAnchorElement): void => {
+          const visibleName = String(
+            link.dataset.pilotName ||
+            link.textContent ||
+            ''
+          ).trim();
+
+          const canonical = canonicalForName(visibleName);
+          if (!canonical) return;
+
+          const id = pilotId(canonical);
+          if (!id) return;
+
+          link.href = `/pilotos/${encodeURIComponent(id)}`;
+          link.dataset.pilotId = id;
+          link.dataset.pilotName = pilotName(canonical) || visibleName;
+          link.dataset.gcIdentityCanonical = '1';
+
+          const avatar = link.closest(
+            '.gc-home2-combo-rank, .gc-home2-rating-driver-cell, .gc-home2-champ-standing-row'
+          )?.querySelector<HTMLImageElement>('img');
+
+          if (avatar) {
+            avatar.src = String(
+              canonical.avatarUrl ||
+              `/api/pilot-avatar/${encodeURIComponent(id)}`
+            );
+          }
+        };
+
+        const repairAll = (): void => {
+          document.querySelectorAll<HTMLAnchorElement>(
+            '.gc-home-pilot-link'
+          ).forEach(repairLink);
+        };
+
+        repairAll();
+
+        let timer = 0;
+        const root = document.querySelector('[data-gc-home2]');
+
+        if (root) {
+          new MutationObserver(() => {
+            if (timer) window.clearTimeout(timer);
+            timer = window.setTimeout(() => {
+              timer = 0;
+              repairAll();
+            },80);
+          }).observe(root,{
+            childList:true,
+            subtree:true,
+            characterData:true
+          });
+        }
+
+        window.setTimeout(repairAll,1000);
+        window.setTimeout(repairAll,2500);
+        window.setTimeout(repairAll,5000);
+      };
+
+      run().catch((error: unknown) => {
+        console.warn('[GC identity canonical GUID V1.1] Home repair failed',error);
+      });
+    })();
+  </script>
+
 </MarketingLayout>
