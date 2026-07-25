@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-pilot-links-v5-1.mjs
+node scripts\apply-home-top-times-fixed-v6.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Pilot Links V5.1.
+  echo No se pudo aplicar Home Top Times V6.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Pilot Links V5.1 aplicado y build validado.
+echo Home Top Times V6 aplicada y build validado.
 pause
