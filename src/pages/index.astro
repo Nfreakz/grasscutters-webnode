@@ -111,13 +111,12 @@ const home2ArchiveSeed: unknown[] = [];
           </div>
 
           <div class="gc-home2-combo-card__glass-content">
-            <header class="gc-home2-combo-card__glass-head">
-              <span class="gc-home2-combo-card__server-icon" aria-hidden="true">
-                <i></i><i></i><i></i>
-              </span>
-              <p class="gc-home2-combo-card__label" data-home2-hero-source>Combo activo</p>
-              <span class="gc-home2-combo-card__status"><i aria-hidden="true"></i>ACTIVO</span>
-            </header>
+            <!-- GC_HOME_COMBO_GLASS_NAMES_LAYOUT_V3 -->
+            <div class="gc-home2-combo-card__compact-status">
+              <span data-home2-hero-source>LIGA</span>
+              <i aria-hidden="true"></i>
+              <strong>ACTIVO</strong>
+            </div>
 
             <div class="gc-home2-combo-card__track-copy">
               <h2 id="gc-home2-combo-title" data-home2-track>Actualizando</h2>
@@ -2710,6 +2709,27 @@ const home2ArchiveSeed: unknown[] = [];
         if (String(source).toLowerCase() === 'gt4') out = out.replace(/^00[\s_-]+/i, '').trim();
         return out.replace(/\s+/g, ' ');
       };
+
+      const cleanHeroTrackName = (value: unknown): string => {
+        const raw = cleanPublicName(value);
+        if (!raw || raw === '--') return raw;
+        return raw
+          .replace(/\s*\((?:chicane|full|gp|grand prix|national|short|long|club)\)\s*$/i, '')
+          .replace(/\s+(?:19|20)\d{2}\s*$/i, '')
+          .replace(/\s+/g, ' ')
+          .trim() || raw;
+      };
+
+      const cleanHeroCarName = (value: unknown, source: unknown = ''): string => {
+        const raw = cleanPublicName(value, source);
+        if (!raw || raw === '--') return raw;
+        return raw
+          .replace(/^(?:acf|rss|ks|gc)\s+(?:gt2|gt3|gt4|dtm|btcc)\s*[-–—:]\s*/i, '')
+          .replace(/^(?:acf|rss|ks|gc)\s*[-–—:]\s*/i, '')
+          .replace(/\s+(?:19|20)\d{2}\s*$/i, '')
+          .replace(/\s+/g, ' ')
+          .trim() || raw;
+      };
       const carName = (row: any) => cleanPublicName(first(row, ['car.publicName', 'car.visibleName', 'car.alias', 'car.displayName', 'car.uiName', 'carName', 'car_name', 'carDisplay', 'car_display', 'carCode', 'car_code', 'Car', 'car.name', 'vehicleName'], '--'), sourceKey(row));
       const trackName = (row: any) => cleanPublicName(first(row, ['track.publicName', 'track.visibleName', 'track.alias', 'track.displayName', 'track.uiName', 'trackName', 'track_name', 'trackDisplay', 'track_display', 'trackCode', 'track_code', 'Track', 'track.name'], '--'), sourceKey(row));
       const sourceKey = (row: any, fallback: unknown = '') => String(first(row, ['sourceKey', 'source_key', 'source', 'serverKey'], fallback) || fallback || '').toLowerCase();
@@ -3175,9 +3195,11 @@ const home2ArchiveSeed: unknown[] = [];
         const comboCarNames = comboCars(combo, rows, source);
         const fallbackTrack = championshipTrackForSource(source === 'gt4' ? 'gt4' : 'weekly');
         const fallbackCars = championshipCarsForSource(source === 'gt4' ? 'gt4' : 'weekly');
-        const track = cleanPublicName(comboTrackName || fallbackTrack, source);
-        const cars = comboCarNames.length ? comboCarNames : fallbackCars;
-        const label = source === 'gt4' ? 'Servidor 2 · GT4' : 'Servidor 1 · Liga';
+        const track = cleanHeroTrackName(comboTrackName || fallbackTrack);
+        const cars = (comboCarNames.length ? comboCarNames : fallbackCars)
+          .map((name) => cleanHeroCarName(name, source))
+          .filter(Boolean);
+        const label = source === 'gt4' ? 'GT4' : 'LIGA';
         const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
 
         // GC_HOME_COMBO_GLASS_ACSM_V1_RUNTIME
@@ -3200,7 +3222,12 @@ const home2ArchiveSeed: unknown[] = [];
 
         setText('[data-home2-hero-source]', label);
         setText('[data-home2-track]', track || 'Combo activo');
-        setText('[data-home2-cars]', cars.slice(0, 3).join(' / ') || carName(best));
+        setText('[data-home2-cars]', cars.slice(0, 3).join(' / ') || cleanHeroCarName(carName(best), source));
+        const heroTrackTitle = q('[data-home2-track]');
+        if (heroTrackTitle) {
+          const length = String(track || '').length;
+          heroTrackTitle.dataset.titleSize = length > 24 ? 'long' : length > 14 ? 'medium' : 'short';
+        }
         setText('[data-home2-best-driver]', driverName(best));
         setText('[data-home2-best-car]', carName(best));
         setText('[data-home2-best-time]', formatTime(best));
@@ -6085,6 +6112,132 @@ const home2ArchiveSeed: unknown[] = [];
 
       .gc-home2-combo-card--glass h2 {
         font-size: clamp(1.75rem, 9vw, 2.55rem) !important;
+      }
+    }
+
+
+    /* GC_HOME_COMBO_GLASS_NAMES_LAYOUT_V3 */
+    .gc-home2-combo-card--glass,
+    .gc-home2-combo-card--glass .gc-home2-combo-card__glass-content {
+      min-height: 330px !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__glass-content {
+      padding: 13px !important;
+    }
+
+    .gc-home2-combo-card__compact-status {
+      position: absolute;
+      z-index: 4;
+      top: 13px;
+      right: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 27px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 999px;
+      background: rgba(7,9,13,.62);
+      box-shadow: 0 8px 22px rgba(0,0,0,.24);
+      backdrop-filter: blur(12px) saturate(1.15);
+      font-size: .58rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .gc-home2-combo-card__compact-status > span {
+      color: #d66aff;
+      font-weight: 900;
+    }
+
+    .gc-home2-combo-card__compact-status > i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #7cff00;
+      box-shadow: 0 0 10px rgba(124,255,0,.9);
+    }
+
+    .gc-home2-combo-card__compact-status > strong {
+      color: #c7ffad;
+      font-size: inherit;
+      font-weight: 900;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__track-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 114px;
+      margin-top: 0 !important;
+      padding: 47px 4px 12px !important;
+    }
+
+    .gc-home2-combo-card--glass h2[data-home2-track] {
+      display: -webkit-box;
+      overflow: hidden;
+      min-height: 1.84em;
+      max-width: 100%;
+      font-size: clamp(2rem, 4.3vw, 3.25rem) !important;
+      line-height: .92 !important;
+      word-break: normal;
+      overflow-wrap: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .gc-home2-combo-card--glass h2[data-title-size="medium"] {
+      font-size: clamp(1.82rem, 3.75vw, 2.8rem) !important;
+    }
+
+    .gc-home2-combo-card--glass h2[data-title-size="long"] {
+      font-size: clamp(1.48rem, 3.05vw, 2.18rem) !important;
+      line-height: .96 !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__cars {
+      display: -webkit-box;
+      overflow: hidden;
+      min-height: 1.25em;
+      margin-top: 5px !important;
+      font-size: .82rem !important;
+      line-height: 1.25;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__best {
+      min-height: 100px;
+      padding: 10px 12px !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__cta {
+      min-height: 42px !important;
+      margin-top: 8px !important;
+    }
+
+    @media (max-width: 760px) {
+      .gc-home2-combo-card--glass,
+      .gc-home2-combo-card--glass .gc-home2-combo-card__glass-content {
+        min-height: 318px !important;
+      }
+
+      .gc-home2-combo-card--glass .gc-home2-combo-card__track-copy {
+        min-height: 105px;
+        padding-top: 41px !important;
+      }
+
+      .gc-home2-combo-card--glass h2[data-home2-track] {
+        font-size: clamp(1.78rem, 8vw, 2.45rem) !important;
+      }
+
+      .gc-home2-combo-card--glass h2[data-title-size="medium"] {
+        font-size: clamp(1.55rem, 7vw, 2.08rem) !important;
+      }
+
+      .gc-home2-combo-card--glass h2[data-title-size="long"] {
+        font-size: clamp(1.3rem, 5.8vw, 1.72rem) !important;
       }
     }
 
