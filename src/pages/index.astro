@@ -26,6 +26,30 @@ function collectHomeTrackImages(directory: string) {
 
 collectHomeTrackImages(homeTracksDir);
 homeHeroTrackImages.sort((a, b) => a.localeCompare(b));
+
+/* GC_HOME_COMBO_RANDOM_MEDIA_PILOT_V9 */
+const homeComboRandomDir = path.join(process.cwd(), 'public', 'images', 'imagenes');
+const homeComboRandomImages: string[] = [];
+
+function collectHomeComboRandomImages(directory: string) {
+  if (!fs.existsSync(directory)) return;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      collectHomeComboRandomImages(absolute);
+      continue;
+    }
+    if (!homeTrackExtensions.has(path.extname(entry.name).toLowerCase())) continue;
+    const relative = path.relative(path.join(process.cwd(), 'public'), absolute)
+      .split(path.sep)
+      .map(encodeURIComponent)
+      .join('/');
+    homeComboRandomImages.push(`/${relative}`);
+  }
+}
+
+collectHomeComboRandomImages(homeComboRandomDir);
+homeComboRandomImages.sort((a, b) => a.localeCompare(b));
 const title = 'GrassCutters Racing | Sim racing, hotlaps y comunidad';
 const description = 'GrassCutters Racing: comunidad de sim racing con servidor, combos, hotlaps, campeonatos y herramientas para pilotos.';
 
@@ -51,6 +75,7 @@ const home2ArchiveSeed: unknown[] = [];
     class="gc-home2 gc-home2--main-home"
     data-gc-home2="hybrid-v4"
     data-home2-static-track-images={JSON.stringify(homeHeroTrackImages)}
+    data-home2-combo-random-images={JSON.stringify(homeComboRandomImages)}
   >
     <section class="gc-home2-hero" aria-labelledby="gc-home2-title">
       <img
@@ -144,7 +169,6 @@ const home2ArchiveSeed: unknown[] = [];
                 </div>
               </div>
               <div class="gc-home2-combo-card__time-wrap">
-                <span>Tiempo</span>
                 <div class="gc-home2-combo-card__time" data-home2-best-time>--</div>
               </div>
             </div>
@@ -2636,6 +2660,15 @@ const home2ArchiveSeed: unknown[] = [];
       let heroRotateTimer = 0;
       const heroState: { payload: any; index: number } = { payload: null, index: 0 };
       const lastGood: { bootstrap: any; championships: Record<string, any>; live: Record<string, any> } = { bootstrap: null, championships: {}, live: {} };
+      const comboRandomImages: string[] = (() => {
+        try {
+          const parsed = JSON.parse(root.getAttribute('data-home2-combo-random-images') || '[]');
+          return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      let lastComboRandomImage = '';
 
       // GC_HOME_COMBO_GLASS_STABILITY_V4
       const failedGlassTrackAssets = new Map<string, number>();
@@ -3123,6 +3156,51 @@ const home2ArchiveSeed: unknown[] = [];
         preload.src = candidate;
       };
 
+
+      const setRandomComboImage = (img: HTMLImageElement | null): void => {
+        if (!img || !comboRandomImages.length) return;
+        const pool = comboRandomImages.filter((item) => item !== lastComboRandomImage);
+        const source = pool.length ? pool : comboRandomImages;
+        const selected = source[Math.floor(Math.random() * source.length)] || '';
+        if (!selected) return;
+        lastComboRandomImage = selected;
+        img.onerror = () => {
+          img.onerror = null;
+          img.src = FALLBACK_TRACK;
+        };
+        if (img.getAttribute('src') !== selected) img.src = selected;
+      };
+
+      const heroBestAvatar = (best: any, rows: any[] = []): string => {
+        const target = normalize(driverName(best));
+        const cached = avatarNameCache.get(target);
+        if (cached && cached !== DEFAULT_AVATAR) return cached;
+
+        const candidates = [
+          best,
+          ...rows,
+          ...sourceLeaderboard(heroState.payload?.main),
+          ...sourceLeaderboard(heroState.payload?.gt4),
+          ...sourceLeaderboard(lastGood.bootstrap?.main),
+          ...sourceLeaderboard(lastGood.bootstrap?.gt4)
+        ].filter((row: any) => normalize(driverName(row)) === target);
+
+        for (const row of candidates) {
+          const direct = first(row, [
+            'profileAvatarUrl', 'profile.avatarUrl', 'driver.avatarUrl', 'driver.avatar',
+            'avatarUrl', 'avatar_url', 'imageUrl', 'image', 'player.avatarUrl', 'pilot.avatarUrl'
+          ], '');
+          if (direct && String(direct) !== DEFAULT_AVATAR) return rememberAvatar(row, String(direct));
+        }
+
+        for (const row of candidates) {
+          const value = avatar(row);
+          if (value && value !== DEFAULT_AVATAR) return rememberAvatar(row, value);
+        }
+
+        return DEFAULT_AVATAR;
+      };
+
       const trackImageAliasVariants = (values: unknown[]): string[] => {
         const aliases = new Set<string>();
         const addRaw = (value: unknown): void => {
@@ -3267,7 +3345,7 @@ const home2ArchiveSeed: unknown[] = [];
           item.classList.toggle('is-active', item.getAttribute('data-home2-combo-state') === source);
         });
         const glassTrackImage = q('[data-home2-combo-track-image]') as HTMLImageElement | null;
-        setGlassTrackImageStable(glassTrackImage, combo, glassCard as HTMLElement | null);
+        setRandomComboImage(glassTrackImage);
 
         setText('[data-home2-hero-source]', label);
         setText('[data-home2-track]', track || 'Combo activo');
@@ -3280,9 +3358,10 @@ const home2ArchiveSeed: unknown[] = [];
         setText('[data-home2-best-driver]', driverName(best));
         setText('[data-home2-best-car]', carName(best));
         setText('[data-home2-best-time]', formatTime(best));
+        const bestAvatarSrc = heroBestAvatar(best, rows);
         qa('[data-home2-best-avatar]').forEach((img) => {
           img.onerror = function(){ this.onerror=null; this.src=DEFAULT_AVATAR; };
-          img.src = avatar(best);
+          img.src = bestAvatarSrc;
         });
         qa('.gc-home2-combo-card__cta').forEach((link) => { link.href = joinUrl; });
       };
@@ -6981,6 +7060,126 @@ const home2ArchiveSeed: unknown[] = [];
 
       .gc-home2-combo-card--glass .gc-home2-combo-card__cta {
         min-height: 48px !important;
+      }
+    }
+
+
+    /* GC_HOME_COMBO_RANDOM_MEDIA_PILOT_V9 */
+    .gc-home2-combo-card--glass {
+      background: rgba(4, 7, 6, .15) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__glass-content {
+      background: rgba(4, 7, 6, .15) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__media,
+    .gc-home2-combo-card--glass .gc-home2-combo-card__media-shade,
+    .gc-home2-combo-card--glass .gc-home2-combo-card__track-image {
+      display: block !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__track-image {
+      opacity: .42 !important;
+      object-fit: cover !important;
+      object-position: center !important;
+      filter: saturate(.82) contrast(1.05) brightness(.55) !important;
+      transform: scale(1.02) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__media-shade {
+      background:
+        linear-gradient(180deg, rgba(4,7,6,.20) 0%, rgba(4,7,6,.28) 48%, rgba(4,7,6,.62) 100%) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__best {
+      grid-template-columns: minmax(0, 1fr) minmax(175px, 205px) !important;
+      background: rgba(4, 7, 6, .38) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver {
+      display: grid !important;
+      grid-template-columns: 84px minmax(0, 1fr) !important;
+      gap: 16px !important;
+      min-width: 0 !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__avatar {
+      width: 80px !important;
+      height: 80px !important;
+      border: 0 !important;
+      border-radius: 50% !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      overflow: visible !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__avatar img {
+      width: 80px !important;
+      height: 80px !important;
+      border: 2px solid #7cff00 !important;
+      border-radius: 50% !important;
+      object-fit: cover !important;
+      background: rgba(0,0,0,.28) !important;
+      box-shadow: 0 0 18px rgba(124,255,0,.18) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__meta {
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__meta strong {
+      display: block !important;
+      overflow: hidden !important;
+      max-width: 100% !important;
+      font-size: 1.12rem !important;
+      line-height: 1.1 !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__meta small {
+      display: block !important;
+      overflow: hidden !important;
+      max-width: 100% !important;
+      margin-top: 5px !important;
+      font-size: .76rem !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    .gc-home2-combo-card__time-wrap {
+      justify-content: center !important;
+      min-width: 175px !important;
+    }
+
+    .gc-home2-combo-card__time-wrap > span {
+      display: none !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__time {
+      font-size: clamp(1.7rem, 2.7vw, 2.35rem) !important;
+    }
+
+    @media (max-width: 760px) {
+      .gc-home2-combo-card--glass .gc-home2-combo-card__best {
+        grid-template-columns: minmax(0, 1fr) minmax(128px, 145px) !important;
+      }
+
+      .gc-home2-combo-card--glass .gc-home2-driver {
+        grid-template-columns: 64px minmax(0, 1fr) !important;
+        gap: 10px !important;
+      }
+
+      .gc-home2-combo-card--glass .gc-home2-driver__avatar,
+      .gc-home2-combo-card--glass .gc-home2-driver__avatar img {
+        width: 62px !important;
+        height: 62px !important;
+      }
+
+      .gc-home2-combo-card__time-wrap {
+        min-width: 128px !important;
       }
     }
 
