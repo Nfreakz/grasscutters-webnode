@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-v5-popover-rows-stability.mjs
+node scripts\apply-home-pilot-links-v5-1.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Home V5.
+  echo No se pudo aplicar Pilot Links V5.1.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Home V5 aplicada y build validado.
+echo Pilot Links V5.1 aplicado y build validado.
 pause
