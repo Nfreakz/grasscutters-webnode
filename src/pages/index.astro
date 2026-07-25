@@ -4024,60 +4024,146 @@ const home2ArchiveSeed: unknown[] = [];
         pilot.stats?.totalPodiums;
 
       const popoverMarkup = (pilot: PilotRow): string => {
+        const data = pilot as any;
         const id = pilotId(pilot);
         const name = pilotName(pilot);
-        const avatar = text(pilot.avatarUrl, id ? `/api/pilot-avatar/${encodeURIComponent(id)}` : DEFAULT_AVATAR);
+        const avatar = text(
+          pilot.avatarUrl,
+          id ? `/api/pilot-avatar/${encodeURIComponent(id)}` : DEFAULT_AVATAR
+        );
+
         const sessions = pilot.sessionsCount ?? pilot.races;
         const laps = pilot.totalLaps;
         const hours = pilot.totalHours;
         const active = pilot.active30dLaps;
         const clean = Number(pilot.cleanRate);
-        const cleanText = Number.isFinite(clean) ? `${numberText(clean,1)}%` : '--';
-        const podiums = podiumValue(pilot);
+        const cleanText = Number.isFinite(clean)
+          ? `${numberText(clean,1)}%`
+          : '--';
+
+        const srScore = Number(pilot.srScore);
+        const gsrScore = Number(pilot.gsrScore);
+
+        const srRank = !Number.isFinite(srScore) ? '--'
+          : srScore >= 95 ? 'LEGEND'
+          : srScore >= 90 ? 'ELITE'
+          : srScore >= 80 ? 'PRO'
+          : srScore >= 70 ? 'ADVANCED'
+          : srScore >= 60 ? 'ROOKIE'
+          : 'PITLANE';
+
+        const gsrRank = !Number.isFinite(gsrScore) ? '--'
+          : gsrScore >= 1750 ? 'DIAMOND'
+          : gsrScore >= 1650 ? 'RUBY'
+          : gsrScore >= 1550 ? 'SAPPHIRE'
+          : gsrScore >= 1475 ? 'EMERALD'
+          : gsrScore >= 1400 ? 'AMBER'
+          : 'ONYX';
+
+        const directPodiums =
+          data.podiums ??
+          data.podiumCount ??
+          data.podiumsCount ??
+          data.totalPodiums ??
+          data.stats?.podiums ??
+          data.stats?.podiumCount ??
+          data.stats?.podiumsCount ??
+          data.stats?.totalPodiums ??
+          data.results?.podiums ??
+          data.career?.podiums;
+
+        const wins = Number(
+          data.wins ??
+          data.victories ??
+          data.firstPlaces ??
+          data.stats?.wins ??
+          data.stats?.victories
+        );
+        const seconds = Number(
+          data.secondPlaces ??
+          data.seconds ??
+          data.p2 ??
+          data.stats?.secondPlaces
+        );
+        const thirds = Number(
+          data.thirdPlaces ??
+          data.thirds ??
+          data.p3 ??
+          data.stats?.thirdPlaces
+        );
+
+        let podiums: unknown = directPodiums;
+        if (
+          (podiums === undefined || podiums === null || podiums === '') &&
+          [wins,seconds,thirds].some(Number.isFinite)
+        ) {
+          podiums =
+            (Number.isFinite(wins) ? wins : 0) +
+            (Number.isFinite(seconds) ? seconds : 0) +
+            (Number.isFinite(thirds) ? thirds : 0);
+        }
 
         return `
           <div class="gc-home-pilot-popover__head">
-            <img class="gc-home-pilot-popover__avatar" src="${escapeHtml(avatar)}" alt="" width="76" height="76" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" />
+            <img
+              class="gc-home-pilot-popover__avatar"
+              src="${escapeHtml(avatar)}"
+              alt=""
+              width="76"
+              height="76"
+              onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'"
+            />
             <div class="gc-home-pilot-popover__identity">
               <span class="gc-home-pilot-popover__eyebrow">Ficha rápida de piloto</span>
               <strong class="gc-home-pilot-popover__name">${escapeHtml(name)}</strong>
               <span class="gc-home-pilot-popover__team">${escapeHtml(text(pilot.team,'GrassCutters Racing'))}</span>
             </div>
-            <button class="gc-home-pilot-popover__close" type="button" aria-label="Cerrar ficha rápida" data-home-pilot-popover-close>×</button>
+            <button
+              class="gc-home-pilot-popover__close"
+              type="button"
+              aria-label="Cerrar ficha rápida"
+              data-home-pilot-popover-close
+            >×</button>
           </div>
 
           <div class="gc-home-pilot-popover__ratings">
             <div class="gc-home-pilot-popover__rating">
-              <span>${escapeHtml(srRankName(pilot.srScore))}</span>
+              <span>${escapeHtml(srRank)}</span>
               <strong>${escapeHtml(numberText(pilot.srScore,1))}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__rating">
-              <span>${escapeHtml(gsrRankName(pilot.gsrScore))}</span>
+              <span>${escapeHtml(gsrRank)}</span>
               <strong>${escapeHtml(numberText(pilot.gsrScore,0))}</strong>
             </div>
           </div>
 
           <div class="gc-home-pilot-popover__stats">
             <div class="gc-home-pilot-popover__stat">
-              <span>Carreras</span>
-              <strong>${escapeHtml(numberText(sessions))}</strong>
+              <span>Vueltas vál.</span>
+              <strong>${escapeHtml(numberText(data.validLaps ?? data.validLapsCount ?? data.stats?.validLaps))}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__stat">
               <span>Vueltas</span>
               <strong>${escapeHtml(numberText(laps))}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__stat">
               <span>Horas</span>
               <strong>${escapeHtml(numberText(hours,1))}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__stat">
               <span>Activas 30d</span>
               <strong>${escapeHtml(numberText(active))}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__stat">
               <span>Limpieza</span>
               <strong>${escapeHtml(cleanText)}</strong>
             </div>
+
             <div class="gc-home-pilot-popover__stat">
               <span>Podios</span>
               <strong>${escapeHtml(numberText(podiums))}</strong>
@@ -6411,6 +6497,24 @@ const home2ArchiveSeed: unknown[] = [];
     .gc-home-pilot-popover__rating > strong {
       font-size: 22px !important;
     }
+  }
+
+
+  /* GC_HOME_PILOT_POPOVER_RANK_NAMES_PODIUMS_V1_3_1 */
+  .gc-home-pilot-popover__rating {
+    grid-template-columns: minmax(112px,1fr) auto !important;
+  }
+
+  .gc-home-pilot-popover__rating > span {
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .gc-home-pilot-popover__rating > strong {
+    min-width: 76px !important;
   }
 
 </style>
