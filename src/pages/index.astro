@@ -2629,6 +2629,11 @@ const home2ArchiveSeed: unknown[] = [];
       const heroState: { payload: any; index: number } = { payload: null, index: 0 };
       const lastGood: { bootstrap: any; championships: Record<string, any>; live: Record<string, any> } = { bootstrap: null, championships: {}, live: {} };
 
+      // GC_HOME_COMBO_GLASS_STABILITY_V4
+      const failedGlassTrackAssets = new Map<string, number>();
+      let lastGlassComboKey = '';
+      const GLASS_ASSET_FAIL_TTL_MS = 300000;
+
       const q = (selector: string, scope: any = root): any => scope?.querySelector?.(selector) || null;
       const qa = (selector: string, scope: any = root): any[] => Array.from(scope?.querySelectorAll?.(selector) || []);
       const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[char] ?? char);
@@ -3069,6 +3074,47 @@ const home2ArchiveSeed: unknown[] = [];
         apply();
       };
 
+
+      const setGlassTrackImageStable = (img: HTMLImageElement | null, combo: any, card: HTMLElement | null): void => {
+        if (!img || !combo) return;
+        const source = normalize(first(combo, ['sourceKey', 'source'], 'main'));
+        const trackCode = String(first(combo, ['track.trackCode', 'track.rawCode', 'track.code', 'trackCode', 'trackRaw'], '') || '').trim();
+        const trackConfig = String(first(combo, ['track.trackConfig', 'track.layout', 'trackConfig', 'layout'], '') || '').trim();
+        const trackName = String(first(combo, ['track.publicName', 'track.displayName', 'track.name', 'trackName'], '') || '').trim();
+        const comboKey = [source, trackCode, trackConfig, trackName].map(normalize).filter(Boolean).join(':');
+        if (!comboKey || comboKey === lastGlassComboKey) return;
+        lastGlassComboKey = comboKey;
+
+        const candidate = trackImageCandidatesFromCombo(combo)[0] || '';
+        const heroBg = q('.gc-home2-hero__bg[data-home2-track-image]') as HTMLImageElement | null;
+        const fallback = heroBg?.currentSrc || heroBg?.src || FALLBACK_TRACK;
+        const failedAt = Number(failedGlassTrackAssets.get(candidate) || 0);
+
+        if (!candidate || (failedAt && Date.now() - failedAt < GLASS_ASSET_FAIL_TTL_MS)) {
+          img.onerror = null;
+          img.src = fallback;
+          card?.classList.remove('is-track-loading');
+          return;
+        }
+
+        card?.classList.add('is-track-loading');
+        const preload = new Image();
+        let done = false;
+        const finish = (value: string, failed: boolean) => {
+          if (done) return;
+          done = true;
+          if (failed) failedGlassTrackAssets.set(candidate, Date.now());
+          img.onerror = null;
+          img.src = value;
+          card?.classList.remove('is-track-loading');
+        };
+
+        const timer = window.setTimeout(() => finish(fallback, true), 2500);
+        preload.onload = () => { window.clearTimeout(timer); finish(candidate, false); };
+        preload.onerror = () => { window.clearTimeout(timer); finish(fallback, true); };
+        preload.src = candidate;
+      };
+
       const trackImageAliasVariants = (values: unknown[]): string[] => {
         const aliases = new Set<string>();
         const addRaw = (value: unknown): void => {
@@ -3213,12 +3259,7 @@ const home2ArchiveSeed: unknown[] = [];
           item.classList.toggle('is-active', item.getAttribute('data-home2-combo-state') === source);
         });
         const glassTrackImage = q('[data-home2-combo-track-image]') as HTMLImageElement | null;
-        if (glassTrackImage) {
-          glassCard?.classList.add('is-track-loading');
-          glassTrackImage.onload = () => glassCard?.classList.remove('is-track-loading');
-          setImageWithFallbacks(glassTrackImage, trackImageCandidatesFromCombo(combo), FALLBACK_TRACK);
-          window.setTimeout(() => glassCard?.classList.remove('is-track-loading'), 1800);
-        }
+        setGlassTrackImageStable(glassTrackImage, combo, glassCard as HTMLElement | null);
 
         setText('[data-home2-hero-source]', label);
         setText('[data-home2-track]', track || 'Combo activo');
@@ -6239,6 +6280,29 @@ const home2ArchiveSeed: unknown[] = [];
       .gc-home2-combo-card--glass h2[data-title-size="long"] {
         font-size: clamp(1.3rem, 5.8vw, 1.72rem) !important;
       }
+    }
+
+
+    /* GC_HOME_COMBO_GLASS_STABILITY_V4 */
+    .gc-home2-combo-card--glass {
+      box-shadow: 0 16px 42px rgba(0,0,0,.38), 0 0 0 1px rgba(255,255,255,.03) inset !important;
+    }
+    .gc-home2-combo-card--glass .gc-home2-combo-card__track-image {
+      transition: opacity .28s ease, transform .55s ease !important;
+      will-change: auto;
+    }
+    .gc-home2-combo-card--glass .gc-home2-combo-card__glass-head,
+    .gc-home2-combo-card--glass .gc-home2-combo-card__best,
+    .gc-home2-combo-card__compact-status {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    .gc-home2-combo-card--glass .gc-home2-combo-card__best {
+      background: rgba(8,10,15,.88) !important;
+      box-shadow: 0 10px 24px rgba(0,0,0,.22) !important;
+    }
+    .gc-home2-combo-card__compact-status {
+      background: rgba(7,9,13,.88) !important;
     }
 
   </style>
