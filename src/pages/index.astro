@@ -2532,7 +2532,7 @@ const home2ArchiveSeed: unknown[] = [];
 
       const renderRows = (target: HTMLElement | null, rows: any[], type: string) => {
         if (!target) return;
-        const list = Array.isArray(rows) ? rows.slice(0, 5) : [];
+        const list = Array.isArray(rows) ? rows.slice(0, 7) : [];
         if (!list.length) {
           target.innerHTML = `<tr><td colspan="4">Sin datos de ${type.toUpperCase()}.</td></tr>`;
           return;
@@ -3599,472 +3599,7 @@ const home2ArchiveSeed: unknown[] = [];
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_END */
 
   </script>
-
-  <script>
-    /* GC_HOME_CUSTOM_AVATAR_DIRECTORY_V2 */
-    (() => {
-      const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
-      const root = document.querySelector('[data-gc-home2]');
-      if (!root) return;
-
-      const normalizeName = (value: unknown): string => String(value || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '');
-
-      const cleanAvatar = (value: unknown): string => {
-        const src = String(value || '').trim();
-        if (!src || src === DEFAULT_AVATAR) return '';
-        return src;
-      };
-
-      const byName = new Map<string, string>();
-      const byId = new Map<string, string>();
-      let loaded = false;
-      let loading: Promise<void> | null = null;
-      let scheduled = 0;
-
-      const rowName = (row: any): string =>
-        row?.displayName ||
-        row?.publicName ||
-        row?.name ||
-        row?.driverName ||
-        row?.driver?.displayName ||
-        row?.driver?.name ||
-        '';
-
-      const rowId = (row: any): unknown =>
-        row?.profilePlayerId ??
-        row?.playerId ??
-        row?.strackerPlayerId ??
-        row?.pilotId ??
-        row?.id ??
-        row?.driver?.id ??
-        '';
-
-      const rowAvatar = (row: any): string => cleanAvatar(
-        row?.customAvatarUrl ||
-        row?.profileAvatarUrl ||
-        row?.avatarUrl ||
-        row?.avatar_url ||
-        row?.profile?.avatarUrl ||
-        row?.player?.avatarUrl ||
-        row?.driver?.avatarUrl ||
-        row?.pilot?.avatarUrl ||
-        ''
-      );
-
-      const register = (row: any): void => {
-        const avatar = rowAvatar(row);
-        if (!avatar) return;
-
-        const name = normalizeName(rowName(row));
-        const id = String(rowId(row) ?? '').trim();
-
-        if (name) byName.set(name, avatar);
-        if (id) byId.set(id, avatar);
-      };
-
-      const extractRows = (payload: any): any[] => {
-        if (Array.isArray(payload)) return payload;
-        if (Array.isArray(payload?.items)) return payload.items;
-        if (Array.isArray(payload?.pilots)) return payload.pilots;
-        if (Array.isArray(payload?.data?.items)) return payload.data.items;
-        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
-        return [];
-      };
-
-      const loadDirectory = async () => {
-        if (loaded) return;
-        if (loading) return loading;
-
-        loading = (async (): Promise<void> => {
-          const response = await fetch('/api/gc/pilots2?source=all&limit=all', {
-            credentials: 'same-origin',
-            headers: { Accept: 'application/json' }
-          });
-          if (!response.ok) throw new Error(`Pilots2 HTTP ${response.status}`);
-
-          const payload = await response.json();
-          extractRows(payload).forEach(register);
-          loaded = true;
-        })().catch((error) => {
-          console.warn('[GC Home avatars V2] No se pudo cargar el directorio de pilotos', error);
-        }).finally(() => {
-          loading = null;
-        });
-
-        return loading;
-      };
-
-      const textFrom = (selector: string, scope: ParentNode | null = document): string =>
-        scope?.querySelector?.(selector)?.textContent?.trim() || '';
-
-      const profileIdFromLink = (scope: ParentNode | null): string => {
-        const link = scope?.querySelector?.('a[href*="/pilotos/"]');
-        const match = String(link?.getAttribute?.('href') || '').match(/\/pilotos\/([^/?#]+)/i);
-        return match?.[1] ? decodeURIComponent(match[1]) : '';
-      };
-
-      const avatarContext = (img: HTMLImageElement): { name: string; id: string } => {
-        if (img.matches('[data-home2-best-avatar]')) {
-          return {
-            name: textFrom('[data-home2-best-driver]'),
-            id: ''
-          };
-        }
-
-        const ratingRow = img.closest('.gc-home2-rating-driver-cell');
-        if (ratingRow) {
-          return {
-            name: textFrom('.gc-home2-rating-driver a, .gc-home2-rating-driver strong', ratingRow),
-            id: profileIdFromLink(ratingRow)
-          };
-        }
-
-        const comboRow = img.closest('.gc-home2-combo-rank');
-        if (comboRow) {
-          return {
-            name: textFrom('strong', comboRow),
-            id: profileIdFromLink(comboRow)
-          };
-        }
-
-        const championshipRow = img.closest('.gc-home2-champ-standing-row');
-        if (championshipRow) {
-          return {
-            name: textFrom('.gc-home2-champ-standing-meta strong, strong', championshipRow),
-            id: profileIdFromLink(championshipRow)
-          };
-        }
-
-        return { name: '', id: '' };
-      };
-
-      const resolveAvatar = ({ name, id }: { name: string; id: string }): string => {
-        const safeId = String(id || '').trim();
-        if (safeId && byId.has(safeId)) return byId.get(safeId) || '';
-
-        const safeName = normalizeName(name);
-        if (safeName && byName.has(safeName)) return byName.get(safeName) || '';
-
-        return '';
-      };
-
-      const applyAvatar = (img: HTMLImageElement): void => {
-        const avatar = resolveAvatar(avatarContext(img));
-        if (!avatar) return;
-
-        if (img.getAttribute('src') !== avatar) {
-          img.onerror = function () {
-            this.onerror = null;
-            this.src = DEFAULT_AVATAR;
-          };
-          img.setAttribute('src', avatar);
-          img.dataset.gcCustomAvatar = '1';
-        }
-      };
-
-      const hydrate = async () => {
-        await loadDirectory();
-        if (!loaded) return;
-
-        document.querySelectorAll<HTMLImageElement>([
-          '[data-home2-best-avatar]',
-          '.gc-home2-combo-rank__avatar',
-          '.gc-home2-rating-driver-avatar',
-          '.gc-home2-champ-standing-avatar',
-          '.gc-home2-champ-standing-row img'
-        ].join(',')).forEach(applyAvatar);
-      };
-
-      const scheduleHydrate = () => {
-        if (scheduled) window.clearTimeout(scheduled);
-        scheduled = window.setTimeout(() => {
-          scheduled = 0;
-          hydrate();
-        }, 80);
-      };
-
-      hydrate();
-
-      new MutationObserver(scheduleHydrate).observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-
-      window.addEventListener('pageshow', scheduleHydrate);
-      window.setTimeout(scheduleHydrate, 1200);
-      window.setTimeout(scheduleHydrate, 3000);
-    })();
-  </script>
-
-  <script>
-    /* GC_HOME_CUSTOM_AVATAR_CANONICAL_V3 */
-    (() => {
-      const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
-      const root = document.querySelector('[data-gc-home2]');
-      if (!root) return;
-
-      type AvatarCandidate = {
-        id: string;
-        avatar: string;
-        priority: number;
-      };
-
-      const canonicalByName = new Map<string, AvatarCandidate>();
-      const canonicalById = new Map<string, string>();
-
-      let loaded = false;
-      let loading: Promise<void> | null = null;
-      let scheduled = 0;
-
-      const normalizeName = (value: unknown): string => String(value || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '');
-
-      const safeId = (value: unknown): string => {
-        const raw = String(value ?? '').trim();
-        return /^\d+$/.test(raw) ? raw : '';
-      };
-
-      const idScore = (id: string): number => {
-        const numeric = Number(id);
-        if (!Number.isFinite(numeric) || numeric <= 0) return Number.MAX_SAFE_INTEGER;
-        return numeric;
-      };
-
-      const avatarUrl = (id: string): string =>
-        id ? `/api/pilot-avatar/${encodeURIComponent(id)}` : DEFAULT_AVATAR;
-
-      const register = (
-        nameValue: unknown,
-        idValue: unknown,
-        directAvatar: unknown,
-        priority: number
-      ): void => {
-        const name = normalizeName(nameValue);
-        const id = safeId(idValue);
-        if (!name || !id) return;
-
-        const direct = String(directAvatar || '').trim();
-        const avatar = direct && direct !== DEFAULT_AVATAR ? direct : avatarUrl(id);
-
-        canonicalById.set(id, avatar);
-
-        const current = canonicalByName.get(name);
-        const candidate: AvatarCandidate = { id, avatar, priority };
-
-        if (
-          !current ||
-          candidate.priority > current.priority ||
-          (
-            candidate.priority === current.priority &&
-            idScore(candidate.id) < idScore(current.id)
-          )
-        ) {
-          canonicalByName.set(name, candidate);
-        }
-      };
-
-      const extractPilotRows = (payload: any): any[] => {
-        if (Array.isArray(payload)) return payload;
-        if (Array.isArray(payload?.items)) return payload.items;
-        if (Array.isArray(payload?.pilots)) return payload.pilots;
-        if (Array.isArray(payload?.data?.items)) return payload.data.items;
-        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
-        return [];
-      };
-
-      const extractRatingRows = (payload: any): any[] => [
-        ...(Array.isArray(payload?.leaderboard?.sr) ? payload.leaderboard.sr : []),
-        ...(Array.isArray(payload?.leaderboard?.gsr) ? payload.leaderboard.gsr : [])
-      ];
-
-      const loadCanonicalDirectory = async (): Promise<void> => {
-        if (loaded) return;
-        if (loading) return loading;
-
-        loading = (async (): Promise<void> => {
-          const [pilotsResponse, ratingsResponse] = await Promise.all([
-            fetch('/api/gc/pilots2?source=all&limit=all', {
-              credentials: 'same-origin',
-              headers: { Accept: 'application/json' }
-            }),
-            fetch('/api/gc/ratings/championship', {
-              credentials: 'same-origin',
-              headers: { Accept: 'application/json' }
-            })
-          ]);
-
-          if (!pilotsResponse.ok) {
-            throw new Error(`Pilots2 HTTP ${pilotsResponse.status}`);
-          }
-          if (!ratingsResponse.ok) {
-            throw new Error(`Ratings HTTP ${ratingsResponse.status}`);
-          }
-
-          const [pilotsPayload, ratingsPayload] = await Promise.all([
-            pilotsResponse.json(),
-            ratingsResponse.json()
-          ]);
-
-          // Priority 10: consolidated pilots directory.
-          // Duplicate names keep the lowest numeric ID.
-          extractPilotRows(pilotsPayload).forEach((row: any) => {
-            register(
-              row?.displayName || row?.publicName || row?.name,
-              row?.playerId ?? row?.id,
-              row?.avatarUrl || row?.avatar_url,
-              10
-            );
-          });
-
-          // Priority 100: canonical profilePlayerId emitted by ratings.
-          // This wins over technical mirror/server IDs.
-          extractRatingRows(ratingsPayload).forEach((row: any) => {
-            register(
-              row?.driver || row?.displayName || row?.name,
-              row?.profilePlayerId,
-              '',
-              100
-            );
-          });
-
-          loaded = true;
-        })().catch((error: unknown) => {
-          console.warn('[GC Home avatars V3] No se pudo crear el índice canónico', error);
-        }).finally(() => {
-          loading = null;
-        });
-
-        return loading;
-      };
-
-      const textFrom = (
-        selector: string,
-        scope: ParentNode | null = document
-      ): string => scope?.querySelector?.(selector)?.textContent?.trim() || '';
-
-      const profileIdFromLink = (scope: ParentNode | null): string => {
-        const link = scope?.querySelector?.('a[href*="/pilotos/"]');
-        const match = String(link?.getAttribute?.('href') || '').match(/\/pilotos\/([^/?#]+)/i);
-        return match?.[1] ? decodeURIComponent(match[1]) : '';
-      };
-
-      const context = (
-        img: HTMLImageElement
-      ): { name: string; id: string } => {
-        if (img.matches('[data-home2-best-avatar]')) {
-          return {
-            name: textFrom('[data-home2-best-driver]'),
-            id: ''
-          };
-        }
-
-        const ratingRow = img.closest('.gc-home2-rating-driver-cell');
-        if (ratingRow) {
-          return {
-            name: textFrom(
-              '.gc-home2-rating-driver a, .gc-home2-rating-driver strong',
-              ratingRow
-            ),
-            id: profileIdFromLink(ratingRow)
-          };
-        }
-
-        const comboRow = img.closest('.gc-home2-combo-rank');
-        if (comboRow) {
-          return {
-            name: textFrom('strong', comboRow),
-            id: profileIdFromLink(comboRow)
-          };
-        }
-
-        const championshipRow = img.closest('.gc-home2-champ-standing-row');
-        if (championshipRow) {
-          return {
-            name: textFrom(
-              '.gc-home2-champ-standing-meta strong, strong',
-              championshipRow
-            ),
-            id: profileIdFromLink(championshipRow)
-          };
-        }
-
-        return { name: '', id: '' };
-      };
-
-      const resolve = (
-        value: { name: string; id: string }
-      ): string => {
-        const directId = safeId(value.id);
-        if (directId) {
-          return canonicalById.get(directId) || avatarUrl(directId);
-        }
-
-        const name = normalizeName(value.name);
-        const candidate = name ? canonicalByName.get(name) : undefined;
-        return candidate?.avatar || '';
-      };
-
-      const apply = (img: HTMLImageElement): void => {
-        const avatar = resolve(context(img));
-        if (!avatar) return;
-
-        if (img.getAttribute('src') !== avatar) {
-          img.onerror = function () {
-            this.onerror = null;
-            this.src = DEFAULT_AVATAR;
-          };
-          img.setAttribute('src', avatar);
-          img.dataset.gcCanonicalAvatar = '1';
-        }
-      };
-
-      const hydrate = async (): Promise<void> => {
-        await loadCanonicalDirectory();
-        if (!loaded) return;
-
-        document.querySelectorAll<HTMLImageElement>([
-          '[data-home2-best-avatar]',
-          '.gc-home2-combo-rank__avatar',
-          '.gc-home2-rating-driver-avatar',
-          '.gc-home2-champ-standing-avatar',
-          '.gc-home2-champ-standing-row img'
-        ].join(',')).forEach(apply);
-      };
-
-      const schedule = (): void => {
-        if (scheduled) window.clearTimeout(scheduled);
-        scheduled = window.setTimeout(() => {
-          scheduled = 0;
-          hydrate();
-        }, 100);
-      };
-
-      hydrate();
-
-      new MutationObserver(schedule).observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-
-      window.addEventListener('pageshow', schedule);
-      window.setTimeout(schedule, 1000);
-      window.setTimeout(schedule, 2500);
-      window.setTimeout(schedule, 5000);
-    })();
-  </script>
-
-  <style is:global>
+<style is:global>
     /* GC_HOME_PILOT_LINKS_POPOVER_V1 */
     .gc-home2 .gc-home-pilot-link{
       color:inherit;
@@ -4684,320 +4219,7 @@ const home2ArchiveSeed: unknown[] = [];
       window.setTimeout(enhance,3000);
     })();
   </script>
-
-  <style is:global>
-    /* GC_HOME_PILOT_POPOVER_GLOBAL_V2 */
-    .gc-home2 .gc-home2-combo-rank .gc-home-pilot-link,
-    .gc-home2 .gc-home2-table__row .gc-home-pilot-link{
-      font-size:12px !important;
-      line-height:1.05 !important;
-      font-weight:900 !important;
-    }
-
-    .gc-home2 .gc-home2-rating-driver .gc-home-pilot-link,
-    .gc-home2 .gc-home2-champ-standing-meta .gc-home-pilot-link{
-      font-size:inherit !important;
-      line-height:inherit !important;
-      font-weight:950 !important;
-    }
-
-    .gc-home2 .gc-home-pilot-link,
-    .gc-home2 .gc-home-pilot-link:hover,
-    .gc-home2 .gc-home-pilot-link:focus-visible{
-      text-decoration:none !important;
-    }
-
-    .gc-home2 .gc-home-pilot-link:hover,
-    .gc-home2 .gc-home-pilot-link:focus-visible{
-      color:var(--green,#96ff2f) !important;
-    }
-  </style>
-
-  <script>
-    /* GC_HOME_PILOT_POPOVER_GLOBAL_V2 */
-    (() => {
-      type PilotData = {
-        id: string;
-        name: string;
-        avatarUrl: string;
-        team: string;
-        sessionsCount: number | null;
-        totalLaps: number | null;
-        totalHours: number | null;
-        active30dLaps: number | null;
-        cleanRate: number | null;
-        favoriteCar: string;
-        favoriteTrack: string;
-        srClass: string;
-        srScore: number | null;
-        gsrClass: string;
-        gsrScore: number | null;
-      };
-
-      const root = document.querySelector<HTMLElement>('[data-gc-home2]');
-      const popover = document.querySelector<HTMLElement>('[data-home-pilot-popover]');
-      if (!root || !popover) return;
-
-      const byName = new Map<string, PilotData>();
-      const byId = new Map<string, PilotData>();
-      let loaded = false;
-      let loading: Promise<void> | null = null;
-      let timer = 0;
-
-      const normalize = (value: unknown): string => String(value || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'')
-        .replace(/[^a-z0-9]+/g,'');
-
-      const clean = (value: unknown, fallback = ''): string => {
-        const out = String(value ?? '').trim();
-        return out || fallback;
-      };
-
-      const num = (value: unknown): number | null => {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-      };
-
-      const emptyPilot = (id: string, name: string): PilotData => ({
-        id,
-        name,
-        avatarUrl:id ? `/api/pilot-avatar/${encodeURIComponent(id)}` : '/images/pilot-avatar-default.png',
-        team:'',
-        sessionsCount:null,
-        totalLaps:null,
-        totalHours:null,
-        active30dLaps:null,
-        cleanRate:null,
-        favoriteCar:'',
-        favoriteTrack:'',
-        srClass:'',
-        srScore:null,
-        gsrClass:'',
-        gsrScore:null
-      });
-
-      const mergePilot = (base: PilotData, patch: Partial<PilotData>): PilotData => ({
-        ...base,
-        ...Object.fromEntries(
-          Object.entries(patch).filter(([,value]) =>
-            value !== undefined &&
-            value !== null &&
-            value !== ''
-          )
-        )
-      });
-
-      const register = (pilot: PilotData, priority = 10): void => {
-        if (!pilot.id || !pilot.name) return;
-
-        const key = normalize(pilot.name);
-        const existing = byName.get(key);
-
-        if (!existing || priority >= Number((existing as any).__priority || 0)) {
-          (pilot as any).__priority = priority;
-          byName.set(key,pilot);
-        }
-
-        const byIdExisting = byId.get(pilot.id);
-        byId.set(pilot.id,byIdExisting ? mergePilot(byIdExisting,pilot) : pilot);
-      };
-
-      const extractPilots = (payload: any): any[] => {
-        if (Array.isArray(payload)) return payload;
-        if (Array.isArray(payload?.items)) return payload.items;
-        if (Array.isArray(payload?.pilots)) return payload.pilots;
-        if (Array.isArray(payload?.data?.items)) return payload.data.items;
-        if (Array.isArray(payload?.data?.pilots)) return payload.data.pilots;
-        return [];
-      };
-
-      const extractRatings = (payload: any): any[] => [
-        ...(Array.isArray(payload?.leaderboard?.sr) ? payload.leaderboard.sr : []),
-        ...(Array.isArray(payload?.leaderboard?.gsr) ? payload.leaderboard.gsr : [])
-      ];
-
-      const load = async (): Promise<void> => {
-        if (loaded) return;
-        if (loading) return loading;
-
-        loading = (async (): Promise<void> => {
-          const [pilotsRes,ratingsRes] = await Promise.all([
-            fetch('/api/gc/pilots2?source=all&limit=all',{
-              credentials:'same-origin',
-              headers:{Accept:'application/json'}
-            }),
-            fetch('/api/gc/ratings/championship',{
-              credentials:'same-origin',
-              headers:{Accept:'application/json'}
-            })
-          ]);
-
-          const pilotsPayload = pilotsRes.ok ? await pilotsRes.json() : {};
-          const ratingsPayload = ratingsRes.ok ? await ratingsRes.json() : {};
-
-          extractPilots(pilotsPayload).forEach((row:any) => {
-            const id = clean(row?.playerId ?? row?.id);
-            const name = clean(row?.displayName || row?.publicName || row?.name);
-            if (!id || !name) return;
-
-            const pilot: PilotData = {
-              id,
-              name,
-              avatarUrl:clean(row?.avatarUrl,`/api/pilot-avatar/${encodeURIComponent(id)}`),
-              team:clean(row?.team),
-              sessionsCount:num(row?.sessionsCount ?? row?.races),
-              totalLaps:num(row?.totalLaps),
-              totalHours:num(row?.totalHours),
-              active30dLaps:num(row?.active30dLaps),
-              cleanRate:num(row?.cleanRate),
-              favoriteCar:clean(row?.favoriteCar),
-              favoriteTrack:clean(row?.favoriteTrack),
-              srClass:clean(row?.srClass),
-              srScore:num(row?.srScore),
-              gsrClass:clean(row?.gsrClass),
-              gsrScore:num(row?.gsrScore)
-            };
-
-            register(pilot,10);
-          });
-
-          extractRatings(ratingsPayload).forEach((row:any) => {
-            const id = clean(row?.profilePlayerId);
-            const name = clean(row?.driver || row?.displayName || row?.name);
-            if (!id || !name) return;
-
-            const existing = byId.get(id) || byName.get(normalize(name)) || emptyPilot(id,name);
-            const pilot = mergePilot(existing,{
-              id,
-              name,
-              avatarUrl:`/api/pilot-avatar/${encodeURIComponent(id)}`,
-              sessionsCount:num(row?.races),
-              srClass:clean(row?.srClass),
-              srScore:num(row?.sr),
-              gsrClass:clean(row?.gsrClass),
-              gsrScore:num(row?.gsr)
-            });
-
-            register(pilot,100);
-          });
-
-          loaded = true;
-        })().catch((error:unknown) => {
-          console.warn('[GC Home pilot popover V2] Error cargando directorio',error);
-        }).finally(() => {
-          loading = null;
-        });
-
-        return loading;
-      };
-
-      const resolve = (name: string, id = ''): PilotData | null => {
-        if (id && byId.has(id)) return byId.get(id) || null;
-        return byName.get(normalize(name)) || null;
-      };
-
-      const replaceWithLink = (
-        element: HTMLElement,
-        name: string,
-        pilot: PilotData
-      ): void => {
-        if (element.closest('.gc-home-pilot-link')) return;
-
-        const link = document.createElement('a');
-        link.className = 'gc-home-pilot-link';
-        link.href = `/pilotos/${encodeURIComponent(pilot.id)}`;
-        link.dataset.pilotName = pilot.name;
-        link.dataset.pilotId = pilot.id;
-        link.textContent = name;
-        link.setAttribute('aria-label',`Ver ficha de ${pilot.name}`);
-        element.replaceWith(link);
-      };
-
-      const enhanceBestTimes = (): void => {
-        document.querySelectorAll<HTMLElement>('.gc-home2-combo-rank').forEach((row) => {
-          const target = row.querySelector<HTMLElement>('div > strong:not(.gc-home-pilot-link)');
-          const name = target?.textContent?.trim() || '';
-          const pilot = resolve(name);
-          if (target && pilot) replaceWithLink(target,name,pilot);
-        });
-      };
-
-      const enhanceTiming = (): void => {
-        document.querySelectorAll<HTMLElement>(
-          '.gc-home2-table__row:not(.gc-home2-table__head)'
-        ).forEach((row) => {
-          const target = row.querySelector<HTMLElement>('span:first-child:not(.gc-home-pilot-link)');
-          const name = target?.textContent?.trim() || '';
-          const pilot = resolve(name);
-          if (target && pilot && name && name !== '--') replaceWithLink(target,name,pilot);
-        });
-      };
-
-      const enhanceRatings = (): void => {
-        document.querySelectorAll<HTMLElement>('.gc-home2-rating-driver').forEach((scope) => {
-          const target = scope.querySelector<HTMLElement>('strong:not(.gc-home-pilot-link), a:not(.gc-home-pilot-link)');
-          const name = target?.textContent?.trim() || '';
-          const href = target instanceof HTMLAnchorElement ? target.getAttribute('href') || '' : '';
-          const id = decodeURIComponent(href.match(/\/pilotos\/([^/?#]+)/i)?.[1] || '');
-          const pilot = resolve(name,id);
-          if (!target || !pilot) return;
-
-          if (target instanceof HTMLAnchorElement) {
-            target.classList.add('gc-home-pilot-link');
-            target.dataset.pilotName = pilot.name;
-            target.dataset.pilotId = pilot.id;
-            target.href = `/pilotos/${encodeURIComponent(pilot.id)}`;
-          } else {
-            replaceWithLink(target,name,pilot);
-          }
-        });
-      };
-
-      const enhanceChampionships = (): void => {
-        document.querySelectorAll<HTMLElement>('.gc-home2-champ-standing-row').forEach((row) => {
-          const target = row.querySelector<HTMLElement>(
-            '.gc-home2-champ-standing-meta strong:not(.gc-home-pilot-link), strong:not(.gc-home-pilot-link)'
-          );
-          const name = target?.textContent?.trim() || '';
-          const pilot = resolve(name);
-          if (target && pilot) replaceWithLink(target,name,pilot);
-        });
-      };
-
-      const enhanceAll = async (): Promise<void> => {
-        await load();
-        if (!loaded) return;
-        enhanceBestTimes();
-        enhanceTiming();
-        enhanceRatings();
-        enhanceChampionships();
-      };
-
-      const schedule = (): void => {
-        if (timer) window.clearTimeout(timer);
-        timer = window.setTimeout(() => {
-          timer = 0;
-          enhanceAll();
-        },100);
-      };
-
-      new MutationObserver(schedule).observe(root,{
-        childList:true,
-        subtree:true,
-        characterData:true
-      });
-
-      enhanceAll();
-      window.setTimeout(enhanceAll,1000);
-      window.setTimeout(enhanceAll,2500);
-      window.setTimeout(enhanceAll,5000);
-    })();
-  </script>
-
-  <style is:global>
+<style is:global>
     /* GC_HOME_CHAMPIONSHIP_BLOCKS_COMPACT_V1 */
     .gc-home2 .gc-home2-championship-compact{
       padding:12px 14px !important;
@@ -5667,6 +4889,252 @@ const home2ArchiveSeed: unknown[] = [];
 
       popover.addEventListener('pointerenter',schedule);
       popover.addEventListener('focusin',schedule);
+    })();
+  </script>
+
+  <style is:global>
+    /* GC_HOME_POPOVER_ROWS_STABILITY_V5 */
+
+    /* Seven visible drivers without increasing the panels. */
+    .gc-home2 [data-home2-combo-ranking],
+    .gc-home2 [data-home2-combo-ranking-gt4]{
+      gap:4px !important;
+    }
+
+    .gc-home2 [data-home2-combo-ranking] > .gc-home2-combo-rank,
+    .gc-home2 [data-home2-combo-ranking-gt4] > .gc-home2-combo-rank{
+      min-height:34px !important;
+      padding:4px 7px !important;
+      gap:6px !important;
+    }
+
+    .gc-home2 .gc-home2-combo-ranking-list .gc-home2-rank-badge{
+      width:21px !important;
+      min-width:21px !important;
+      height:21px !important;
+      min-height:21px !important;
+      font-size:12px !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank__avatar{
+      width:21px !important;
+      min-width:21px !important;
+      height:21px !important;
+      min-height:21px !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank .gc-home-pilot-link,
+    .gc-home2 .gc-home2-combo-rank strong{
+      font-size:11px !important;
+      line-height:1 !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank small{
+      margin-top:2px !important;
+      font-size:7.5px !important;
+      line-height:1 !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank em{
+      font-size:12px !important;
+      line-height:1 !important;
+    }
+
+    /* Avoid visual resizing/fading when data refreshes. */
+    .gc-home2 img{
+      transition:none !important;
+      animation:none !important;
+    }
+
+    .gc-home2 .gc-home2-combo-rank,
+    .gc-home2 .gc-home2-table__row,
+    .gc-home2 .gc-home2-champ-standing-row,
+    .gc-home2 .gc-home2-rating-row{
+      transition:
+        border-color .12s ease,
+        background-color .12s ease !important;
+    }
+
+    .gc-home-pilot-popover__stat strong[data-stat="podiums"]{
+      color:#96ff2f !important;
+    }
+  </style>
+
+  <script>
+    /* GC_HOME_POPOVER_ROWS_STABILITY_V5 */
+    (() => {
+      const root = document.querySelector<HTMLElement>('[data-gc-home2]');
+      const popover = document.querySelector<HTMLElement>('[data-home-pilot-popover]');
+      if (!root || !popover) return;
+
+      type PodiumValue = number | null;
+
+      const podiumCache = new Map<string, PodiumValue>();
+      const stableImageSrc = new WeakMap<HTMLImageElement, string>();
+      let podiumTimer = 0;
+
+      const placeholderNames = [
+        '/images/pilot-avatar-default.png',
+        '/ui/home2/gc-home2-track-fallback.svg',
+        'image-pending'
+      ];
+
+      const isPlaceholder = (value: string): boolean => {
+        const normalized = String(value || '').toLowerCase();
+        return placeholderNames.some((token) => normalized.includes(token));
+      };
+
+      const rememberImage = (img: HTMLImageElement): void => {
+        const src = img.currentSrc || img.src || img.getAttribute('src') || '';
+        if (src && !isPlaceholder(src)) stableImageSrc.set(img, src);
+      };
+
+      root.querySelectorAll<HTMLImageElement>('img').forEach(rememberImage);
+
+      /*
+       * Core data can refresh normally, but a good image is not allowed to
+       * flash back to a placeholder while the same row is being rebuilt.
+       */
+      new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (
+            mutation.type === 'attributes' &&
+            mutation.target instanceof HTMLImageElement
+          ) {
+            const img = mutation.target;
+            const src = img.currentSrc || img.src || img.getAttribute('src') || '';
+            const previous = stableImageSrc.get(img);
+
+            if (isPlaceholder(src) && previous && previous !== src) {
+              img.src = previous;
+              continue;
+            }
+
+            rememberImage(img);
+          }
+        }
+      }).observe(root, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src']
+      });
+
+      const numberOrNull = (value: unknown): number | null => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+
+      const findPodiums = (payload: any): PodiumValue => {
+        const candidates = [
+          payload?.summary?.podiums,
+          payload?.summary?.officialPodiums,
+          payload?.ratings?.podiums,
+          payload?.ratings?.officialPodiums,
+          payload?.pilot?.podiums,
+          payload?.pilot?.officialPodiums,
+          payload?.stats?.podiums,
+          payload?.championship?.podiums
+        ];
+
+        for (const candidate of candidates) {
+          const parsed = numberOrNull(candidate);
+          if (parsed !== null) return parsed;
+        }
+
+        return null;
+      };
+
+      const profileId = (): string => {
+        const fullLink = popover.querySelector<HTMLAnchorElement>(
+          '.gc-home-pilot-popover__footer a[href*="/pilotos/"]'
+        );
+
+        return decodeURIComponent(
+          String(fullLink?.getAttribute('href') || '')
+            .match(/\/pilotos\/([^/?#]+)/i)?.[1] || ''
+        );
+      };
+
+      const loadPodiums = async (id: string): Promise<PodiumValue> => {
+        if (!id) return null;
+        if (podiumCache.has(id)) return podiumCache.get(id) ?? null;
+
+        try {
+          const response = await fetch(
+            `/api/pilots/${encodeURIComponent(id)}/profile`,
+            {
+              credentials: 'same-origin',
+              headers: { Accept: 'application/json' }
+            }
+          );
+
+          if (!response.ok) {
+            podiumCache.set(id, null);
+            return null;
+          }
+
+          const payload = await response.json();
+          const podiums = findPodiums(payload);
+          podiumCache.set(id, podiums);
+          return podiums;
+        } catch {
+          podiumCache.set(id, null);
+          return null;
+        }
+      };
+
+      const applyPodiums = async (): Promise<void> => {
+        if (!popover.classList.contains('is-open')) return;
+
+        const stats = Array.from(
+          popover.querySelectorAll<HTMLElement>(
+            '.gc-home-pilot-popover__stat'
+          )
+        );
+
+        const block = stats[5];
+        if (!block) return;
+
+        const label = block.querySelector<HTMLElement>('span');
+        const value = block.querySelector<HTMLElement>('strong');
+
+        if (label) label.textContent = 'Podios';
+        if (value) {
+          value.textContent = '--';
+          value.dataset.stat = 'podiums';
+        }
+
+        const id = profileId();
+        const podiums = await loadPodiums(id);
+
+        if (
+          popover.classList.contains('is-open') &&
+          profileId() === id &&
+          value
+        ) {
+          value.textContent = podiums === null
+            ? '--'
+            : new Intl.NumberFormat('es-ES').format(podiums);
+        }
+      };
+
+      const schedulePodiums = (): void => {
+        if (podiumTimer) window.clearTimeout(podiumTimer);
+        podiumTimer = window.setTimeout(() => {
+          podiumTimer = 0;
+          applyPodiums();
+        }, 80);
+      };
+
+      new MutationObserver(schedulePodiums).observe(popover, {
+        attributes: true,
+        attributeFilter: ['class'],
+        childList: true,
+        subtree: true
+      });
+
+      popover.addEventListener('pointerenter', schedulePodiums);
+      popover.addEventListener('focusin', schedulePodiums);
     })();
   </script>
 
