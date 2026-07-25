@@ -1,3 +1,4 @@
+/* GC_HOME_HERO_TOP7_V17 */
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
@@ -2603,7 +2604,7 @@ const home2ArchiveSeed: unknown[] = [];
 
       const renderRows = (target: HTMLElement | null, rows: any[], type: string) => {
         if (!target) return;
-        const list = Array.isArray(rows) ? rows.slice(0, 6) : [];
+        const list = Array.isArray(rows) ? rows.slice(0, 7) : [];
         if (!list.length) {
           target.innerHTML = `<tr><td colspan="4">Sin datos de ${type.toUpperCase()}.</td></tr>`;
           return;
@@ -6515,6 +6516,37 @@ const home2ArchiveSeed: unknown[] = [];
 
   .gc-home-pilot-popover__rating > strong {
     min-width: 76px !important;
+  }
+
+
+  /* GC_HOME_HERO_TOP7_V17 */
+  .gc-home2-combo-card--consolidated {
+    border: 0 !important;
+    box-shadow:
+      0 18px 46px rgba(0,0,0,.32),
+      inset 0 0 0 1px rgba(255,255,255,.04) !important;
+  }
+
+  .gc-home2-combo-card--consolidated::before,
+  .gc-home2-combo-card--consolidated::after {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Si los listados quedan justos al pasar a 7, compactamos ligeramente. */
+  .gc-home2 .gc-home2-hotlap-row,
+  .gc-home2 .gc-home2-ranking-row,
+  .gc-home2 .gc-home2-list-row {
+    min-height: 36px !important;
+  }
+
+  .gc-home2 .gc-home2-hotlap-row,
+  .gc-home2 .gc-home2-ranking-row,
+  .gc-home2 .gc-home2-list-row,
+  .gc-home2 .gc-home2-hotlap-row > *,
+  .gc-home2 .gc-home2-ranking-row > *,
+  .gc-home2 .gc-home2-list-row > * {
+    line-height: 1.1 !important;
   }
 
 </style>
