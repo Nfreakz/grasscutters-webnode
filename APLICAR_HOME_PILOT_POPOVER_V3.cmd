@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-identity-canonical-guid-v1-1.mjs
+node scripts\apply-home-pilot-popover-v3-ratings-stats.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar la correccion de identidad.
+  echo No se pudo aplicar Pilot Popover V3.
   pause
   exit /b 1
 )
@@ -29,6 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Identidad canonica aplicada y build validado.
-echo Don Bixi debe enlazar ahora a /pilotos/32
+echo Pilot Popover V3 aplicado y build validado.
 pause
