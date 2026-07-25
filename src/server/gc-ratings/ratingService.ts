@@ -1299,9 +1299,17 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
     const officialResults = officialResultsForRating(rating);
     const ratingLastResult = lastOfficialResultForRating(rating);
     const acsmLastResult = row.lastResult || null;
-    const lastResult = ratingLastResult || acsmLastResult || null;
-    const officialWins = officialResults.length ? officialResults.filter((result) => result.position === 1).length : null;
-    const officialPodiums = officialResults.length ? officialResults.filter((result) => result.position >= 1 && result.position <= 3).length : null;
+    const ratingLastMs = parseDateMs(ratingLastResult?.eventDate || ratingLastResult?.processedAt);
+    const acsmLastMs = parseDateMs(acsmLastResult?.eventDate || acsmLastResult?.completedAt);
+    const lastResult = acsmLastResult && (!ratingLastResult || acsmLastMs >= ratingLastMs)
+      ? acsmLastResult
+      : ratingLastResult || acsmLastResult || null;
+
+    // La clasificación del campeonato es ACSM-only. No sobrescribimos victorias
+    // o podios actuales con un snapshot de ratings que todavía no ha procesado
+    // la última carrera.
+    const officialWins = row.wins ?? null;
+    const officialPodiums = row.podiums ?? null;
     const officialIncidentPoints = officialResults.length
       ? roundTo(officialResults.reduce((sum, result) => sum + Number(result.incidentPoints || 0), 0))
       : null;
@@ -4179,3 +4187,5 @@ export function getGcRatingsService() {
   if (!singleton) singleton = new GcRatingsService();
   return singleton;
 }
+
+// GC_GT4_RICARDO_TORMO_SYNC_FIX_V1

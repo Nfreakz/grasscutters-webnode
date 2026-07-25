@@ -168,9 +168,40 @@ export function normalizeIdentity(value: unknown) {
 }
 
 export function normalizeTrack(value: unknown) {
-  return slugify(value)
+  const normalized = slugify(value)
     .replace(/^(fn|ks|rt|mx|acu|nrms)_/, '')
     .replace(/_?(circuit|circuito|track|spain|italy|italia)$/g, '');
+
+  // GC_GT4_RICARDO_TORMO_SYNC_FIX_V1: ACSM y sTracker pueden nombrar el mismo circuito como
+  // Ricardo Tormo, Valencia o Cheste. Todos deben producir una clave única.
+  const aliases: Record<string, string> = {
+    ricardo_tormo: 'ricardo_tormo',
+    circuit_ricardo_tormo: 'ricardo_tormo',
+    circuito_ricardo_tormo: 'ricardo_tormo',
+    circuit_de_ricardo_tormo: 'ricardo_tormo',
+    circuit_de_la_comunitat_valenciana_ricardo_tormo: 'ricardo_tormo',
+    circuito_de_la_comunitat_valenciana_ricardo_tormo: 'ricardo_tormo',
+    comunitat_valenciana_ricardo_tormo: 'ricardo_tormo',
+    valencia: 'ricardo_tormo',
+    valencia_gp: 'ricardo_tormo',
+    cheste: 'ricardo_tormo',
+    circuit_valencia: 'ricardo_tormo',
+    circuito_valencia: 'ricardo_tormo'
+  };
+
+  if (aliases[normalized]) return aliases[normalized];
+
+  if (
+    normalized.includes('ricardo_tormo') ||
+    normalized.includes('comunitat_valenciana') ||
+    normalized === 'valencia' ||
+    normalized.includes('valencia_gp') ||
+    normalized === 'cheste'
+  ) {
+    return 'ricardo_tormo';
+  }
+
+  return normalized;
 }
 
 export function formatLapMs(value: unknown) {
@@ -242,3 +273,4 @@ export function ensureArray<T>(value: T[] | null | undefined) {
   return Array.isArray(value) ? value : [];
 }
 
+// GC_GT4_RICARDO_TORMO_SYNC_FIX_V1

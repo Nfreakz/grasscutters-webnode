@@ -757,6 +757,7 @@ function buildStandings(registeredDrivers: PlainObject[], events: PlainObject[])
           lastResult: {
             eventId: event.id,
             eventName: event.name,
+            eventDate: event.completedAt || event.scheduledAt || event.startedAt || null,
             position: row.position,
             points: row.points,
             bestLap: row.bestLap,
@@ -1048,3 +1049,5 @@ export function registerAcsmChampionshipRoutes(app: express.Express, { requireAd
     }
   });
 }
+
+// GC_GT4_RICARDO_TORMO_SYNC_FIX_V1

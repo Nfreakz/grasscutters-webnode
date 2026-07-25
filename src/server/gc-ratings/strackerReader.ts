@@ -37,16 +37,13 @@ export function resolveStrackerDbPath(sourceInput: unknown = 'main') {
     process.env.LOCAL_STRACKER_DB_PATH ||
     '';
 
-  const envPath = source === 'gt4' ? (gt4EnvPath || mainEnvPath) : mainEnvPath;
+  const envPath = source === 'gt4' ? gt4EnvPath : mainEnvPath;
   const candidates = source === 'gt4'
     ? [
         gt4EnvPath,
         path.join(process.cwd(), 'data', 'stracker', 'stracker-gt4.db3'),
         path.join(process.cwd(), 'data', 'stracker', 'gt4.db3'),
-        path.join(process.cwd(), 'stracker-gt4.db3'),
-        mainEnvPath,
-        path.join(process.cwd(), 'data', 'stracker', 'stracker.db3'),
-        path.join(process.cwd(), 'stracker.db3')
+        path.join(process.cwd(), 'stracker-gt4.db3')
       ]
     : [
         mainEnvPath,
@@ -346,3 +343,5 @@ export function findRatingCandidateRaceSessions(db: StrackerDb, options: {
     LIMIT ?
   `, [minDrivers, minTotalLaps, limit]);
 }
+
+// GC_GT4_RICARDO_TORMO_SYNC_FIX_V1
