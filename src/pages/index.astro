@@ -110,14 +110,11 @@ const home2ArchiveSeed: unknown[] = [];
           data-home2-combo-source="main"
         >
           <div class="gc-home2-combo-card__content">
-            <header class="gc-home2-combo-card__head">
-              <span class="gc-home2-combo-card__server-icon" aria-hidden="true">
-                <i></i><i></i><i></i>
-              </span>
+            <!-- GC_HOME_SERVER_HEADER_MINIMAL_V14 -->
+            <header class="gc-home2-combo-card__head gc-home2-combo-card__head--minimal">
               <p class="gc-home2-combo-card__label" data-home2-hero-source>
-                Servidor 1 · Liga
+                SERVIDOR 1 LIGA
               </p>
-              <span class="gc-home2-combo-card__chevron" aria-hidden="true"></span>
             </header>
 
             <div class="gc-home2-combo-card__track-copy">
@@ -3297,7 +3294,7 @@ const home2ArchiveSeed: unknown[] = [];
         const cars = (comboCarNames.length ? comboCarNames : fallbackCars)
           .map((name) => cleanHeroCarName(name, source))
           .filter(Boolean);
-        const label = source === 'gt4' ? 'Servidor 2 · GT4' : 'Servidor 1 · Liga';
+        const label = source === 'gt4' ? 'SERVIDOR 2 CAMPEONATO' : 'SERVIDOR 1 LIGA';
         const joinUrl = source === 'gt4' ? GT4_JOIN_URL : WEEKLY_JOIN_URL;
 
         // GC_HOME_COMBO_GLASS_ACSM_V1_RUNTIME
@@ -6248,6 +6245,46 @@ const home2ArchiveSeed: unknown[] = [];
         transition: none;
       }
     }
+
+    /* GC_HOME_SERVER_HEADER_MINIMAL_V14 */
+    .gc-home2-combo-card__head--minimal {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      min-height: 34px !important;
+      padding: 4px 10px !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .gc-home2-combo-card__head--minimal .gc-home2-combo-card__label {
+      margin: 0 !important;
+      color: #ff4b45 !important;
+      font-size: .72rem !important;
+      font-weight: 950 !important;
+      letter-spacing: .09em !important;
+      line-height: 1 !important;
+      text-transform: uppercase !important;
+      white-space: nowrap !important;
+    }
+
+    .gc-home2-combo-card__track-copy {
+      padding-top: 10px !important;
+    }
+
+    @media (max-width: 760px) {
+      .gc-home2-combo-card__head--minimal {
+        min-height: 31px !important;
+        padding: 3px 8px !important;
+      }
+
+      .gc-home2-combo-card__head--minimal .gc-home2-combo-card__label {
+        font-size: .66rem !important;
+      }
+    }
+
   </style>
 
 </MarketingLayout>
