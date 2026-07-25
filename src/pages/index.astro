@@ -3827,6 +3827,15 @@ const home2ArchiveSeed: unknown[] = [];
         favoriteCar?: unknown;
         favoriteTrack?: unknown;
         cleanRate?: unknown;
+        podiums?: unknown;
+        podiumCount?: unknown;
+        totalPodiums?: unknown;
+        podiumsCount?: unknown;
+        stats?: {
+          podiums?: unknown;
+          podiumCount?: unknown;
+          totalPodiums?: unknown;
+        };
       };
 
       const root = document.querySelector<HTMLElement>('[data-gc-home2]');
@@ -3982,15 +3991,37 @@ const home2ArchiveSeed: unknown[] = [];
         });
       };
 
-      const ratingText = (
-        cls: unknown,
-        score: unknown,
-        digits = 0
-      ): string => {
-        const classText = text(cls,'--');
-        const scoreText = numberText(score,digits);
-        return scoreText === '--' ? classText : `${classText} · ${scoreText}`;
+      /* GC_HOME_PILOT_POPOVER_RANK_NAMES_PODIUMS_V1_3 */
+      const srRankName = (score: unknown): string => {
+        const value = Number(score);
+        if (!Number.isFinite(value)) return '--';
+        if (value >= 95) return 'LEGEND';
+        if (value >= 90) return 'ELITE';
+        if (value >= 80) return 'PRO';
+        if (value >= 70) return 'ADVANCED';
+        if (value >= 60) return 'ROOKIE';
+        return 'PITLANE';
       };
+
+      const gsrRankName = (score: unknown): string => {
+        const value = Number(score);
+        if (!Number.isFinite(value)) return '--';
+        if (value >= 1750) return 'DIAMOND';
+        if (value >= 1650) return 'RUBY';
+        if (value >= 1550) return 'SAPPHIRE';
+        if (value >= 1475) return 'EMERALD';
+        if (value >= 1400) return 'AMBER';
+        return 'ONYX';
+      };
+
+      const podiumValue = (pilot: PilotRow): unknown =>
+        pilot.podiums ??
+        pilot.podiumCount ??
+        pilot.totalPodiums ??
+        pilot.podiumsCount ??
+        pilot.stats?.podiums ??
+        pilot.stats?.podiumCount ??
+        pilot.stats?.totalPodiums;
 
       const popoverMarkup = (pilot: PilotRow): string => {
         const id = pilotId(pilot);
@@ -4002,6 +4033,7 @@ const home2ArchiveSeed: unknown[] = [];
         const active = pilot.active30dLaps;
         const clean = Number(pilot.cleanRate);
         const cleanText = Number.isFinite(clean) ? `${numberText(clean,1)}%` : '--';
+        const podiums = podiumValue(pilot);
 
         return `
           <div class="gc-home-pilot-popover__head">
@@ -4016,12 +4048,12 @@ const home2ArchiveSeed: unknown[] = [];
 
           <div class="gc-home-pilot-popover__ratings">
             <div class="gc-home-pilot-popover__rating">
-              <span>SR</span>
-              <strong>${escapeHtml(ratingText(pilot.srClass,pilot.srScore,1))}</strong>
+              <span>${escapeHtml(srRankName(pilot.srScore))}</span>
+              <strong>${escapeHtml(numberText(pilot.srScore,1))}</strong>
             </div>
             <div class="gc-home-pilot-popover__rating">
-              <span>GSR</span>
-              <strong>${escapeHtml(ratingText(pilot.gsrClass,pilot.gsrScore,0))}</strong>
+              <span>${escapeHtml(gsrRankName(pilot.gsrScore))}</span>
+              <strong>${escapeHtml(numberText(pilot.gsrScore,0))}</strong>
             </div>
           </div>
 
@@ -4047,8 +4079,8 @@ const home2ArchiveSeed: unknown[] = [];
               <strong>${escapeHtml(cleanText)}</strong>
             </div>
             <div class="gc-home-pilot-popover__stat">
-              <span>ID</span>
-              <strong>${escapeHtml(id)}</strong>
+              <span>Podios</span>
+              <strong>${escapeHtml(numberText(podiums))}</strong>
             </div>
           </div>
 
@@ -6345,6 +6377,35 @@ const home2ArchiveSeed: unknown[] = [];
   @media (max-width: 430px) {
     .gc-home-pilot-popover__ratings {
       grid-template-columns: 1fr !important;
+    }
+
+    .gc-home-pilot-popover__rating > strong {
+      font-size: 22px !important;
+    }
+  }
+
+
+  /* GC_HOME_PILOT_POPOVER_RANK_NAMES_PODIUMS_V1_3 */
+  .gc-home-pilot-popover__rating {
+    grid-template-columns: minmax(110px, 1fr) auto !important;
+  }
+
+  .gc-home-pilot-popover__rating > span {
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .gc-home-pilot-popover__rating > strong {
+    min-width: 74px !important;
+    font-size: 26px !important;
+  }
+
+  @media (max-width: 430px) {
+    .gc-home-pilot-popover__rating {
+      grid-template-columns: minmax(100px, 1fr) auto !important;
     }
 
     .gc-home-pilot-popover__rating > strong {
