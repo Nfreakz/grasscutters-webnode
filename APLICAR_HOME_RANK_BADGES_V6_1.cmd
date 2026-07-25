@@ -3,10 +3,10 @@ setlocal
 set "GC_PROJECT_ROOT=G:\Web Node\grasscutters-webnode"
 cd /d "%~dp0"
 
-node scripts\apply-home-top-times-fixed-v6.mjs
+node scripts\apply-home-rank-badges-v6-1.mjs
 if errorlevel 1 (
   echo.
-  echo No se pudo aplicar Home Top Times V6.
+  echo No se pudo aplicar Rank Badges V6.1.
   pause
   exit /b 1
 )
@@ -29,5 +29,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Home Top Times V6 aplicada y build validado.
+echo Rank Badges V6.1 aplicado y build validado.
 pause
