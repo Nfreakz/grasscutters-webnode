@@ -163,7 +163,7 @@ const home2ArchiveSeed: unknown[] = [];
                   <span class="gc-home2-driver__dot" aria-hidden="true"></span>
                 </div>
                 <div class="gc-home2-driver__meta">
-                  <span class="gc-home2-card-label gc-home2-card-label--pilot" data-home2-best-driver>--</span>
+                  <strong class="gc-home2-driver-name" data-home2-best-driver>--</strong>
                   <small data-home2-best-car>--</small>
                 </div>
               </div>
@@ -2643,6 +2643,19 @@ const home2ArchiveSeed: unknown[] = [];
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
+      // GC_HOME_HERO_RANDOM_PILOT_FIX_V12
+      window.requestAnimationFrame(() => {
+        const img = root.querySelector('.gc-home2-hero__bg[data-home2-track-image]') as HTMLImageElement | null;
+        try {
+          const parsed = JSON.parse(root.getAttribute('data-home2-combo-random-images') || '[]');
+          const images = Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+          if (img && images.length) {
+            const selected = images[Math.floor(Math.random() * images.length)] || images[0];
+            if (selected) img.src = selected;
+          }
+        } catch {}
+      });
+
       if ((window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
         console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
         return;
@@ -2668,6 +2681,7 @@ const home2ArchiveSeed: unknown[] = [];
         }
       })();
       let lastComboRandomImage = '';
+      let fixedRandomHeroImage = '';
 
       // GC_HOME_COMBO_GLASS_STABILITY_V4
       const failedGlassTrackAssets = new Map<string, number>();
@@ -3274,18 +3288,20 @@ const home2ArchiveSeed: unknown[] = [];
         const img = q('.gc-home2-hero__bg[data-home2-track-image]') as HTMLImageElement | null;
         if (!img) return;
         img.dataset.gcHomeStaticManaged = '1';
+        img.dataset.gcHomeRandomHero = 'v12';
 
         if (!comboRandomImages.length) {
           setImageWithFallbacks(img, [], FALLBACK_TRACK);
           return;
         }
 
-        const pool = comboRandomImages.filter((item) => item !== lastComboRandomImage);
-        const source = pool.length ? pool : comboRandomImages;
-        const selected = source[Math.floor(Math.random() * source.length)] || comboRandomImages[0] || FALLBACK_TRACK;
-        lastComboRandomImage = selected;
+        if (!fixedRandomHeroImage) {
+          fixedRandomHeroImage = comboRandomImages[Math.floor(Math.random() * comboRandomImages.length)]
+            || comboRandomImages[0]
+            || FALLBACK_TRACK;
+        }
 
-        setImageWithFallbacks(img, [selected], FALLBACK_TRACK);
+        setImageWithFallbacks(img, [fixedRandomHeroImage], FALLBACK_TRACK);
       };
 
       const renderRanking = (selector: string, rows: any[] = [], preserve = true): any[] => {
@@ -7432,6 +7448,76 @@ const home2ArchiveSeed: unknown[] = [];
     @media (max-width: 760px) {
       .gc-home2-combo-card--glass .gc-home2-card-label--pilot {
         font-size: .92rem !important;
+      }
+    }
+
+
+    /* GC_HOME_HERO_RANDOM_PILOT_FIX_V12 */
+    .gc-home2-combo-card--glass .gc-home2-driver__meta {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      min-width: 0 !important;
+      width: 100% !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver-name[data-home2-best-driver] {
+      display: block !important;
+      overflow: hidden !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 0 5px !important;
+      color: #7cff00 !important;
+      font-size: 1.15rem !important;
+      font-weight: 900 !important;
+      line-height: 1.08 !important;
+      letter-spacing: .02em !important;
+      text-overflow: ellipsis !important;
+      text-transform: uppercase !important;
+      white-space: nowrap !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-driver__meta small[data-home2-best-car] {
+      display: block !important;
+      overflow: hidden !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      color: rgba(236,238,236,.76) !important;
+      font-size: .78rem !important;
+      line-height: 1.15 !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__cta {
+      border-color: rgba(186,77,240,.9) !important;
+      color: #fff !important;
+      background: linear-gradient(180deg, #a72fe8 0%, #6f1aa5 100%) !important;
+      box-shadow:
+        inset 0 1px rgba(255,255,255,.14),
+        0 12px 26px rgba(128,32,184,.30) !important;
+    }
+
+    .gc-home2-combo-card--glass .gc-home2-combo-card__cta:hover {
+      background: linear-gradient(180deg, #bd3cf3 0%, #7d20b8 100%) !important;
+    }
+
+    .gc-home2-hero__bg[data-gc-home-random-hero="v12"],
+    .gc-home2-hero__bg[data-home2-track-image] {
+      object-fit: cover !important;
+      object-position: center !important;
+    }
+
+    @media (max-width: 760px) {
+      .gc-home2-combo-card--glass .gc-home2-driver-name[data-home2-best-driver] {
+        font-size: .98rem !important;
       }
     }
 
