@@ -51,15 +51,15 @@
     'driver.displayName', 'driver.name', 'player.name'
   ], 'Piloto'));
 
-  const carName = (row) => String(pick(row, [
+  const carName = (row, fallback = '') => String(pick(row, [
     'carName', 'carDisplayName', 'carVisibleName', 'carModel', 'CarModel', 'model',
     'car.displayName', 'car.uiName', 'car.name', 'car.code'
-  ], 'Coche'));
+  ], fallback));
 
-  const trackName = (row) => String(pick(row, [
+  const trackName = (row, fallback = '') => String(pick(row, [
     'trackName', 'trackDisplayName', 'trackVisibleName', 'trackCode', 'Track',
     'track.displayName', 'track.uiName', 'track.name', 'track.code'
-  ], 'Circuito'));
+  ], fallback));
 
   const lapMs = (row) => {
     const value = Number(pick(row, ['bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs', 'lap_time_ms'], 0));
@@ -113,7 +113,7 @@
       return `
         <div class="gc-home2-combo-rank" data-gc-runtime-driver="${esc(canonicalDriver(driverName(row)))}">
           <span class="gc-home2-rank-badge${position > 3 ? ' gc-home2-rank-badge--plain' : ''}">${badge}</span>
-          <div><strong>${esc(driverName(row).toUpperCase())}</strong><small>${esc(carName(row).toUpperCase())}</small></div>
+          <div><strong>${esc(driverName(row).toUpperCase())}</strong><small>${esc(carName(row, 'Coche').toUpperCase())}</small></div>
           <img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />
           <em>${esc(timeText(lapMs(row)))}</em>
         </div>`;
@@ -133,6 +133,11 @@
     if (timing) [...timing.children].forEach((row, index) => { if (row instanceof HTMLElement) row.style.display = index < 10 ? '' : 'none'; });
   };
 
+  const readDomComboIdentity = () => ({
+    track: String(document.querySelector('[data-home2-track]')?.textContent || '').trim(),
+    car: String(document.querySelector('[data-home2-cars]')?.textContent || '').trim()
+  });
+
   const refresh = async () => {
     if (running) {
       queued = true;
@@ -142,62 +147,35 @@
 
     try {
       const stamp = Date.now();
-      const [historyResponse, liveResponse] = await Promise.all([
-        fetch(`/api/gc/hotlaps2?source=main&limit=all&t=${stamp}`, {
-          credentials: 'include', cache: 'no-store', headers: { Accept: 'application/json' }
-        }),
-        fetch(`/api/gc/live-test/snapshot?source=main&waitMs=2200&t=${stamp}`, {
-          cache: 'no-store', headers: { Accept: 'application/json' }
-        })
-      ]);
+      const historyResponse = await fetch(`/api/gc/hotlaps2?source=main&limit=all&t=${stamp}`, {
+        credentials: 'include', cache: 'no-store', headers: { Accept: 'application/json' }
+      });
+      if (!historyResponse.ok) throw new Error(`HTTP ${historyResponse.status}`);
 
-      if (!historyResponse.ok || !liveResponse.ok) throw new Error(`HTTP ${historyResponse.status}/${liveResponse.status}`);
-
-      const [history, live] = await Promise.all([historyResponse.json(), liveResponse.json()]);
-      const liveRows = rowsOf(live);
+      const history = await historyResponse.json();
       const historyRows = rowsOf(history);
+      const domCombo = readDomComboIdentity();
 
-      const activeTrack = String(
-        pick(live, [
-          'diagnostics.trackCode',
-          'normalized.trackCode',
-          'normalized.trackName',
-          'activeCombo.track.technicalCode',
-          'activeCombo.track.rawCode',
-          'activeCombo.track.code',
-          'activeCombo.track.name'
-        ], '') || trackName(liveRows[0])
-      );
-
-      const activeCar = String(
-        carName(liveRows[0]) ||
-        pick(live, [
-          'normalized.carName',
-          'activeCombo.cars.0.displayName',
-          'activeCombo.cars.0.name',
-          'activeCombo.cars.0.code'
-        ], '')
-      );
-
-      if (!liveRows.length || !activeTrack || !activeCar) throw new Error('Identidad live incompleta');
+      if (!domCombo.track || !domCombo.car) throw new Error('Combo DOM incompleto');
 
       const exactHistory = historyRows.filter((row) => {
         const source = norm(pick(row, ['sourceKey', 'session.sourceKey'], 'main'));
         return source === 'main' &&
           validLap(row) &&
-          sameIdentity(trackName(row), activeTrack) &&
-          sameIdentity(carName(row), activeCar);
+          sameIdentity(trackName(row), domCombo.track) &&
+          sameIdentity(carName(row), domCombo.car);
       });
 
-      const top8 = buildTop8([...liveRows, ...exactHistory]);
-      if (renderTop8(top8)) lastTop8 = top8;
+      const top8 = buildTop8(exactHistory);
+      if (!renderTop8(top8)) throw new Error(`Top 8 incompleto: ${top8.length}`);
+      lastTop8 = top8;
 
-      document.documentElement.dataset.gcHomeRuntimeFinal = 'v6-diagnostics-track-top8';
+      document.documentElement.dataset.gcHomeRuntimeFinal = 'v7-dom-combo-top8';
       document.documentElement.dataset.gcHomeTop8Rows = String(top8.length);
-      document.documentElement.dataset.gcHomeTop8Track = norm(activeTrack);
-      document.documentElement.dataset.gcHomeTop8Car = norm(activeCar);
+      document.documentElement.dataset.gcHomeTop8Track = norm(domCombo.track);
+      document.documentElement.dataset.gcHomeTop8Car = norm(domCombo.car);
     } catch (error) {
-      console.warn('[GC Home Runtime v6] top 8 no disponible', error);
+      console.warn('[GC Home Runtime v7] top 8 no disponible', error);
       if (lastTop8.length === 8) renderTop8(lastTop8);
     } finally {
       running = false;
@@ -226,6 +204,15 @@
           }
         }, 120);
       }).observe(host, { childList: true, subtree: true, characterData: true });
+    }
+
+    const comboHost = document.querySelector('[data-home2-combo-source="main"]');
+    if (comboHost) {
+      let comboTimer = 0;
+      new MutationObserver(() => {
+        window.clearTimeout(comboTimer);
+        comboTimer = window.setTimeout(refresh, 250);
+      }).observe(comboHost, { childList: true, subtree: true, characterData: true });
     }
 
     window.setTimeout(refresh, 1500);
