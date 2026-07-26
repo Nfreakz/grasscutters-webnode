@@ -4739,10 +4739,33 @@ const home2ArchiveSeed: unknown[] = [];
           )?.querySelector<HTMLImageElement>('img');
 
           if (avatar) {
-            avatar.src = String(
+            const currentAvatar = String(
+              avatar.currentSrc ||
+              avatar.getAttribute('src') ||
+              ''
+            );
+            const nextAvatar = String(
               canonical.avatarUrl ||
               `/api/pilot-avatar/${encodeURIComponent(id)}`
             );
+            const currentIsPlaceholder =
+              !currentAvatar ||
+              currentAvatar.includes('/images/pilot-avatar-default.png') ||
+              currentAvatar.includes('image-pending');
+
+            /*
+             * El ranking ya resuelve y conserva sus avatares. Este reparador
+             * solo debe completar uno pendiente, nunca sustituir una imagen
+             * válida por otra URL de identidad ni reintentar en cada pasada.
+             */
+            if (
+              currentIsPlaceholder &&
+              avatar.dataset.gcCanonicalAvatarAttempted !== '1' &&
+              currentAvatar !== nextAvatar
+            ) {
+              avatar.dataset.gcCanonicalAvatarAttempted = '1';
+              avatar.src = nextAvatar;
+            }
           }
         };
 
