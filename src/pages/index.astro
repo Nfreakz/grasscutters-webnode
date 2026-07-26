@@ -3225,7 +3225,7 @@ const home2ArchiveSeed: unknown[] = [];
       const renderRanking = (selector: string, rows: any[] = [], preserve = true): any[] => {
         const host = q(selector);
         if (!host) return [];
-        const list = bestPerDriver(rows).slice(0, 8);
+        const list = bestPerDriver(rows).slice(0, 10);
         if (!list.length) {
           if (!preserve || !host.dataset.gcHydrated) {
             host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--loading"><span class="gc-home2-rank-badge">--</span><div><strong>--</strong><small>Sin vueltas para el combo activo</small></div><img class="gc-home2-combo-rank__avatar" src="${DEFAULT_AVATAR}" alt="" width="24" height="24" loading="lazy" decoding="async" /><em>--</em></div>`;
@@ -3261,7 +3261,7 @@ const home2ArchiveSeed: unknown[] = [];
             return true;
           })
           .sort((a: any, b: any) => timestampMs(b) - timestampMs(a))
-          .slice(0, 8);
+          .slice(0, 10);
         if (!list.length) return [];
         host.dataset.gcHydrated = '1';
         host.innerHTML = list.map((row) => `<div class="gc-home2-table__row" role="row" data-source="${esc(sourceKey(row, 'main'))}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`).join('');
@@ -3671,7 +3671,7 @@ const home2ArchiveSeed: unknown[] = [];
         const host = q('[data-home2-champ-drivers]', block);
         if (host && rows.length) {
           host.dataset.gcHydrated = '1';
-          host.innerHTML = rows.slice(0, 8).map((row: any, index: number) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+          host.innerHTML = rows.slice(0, 10).map((row: any, index: number) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
         }
         enforceChampionshipButtons(source);
         return { source, ok: true, events: events.length, rows: rows.length };
@@ -3710,7 +3710,7 @@ const home2ArchiveSeed: unknown[] = [];
         try {
           const stamp = Date.now();
           const [historicalBootstrap, liveMain, liveGt4] = await Promise.all([
-            fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=8&home=1&t=${stamp}`, 15000),
+            fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=10&home=1&t=${stamp}`, 15000),
             fetchAcsmLiveSource('main'),
             fetchAcsmLiveSource('gt4')
           ]);

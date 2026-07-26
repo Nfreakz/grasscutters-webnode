@@ -2,6 +2,7 @@
   const HOME_SELECTOR = '[data-gc-home2]';
   const MAIN_RANKING = '[data-home2-combo-ranking]';
   const GT4_RANKING = '[data-home2-combo-ranking-gt4]';
+  const TIMING_SHEET = '[data-home2-timing-sheet], [data-home2-latest-laps], .gc-home2-timing-sheet tbody, .gc-home2-timing-list';
 
   const srRankName = (score) => {
     const value = Number(score);
@@ -30,18 +31,30 @@
     return normalized ? Number(normalized[0]) : NaN;
   };
 
-  const enforceTopSeven = (selector) => {
+  const enforceTopEight = (selector) => {
     const host = document.querySelector(selector);
     if (!host) return;
 
     const rows = Array.from(host.children).filter((node) => node instanceof HTMLElement);
     rows.forEach((row, index) => {
-      row.style.display = index < 7 ? '' : 'none';
+      row.style.display = index < 8 ? '' : 'none';
     });
 
     host.style.maxHeight = 'none';
     host.style.overflow = 'visible';
-    host.dataset.gcVisibleRows = '7';
+    host.dataset.gcVisibleRows = '8';
+  };
+
+  const enforceTimingTen = () => {
+    const host = document.querySelector(TIMING_SHEET);
+    if (!host) return;
+    const rows = Array.from(host.children).filter((node) => node instanceof HTMLElement);
+    rows.forEach((row, index) => {
+      row.style.display = index < 10 ? '' : 'none';
+    });
+    host.style.maxHeight = 'none';
+    host.style.overflow = 'visible';
+    host.dataset.gcVisibleRows = '10';
   };
 
   const enforcePopoverLabels = () => {
@@ -65,10 +78,10 @@
 
   const apply = () => {
     if (!document.querySelector(HOME_SELECTOR)) return;
-    enforceTopSeven(MAIN_RANKING);
-    enforceTopSeven(GT4_RANKING);
+    enforceTopEight(MAIN_RANKING);
+    enforceTopEight(GT4_RANKING);
     enforcePopoverLabels();
-    document.documentElement.dataset.gcHomeRuntimeFinal = 'v1';
+    document.documentElement.dataset.gcHomeRuntimeFinal = 'v2-rows-8-10';
   };
 
   const start = () => {
