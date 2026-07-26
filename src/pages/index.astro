@@ -1,4 +1,5 @@
 /* GC_HOME_HERO_TOP7_V17 */
+/* GC_HOME_MERGE_LIVE_HISTORY_TOP8_FIX_V1 */
 /* GC_HOME_UNIQUE_8_POPUP_ALIAS_FIX_V1_1 */
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
@@ -3071,12 +3072,34 @@ const home2ArchiveSeed: unknown[] = [];
               };
             }
 
+            /* GC_HOME_MERGE_LIVE_HISTORY_TOP8_FIX_V1
+             * ACSM live puede devolver solo StoredTimes recientes o parciales.
+             * Cuando el circuito/layout coincide con el combo histórico, unimos
+             * ambos conjuntos para no perder pilotos que ya rodaron en el combo.
+             */
+            const mergedRows = sameTrack
+              ? [...liveRows, ...historicalRows]
+              : liveRows;
+
             return {
               ...historical,
               ...livePayload,
+              activeCombo: {
+                ...(historical.activeCombo || {}),
+                ...(livePayload.activeCombo || {}),
+                bestLap: mergedRows[0] || livePayload.activeCombo?.bestLap || historical.activeCombo?.bestLap || null,
+                latestLap: livePayload.activeCombo?.latestLap || historical.activeCombo?.latestLap || mergedRows[0] || null,
+                leaderboard: mergedRows
+              },
+              leaderboard: mergedRows,
               diagnostics: {
                 ...(historical.diagnostics || {}),
-                ...(livePayload.diagnostics || {})
+                ...(livePayload.diagnostics || {}),
+                activeComboAuthority: sameTrack ? 'acsm-live+historical-merged' : 'acsm-live',
+                liveHistoricalLeaderboardMerged: sameTrack,
+                liveRows: liveRows.length,
+                historicalRows: historicalRows.length,
+                mergedRows: mergedRows.length
               }
             };
           }
