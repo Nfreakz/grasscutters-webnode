@@ -1,4 +1,5 @@
 /* GC_HOME_HERO_TOP7_V17 */
+/* GC_HOME_ACTIVE_COMBO_STRICT_TOP8_FIX_V1 */
 /* GC_HOME_UNIQUE_8_POPUP_ALIAS_FIX_V1_1 */
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
@@ -3018,7 +3019,7 @@ const home2ArchiveSeed: unknown[] = [];
        * completamos el leaderboard con ese mismo combo. Un circuito live nuevo
        * nunca hereda las vueltas del anterior.
        */
-      const comboTrackIdentity = (combo: any): { code: string; config: string; key: string } => {
+      const comboTrackIdentity = (combo: any): { code: string; config: string; cars: string[]; key: string } => {
         const trackCode = normalize(first(combo, [
           'track.trackCode', 'track.technicalCode', 'track.rawCode', 'track.code',
           'trackCode', 'trackRaw'
@@ -3026,10 +3027,16 @@ const home2ArchiveSeed: unknown[] = [];
         const trackConfig = normalize(first(combo, [
           'track.trackConfig', 'track.layout', 'track.variant', 'trackConfig', 'layout'
         ], ''));
+        const rawCars = Array.isArray(combo?.cars) ? combo.cars : [];
+        const cars = rawCars
+          .map((car: any) => normalize(typeof car === 'string' ? car : first(car, ['code', 'rawCode', 'name', 'displayName'], '')))
+          .filter(Boolean)
+          .sort();
         return {
           code: trackCode,
           config: trackConfig,
-          key: trackCode ? `${trackCode}:${trackConfig}` : ''
+          cars,
+          key: trackCode ? `${trackCode}:${trackConfig}:${cars.join(',')}` : ''
         };
       };
 
@@ -3048,8 +3055,17 @@ const home2ArchiveSeed: unknown[] = [];
               liveTrack.code === historicalTrack.code &&
               (!liveTrack.config || !historicalTrack.config || liveTrack.config === historicalTrack.config)
             );
+            const liveCarSet = new Set(liveTrack.cars);
+            const historicalCarSet = new Set(historicalTrack.cars);
+            const sameCars = Boolean(
+              liveCarSet.size &&
+              historicalCarSet.size &&
+              [...liveCarSet].every((car) => historicalCarSet.has(car)) &&
+              [...historicalCarSet].every((car) => liveCarSet.has(car))
+            );
+            const sameStrictCombo = sameTrack && sameCars;
 
-            if (!liveRows.length && historicalRows.length && sameTrack) {
+            if (!liveRows.length && historicalRows.length && sameStrictCombo) {
               return {
                 ...historical,
                 ...livePayload,
@@ -3071,12 +3087,30 @@ const home2ArchiveSeed: unknown[] = [];
               };
             }
 
+            /* GC_HOME_ACTIVE_COMBO_STRICT_TOP8_FIX_V1: completar solo el mismo combo exacto. */
+            const mergedRows = sameStrictCombo ? [...liveRows, ...historicalRows] : liveRows;
+
             return {
               ...historical,
               ...livePayload,
+              activeCombo: {
+                ...(historical.activeCombo || {}),
+                ...(livePayload.activeCombo || {}),
+                leaderboard: mergedRows,
+                bestLap: mergedRows[0] || livePayload.activeCombo?.bestLap || historical.activeCombo?.bestLap || null,
+                latestLap: livePayload.activeCombo?.latestLap || historical.activeCombo?.latestLap || mergedRows[0] || null
+              },
+              leaderboard: mergedRows,
               diagnostics: {
                 ...(historical.diagnostics || {}),
-                ...(livePayload.diagnostics || {})
+                ...(livePayload.diagnostics || {}),
+                activeComboAuthority: sameStrictCombo ? 'acsm-live+strict-history' : 'acsm-live',
+                strictHistoryMerged: sameStrictCombo,
+                strictTrackMatch: sameTrack,
+                strictCarsMatch: sameCars,
+                liveRows: liveRows.length,
+                historicalRows: historicalRows.length,
+                mergedRows: mergedRows.length
               }
             };
           }

@@ -15089,8 +15089,13 @@ function gcHomeBootstrapBuildComboBucketsV1(laps: any[], options: { exactTechnic
       : gcComboUnifyTrackFamilyV1(lap?.track);
     const variant = gcComboUnifyTrackVariantV1(lap, vilaSplitMap);
     const variantLabel = gcComboUnifyVariantLabelV1(trackFamily.key, variant);
+    const carBucketKey = gcComboUnifyCarBucketKeyV2(lap) || 'car';
     const logicalKey = `${sourceKey}:${trackFamily.key}:${variant}`;
-    const key = exactTechnical ? gcHomeBootstrapTechnicalKeyV12(lap, sourceKey, trackFamily.key, variant) : logicalKey;
+    /* GC_HOME_ACTIVE_COMBO_STRICT_TOP8_FIX_V1: MAIN no puede mezclar coches distintos en el mismo circuito/layout. */
+    const strictLogicalKey = `${logicalKey}:${carBucketKey}`;
+    const key = exactTechnical
+      ? gcHomeBootstrapTechnicalKeyV12(lap, sourceKey, trackFamily.key, variant)
+      : strictLogicalKey;
 
     if (!buckets.has(key)) {
       const displayTrackName = variantLabel ? `${trackFamily.displayName} · ${variantLabel}` : trackFamily.displayName;
@@ -15366,7 +15371,7 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
 
     res.json({
       ok: true,
-      source: 'gc-home-bootstrap-v1.3',
+      source: 'gc-home-bootstrap-v1.4-strict-combo',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: {
@@ -15399,13 +15404,13 @@ app.get('/api/gc/home-bootstrap', async (req, res) => {
     console.error('[GC Home Bootstrap] /api/gc/home-bootstrap:', error);
     res.status(200).json({
       ok: false,
-      source: 'gc-home-bootstrap-v1.3',
+      source: 'gc-home-bootstrap-v1.4-strict-combo',
       generatedAt: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,
       main: null,
       gt4: null,
       timingSheet: [],
-      message: 'No se pudo generar Home Bootstrap v1.3.',
+      message: 'No se pudo generar Home Bootstrap v1.4 strict combo.',
       error: process.env.GC_DEBUG_API === 'true' && error instanceof Error ? error.message : undefined
     });
   }
