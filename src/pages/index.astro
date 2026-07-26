@@ -2831,6 +2831,24 @@ const home2ArchiveSeed: unknown[] = [];
         return key;
       };
 
+      const canonicalDriverKey = (row: any): string => {
+        const nameKey = canonicalDriverNameKey(driverName(row));
+
+        // Alias confirmado: las dos variantes pertenecen al mismo piloto.
+        // Debe resolverse antes que GUID/PlayerId porque las fuentes históricas
+        // y live todavía pueden entregar identificadores técnicos diferentes.
+        if (nameKey === 'pdiaz') return 'alias:pdiaz';
+
+        const identity = first(row, [
+          'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
+          'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId'
+        ], '');
+
+        return identity
+          ? 'id:' + String(identity).trim().toLowerCase()
+          : 'name:' + nameKey;
+      };
+
       const bestPerDriver = (rows: any[]): any[] => {
         const pool = Array.isArray(rows)
           ? rows.filter((row: any) => Number.isFinite(rowTimeMs(row)))
@@ -2838,13 +2856,7 @@ const home2ArchiveSeed: unknown[] = [];
 
         const groups = new Map<string, any[]>();
         for (const row of pool) {
-          const identity = first(row, [
-            'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
-            'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId'
-          ], '');
-          const key = identity
-            ? 'id:' + String(identity).trim().toLowerCase()
-            : 'name:' + canonicalDriverNameKey(driverName(row));
+          const key = canonicalDriverKey(row);
 
           const bucket = groups.get(key) || [];
           bucket.push(row);
@@ -2856,7 +2868,16 @@ const home2ArchiveSeed: unknown[] = [];
           const candidates = validRows.length ? validRows : bucket;
           return [...candidates].sort((a: any, b: any) =>
             (rowTimeMs(a) ?? Number.POSITIVE_INFINITY) -
-            (rowTimeMs(b) ?? Number.POSITIVE_INFINITY)
+            (rowTimeMs(b) ?? Number.POSITIVE_INFINITY) ||
+            (
+              canonicalDriverNameKey(driverName(a)) === 'pdiaz' &&
+              normalize(driverName(a)).replace(/_/g, '') === 'pdiaz'
+                ? -1
+                : canonicalDriverNameKey(driverName(b)) === 'pdiaz' &&
+                  normalize(driverName(b)).replace(/_/g, '') === 'pdiaz'
+                  ? 1
+                  : 0
+            )
           )[0];
         }).filter(Boolean);
 
@@ -3352,7 +3373,22 @@ const home2ArchiveSeed: unknown[] = [];
           }
           return [];
         }
+
+        // No destruir el DOM cada 60 s si la clasificación visible no cambia.
+        // Así se conservan enlaces y avatares ya resueltos y desaparece el
+        // ciclo avatar genérico -> avatar real de cada refresco.
+        const signature = JSON.stringify(list.map((row: any) => [
+          canonicalDriverKey(row),
+          canonicalDriverNameKey(driverName(row)),
+          carName(row),
+          rowTimeMs(row)
+        ]));
+        if (host.dataset.gcRankingSignature === signature && host.dataset.gcHydrated === '1') {
+          return list;
+        }
+
         host.dataset.gcHydrated = '1';
+        host.dataset.gcRankingSignature = signature;
         host.innerHTML = list.map((row: any, index: number) => `
           <div class="gc-home2-combo-rank">
             <span class="${comboRankBadgeClass(index)}">${rankBadge(index)}</span>
