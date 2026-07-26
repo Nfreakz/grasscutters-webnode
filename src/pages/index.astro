@@ -2903,6 +2903,56 @@ const home2ArchiveSeed: unknown[] = [];
       const splitCarSummary = (value: unknown): string[] => String(value || '').split(/[,+/]/).map((item) => cleanPublicName(item.trim())).filter(Boolean);
       const comboRankBadgeClass = (index: number) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
 
+      /* GC_HOME_TOP_TIMES_AVATAR_SINGLE_OWNER_V7 */
+      const settleRankingAvatars = (host: HTMLElement): void => {
+        const token = String((Number(host.dataset.gcAvatarBatch || '0') || 0) + 1);
+        host.dataset.gcAvatarBatch = token;
+        host.classList.add('gc-home2-combo-ranking-list--avatars-pending');
+
+        const images = [...host.querySelectorAll<HTMLImageElement>('.gc-home2-combo-rank__avatar')];
+        if (!images.length) {
+          host.classList.remove('gc-home2-combo-ranking-list--avatars-pending');
+          return;
+        }
+
+        const waits = images.map((image) => new Promise<void>((resolve) => {
+          image.loading = 'eager';
+          image.dataset.gcTopAvatarManaged = '1';
+
+          const finish = (failed = false): void => {
+            image.removeEventListener('load', onLoad);
+            image.removeEventListener('error', onError);
+            if (failed) {
+              image.onerror = null;
+              image.src = DEFAULT_AVATAR;
+            }
+            image.dataset.gcTopAvatarLocked = image.getAttribute('src') || DEFAULT_AVATAR;
+            resolve();
+          };
+          const onLoad = (): void => finish(false);
+          const onError = (): void => finish(true);
+
+          if (image.complete) {
+            finish(image.naturalWidth <= 0);
+            return;
+          }
+
+          image.addEventListener('load', onLoad, { once: true });
+          image.addEventListener('error', onError, { once: true });
+        }));
+
+        const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
+        Promise.race([Promise.all(waits).then(() => undefined), timeout]).then(() => {
+          if (host.dataset.gcAvatarBatch !== token) return;
+          images.forEach((image) => {
+            if (!image.dataset.gcTopAvatarLocked) {
+              image.dataset.gcTopAvatarLocked = image.getAttribute('src') || DEFAULT_AVATAR;
+            }
+          });
+          host.classList.remove('gc-home2-combo-ranking-list--avatars-pending');
+        });
+      };
+
       async function fetchJson(url: string, timeoutMs = 15000): Promise<any> {
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -3396,6 +3446,7 @@ const home2ArchiveSeed: unknown[] = [];
             <img class="gc-home2-combo-rank__avatar" src="${esc(avatar(row))}" alt="" width="24" height="24" loading="lazy" decoding="async" data-gc-avatar-driver="${esc(driverName(row))}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" />
             <em>${esc(formatTime(row))}</em>
           </div>`).join('');
+        settleRankingAvatars(host);
         return list;
       };
       document.documentElement.dataset.gcHomeTopTimesRuntime = 'v37-avatar-name-cache-first';
@@ -4735,7 +4786,7 @@ const home2ArchiveSeed: unknown[] = [];
           link.dataset.gcIdentityCanonical = '1';
 
           const avatar = link.closest(
-            '.gc-home2-combo-rank, .gc-home2-rating-driver-cell, .gc-home2-champ-standing-row'
+            '.gc-home2-rating-driver-cell, .gc-home2-champ-standing-row'
           )?.querySelector<HTMLImageElement>('img');
 
           if (avatar) {
@@ -5282,6 +5333,7 @@ const home2ArchiveSeed: unknown[] = [];
             mutation.target instanceof HTMLImageElement
           ) {
             const img = mutation.target;
+            if (img.dataset.gcTopAvatarManaged === '1') continue;
             const src = img.currentSrc || img.src || img.getAttribute('src') || '';
             const previous = stableImageSrc.get(img);
 
@@ -5796,6 +5848,10 @@ const home2ArchiveSeed: unknown[] = [];
       max-height:23px !important;
       margin:0 !important;
       align-self:center !important;
+    }
+
+    .gc-home2 .gc-home2-combo-ranking-list--avatars-pending .gc-home2-combo-rank__avatar{
+      visibility:hidden !important;
     }
 
     .gc-home2 .gc-home2-combo-rank em{
