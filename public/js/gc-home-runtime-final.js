@@ -48,8 +48,14 @@
   ], 'Piloto'));
 
   const carName = (row) => String(readFirst(row, [
-    'carName', 'carModel', 'model', 'CarModel',
-    'car.name', 'car.displayName', 'car.code'
+    'carName', 'carDisplayName', 'carVisibleName', 'carModel', 'model', 'CarModel',
+    'car.name', 'car.displayName', 'car.uiName', 'car.code'
+  ], '--'));
+
+  const trackName = (row) => String(readFirst(row, [
+    'trackName', 'trackDisplayName', 'trackVisibleName',
+    'track.name', 'track.displayName', 'track.uiName', 'track.code',
+    'Track', 'trackCode'
   ], '--'));
 
   const lapMs = (row) => {
@@ -57,6 +63,11 @@
       'bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs', 'lap_time_ms'
     ], 0));
     return Number.isFinite(value) && value > 0 ? value : Number.POSITIVE_INFINITY;
+  };
+
+  const isValidLap = (row) => {
+    const value = readFirst(row, ['valid', 'isValid', 'Valid'], true);
+    return !(value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false');
   };
 
   const avatarUrl = (row) => String(readFirst(row, [
@@ -78,6 +89,8 @@
     if (Array.isArray(payload?.activeCombo?.leaderboard)) return payload.activeCombo.leaderboard;
     if (Array.isArray(payload?.normalized?.storedTimes)) return payload.normalized.storedTimes;
     if (Array.isArray(payload?.storedTimes)) return payload.storedTimes;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.laps)) return payload.laps;
     return [];
   };
 
@@ -87,7 +100,7 @@
     for (const row of rows) {
       const key = canonicalDriverKey(driverName(row));
       const time = lapMs(row);
-      if (!key || !Number.isFinite(time)) continue;
+      if (!key || !Number.isFinite(time) || !isValidLap(row)) continue;
 
       const previous = byDriver.get(key);
       if (!previous || time < lapMs(previous)) byDriver.set(key, row);
@@ -100,9 +113,9 @@
 
   const renderMainTopEight = (rows) => {
     const host = document.querySelector(MAIN_RANKING);
-    if (!host || !rows.length) return;
+    if (!host || rows.length !== 8) return;
 
-    host.innerHTML = rows.map((row, index) => {
+    const html = rows.map((row, index) => {
       const position = index + 1;
       const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : String(position);
       const name = driverName(row).toUpperCase();
@@ -118,9 +131,10 @@
         </div>`;
     }).join('');
 
+    if (host.innerHTML.trim() !== html.trim()) host.innerHTML = html;
     host.style.maxHeight = 'none';
     host.style.overflow = 'visible';
-    host.dataset.gcVisibleRows = String(rows.length);
+    host.dataset.gcVisibleRows = '8';
     host.dataset.gcUniqueRows = 'true';
   };
 
@@ -133,9 +147,10 @@
     rankingRefreshRunning = true;
     try {
       const stamp = Date.now();
-      const [bootstrapResponse, liveResponse] = await Promise.all([
-        fetch(`/api/gc/home-bootstrap?mainLimit=20&gt4Limit=20&timingLimit=10&home=1&t=${stamp}`, {
+      const [historyResponse, liveResponse] = await Promise.all([
+        fetch(`/api/gc/hotlaps2?source=main&limit=all&t=${stamp}`, {
           headers: { Accept: 'application/json' },
+          credentials: 'include',
           cache: 'no-store'
         }),
         fetch(`/api/gc/live-test/snapshot?source=main&waitMs=2200&t=${stamp}`, {
@@ -144,26 +159,47 @@
         })
       ]);
 
-      if (!bootstrapResponse.ok || !liveResponse.ok) return;
+      if (!historyResponse.ok || !liveResponse.ok) return;
 
-      const [bootstrap, live] = await Promise.all([
-        bootstrapResponse.json(),
+      const [history, live] = await Promise.all([
+        historyResponse.json(),
         liveResponse.json()
       ]);
 
-      const rows = bestUniqueDrivers([
-        ...sourceRows(live),
-        ...sourceRows(bootstrap?.main)
-      ]);
+      const liveRows = sourceRows(live);
+      const historyRows = sourceRows(history);
+      const liveTrack = normalizeName(
+        readFirst(live, [
+          'normalized.trackName', 'normalized.trackDisplayName', 'normalized.trackCode',
+          'activeCombo.track.displayName', 'activeCombo.track.name', 'activeCombo.track.code'
+        ], '') || trackName(liveRows[0])
+      );
+      const liveCar = normalizeName(
+        readFirst(live, [
+          'normalized.carName', 'normalized.carDisplayName',
+          'activeCombo.cars.0.displayName', 'activeCombo.cars.0.name', 'activeCombo.cars.0.code'
+        ], '') || carName(liveRows[0])
+      );
 
+      if (!liveTrack || !liveCar) return;
+
+      const exactHistory = historyRows.filter((row) => {
+        const source = normalizeName(readFirst(row, ['sourceKey', 'session.sourceKey'], 'main'));
+        return source === 'main' &&
+          isValidLap(row) &&
+          normalizeName(trackName(row)) === liveTrack &&
+          normalizeName(carName(row)) === liveCar;
+      });
+
+      const rows = bestUniqueDrivers([...liveRows, ...exactHistory]);
       renderMainTopEight(rows);
     } catch (error) {
-      console.warn('[GC Home Runtime] No se pudo reconstruir el top 8 único', error);
+      console.warn('[GC Home Runtime] No se pudo reconstruir el top 8 exacto', error);
     } finally {
       rankingRefreshRunning = false;
       if (rankingRefreshQueued) {
         rankingRefreshQueued = false;
-        window.setTimeout(refreshMainRanking, 50);
+        window.setTimeout(refreshMainRanking, 100);
       }
     }
   };
@@ -245,7 +281,7 @@
     enforceTopEight(GT4_RANKING);
     enforceTimingTen();
     enforcePopoverLabels();
-    document.documentElement.dataset.gcHomeRuntimeFinal = 'v3-unique-top8';
+    document.documentElement.dataset.gcHomeRuntimeFinal = 'v4-hotlaps-exact-top8';
   };
 
   const start = () => {
@@ -260,8 +296,12 @@
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         apply();
-        refreshMainRanking();
-      }, 80);
+        const host = document.querySelector(MAIN_RANKING);
+        const names = host
+          ? Array.from(host.querySelectorAll('strong')).map((node) => canonicalDriverKey(node.textContent))
+          : [];
+        if (names.length !== 8 || new Set(names).size !== 8) refreshMainRanking();
+      }, 250);
     }).observe(root, { childList: true, subtree: true, characterData: true });
 
     window.setTimeout(refreshMainRanking, 750);
