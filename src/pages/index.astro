@@ -1,4 +1,5 @@
 /* GC_HOME_HERO_TOP7_V17 */
+/* GC_HOME_UNIQUE_8_POPUP_ALIAS_FIX_V1_1 */
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
@@ -2820,17 +2821,48 @@ const home2ArchiveSeed: unknown[] = [];
         const value = first(row, ['valid', 'Valid', 'isValid', 'is_valid'], true);
         return !(value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'false');
       };
+
+      /* GC_HOME_UNIQUE_8_POPUP_ALIAS_FIX_V1_1: identidad pública estable en todos los bloques de la home. */
+      const canonicalDriverNameKey = (value: unknown): string => {
+        const key = normalize(value);
+        const compact = key.replace(/_/g, '');
+        if (['pdiaz', 'pedrodiaz'].includes(compact)) return 'pdiaz';
+        return key;
+      };
+
       const bestPerDriver = (rows: any[]): any[] => {
-        const pool = Array.isArray(rows) ? rows.filter((row: any) => Number.isFinite(rowTimeMs(row))) : [];
-        const valid = pool.filter(isValid);
-        const source = valid.length ? valid : pool;
-        const map = new Map<string, any>();
-        for (const row of source) {
-          const key = normalize(driverName(row)) || String(first(row, ['playerId', 'driverId', 'rawPlayerId'], Math.random()));
-          const current = map.get(key);
-          if (!current || (rowTimeMs(row) ?? Number.POSITIVE_INFINITY) < (rowTimeMs(current) ?? Number.POSITIVE_INFINITY)) map.set(key, row);
+        const pool = Array.isArray(rows)
+          ? rows.filter((row: any) => Number.isFinite(rowTimeMs(row)))
+          : [];
+
+        const groups = new Map<string, any[]>();
+        for (const row of pool) {
+          const identity = first(row, [
+            'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
+            'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId'
+          ], '');
+          const key = identity
+            ? 'id:' + String(identity).trim().toLowerCase()
+            : 'name:' + canonicalDriverNameKey(driverName(row));
+
+          const bucket = groups.get(key) || [];
+          bucket.push(row);
+          groups.set(key, bucket);
         }
-        return [...map.values()].sort((a: any, b: any) => (rowTimeMs(a) ?? Number.POSITIVE_INFINITY) - (rowTimeMs(b) ?? Number.POSITIVE_INFINITY));
+
+        const selected = [...groups.values()].map((bucket) => {
+          const validRows = bucket.filter(isValid);
+          const candidates = validRows.length ? validRows : bucket;
+          return [...candidates].sort((a: any, b: any) =>
+            (rowTimeMs(a) ?? Number.POSITIVE_INFINITY) -
+            (rowTimeMs(b) ?? Number.POSITIVE_INFINITY)
+          )[0];
+        }).filter(Boolean);
+
+        return selected.sort((a: any, b: any) =>
+          (rowTimeMs(a) ?? Number.POSITIVE_INFINITY) -
+          (rowTimeMs(b) ?? Number.POSITIVE_INFINITY)
+        );
       };
       const activeCombo = (sourcePayload: any) => sourcePayload?.activeCombo || null;
       const sourceLeaderboard = (sourcePayload: any): any[] => getArray(sourcePayload?.leaderboard || sourcePayload?.activeCombo?.leaderboard || []);
@@ -3225,7 +3257,7 @@ const home2ArchiveSeed: unknown[] = [];
       const renderRanking = (selector: string, rows: any[] = [], preserve = true): any[] => {
         const host = q(selector);
         if (!host) return [];
-        const list = bestPerDriver(rows).slice(0, 10);
+        const list = bestPerDriver(rows).slice(0, 8);
         if (!list.length) {
           if (!preserve || !host.dataset.gcHydrated) {
             host.innerHTML = `<div class="gc-home2-combo-rank gc-home2-combo-rank--loading"><span class="gc-home2-rank-badge">--</span><div><strong>--</strong><small>Sin vueltas para el combo activo</small></div><img class="gc-home2-combo-rank__avatar" src="${DEFAULT_AVATAR}" alt="" width="24" height="24" loading="lazy" decoding="async" /><em>--</em></div>`;
@@ -3710,7 +3742,7 @@ const home2ArchiveSeed: unknown[] = [];
         try {
           const stamp = Date.now();
           const [historicalBootstrap, liveMain, liveGt4] = await Promise.all([
-            fetchJson(`/api/gc/home-bootstrap?mainLimit=8&gt4Limit=8&timingLimit=10&home=1&t=${stamp}`, 15000),
+            fetchJson(`/api/gc/home-bootstrap?mainLimit=50&gt4Limit=50&timingLimit=10&home=1&t=${stamp}`, 15000),
             fetchAcsmLiveSource('main'),
             fetchAcsmLiveSource('gt4')
           ]);
@@ -3851,12 +3883,17 @@ const home2ArchiveSeed: unknown[] = [];
       let closeTimer = 0;
       let renderTimer = 0;
 
-      const normalize = (value: unknown): string => String(value || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'')
-        .replace(/[^a-z0-9]+/g,'');
+      const normalize = (value: unknown): string => {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^a-z0-9]+/g,'');
+
+        if (['pdiaz', 'pedrodiaz'].includes(normalized)) return 'pdiaz';
+        return normalized;
+      };
 
       const text = (value: unknown, fallback = '--'): string => {
         const out = String(value ?? '').trim();
