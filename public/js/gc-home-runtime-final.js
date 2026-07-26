@@ -10,24 +10,17 @@
   let rankingRefreshQueued = false;
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[char] || char);
 
   const normalizeName = (value) => String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
+    .trim().toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '');
 
   const canonicalDriverKey = (value) => {
     const key = normalizeName(value);
-    if (key === 'pdiaz' || key === 'pedrodiaz') return 'pedrodiaz';
-    return key;
+    return key === 'pdiaz' || key === 'pedrodiaz' ? 'pedrodiaz' : key;
   };
 
   const readFirst = (source, paths, fallback = '') => {
@@ -59,9 +52,7 @@
   ], '--'));
 
   const lapMs = (row) => {
-    const value = Number(readFirst(row, [
-      'bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs', 'lap_time_ms'
-    ], 0));
+    const value = Number(readFirst(row, ['bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs', 'lap_time_ms'], 0));
     return Number.isFinite(value) && value > 0 ? value : Number.POSITIVE_INFINITY;
   };
 
@@ -94,34 +85,35 @@
     return [];
   };
 
+  const sameIdentity = (left, right) => {
+    const a = normalizeName(left);
+    const b = normalizeName(right);
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a);
+  };
+
   const bestUniqueDrivers = (rows) => {
     const byDriver = new Map();
-
     for (const row of rows) {
       const key = canonicalDriverKey(driverName(row));
       const time = lapMs(row);
       if (!key || !Number.isFinite(time) || !isValidLap(row)) continue;
-
       const previous = byDriver.get(key);
       if (!previous || time < lapMs(previous)) byDriver.set(key, row);
     }
-
-    return [...byDriver.values()]
-      .sort((a, b) => lapMs(a) - lapMs(b))
-      .slice(0, 8);
+    return [...byDriver.values()].sort((a, b) => lapMs(a) - lapMs(b)).slice(0, 8);
   };
 
   const renderMainTopEight = (rows) => {
     const host = document.querySelector(MAIN_RANKING);
-    if (!host || rows.length !== 8) return;
+    if (!host || rows.length < 8) return;
 
-    const html = rows.map((row, index) => {
+    host.innerHTML = rows.slice(0, 8).map((row, index) => {
       const position = index + 1;
       const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : String(position);
       const name = driverName(row).toUpperCase();
       const car = carName(row).toUpperCase();
       const avatar = avatarUrl(row) || DEFAULT_AVATAR;
-
       return `
         <div class="gc-home2-combo-rank" data-gc-runtime-driver="${escapeHtml(canonicalDriverKey(name))}">
           <span class="gc-home2-rank-badge">${medal}</span>
@@ -131,7 +123,6 @@
         </div>`;
     }).join('');
 
-    if (host.innerHTML.trim() !== html.trim()) host.innerHTML = html;
     host.style.maxHeight = 'none';
     host.style.overflow = 'visible';
     host.dataset.gcVisibleRows = '8';
@@ -168,27 +159,17 @@
 
       const liveRows = sourceRows(live);
       const historyRows = sourceRows(history);
-      const liveTrack = normalizeName(
-        readFirst(live, [
-          'normalized.trackName', 'normalized.trackDisplayName', 'normalized.trackCode',
-          'activeCombo.track.displayName', 'activeCombo.track.name', 'activeCombo.track.code'
-        ], '') || trackName(liveRows[0])
-      );
-      const liveCar = normalizeName(
-        readFirst(live, [
-          'normalized.carName', 'normalized.carDisplayName',
-          'activeCombo.cars.0.displayName', 'activeCombo.cars.0.name', 'activeCombo.cars.0.code'
-        ], '') || carName(liveRows[0])
-      );
+      const liveTrack = trackName(liveRows[0]);
+      const liveCar = carName(liveRows[0]);
 
-      if (!liveTrack || !liveCar) return;
+      if (!liveRows.length || !liveTrack || !liveCar) return;
 
       const exactHistory = historyRows.filter((row) => {
         const source = normalizeName(readFirst(row, ['sourceKey', 'session.sourceKey'], 'main'));
         return source === 'main' &&
           isValidLap(row) &&
-          normalizeName(trackName(row)) === liveTrack &&
-          normalizeName(carName(row)) === liveCar;
+          sameIdentity(trackName(row), liveTrack) &&
+          sameIdentity(carName(row), liveCar);
       });
 
       const rows = bestUniqueDrivers([...liveRows, ...exactHistory]);
@@ -234,12 +215,8 @@
   const enforceTopEight = (selector) => {
     const host = document.querySelector(selector);
     if (!host) return;
-
     const rows = Array.from(host.children).filter((node) => node instanceof HTMLElement);
-    rows.forEach((row, index) => {
-      row.style.display = index < 8 ? '' : 'none';
-    });
-
+    rows.forEach((row, index) => { row.style.display = index < 8 ? '' : 'none'; });
     host.style.maxHeight = 'none';
     host.style.overflow = 'visible';
   };
@@ -248,9 +225,7 @@
     const host = document.querySelector(TIMING_SHEET);
     if (!host) return;
     const rows = Array.from(host.children).filter((node) => node instanceof HTMLElement);
-    rows.forEach((row, index) => {
-      row.style.display = index < 10 ? '' : 'none';
-    });
+    rows.forEach((row, index) => { row.style.display = index < 10 ? '' : 'none'; });
     host.style.maxHeight = 'none';
     host.style.overflow = 'visible';
     host.dataset.gcVisibleRows = '10';
@@ -259,7 +234,6 @@
   const enforcePopoverLabels = () => {
     const popover = document.querySelector('[data-home-pilot-popover]');
     if (!popover || !popover.classList.contains('is-open')) return;
-
     const ratings = popover.querySelectorAll('.gc-home-pilot-popover__rating');
     if (ratings[0]) {
       const value = parseNumber(ratings[0].querySelector('strong')?.textContent);
@@ -281,13 +255,12 @@
     enforceTopEight(GT4_RANKING);
     enforceTimingTen();
     enforcePopoverLabels();
-    document.documentElement.dataset.gcHomeRuntimeFinal = 'v4-hotlaps-exact-top8';
+    document.documentElement.dataset.gcHomeRuntimeFinal = 'v5-live-row-exact-top8';
   };
 
   const start = () => {
     apply();
     refreshMainRanking();
-
     const root = document.querySelector(HOME_SELECTOR);
     if (!root) return;
 
