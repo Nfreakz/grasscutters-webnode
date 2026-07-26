@@ -3088,7 +3088,61 @@ const home2ArchiveSeed: unknown[] = [];
             }
 
             /* GC_HOME_ACTIVE_COMBO_STRICT_TOP8_FIX_V1: completar solo el mismo combo exacto. */
-            const mergedRows = sameStrictCombo ? [...liveRows, ...historicalRows] : liveRows;
+            /* GC_HOME_STRICT_MERGE_DEDUP_V1: live e histórico pueden identificar al mismo piloto con
+             * SteamID/hash o nombres distintos. Unificar por identidad canónica y
+             * conservar una sola mejor vuelta por piloto.
+             */
+            const canonicalMergedDriverKey = (row: any) => {
+              const rawName = String(first(row, [
+                'driverName', 'name', 'DriverName', 'playerName',
+                'driver.name', 'driver.displayName'
+              ], '') || '');
+
+              let nameKey = normalize(rawName);
+              const aliases: Record<string, string> = {
+                pdiaz: 'pedrodiaz',
+                pedrodiaz: 'pedrodiaz'
+              };
+              nameKey = aliases[nameKey] || nameKey;
+
+              return nameKey || String(first(row, [
+                'steamGuid', 'steamGUID', 'guid', 'GUID',
+                'playerId', 'driverId', 'driver.id'
+              ], '') || '').trim().toLowerCase();
+            };
+
+            const mergedRows = (() => {
+              const sourceRows = sameStrictCombo
+                ? [...liveRows, ...historicalRows]
+                : liveRows;
+
+              const byDriver = new Map<string, any>();
+
+              for (const row of sourceRows) {
+                const key = canonicalMergedDriverKey(row);
+                if (!key) continue;
+
+                const previous = byDriver.get(key);
+                const rowLapMs = Number(first(row, [
+                  'bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs'
+                ], 0)) || Number.POSITIVE_INFINITY;
+                const previousLapMs = previous
+                  ? (Number(first(previous, [
+                      'bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs'
+                    ], 0)) || Number.POSITIVE_INFINITY)
+                  : Number.POSITIVE_INFINITY;
+
+                if (!previous || rowLapMs < previousLapMs) {
+                  byDriver.set(key, row);
+                }
+              }
+
+              return [...byDriver.values()].sort((a: any, b: any) => {
+                const aMs = Number(first(a, ['bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs'], 0)) || Number.POSITIVE_INFINITY;
+                const bMs = Number(first(b, ['bestLapMs', 'lapTimeMs', 'LapTime', 'timeMs'], 0)) || Number.POSITIVE_INFINITY;
+                return aMs - bMs;
+              });
+            })();
 
             return {
               ...historical,
