@@ -5506,6 +5506,7 @@ const home2ArchiveSeed: unknown[] = [];
         displayName?: unknown;
         publicName?: unknown;
         steamGuid?: unknown;
+        avatarUrl?: unknown;
       };
 
       const root = document.querySelector<HTMLElement>('[data-gc-home2]');
@@ -5699,6 +5700,56 @@ const home2ArchiveSeed: unknown[] = [];
         element.replaceWith(link);
       };
 
+      /*
+       * GC_HOME_TOP_TIMES_CANONICAL_AVATAR_V9
+       *
+       * Las vueltas pueden traer un id técnico distinto del PlayerId público.
+       * El ranking se pinta antes de que termine de cargar el directorio, por
+       * lo que el bloqueo de estabilidad puede conservar una URL incorrecta.
+       * Aquí ya disponemos del piloto canónico: actualizamos primero el valor
+       * bloqueado y después el src, evitando carreras entre observadores.
+       */
+      const syncRankingAvatar = (
+        row: HTMLElement,
+        pilot: PilotRow
+      ): void => {
+        const image = row.querySelector<HTMLImageElement>(
+          '.gc-home2-combo-rank__avatar'
+        );
+        const id = idOf(pilot);
+        if (!image || !id) return;
+
+        const suppliedAvatar = String(pilot?.avatarUrl || '').trim();
+        const canonicalSrc = (
+          suppliedAvatar &&
+          !suppliedAvatar.includes('/images/pilot-avatar-default.png') &&
+          !suppliedAvatar.includes('image-pending')
+            ? suppliedAvatar
+            : `/api/pilot-avatar/${encodeURIComponent(id)}`
+        ).trim();
+        if (!canonicalSrc) return;
+
+        if (
+          image.dataset.gcCanonicalAvatarId === id &&
+          image.dataset.gcTopAvatarLocked === canonicalSrc &&
+          image.getAttribute('src') === canonicalSrc
+        ) return;
+
+        image.dataset.gcCanonicalAvatarId = id;
+        image.dataset.gcCanonicalAvatarAttempted = '1';
+        image.dataset.gcTopAvatarManaged = '1';
+        image.dataset.gcTopAvatarLocked = canonicalSrc;
+        image.onerror = function () {
+          this.onerror = null;
+          this.dataset.gcTopAvatarLocked = '/images/pilot-avatar-default.png';
+          this.src = '/images/pilot-avatar-default.png';
+        };
+
+        if (image.getAttribute('src') !== canonicalSrc) {
+          image.src = canonicalSrc;
+        }
+      };
+
       const enhanceSelector = (
         rowSelector: string,
         targetSelector: string
@@ -5711,7 +5762,10 @@ const home2ArchiveSeed: unknown[] = [];
           if (currentLink) {
             const visibleName = currentLink.textContent?.trim() || '';
             const pilot = resolvePilot(visibleName);
-            if (pilot) convert(currentLink, visibleName, pilot);
+            if (pilot) {
+              convert(currentLink, visibleName, pilot);
+              syncRankingAvatar(row, pilot);
+            }
             return;
           }
 
@@ -5721,6 +5775,7 @@ const home2ArchiveSeed: unknown[] = [];
 
           if (target && pilot && visibleName && visibleName !== '--') {
             convert(target, visibleName, pilot);
+            syncRankingAvatar(row, pilot);
           }
         });
       };
