@@ -20,7 +20,7 @@ const ranking = [
   description="Descarga la app Android de GrassCutters Racing y consulta rankings, hotlaps, perfil y comunidad desde el móvil."
   bodyClass="gc-page-android"
 >
-  <main class="android-landing">
+  <div class="android-landing">
     <section class="android-hero" aria-labelledby="android-title">
       <div class="android-hero__bg" aria-hidden="true"></div>
       <div class="android-hero__grid" aria-hidden="true"></div>
@@ -177,14 +177,18 @@ const ranking = [
           </li>
         </ol>
         <aside class="utility-download" aria-label="Descarga oficial para Android">
-          <svg class="android-robot" viewBox="0 0 100 112" aria-hidden="true">
-            <path d="m31 22-8-13m46 13 8-13M22 31h56v46a9 9 0 0 1-9 9H31a9 9 0 0 1-9-9V31Zm0 9H12v31m66-31h10v31M34 86v17m32-17v17" />
-            <circle cx="39" cy="46" r="2" /><circle cx="61" cy="46" r="2" />
-          </svg>
-          <div>
+          <div class="utility-app-mark">
+            <img src="/images/android/gc-android-app-icon-v4.png" alt="" width="96" height="96" loading="lazy" />
+            <span>APK</span>
+          </div>
+          <div class="utility-download__copy">
+            <strong>GrassCutters Android</strong>
             <p><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.9 8.5 7 10 4.1-1.5 7-5.6 7-10V6l-7-3Zm-3 9 2 2 4-4" /></svg> App oficial</p>
             <p><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.9 8.5 7 10 4.1-1.5 7-5.6 7-10V6l-7-3Zm-3 9 2 2 4-4" /></svg> Descarga directa</p>
-            <p><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.9 8.5 7 10 4.1-1.5 7-5.6 7-10V6l-7-3Zm-3 9 2 2 4-4" /></svg> Acceso GrassCutters</p>
+            <a href={apkUrl} download>
+              Instalar APK
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </a>
           </div>
         </aside>
       </div>
@@ -207,7 +211,7 @@ const ranking = [
         </a>
       </div>
     </section>
-  </main>
+  </div>
 </MarketingLayout>
 
 <style>
@@ -224,16 +228,17 @@ const ranking = [
 
   :global(body.gc-page-android .gc-public-brand-mark),
   :global(body.gc-page-android .gc-public-brand-mark img) {
-    width: 158px !important;
-    height: 58px !important;
-    max-width: 158px !important;
-    max-height: 58px !important;
+    width: 62px !important;
+    height: 52px !important;
+    min-width: 62px !important;
+    max-width: 62px !important;
+    max-height: 52px !important;
     object-fit: contain !important;
-    object-position: left center !important;
+    object-position: center !important;
   }
 
   :global(body.gc-page-android .gc-public-brand) {
-    min-width: 190px;
+    min-width: 76px;
   }
 
   :global(body.gc-page-android .gc-public-brand-copy) {
@@ -282,6 +287,7 @@ const ranking = [
       linear-gradient(rgba(140, 255, 0, .08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(140, 255, 0, .08) 1px, transparent 1px);
     background-size: 78px 78px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 52%, #000 100%);
     mask-image: linear-gradient(90deg, #000 0%, transparent 52%, #000 100%);
   }
 
@@ -373,6 +379,13 @@ const ranking = [
   }
 
   .android-btn:hover { transform: translateY(-2px); }
+
+  .android-btn:focus-visible,
+  .android-feature-bar a:focus-visible,
+  .utility-download__copy > a:focus-visible {
+    outline: 2px solid #eaffcf;
+    outline-offset: 3px;
+  }
 
   .android-btn--primary {
     border-color: #a7ff4f;
@@ -487,9 +500,10 @@ const ranking = [
     background:
       linear-gradient(rgba(140, 255, 0, .02) 1px, transparent 1px),
       linear-gradient(90deg, rgba(140, 255, 0, .02) 1px, transparent 1px),
-      #040705;
+      #050a06;
     background-size: 26px 26px;
     color: #f2f4f0;
+    box-shadow: inset 0 0 38px rgba(140, 255, 0, .025);
   }
 
   .phone-status {
@@ -919,26 +933,71 @@ const ranking = [
   }
 
   .utility-download {
+    position: relative;
     display: grid;
-    grid-template-columns: 90px 1fr;
+    grid-template-columns: 94px 1fr;
     align-items: center;
     gap: 16px;
     margin: 20px 25px 20px 0;
-    padding: 18px;
-    border: 1px solid rgba(140, 255, 0, .5);
+    overflow: hidden;
+    padding: 17px;
+    border: 1px solid rgba(140, 255, 0, .54);
     border-radius: 3px;
+    background:
+      linear-gradient(135deg, rgba(140, 255, 0, .08), transparent 45%),
+      rgba(2, 7, 3, .82);
+    box-shadow: inset 0 0 30px rgba(140, 255, 0, .025);
   }
 
-  .android-robot {
-    width: 78px;
-    fill: none;
-    stroke: var(--android-green);
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2;
+  .utility-download::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    content: "";
+    background: var(--android-green);
+    box-shadow: 0 0 18px rgba(140, 255, 0, .55);
   }
 
-  .utility-download > div { display: grid; gap: 12px; }
+  .utility-app-mark {
+    position: relative;
+    align-self: center;
+  }
+
+  .utility-app-mark img {
+    display: block;
+    width: 88px;
+    height: 88px;
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .55));
+  }
+
+  .utility-app-mark span {
+    position: absolute;
+    right: -2px;
+    bottom: -4px;
+    display: grid;
+    min-width: 29px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid #8cff00;
+    border-radius: 2px;
+    background: #071004;
+    color: #baff54;
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .08em;
+  }
+
+  .utility-download__copy { display: grid; gap: 9px; }
+
+  .utility-download__copy > strong {
+    color: #f3f7f1;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .07em;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
 
   .utility-download p {
     display: flex;
@@ -947,19 +1006,52 @@ const ranking = [
     margin: 0;
     color: #e1e5df;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: .06em;
     text-transform: uppercase;
   }
 
   .utility-download p svg {
-    width: 20px;
+    width: 17px;
     fill: none;
     stroke: var(--android-green);
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 1.5;
+  }
+
+  .utility-download__copy > a {
+    display: flex;
+    min-height: 31px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1px;
+    padding: 0 10px;
+    border: 1px solid rgba(140, 255, 0, .45);
+    background: rgba(140, 255, 0, .07);
+    color: var(--android-green);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .utility-download__copy > a:hover {
+    border-color: var(--android-green);
+    background: var(--android-green);
+    color: #071004;
+  }
+
+  .utility-download__copy > a svg {
+    width: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
   }
 
   .android-install {
@@ -1009,7 +1101,7 @@ const ranking = [
     .android-shell { width: min(1060px, calc(100% - 44px)); }
     .android-hero__inner { grid-template-columns: 47% 53%; }
     .android-copy h1 { font-size: clamp(64px, 7.2vw, 85px); }
-    .phone-stage { min-width: 560px; transform: translateX(-15px); }
+    .phone-stage { min-width: 0; transform: translateX(-15px); }
     .phone { width: 250px; height: 508px; }
     .phone--ranking { top: 55px; left: 20px; }
     .phone--profile { top: 82px; right: 0; }
@@ -1017,8 +1109,8 @@ const ranking = [
     .utility-panel { grid-template-columns: 31% 43% 26%; }
     .utility-title { padding-inline: 25px; }
     .utility-list li > div { grid-template-columns: 135px 1fr; }
-    .utility-download { grid-template-columns: 65px 1fr; padding: 13px; }
-    .android-robot { width: 60px; }
+    .utility-download { grid-template-columns: 66px 1fr; padding: 13px; }
+    .utility-app-mark img { width: 62px; height: 62px; }
   }
 
   @media (max-width: 900px) {
@@ -1051,10 +1143,11 @@ const ranking = [
   @media (max-width: 600px) {
     :global(body.gc-page-android .gc-public-brand-mark),
     :global(body.gc-page-android .gc-public-brand-mark img) {
-      width: 128px !important;
-      height: 45px !important;
-      max-width: 128px !important;
-      max-height: 45px !important;
+      width: 50px !important;
+      height: 44px !important;
+      min-width: 50px !important;
+      max-width: 50px !important;
+      max-height: 44px !important;
     }
     .android-shell { width: calc(100% - 28px); }
     .android-hero { min-height: 890px; }
@@ -1095,8 +1188,8 @@ const ranking = [
     .utility-list li { grid-template-columns: 40px 30px 1fr; min-height: 72px; }
     .utility-list li > div { display: block; }
     .utility-list p { margin-top: 5px; }
-    .utility-download { grid-template-columns: 62px 1fr; padding: 14px; }
-    .android-robot { width: 58px; }
+    .utility-download { grid-template-columns: 72px 1fr; padding: 14px; }
+    .utility-app-mark img { width: 68px; height: 68px; }
     .utility-download p { font-size: 8px; }
     .install-inner { width: calc(100% - 28px); padding: 24px; }
   }
