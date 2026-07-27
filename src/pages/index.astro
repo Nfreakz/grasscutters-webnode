@@ -2782,6 +2782,12 @@ const home2ArchiveSeed: unknown[] = [];
       const cleanHeroCarName = (value: unknown, source: unknown = ''): string => {
         const raw = cleanPublicName(value, source);
         if (!raw || raw === '--') return raw;
+        /*
+         * Un alias público es autoritativo. Solo recortamos prefijos/año cuando
+         * el valor conserva la forma técnica del mod; así no alteramos el nombre
+         * que el administrador haya guardado en el filtro.
+         */
+        if (!/^(?:acf|rss|ks|gc)\b/i.test(raw)) return raw;
         return raw
           .replace(/^(?:acf|rss|ks|gc)\s+(?:gt2|gt3|gt4|dtm|btcc)\s*[-–—:]\s*/i, '')
           .replace(/^(?:acf|rss|ks|gc)\s*[-–—:]\s*/i, '')
@@ -3141,10 +3147,116 @@ const home2ArchiveSeed: unknown[] = [];
         };
       };
 
+      /*
+       * GC_HOME_LIVE_PUBLIC_CAR_NAMES_V11
+       * El snapshot ACSM solo conoce el modelo técnico. El bootstrap histórico
+       * ya ha pasado por applyDisplayName en el servidor y conserva el alias
+       * público configurado por el administrador. Reutilizar ese alias evita
+       * que el live vuelva a mostrar el nombre técnico sin hardcodear coches.
+       */
+      const historicalCarAliases = (historical: any): Map<string, string> => {
+        const aliases = new Map<string, string>();
+        const remember = (car: any, row: any = null): void => {
+          const display = cleanPublicName(first(car, [
+            'publicName', 'visibleName', 'alias', 'displayName', 'name'
+          ], row ? first(row, [
+            'car.publicName', 'car.visibleName', 'car.alias',
+            'car.displayName', 'car.name', 'carName'
+          ], '') : ''));
+          if (!display || display === '--') return;
+
+          const keys = [
+            first(car, ['code', 'rawCode', 'carCode', 'model', 'id'], ''),
+            row ? first(row, [
+              'car.code', 'car.rawCode', 'car.model',
+              'carCode', 'car_code', 'carModel', 'Car'
+            ], '') : ''
+          ].map(normalize).filter(Boolean);
+
+          keys.forEach((key) => aliases.set(key, display));
+        };
+
+        const combo = historical?.activeCombo || {};
+        const cars = Array.isArray(combo?.cars) ? combo.cars : [];
+        cars.forEach((car: any) => remember(car));
+        sourceLeaderboard(historical).forEach((row: any) => remember(row?.car || {}, row));
+        return aliases;
+      };
+
+      const applyHistoricalCarAliases = (livePayload: any, historical: any): any => {
+        const aliases = historicalCarAliases(historical);
+        if (!aliases.size || !livePayload) return livePayload;
+
+        const publicNameFor = (car: any, row: any = null): string => {
+          const keys = [
+            first(car, ['code', 'rawCode', 'carCode', 'model', 'id'], ''),
+            row ? first(row, [
+              'car.code', 'car.rawCode', 'car.model',
+              'carCode', 'car_code', 'carModel', 'Car'
+            ], '') : ''
+          ].map(normalize).filter(Boolean);
+          for (const key of keys) {
+            const display = aliases.get(key);
+            if (display) return display;
+          }
+          return '';
+        };
+
+        const applyRow = (row: any): any => {
+          const display = publicNameFor(row?.car || {}, row);
+          if (!display) return row;
+          return {
+            ...row,
+            carName: display,
+            carDisplay: display,
+            car_display: display,
+            car: {
+              ...(row?.car || {}),
+              name: display,
+              displayName: display,
+              publicName: display,
+              visibleName: display
+            }
+          };
+        };
+
+        const liveCombo = livePayload?.activeCombo || {};
+        const cars = Array.isArray(liveCombo?.cars)
+          ? liveCombo.cars.map((car: any) => {
+              const display = publicNameFor(car);
+              return display ? {
+                ...car,
+                name: display,
+                displayName: display,
+                publicName: display,
+                visibleName: display
+              } : car;
+            })
+          : [];
+        const rows = sourceLeaderboard(livePayload).map(applyRow);
+
+        return {
+          ...livePayload,
+          activeCombo: {
+            ...liveCombo,
+            cars,
+            carSummary: cars.map((car: any) => cleanPublicName(first(car, [
+              'publicName', 'visibleName', 'alias', 'displayName', 'name', 'code'
+            ], ''))).filter(Boolean).join(' / '),
+            bestLap: liveCombo?.bestLap ? applyRow(liveCombo.bestLap) : null,
+            latestLap: liveCombo?.latestLap ? applyRow(liveCombo.latestLap) : null,
+            leaderboard: rows
+          },
+          leaderboard: rows
+        };
+      };
+
       const mergeBootstrapWithAcsmLive = (bootstrap: any, live: Record<string, any>) => {
         const mergeSource = (source: 'main' | 'gt4') => {
           const historical = bootstrap?.[source] || {};
-          const livePayload = live[source] || null;
+          const livePayload = live[source]
+            ? applyHistoricalCarAliases(live[source], historical)
+            : null;
           if (livePayload) {
             const liveRows = sourceLeaderboard(livePayload);
             const historicalRows = sourceLeaderboard(historical);
@@ -3560,7 +3672,7 @@ const home2ArchiveSeed: unknown[] = [];
           heroTrackTitle.dataset.titleSize = length > 24 ? 'long' : length > 14 ? 'medium' : 'short';
         }
         setText('[data-home2-best-driver]', driverName(best));
-        setText('[data-home2-best-car]', carName(best));
+        setText('[data-home2-best-car]', cleanHeroCarName(carName(best), source));
         setText('[data-home2-best-time]', formatTime(best));
         const bestDriverName = driverName(best);
         const bestAvatarSrc = visiblePilotAvatarByName(bestDriverName) || heroBestAvatar(best, rows);
@@ -3772,15 +3884,6 @@ const home2ArchiveSeed: unknown[] = [];
 
         const seeds = technicalValues.length ? technicalValues : [title].filter(Boolean);
         const aliases = [...new Set(seeds.map(exactTrackAssetSlug).filter(Boolean))];
-        const extensions = ['webp', 'jpg', 'png', 'jpeg', 'avif'];
-        const generated: string[] = [];
-
-        aliases.forEach((alias) => {
-          extensions.forEach((ext) => {
-            generated.push(`/images/tracks/${encodeURIComponent(alias)}.${ext}`);
-            generated.push(`/imagenes/tracks/${encodeURIComponent(alias)}.${ext}`);
-          });
-        });
 
         const image = event?.trackImage || event?.trackData?.image || {};
         const explicit = [
@@ -3806,7 +3909,12 @@ const home2ArchiveSeed: unknown[] = [];
         return {
           aliases,
           technicalValues: technicalValues.map(String),
-          candidates: [...new Set([...generated, ...exactExplicit].filter(Boolean))]
+          /*
+           * Las rutas /images/tracks/:file inexistentes responden 200 con un
+           * SVG "Track image pending". No pueden formar parte de una cadena
+           * onerror porque ese 200 bloquea el candidato real siguiente.
+           */
+          candidates: [...new Set(exactExplicit.filter(Boolean))]
         };
       };
 
@@ -3824,9 +3932,15 @@ const home2ArchiveSeed: unknown[] = [];
           normalize(technicalTrack)
         ].join('|');
 
+        const currentImageSrc = img.getAttribute('src') || '';
+        const currentImageIsUsable = Boolean(
+          currentImageSrc &&
+          currentImageSrc !== FALLBACK_TRACK &&
+          !currentImageSrc.includes('placeholder-track')
+        );
         if (
           img.dataset.gcHomeChampImageSignature === imageSignature &&
-          img.getAttribute('src')
+          currentImageIsUsable
         ) {
           return;
         }
@@ -3837,7 +3951,29 @@ const home2ArchiveSeed: unknown[] = [];
         if (source === 'gt4') {
           const exact = championshipExactTrackCandidates(title, event);
           if (exact.aliases.length) {
-            setImageWithFallbacks(img, exact.candidates, FALLBACK_TRACK);
+            const trackConfig = first(event, [
+              'trackConfig', 'layout',
+              'trackData.trackConfig', 'trackData.layout'
+            ], '');
+            const delivered = trackImageCandidatesFromCombo({
+              sourceKey: source,
+              source,
+              track: {
+                code: technicalTrack,
+                rawCode: technicalTrack,
+                trackCode: technicalTrack,
+                trackConfig,
+                layout: trackConfig,
+                name: title,
+                displayName: title,
+                publicName: title
+              }
+            });
+            setImageWithFallbacks(
+              img,
+              [...delivered, ...exact.candidates],
+              FALLBACK_TRACK
+            );
             img.dataset.gcHomeChampImageRuntime = 'v34-gt4-acsm-exact';
             img.dataset.gcHomeChampTrackRaw = exact.technicalValues[0] || String(title || '');
             img.dataset.gcHomeChampTrackAliases = exact.aliases.join(',');
