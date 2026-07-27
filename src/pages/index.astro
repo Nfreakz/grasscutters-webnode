@@ -2479,7 +2479,6 @@ const home2ArchiveSeed: unknown[] = [];
   </script>
 
   <script is:inline src="/js/gc-track-images.js"></script>
-  <script is:inline src="/js/gc-home-track-resolver.js?v=25-online-delivery"></script>
   <script is:inline define:vars={{ home2ArchiveSeed }}>
     window.__GC_HOME2_ARCHIVE__ = home2ArchiveSeed;
   </script>
@@ -2687,7 +2686,12 @@ const home2ArchiveSeed: unknown[] = [];
       const q = (selector: string, scope: any = root): any => scope?.querySelector?.(selector) || null;
       const qa = (selector: string, scope: any = root): any[] => Array.from(scope?.querySelectorAll?.(selector) || []);
       const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[char] ?? char);
-      const setText = (selector: string, value: unknown, scope: any = root) => { const el = q(selector, scope); if (el) el.textContent = value ?? '--'; };
+      const setText = (selector: string, value: unknown, scope: any = root) => {
+        const el = q(selector, scope);
+        if (!el) return;
+        const next = String(value ?? '--');
+        if (el.textContent !== next) el.textContent = next;
+      };
       const normalize = (value: unknown) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
       const first = (obj: any, paths: string[] = [], fallback: any = ''): any => {
         for (const path of paths) {
@@ -3733,20 +3737,22 @@ const home2ArchiveSeed: unknown[] = [];
         const block = q(`[data-home2-championship][data-home2-championship-source="${source}"]`);
         const actions = q('.gc-home2-championship-actions', block);
         if (!actions) return;
+        let nextHtml = '';
         if (source === 'gt4') {
           actions.classList.add('gc-home2-championship-actions--gt4');
-          actions.innerHTML = [
+          nextHtml = [
             championshipButton(GT4_DOWNLOAD_URL, `${driveIconSvg}<span>Descargar</span>`, 'gc-home2-championship-btn--download', 'data-home2-champ-download'),
             championshipButton(GT4_SIGNUP_URL, 'Inscribirse al campeonato', '', 'data-home2-champ-signup'),
             championshipButton(GT4_JOIN_URL, 'Unirse al servidor', 'gc-home2-championship-btn--server', 'data-home2-champ-join')
           ].join('');
         } else if (source === 'weekly') {
           actions.classList.remove('gc-home2-championship-actions--gt4');
-          actions.innerHTML = [
+          nextHtml = [
             championshipButton(WEEKLY_SIGNUP_URL, 'Inscribirse al campeonato', '', 'data-home2-champ-signup'),
             championshipButton(WEEKLY_JOIN_URL, 'Unirse al servidor', 'gc-home2-championship-btn--server', 'data-home2-champ-join')
           ].join('');
         }
+        if (nextHtml && actions.innerHTML !== nextHtml) actions.innerHTML = nextHtml;
       };
 
       /* GC_HOME_GT4_ACSM_TRACK_IMAGE_FIX_V1 */
@@ -3807,6 +3813,24 @@ const home2ArchiveSeed: unknown[] = [];
       const setChampionshipTrackImage = async (block: any, title: unknown, event: any, source: string) => {
         const img = q('[data-home2-champ-track-image]', block) as HTMLImageElement | null;
         if (!img) return;
+        const technicalTrack = first(event, [
+          'trackRaw', 'trackCode', 'TrackCode', 'Track',
+          'trackData.rawCode', 'trackData.code', 'trackData.familyKey',
+          'trackData.rawName', 'trackName', 'TrackName'
+        ], title);
+        const imageSignature = [
+          source,
+          normalize(title),
+          normalize(technicalTrack)
+        ].join('|');
+
+        if (
+          img.dataset.gcHomeChampImageSignature === imageSignature &&
+          img.getAttribute('src')
+        ) {
+          return;
+        }
+        img.dataset.gcHomeChampImageSignature = imageSignature;
 
         // GT4 usa primero el código técnico procedente del combo/ACSM. No se permite
         // buscar solo por "Valencia", "GP", etc., porque puede elegir otro trazado.
@@ -3909,7 +3933,16 @@ const home2ArchiveSeed: unknown[] = [];
         const host = q('[data-home2-champ-drivers]', block);
         if (host && rows.length) {
           host.dataset.gcHydrated = '1';
-          host.innerHTML = rows.slice(0, 10).map((row: any, index: number) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+          const visibleRows = rows.slice(0, 10);
+          const standingsSignature = JSON.stringify(visibleRows.map((row: any, index: number) => [
+            canonicalDriverNameKey(champName(row, index)),
+            String(champPts(row)),
+            avatar(row)
+          ]));
+          if (host.dataset.gcChampStandingsSignature !== standingsSignature) {
+            host.innerHTML = visibleRows.map((row: any, index: number) => `<div class="gc-home2-champ-standing-row${index < 3 ? ` gc-home2-champ-standing-row--podium gc-home2-champ-standing-row--${['gold','silver','bronze'][index]}` : ' gc-home2-champ-standing-row--plain'}"><span class="gc-home2-champ-standing-pos">${rankBadge(index)}</span><div class="gc-home2-champ-standing-meta"><strong>${esc(champName(row, index))}</strong><small>General</small></div><span class="gc-home2-champ-standing-points"><strong>${esc(champPts(row))}</strong><small>pts</small></span><img class="gc-home2-champ-standing-avatar" src="${esc(avatar(row))}" alt="" width="30" height="30" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}';" /></div>`).join('');
+            host.dataset.gcChampStandingsSignature = standingsSignature;
+          }
         }
         enforceChampionshipButtons(source);
         return { source, ok: true, events: events.length, rows: rows.length };
