@@ -3450,10 +3450,15 @@ const home2ArchiveSeed: unknown[] = [];
           return [];
         }
 
-        // GC_HOME_TOP_TIMES_VISIBLE_SIGNATURE_V10
-        // Las fuentes live/bootstrap pueden alternar GUID o PlayerId para la
-        // misma vuelta. Esos identificadores no forman parte del contenido
-        // visible y no deben provocar que se destruya y reconstruya el DOM.
+        // No destruir el DOM cada 60 s si la clasificación visible no cambia.
+        // Así se conservan enlaces y avatares ya resueltos y desaparece el
+        // ciclo avatar genérico -> avatar real de cada refresco.
+        /*
+         * GC_HOME_TOP_TIMES_VISIBLE_SIGNATURE_V10
+         * Los endpoints histórico y live pueden representar al mismo piloto
+         * con GUID/PlayerId distintos. La identidad técnica no forma parte del
+         * DOM visible y nunca debe provocar que se destruyan las filas.
+         */
         const signature = JSON.stringify(list.map((row: any) => [
           canonicalDriverNameKey(driverName(row)),
           normalize(carName(row)),
@@ -3960,17 +3965,6 @@ const home2ArchiveSeed: unknown[] = [];
           const championships = await Promise.all([loadChampionship('weekly'), loadChampionship('gt4')]);
           renderHeroFromState();
           renderPulse(bootstrap);
-          renderRanking(
-            '[data-home2-combo-ranking]',
-            sourceLeaderboard(bootstrap?.main),
-            !sourceUsesAcsmLive(bootstrap?.main)
-          );
-          renderRanking(
-            '[data-home2-combo-ranking-gt4]',
-            sourceLeaderboard(bootstrap?.gt4),
-            !sourceUsesAcsmLive(bootstrap?.gt4)
-          );
-
           document.documentElement.dataset.gcHomeComboAuthority = 'acsm-live-session-end-fallback-v1';
           console.info(`[GC Home ${PACK}]`, {
             bootstrap: bootstrap.source,
@@ -4202,19 +4196,13 @@ const home2ArchiveSeed: unknown[] = [];
         return link;
       };
 
-      const enhanceComboRows = (): void => {
-        document.querySelectorAll<HTMLElement>(
-          '.gc-home2-combo-rank'
-        ).forEach((row) => {
-          if (row.dataset.gcPilotLinked === '1') return;
-          const nameEl = row.querySelector<HTMLElement>('div > strong');
-          const name = nameEl?.textContent?.trim() || '';
-          const pilot = resolveByName(name);
-          if (!nameEl || !pilot) return;
-          makeLink(nameEl,name,pilot);
-          row.dataset.gcPilotLinked = '1';
-        });
-      };
+      /*
+       * Los rankings superiores se resuelven más abajo mediante
+       * GC_HOME_TOP_TIMES_CANONICAL_AVATAR_V9. No deben pasar también por
+       * este enlazador antiguo: dos autoridades convertían el mismo nombre y
+       * reabrían la carrera de avatar tras cada refresco.
+       */
+      const enhanceComboRows = (): void => {};
 
       const enhanceTimingRows = (): void => {
         document.querySelectorAll<HTMLElement>(
