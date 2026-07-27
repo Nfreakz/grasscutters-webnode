@@ -1082,7 +1082,22 @@ import AppLayout from '../layouts/AppLayout.astro';
       const items = (data) => {
         if (Array.isArray(data)) return data;
         if (!data || typeof data !== 'object') return [];
-        return data.publicCombos || data.items || data.data?.publicCombos || data.data?.items || data.combos || [];
+
+        const candidates = [
+          data.items,
+          data.combos,
+          data.rows,
+          data.results,
+          data.data,
+          data.data?.items,
+          data.data?.combos,
+          data.data?.rows,
+          data.data?.results,
+          data.data?.publicCombos,
+          data.publicCombos
+        ];
+
+        return candidates.find(Array.isArray) || [];
       };
 
       const displayTrack = (combo) => text(pick(combo,[
@@ -1489,7 +1504,9 @@ import AppLayout from '../layouts/AppLayout.astro';
           url.searchParams.set('sort',els.sort?.value || 'recent');
           const data = await fetchJson(url.pathname + url.search);
 
-          state.combos = items(data);
+          const nextCombos = items(data);
+          if (!Array.isArray(nextCombos)) throw new TypeError('La respuesta de combos no contiene un listado válido');
+          state.combos = nextCombos;
           state.summary = data;
           state.lastGood = {
             combos:state.combos,
