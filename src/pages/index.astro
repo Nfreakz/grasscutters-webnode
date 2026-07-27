@@ -1,7 +1,7 @@
+---
 /* GC_HOME_HERO_TOP7_V17 */
 /* GC_HOME_ACTIVE_COMBO_STRICT_TOP8_FIX_V1 */
 /* GC_HOME_UNIQUE_8_POPUP_ALIAS_FIX_V1_1 */
----
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import PublicHeroFrame from '../components/public/PublicHeroFrame.astro';
 import '../styles/public/gc-rating-badges.css';
@@ -3063,6 +3063,13 @@ const home2ArchiveSeed: unknown[] = [];
           trackCode,
           trackDisplay
         ].filter(Boolean);
+        const previewParams = new URLSearchParams();
+        previewParams.set('source', source);
+        if (trackCode) previewParams.set('track', trackCode);
+        if (trackConfig) previewParams.set('layout', trackConfig);
+        const livePreviewCandidate = trackCode
+          ? `/api/gc/live-test/preview?${previewParams.toString()}`
+          : '';
 
         const activeCombo = {
           __gcAcsmLive: true,
@@ -3087,7 +3094,12 @@ const home2ArchiveSeed: unknown[] = [];
           trackCode,
           trackRaw: trackCode,
           trackName: trackDisplay,
-          trackImage: { aliases: imageAliases },
+          trackImage: {
+            primary: livePreviewCandidate,
+            candidates: livePreviewCandidate ? [livePreviewCandidate] : [],
+            aliases: imageAliases
+          },
+          trackPhotoCandidates: livePreviewCandidate ? [livePreviewCandidate] : [],
           cars,
           carSummary: cars.map((car: any) => car.displayName).join(' / '),
           carsCount: cars.length,
@@ -3972,6 +3984,12 @@ const home2ArchiveSeed: unknown[] = [];
           let decoded = String(url || '');
           try { decoded = decodeURIComponent(decoded); } catch (_) {}
           const cleanUrl = decoded.split('?')[0].split('#')[0];
+          /*
+           * La preview live se sirve por un proxy propio que ya limita source,
+           * track y layout. Su basename es "preview", por lo que no puede
+           * compararse con el slug del circuito como un asset estático.
+           */
+          if (cleanUrl === '/api/gc/live-test/preview') return true;
           const basename = cleanUrl.split('/').pop() || cleanUrl;
           const candidateSlug = exactTrackAssetSlug(basename);
           return aliases.some((alias) =>

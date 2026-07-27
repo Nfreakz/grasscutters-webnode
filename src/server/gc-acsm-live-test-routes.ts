@@ -753,4 +753,56 @@ export function registerGcAcsmLiveTestRoutes(app: express.Express) {
       res.status(502).json({ ok: false, message: 'Error proxy map.png ACSM.', error: error instanceof Error ? error.message : String(error) });
     }
   });
+
+  /*
+   * GC_HOME_TRACK_PREVIEW_PROXY_V13
+   * La web pública usa HTTPS y ACSM sirve sus previews por HTTP. El navegador
+   * bloquea esa carga como mixed content, así que la imagen se entrega desde
+   * el mismo origen. source siempre se resuelve contra la lista cerrada de
+   * servidores y track/layout se codifican como segmentos, evitando un proxy
+   * abierto o rutas arbitrarias.
+   */
+  app.get('/api/gc/live-test/preview', async (req, res) => {
+    const sourceKey = getSourceKey(req.query.server || req.query.source);
+    const state = getState(sourceKey);
+    const track = String(req.query.track || state.normalized?.session.track || '').trim();
+    const layout = String(req.query.layout || state.normalized?.session.trackConfig || '').trim();
+
+    if (!track) {
+      res.status(400).json({ ok: false, message: 'Falta track.' });
+      return;
+    }
+
+    const source = sources[sourceKey];
+    const safeTrack = encodeURIComponent(track);
+    const safeLayout = layout ? `/${encodeURIComponent(layout)}` : '';
+    const url = `${source.baseUrl}/content/tracks/${safeTrack}/ui${safeLayout}/preview.png`;
+
+    try {
+      const response = await fetch(url);
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      if (!response.ok || !response.body || !contentType.startsWith('image/')) {
+        res.status(response.status >= 400 ? response.status : 502).json({
+          ok: false,
+          message: 'No se pudo leer preview.png de ACSM.'
+        });
+        return;
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      if (!arrayBuffer.byteLength) {
+        res.status(502).json({ ok: false, message: 'preview.png de ACSM está vacío.' });
+        return;
+      }
+      res.setHeader('Content-Type', contentType || 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=1800');
+      res.setHeader('X-GC-Live-Track-Preview', `${sourceKey}:${track}:${layout}`);
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error) {
+      res.status(502).json({
+        ok: false,
+        message: 'Error proxy preview.png ACSM.',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 }
