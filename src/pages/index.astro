@@ -3450,13 +3450,13 @@ const home2ArchiveSeed: unknown[] = [];
           return [];
         }
 
-        // No destruir el DOM cada 60 s si la clasificación visible no cambia.
-        // Así se conservan enlaces y avatares ya resueltos y desaparece el
-        // ciclo avatar genérico -> avatar real de cada refresco.
+        // GC_HOME_TOP_TIMES_VISIBLE_SIGNATURE_V10
+        // Las fuentes live/bootstrap pueden alternar GUID o PlayerId para la
+        // misma vuelta. Esos identificadores no forman parte del contenido
+        // visible y no deben provocar que se destruya y reconstruya el DOM.
         const signature = JSON.stringify(list.map((row: any) => [
-          canonicalDriverKey(row),
           canonicalDriverNameKey(driverName(row)),
-          carName(row),
+          normalize(carName(row)),
           rowTimeMs(row)
         ]));
         if (host.dataset.gcRankingSignature === signature && host.dataset.gcHydrated === '1') {
