@@ -2903,7 +2903,32 @@ const home2ArchiveSeed: unknown[] = [];
       const splitCarSummary = (value: unknown): string[] => String(value || '').split(/[,+/]/).map((item) => cleanPublicName(item.trim())).filter(Boolean);
       const comboRankBadgeClass = (index: number) => index >= 3 ? 'gc-home2-rank-badge gc-home2-rank-badge--plain' : 'gc-home2-rank-badge';
 
-      /* GC_HOME_TOP_TIMES_AVATAR_SINGLE_OWNER_V7 */
+      /* GC_HOME_TOP_TIMES_AVATAR_HARD_LOCK_V8 */
+      const installRankingAvatarLock = (): void => {
+        if (document.documentElement.dataset.gcTopAvatarLock === '1') return;
+        document.documentElement.dataset.gcTopAvatarLock = '1';
+
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            const image = mutation.target;
+            if (!(image instanceof HTMLImageElement)) continue;
+            if (image.dataset.gcTopAvatarManaged !== '1') continue;
+
+            const locked = image.dataset.gcTopAvatarLocked;
+            const current = image.getAttribute('src') || '';
+            if (locked && current !== locked) {
+              image.setAttribute('src', locked);
+            }
+          }
+        }).observe(document.documentElement, {
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['src']
+        });
+      };
+
+      installRankingAvatarLock();
+
       const settleRankingAvatars = (host: HTMLElement): void => {
         const token = String((Number(host.dataset.gcAvatarBatch || '0') || 0) + 1);
         host.dataset.gcAvatarBatch = token;
@@ -2918,15 +2943,16 @@ const home2ArchiveSeed: unknown[] = [];
         const waits = images.map((image) => new Promise<void>((resolve) => {
           image.loading = 'eager';
           image.dataset.gcTopAvatarManaged = '1';
+          image.dataset.gcTopAvatarLocked = image.getAttribute('src') || DEFAULT_AVATAR;
 
           const finish = (failed = false): void => {
             image.removeEventListener('load', onLoad);
             image.removeEventListener('error', onError);
             if (failed) {
               image.onerror = null;
+              image.dataset.gcTopAvatarLocked = DEFAULT_AVATAR;
               image.src = DEFAULT_AVATAR;
             }
-            image.dataset.gcTopAvatarLocked = image.getAttribute('src') || DEFAULT_AVATAR;
             resolve();
           };
           const onLoad = (): void => finish(false);
