@@ -3251,6 +3251,59 @@ const home2ArchiveSeed: unknown[] = [];
         };
       };
 
+      /*
+       * GC_HOME_PUBLIC_CAR_ALIAS_EVERYWHERE_V12
+       * Timing sheet no forma parte de main/gt4.activeCombo, así que no recibía
+       * el alias aplicado al snapshot live. Resolverlo por el código técnico
+       * contra ambas fuentes históricas mantiene el mismo nombre en hero,
+       * rankings, timing y campeonato.
+       */
+      const publicCarAliasRows = (rows: any[] = [], bootstrap: any): any[] => {
+        const maps = {
+          main: historicalCarAliases(bootstrap?.main),
+          gt4: historicalCarAliases(bootstrap?.gt4)
+        };
+
+        const aliasFor = (row: any): string => {
+          const keys = [
+            first(row?.car || {}, ['code', 'rawCode', 'carCode', 'model', 'id'], ''),
+            first(row, [
+              'car.code', 'car.rawCode', 'car.model',
+              'carCode', 'car_code', 'carModel', 'Car'
+            ], '')
+          ].map(normalize).filter(Boolean);
+          const source = sourceKey(row) === 'gt4' ? 'gt4' : 'main';
+          const orderedMaps = source === 'gt4'
+            ? [maps.gt4, maps.main]
+            : [maps.main, maps.gt4];
+          for (const aliases of orderedMaps) {
+            for (const key of keys) {
+              const display = aliases.get(key);
+              if (display) return display;
+            }
+          }
+          return '';
+        };
+
+        return (Array.isArray(rows) ? rows : []).map((row: any) => {
+          const display = aliasFor(row);
+          if (!display) return row;
+          return {
+            ...row,
+            carName: display,
+            carDisplay: display,
+            car_display: display,
+            car: {
+              ...(row?.car || {}),
+              name: display,
+              displayName: display,
+              publicName: display,
+              visibleName: display
+            }
+          };
+        });
+      };
+
       const mergeBootstrapWithAcsmLive = (bootstrap: any, live: Record<string, any>) => {
         const mergeSource = (source: 'main' | 'gt4') => {
           const historical = bootstrap?.[source] || {};
@@ -3277,14 +3330,35 @@ const home2ArchiveSeed: unknown[] = [];
               [...historicalCarSet].every((car) => liveCarSet.has(car))
             );
             const sameStrictCombo = sameTrack && sameCars;
+            const historicalCombo = historical?.activeCombo || {};
+            const liveCombo = livePayload?.activeCombo || {};
+            const historicalTrackDisplay = sameTrack
+              ? comboTrack(historicalCombo, historicalRows, source)
+              : '';
+            const publicLiveCombo = sameTrack ? {
+              ...liveCombo,
+              track: {
+                ...(liveCombo?.track || {}),
+                ...(historicalTrackDisplay ? {
+                  name: historicalTrackDisplay,
+                  displayName: historicalTrackDisplay,
+                  publicName: historicalTrackDisplay,
+                  visibleName: historicalTrackDisplay
+                } : {})
+              },
+              ...(historicalTrackDisplay ? { trackName: historicalTrackDisplay } : {}),
+              trackImage: historicalCombo?.trackImage || liveCombo?.trackImage,
+              trackAssets: historicalCombo?.trackAssets || liveCombo?.trackAssets,
+              trackPhotoCandidates: historicalCombo?.trackPhotoCandidates || liveCombo?.trackPhotoCandidates
+            } : liveCombo;
 
             if (!liveRows.length && historicalRows.length && sameStrictCombo) {
               return {
                 ...historical,
                 ...livePayload,
                 activeCombo: {
-                  ...(historical.activeCombo || {}),
-                  ...(livePayload.activeCombo || {}),
+                  ...historicalCombo,
+                  ...publicLiveCombo,
                   bestLap: historical.activeCombo?.bestLap || historicalRows[0] || null,
                   latestLap: historical.activeCombo?.latestLap || historicalRows[0] || null,
                   leaderboard: historicalRows
@@ -3361,11 +3435,11 @@ const home2ArchiveSeed: unknown[] = [];
               ...historical,
               ...livePayload,
               activeCombo: {
-                ...(historical.activeCombo || {}),
-                ...(livePayload.activeCombo || {}),
+                ...historicalCombo,
+                ...publicLiveCombo,
                 leaderboard: mergedRows,
-                bestLap: mergedRows[0] || livePayload.activeCombo?.bestLap || historical.activeCombo?.bestLap || null,
-                latestLap: livePayload.activeCombo?.latestLap || historical.activeCombo?.latestLap || mergedRows[0] || null
+                bestLap: mergedRows[0] || publicLiveCombo?.bestLap || historicalCombo?.bestLap || null,
+                latestLap: publicLiveCombo?.latestLap || historicalCombo?.latestLap || mergedRows[0] || null
               },
               leaderboard: mergedRows,
               diagnostics: {
@@ -3415,6 +3489,7 @@ const home2ArchiveSeed: unknown[] = [];
           source: `${bootstrap?.source || 'home-bootstrap'}+acsm-live-authoritative`,
           main: mergeSource('main'),
           gt4: mergeSource('gt4'),
+          timingSheet: publicCarAliasRows(bootstrap?.timingSheet || [], bootstrap),
           comboAuthority: 'acsm-live'
         };
       };
@@ -3902,7 +3977,12 @@ const home2ArchiveSeed: unknown[] = [];
           return aliases.some((alias) =>
             candidateSlug === alias ||
             candidateSlug.startsWith(`${alias}_`) ||
-            candidateSlug.endsWith(`_${alias}`)
+            candidateSlug.endsWith(`_${alias}`) ||
+            /*
+             * La foto puede estar guardada por familia mientras ACSM
+             * identifica una variante técnica más específica.
+             */
+            (candidateSlug.length >= 6 && alias.startsWith(`${candidateSlug}_`))
           );
         });
 
@@ -3971,7 +4051,12 @@ const home2ArchiveSeed: unknown[] = [];
             });
             setImageWithFallbacks(
               img,
-              [...delivered, ...exact.candidates],
+              /*
+               * Los candidatos explícitos ya fueron verificados por el
+               * bootstrap contra archivos existentes. Deben preceder al
+               * endpoint exacto, que puede no conocer el sufijo de variante.
+               */
+              [...exact.candidates, ...delivered],
               FALLBACK_TRACK
             );
             img.dataset.gcHomeChampImageRuntime = 'v34-gt4-acsm-exact';
