@@ -7,6 +7,7 @@ import { buildSrComputation } from './srModel';
 import { findRaceSessions, findRatingCandidateRaceSessions, openStrackerDb, readRaceDrivers, readRaceLaps, readRaceSession, resolveStrackerDbPath, verifyStrackerTables } from './strackerReader';
 import type { DriverRatingState, PlainObject, RatingEventResult, RatingsSnapshot, RecalculationLog, RatingStrackerSessionReview } from './types';
 import { formatLapMs, isoNow, parseDateMs, ratingClassFromGsr, ratingClassFromSr, roundTo, safeFiniteNumber, textValue, uniqueId } from './utils';
+import { canonicalDriverIdentityKey, normalizeSteamGuid } from '../gc-driver-identity';
 
 /* GC_PHASE2H_RATINGS_ARRAY_TYPES_V1 */
 function ratingArray<T = any>(value: unknown): T[] {
@@ -74,16 +75,14 @@ function stableDriverKeyFromParts(input: {
   steamGuid?: string | null;
   strackerPlayerId?: number | null;
   name?: string | null;
+  sourceKey?: string | null;
 }) {
-  // Mega Update v109:
-  // SteamID/GUID es la identidad primaria. PlayerId es local a sTracker y puede variar.
-  const guid = textValue(input.steamGuid);
-  if (guid) return `steam:${guid}`;
-
-  const playerId = safeFiniteNumber(input.strackerPlayerId, 0);
-  if (playerId > 0) return `player:${playerId}`;
-
-  return `name:${normalizeDriverNameKey(input.name || 'unknown') || 'unknown'}`;
+  return canonicalDriverIdentityKey({
+    steamGuid: input.steamGuid,
+    sourceKey: input.sourceKey,
+    playerId: input.strackerPlayerId,
+    name: input.name
+  });
 }
 
 function findExistingStateForIdentity(
@@ -95,12 +94,10 @@ function findExistingStateForIdentity(
     name?: string | null;
   }
 ) {
-  const candidates = [
-    input.driverKey,
-    textValue(input.steamGuid) ? `steam:${textValue(input.steamGuid)}` : '',
-    safeFiniteNumber(input.strackerPlayerId, 0) > 0 ? `player:${safeFiniteNumber(input.strackerPlayerId, 0)}` : '',
-    `name:${normalizeDriverNameKey(input.name)}`
-  ].filter(Boolean);
+  const guid = normalizeSteamGuid(input.steamGuid);
+  const candidates = guid
+    ? [input.driverKey, `steam:${guid}`]
+    : [input.driverKey];
 
   for (const key of candidates) {
     const state = states.get(key);
@@ -276,7 +273,10 @@ function driverUpdatedMs(driver: Partial<DriverRatingState>) {
 function preferredDriverKeyForMergedDrivers(drivers: LeaderboardDriverState[]) {
   const steam = drivers.find((driver) => textValue(driver.driverKey).startsWith('steam:'));
   if (steam) return steam.driverKey;
-  const player = drivers.find((driver) => textValue(driver.driverKey).startsWith('player:'));
+  const player = drivers.find((driver) =>
+    textValue(driver.driverKey).startsWith('player:') ||
+    textValue(driver.driverKey).includes(':player:')
+  );
   if (player) return player.driverKey;
   return drivers[0]?.driverKey || 'name:unknown';
 }
@@ -338,7 +338,10 @@ function mergeDriverIdentityGroup(drivers: DriverRatingState[]): LeaderboardDriv
 function mergeDriversForPublicLeaderboard(drivers: DriverRatingState[]) {
   const buckets = new Map<string, DriverRatingState[]>();
   for (const driver of drivers) {
-    const key = `name:${driverNameIdentityKey(driver.displayName)}`;
+    const guid = normalizeSteamGuid(driver.steamGuid);
+    const key = guid
+      ? `steam:${guid}`
+      : textValue(driver.driverKey) || `name:${driverNameIdentityKey(driver.displayName)}`;
     const bucket = buckets.get(key) || [];
     bucket.push(driver);
     buckets.set(key, bucket);
@@ -404,9 +407,10 @@ function raceSessionFromEvent(event: PlainObject) {
 }
 
 function sameDriverLap(lap: PlainObject, result: PlainObject) {
-  const lapGuid = textValue(lap.driverGuid || lap.guid);
-  const resultGuid = textValue(result.guid || result.steamGuid);
+  const lapGuid = normalizeSteamGuid(lap.driverGuid || lap.guid);
+  const resultGuid = normalizeSteamGuid(result.guid || result.steamGuid);
   if (lapGuid && resultGuid && lapGuid === resultGuid) return true;
+  if (lapGuid && resultGuid) return false;
 
   const lapName = textValue(lap.driverName || lap.name).toLowerCase();
   const resultName = textValue(result.name || result.driverName).toLowerCase();
@@ -729,16 +733,14 @@ function ratingResultFingerprintV1(row: RatingEventResult) {
   if (explicitIdentity) return `${ratingEventScopeKeyV1(row.sourceKey, row.eventId)}:${explicitIdentity}`;
 
   const eventId = ratingEventScopeKeyV1(row.sourceKey, textValue(row.eventId, 'unknown-event'));
+  const steamGuid = normalizeSteamGuid(row.steamGuid);
+  if (steamGuid) return `${eventId}|steam:${steamGuid}`;
+
   const position = safeFiniteNumber(row.position, 0);
   const name = normalizeDriverNameKey(row.displayName || row.driverKey || 'unknown');
 
-  // Dentro de una misma carrera no puede existir dos veces la misma combinación
-  // posición + nombre. Esta firma permite unir identidades antiguas name:/player:
-  // con la identidad Steam más reciente sin mezclar pilotos de posiciones distintas.
+  // Solo los resultados sin GUID usan la firma histórica posición + nombre.
   if (position > 0 && name) return `${eventId}|position:${position}|name:${name}`;
-
-  const steamGuid = textValue(row.steamGuid);
-  if (steamGuid) return `${eventId}|steam:${steamGuid}`;
 
   const playerId = safeFiniteNumber(row.strackerPlayerId, 0);
   if (playerId > 0) return `${eventId}|player:${playerId}`;
@@ -1266,12 +1268,15 @@ function enrichChampionship(championship: PlainObject, snapshot: RatingsSnapshot
   });
 
   function findDriverForStanding(row: PlainObject) {
-    const keys = [
-      row.driverKey,
-      row.guid ? `steam:${row.guid}` : '',
-      row.playerId ? `player:${row.playerId}` : '',
-      `name:${String(row.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_')}`
-    ].filter(Boolean);
+    const guid = normalizeSteamGuid(row.guid || row.steamGuid);
+    if (guid) return driverMap.get(`steam:${guid}`) || null;
+
+    const explicitKey = textValue(row.driverKey);
+    if (explicitKey) return driverMap.get(explicitKey) || null;
+
+    const keys = row.playerId
+      ? [`player:${row.playerId}`]
+      : [`name:${String(row.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_')}`];
     for (const key of keys) {
       const hit = driverMap.get(key);
       if (hit) return hit;
@@ -1788,7 +1793,8 @@ export class GcRatingsService {
           const driverKey = stableDriverKeyFromParts({
             steamGuid,
             strackerPlayerId,
-            name: displayName
+            name: displayName,
+            sourceKey: eventSourceKey
           });
           const existingState = findExistingStateForIdentity(states, {
             driverKey,

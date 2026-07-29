@@ -2843,20 +2843,21 @@ const home2ArchiveSeed: unknown[] = [];
 
       const canonicalDriverKey = (row: any): string => {
         const nameKey = canonicalDriverNameKey(driverName(row));
-
-        // Alias confirmado: las dos variantes pertenecen al mismo piloto.
-        // Debe resolverse antes que GUID/PlayerId porque las fuentes históricas
-        // y live todavía pueden entregar identificadores técnicos diferentes.
-        if (nameKey === 'pdiaz') return 'alias:pdiaz';
-
-        const identity = first(row, [
+        const guid = first(row, [
           'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
-          'profilePlayerId', 'strackerPlayerId', 'playerId', 'driverId', 'rawPlayerId'
+          'driver.steamGuid', 'driver.guid'
         ], '');
+        if (guid) return 'steam:' + String(guid).trim().toLowerCase().replace(/^(?:steam|guid):/,'');
 
-        return identity
-          ? 'id:' + String(identity).trim().toLowerCase()
-          : 'name:' + nameKey;
+        const source = sourceKey(row, 'main') || 'main';
+        const playerId = first(row, [
+          'rawPlayerId', 'profilePlayerId', 'strackerPlayerId',
+          'playerId', 'driverId', 'driver.rawId', 'driver.id'
+        ], '');
+        if (playerId !== '') return `source:${source}:player:${String(playerId).trim().toLowerCase()}`;
+
+        if (nameKey === 'pdiaz') return 'name:pdiaz';
+        return `source:${source}:name:${nameKey}`;
       };
 
       const bestPerDriver = (rows: any[]): any[] => {
@@ -3397,17 +3398,22 @@ const home2ArchiveSeed: unknown[] = [];
                 'driver.name', 'driver.displayName'
               ], '') || '');
 
-              let nameKey = normalize(rawName);
-              const aliases: Record<string, string> = {
-                pdiaz: 'pedrodiaz',
-                pedrodiaz: 'pedrodiaz'
-              };
-              nameKey = aliases[nameKey] || nameKey;
-
-              return nameKey || String(first(row, [
+              const guid = String(first(row, [
                 'steamGuid', 'steamGUID', 'guid', 'GUID',
-                'playerId', 'driverId', 'driver.id'
+                'driver.steamGuid', 'driver.guid'
+              ], '') || '').trim().toLowerCase().replace(/^(?:steam|guid):/,'');
+              if (guid) return `steam:${guid}`;
+
+              const source = sourceKey(row, 'main') || 'main';
+              const playerId = String(first(row, [
+                'rawPlayerId', 'profilePlayerId', 'strackerPlayerId',
+                'playerId', 'driverId', 'driver.rawId', 'driver.id'
               ], '') || '').trim().toLowerCase();
+              if (playerId) return `source:${source}:player:${playerId}`;
+
+              let nameKey = normalize(rawName);
+              if (nameKey === 'pdiaz' || nameKey === 'pedrodiaz') nameKey = 'pdiaz';
+              return `source:${source}:name:${nameKey || 'unknown'}`;
             };
 
             const mergedRows = (() => {
@@ -3705,7 +3711,7 @@ const home2ArchiveSeed: unknown[] = [];
           .slice(0, 10);
         if (!list.length) return [];
         host.dataset.gcHydrated = '1';
-        host.innerHTML = list.map((row) => `<div class="gc-home2-table__row" role="row" data-source="${esc(sourceKey(row, 'main'))}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`).join('');
+        host.innerHTML = list.map((row) => `<div class="gc-home2-table__row" role="row" data-source="${esc(sourceKey(row, 'main'))}" data-driver-key="${esc(canonicalDriverKey(row))}" data-steam-guid="${esc(first(row, ['steamGuid','driver.steamGuid','guid','driver.guid'], ''))}" data-player-id="${esc(first(row, ['profilePlayerId','playerId','driver.id'], ''))}"><span>${esc(driverName(row))}</span><span>${esc(carName(row))}</span><strong>${esc(formatTime(row))}</strong><small>${esc(ago(row))}</small></div>`).join('');
         return list;
       };
 
@@ -4310,6 +4316,7 @@ const home2ArchiveSeed: unknown[] = [];
         id?: unknown;
         playerId?: unknown;
         profilePlayerId?: unknown;
+        steamGuid?: unknown;
         name?: unknown;
         displayName?: unknown;
         publicName?: unknown;
@@ -4345,6 +4352,7 @@ const home2ArchiveSeed: unknown[] = [];
       const DEFAULT_AVATAR = '/images/pilot-avatar-default.png';
       const pilotsByName = new Map<string, PilotRow>();
       const pilotsById = new Map<string, PilotRow>();
+      const pilotsByGuid = new Map<string, PilotRow>();
       let loadPromise: Promise<void> | null = null;
       let activeLink: HTMLAnchorElement | null = null;
       let closeTimer = 0;
@@ -4391,6 +4399,9 @@ const home2ArchiveSeed: unknown[] = [];
       const pilotId = (row: PilotRow): string =>
         text(row.profilePlayerId || row.playerId || row.id,'');
 
+      const pilotGuid = (row: PilotRow): string =>
+        String(row.steamGuid || '').trim().toLowerCase().replace(/^(?:steam|guid):/,'');
+
       const register = (row: PilotRow): void => {
         const name = normalize(pilotName(row));
         const id = pilotId(row);
@@ -4411,6 +4422,8 @@ const home2ArchiveSeed: unknown[] = [];
         }
 
         pilotsById.set(id,row);
+        const guid = pilotGuid(row);
+        if (guid) pilotsByGuid.set(guid,row);
       };
 
       const extractRows = (payload: any): PilotRow[] => {
@@ -4445,6 +4458,14 @@ const home2ArchiveSeed: unknown[] = [];
 
       const resolveByName = (name: string): PilotRow | null =>
         pilotsByName.get(normalize(name)) || null;
+
+      const resolveTimingPilot = (row: HTMLElement, name: string): PilotRow | null => {
+        const guid = String(row.dataset.steamGuid || '').trim().toLowerCase().replace(/^(?:steam|guid):/,'');
+        if (guid) return pilotsByGuid.get(guid) || null;
+        const playerId = String(row.dataset.playerId || '').trim();
+        if (playerId && pilotsById.has(playerId)) return pilotsById.get(playerId) || null;
+        return resolveByName(name);
+      };
 
       const rowName = (scope: Element): string =>
         scope.querySelector<HTMLElement>(
@@ -4483,7 +4504,7 @@ const home2ArchiveSeed: unknown[] = [];
           if (row.dataset.gcPilotLinked === '1') return;
           const nameEl = row.querySelector<HTMLElement>('span:first-child');
           const name = nameEl?.textContent?.trim() || '';
-          const pilot = resolveByName(name);
+          const pilot = resolveTimingPilot(row,name);
           if (!nameEl || !pilot || name === '--' || !name) return;
           makeLink(nameEl,name,pilot);
           row.dataset.gcPilotLinked = '1';

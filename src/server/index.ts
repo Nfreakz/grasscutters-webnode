@@ -19,6 +19,7 @@ import { registerLiveTimingRoutes } from './live-timing-routes';
 import { registerGcAcsmLiveTestRoutes } from './gc-acsm-live-test-routes';
 import { registerGcPlatformHardening } from './gc-platform-hardening';
 import { registerGcAnalyticsRoutes } from './gc-analytics-routes';
+import { canonicalDriverIdentityKey, normalizeSteamGuid } from './gc-driver-identity';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = process.env.GC_RUNTIME_ROOT ? path.resolve(process.env.GC_RUNTIME_ROOT) : path.resolve(__dirname, '../..');
@@ -1094,11 +1095,21 @@ function findDisplayNameEntry(
   const code = normalizeDisplayNameKey(sourceCode);
   const name = normalizeDisplayNameKey(sourceName);
 
-  return store.entries.find((entry) => {
+  const candidates = store.entries.filter((entry) => {
     if (!entry.enabled || entry.kind !== kind) return false;
     const entrySourceKey = normalizeDisplayNameSourceKey(entry.sourceKey ?? displayNameSourceKeyFromId(entry.id));
     if (entrySourceKey !== wantedSourceKey) return false;
+    return true;
+  });
 
+  // Un GUID presente bloquea cualquier fallback por PlayerId o nombre.
+  if (kind === 'driver' && code) {
+    return candidates.find((entry) =>
+      normalizeSteamGuid(entry.sourceCode) === normalizeSteamGuid(code)
+    ) ?? null;
+  }
+
+  return candidates.find((entry) => {
     const entryNumericId = numberOrNull(entry.sourceId);
     const entryHasId = entryNumericId !== null;
     const entryCode = normalizeDisplayNameKey(entry.sourceCode);
@@ -1445,7 +1456,7 @@ async function readGcDriverMetadata() {
       teamRole: row.team_role || null
     };
     if (row.player_id != null) byPlayerId.set(String(row.player_id), meta);
-    if (row.steam_guid) bySteamGuid.set(String(row.steam_guid), meta);
+    if (row.steam_guid) bySteamGuid.set(normalizeSteamGuid(row.steam_guid), meta);
     const nameKey = normalizeName(row.driver_name || row.display_name);
     if (nameKey) byName.set(nameKey, meta);
   }
@@ -3098,7 +3109,7 @@ function getDisplayTrack(row: PlainObject) {
 
 function getDriverName(row: PlainObject) {
   const fallback = getRawDriverName(row);
-  return applyDisplayName('driver', row.PlayerId, row.SteamGuid, fallback, fallback);
+  return applyDisplayName('driver', row.PlayerId, row.SteamGuid, fallback, fallback, row.SourceKey);
 }
 
 function toObjects(result: any) {
@@ -3799,17 +3810,32 @@ function cleanSectorTimes(row: PlainObject) {
 
 function mapLapRow(row: PlainObject) {
   const sectorTimes = cleanSectorTimes(row);
+  const sourceKey = compactNullableText(row.SourceKey) || 'main';
+  const playerId = numberOrNull(row.PlayerId);
+  const rawPlayerId = numberOrNull(row.RawPlayerId) ?? playerId;
+  const steamGuid = compactNullableText(row.SteamGuid);
+  const driverName = getDriverName({ ...row, SourceKey: sourceKey });
+  const driverKey = canonicalDriverIdentityKey({
+    steamGuid,
+    sourceKey,
+    playerId,
+    rawPlayerId,
+    name: driverName
+  });
 
   return {
     lapId: numberOrNull(row.LapId),
     playerInSessionId: numberOrNull(row.PlayerInSessionId),
     sessionId: numberOrNull(row.SessionId),
     comboId: numberOrNull(row.ComboId),
-    playerId: numberOrNull(row.PlayerId),
-    driverId: numberOrNull(row.PlayerId),
-    driverName: getDriverName(row),
-    playerName: getDriverName(row),
-    steamGuid: compactNullableText(row.SteamGuid),
+    playerId,
+    driverId: playerId,
+    driverKey,
+    driverName,
+    playerName: driverName,
+    steamGuid,
+    sourceKey,
+    rawPlayerId,
     carId: numberOrNull(row.CarId),
     carCode: compactNullableText(row.Car),
     carName: getDisplayCar(row),
@@ -3822,9 +3848,13 @@ function mapLapRow(row: PlainObject) {
     trackLength: numberOrNull(row.TrackLength),
     sessionType: compactNullableText(row.SessionType),
     driver: {
-      id: numberOrNull(row.PlayerId),
-      name: getDriverName(row),
-      steamGuid: compactNullableText(row.SteamGuid),
+      id: playerId,
+      rawId: rawPlayerId,
+      key: driverKey,
+      driverKey,
+      sourceKey,
+      name: driverName,
+      steamGuid,
       isOnline: compactNullableText(row.IsOnline),
       whitelisted: numberOrNull(row.Whitelisted),
       anonymized: numberOrNull(row.Anonymized)
@@ -4906,13 +4936,20 @@ function makeBestHotlaps(laps: ReturnType<typeof mapLapRow>[], groupMode: string
   const bestMap = new Map<string, ReturnType<typeof mapLapRow>>();
 
   for (const lap of laps) {
+    const driverKey = lap.driver.driverKey || canonicalDriverIdentityKey({
+      steamGuid: lap.driver.steamGuid,
+      sourceKey: (lap as any).sourceKey,
+      playerId: lap.driver.id,
+      rawPlayerId: (lap as any).rawPlayerId,
+      name: lap.driver.name
+    });
     const key = groupMode === 'driver'
-      ? `${lap.driver.id ?? lap.driver.name}`
+      ? driverKey
       : groupMode === 'driver-track'
-        ? `${lap.driver.id ?? lap.driver.name}|${lap.track.id ?? lap.track.name}`
+        ? `${driverKey}|${lap.track.id ?? lap.track.name}`
         : groupMode === 'car-track'
           ? `${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`
-          : `${lap.driver.id ?? lap.driver.name}|${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`;
+          : `${driverKey}|${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`;
 
     const current = bestMap.get(key);
     if (!current || Number(lap.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
@@ -4933,7 +4970,7 @@ function buildOptionsFromLaps(laps: ReturnType<typeof mapLapRow>[]) {
   for (const lap of laps) {
     if (lap.car.id !== null) cars.set(String(lap.car.id), lap.car);
     if (lap.track.id !== null) tracks.set(String(lap.track.id), lap.track);
-    if (lap.driver.id !== null) drivers.set(String(lap.driver.id), lap.driver);
+    drivers.set(lap.driver.driverKey, lap.driver);
   }
 
   return {
@@ -4963,7 +5000,7 @@ function reduceDriverStats(laps: ReturnType<typeof mapLapRow>[]) {
   const map = new Map<string, any>();
 
   for (const lap of laps) {
-    const id = String(lap.driver.id ?? lap.driver.name);
+    const id = lap.driver.driverKey;
     if (!map.has(id)) {
       map.set(id, {
         id: lap.driver.id,
@@ -5147,6 +5184,7 @@ function compactLapForProfile(lap: PilotProfileLap | null) {
     lapId: lap.lapId,
     playerId: lap.driver?.id ?? null,
     driverId: lap.driver?.id ?? null,
+    driverKey: lap.driver?.driverKey ?? (lap as any).driverKey ?? null,
     driverName: lap.driver?.name ?? null,
     playerName: lap.driver?.name ?? null,
     carId: lap.car?.id ?? null,
@@ -5276,7 +5314,7 @@ function getPilotComboRank(allLaps: PilotProfileLap[], lap: PilotProfileLap) {
     if (!item.valid) continue;
     if (String(item.car.id ?? item.car.name) !== carKey) continue;
     if (String(item.track.id ?? item.track.name) !== trackKey) continue;
-    const driverKey = String(item.driver.id ?? item.driver.name);
+    const driverKey = item.driver.driverKey;
     const current = bestByDriver.get(driverKey);
     if (!current || Number(item.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
       bestByDriver.set(driverKey, item);
@@ -5284,7 +5322,7 @@ function getPilotComboRank(allLaps: PilotProfileLap[], lap: PilotProfileLap) {
   }
 
   const ranked = Array.from(bestByDriver.values()).sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity));
-  const index = ranked.findIndex((item) => Number(item.driver.id) === Number(lap.driver.id));
+  const index = ranked.findIndex((item) => item.driver.driverKey === lap.driver.driverKey);
   return index >= 0 ? { position: index + 1, total: ranked.length } : null;
 }
 
@@ -5629,7 +5667,7 @@ function reduceCarStats(laps: ReturnType<typeof mapLapRow>[], carsRows: PlainObj
       entry.bestLapMs = lap.lapTimeMs;
       entry.bestLap = lap.lapTime;
     }
-    if (lap.driver.id !== null) entry.drivers.set(String(lap.driver.id), lap.driver);
+    entry.drivers.set(lap.driver.driverKey, lap.driver);
     if (lap.track.id !== null) entry.tracks.set(String(lap.track.id), lap.track);
   }
 
@@ -5685,7 +5723,7 @@ function reduceTrackStats(laps: ReturnType<typeof mapLapRow>[], tracksRows: Plai
       entry.bestLapMs = lap.lapTimeMs;
       entry.bestLap = lap.lapTime;
     }
-    if (lap.driver.id !== null) entry.drivers.set(String(lap.driver.id), lap.driver);
+    entry.drivers.set(lap.driver.driverKey, lap.driver);
     if (lap.car.id !== null) entry.cars.set(String(lap.car.id), lap.car);
   }
 
@@ -5851,7 +5889,13 @@ function buildComboLeaderboard(comboLaps: ComboLap[]) {
 
   for (const lap of comboLaps) {
     if (!lap.valid) continue;
-    const driverKey = String(lap.driver?.id ?? lap.driver?.name ?? 'unknown');
+    const driverKey = lap.driver?.driverKey || canonicalDriverIdentityKey({
+      steamGuid: lap.driver?.steamGuid,
+      sourceKey: (lap as any).sourceKey,
+      playerId: lap.driver?.id,
+      rawPlayerId: (lap as any).rawPlayerId,
+      name: lap.driver?.name
+    });
     const current = bestByDriver.get(driverKey);
     if (!current || Number(lap.lapTimeMs ?? Infinity) < Number(current.lapTimeMs ?? Infinity)) {
       bestByDriver.set(driverKey, lap);
@@ -6185,7 +6229,7 @@ function buildComboStatsFromLaps(allLaps: ComboLap[], comboDefinitions: any[] = 
     entry.totalLaps += 1;
     lap.valid ? entry.validLaps += 1 : entry.invalidLaps += 1;
     entry.totalCuts += Math.max(0, Number(lap.cuts) || 0);
-    if (lap.driver?.id !== null && lap.driver?.id !== undefined) entry.drivers.set(String(lap.driver.id), lap.driver);
+    entry.drivers.set(lap.driver.driverKey, lap.driver);
     if (lap.sessionId !== null && lap.sessionId !== undefined) entry.sessions.add(String(lap.sessionId));
     if (lap.car?.id !== null && lap.car?.id !== undefined) entry.usedCars.set(String(lap.car.id), lap.car);
     if (Number.isFinite(Number(lap.maxSpeedKmh)) && Number(lap.maxSpeedKmh) > Number(entry.maxSpeedKmh ?? 0)) {
@@ -6408,9 +6452,13 @@ const GC_COMBO_UNIFY_MIN_PUBLIC_DRIVERS_V2 = Math.max(1, Number(process.env.GC_C
 const GC_COMBO_UNIFY_MIN_PUBLIC_CAR_LAPS_V2 = Math.max(1, Number(process.env.GC_COMBO_MIN_PUBLIC_CAR_LAPS || process.env.GC_COMBO_PUBLIC_MIN_CAR_LAPS || 5) || 5);
 
 function gcComboUnifyDriverKeyV2(sourceKey: string, lap: any) {
-  if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) return `${sourceKey}:id:${lap.driver.id}`;
-  const name = compactNullableText(lap?.driver?.name || lap?.driverName || lap?.playerName);
-  return name ? `${sourceKey}:name:${gcComboUnifySlugV1(name)}` : `${sourceKey}:unknown`;
+  return String(lap?.driver?.driverKey ?? lap?.driverKey ?? canonicalDriverIdentityKey({
+    steamGuid: lap?.driver?.steamGuid ?? lap?.steamGuid,
+    sourceKey,
+    playerId: lap?.driver?.id,
+    rawPlayerId: lap?.rawPlayerId,
+    name: lap?.driver?.name || lap?.driverName || lap?.playerName
+  }));
 }
 
 function gcComboUnifyCarBucketKeyV2(lap: any) {
@@ -13323,7 +13371,7 @@ app.get('/api/activity/recent', async (req, res) => {
     const latestByDriverCombo = new Map<string, ReturnType<typeof mapLapRow>>();
 
     for (const lap of filtered) {
-      const key = `${lap.driver.id ?? lap.driver.name}|${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`;
+      const key = `${lap.driver.driverKey}|${lap.car.id ?? lap.car.name}|${lap.track.id ?? lap.track.name}`;
       const current = latestByDriverCombo.get(key);
       if (!current || Number(lap.timestamp ?? 0) > Number(current.timestamp ?? 0)) {
         latestByDriverCombo.set(key, lap);
@@ -13538,7 +13586,7 @@ async function buildGcDataCorePayload(req: express.Request, options: { scope?: G
         totalLaps: laps.length,
         validLaps: validLaps.length,
         invalidLaps: Math.max(0, laps.length - validLaps.length),
-        driversCount: new Set(laps.map((lap: any) => lap?.driver?.id ?? lap?.driver?.name)).size,
+        driversCount: new Set(laps.map((lap: any) => lap?.driver?.driverKey ?? lap?.driverKey)).size,
         carsCount: new Set(laps.map((lap: any) => lap?.car?.id ?? lap?.car?.name)).size,
         tracksCount: new Set(laps.map((lap: any) => lap?.track?.id ?? lap?.track?.name)).size,
         combosCount: comboStats.length,
@@ -15140,8 +15188,14 @@ function gcHomeBootstrapBuildComboBucketsV1(laps: any[], options: { exactTechnic
     if (lap?.valid !== false && lap?.Valid !== 0) bucket.validLaps += 1;
     else bucket.invalidLaps += 1;
     bucket.totalCuts += Math.max(0, Number(lap?.cuts || 0));
-    if (lap?.driver?.id !== null && lap?.driver?.id !== undefined) bucket.drivers.set(String(lap.driver.id), lap.driver);
-    else if (lap?.driver?.name) bucket.drivers.set(String(lap.driver.name).toLowerCase(), lap.driver);
+    const bucketDriverKey = lap?.driver?.driverKey || lap?.driverKey || canonicalDriverIdentityKey({
+      steamGuid: lap?.driver?.steamGuid,
+      sourceKey,
+      playerId: lap?.driver?.id,
+      rawPlayerId: lap?.rawPlayerId,
+      name: lap?.driver?.name
+    });
+    bucket.drivers.set(bucketDriverKey, lap.driver);
     if (lap?.sessionId !== null && lap?.sessionId !== undefined) bucket.sessions.add(String(lap.sessionId));
     const carKey = gcComboUnifyCarBucketKeyV2(lap);
     bucket.carsMap.set(carKey, gcComboUnifyCarDisplayV2(lap));
@@ -15595,7 +15649,7 @@ app.get('/api/gc/leaderboard', async (req, res) => {
       const validRows = filtered.filter((lap) => lap.valid);
       const tracks = new Set(filtered.map((lap) => String(lap.track?.id ?? lap.track?.name)).filter(Boolean));
       const cars = new Set(filtered.map((lap) => String(lap.car?.id ?? lap.car?.name)).filter(Boolean));
-      const drivers = new Set(filtered.map((lap) => String(lap.driver?.id ?? lap.driver?.name)).filter(Boolean));
+      const drivers = new Set(filtered.map((lap) => String(lap.driver?.driverKey ?? lap.driverKey ?? '')).filter(Boolean));
       const bestLap = validRows.slice().sort((a, b) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
       const latestLap = filtered.slice().sort((a, b) => Number(b.timestamp ?? 0) - Number(a.timestamp ?? 0))[0] || null;
 
@@ -15747,7 +15801,7 @@ app.get('/api/gc/hotlaps2', async (req, res) => {
 
     const items = filtered.slice(0, limit).map(compactHotlap2);
     const validRows = filtered.filter((lap: any) => lap.valid);
-    const drivers = new Set(filtered.map((lap: any) => String(lap.driver?.id ?? lap.driver?.name ?? '')).filter(Boolean));
+    const drivers = new Set(filtered.map((lap: any) => String(lap.driver?.driverKey ?? lap.driverKey ?? '')).filter(Boolean));
     const cars = new Set(filtered.map((lap: any) => String(lap.car?.id ?? lap.car?.name ?? '')).filter(Boolean));
     const tracks = new Set(filtered.map((lap: any) => String(lap.track?.id ?? lap.track?.name ?? '')).filter(Boolean));
     const bestLap = validRows.slice().sort((a: any, b: any) => Number(a.lapTimeMs ?? Infinity) - Number(b.lapTimeMs ?? Infinity))[0] || null;
@@ -15836,22 +15890,27 @@ app.get('/api/gc/pilots2', async (req, res) => {
       .trim();
     const ratingsByPlayerId = new Map<string, any>();
     const ratingsByName = new Map<string, any>();
+    const ratingsBySteamGuid = new Map<string, any>();
     try {
       const ratingService = getGcRatingsService();
       const ratingLeaderboard: any = await ratingService.getLeaderboard();
       for (const row of ratingLeaderboard?.leaderboard?.sr || []) {
         const key = String(row.profilePlayerId ?? '').trim();
         const nameKey = normalizePilotNameForRatings(row.driver);
-        const current = key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
+        const guidKey = normalizeSteamGuid(row.steamGuid || row.driverKey);
+        const current = guidKey ? (ratingsBySteamGuid.get(guidKey) || {}) : key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
         const merged = { ...current, srScore: row.sr, srClass: row.srClass };
+        if (guidKey) ratingsBySteamGuid.set(guidKey, merged);
         if (key) ratingsByPlayerId.set(key, merged);
         if (nameKey) ratingsByName.set(nameKey, merged);
       }
       for (const row of ratingLeaderboard?.leaderboard?.gsr || []) {
         const key = String(row.profilePlayerId ?? '').trim();
         const nameKey = normalizePilotNameForRatings(row.driver);
-        const current = key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
+        const guidKey = normalizeSteamGuid(row.steamGuid || row.driverKey);
+        const current = guidKey ? (ratingsBySteamGuid.get(guidKey) || {}) : key ? (ratingsByPlayerId.get(key) || {}) : (nameKey ? (ratingsByName.get(nameKey) || {}) : {});
         const merged = { ...current, gsrScore: row.gsr, gsrClass: row.gsrClass };
+        if (guidKey) ratingsBySteamGuid.set(guidKey, merged);
         if (key) ratingsByPlayerId.set(key, merged);
         if (nameKey) ratingsByName.set(nameKey, merged);
       }
@@ -15880,7 +15939,7 @@ app.get('/api/gc/pilots2', async (req, res) => {
 
     const byPilot = new Map<string, any>();
     for (const lap of filtered as any[]) {
-      const pilotId = String(lap.driver?.id ?? lap.driver?.steamGuid ?? lap.driver?.name ?? 'unknown');
+      const pilotId = String(lap.driver?.driverKey ?? lap.driverKey ?? 'unknown');
       if (!pilotId || pilotId === 'unknown') continue;
       const name = String(lap.driver?.name ?? lap.driver?.displayName ?? pilotId).trim() || pilotId;
       const ts = timestampMs(lap);
@@ -15940,8 +15999,13 @@ app.get('/api/gc/pilots2', async (req, res) => {
     const compactBestLap = (lap: any) => compactLapForCombo(lap as ComboLap) || null;
     const driverMetadata = await readGcDriverMetadata().catch(() => ({ byPlayerId: new Map(), bySteamGuid: new Map(), byName: new Map() }));
     const items = Array.from(byPilot.values()).map((row: any) => {
-      const ratingMatch = ratingsByPlayerId.get(String(row.playerId ?? '').trim()) || ratingsByName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
-      const meta = driverMetadata.byPlayerId.get(String(row.playerId ?? '').trim()) || driverMetadata.bySteamGuid.get(String(row.steamGuid ?? '').trim()) || driverMetadata.byName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
+      const guidKey = normalizeSteamGuid(row.steamGuid);
+      const ratingMatch = guidKey
+        ? ratingsBySteamGuid.get(guidKey) || {}
+        : ratingsByPlayerId.get(String(row.playerId ?? '').trim()) || ratingsByName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
+      const meta = guidKey
+        ? driverMetadata.bySteamGuid.get(guidKey) || {}
+        : driverMetadata.byPlayerId.get(String(row.playerId ?? '').trim()) || driverMetadata.byName.get(normalizePilotNameForRatings(row.displayName || row.name)) || {};
       return {
       id: row.id,
       playerId: row.playerId,
@@ -16083,7 +16147,13 @@ function gcCompatLapV12(lap: any) {
 }
 
 function gcCompatDriverIdV12(lap: any) {
-  return String(lap?.driver?.id ?? lap?.driver?.steamGuid ?? lap?.driver?.name ?? '').trim();
+  return String(lap?.driver?.driverKey ?? lap?.driverKey ?? canonicalDriverIdentityKey({
+    steamGuid: lap?.driver?.steamGuid,
+    sourceKey: lap?.sourceKey,
+    playerId: lap?.driver?.id,
+    rawPlayerId: lap?.rawPlayerId,
+    name: lap?.driver?.name
+  })).trim();
 }
 
 function gcCompatBuildDriversV12(laps: any[]) {
