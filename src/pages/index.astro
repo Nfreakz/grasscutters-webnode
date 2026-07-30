@@ -2860,13 +2860,100 @@ const home2ArchiveSeed: unknown[] = [];
         return `source:${source}:name:${nameKey}`;
       };
 
+      /*
+       * GC_HOME_EXACT_LAP_REPRESENTATION_DEDUP_V1
+       *
+       * ACSM live and the historical mirror can expose the same physical lap
+       * twice with different identity completeness: one row may contain a
+       * Steam GUID while the other only has a source-local PlayerId. This is
+       * not a second driver result; it is a second representation of the same
+       * result.
+       *
+       * Collapse only exact public lap representations (canonical name, car
+       * and millisecond time). Never collapse when both rows provide
+       * different Steam GUIDs, even if every visible field happens to match.
+       */
+      const normalizedRowSteamGuid = (row: any): string => String(first(row, [
+        'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
+        'driver.steamGuid', 'driver.guid'
+      ], '') || '').trim().toLowerCase().replace(/^(?:steam|guid):/,'');
+
+      const exactLapRepresentationKey = (row: any): string => [
+        canonicalDriverNameKey(driverName(row)),
+        normalize(carName(row)),
+        String(rowTimeMs(row))
+      ].join('|');
+
+      const identityCompletenessScore = (row: any): number => {
+        const guid = normalizedRowSteamGuid(row);
+        const playerId = first(row, [
+          'rawPlayerId', 'profilePlayerId', 'strackerPlayerId',
+          'playerId', 'driverId', 'driver.rawId', 'driver.id'
+        ], '');
+        return (guid ? 100 : 0) + (playerId !== '' ? 10 : 0);
+      };
+
+      const isPreferredPdiazDisplay = (row: any): boolean => (
+        canonicalDriverNameKey(driverName(row)) === 'pdiaz' &&
+        normalize(driverName(row)).replace(/_/g, '') === 'pdiaz'
+      );
+
+      const preferredExactLapRepresentative = (current: any, candidate: any): any => {
+        const richer = identityCompletenessScore(candidate) > identityCompletenessScore(current)
+          ? candidate
+          : current;
+        const publicRow = isPreferredPdiazDisplay(candidate)
+          ? candidate
+          : isPreferredPdiazDisplay(current)
+            ? current
+            : richer;
+
+        if (publicRow === richer) return richer;
+
+        const richerPlayerId = first(richer, [
+          'rawPlayerId', 'profilePlayerId', 'strackerPlayerId',
+          'playerId', 'driverId', 'driver.rawId', 'driver.id'
+        ], '');
+
+        return {
+          ...richer,
+          ...publicRow,
+          ...(normalizedRowSteamGuid(richer) ? { steamGuid: normalizedRowSteamGuid(richer) } : {}),
+          ...(richerPlayerId !== '' ? { profilePlayerId: richerPlayerId } : {})
+        };
+      };
+
+      const collapseExactLapRepresentations = (rows: any[]): any[] => {
+        const buckets = new Map<string, any[]>();
+
+        for (const row of rows) {
+          const key = exactLapRepresentationKey(row);
+          const bucket = buckets.get(key) || [];
+          const rowGuid = normalizedRowSteamGuid(row);
+          const compatibleIndex = bucket.findIndex((candidate: any) => {
+            const candidateGuid = normalizedRowSteamGuid(candidate);
+            return !(rowGuid && candidateGuid && rowGuid !== candidateGuid);
+          });
+
+          if (compatibleIndex < 0) {
+            bucket.push(row);
+          } else {
+            bucket[compatibleIndex] = preferredExactLapRepresentative(bucket[compatibleIndex], row);
+          }
+
+          buckets.set(key, bucket);
+        }
+
+        return [...buckets.values()].flat();
+      };
+
       const bestPerDriver = (rows: any[]): any[] => {
         const pool = Array.isArray(rows)
           ? rows.filter((row: any) => Number.isFinite(rowTimeMs(row)))
           : [];
 
         const groups = new Map<string, any[]>();
-        for (const row of pool) {
+        for (const row of collapseExactLapRepresentations(pool)) {
           const key = canonicalDriverKey(row);
 
           const bucket = groups.get(key) || [];
