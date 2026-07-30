@@ -6857,87 +6857,46 @@ registerGcPlatformHardening(app, { rootDir });
 registerGcTrackAssetDeliveryRoutes(app, { rootDir });
 startStrackerBackupRetention();
 
-/* GC_STATIC_HTML_EARLY_RECOVERY_V1
+/* GC_STATIC_HTML_EARLY_RECOVERY_V2
  *
- * Hostinger can route extensionless page requests to Node while still serving
- * physical files such as /index.html directly. Mount a narrow HTML-only
- * resolver before the rest of the application so prerendered Astro pages keep
- * working even if the later Astro runtime mount is unavailable.
- *
- * API requests, assets and unresolved/dynamic routes always continue through
- * the normal Express/SSR chain.
+ * Hostinger routes clean page URLs through Node while physical *.html files
+ * already work. Serve the generated Astro roots with express.static itself:
+ * this is the same delivery path that is proven to work for /index.html and
+ * avoids res.sendFile(), which returns 404 in Hostinger's versioned runtime.
  */
-function gcEarlyStaticHtmlRootsV1(): string[] {
-  return [
-    path.join(distDir, 'client'),
-    distDir,
-    path.join(rootDir, 'client')
-  ].filter((candidate, index, values) =>
-    values.indexOf(candidate) === index &&
-    fs.existsSync(candidate) &&
-    fs.statSync(candidate).isDirectory()
-  );
-}
+const gcEarlyStaticRootsV2 = [
+  path.join(distDir, 'client'),
+  distDir,
+  path.join(rootDir, 'client')
+].filter((candidate, index, values) =>
+  values.indexOf(candidate) === index &&
+  fs.existsSync(candidate) &&
+  fs.statSync(candidate).isDirectory()
+);
 
-function gcEarlyStaticHtmlFileV1(requestUrl: unknown): string | null {
-  const rawPath = String(requestUrl || '/').split('?')[0].split('#')[0] || '/';
-  let decodedPath = rawPath;
+for (const staticRoot of gcEarlyStaticRootsV2) {
+  const serveStaticRoot = express.static(staticRoot, {
+    maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+    index: 'index.html',
+    fallthrough: true,
+    redirect: false
+  });
 
-  try {
-    decodedPath = decodeURIComponent(rawPath);
-  } catch {
-    return null;
-  }
-
-  if (
-    decodedPath === '/api' ||
-    decodedPath.startsWith('/api/') ||
-    decodedPath === '/gc-data' ||
-    decodedPath.startsWith('/gc-data/')
-  ) {
-    return null;
-  }
-
-  const clean = decodedPath.replace(/^\/+/, '').replace(/\/+$/, '');
-  if (
-    clean.includes('\0') ||
-    clean.split('/').some((segment) => segment === '.' || segment === '..')
-  ) {
-    return null;
-  }
-
-  for (const root of gcEarlyStaticHtmlRootsV1()) {
-    const candidates = clean
-      ? [
-          path.join(root, clean, 'index.html'),
-          path.join(root, clean + '.html')
-        ]
-      : [path.join(root, 'index.html')];
-
-    for (const candidate of candidates) {
-      const relative = path.relative(root, candidate);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
-
-      try {
-        if (fs.statSync(candidate).isFile()) return candidate;
-      } catch {
-        // Try the next generated Astro location.
-      }
+  app.use((req, res, next) => {
+    const requestPath = String(req.path || req.url || '/');
+    if (
+      requestPath === '/api' ||
+      requestPath.startsWith('/api/') ||
+      requestPath === '/gc-data' ||
+      requestPath.startsWith('/gc-data/')
+    ) {
+      return next();
     }
-  }
 
-  return null;
+    res.setHeader('X-GC-Static-Route', 'early-recovery-v2');
+    serveStaticRoot(req, res, next);
+  });
 }
-
-app.use((req, res, next) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-
-  const htmlFile = gcEarlyStaticHtmlFileV1(req.originalUrl || req.url);
-  if (!htmlFile) return next();
-
-  res.setHeader('X-GC-Static-Route', 'early-recovery-v1');
-  res.sendFile(htmlFile);
-});
 
 /* GC_SECURITY_CORE_V15_32 START */
 type GcRateEntryV1532 = {
