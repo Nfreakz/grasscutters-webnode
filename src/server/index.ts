@@ -2903,17 +2903,20 @@ async function runAutoSyncCycle(reason: 'startup' | 'scheduled' | 'manual' = 'sc
     let ratingsAutoProcess: any = null;
     if (ok && String(process.env.GC_RATINGS_AUTO_PROCESS_ACSM || 'true').toLowerCase() !== 'false') {
       try {
-        const acsmPayload = await getGcRatingsService().processNewEvents({
-          saveNoopLog: false,
-          trigger: 'stracker-sync-acsm-auto'
+        const acsmPayload = await getGcRatingsService().processNewEventsAllSourcesV1({
+          trustedAutomation: true,
+          trigger: 'stracker-sync-acsm-auto-all-sources'
         });
+        const processedEvents = Array.isArray(acsmPayload.processedEvents)
+          ? acsmPayload.processedEvents.length
+          : Number(acsmPayload.processedEvents || 0);
         ratingsAutoProcess = {
           ok: true,
-          source: 'acsm',
-          processedEvents: acsmPayload.processedEvents,
+          source: 'acsm-global',
+          processedEvents,
           message: acsmPayload.message
         };
-        if (acsmPayload.processedEvents > 0) {
+        if (processedEvents > 0) {
           console.log(`[GC] Ratings auto-process ACSM: ${acsmPayload.message}`);
         }
       } catch (ratingsError) {

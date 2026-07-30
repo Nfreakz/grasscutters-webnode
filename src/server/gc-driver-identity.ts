@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export type CanonicalDriverIdentityInput = {
   steamGuid?: unknown;
   sourceKey?: unknown;
@@ -11,7 +13,11 @@ function clean(value: unknown) {
 }
 
 export function normalizeSteamGuid(value: unknown) {
-  return clean(value).toLowerCase().replace(/^(?:steam|guid):/i, '');
+  const normalized = clean(value).toLowerCase().replace(/^(?:steam|guid):/i, '');
+  if (/^\d{17}$/.test(normalized)) {
+    return `sha256#${createHash('sha256').update(normalized, 'utf8').digest('hex')}`;
+  }
+  return normalized;
 }
 
 export function normalizeDriverSourceKey(value: unknown) {
