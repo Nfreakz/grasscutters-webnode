@@ -2656,10 +2656,27 @@ const home2ArchiveSeed: unknown[] = [];
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
-      if ((window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
-        console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
-        return;
-      }
+      /* GC_HOME_RUNTIME_SINGLETON_V3: destruye cualquier ciclo anterior antes de reiniciar. */
+      const previousRuntime = (window as any).__GC_HOME_RUNTIME_V3__;
+      if (previousRuntime?.destroy) previousRuntime.destroy('rebootstrap');
+
+      const runtime = {
+        destroyed: false,
+        refreshTimer: 0,
+        heroRotateTimer: 0,
+        pagehideHandler: null as null | (() => void),
+        destroy(_reason = 'destroy') {
+          if (this.destroyed) return;
+          this.destroyed = true;
+          if (this.refreshTimer) window.clearInterval(this.refreshTimer);
+          if (this.heroRotateTimer) window.clearInterval(this.heroRotateTimer);
+          if (this.pagehideHandler) window.removeEventListener('pagehide', this.pagehideHandler);
+          this.refreshTimer = 0;
+          this.heroRotateTimer = 0;
+          if ((window as any).__GC_HOME_RUNTIME_V3__ === this) delete (window as any).__GC_HOME_RUNTIME_V3__;
+        }
+      };
+      (window as any).__GC_HOME_RUNTIME_V3__ = runtime;
       (window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
@@ -2842,7 +2859,10 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const canonicalDriverKey = (row: any): string => {
+        /* GC_HOME_PUBLIC_IDENTITY_DEDUP_V3 */
         const nameKey = canonicalDriverNameKey(driverName(row));
+        if (nameKey) return `name:${nameKey}`;
+
         const guid = first(row, [
           'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
           'driver.steamGuid', 'driver.guid'
@@ -2855,9 +2875,7 @@ const home2ArchiveSeed: unknown[] = [];
           'playerId', 'driverId', 'driver.rawId', 'driver.id'
         ], '');
         if (playerId !== '') return `source:${source}:player:${String(playerId).trim().toLowerCase()}`;
-
-        if (nameKey === 'pdiaz') return 'name:pdiaz';
-        return `source:${source}:name:${nameKey}`;
+        return `source:${source}:anonymous`;
       };
 
       /*
@@ -3900,6 +3918,7 @@ const home2ArchiveSeed: unknown[] = [];
 
       const startHeroRotation = () => {
         if (heroRotateTimer) window.clearInterval(heroRotateTimer);
+        if (runtime.heroRotateTimer) window.clearInterval(runtime.heroRotateTimer);
         const candidates = heroCandidates(heroState.payload || lastGood.bootstrap);
         if (candidates.length < 2) {
           heroRotateTimer = 0;
@@ -3907,9 +3926,11 @@ const home2ArchiveSeed: unknown[] = [];
           return;
         }
         heroRotateTimer = window.setInterval(() => {
+          if (runtime.destroyed) return;
           heroState.index += 1;
           renderHeroFromState();
         }, HERO_ROTATE_MS);
+        runtime.heroRotateTimer = heroRotateTimer;
       };
       const championshipEventForSource = (source: string) => {
         const key = source === 'gt4' ? 'gt4' : 'weekly';
@@ -4307,7 +4328,7 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const refresh = async () => {
-        if (running) return;
+        if (runtime.destroyed || running) return;
         running = true;
         const seq = ++runSeq;
         try {
@@ -4355,6 +4376,9 @@ const home2ArchiveSeed: unknown[] = [];
       enforceChampionshipButtons('weekly');
       refresh();
       refreshTimer = window.setInterval(refresh, REFRESH_MS);
+      runtime.refreshTimer = refreshTimer;
+      runtime.pagehideHandler = () => runtime.destroy('pagehide');
+      window.addEventListener('pagehide', runtime.pagehideHandler, { once: true });
       (window as any).__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
     })();
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_END */
