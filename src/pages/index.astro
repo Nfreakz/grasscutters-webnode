@@ -2652,7 +2652,7 @@ const home2ArchiveSeed: unknown[] = [];
   <script>
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_START */
     (() => {
-      const PACK = 'bootstrap-2.5-acsm-session-end-fallback';
+      const PACK = 'bootstrap-2.6-dedup-gt4-empty-live-fallback';
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
@@ -2930,10 +2930,13 @@ const home2ArchiveSeed: unknown[] = [];
           const key = exactLapRepresentationKey(row);
           const bucket = buckets.get(key) || [];
           const rowGuid = normalizedRowSteamGuid(row);
-          const compatibleIndex = bucket.findIndex((candidate: any) => {
-            const candidateGuid = normalizedRowSteamGuid(candidate);
-            return !(rowGuid && candidateGuid && rowGuid !== candidateGuid);
-          });
+          /* GC_HOME_VISIBLE_LAP_DEDUP_V2
+           * Live ACSM puede entregar SteamID64 y el histórico sha256# para la
+           * misma vuelta. Si nombre público, coche y milisegundo coinciden,
+           * es la misma representación visible y debe colapsarse aunque los
+           * GUID estén en formatos distintos.
+           */
+          const compatibleIndex = bucket.findIndex((_candidate: any) => true);
 
           if (compatibleIndex < 0) {
             bucket.push(row);
@@ -3492,7 +3495,13 @@ const home2ArchiveSeed: unknown[] = [];
               trackPhotoCandidates: historicalCombo?.trackPhotoCandidates || liveCombo?.trackPhotoCandidates
             } : liveCombo;
 
-            if (!liveRows.length && historicalRows.length && sameStrictCombo) {
+            /* GC_HOME_GT4_EMPTY_LIVE_HISTORY_FALLBACK_V3
+             * Un snapshot live sin vueltas no puede borrar un leaderboard
+             * histórico ya resuelto por home-bootstrap para el combo activo.
+             * Esto cubre reinicios de sesión y diferencias de alias/layout
+             * (p. ej. sonoma_long frente a rt_sonoma_wtcc).
+             */
+            if (!liveRows.length && historicalRows.length) {
               return {
                 ...historical,
                 ...livePayload,
