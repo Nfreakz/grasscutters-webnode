@@ -1,0 +1,201 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import {
+  inspectSteamProductionReadiness
+} from '@/server/production/steam-production-readiness';
+import { runtimeConfig } from '@/server/env';
+
+let report: Awaited<ReturnType<typeof inspectSteamProductionReadiness>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment === 'production') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    report = await inspectSteamProductionReadiness();
+  } catch (error) {
+    errorCode = error instanceof Error
+      ? error.message
+      : 'READINESS_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Producción Steam">
+  <div class="page gc-container readiness-page">
+    <header class="page-intro">
+      <span>Steam OpenID · revisión previa al despliegue</span>
+      <h1>Preparación para producción</h1>
+      <p>
+        Verifica configuración, HTTPS, cookies e integridad de identidad
+        sin mostrar secretos ni modificar la base.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la revisión</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report ? (
+      <>
+        <section class="hero-status panel">
+          <div>
+            <span>Estado global</span>
+            <h2>
+              {report.summary.readyForProduction
+                ? 'Preparado para producción'
+                : 'Configuración pendiente'}
+            </h2>
+            <p>
+              {report.summary.passedChecks} de
+              {' '}{report.summary.totalChecks} comprobaciones superadas.
+            </p>
+          </div>
+          <b class:list={[
+            report.summary.readyForProduction ? 'ok' : 'warning'
+          ]}>
+            {report.summary.readyForProduction ? 'READY' : 'BLOCKED'}
+          </b>
+        </section>
+
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Comprobaciones</span>
+            <strong>{report.summary.totalChecks}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Superadas</span>
+            <strong>{report.summary.passedChecks}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Bloqueos</span>
+            <strong>{report.summary.blockers}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Cuentas Steam</span>
+            <strong>{report.summary.steamUsers}</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Checklist</span>
+              <h2>Producción</h2>
+            </div>
+          </div>
+
+          <div class="check-list">
+            {report.checks.map((check) => (
+              <article>
+                <b class:list={[check.ok ? 'ok' : 'error']}>
+                  {check.ok ? 'OK' : 'FALTA'}
+                </b>
+                <div>
+                  <strong>{check.label}</strong>
+                  <p>{check.detail}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>OpenID</span>
+                <h2>Rutas de producción</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>Login</span><strong>{report.endpoints.login ?? 'Pendiente'}</strong></p>
+              <p><span>Callback</span><strong>{report.endpoints.callback ?? 'Pendiente'}</strong></p>
+              <p><span>Logout</span><strong>{report.endpoints.logout ?? 'Pendiente'}</strong></p>
+              <p><span>Perfil</span><strong>{report.endpoints.profile ?? 'Pendiente'}</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Cookie</span>
+                <h2>Política de sesión</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>HttpOnly</span><strong>Sí</strong></p>
+              <p><span>Secure</span><strong>Producción HTTPS</strong></p>
+              <p><span>SameSite</span><strong>{report.cookiePolicy.sameSite}</strong></p>
+              <p><span>Duración</span><strong>{report.cookiePolicy.maxAgeDays} días</strong></p>
+            </div>
+          </article>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .readiness-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span, .hero-status span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .hero-status {
+    padding: 18px; display: flex; justify-content: space-between;
+    align-items: center; gap: 20px;
+  }
+  .hero-status h2 { margin: 5px 0; }
+  .hero-status p { margin: 0; color: var(--gc-muted); font-size: 11px; }
+  .hero-status > b { font-size: 11px; }
+  .hero-status > b.ok { color: var(--gc-lime); }
+  .hero-status > b.warning { color: var(--gc-amber); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 22px;
+  }
+  .check-list { padding: 14px; display: grid; gap: 8px; }
+  .check-list article {
+    min-height: 58px; padding: 11px; display: grid;
+    grid-template-columns: 52px 1fr; gap: 12px; align-items: center;
+    border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm);
+  }
+  .check-list b { font-size: 9px; }
+  .check-list b.ok { color: var(--gc-lime); }
+  .check-list b.error { color: var(--gc-amber); }
+  .check-list strong { font-size: 11px; }
+  .check-list p { margin: 4px 0 0; color: var(--gc-muted); font-size: 10px; }
+  .two-columns {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 34px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong {
+    max-width: 65%; font-family: var(--gc-font-data);
+    font-size: 9px; text-align: right; overflow-wrap: anywhere;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 900px) {
+    .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two-columns { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>

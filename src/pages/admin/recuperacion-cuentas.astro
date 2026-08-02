@@ -1,0 +1,351 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { runtimeConfig } from '@/server/env';
+import {
+  auditAccountRecovery,
+  type AccountRecoveryAudit
+} from '@/server/database/account-recovery-audit';
+
+let audit: AccountRecoveryAudit | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    audit = await auditAccountRecovery();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Recuperación de cuentas">
+  <div class="page gc-container recovery-page">
+    <header class="page-intro">
+      <span>Administración local · solo lectura</span>
+      <h1>Recuperación de cuentas y avatares</h1>
+      <p>
+        Diagnóstico previo a cualquier migración. No modifica usuarios,
+        perfiles, contraseñas, Steam ni archivos.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la auditoría</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : audit ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Cuentas antiguas</span>
+            <strong>{audit.summary.oldUsers}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Recuperables</span>
+            <strong>{audit.summary.uniquelyRecoverableUsers}</strong>
+          </article>
+          <article class="panel metric warning">
+            <span>Ambiguas</span>
+            <strong>{audit.summary.ambiguousUsers}</strong>
+          </article>
+          <article class="panel metric warning">
+            <span>Huérfanas</span>
+            <strong>{audit.summary.orphanUsers}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Referencias avatar</span>
+            <strong>{audit.summary.avatarReferencesFound}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Archivos locales</span>
+            <strong>{audit.summary.avatarFilesFoundLocally}</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Clasificación</span>
+              <h2>Cómo se podrían recuperar</h2>
+            </div>
+          </div>
+
+          <div class="audit-grid">
+            <div><span>Vínculo directo usuario → perfil</span><strong>{audit.accounts.classifications.directProfileLink}</strong></div>
+            <div><span>Coincidencia Steam única</span><strong>{audit.accounts.classifications.uniqueSteamMatch}</strong></div>
+            <div><span>Coincidencia Player ID única</span><strong>{audit.accounts.classifications.uniquePlayerIdMatch}</strong></div>
+            <div><span>Steam ambiguo</span><strong>{audit.accounts.classifications.ambiguousSteamMatch}</strong></div>
+            <div><span>Player ID ambiguo</span><strong>{audit.accounts.classifications.ambiguousPlayerIdMatch}</strong></div>
+            <div><span>Sin perfil candidato</span><strong>{audit.accounts.classifications.orphan}</strong></div>
+          </div>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Perfiles</span>
+                <h2>Integridad de identidad</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>Perfiles totales</span><strong>{audit.profiles.total}</strong></p>
+              <p><span>Vinculados directamente</span><strong>{audit.profiles.directlyLinked}</strong></p>
+              <p><span>Con identidad Steam</span><strong>{audit.profiles.withSteamIdentity}</strong></p>
+              <p><span>Con Player ID</span><strong>{audit.profiles.withPlayerId}</strong></p>
+              <p><span>Steam repetidos</span><strong>{audit.profiles.duplicateSteamIdentityValues}</strong></p>
+              <p><span>Player ID repetidos</span><strong>{audit.profiles.duplicatePlayerIds}</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Cuentas</span>
+                <h2>Credenciales antiguas</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p>
+                <span>Almacenamiento detectado</span>
+                <strong>{audit.accounts.credentialStorageDetected ? 'Sí' : 'No'}</strong>
+              </p>
+              <p>
+                <span>Filas con credencial</span>
+                <strong>{audit.summary.credentialRowsFound}</strong>
+              </p>
+              <p>
+                <span>Referencia de email</span>
+                <strong>{audit.accounts.emailReferenceDetected ? 'Sí' : 'No'}</strong>
+              </p>
+            </div>
+            <p class="note">
+              El auditor no devuelve emails, contraseñas ni hashes.
+            </p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Avatares</span>
+              <h2>Referencias y archivos localizados</h2>
+            </div>
+          </div>
+
+          <div class="avatar-grid">
+            {audit.avatars.columns.length ? audit.avatars.columns.map((column) => (
+              <article>
+                <strong>{column.table}.{column.column}</strong>
+                <span>{column.populatedRows} referencias</span>
+                <small>
+                  {column.remoteUrls} remotas · {column.localReferences} locales
+                </small>
+              </article>
+            )) : (
+              <p class="empty">No se han detectado columnas de avatar o imagen.</p>
+            )}
+          </div>
+
+          <div class="directory-list">
+            {audit.avatars.localDirectories.map((directory) => (
+              <p>
+                <span>{directory.path}</span>
+                <strong>{directory.exists ? `${directory.files} archivos` : 'No encontrada'}</strong>
+              </p>
+            ))}
+          </div>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div>
+              <span>Decisión</span>
+              <h2>No migrar todavía</h2>
+            </div>
+            <b>SAFE TO MIGRATE: NO</b>
+          </div>
+
+          <ul>
+            {audit.blockers.map((blocker) => <li>{blocker}</li>)}
+          </ul>
+
+          <p>{audit.nextStep}</p>
+        </section>
+
+        <footer class="audit-footer">
+          Generado: {new Intl.DateTimeFormat('es-ES', {
+            timeZone: 'Europe/Madrid',
+            dateStyle: 'short',
+            timeStyle: 'medium'
+          }).format(new Date(audit.generatedAt))}
+        </footer>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .recovery-page { display: grid; gap: 16px; }
+  .page-intro { padding: 10px 0 2px; }
+  .page-intro > span,
+  .panel-head span,
+  .metric span,
+  .audit-grid span {
+    color: var(--gc-muted);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metric {
+    min-height: 92px;
+    padding: 15px;
+    display: grid;
+    align-content: center;
+    gap: 7px;
+  }
+
+  .metric strong {
+    color: var(--gc-lime);
+    font-family: var(--gc-font-data);
+    font-size: 25px;
+  }
+
+  .metric.warning strong { color: var(--gc-amber); }
+
+  .audit-grid {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .audit-grid > div {
+    padding: 13px;
+    display: grid;
+    gap: 7px;
+    border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm);
+    background: rgba(255,255,255,.012);
+  }
+
+  .audit-grid strong {
+    font-family: var(--gc-font-data);
+    font-size: 18px;
+  }
+
+  .two-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .detail-list,
+  .directory-list {
+    padding: 13px 15px;
+  }
+
+  .detail-list p,
+  .directory-list p {
+    min-height: 31px;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--gc-line-soft);
+  }
+
+  .detail-list p:last-child,
+  .directory-list p:last-child { border-bottom: 0; }
+
+  .detail-list span,
+  .directory-list span {
+    color: var(--gc-muted);
+    font-size: 10px;
+  }
+
+  .detail-list strong,
+  .directory-list strong {
+    font-family: var(--gc-font-data);
+    font-size: 10px;
+    text-align: right;
+  }
+
+  .note {
+    margin: 0;
+    padding: 0 15px 15px;
+    color: var(--gc-muted);
+    font-size: 10px;
+  }
+
+  .avatar-grid {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .avatar-grid article {
+    padding: 12px;
+    display: grid;
+    gap: 5px;
+    border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm);
+  }
+
+  .avatar-grid article strong { font-size: 11px; }
+  .avatar-grid article span,
+  .avatar-grid article small { color: var(--gc-muted); font-size: 9px; }
+
+  .blockers .panel-head b {
+    color: var(--gc-red);
+    font-size: 10px;
+  }
+
+  .blockers ul {
+    margin: 0;
+    padding: 14px 32px 5px;
+    color: var(--gc-amber);
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .blockers > p {
+    margin: 0;
+    padding: 10px 15px 15px;
+    color: var(--gc-muted);
+    font-size: 11px;
+  }
+
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  .empty { color: var(--gc-muted); }
+  .audit-footer { color: var(--gc-dim); font-size: 9px; text-align: right; }
+
+  @media (max-width: 1100px) {
+    .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 760px) {
+    .summary-grid,
+    .audit-grid,
+    .two-columns,
+    .avatar-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

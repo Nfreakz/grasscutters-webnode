@@ -1,0 +1,519 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import {
+  getPublicChampionshipsData,
+  type PublicChampionshipsData
+} from '@/server/public/championships-data';
+
+let data: PublicChampionshipsData | null = null;
+let loadFailed = false;
+
+try {
+  data = await getPublicChampionshipsData();
+} catch {
+  loadFailed = true;
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return '—';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return new Intl.DateTimeFormat('es-ES', {
+    timeZone: 'Europe/Madrid',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function sessionType(type: string): string {
+  const labels: Record<string, string> = {
+    practice: 'Práctica',
+    qualify: 'Clasificación',
+    race: 'Carrera'
+  };
+
+  return labels[type.toLowerCase()] ?? type;
+}
+
+function sessionAsset(type: string): string {
+  const normalized = type.toLowerCase();
+  if (normalized.includes('race')) return '/assets/sessions/session-race-v2.png';
+  if (normalized.includes('qual')) return '/assets/sessions/session-qualifying-v2.png';
+  return '/assets/sessions/session-practice-v2.png';
+}
+
+---
+
+<BaseLayout title="GrassCutters · Campeonatos">
+  <div class="page gc-container championships-page visual-page-backdrop" style="--page-backdrop: url('/assets/backgrounds/championships.png');">
+    <header class="page-header championship-visual-header"><img src="/assets/posters/next-round-generic-v2.png" alt="" aria-hidden="true" />
+      <div>
+        <span>Competición oficial</span>
+        <h1>Campeonatos</h1>
+        <p>Liga y GT4 separadas, con acceso directo a servidor y ACSM.</p>
+      </div>
+    </header>
+
+    {loadFailed && (
+      <div class="panel warning">No se han podido cargar los campeonatos.</div>
+    )}
+
+    <section class="championship-grid" aria-label="Campeonatos activos">
+      {data?.championships.map((championship) => (
+        <article
+          class:list={['panel', 'championship-card', 'asset-panel', { 'asset-teal': championship.accent === 'teal' }, `accent-${championship.accent}`]}
+          style={`--asset-image: url('${championship.sourceKey === 'gt4' ? '/assets/championships/supra-card.png' : '/assets/championships/league-card.png'}');`}
+        >
+          <header class="championship-head">
+            <div>
+              <span>Campeonato activo</span>
+              <h2>{championship.name}</h2>
+            </div>
+
+            <span class:list={['source-status', { ok: championship.sourceStatus === 'ok' }]}>
+              {championship.sourceStatus === 'ok' ? 'Datos actualizados' : 'Sin sincronizar'}
+            </span>
+          </header>
+
+          <div class="summary-row">
+            <div>
+              <span>Pilotos detectados</span>
+              <strong>{championship.drivers}</strong>
+            </div>
+            <div>
+              <span>Vueltas válidas</span>
+              <strong>{championship.validLaps.toLocaleString('es-ES')}</strong>
+            </div>
+            <div>
+              <span>Circuitos</span>
+              <strong>{championship.tracks}</strong>
+            </div>
+            <div>
+              <span>Coches</span>
+              <strong>{championship.cars}</strong>
+            </div>
+          </div>
+
+          <div class="combo-panel">
+            <span>Última combinación registrada</span>
+            <strong>
+              {championship.latestCombo?.track ?? '—'} · {championship.latestCombo?.car ?? '—'}
+            </strong>
+            <small>
+              Última actividad: {formatDate(championship.latestCombo?.newestLapAt)}
+            </small>
+          </div>
+
+          <div class="acsm-panel">
+            <div>
+              <span>Clasificación y calendario oficial</span>
+              <strong>Gestionados en ACSM</strong>
+              <p>
+                Hasta completar la ingesta ACSM, inscritos, próximas rondas y
+                clasificación se consultan en el gestor oficial.
+              </p>
+            </div>
+            <a class="link-arrow" href={championship.championshipUrl} target="_blank" rel="noreferrer">
+              Abrir campeonato
+            </a>
+          </div>
+
+          <footer class="championship-actions">
+            <a class="btn primary-action" href={championship.signupUrl} target="_blank" rel="noreferrer">
+              Inscribirse
+            </a>
+            <a class="btn" href={championship.joinUrl}>
+              Unirse al servidor
+            </a>
+            <a class="btn" href={`/app/?server=${championship.sourceKey}`}>
+              Ver datos
+            </a>
+          </footer>
+        </article>
+      ))}
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <span>Actividad verificada</span>
+            <h2>Últimas sesiones de Liga</h2>
+          </div>
+        </div>
+
+        <div class="session-list">
+          {data?.championships[0]?.recentSessions?.length ? (
+            data.championships[0].recentSessions.map((session) => (
+              <article class="session-row"><img class="session-icon" src={sessionAsset(session.type)} alt="" aria-hidden="true" />
+                <div>
+                  <strong>{sessionType(session.type)}</strong>
+                  <span>{session.track ?? 'Circuito desconocido'}</span>
+                </div>
+                <div>
+                  <strong>{session.playerCount}</strong>
+                  <span>Pilotos</span>
+                </div>
+                <div>
+                  <strong>{session.lapCount}</strong>
+                  <span>Vueltas</span>
+                </div>
+                <time>{formatDate(session.startTime)}</time>
+              </article>
+            ))
+          ) : (
+            <div class="empty">No hay sesiones normalizadas disponibles.</div>
+          )}
+        </div>
+      </article>
+
+      <aside class="panel participation-panel">
+        <div class="participation-art" aria-hidden="true"></div>
+        <div class="panel-head">
+          <div>
+            <span>Participa esta semana</span>
+            <h2>Tu próxima acción</h2>
+          </div>
+        </div>
+        <div class="participation-body">
+          <p>Elige campeonato, marca una vuelta válida y mejora tu posición antes de la siguiente ronda.</p>
+          <div class="participation-steps">
+            <div><b>1</b><span>Inscríbete en ACSM</span></div>
+            <div><b>2</b><span>Entra al servidor</span></div>
+            <div><b>3</b><span>Mejora tu tiempo</span></div>
+          </div>
+          <a class="btn primary-action" href="/app/">Ver retos activos</a>
+        </div>
+      </aside>
+    </section>
+
+    {data?.limitations?.length ? (
+      <aside class="panel limitations">
+        {data.limitations.map((limitation) => <p>{limitation}</p>)}
+      </aside>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .championships-page {
+    display: grid;
+    gap: 18px;
+  }
+
+  .page-header span,
+  .championship-head span:first-child,
+  .summary-row span,
+  .combo-panel span,
+  .acsm-panel span,
+  .panel-head span,
+  .session-row span {
+    color: var(--gc-muted);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .page-header h1 {
+    margin: 5px 0 4px;
+    font-size: 30px;
+  }
+
+  .page-header p {
+    margin: 0;
+    color: var(--gc-muted);
+  }
+
+  .warning {
+    padding: 14px 16px;
+    color: #ffb4b4;
+    border-color: #8e3f3f;
+  }
+
+  .championship-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .championship-card {
+    position: relative;
+    padding: 18px;
+    overflow: hidden;
+  }
+
+  .championship-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--gc-lime);
+  }
+
+  .championship-card.accent-teal::before {
+    background: var(--gc-teal);
+  }
+
+  .championship-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 16px;
+  }
+
+  .championship-head h2 {
+    margin: 6px 0 0;
+    font-size: 21px;
+  }
+
+  .source-status {
+    padding: 5px 8px;
+    border: 1px solid var(--gc-line);
+    border-radius: 999px;
+    color: var(--gc-muted);
+    font-size: 9px;
+    font-weight: 850;
+  }
+
+  .source-status.ok {
+    border-color: color-mix(in srgb, var(--gc-lime) 50%, var(--gc-line));
+    color: var(--gc-lime);
+  }
+
+  .summary-row {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--gc-line-soft);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .summary-row > div {
+    padding: 12px;
+    display: grid;
+    gap: 5px;
+    border-right: 1px solid var(--gc-line-soft);
+  }
+
+  .summary-row > div:last-child {
+    border-right: 0;
+  }
+
+  .summary-row strong {
+    font-family: var(--gc-font-data);
+    font-size: 17px;
+  }
+
+  .combo-panel,
+  .acsm-panel {
+    margin-top: 13px;
+    padding: 14px;
+    border: 1px solid var(--gc-line-soft);
+    border-radius: 8px;
+    background: var(--gc-surface-2);
+  }
+
+  .combo-panel {
+    display: grid;
+    gap: 6px;
+  }
+
+  .combo-panel strong {
+    font-size: 14px;
+  }
+
+  .combo-panel small {
+    color: var(--gc-muted);
+    font-size: 10px;
+  }
+
+  .acsm-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .acsm-panel strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 13px;
+  }
+
+  .acsm-panel p {
+    margin: 5px 0 0;
+    color: var(--gc-muted);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  .championship-actions {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .championship-actions .btn {
+    flex: 1;
+    min-width: 130px;
+  }
+
+  .primary-action {
+    background: var(--gc-lime);
+    color: #090c0d;
+  }
+
+  .lower-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+    gap: 16px;
+  }
+
+  .panel-head h2 {
+    margin: 5px 0 0;
+    font-size: 15px;
+  }
+
+  .session-list {
+    display: grid;
+  }
+
+  .session-row {
+    min-height: 60px;
+    padding: 11px 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 80px 80px 110px;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid var(--gc-line-soft);
+  }
+
+  .session-row:last-child {
+    border-bottom: 0;
+  }
+
+  .session-row > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .session-row time {
+    color: var(--gc-muted);
+    font-size: 10px;
+    text-align: right;
+  }
+
+  .integration-body {
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .integration-step {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+    border: 1px solid var(--gc-line-soft);
+    border-radius: 8px;
+  }
+
+  .integration-step > span {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--gc-surface-2);
+    color: var(--gc-muted);
+    font-family: var(--gc-font-data);
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .integration-step.done > span {
+    color: #090c0d;
+    background: var(--gc-lime);
+  }
+
+  .integration-step.pending > span {
+    color: #090c0d;
+    background: #f5c66a;
+  }
+
+  .integration-step strong {
+    font-size: 11px;
+  }
+
+  .integration-step p {
+    margin: 4px 0 0;
+    color: var(--gc-muted);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .empty {
+    padding: 28px;
+    color: var(--gc-muted);
+    text-align: center;
+  }
+
+  .limitations {
+    padding: 12px 15px;
+    color: var(--gc-muted);
+    font-size: 11px;
+  }
+
+  .limitations p {
+    margin: 3px 0;
+  }
+
+  @media (max-width: 1050px) {
+    .championship-grid,
+    .lower-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .championship-head,
+    .acsm-panel {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .summary-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .summary-row > div:nth-child(2) {
+      border-right: 0;
+    }
+
+    .summary-row > div:nth-child(-n + 2) {
+      border-bottom: 1px solid var(--gc-line-soft);
+    }
+
+    .session-row {
+      grid-template-columns: minmax(0, 1fr) 70px 70px;
+    }
+
+    .session-row time {
+      grid-column: 1 / -1;
+      text-align: left;
+    }
+  }
+
+  .championship-visual-header{position:relative;min-height:158px;padding:28px 34px;display:flex;align-items:center;overflow:hidden;border:1px solid var(--gc-line);border-radius:var(--gc-radius);background:linear-gradient(90deg,rgba(8,13,15,.98),rgba(8,13,15,.72) 58%,rgba(8,13,15,.18)),url('/assets/backgrounds/championship-hero-v2.png') center 55%/cover;box-shadow:var(--gc-shadow)}.championship-visual-header>div{position:relative;z-index:2}.championship-visual-header>img{position:absolute;right:0;top:-46%;width:270px;opacity:.18;filter:saturate(.8)}.championship-card{isolation:isolate}.championship-card::after{position:absolute!important;inset:0!important;z-index:-1!important;background:linear-gradient(90deg,rgba(8,12,14,.94),rgba(8,12,14,.58)),url('/assets/overlays/panel-tech-overlay-subtle-v2.png') center/cover!important;opacity:.22!important;content:""}.session-row{grid-template-columns:42px minmax(0,1fr) auto auto auto!important}.session-icon{width:34px;height:34px;object-fit:contain}.integration-panel{background:linear-gradient(rgba(13,19,22,.94),rgba(13,19,22,.94)),url('/assets/overlays/panel-tech-overlay-subtle-v2.png') center/cover}
+</style>
+
+<style>
+  .participation-panel{position:relative;overflow:hidden;min-height:330px;background:linear-gradient(180deg,rgba(10,15,18,.92),rgba(10,15,18,.98)),url('/assets/posters/next-round-generic-v2.png') center 68%/cover}.participation-art{position:absolute;inset:0;background:linear-gradient(180deg,transparent 0 24%,rgba(8,13,15,.34) 55%,rgba(8,13,15,.94) 100%)}.participation-panel>*:not(.participation-art){position:relative;z-index:1}.participation-body{padding:16px;display:grid;gap:18px}.participation-body p{max-width:35ch;color:var(--gc-muted);line-height:1.55}.participation-steps{display:grid;gap:8px}.participation-steps>div{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--gc-line-soft);background:rgba(9,14,16,.72)}.participation-steps b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--gc-lime);color:#071005}.participation-steps span{font-size:12px;font-weight:800}.participation-panel .btn{justify-self:start}
+</style>

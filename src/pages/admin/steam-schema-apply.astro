@@ -1,0 +1,124 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { runtimeConfig } from '@/server/env';
+import {
+  STEAM_SCHEMA_CONFIRMATION,
+  inspectSteamIdentitySchema
+} from '@/server/database/steam-schema-apply';
+
+let inspection: Awaited<ReturnType<typeof inspectSteamIdentitySchema>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    inspection = await inspectSteamIdentitySchema();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'INSPECTION_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Crear esquema Steam">
+  <div class="page gc-container apply-page">
+    <header class="page-intro">
+      <span>Hostinger MariaDB · operación protegida</span>
+      <h1>Crear tablas de identidad Steam</h1>
+      <p>
+        Esta pantalla no ejecuta nada automáticamente. La operación requiere
+        habilitar escrituras temporalmente y enviar una confirmación exacta.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido inspeccionar el esquema</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : inspection ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Escrituras</span>
+            <strong>{runtimeConfig.database.writeEnabled ? 'Activadas' : 'Bloqueadas'}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Tablas existentes</span>
+            <strong>{inspection.existingTables.length}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Esquema válido</span>
+            <strong>{inspection.valid ? 'Sí' : 'Todavía no'}</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Confirmación obligatoria</span>
+              <h2>{STEAM_SCHEMA_CONFIRMATION}</h2>
+            </div>
+          </div>
+          <div class="instructions">
+            <p>
+              La creación se hace mediante una petición POST al endpoint
+              administrativo. No pulses ni ejecutes nada hasta tener una copia
+              de seguridad reciente de Hostinger.
+            </p>
+            <code>/api/v2/admin/identity/steam-schema-apply/</code>
+          </div>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div><span>Estado</span><h2>Operación manual</h2></div>
+            <b>NO AUTOMÁTICA</b>
+          </div>
+          <ul>
+            <li>La copia de seguridad previa es obligatoria.</li>
+            <li>MYSQL_WRITE_ENABLED debe activarse solo durante la operación.</li>
+            <li>Las tablas destino deben seguir sin existir.</li>
+            <li>No se insertarán usuarios ni identidades.</li>
+            <li>No se modificará gc_users ni gc_driver_profiles.</li>
+          </ul>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .apply-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 18px;
+  }
+  .instructions { padding: 16px; display: grid; gap: 12px; }
+  .instructions p { margin: 0; color: var(--gc-muted); font-size: 11px; line-height: 1.6; }
+  .instructions code {
+    padding: 11px; border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm); color: var(--gc-teal);
+  }
+  .blockers .panel-head b { color: var(--gc-red); font-size: 9px; }
+  .blockers ul {
+    margin: 0; padding: 14px 32px 16px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.8;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 760px) {
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>

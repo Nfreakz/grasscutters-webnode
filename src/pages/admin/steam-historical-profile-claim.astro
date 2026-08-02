@@ -1,0 +1,176 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { loadSteamAccountContext } from '@/server/auth/steam-account-context';
+import {
+  HISTORICAL_PROFILE_CLAIM_CONFIRMATION
+} from '@/server/database/steam-historical-profile-claim';
+import {
+  auditHistoricalProfileMatch
+} from '@/server/database/steam-historical-profile-match';
+import { runtimeConfig } from '@/server/env';
+
+const context = await loadSteamAccountContext(Astro.cookies);
+let report: Awaited<ReturnType<typeof auditHistoricalProfileMatch>> | null = null;
+let errorCode: string | null = null;
+
+if (!context.authenticated || !context.account) {
+  Astro.response.status = 401;
+  errorCode = 'STEAM_AUTH_REQUIRED';
+} else {
+  try {
+    report = await auditHistoricalProfileMatch(context.account);
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+  }
+}
+
+const candidate =
+  report?.summary.uniqueExactMatch ? report.exactMatches[0] : null;
+---
+
+<BaseLayout title="GrassCutters · Reclamar perfil histórico">
+  <div class="page gc-container claim-page">
+    <header class="page-intro">
+      <span>Steam verificado · operación protegida</span>
+      <h1>Reclamar perfil histórico</h1>
+      <p>
+        La operación solo conecta la cuenta Steam nueva con el perfil
+        deportivo existente. No mueve ni recalcula datos.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se puede preparar la reclamación</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report && candidate ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Coincidencias exactas</span>
+            <strong>{report.summary.exactMatches}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Perfil actual</span>
+            <strong>{report.account.currentlyLinkedProfileId ? 'Vinculado' : 'Pendiente'}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Escritura habilitada</span>
+            <strong>{runtimeConfig.database.steamProfileClaimEnabled ? 'Sí' : 'No'}</strong>
+          </article>
+        </section>
+
+        <section class="panel candidate-panel">
+          <div class="panel-head">
+            <div>
+              <span>Única coincidencia determinista</span>
+              <h2>{candidate.displayName}</h2>
+            </div>
+            <b>EXACTA</b>
+          </div>
+
+          <div class="candidate-body">
+            <div class="avatar">
+              {candidate.avatarUrl
+                ? <img src={candidate.avatarUrl} alt="" />
+                : candidate.displayName.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <strong>{candidate.profileId}</strong>
+              <p>{candidate.evidence.join(' ')}</p>
+              <span>
+                Equipo: {candidate.teamName ?? 'Sin equipo'} · Player ID:
+                {candidate.playerId ?? '—'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel instructions">
+          <div class="panel-head">
+            <div>
+              <span>Confirmación exacta</span>
+              <h2>{HISTORICAL_PROFILE_CLAIM_CONFIRMATION}</h2>
+            </div>
+          </div>
+          <div class="instruction-body">
+            <p>
+              La petición POST debe incluir el identificador exacto del perfil
+              recomendado y la frase de confirmación. El servidor repetirá la
+              coincidencia criptográfica dentro de una transacción antes de
+              escribir.
+            </p>
+            <code>/api/v2/auth/historical-profile-claim/</code>
+          </div>
+        </section>
+
+        <section class="panel safeguards">
+          <div class="panel-head">
+            <div><span>Garantías</span><h2>Historial intacto</h2></div>
+            <b>NO DESTRUCTIVO</b>
+          </div>
+          <ul>
+            <li>No modifica gc_users ni gc_driver_profiles.</li>
+            <li>No mueve SR, DS, equipos, vueltas o resultados.</li>
+            <li>Rechaza perfiles reclamados por otra cuenta.</li>
+            <li>Rechaza cualquier perfil que no sea la coincidencia única.</li>
+            <li>STEAM_PROFILE_CLAIM_ENABLED debe activarse temporalmente.</li>
+          </ul>
+        </section>
+      </>
+    ) : (
+      <article class="panel error-panel">
+        <strong>No existe una coincidencia única reclamable</strong>
+      </article>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .claim-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 19px;
+  }
+  .candidate-panel .panel-head > b { color: var(--gc-lime); font-size: 9px; }
+  .candidate-body {
+    padding: 18px; display: grid; grid-template-columns: 58px 1fr;
+    gap: 15px; align-items: center;
+  }
+  .avatar {
+    width: 54px; height: 54px; display: grid; place-items: center;
+    border: 2px solid var(--gc-teal); border-radius: 50%;
+    color: var(--gc-teal); font-weight: 950; overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .candidate-body strong { font-family: var(--gc-font-data); font-size: 11px; }
+  .candidate-body p { margin: 6px 0; color: var(--gc-muted); font-size: 10px; line-height: 1.55; }
+  .candidate-body span { color: var(--gc-teal); font-size: 10px; }
+  .instruction-body { padding: 16px; display: grid; gap: 12px; }
+  .instruction-body p { margin: 0; color: var(--gc-muted); font-size: 11px; line-height: 1.6; }
+  .instruction-body code {
+    padding: 11px; border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm); color: var(--gc-teal);
+  }
+  .safeguards .panel-head > b { color: var(--gc-teal); font-size: 9px; }
+  .safeguards ul {
+    margin: 0; padding: 14px 32px 17px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.8;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 760px) {
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>

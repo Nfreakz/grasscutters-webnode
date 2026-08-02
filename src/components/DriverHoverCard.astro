@@ -1,0 +1,793 @@
+<div
+  id="gc-driver-hover-card"
+  class="driver-hover-card"
+  role="dialog"
+  aria-hidden="true"
+  aria-label="Resumen del piloto"
+>
+  <div class="hover-state hover-loading" data-state="loading">
+    Cargando piloto…
+  </div>
+
+  <div class="hover-content" data-state="content" hidden>
+    <header class="hover-head">
+      <div class="hover-avatar" data-field="avatar">
+        <span data-field="initials">GC</span>
+      </div>
+
+      <div class="hover-identity">
+        <strong data-field="displayName">Piloto</strong>
+        <span data-field="sourceName"></span>
+
+        <div class="hover-meta">
+          <span class="hover-country" data-field="country" hidden><img data-field="countryFlag" alt="" /></span>
+          <span data-field="team">Sin equipo</span>
+          <b data-field="role" hidden></b>
+        </div>
+      </div>
+    </header>
+
+    <section class="hover-ratings">
+      <div class="hover-rating hover-rating--sr">
+        <img class="hover-rating-badge" data-field="srBadge" src="/assets/ratings/sr.png" alt="" />
+        <div>
+          <strong data-field="srScore">—</strong>
+          <small data-field="srClass">Sin clase</small>
+        </div>
+      </div>
+
+      <div class="hover-rating hover-rating--ds">
+        <img class="hover-rating-badge" data-field="dsBadge" src="/assets/ratings/ds.png" alt="" />
+        <div>
+          <strong data-field="dsRating">—</strong>
+          <small data-field="dsClass">Sin clase</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="hover-stats">
+      <div><span>Carreras</span><strong data-field="races">0</strong></div>
+      <div><span>Victorias</span><strong data-field="wins">0</strong></div>
+      <div><span>Podios</span><strong data-field="podiums">0</strong></div>
+      <div><span>% limpias</span><strong data-field="cleanRate">—</strong></div>
+      <div><span>Puntos inc.</span><strong data-field="incidents">0</strong></div>
+    </section>
+
+    <section class="hover-details">
+      <div>
+        <p><span>Vueltas totales</span><strong data-field="totalLaps">0</strong></p>
+        <p><span>Vueltas válidas</span><strong data-field="validLaps">0</strong></p>
+        <p><span>Circuitos</span><strong data-field="tracks">0</strong></p>
+        <p><span>Coches</span><strong data-field="cars">0</strong></p>
+      </div>
+
+      <div>
+        <p><span>Última carrera</span><strong data-field="lastRace">—</strong></p>
+        <p><span>Última vuelta</span><strong data-field="lastLap">—</strong></p>
+        <p><span>PB reciente</span><strong data-field="bestLap">—</strong></p>
+        <p class="hover-combo"><span data-field="bestCombo">Sin vuelta registrada</span></p>
+      </div>
+    </section>
+
+    <a class="hover-footer" data-field="profileLink" href="/pilotos/">
+      <span>Ver perfil completo</span>
+      <b aria-hidden="true">→</b>
+    </a>
+  </div>
+
+  <div class="hover-state hover-error" data-state="error" hidden>
+    No se ha podido cargar el piloto.
+  </div>
+</div>
+
+<script>
+  type DriverProfileResponse = {
+    ok: true;
+    profile: {
+      profileId: string;
+      displayName: string;
+      sourceName: string;
+      avatarUrl: string | null;
+      countryCode: string | null;
+      rating: {
+        srScore: number | null;
+        srClass: string | null;
+        dsRating: number | null;
+        dsClass: string | null;
+        races: number;
+        cleanRaces: number;
+        wins: number;
+        podiums: number;
+        incidentPoints: number;
+        lastRaceAt: string | null;
+      };
+      team: {
+        name: string;
+        shortName: string | null;
+        role: string | null;
+      } | null;
+      activity: {
+        totalLaps: number;
+        validLaps: number;
+        tracks: number;
+        cars: number;
+        lastLapAt: string | null;
+      };
+      personalBests: Array<{
+        track: string;
+        car: string;
+        lapTimeMs: number;
+        recordedAt: string | null;
+      }>;
+    };
+  };
+
+  const card = document.querySelector<HTMLElement>('#gc-driver-hover-card');
+  const hoverSupported = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const cache = new Map<string, DriverProfileResponse>();
+
+  let activeTrigger: HTMLElement | null = null;
+  let showTimer = 0;
+  let hideTimer = 0;
+  let requestToken = 0;
+
+  const field = (name: string) =>
+    card?.querySelector<HTMLElement>(`[data-field="${name}"]`) ?? null;
+
+  const state = (name: string) =>
+    card?.querySelector<HTMLElement>(`[data-state="${name}"]`) ?? null;
+
+  function initials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  function formatNumber(value: number): string {
+    return new Intl.NumberFormat('es-ES').format(value);
+  }
+
+  function formatDate(value: string | null): string {
+    if (!value) return '—';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+
+    return new Intl.DateTimeFormat('es-ES', {
+      timeZone: 'Europe/Madrid',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(date);
+  }
+
+  function formatLapTime(milliseconds: number | null | undefined): string {
+    if (!milliseconds || milliseconds <= 0) return '—';
+
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    const millis = Math.floor(milliseconds % 1000);
+
+    return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+  }
+
+  function roleLabel(role: string | null | undefined): string {
+    const labels: Record<string, string> = {
+      owner: 'Propietario',
+      manager: 'Manager',
+      captain: 'Capitán',
+      driver: 'Piloto',
+      member: 'Miembro'
+    };
+
+    if (!role) return '';
+    return labels[role.toLowerCase()] ?? role;
+  }
+
+  function setText(name: string, value: string): void {
+    const element = field(name);
+    if (element) element.textContent = value;
+  }
+
+  function showState(name: 'loading' | 'content' | 'error'): void {
+    (['loading', 'content', 'error'] as const).forEach((candidate) => {
+      const element = state(candidate);
+      if (!element) return;
+
+      const visible = candidate === name;
+      element.hidden = !visible;
+      element.style.display = visible
+        ? candidate === 'content'
+          ? 'block'
+          : 'grid'
+        : 'none';
+    });
+  }
+
+  function fillCard(data: DriverProfileResponse): void {
+    if (!card) return;
+
+    const profile = data.profile;
+    const cleanRate = profile.rating.races
+      ? `${Math.round((profile.rating.cleanRaces / profile.rating.races) * 100)}%`
+      : '—';
+    const recentBest = profile.personalBests[0] ?? null;
+
+    setText('displayName', profile.displayName);
+    setText(
+      'sourceName',
+      profile.displayName !== profile.sourceName ? profile.sourceName : ''
+    );
+    setText('initials', initials(profile.displayName));
+    setText('team', profile.team?.shortName ?? profile.team?.name ?? 'Sin equipo');
+    setText(
+      'srScore',
+      profile.rating.srScore === null ? '—' : profile.rating.srScore.toFixed(2)
+    );
+    setText(
+      'srClass',
+      profile.rating.srClass ? `Clase ${profile.rating.srClass}` : 'Sin clase'
+    );
+    setText(
+      'dsRating',
+      profile.rating.dsRating === null ? '—' : String(profile.rating.dsRating)
+    );
+    setText(
+      'dsClass',
+      profile.rating.dsClass ? `Clase ${profile.rating.dsClass}` : 'Sin clase'
+    );
+    setText('races', String(profile.rating.races));
+    setText('wins', String(profile.rating.wins));
+    setText('podiums', String(profile.rating.podiums));
+    setText('cleanRate', cleanRate);
+    setText('incidents', profile.rating.incidentPoints.toFixed(2));
+    setText('totalLaps', formatNumber(profile.activity.totalLaps));
+    setText('validLaps', formatNumber(profile.activity.validLaps));
+    setText('tracks', String(profile.activity.tracks));
+    setText('cars', String(profile.activity.cars));
+    setText('lastRace', formatDate(profile.rating.lastRaceAt));
+    setText('lastLap', formatDate(profile.activity.lastLapAt));
+    setText('bestLap', formatLapTime(recentBest?.lapTimeMs));
+    setText(
+      'bestCombo',
+      recentBest ? `${recentBest.track} · ${recentBest.car}` : 'Sin vuelta registrada'
+    );
+
+    const country = field('country');
+    const countryFlag = field('countryFlag') as HTMLImageElement | null;
+    const normalizedCountry = profile.countryCode?.trim().toLowerCase() ?? '';
+    const supportedCountries = new Set(['es', 'it', 'fr', 'de', 'pt']);
+    const showCountry = supportedCountries.has(normalizedCountry);
+    if (country) {
+      country.hidden = !showCountry;
+      country.style.display = showCountry ? 'inline-flex' : 'none';
+    }
+    if (countryFlag && showCountry) {
+      countryFlag.src = `/assets/flags/${normalizedCountry}.png`;
+      countryFlag.alt = profile.countryCode?.toUpperCase() ?? '';
+    }
+
+    const normalizedSrClass = profile.rating.srClass?.trim().toLowerCase() ?? '';
+    const normalizedDsClass = profile.rating.dsClass?.trim().toLowerCase() ?? '';
+    const validClasses = new Set(['s', 'a', 'b', 'c', 'd', 'e']);
+    const srBadge = field('srBadge') as HTMLImageElement | null;
+    const dsBadge = field('dsBadge') as HTMLImageElement | null;
+    if (srBadge) srBadge.src = `/assets/ratings/sr${validClasses.has(normalizedSrClass) ? `-${normalizedSrClass}` : ''}.png`;
+    if (dsBadge) dsBadge.src = `/assets/ratings/ds${validClasses.has(normalizedDsClass) ? `-${normalizedDsClass}` : ''}.png`;
+
+    const role = field('role');
+    if (role) {
+      const label = roleLabel(profile.team?.role);
+      role.textContent = label;
+      role.hidden = !label;
+      role.style.display = label ? 'inline-flex' : 'none';
+    }
+
+    const avatar = field('avatar');
+    avatar?.querySelector('img')?.remove();
+
+    const initialsElement = field('initials');
+
+    if (avatar && profile.avatarUrl) {
+      const image = document.createElement('img');
+      image.src = profile.avatarUrl;
+      image.alt = '';
+      image.loading = 'lazy';
+      avatar.prepend(image);
+
+      if (initialsElement) {
+        initialsElement.hidden = true;
+        initialsElement.style.display = 'none';
+      }
+    } else if (initialsElement) {
+      initialsElement.hidden = false;
+      initialsElement.style.display = 'inline';
+    }
+
+    const link = field('profileLink') as HTMLAnchorElement | null;
+    if (link) {
+      link.href = `/pilotos/${encodeURIComponent(profile.profileId)}/`;
+    }
+
+    showState('content');
+  }
+
+  function getHeaderBottom(): number {
+    const header = document.querySelector<HTMLElement>('body > header, .site-header, header');
+    return header ? header.getBoundingClientRect().bottom : 0;
+  }
+
+  function positionCard(trigger: HTMLElement): void {
+    if (!card) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const gap = 10;
+    const viewportPadding = 12;
+    const headerBottom = Math.max(getHeaderBottom(), viewportPadding);
+
+    let left = rect.left + rect.width / 2 - cardRect.width / 2;
+    left = Math.max(
+      viewportPadding,
+      Math.min(left, window.innerWidth - cardRect.width - viewportPadding)
+    );
+
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - headerBottom - gap;
+
+    let top: number;
+
+    if (spaceBelow >= cardRect.height + gap) {
+      top = rect.bottom + gap;
+    } else if (spaceAbove >= cardRect.height) {
+      top = rect.top - cardRect.height - gap;
+    } else {
+      top = Math.max(
+        headerBottom + gap,
+        Math.min(
+          rect.top - cardRect.height / 2,
+          window.innerHeight - cardRect.height - viewportPadding
+        )
+      );
+    }
+
+    card.style.left = `${Math.round(left)}px`;
+    card.style.top = `${Math.round(top)}px`;
+  }
+
+  async function loadProfile(profileId: string): Promise<void> {
+    const token = ++requestToken;
+    showState('loading');
+
+    try {
+      let data = cache.get(profileId);
+
+      if (!data) {
+        const response = await fetch(
+          `/api/v2/public/drivers/${encodeURIComponent(profileId)}/`,
+          { headers: { accept: 'application/json' } }
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        data = await response.json() as DriverProfileResponse;
+        if (!data.ok) throw new Error('Invalid response');
+
+        cache.set(profileId, data);
+      }
+
+      if (token !== requestToken || !activeTrigger) return;
+
+      fillCard(data);
+
+      requestAnimationFrame(() => {
+        if (activeTrigger) positionCard(activeTrigger);
+      });
+    } catch {
+      if (token !== requestToken) return;
+
+      showState('error');
+
+      requestAnimationFrame(() => {
+        if (activeTrigger) positionCard(activeTrigger);
+      });
+    }
+  }
+
+  function openCard(trigger: HTMLElement): void {
+    if (!card || !hoverSupported.matches) return;
+
+    window.clearTimeout(hideTimer);
+    window.clearTimeout(showTimer);
+
+    activeTrigger = trigger;
+
+    showTimer = window.setTimeout(() => {
+      const profileId = trigger.dataset.driverProfile;
+      if (!profileId) return;
+
+      card.classList.add('is-visible');
+      card.setAttribute('aria-hidden', 'false');
+      showState('loading');
+      positionCard(trigger);
+
+      void loadProfile(profileId);
+    }, 180);
+  }
+
+  function closeCard(): void {
+    if (!card) return;
+
+    card.classList.remove('is-visible');
+    card.setAttribute('aria-hidden', 'true');
+
+    activeTrigger = null;
+    requestToken += 1;
+  }
+
+  function scheduleClose(): void {
+    window.clearTimeout(showTimer);
+    window.clearTimeout(hideTimer);
+
+    hideTimer = window.setTimeout(closeCard, 120);
+  }
+
+
+  function isInteractiveChild(target: EventTarget | null): boolean {
+    return target instanceof Element &&
+      Boolean(target.closest('a, button, input, select, textarea, summary, [role="button"]'));
+  }
+
+  document.addEventListener('click', (event) => {
+    if (isInteractiveChild(event.target)) return;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const row = target.closest<HTMLElement>('[data-profile-url]');
+    const url = row?.dataset.profileUrl;
+
+    if (url) window.location.href = url;
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (isInteractiveChild(event.target)) return;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const row = target.closest<HTMLElement>('[data-profile-url]');
+    const url = row?.dataset.profileUrl;
+
+    if (!url) return;
+
+    event.preventDefault();
+    window.location.href = url;
+  });
+
+  document.addEventListener('pointerover', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const trigger = target.closest<HTMLElement>('[data-driver-profile]');
+    if (!trigger || trigger.contains(event.relatedTarget as Node | null)) return;
+
+    openCard(trigger);
+  });
+
+  document.addEventListener('pointerout', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const trigger = target.closest<HTMLElement>('[data-driver-profile]');
+    if (!trigger || trigger.contains(event.relatedTarget as Node | null)) return;
+
+    scheduleClose();
+  });
+
+  document.addEventListener('focusin', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const trigger = target.closest<HTMLElement>('[data-driver-profile]');
+    if (trigger) openCard(trigger);
+  });
+
+  document.addEventListener('focusout', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const trigger = target.closest<HTMLElement>('[data-driver-profile]');
+    if (trigger) scheduleClose();
+  });
+
+  card?.addEventListener('pointerenter', () => {
+    window.clearTimeout(hideTimer);
+  });
+
+  card?.addEventListener('pointerleave', scheduleClose);
+
+  window.addEventListener('scroll', closeCard, { passive: true });
+  window.addEventListener('resize', closeCard);
+</script>
+
+<style>
+  .driver-hover-card {
+    position: fixed;
+    z-index: 1000;
+    width: min(500px, calc(100vw - 24px));
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--gc-teal) 72%, var(--gc-line));
+    border-radius: var(--gc-radius);
+    background:
+      radial-gradient(circle at 92% 0%, rgba(52, 209, 198, .07), transparent 30%),
+      linear-gradient(145deg, rgba(17, 23, 26, .995), rgba(9, 14, 17, .995));
+    box-shadow: 0 20px 48px rgba(0, 0, 0, .48);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px) scale(.99);
+    transform-origin: center top;
+    transition:
+      opacity 110ms ease,
+      transform 110ms ease,
+      visibility 110ms ease;
+    pointer-events: none;
+  }
+
+  .driver-hover-card.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .driver-hover-card [hidden] {
+    display: none !important;
+  }
+
+  .hover-state {
+    min-height: 112px;
+    padding: 24px;
+    place-items: center;
+    color: var(--gc-muted);
+    font-size: 12px;
+  }
+
+  .hover-error {
+    color: var(--gc-red);
+  }
+
+  .hover-content {
+    display: block;
+  }
+
+  .hover-head {
+    padding: 15px 17px 13px;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 13px;
+    align-items: center;
+    border-bottom: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-avatar {
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid var(--gc-lime);
+    border-radius: 50%;
+    background: var(--gc-panel-2);
+    color: var(--gc-lime);
+    font-family: var(--gc-font-data);
+    font-size: 17px;
+    font-weight: 950;
+  }
+
+  .hover-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hover-identity {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .hover-identity > strong {
+    overflow: hidden;
+    color: var(--gc-text);
+    font-size: 19px;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hover-identity > span {
+    min-height: 13px;
+    color: var(--gc-muted);
+    font-size: 10px;
+  }
+
+  .hover-meta {
+    margin-top: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .hover-meta span,
+  .hover-meta b {
+    padding: 3px 6px;
+    border: 1px solid var(--gc-line);
+    border-radius: 4px;
+    color: var(--gc-muted);
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .hover-country { padding: 2px 4px !important; }
+  .hover-country img { width: 20px; height: 13px; display: block; object-fit: cover; border-radius: 2px; }
+
+  .hover-meta b {
+    border-color: color-mix(in srgb, var(--gc-teal) 65%, var(--gc-line));
+    color: var(--gc-teal);
+    text-transform: uppercase;
+  }
+
+  .hover-ratings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-rating {
+    min-height: 67px;
+    padding: 11px 17px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .hover-rating + .hover-rating {
+    border-left: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-rating-badge {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.28));
+  }
+
+  .hover-rating > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .hover-rating strong {
+    font-family: var(--gc-font-data);
+    font-size: 21px;
+    line-height: 1;
+  }
+
+  .hover-rating small {
+    color: var(--gc-muted);
+    font-size: 9px;
+  }
+
+  .hover-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-bottom: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-stats > div {
+    min-height: 58px;
+    padding: 9px 5px;
+    display: grid;
+    align-content: center;
+    gap: 4px;
+    text-align: center;
+    border-right: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-stats > div:last-child {
+    border-right: 0;
+  }
+
+  .hover-stats span,
+  .hover-details span {
+    color: var(--gc-muted);
+    font-size: 8px;
+    font-weight: 850;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+  }
+
+  .hover-stats strong {
+    font-family: var(--gc-font-data);
+    font-size: 14px;
+  }
+
+  .hover-details {
+    padding: 11px 17px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .hover-details > div + div {
+    padding-left: 16px;
+    border-left: 1px solid var(--gc-line-soft);
+  }
+
+  .hover-details p {
+    min-height: 20px;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .hover-details strong {
+    color: var(--gc-text);
+    font-family: var(--gc-font-data);
+    font-size: 9px;
+    font-weight: 800;
+    text-align: right;
+  }
+
+  .hover-combo {
+    justify-content: flex-end !important;
+  }
+
+  .hover-combo span {
+    max-width: 210px;
+    overflow: hidden;
+    color: var(--gc-teal);
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: none;
+  }
+
+  .hover-footer {
+    min-height: 43px;
+    padding: 0 17px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--gc-line-soft);
+    color: var(--gc-text);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .hover-footer:hover {
+    color: var(--gc-lime);
+    background: rgba(168, 235, 0, .04);
+  }
+
+  .hover-footer b {
+    font-size: 19px;
+    font-weight: 400;
+  }
+
+  @media (max-width: 620px), (hover: none) {
+    .driver-hover-card {
+      display: none;
+    }
+  }
+</style>

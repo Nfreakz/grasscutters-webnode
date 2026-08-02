@@ -1,0 +1,208 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { runtimeConfig } from '@/server/env';
+import {
+  auditSteamIdentityFoundation
+} from '@/server/database/steam-identity-foundation-audit';
+
+let report: Awaited<ReturnType<typeof auditSteamIdentityFoundation>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    report = await auditSteamIdentityFoundation();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Steam Identity Foundation">
+  <div class="page gc-container foundation-page">
+    <header class="page-intro">
+      <span>Administración local · solo lectura</span>
+      <h1>Steam Identity Foundation</h1>
+      <p>
+        Preparación del nuevo modelo Steam-only. No crea tablas ni modifica
+        cuentas, perfiles o identidades.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la auditoría</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Perfiles</span>
+            <strong>{report.summary.driverProfiles}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Con Steam heredado</span>
+            <strong>{report.summary.profilesWithLegacySteamIdentity}</strong>
+          </article>
+          <article class="panel metric warning">
+            <span>Sin Steam heredado</span>
+            <strong>{report.summary.profilesWithoutLegacySteamIdentity}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Con Player ID</span>
+            <strong>{report.summary.profilesWithPlayerId}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Steam duplicados</span>
+            <strong>{report.summary.duplicateLegacySteamIdentities}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Player ID duplicados</span>
+            <strong>{report.summary.duplicatePlayerIds}</strong>
+          </article>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Modelo nuevo</span>
+                <h2>Identidad canónica</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>Login</span><strong>Steam OpenID</strong></p>
+              <p><span>Clave canónica</span><strong>SteamID64</strong></p>
+              <p><span>Contraseña</span><strong>No</strong></p>
+              <p><span>Email</span><strong>No obligatorio</strong></p>
+              <p><span>Cuentas antiguas</span><strong>No importar</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Tablas</span>
+                <h2>Estado de preparación</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p>
+                <span>gc_steam_users</span>
+                <strong>{report.summary.steamUsersTableExists ? 'Ya existe' : 'Pendiente'}</strong>
+              </p>
+              <p>
+                <span>gc_driver_identities</span>
+                <strong>{report.summary.driverIdentitiesTableExists ? 'Ya existe' : 'Pendiente'}</strong>
+              </p>
+              <p>
+                <span>gc_users</span>
+                <strong>{report.summary.legacyUsers} históricas</strong>
+              </p>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Plan</span>
+              <h2>Fases de implantación</h2>
+            </div>
+          </div>
+
+          <div class="phase-list">
+            {report.migrationPlan.phases.map((phase) => (
+              <article>
+                <span>{phase.order}</span>
+                <div>
+                  <strong>{phase.name}</strong>
+                  <p>{phase.action}</p>
+                </div>
+                <b>{phase.writes ? 'ESCRITURA' : 'LECTURA'}</b>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div>
+              <span>Bloqueos</span>
+              <h2>No aplicar todavía</h2>
+            </div>
+            <b>SAFE TO APPLY: NO</b>
+          </div>
+
+          <ul>{report.blockers.map((blocker) => <li>{blocker}</li>)}</ul>
+          <p>{report.nextStep}</p>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .foundation-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 25px;
+  }
+  .metric.warning strong { color: var(--gc-amber); }
+  .two-columns {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 31px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong { font-family: var(--gc-font-data); font-size: 10px; }
+  .phase-list { padding: 14px; display: grid; gap: 8px; }
+  .phase-list article {
+    min-height: 66px; padding: 12px; display: grid;
+    grid-template-columns: 34px 1fr auto; align-items: center; gap: 12px;
+    border: 1px solid var(--gc-line-soft); border-radius: var(--gc-radius-sm);
+  }
+  .phase-list article > span {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border: 1px solid var(--gc-lime); border-radius: 50%;
+    color: var(--gc-lime); font-weight: 900;
+  }
+  .phase-list strong { font-size: 11px; }
+  .phase-list p { margin: 3px 0 0; color: var(--gc-muted); font-size: 10px; }
+  .phase-list b { color: var(--gc-amber); font-size: 9px; }
+  .blockers .panel-head b { color: var(--gc-red); font-size: 9px; }
+  .blockers ul {
+    margin: 0; padding: 14px 32px 5px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.7;
+  }
+  .blockers > p {
+    margin: 0; padding: 10px 15px 15px; color: var(--gc-muted); font-size: 11px;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 1100px) {
+    .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    .summary-grid, .two-columns { grid-template-columns: 1fr; }
+    .phase-list article { grid-template-columns: 34px 1fr; }
+    .phase-list b { grid-column: 2; }
+  }
+</style>

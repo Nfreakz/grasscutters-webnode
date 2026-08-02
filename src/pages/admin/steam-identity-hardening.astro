@@ -1,0 +1,145 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import {
+  inspectSteamIdentityHardening
+} from '@/server/database/steam-identity-hardening';
+import { runtimeConfig } from '@/server/env';
+
+let report: Awaited<ReturnType<typeof inspectSteamIdentityHardening>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    report = await inspectSteamIdentityHardening();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'INSPECTION_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Steam Identity Hardening">
+  <div class="page gc-container hardening-page">
+    <header class="page-intro">
+      <span>Hostinger MariaDB · protección final</span>
+      <h1>Propietario único por perfil</h1>
+      <p>
+        Impide desde la propia base de datos que dos cuentas Steam puedan
+        reclamar el mismo perfil deportivo.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido inspeccionar el esquema</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Cuentas Steam</span>
+            <strong>{report.summary.steamUsers}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Perfiles vinculados</span>
+            <strong>{report.summary.verifiedLinkedIdentities}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Propietarios duplicados</span>
+            <strong>{report.summary.duplicateProfileOwners}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Índice instalado</span>
+            <strong>{report.summary.uniqueProfileOwnerIndexExists ? 'Sí' : 'No'}</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Restricción propuesta</span>
+              <h2>{report.requiredIndex.name}</h2>
+            </div>
+            <b class:list={[
+              'status',
+              report.summary.schemaHardened ? 'ok' : 'warning'
+            ]}>
+              {report.summary.schemaHardened ? 'PROTEGIDO' : 'PENDIENTE'}
+            </b>
+          </div>
+
+          <div class="detail-list">
+            <p><span>Tabla</span><strong>{report.requiredIndex.table}</strong></p>
+            <p><span>Columna</span><strong>{report.requiredIndex.column}</strong></p>
+            <p><span>Tipo</span><strong>UNIQUE</strong></p>
+            <p><span>Varios NULL</span><strong>Sí</strong></p>
+            <p><span>Puede aplicarse</span><strong>{report.canApply ? 'Sí' : 'No'}</strong></p>
+          </div>
+        </section>
+
+        <section class="panel safeguards">
+          <div class="panel-head">
+            <div><span>Estado</span><h2>Operación única</h2></div>
+            <b>NO DESTRUCTIVA</b>
+          </div>
+          <ul>
+            <li>No modifica perfiles ni identidades existentes.</li>
+            <li>No cambia SR, DS, equipos, resultados o vueltas.</li>
+            <li>Permite múltiples cuentas aún sin perfil mediante valores NULL.</li>
+            <li>Bloquea un segundo propietario para cualquier perfil ya reclamado.</li>
+            <li>MYSQL_WRITE_ENABLED solo se activa durante esta migración.</li>
+          </ul>
+          <p>{report.nextStep}</p>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .hardening-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 21px;
+  }
+  .status { font-size: 9px; }
+  .status.ok { color: var(--gc-lime); }
+  .status.warning { color: var(--gc-amber); }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 31px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong { font-family: var(--gc-font-data); font-size: 10px; }
+  .safeguards .panel-head > b { color: var(--gc-teal); font-size: 9px; }
+  .safeguards ul {
+    margin: 0; padding: 14px 32px 5px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.8;
+  }
+  .safeguards > p {
+    margin: 0; padding: 10px 15px 15px; color: var(--gc-muted); font-size: 11px;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 900px) {
+    .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>

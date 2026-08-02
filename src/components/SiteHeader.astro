@@ -1,0 +1,92 @@
+---
+import { siteConfig } from '@/config/site';
+import { loadSteamAccountContext } from '@/server/auth/steam-account-context';
+import { isSteamAuthConfigured, maskSteamId } from '@/server/auth/steam-session';
+import { isSteamPersistenceReady } from '@/server/database/steam-user-repository';
+
+const current = Astro.url.pathname;
+const authContext = await loadSteamAccountContext(Astro.cookies);
+const steamSession = authContext.session;
+const account = authContext.account;
+const authenticated = authContext.authenticated;
+const authConfigured = isSteamAuthConfigured() && isSteamPersistenceReady();
+const connectedLabel =
+  account?.linkedDisplayName ??
+  account?.displayName ??
+  (steamSession ? `Steam ${maskSteamId(steamSession.steamId64)}` : 'Sin conectar');
+const appActive = current.startsWith('/app/') || current.startsWith('/hotlaps/') || current.startsWith('/pilotos/');
+---
+
+<header class="site-header">
+  <div class="header-inner gc-container">
+    <a class="brand" href="/" aria-label="GrassCutters Racing">
+      <img class="brand-logo" src="/assets/brand/grasscutters-horizontal.png" alt="GrassCutters Sim Racing Community" />
+    </a>
+
+    <nav class="main-nav" aria-label="Navegación principal">
+      {siteConfig.navigation.map((item) => item.href === '/app/' ? (
+        <details class:list={['app-menu', { active: appActive }]}> 
+          <summary>APP <span aria-hidden="true">⌄</span></summary>
+          <div class="app-dropdown">
+            <a class:list={{ active: current.startsWith('/app/') }} href="/app/">
+              <strong>Race Data</strong><span>Resumen, sesiones e incidentes</span>
+            </a>
+            <a class:list={{ active: current.startsWith('/hotlaps/') }} href="/hotlaps/">
+              <strong>Hotlaps</strong><span>Mejores vueltas y combinaciones</span>
+            </a>
+            <a class:list={{ active: current.startsWith('/pilotos/') }} href="/pilotos/">
+              <strong>Pilotos</strong><span>Perfiles y estadísticas</span>
+            </a>
+          </div>
+        </details>
+      ) : (
+        <a class:list={{ active: item.href === '/' ? current === '/' : current.startsWith(item.href) }} href={item.href}>{item.label}</a>
+      ))}
+    </nav>
+
+    <details class="user-menu">
+      <summary>
+        <span class:list={['user-dot', { connected: authenticated }]}></span>
+        <span class="user-avatar">{account?.avatarUrl ? <img src={account.avatarUrl} alt="" loading="lazy" /> : authenticated ? 'ST' : 'GC'}</span>
+        <span class="user-name">{connectedLabel}</span>
+        <span class="user-chevron" aria-hidden="true">⌄</span>
+      </summary>
+
+      <div class="user-dropdown">
+        <div class="user-dropdown-head">
+          <strong>{authenticated ? connectedLabel : 'Cuenta GrassCutters'}</strong>
+          <span>{authenticated ? account?.linkedProfileId ? 'Perfil de piloto vinculado' : 'Steam conectado · perfil pendiente' : steamSession && !authContext.databaseAvailable ? 'Base de datos temporalmente no disponible' : authConfigured ? 'Usuario no conectado' : 'Acceso Steam sin configurar'}</span>
+        </div>
+        <nav aria-label="Menú de usuario">
+          <a href="/perfil/">Mi perfil</a>
+          <a href={account?.linkedProfileId ? `/pilotos/${account.linkedProfileId}/` : '/pilotos/'}>Mi ficha deportiva</a>
+          <a href="/equipos/">Mi equipo</a>
+          <a href="/ratings/">Mis estadísticas</a>
+        </nav>
+        <div class="user-dropdown-action">
+          {authenticated ? <form method="post" action="/auth/logout/"><button class="btn" type="submit">Cerrar sesión</button></form> : <a class="btn" href={authConfigured ? '/auth/steam/' : '/perfil/?auth=not-configured'}>Iniciar sesión con Steam</a>}
+        </div>
+      </div>
+    </details>
+  </div>
+</header>
+
+<style>
+  .brand-logo{display:block;width:min(230px,100%);height:46px;object-fit:contain;object-position:left center}
+  .app-menu{position:relative;height:100%}
+  .app-menu summary{position:relative;height:100%;display:flex;align-items:center;gap:6px;color:#c9d0d3;font-size:13px;font-weight:750;text-transform:uppercase;cursor:pointer;list-style:none}
+  .app-menu summary::-webkit-details-marker{display:none}
+  .app-menu:hover summary,.app-menu[open] summary,.app-menu.active summary{color:#fff}
+  .app-menu.active summary::after{position:absolute;right:0;bottom:0;left:0;height:2px;background:var(--gc-lime);content:""}
+  .app-dropdown{position:absolute;top:calc(100% - 1px);left:50%;z-index:45;width:330px;padding:8px;transform:translateX(-50%);border:1px solid var(--gc-line);border-top:2px solid var(--gc-lime);border-radius:0 0 10px 10px;background:rgba(11,16,18,.98);box-shadow:0 22px 55px rgba(0,0,0,.45)}
+  .app-dropdown a{height:auto!important;min-height:62px;padding:11px 12px;display:grid!important;place-items:initial!important;align-content:center;gap:3px;border-radius:7px;color:var(--gc-muted)!important;text-transform:none!important}
+  .app-dropdown a::after{display:none!important}
+  .app-dropdown a:hover,.app-dropdown a.active{background:var(--gc-panel-2);color:var(--gc-text)!important}
+  .app-dropdown strong{font-size:12px;text-transform:uppercase}
+  .app-dropdown span{font-size:10px;font-weight:500;color:var(--gc-muted)}
+  .user-menu{position:relative}.user-dot.connected{background:var(--gc-lime);box-shadow:0 0 0 3px rgba(168,235,0,.12)}.user-avatar{overflow:hidden}.user-avatar img{width:100%;height:100%;display:block;object-fit:cover}.user-dropdown-action form{margin:0}.user-dropdown-action button{appearance:none;cursor:pointer;font:inherit}
+  .user-menu summary{min-height:42px;padding:5px 8px;display:flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:8px;cursor:pointer;list-style:none}.user-menu summary::-webkit-details-marker{display:none}.user-menu summary:hover,.user-menu[open] summary{border-color:var(--gc-line);background:var(--gc-surface-2)}.user-chevron{color:var(--gc-muted);transition:transform .15s ease}.user-menu[open] .user-chevron{transform:rotate(180deg)}
+  .user-dropdown{position:absolute;top:calc(100% + 9px);right:0;z-index:40;width:238px;overflow:hidden;border:1px solid var(--gc-line);border-radius:9px;background:var(--gc-surface);box-shadow:0 18px 50px rgba(0,0,0,.38)}.user-dropdown-head{padding:14px;display:grid;gap:4px;border-bottom:1px solid var(--gc-line-soft)}.user-dropdown-head strong{font-size:12px}.user-dropdown-head span{color:var(--gc-muted);font-size:10px}.user-dropdown nav{display:grid;padding:7px}.user-dropdown nav a{min-height:39px;padding:9px 10px;display:flex;align-items:center;border-radius:6px;color:var(--gc-muted);font-size:11px;font-weight:750}.user-dropdown nav a:hover{color:var(--gc-text);background:var(--gc-surface-2)}.user-dropdown-action{padding:10px;border-top:1px solid var(--gc-line-soft)}.user-dropdown-action .btn{width:100%}
+  @media(max-width:1100px){.main-nav{gap:20px}.app-dropdown{left:0;transform:none}}
+  @media(max-width:900px){.user-name{display:none}.user-dropdown{position:fixed;top:70px;right:12px;left:12px;width:auto}.app-dropdown{position:fixed;top:70px;right:12px;left:12px;width:auto;transform:none}.main-nav{overflow-x:auto;justify-content:flex-start}}
+</style>

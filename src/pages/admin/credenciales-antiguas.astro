@@ -1,0 +1,143 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { runtimeConfig } from '@/server/env';
+import { auditLegacyCredentials } from '@/server/database/legacy-credential-audit';
+
+let report: Awaited<ReturnType<typeof auditLegacyCredentials>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    report = await auditLegacyCredentials();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Credenciales antiguas">
+  <div class="page gc-container credential-page">
+    <header class="page-intro">
+      <span>Administración local · solo lectura</span>
+      <h1>Auditoría de credenciales antiguas</h1>
+      <p>No muestra contraseñas, hashes, salts ni tokens.</p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la auditoría</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric"><span>Usuarios</span><strong>{report.summary.users}</strong></article>
+          <article class="panel metric"><span>Con hash</span><strong>{report.summary.usersWithHash}</strong></article>
+          <article class="panel metric"><span>Reconocidos</span><strong>{report.summary.usersWithRecognizedScheme}</strong></article>
+          <article class="panel metric warning"><span>Desconocidos</span><strong>{report.summary.usersWithUnknownScheme}</strong></article>
+          <article class="panel metric"><span>Con salt</span><strong>{report.summary.usersWithSalt}</strong></article>
+          <article class="panel metric"><span>Sin hash</span><strong>{report.summary.usersWithoutHash}</strong></article>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head"><div><span>Esquema</span><h2>Columnas detectadas</h2></div></div>
+            <div class="detail-list">
+              <p><span>Algoritmo</span><strong>{report.detectedSchema.algorithmColumn ?? 'No localizada'}</strong></p>
+              <p><span>Hash</span><strong>{report.detectedSchema.hashColumn ?? 'No localizada'}</strong></p>
+              <p><span>Salt</span><strong>{report.detectedSchema.saltColumn ?? 'No localizada'}</strong></p>
+              <p><span>Reset</span><strong>{report.detectedSchema.resetColumn ?? 'No localizada'}</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span>Compatibilidad</span><h2>Acceso antiguo</h2></div></div>
+            <div class="detail-list">
+              <p><span>Verificación directa</span><strong>{report.compatibility.canVerifyWithoutMigration ? 'Posible' : 'No confirmada'}</strong></p>
+              <p><span>Necesita salt</span><strong>{report.compatibility.requiresSaltSupport ? 'Sí' : 'No'}</strong></p>
+              <p><span>Verificador heredado</span><strong>{report.compatibility.requiresLegacyVerifier ? 'Sí' : 'No'}</strong></p>
+            </div>
+            <p class="recommendation">{report.compatibility.recommendation}</p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div><span>Formatos</span><h2>Esquemas detectados</h2></div></div>
+          <div class="scheme-grid">
+            {Object.entries(report.schemes)
+              .filter(([, count]) => count > 0)
+              .map(([scheme, count]) => (
+                <article><span>{scheme}</span><strong>{count}</strong></article>
+              ))}
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div><span>Longitud</span><h2>Distribución de hashes</h2></div></div>
+          <div class="scheme-grid">
+            {report.passwordLengths.map((item) => (
+              <article><span>{item.length} caracteres</span><strong>{item.users}</strong></article>
+            ))}
+          </div>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div><span>Bloqueos</span><h2>No activar todavía</h2></div>
+            <b>SAFE TO ENABLE: NO</b>
+          </div>
+          <ul>{report.blockers.map((blocker) => <li>{blocker}</li>)}</ul>
+          <p>{report.nextStep}</p>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .credential-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span, .scheme-grid span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric { min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px; }
+  .metric strong { color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 25px; }
+  .metric.warning strong { color: var(--gc-amber); }
+  .two-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 31px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong { font-family: var(--gc-font-data); font-size: 10px; text-align: right; }
+  .recommendation { margin: 0; padding: 0 15px 15px; color: var(--gc-muted); font-size: 10px; line-height: 1.55; }
+  .scheme-grid {
+    padding: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+  }
+  .scheme-grid article {
+    padding: 13px; display: grid; gap: 7px; border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm);
+  }
+  .scheme-grid strong { font-family: var(--gc-font-data); font-size: 17px; }
+  .blockers .panel-head b { color: var(--gc-red); font-size: 9px; }
+  .blockers ul { margin: 0; padding: 14px 32px 5px; color: var(--gc-amber); font-size: 11px; line-height: 1.7; }
+  .blockers > p { margin: 0; padding: 10px 15px 15px; color: var(--gc-muted); font-size: 11px; }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 1100px) {
+    .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .scheme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    .summary-grid, .two-columns, .scheme-grid { grid-template-columns: 1fr; }
+  }
+</style>

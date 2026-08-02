@@ -1,0 +1,154 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { runtimeConfig } from '@/server/env';
+import {
+  auditSteamSchemaCompatibility
+} from '@/server/database/steam-schema-compatibility';
+
+let report: Awaited<ReturnType<typeof auditSteamSchemaCompatibility>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  try {
+    report = await auditSteamSchemaCompatibility();
+  } catch (error) {
+    errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Compatibilidad Steam">
+  <div class="page gc-container compatibility-page">
+    <header class="page-intro">
+      <span>Hostinger MariaDB · solo lectura</span>
+      <h1>Compatibilidad del esquema Steam</h1>
+      <p>
+        Verifica tipos, motor, cotejamiento e índices antes de crear las
+        tablas nuevas.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la comprobación</strong>
+        <p>{errorCode}</p>
+      </article>
+    ) : report ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Motor</span>
+            <strong>{report.summary.profileEngine}</strong>
+          </article>
+          <article class="panel metric">
+            <span>ID perfil</span>
+            <strong>{report.summary.profileIdType}</strong>
+          </article>
+          <article class="panel metric">
+            <span>ID indexado</span>
+            <strong>{report.summary.profileIdUnique ? 'Sí' : 'No'}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Charset</span>
+            <strong>{report.summary.profileCharacterSet}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Tablas libres</span>
+            <strong>
+              {!report.summary.steamUsersTableExists &&
+              !report.summary.driverIdentitiesTableExists
+                ? 'Sí'
+                : 'No'}
+            </strong>
+          </article>
+          <article class="panel metric">
+            <span>Compatible</span>
+            <strong>{report.summary.schemaCompatible ? 'Sí' : 'No'}</strong>
+          </article>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head">
+              <div><span>Referencia</span><h2>gc_driver_profiles.id</h2></div>
+            </div>
+            <div class="detail-list">
+              <p><span>Tipo</span><strong>{report.profileReference.columnType}</strong></p>
+              <p><span>Clave</span><strong>{report.profileReference.uniqueOrPrimary ? 'UNIQUE/PRIMARY' : 'Sin clave'}</strong></p>
+              <p><span>Charset</span><strong>{report.profileReference.characterSet ?? 'No aplica'}</strong></p>
+              <p><span>Collation</span><strong>{report.profileReference.collation ?? 'No aplica'}</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div><span>Resultado</span><h2>Ejecución</h2></div>
+            </div>
+            <div class="detail-list">
+              <p><span>Schema compatible</span><strong>{report.summary.schemaCompatible ? 'Sí' : 'No'}</strong></p>
+              <p><span>Ejecución automática</span><strong>No</strong></p>
+              <p><span>Rollback DDL</span><strong>No transaccional</strong></p>
+              <p><span>Copia previa</span><strong>Obligatoria</strong></p>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div><span>Advertencias</span><h2>No ejecutar todavía</h2></div>
+            <b>SAFE TO EXECUTE: NO</b>
+          </div>
+          <ul>{report.blockers.map((blocker) => <li>{blocker}</li>)}</ul>
+          <p>{report.nextStep}</p>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .compatibility-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric { min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px; }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data);
+    font-size: 17px; overflow-wrap: anywhere;
+  }
+  .two-columns {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 31px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong { font-family: var(--gc-font-data); font-size: 10px; text-align: right; }
+  .blockers .panel-head b { color: var(--gc-red); font-size: 9px; }
+  .blockers ul {
+    margin: 0; padding: 14px 32px 5px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.7;
+  }
+  .blockers > p {
+    margin: 0; padding: 10px 15px 15px; color: var(--gc-muted); font-size: 11px;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 1100px) {
+    .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    .summary-grid, .two-columns { grid-template-columns: 1fr; }
+  }
+</style>

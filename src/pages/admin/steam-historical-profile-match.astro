@@ -1,0 +1,225 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { loadSteamAccountContext } from '@/server/auth/steam-account-context';
+import {
+  auditHistoricalProfileMatch
+} from '@/server/database/steam-historical-profile-match';
+import { runtimeConfig } from '@/server/env';
+
+let report: Awaited<ReturnType<typeof auditHistoricalProfileMatch>> | null = null;
+let errorCode: string | null = null;
+
+if (runtimeConfig.appEnvironment !== 'local') {
+  Astro.response.status = 404;
+  errorCode = 'NOT_AVAILABLE';
+} else {
+  const context = await loadSteamAccountContext(Astro.cookies);
+
+  if (!context.authenticated || !context.account) {
+    Astro.response.status = 401;
+    errorCode = 'STEAM_AUTH_REQUIRED';
+  } else {
+    try {
+      report = await auditHistoricalProfileMatch(context.account);
+    } catch (error) {
+      errorCode = error instanceof Error ? error.message : 'AUDIT_FAILED';
+    }
+  }
+}
+---
+
+<BaseLayout title="GrassCutters · Perfil histórico Steam">
+  <div class="page gc-container match-page">
+    <header class="page-intro">
+      <span>Steam verificado · auditoría de solo lectura</span>
+      <h1>Coincidencia con el perfil histórico</h1>
+      <p>
+        Comprueba si el SteamID64 de la cuenta actual reproduce exactamente
+        alguna identidad deportiva histórica.
+      </p>
+    </header>
+
+    {errorCode ? (
+      <article class="panel error-panel">
+        <strong>No se ha podido ejecutar la auditoría</strong>
+        <p>{errorCode}</p>
+        {errorCode === 'STEAM_AUTH_REQUIRED' && (
+          <a href="/perfil/">Volver al perfil e iniciar sesión</a>
+        )}
+      </article>
+    ) : report ? (
+      <>
+        <section class="summary-grid">
+          <article class="panel metric">
+            <span>Perfiles históricos</span>
+            <strong>{report.summary.historicalProfiles}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Coincidencias exactas</span>
+            <strong>{report.summary.exactMatches}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Enlace actual</span>
+            <strong>{report.account.currentlyLinkedProfileId ? 'Sí' : 'No'}</strong>
+          </article>
+          <article class="panel metric">
+            <span>Resultado único</span>
+            <strong>{report.summary.uniqueExactMatch ? 'Sí' : 'No'}</strong>
+          </article>
+        </section>
+
+        <section class="two-columns">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Cuenta actual</span>
+                <h2>{report.account.displayName}</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>SteamID64</span><strong>{report.account.steamId64Masked}</strong></p>
+              <p><span>Estado</span><strong>{report.account.status}</strong></p>
+              <p><span>Perfil enlazado</span><strong>{report.account.currentlyLinkedProfileId ?? 'Ninguno'}</strong></p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span>Prueba criptográfica</span>
+                <h2>SHA-256</h2>
+              </div>
+            </div>
+            <div class="detail-list">
+              <p><span>Algoritmo</span><strong>{report.deterministicTest.algorithm}</strong></p>
+              <p><span>Representaciones</span><strong>{report.deterministicTest.testedRepresentations.length}</strong></p>
+              <p><span>Hash generado</span><strong>{report.deterministicTest.generatedHashMasked}</strong></p>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <span>Resultado exacto</span>
+              <h2>
+                {report.summary.exactMatches === 1
+                  ? 'Perfil recomendado'
+                  : 'Coincidencias encontradas'}
+              </h2>
+            </div>
+            <b class:list={[
+              'status',
+              report.summary.uniqueExactMatch ? 'ok' : 'warning'
+            ]}>
+              {report.summary.uniqueExactMatch ? 'ÚNICO' : 'REVISAR'}
+            </b>
+          </div>
+
+          <div class="candidate-list">
+            {report.exactMatches.length === 0 ? (
+              <p class="empty">No se ha encontrado una coincidencia criptográfica exacta.</p>
+            ) : report.exactMatches.map((candidate) => (
+              <article class="candidate">
+                <div class="avatar">
+                  {candidate.avatarUrl
+                    ? <img src={candidate.avatarUrl} alt="" />
+                    : candidate.displayName.slice(0, 2).toUpperCase()}
+                </div>
+                <div class="candidate-main">
+                  <strong>{candidate.displayName}</strong>
+                  <span>{candidate.profileId}</span>
+                  <p>{candidate.evidence.join(' ')}</p>
+                </div>
+                <div class="candidate-meta">
+                  <b>{candidate.confidence.toUpperCase()}</b>
+                  <span>{candidate.teamName ?? 'Sin equipo'}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section class="panel blockers">
+          <div class="panel-head">
+            <div><span>Estado</span><h2>Sin escrituras</h2></div>
+            <b>READ ONLY</b>
+          </div>
+          <ul>{report.blockers.map((blocker) => <li>{blocker}</li>)}</ul>
+          <p>{report.nextStep}</p>
+        </section>
+      </>
+    ) : null}
+  </div>
+</BaseLayout>
+
+<style>
+  .match-page { display: grid; gap: 16px; }
+  .page-intro > span, .panel-head span, .metric span {
+    color: var(--gc-muted); font-size: 9px; font-weight: 850;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .page-intro h1 { margin: 7px 0 5px; font-size: 27px; }
+  .page-intro p { margin: 0; color: var(--gc-muted); }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+  }
+  .metric {
+    min-height: 92px; padding: 15px; display: grid; align-content: center; gap: 7px;
+  }
+  .metric strong {
+    color: var(--gc-lime); font-family: var(--gc-font-data); font-size: 22px;
+  }
+  .two-columns {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  }
+  .detail-list { padding: 13px 15px; }
+  .detail-list p {
+    min-height: 31px; margin: 0; display: flex; justify-content: space-between;
+    gap: 12px; align-items: center; border-bottom: 1px solid var(--gc-line-soft);
+  }
+  .detail-list p:last-child { border-bottom: 0; }
+  .detail-list span { color: var(--gc-muted); font-size: 10px; }
+  .detail-list strong { font-family: var(--gc-font-data); font-size: 10px; text-align: right; }
+  .status { font-size: 9px; }
+  .status.ok { color: var(--gc-lime); }
+  .status.warning { color: var(--gc-amber); }
+  .candidate-list { padding: 14px; display: grid; gap: 9px; }
+  .candidate {
+    padding: 12px; display: grid; grid-template-columns: 46px 1fr auto;
+    gap: 12px; align-items: center; border: 1px solid var(--gc-line-soft);
+    border-radius: var(--gc-radius-sm);
+  }
+  .avatar {
+    width: 42px; height: 42px; border: 1px solid var(--gc-teal);
+    border-radius: 50%; display: grid; place-items: center;
+    color: var(--gc-teal); font-weight: 900; overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .candidate-main { display: grid; gap: 3px; }
+  .candidate-main > strong { font-size: 13px; }
+  .candidate-main > span { color: var(--gc-muted); font-family: var(--gc-font-data); font-size: 9px; }
+  .candidate-main p { margin: 3px 0 0; color: var(--gc-muted); font-size: 10px; line-height: 1.5; }
+  .candidate-meta { display: grid; gap: 5px; text-align: right; }
+  .candidate-meta b { color: var(--gc-lime); font-size: 9px; }
+  .candidate-meta span { color: var(--gc-muted); font-size: 9px; }
+  .empty { margin: 0; padding: 16px; color: var(--gc-amber); }
+  .blockers .panel-head > b { color: var(--gc-teal); font-size: 9px; }
+  .blockers ul {
+    margin: 0; padding: 14px 32px 5px; color: var(--gc-amber);
+    font-size: 11px; line-height: 1.7;
+  }
+  .blockers > p {
+    margin: 0; padding: 10px 15px 15px; color: var(--gc-muted); font-size: 11px;
+  }
+  .error-panel { padding: 20px; color: var(--gc-red); }
+  @media (max-width: 900px) {
+    .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two-columns { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .candidate { grid-template-columns: 42px 1fr; }
+    .candidate-meta { grid-column: 2; text-align: left; }
+  }
+</style>
