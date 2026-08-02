@@ -2656,27 +2656,10 @@ const home2ArchiveSeed: unknown[] = [];
       const root = document.querySelector('[data-gc-home2]');
       if (!root) return;
 
-      /* GC_HOME_RUNTIME_SINGLETON_V3: destruye cualquier ciclo anterior antes de reiniciar. */
-      const previousRuntime = (window as any).__GC_HOME_RUNTIME_V3__;
-      if (previousRuntime?.destroy) previousRuntime.destroy('rebootstrap');
-
-      const runtime = {
-        destroyed: false,
-        refreshTimer: 0,
-        heroRotateTimer: 0,
-        pagehideHandler: null as null | (() => void),
-        destroy(_reason = 'destroy') {
-          if (this.destroyed) return;
-          this.destroyed = true;
-          if (this.refreshTimer) window.clearInterval(this.refreshTimer);
-          if (this.heroRotateTimer) window.clearInterval(this.heroRotateTimer);
-          if (this.pagehideHandler) window.removeEventListener('pagehide', this.pagehideHandler);
-          this.refreshTimer = 0;
-          this.heroRotateTimer = 0;
-          if ((window as any).__GC_HOME_RUNTIME_V3__ === this) delete (window as any).__GC_HOME_RUNTIME_V3__;
-        }
-      };
-      (window as any).__GC_HOME_RUNTIME_V3__ = runtime;
+      if ((window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__) {
+        console.warn(`[GC Home ${PACK}] loader duplicado ignorado`);
+        return;
+      }
       (window as any).__GC_HOME_BOOTSTRAP_FRONTEND_V2__ = true;
 
       const REFRESH_MS = 60000;
@@ -2859,10 +2842,7 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const canonicalDriverKey = (row: any): string => {
-        /* GC_HOME_PUBLIC_IDENTITY_DEDUP_V3 */
         const nameKey = canonicalDriverNameKey(driverName(row));
-        if (nameKey) return `name:${nameKey}`;
-
         const guid = first(row, [
           'steamGuid', 'steamGUID', 'steamId', 'steamID', 'guid', 'GUID',
           'driver.steamGuid', 'driver.guid'
@@ -2875,7 +2855,9 @@ const home2ArchiveSeed: unknown[] = [];
           'playerId', 'driverId', 'driver.rawId', 'driver.id'
         ], '');
         if (playerId !== '') return `source:${source}:player:${String(playerId).trim().toLowerCase()}`;
-        return `source:${source}:anonymous`;
+
+        if (nameKey === 'pdiaz') return 'name:pdiaz';
+        return `source:${source}:name:${nameKey}`;
       };
 
       /*
@@ -3423,10 +3405,51 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const mergeBootstrapWithAcsmLive = (bootstrap: any, live: Record<string, any>) => {
+        const trackMatches = (left: any, right: any): boolean => {
+          const a = comboTrackIdentity(left?.activeCombo || left || {});
+          const b = comboTrackIdentity(right?.activeCombo || right || {});
+          return Boolean(
+            a.code &&
+            b.code &&
+            a.code === b.code &&
+            (!a.config || !b.config || a.config === b.config)
+          );
+        };
+
+        const carsCompatible = (left: any, right: any): boolean => {
+          const a = comboTrackIdentity(left?.activeCombo || left || {});
+          const b = comboTrackIdentity(right?.activeCombo || right || {});
+          const leftCars = new Set(a.cars);
+          const rightCars = new Set(b.cars);
+          if (!leftCars.size || !rightCars.size) return true;
+          return [...leftCars].some((car) => rightCars.has(car));
+        };
+
         const mergeSource = (source: 'main' | 'gt4') => {
-          const historical = bootstrap?.[source] || {};
-          const livePayload = live[source]
-            ? applyHistoricalCarAliases(live[source], historical)
+          const currentHistorical = bootstrap?.[source] || {};
+          const previousHistorical = lastGood.bootstrap?.[source] || {};
+          const rawLivePayload = live[source] || null;
+
+          /* GC_HOME_SESSION_RESTART_LAST_GOOD_FIX_V1
+           * Al reiniciar una sesión ACSM, home-bootstrap puede cambiar al nuevo
+           * registro vacío antes de que exista una primera vuelta. Si el live
+           * sigue anunciando el mismo circuito/combo, conservar el último
+           * leaderboard bueno evita vaciar Supra GT4 durante el reinicio.
+           */
+          const currentRows = sourceLeaderboard(currentHistorical);
+          const previousRows = sourceLeaderboard(previousHistorical);
+          const canReusePrevious = Boolean(
+            !currentRows.length &&
+            previousRows.length &&
+            rawLivePayload &&
+            trackMatches(rawLivePayload, previousHistorical) &&
+            carsCompatible(rawLivePayload, previousHistorical) &&
+            (!currentHistorical?.activeCombo || trackMatches(rawLivePayload, currentHistorical))
+          );
+          const historical = canReusePrevious ? previousHistorical : currentHistorical;
+
+          const livePayload = rawLivePayload
+            ? applyHistoricalCarAliases(rawLivePayload, historical)
             : null;
           if (livePayload) {
             const liveRows = sourceLeaderboard(livePayload);
@@ -3442,10 +3465,9 @@ const home2ArchiveSeed: unknown[] = [];
             const liveCarSet = new Set(liveTrack.cars);
             const historicalCarSet = new Set(historicalTrack.cars);
             const sameCars = Boolean(
-              liveCarSet.size &&
-              historicalCarSet.size &&
-              [...liveCarSet].every((car) => historicalCarSet.has(car)) &&
-              [...historicalCarSet].every((car) => liveCarSet.has(car))
+              !liveCarSet.size ||
+              !historicalCarSet.size ||
+              [...liveCarSet].some((car) => historicalCarSet.has(car))
             );
             const sameStrictCombo = sameTrack && sameCars;
             const historicalCombo = historical?.activeCombo || {};
@@ -3574,7 +3596,8 @@ const home2ArchiveSeed: unknown[] = [];
                 strictCarsMatch: sameCars,
                 liveRows: liveRows.length,
                 historicalRows: historicalRows.length,
-                mergedRows: mergedRows.length
+                mergedRows: mergedRows.length,
+                sessionRestartLastGoodReused: canReusePrevious
               }
             };
           }
@@ -3918,7 +3941,6 @@ const home2ArchiveSeed: unknown[] = [];
 
       const startHeroRotation = () => {
         if (heroRotateTimer) window.clearInterval(heroRotateTimer);
-        if (runtime.heroRotateTimer) window.clearInterval(runtime.heroRotateTimer);
         const candidates = heroCandidates(heroState.payload || lastGood.bootstrap);
         if (candidates.length < 2) {
           heroRotateTimer = 0;
@@ -3926,11 +3948,9 @@ const home2ArchiveSeed: unknown[] = [];
           return;
         }
         heroRotateTimer = window.setInterval(() => {
-          if (runtime.destroyed) return;
           heroState.index += 1;
           renderHeroFromState();
         }, HERO_ROTATE_MS);
-        runtime.heroRotateTimer = heroRotateTimer;
       };
       const championshipEventForSource = (source: string) => {
         const key = source === 'gt4' ? 'gt4' : 'weekly';
@@ -4328,7 +4348,7 @@ const home2ArchiveSeed: unknown[] = [];
       };
 
       const refresh = async () => {
-        if (runtime.destroyed || running) return;
+        if (running) return;
         running = true;
         const seq = ++runSeq;
         try {
@@ -4376,9 +4396,6 @@ const home2ArchiveSeed: unknown[] = [];
       enforceChampionshipButtons('weekly');
       refresh();
       refreshTimer = window.setInterval(refresh, REFRESH_MS);
-      runtime.refreshTimer = refreshTimer;
-      runtime.pagehideHandler = () => runtime.destroy('pagehide');
-      window.addEventListener('pagehide', runtime.pagehideHandler, { once: true });
       (window as any).__GC_HOME_BOOTSTRAP_INTERVAL__ = refreshTimer;
     })();
     /* GC_HOME_BOOTSTRAP_PACK_2_FRONTEND_SINGLE_FETCH_END */
